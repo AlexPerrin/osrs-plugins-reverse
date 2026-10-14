@@ -86,10 +86,10 @@ index 00000000..981e3956
 +    AndroidDelegatingDecoder(AndroidGameClientProt.IF_BUTTONX, IfButtonXDecoder())
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt
 new file mode 100644
-index 00000000..a05d7436
+index 00000000..9385f138
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt
-@@ -0,0 +1,245 @@
+@@ -0,0 +1,337 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -98,7 +98,12 @@ index 00000000..a05d7436
 +import net.rsprot.protocol.game.outgoing.info.npcinfo.SetNpcUpdateOrigin
 +import net.rsprot.protocol.game.outgoing.info.playerinfo.PlayerInfoPacket
 +import net.rsprot.protocol.game.outgoing.info.worldentityinfo.WorldEntityInfo
++import net.rsprot.protocol.game.outgoing.interfaces.IfCloseSub
 +import net.rsprot.protocol.game.outgoing.interfaces.IfOpenSub
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetAnim
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetNpcHead
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetNpcHeadActive
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetText
 +import net.rsprot.protocol.game.outgoing.interfaces.IfSetEventsV2
 +import net.rsprot.protocol.game.outgoing.interfaces.IfOpenTop
 +import net.rsprot.protocol.game.outgoing.logout.Logout
@@ -118,6 +123,10 @@ index 00000000..a05d7436
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.NpcInfoSmallV6Encoder
 +import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcInfoLargeV6
 +import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcInfoSmallV6
++import net.rsprot.protocol.game.outgoing.specific.ObjAddSpecific
++import net.rsprot.protocol.game.outgoing.specific.ObjDelSpecific
++import net.rsprot.protocol.game.outgoing.codec.misc.player.RunClientScriptEncoder
++import net.rsprot.protocol.game.outgoing.misc.player.RunClientScript
 +import net.rsprot.protocol.message.OutgoingMessage
 +import net.rsprot.protocol.message.codec.MessageEncoder
 +import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
@@ -335,6 +344,89 @@ index 00000000..a05d7436
 +/** Case 145 (same reader, 8-bit deltas). */
 +public fun androidNpcInfoLargeV6Encoder(): MessageEncoder<NpcInfoLargeV6> =
 +    AndroidDelegatingEncoder(AndroidGameServerProt.NPC_INFO_LARGE_V6, NpcInfoLargeV6Encoder())
++
++/**
++ * Case 42: [timeUntilPublic BE][coord p4Alt3][ownership -b][neverBecomesPublic -b][id BE]
++ * [timeUntilDespawn hi, lo^0x80][opFlags -b][quantity BE int].
++ */
++public class AndroidObjAddSpecificEncoder : MessageEncoder<ObjAddSpecific> {
++    override val prot: ServerProt = AndroidGameServerProt.OBJ_ADD_SPECIFIC
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: ObjAddSpecific) {
++        buffer.p2(message.timeUntilPublic)
++        buffer.p4Alt3(message.coordGrid.packed)
++        buffer.p1Alt2(message.ownershipType)
++        buffer.p1Alt2(if (message.neverBecomesPublic) 1 else 0)
++        buffer.p2(message.id)
++        buffer.p2Alt2(message.timeUntilDespawn)
++        buffer.p1Alt2(message.opFlags.toInt())
++        buffer.p4(message.quantity)
++    }
++}
++
++/** Case 109: [coord LE int][id hi, lo^0x80][quantity LE int]. */
++public class AndroidObjDelSpecificEncoder : MessageEncoder<ObjDelSpecific> {
++    override val prot: ServerProt = AndroidGameServerProt.OBJ_DEL_SPECIFIC
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: ObjDelSpecific) {
++        buffer.p4Alt1(message.coordGrid.packed)
++        buffer.p2Alt2(message.id)
++        buffer.p4Alt1(message.quantity)
++    }
++}
++
++/** Case 28: [anim LE][component BE int]. */
++public class AndroidIfSetAnimEncoder : MessageEncoder<IfSetAnim> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETANIM
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetAnim) {
++        buffer.p2Alt1(message.anim)
++        buffer.p4(message.combinedId)
++    }
++}
++
++/** Case 47: [component p4Alt3][npc slot hi, lo^0x80]. */
++public class AndroidIfSetNpcHeadActiveEncoder : MessageEncoder<IfSetNpcHeadActive> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETNPCHEAD_ACTIVE
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetNpcHeadActive) {
++        buffer.p4Alt3(message.combinedId)
++        buffer.p2Alt2(message.index)
++    }
++}
++
++/** Case 62: [component BE int][npc id LE]. */
++public class AndroidIfSetNpcHeadEncoder : MessageEncoder<IfSetNpcHead> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETNPCHEAD
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetNpcHead) {
++        buffer.p4(message.combinedId)
++        buffer.p2Alt1(message.npc)
++    }
++}
++
++/** Case 101: [component BE int]. */
++public class AndroidIfCloseSubEncoder : MessageEncoder<IfCloseSub> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_CLOSESUB
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfCloseSub) {
++        buffer.p4(message.combinedId)
++    }
++}
++
++/** Case 122: [component p4Alt3][text]. */
++public class AndroidIfSetTextEncoder : MessageEncoder<IfSetText> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETTEXT
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetText) {
++        buffer.p4Alt3(message.combinedId)
++        buffer.pjstr(message.text)
++    }
++}
++
++/** Case 10: type string, args in reverse type order, script id BE int (as desktop). */
++public fun androidRunClientScriptEncoder(): MessageEncoder<RunClientScript> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.RUNCLIENTSCRIPT, RunClientScriptEncoder())
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
 index 00000000..7caea94b
@@ -462,10 +554,10 @@ index 00000000..7caea94b
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..f177fe7e
+index 00000000..30a694b2
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,44 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.protocol.Prot
@@ -485,20 +577,28 @@ index 00000000..f177fe7e
 +    UPDATE_STAT_V2(2, 7),
 +    REBUILD_NORMAL_V2(6, Prot.VAR_SHORT),
 +    UPDATE_INV_PARTIAL(8, Prot.VAR_SHORT),
++    RUNCLIENTSCRIPT(10, Prot.VAR_SHORT),
 +    UPDATE_RUNWEIGHT(26, 2),
++    IF_SETANIM(28, 6),
 +    SET_NPC_UPDATE_ORIGIN(30, 2),
 +    UPDATE_INV_FULL(32, Prot.VAR_SHORT),
 +    VARP_SMALL(34, 3),
 +    LOGOUT(46, 0),
++    IF_SETNPCHEAD_ACTIVE(47, 6),
 +    SERVER_TICK_END(55, 0),
++    OBJ_ADD_SPECIFIC(42, 17),
 +    IF_SETEVENTS_V2(59, 16),
++    IF_SETNPCHEAD(62, 6),
 +    VARP_LARGE(64, 6),
 +    IF_OPENSUB(72, 7),
 +    IF_OPENTOP(75, 2),
 +    MESSAGE_GAME(81, Prot.VAR_BYTE),
 +    PLAYER_INFO(90, Prot.VAR_SHORT),
 +    SET_ACTIVE_WORLD_V2(99, 3),
++    IF_CLOSESUB(101, 4),
 +    UPDATE_RUNENERGY(102, 2),
++    OBJ_DEL_SPECIFIC(109, 10),
++    IF_SETTEXT(122, Prot.VAR_SHORT),
 +    NPC_INFO_LARGE_V6(145, Prot.VAR_SHORT),
 +    NPC_INFO_SMALL_V6(150, Prot.VAR_SHORT),
 +}
@@ -865,10 +965,10 @@ index 00000000..d083e608
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..db28c65a
+index 00000000..e4f75891
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,103 @@
+@@ -0,0 +1,111 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -908,10 +1008,18 @@ index 00000000..db28c65a
 +            bind(AndroidIfOpenSubEncoder())
 +            bind(AndroidIfOpenTopEncoder())
 +            bind(androidMessageGameEncoder())
++            bind(androidRunClientScriptEncoder())
 +            bind(AndroidPlayerInfoEncoder())
 +            bind(AndroidSetActiveWorldV2Encoder())
 +            bind(AndroidUpdateRunEnergyEncoder())
 +            bind(androidNpcInfoSmallV6Encoder())
++            bind(AndroidObjAddSpecificEncoder())
++            bind(AndroidIfSetAnimEncoder())
++            bind(AndroidIfSetNpcHeadActiveEncoder())
++            bind(AndroidIfSetNpcHeadEncoder())
++            bind(AndroidIfCloseSubEncoder())
++            bind(AndroidIfSetTextEncoder())
++            bind(AndroidObjDelSpecificEncoder())
 +            bind(androidNpcInfoLargeV6Encoder())
 +        }.build()
 +}

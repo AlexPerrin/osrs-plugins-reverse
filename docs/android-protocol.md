@@ -44,20 +44,30 @@ unassigned opcode), which is what made them easy to find.
 | 2 | UPDATE_STAT_V2 | current `p1`, boosted `p1Alt3`, stat `p1Alt1`, xp `p4Alt1` |
 | 8 | UPDATE_INV_PARTIAL | as desktop |
 | 6 | REBUILD_NORMAL_V2 (+ login variant: gpi block first) | worldArea `p2Alt3`, zoneX `p2`, zoneZ `p2` |
+| 10 | RUNCLIENTSCRIPT | as desktop |
 | 26 | UPDATE_RUNWEIGHT | `p2` |
+| 28 | IF_SETANIM | anim `p2Alt1`, component `p4` |
 | 30 | SET_NPC_UPDATE_ORIGIN | `p1`, `p1` |
 | 32 | UPDATE_INV_FULL | header as desktop; per slot id+1 `p2Alt2`, count `p1Alt1`, big count `p4Alt3` |
+| 42 | OBJ_ADD_SPECIFIC | timeUntilPublic `p2`, coord `p4Alt3`, ownership `p1Alt2`, neverPublic `p1Alt2`, id `p2`, timeUntilDespawn `p2Alt2`, opFlags `p1Alt2`, quantity `p4` (not yet seen rendering) |
+| 47 | IF_SETNPCHEAD_ACTIVE | component `p4Alt3`, slot `p2Alt2` |
 | 34 | VARP_SMALL | value `p1Alt2`, id `p2` |
 | 46 | LOGOUT | — |
 | 55 | SERVER_TICK_END (probable) | — |
 | 59 | IF_SETEVENTS_V2 | end `p2`, events1 `p4Alt3`, combined id `p4`, events2 `p4Alt1`, start `p2Alt3` (ops are events2 bits) |
+| 62 | IF_SETNPCHEAD | component `p4`, npc `p2Alt1` |
 | 64 | VARP_LARGE | id `p2Alt2`, value `p4Alt1` |
 | 72 | IF_OPENSUB | dest `p4`, type `p1Alt3`, interface `p2Alt2` |
 | 75 | IF_OPENTOP | `p2Alt3` |
+| 77 | IF_SETHIDE | hidden `p1Alt3`, component `p4` (from client session; not implemented) |
+| 79 | IF_SETPLAYERHEAD | component, middle-endian (from client session; not implemented) |
 | 81 | MESSAGE_GAME | as desktop |
 | 90 | PLAYER_INFO | bit layout as desktop; extended info below |
 | 99 | SET_ACTIVE_WORLD_V2 | `p2`, `p1` (as desktop) |
+| 101 | IF_CLOSESUB | component `p4` |
 | 102 | UPDATE_RUNENERGY | `p2` |
+| 109 | OBJ_DEL_SPECIFIC | coord `p4Alt1`, id `p2Alt2`, quantity `p4Alt1` |
+| 122 | IF_SETTEXT | component `p4Alt3`, string |
 | 145 / 150 | NPC_INFO_LARGE_V6 / NPC_INFO_SMALL_V6 | RSProt's NpcInfo bitstream; new NPCs use the Android order below |
 
 Recognised but not implemented: 8 UPDATE_INV_PARTIAL, 16 LOC_DEL (zone), 18
@@ -154,3 +164,9 @@ the test server replaces Jagex's sign-in:
 
 In-app: "Sign in with Email / Username", close the privacy screen, then Play Now. The client
 ID, scope and redirect URI are hard-coded in native code (Ghidra 0x59d638).
+
+## Dialogue (in progress)
+
+`::talk` sends the chat_left sequence (RUNCLIENTSCRIPT 2379, IF_OPENSUB 162:566 <- 231, head,
+anim, texts, pause-button events). As of 2026-10-14 nothing renders and no error occurs; nor
+does OBJ_ADD_SPECIFIC. Next: verify the open-sub table / widget text in client memory.

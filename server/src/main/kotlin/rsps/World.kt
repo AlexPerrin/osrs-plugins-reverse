@@ -20,11 +20,17 @@ import net.rsprot.protocol.game.outgoing.map.RebuildLoginV2
 import net.rsprot.protocol.game.outgoing.map.RebuildNormalV2
 import net.rsprot.protocol.game.outgoing.misc.client.ServerTickEnd
 import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
+import net.rsprot.protocol.game.outgoing.misc.player.RunClientScript
 import net.rsprot.protocol.game.outgoing.misc.player.UpdateRunEnergy
 import net.rsprot.protocol.game.outgoing.misc.player.UpdateStatV2
 import net.rsprot.protocol.common.game.outgoing.inv.InventoryObject
+import net.rsprot.protocol.game.outgoing.interfaces.IfCloseSub
+import net.rsprot.protocol.game.outgoing.interfaces.IfSetAnim
 import net.rsprot.protocol.game.outgoing.interfaces.IfSetEventsV2
+import net.rsprot.protocol.game.outgoing.interfaces.IfSetNpcHead
+import net.rsprot.protocol.game.outgoing.interfaces.IfSetText
 import net.rsprot.protocol.game.outgoing.inv.UpdateInvFull
+import net.rsprot.protocol.game.outgoing.specific.ObjAddSpecific
 import net.rsprot.protocol.game.outgoing.varp.VarpLarge
 import net.rsprot.protocol.game.outgoing.varp.VarpSmall
 import net.rsprot.protocol.loginprot.incoming.util.AuthenticationType
@@ -56,6 +62,8 @@ class Player(
     var loggedOut = false
     val path = ArrayDeque<Coord>()
     var running = false
+    var dialogueOpen = false
+    val experience = IntArray(25).also { it[3] = 1154 }
     var buildCenter = coord
 
     val extendedInfo get() = infos.playerInfo.avatar.extendedInfo
@@ -222,7 +230,8 @@ class World(
                 block.resizable -> Gameframe.TOPLEVEL_STRETCH
                 else -> Gameframe.TOPLEVEL_FIXED
             }
-            val name = block.username.ifBlank { "Player$index" }
+            // Token (Jagex-account / local) logins carry no username; the local character name is used.
+            val name = block.username.ifBlank { if (config.localAuth) config.localDisplayName else "Player$index" }
             val player = Player(index, name, session, block.seed, infos, toplevel, config.spawn, android)
             players[index] = player
             watchDisconnect(player, session)
@@ -304,7 +313,7 @@ class World(
             for (slot in 0 until 5) setColour(slot, 0)
             setBaseAnimationSet(808, 823, 819, 820, 821, 822, 824)
         }
-        player.message("Welcome to the test server (rev ${Config.REVISION}). Commands: ::tele x z [level], ::pos, ::anim id, ::home, ::players, ::item id [n], ::empty, ::wear id [slot], ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::drop")
+        player.message("Welcome to the test server (rev ${Config.REVISION}). Commands: ::tele x z [level], ::pos, ::anim id, ::home, ::players, ::item id [n], ::empty, ::wear id [slot], ::xp skill n, ::talk [npc] text, ::obj id [n], ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::drop")
     }
 
     fun spawnNpc(id: Int, coord: Coord): Npc? {
@@ -429,6 +438,7 @@ class World(
     }
 
     fun command(player: Player, line: String) {
+        log.info { "${player.username} command: ::$line" }
         val args = line.trim().split(Regex("\\s+"))
         when (args[0].lowercase()) {
             "tele" -> {
@@ -464,6 +474,26 @@ class World(
                 val id = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::npc id")
                 val npc = spawnNpc(id, player.coord) ?: return player.message("Too many NPCs")
                 player.message("Spawned npc $id as #${npc.index}")
+            }
+            "xp" -> {
+                // ::xp skill amount - adds experience (skill ids as in the stats tab order: 0 attack ... 3 hitpoints ...).
+                val stat = args.getOrNull(1)?.toIntOrNull()?.takeIf { it in 0 until 25 }
+                val amount = args.getOrNull(2)?.toIntOrNull()
+                if (stat == null || amount == null) return player.message("Usage: ::xp skill amount")
+                player.experience[stat] = (player.experience[stat] + amount).coerceIn(0, 200_000_000)
+                val level = levelForXp(player.experience[stat])
+                player.send(UpdateStatV2(stat, level, level, player.experience[stat]))
+                player.message("Skill $stat: level $level, ${player.experience[stat]} xp")
+            }
+            "talk" -> {
+                // ::talk [npcId] text - opens an NPC chat dialogue (chat_left) in the chatbox.
+                val npcId = args.getOrNull(1)?.toIntOrNull()
+                val text = line.trim().split(Regex("\\s+"), limit = if (npcId != null) 3 else 2).getOrNull(if (npcId != null) 2 else 1)
+                openNpcChat(player, npcId ?: DEFAULT_NPCS.first().first, "Hans", text ?: "Hello there! Welcome to the test server.")
+            }
+            "obj" -> {
+                val obj = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::obj id [count]")
+                spawnGroundObj(player, obj, args.getOrNull(2)?.toIntOrNull() ?: 1)
             }
             "npcsay" -> {
                 val text = line.trim().substringAfter(' ', "").ifBlank { return player.message("Usage: ::npcsay text") }
@@ -511,6 +541,7 @@ class World(
         when (type?.iops?.getOrNull(op - 2)?.lowercase()) {
             "wield", "wear", "equip" -> equip(player, slot)
             "drop" -> {
+                spawnGroundObj(player, obj, inv.counts[slot])
                 inv.objs[slot] = -1
                 inv.counts[slot] = 0
                 player.send(inv.toMessage())
@@ -524,6 +555,39 @@ class World(
             }
             else -> player.message("Nothing interesting happens.")
         }
+    }
+
+    private fun levelForXp(xp: Int): Int {
+        var points = 0.0
+        for (level in 1 until 99) {
+            points += Math.floor(level + 300.0 * Math.pow(2.0, level / 7.0))
+            if (Math.floor(points / 4) > xp) return level
+        }
+        return 99
+    }
+
+    fun openNpcChat(player: Player, npcId: Int, name: String, text: String) {
+        player.send(RunClientScript(SCRIPT_CHATBOX_RESET_BACKGROUND, emptyList()))
+        player.send(IfOpenSub(CHATBOX_INTERFACE, CHATBOX_MODAL, CHAT_LEFT, 0))
+        player.send(IfSetNpcHead(CHAT_LEFT, CHAT_LEFT_HEAD, npcId))
+        player.send(IfSetAnim(CHAT_LEFT, CHAT_LEFT_HEAD, ANIM_CHAT_NEUTRAL))
+        player.send(IfSetText(CHAT_LEFT, CHAT_LEFT_NAME, name))
+        player.send(IfSetText(CHAT_LEFT, CHAT_LEFT_TEXT, text))
+        player.send(IfSetEventsV2(CHAT_LEFT, CHAT_LEFT_CONTINUE, -1, -1, IF_EVENT_PAUSE, 0))
+        player.send(IfSetText(CHAT_LEFT, CHAT_LEFT_CONTINUE, "Click here to continue"))
+        player.dialogueOpen = true
+    }
+
+    fun closeDialogue(player: Player) {
+        if (!player.dialogueOpen) return
+        player.dialogueOpen = false
+        player.send(IfCloseSub(CHATBOX_INTERFACE, CHATBOX_MODAL))
+    }
+
+    /** Shows an obj on the ground under the player (to that player only; no pickup yet). */
+    private fun spawnGroundObj(player: Player, obj: Int, count: Int) {
+        val c = player.coord
+        player.send(ObjAddSpecific(obj, count, c.level, c.x, c.z, OBJ_OPS_ALL, 0, 0, 0, false))
     }
 
     private fun equip(player: Player, slot: Int) {
@@ -578,6 +642,19 @@ class World(
         private const val INTERFACE_INVENTORY = 149
         private const val INTERFACE_WORN = 387
         private const val ANIM_EAT = 829
+        private const val SCRIPT_CHATBOX_RESET_BACKGROUND = 2379
+        private const val CHATBOX_INTERFACE = 162
+        private const val CHATBOX_MODAL = 566
+        private const val CHAT_LEFT = 231
+        private const val CHAT_LEFT_HEAD = 2
+        private const val CHAT_LEFT_NAME = 4
+        private const val CHAT_LEFT_CONTINUE = 5
+        private const val CHAT_LEFT_TEXT = 6
+        private const val ANIM_CHAT_NEUTRAL = 588
+        /** IF event bit 0: the component is a pause ("continue") button. */
+        private const val IF_EVENT_PAUSE = 1
+        /** All five ground ops visible. */
+        private const val OBJ_OPS_ALL: Byte = 0x1F
         /** wornitems slot components -> wearpos. */
         private val WORN_SLOT_COMPONENTS = mapOf(
             15 to 0, 16 to 1, 17 to 2, 18 to 3, 19 to 4, 20 to 5, 21 to 7, 22 to 9, 23 to 10, 24 to 12, 25 to 13,

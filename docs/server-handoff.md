@@ -71,7 +71,12 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
 
 ## Open work
 
-- In-game name is "Player1" for token logins (empty username); use `LOCAL_DISPLAY_NAME`.
+- **Dialogue / ground items don't render yet:** `::talk` and `::obj` send their packets without
+  error, but nothing shows (see android-protocol.md "Dialogue"). Next: check client memory
+  (open-sub table, widget text) with the client session; then RESUME_PAUSEBUTTON (continue).
+- Commands added: `::xp skill n`, `::talk [npc] text`, `::obj id [n]`; in-game name = `LOCAL_DISPLAY_NAME`.
+- adb input: `input text` always works, but keyevents (Enter) only while the soft keyboard is
+  shown (`dumpsys input_method | grep mInputShown`; tap 90,220 to toggle it).
 - Unmapped: most NPC/player extended-info blocks (hits, facing, spotanims, ...), WORLDENTITY_INFO,
   zone packets (loc/obj updates), interface text/events beyond IF_SETEVENTS, the CRC order in the
   Android login block (CRC validation is off).

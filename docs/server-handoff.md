@@ -89,10 +89,24 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
 - Client→server still unknown: 10 (window status?), 13, 21 (mouse click), 37 (keyboard), 67, 97, 98, 100.
 - No collision/pathfinding: walking is a straight line.
 
+## Next steps (priority order, driven by Quest Helper on the client side)
+
+1. Objects/locs: zone packets (UPDATE_ZONE_PARTIAL_FOLLOWS / ENCLOSED, LOC_ADD_CHANGE_V2, LOC_DEL,
+   OBJ_* zone variants) so quest objects can be added/highlighted; OPLOC/OPOBJ/OPNPC client packets
+   (capture by tapping with LOG_ANDROID_PACKETS=true).
+2. More interfaces: bank (inv 95 + interface 12), IF_SETHIDE (77) / IF_SETPLAYERHEAD (79) from the
+   client session's notes, varbit-driven quest journal; chat_right (player dialogue) and options menus.
+3. Skills/XP UI checks (`::xp` exists), hitsplats/headbars (player + NPC extended info).
+4. Cosmetic: chat history hidden after a dialogue.
+
 ## Coordination
 
-- The device is shared with the client session: post "taking device" / "device free" via
-  SendMessage, and ask before restarting the container (it logs the client out).
+- The device is shared with the client session (Claude session named `osrs-plugins-reverse-79`;
+  find it with ListAgents): post "taking device" / "device free" via SendMessage, and ask before
+  restarting the container (it logs the client out). It answers widget/memory questions well.
+- Bookkeeping: keep this file and android-protocol.md current, `scripts/rsprot.sh export`, and
+  commit server-owned paths at each working checkpoint. When your context nears compaction, write
+  state here, commit, and hand off to a fresh server agent.
 - Commit only server-owned paths (`server/`, `tools/patch_server.py`, `tools/patch_local_auth.py`,
   `docs/android-protocol.md`, `docs/server-handoff.md`, `tools/repack.sh` server options), with
   `git -c user.name=alex -c user.email=alexperrin7@gmail.com commit` (no global git identity).

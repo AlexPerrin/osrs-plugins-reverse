@@ -1,0 +1,7 @@
+data
+build
+.gradle
+.kotlin
+rsprot/**/build
+rsprot/.gradle
+rsprot/.git

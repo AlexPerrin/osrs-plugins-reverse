@@ -1,0 +1,23 @@
+services:
+  rsps:
+    build: .
+    image: osrs-rsps-test:241
+    container_name: osrs-rsps-test
+    restart: unless-stopped
+    ports:
+      - "43594:43594"   # login + JS5 + game
+      - "8080:8080"     # jav_config.ws / slr.ws / rsa
+    volumes:
+      - ./data:/data    # cache/, rsa.properties
+    environment:
+      # Address the *client* uses to reach this server. BlueStacks/Android emulators reach the
+      # host at 10.0.2.2; use the LAN IP for a physical phone.
+      WORLD_HOST: "10.0.2.2"
+      HTTP_PUBLIC_PORT: "8080"
+      OPENRS2_CACHE_ID: "2735"        # oldschool rev 241, 2026-10-07
+      SPAWN: "3222,3218,0"            # Lumbridge
+      PROOF_OF_WORK: "false"
+      VALIDATE_CRCS: "false"
+      JAV_CONFIG_TEMPLATE: "/app/protocol/jav_config.ws.template"
+      LOG_LEVEL: "info"
+      LOG_ANDROID_PACKETS: "true"     # log unidentified Android client packets (protocol RE aid)

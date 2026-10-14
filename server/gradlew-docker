@@ -1,0 +1,5 @@
+#!/bin/sh
+# Runs Gradle inside the official image (no local Gradle needed); caches in a named volume.
+cd "$(dirname "$0")"
+docker run --rm -e GRADLE_USER_HOME=/cache -v rsps-gradle-cache:/cache -v "$PWD":/src -w /src \
+    gradle:8.14.3-jdk21 sh -c "gradle --no-daemon --console=plain $*; s=\$?; chown -R $(id -u):$(id -g) /src/build /src/.gradle /src/.kotlin 2>/dev/null; exit \$s"

@@ -1,0 +1,1522 @@
+diff --git a/protocol/osrs-241/osrs-241-android/build.gradle.kts b/protocol/osrs-241/osrs-241-android/build.gradle.kts
+new file mode 100644
+index 00000000..2a4d99f1
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/build.gradle.kts
+@@ -0,0 +1,23 @@
++dependencies {
++    implementation(rootProject.libs.inline.logger)
++    api(platform(rootProject.libs.netty.bom))
++    api(rootProject.libs.netty.buffer)
++    api(rootProject.libs.netty.transport)
++    api(projects.buffer)
++    api(projects.compression)
++    api(projects.crypto)
++    api(projects.protocol)
++    api(projects.protocol.osrs241.osrs241Model)
++    api(projects.protocol.osrs241.osrs241Internal)
++    api(projects.protocol.osrs241.osrs241Common)
++    // Blocks whose Android layout has not been reverse engineered yet reuse the desktop encoders.
++    api(projects.protocol.osrs241.osrs241Desktop)
++}
++
++mavenPublishing {
++    pom {
++        name = "RsProt OSRS 241 Android"
++        description = "The Android (ENHANCED_ANDROID) module for revision 241 OldSchool RuneScape networking. " +
++            "Partial: only the packets that have been reverse engineered are supported."
++    }
++}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt
+new file mode 100644
+index 00000000..981e3956
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt
+@@ -0,0 +1,51 @@
++package net.rsprot.protocol.android
++
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.protocol.ClientProt
++import net.rsprot.compression.provider.HuffmanCodecProvider
++import net.rsprot.protocol.game.incoming.buttons.If3Button
++import net.rsprot.protocol.game.incoming.codec.buttons.IfButtonXDecoder
++import net.rsprot.protocol.game.incoming.codec.messaging.MessagePublicDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.user.ClientCheatDecoder
++import net.rsprot.protocol.game.incoming.messaging.MessagePublic
++import net.rsprot.protocol.game.incoming.misc.user.ClientCheat
++import net.rsprot.protocol.game.incoming.misc.user.MoveGameClick
++import net.rsprot.protocol.message.IncomingMessage
++import net.rsprot.protocol.message.codec.MessageDecoder
++
++// Client packets identified by observing the live client (tap the world, log the payload).
++
++/** Opcode 31: [x lo^0x80, hi][z hi, lo^0x80][keyCombination ^0x80]. */
++public class AndroidMoveGameClickDecoder : MessageDecoder<MoveGameClick> {
++    override val prot: ClientProt = AndroidGameClientProt.MOVE_GAMECLICK
++
++    override fun decode(buffer: JagByteBuf): MoveGameClick {
++        val x = buffer.g2Alt3()
++        val z = buffer.g2Alt2()
++        val keyCombination = buffer.g1Alt1()
++        return MoveGameClick(x, z, keyCombination)
++    }
++}
++
++/**
++ * A desktop decoder reused under an Android opcode, for packets whose payload layout was observed
++ * to match desktop byte for byte.
++ */
++public class AndroidDelegatingDecoder<T : IncomingMessage>(
++    override val prot: ClientProt,
++    private val delegate: MessageDecoder<T>,
++) : MessageDecoder<T> {
++    override fun decode(buffer: JagByteBuf): T = delegate.decode(buffer)
++}
++
++/** Opcode 81: command string, autocomplete byte (observed: "pos\0" 00). */
++public fun androidClientCheatDecoder(): MessageDecoder<ClientCheat> =
++    AndroidDelegatingDecoder(AndroidGameClientProt.CLIENT_CHEAT, ClientCheatDecoder())
++
++/** Opcode 64: type, colour, effect, huffman text (observed: 00 00 00 05 838c70 = "hello"). */
++public fun androidMessagePublicDecoder(huffman: HuffmanCodecProvider): MessageDecoder<MessagePublic> =
++    AndroidDelegatingDecoder(AndroidGameClientProt.MESSAGE_PUBLIC, MessagePublicDecoder(huffman))
++
++/** Opcode 99: combined id, sub, obj, op (observed: 02590030 ffff ffff 01 = 601:48 op 1). */
++public fun androidIfButtonXDecoder(): MessageDecoder<If3Button> =
++    AndroidDelegatingDecoder(AndroidGameClientProt.IF_BUTTONX, IfButtonXDecoder())
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt
+new file mode 100644
+index 00000000..a05d7436
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt
+@@ -0,0 +1,245 @@
++package net.rsprot.protocol.android
++
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.crypto.cipher.StreamCipher
++import net.rsprot.protocol.ServerProt
++import net.rsprot.protocol.game.outgoing.info.npcinfo.SetNpcUpdateOrigin
++import net.rsprot.protocol.game.outgoing.info.playerinfo.PlayerInfoPacket
++import net.rsprot.protocol.game.outgoing.info.worldentityinfo.WorldEntityInfo
++import net.rsprot.protocol.game.outgoing.interfaces.IfOpenSub
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetEventsV2
++import net.rsprot.protocol.game.outgoing.interfaces.IfOpenTop
++import net.rsprot.protocol.game.outgoing.logout.Logout
++import net.rsprot.protocol.game.outgoing.map.StaticRebuildMessageV2
++import net.rsprot.protocol.game.outgoing.misc.client.ServerTickEnd
++import net.rsprot.protocol.game.outgoing.misc.player.UpdateRunEnergy
++import net.rsprot.protocol.game.outgoing.misc.player.UpdateRunWeight
++import net.rsprot.protocol.game.outgoing.misc.player.UpdateStatV2
++import net.rsprot.protocol.game.outgoing.varp.VarpLarge
++import net.rsprot.protocol.game.outgoing.varp.VarpSmall
++import net.rsprot.protocol.game.outgoing.worldentity.SetActiveWorldV2
++import net.rsprot.protocol.common.game.outgoing.inv.InventoryObject
++import net.rsprot.protocol.game.outgoing.codec.inv.UpdateInvPartialEncoder
++import net.rsprot.protocol.game.outgoing.inv.UpdateInvFull
++import net.rsprot.protocol.game.outgoing.inv.UpdateInvPartial
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.NpcInfoLargeV6Encoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.NpcInfoSmallV6Encoder
++import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcInfoLargeV6
++import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcInfoSmallV6
++import net.rsprot.protocol.message.OutgoingMessage
++import net.rsprot.protocol.message.codec.MessageEncoder
++import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
++import net.rsprot.protocol.game.outgoing.codec.misc.player.MessageGameEncoder
++
++// Each encoder mirrors the matching case of the Android packet dispatcher (Ghidra 0x541dd4).
++// Client reads -> server writes: b^0x80 = p1Alt1, -b = p1Alt2, 128-b = p1Alt3,
++// [lo^0x80, hi] = p2Alt3, [hi, lo^0x80] = p2Alt2, raw native int = p4Alt1 (little endian),
++// byte-swapped native int/short = p4/p2 (big endian).
++
++/** Case 2: [current p1][boosted 128-b][stat ^0x80][xp int LE]. */
++public class AndroidUpdateStatV2Encoder : MessageEncoder<UpdateStatV2> {
++    override val prot: ServerProt = AndroidGameServerProt.UPDATE_STAT_V2
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: UpdateStatV2) {
++        buffer.p1(message.currentLevel)
++        buffer.p1Alt3(message.invisibleBoostedLevel)
++        buffer.p1Alt1(message.stat)
++        buffer.p4Alt1(message.experience)
++    }
++}
++
++/**
++ * Case 6 (reader Ghidra 0x65524c): [worldArea lo^0x80, hi][zoneX BE][zoneZ BE]. For the login
++ * variant the gpi init block precedes these fields; the login handler (Ghidra 0x51aa80) reads it
++ * first, which matches RSProt's footer placement of the encoded fields.
++ */
++public class AndroidRebuildNormalV2Encoder : MessageEncoder<StaticRebuildMessageV2> {
++    override val prot: ServerProt = AndroidGameServerProt.REBUILD_NORMAL_V2
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: StaticRebuildMessageV2) {
++        buffer.p2Alt3(message.worldArea)
++        buffer.p2(message.zoneX)
++        buffer.p2(message.zoneZ)
++    }
++}
++
++/**
++ * Case 32: [combined id BE int][inventory BE][capacity BE], then per slot
++ * [id+1 hi, lo^0x80][count ^0x80][count p4Alt3 if >= 255].
++ */
++public class AndroidUpdateInvFullEncoder : MessageEncoder<UpdateInvFull> {
++    override val prot: ServerProt = AndroidGameServerProt.UPDATE_INV_FULL
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: UpdateInvFull) {
++        buffer.p4(message.combinedId)
++        buffer.p2(message.inventoryId)
++        val capacity = message.capacity
++        buffer.p2(capacity)
++        for (i in 0..<capacity) {
++            val obj = message.getObject(i)
++            if (obj == InventoryObject.NULL) {
++                buffer.p2Alt2(0)
++                buffer.p1Alt1(0)
++                continue
++            }
++            buffer.p2Alt2(InventoryObject.getId(obj) + 1)
++            val count = InventoryObject.getCount(obj)
++            buffer.p1Alt1(count.coerceAtMost(0xFF))
++            if (count >= 0xFF) buffer.p4Alt3(count)
++        }
++        message.returnInventory()
++    }
++}
++
++/** Case 8: same layout as desktop. */
++public fun androidUpdateInvPartialEncoder(): MessageEncoder<UpdateInvPartial> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.UPDATE_INV_PARTIAL, UpdateInvPartialEncoder())
++
++/** Case 26: signed BE short. */
++public class AndroidUpdateRunWeightEncoder : MessageEncoder<UpdateRunWeight> {
++    override val prot: ServerProt = AndroidGameServerProt.UPDATE_RUNWEIGHT
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: UpdateRunWeight) {
++        buffer.p2(message.runweight)
++    }
++}
++
++/** Case 30: two plain bytes. */
++public class AndroidSetNpcUpdateOriginEncoder : MessageEncoder<SetNpcUpdateOrigin> {
++    override val prot: ServerProt = AndroidGameServerProt.SET_NPC_UPDATE_ORIGIN
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: SetNpcUpdateOrigin) {
++        buffer.p1(message.originX)
++        buffer.p1(message.originZ)
++    }
++}
++
++/** Case 34: [value -b][id BE]. */
++public class AndroidVarpSmallEncoder : MessageEncoder<VarpSmall> {
++    override val prot: ServerProt = AndroidGameServerProt.VARP_SMALL
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: VarpSmall) {
++        buffer.p1Alt2(message.value)
++        buffer.p2(message.id)
++    }
++}
++
++/** Case 46: no payload. */
++public class AndroidLogoutEncoder : MessageEncoder<Logout> {
++    override val prot: ServerProt = AndroidGameServerProt.LOGOUT
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: Logout) {
++    }
++}
++
++/** Case 55: no payload, bumps the client's server-tick counter. */
++public class AndroidServerTickEndEncoder : MessageEncoder<ServerTickEnd> {
++    override val prot: ServerProt = AndroidGameServerProt.SERVER_TICK_END
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: ServerTickEnd) {
++    }
++}
++
++/** Case 59: [end BE][events1 p4Alt3][combined id BE][events2 LE][start lo^0x80, hi]. */
++public class AndroidIfSetEventsV2Encoder : MessageEncoder<IfSetEventsV2> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETEVENTS_V2
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetEventsV2) {
++        buffer.p2(message.end)
++        buffer.p4Alt3(message.events1)
++        buffer.p4(message.combinedId)
++        buffer.p4Alt1(message.events2)
++        buffer.p2Alt3(message.start)
++    }
++}
++
++/** Case 64: [id hi, lo^0x80][value int LE]. */
++public class AndroidVarpLargeEncoder : MessageEncoder<VarpLarge> {
++    override val prot: ServerProt = AndroidGameServerProt.VARP_LARGE
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: VarpLarge) {
++        buffer.p2Alt2(message.id)
++        buffer.p4Alt1(message.value)
++    }
++}
++
++/** Case 72: [destination combined id BE int][type 128-b][interface hi, lo^0x80]. */
++public class AndroidIfOpenSubEncoder : MessageEncoder<IfOpenSub> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_OPENSUB
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfOpenSub) {
++        buffer.p4(message.destinationCombinedId)
++        buffer.p1Alt3(message.type)
++        buffer.p2Alt2(message.interfaceId)
++    }
++}
++
++/** Case 75: [interface lo^0x80, hi]. */
++public class AndroidIfOpenTopEncoder : MessageEncoder<IfOpenTop> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_OPENTOP
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfOpenTop) {
++        buffer.p2Alt3(message.interfaceId)
++    }
++}
++
++/** Case 90 (reader Ghidra 0x669a04): the bit-level layout is shared with desktop. */
++public class AndroidPlayerInfoEncoder : MessageEncoder<PlayerInfoPacket> {
++    override val prot: ServerProt = AndroidGameServerProt.PLAYER_INFO
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: PlayerInfoPacket) {
++        buffer.buffer.writeBytes(message.content())
++    }
++}
++
++/** Case 99: [world index BE][level]; same as desktop. */
++public class AndroidSetActiveWorldV2Encoder : MessageEncoder<SetActiveWorldV2> {
++    override val prot: ServerProt = AndroidGameServerProt.SET_ACTIVE_WORLD_V2
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: SetActiveWorldV2) {
++        when (val type = message.worldType) {
++            is SetActiveWorldV2.RootWorldType -> {
++                buffer.p2(WorldEntityInfo.ROOT_WORLD)
++                buffer.p1(type.activeLevel)
++            }
++            is SetActiveWorldV2.DynamicWorldType -> {
++                buffer.p2(type.index)
++                buffer.p1(type.activeLevel)
++            }
++        }
++    }
++}
++
++/** Case 102: BE short. */
++public class AndroidUpdateRunEnergyEncoder : MessageEncoder<UpdateRunEnergy> {
++    override val prot: ServerProt = AndroidGameServerProt.UPDATE_RUNENERGY
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: UpdateRunEnergy) {
++        buffer.p2(message.runenergy)
++    }
++}
++
++/**
++ * A desktop encoder reused under an Android opcode, for packets whose case in the dispatcher
++ * reads exactly the desktop layout.
++ */
++public class AndroidDelegatingEncoder<T : OutgoingMessage>(
++    override val prot: ServerProt,
++    private val delegate: MessageEncoder<T>,
++) : MessageEncoder<T> {
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: T) {
++        delegate.encode(streamCipher, buffer, message)
++    }
++}
++
++/** Case 81: smart type, has-name byte, [name], message (as desktop). */
++public fun androidMessageGameEncoder(): MessageEncoder<MessageGame> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.MESSAGE_GAME, MessageGameEncoder())
++
++/** Case 150 (reader Ghidra 0x569778, 6-bit deltas): the bit layout is built by RSProt's NpcInfo. */
++public fun androidNpcInfoSmallV6Encoder(): MessageEncoder<NpcInfoSmallV6> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.NPC_INFO_SMALL_V6, NpcInfoSmallV6Encoder())
++
++/** Case 145 (same reader, 8-bit deltas). */
++public fun androidNpcInfoLargeV6Encoder(): MessageEncoder<NpcInfoLargeV6> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.NPC_INFO_LARGE_V6, NpcInfoLargeV6Encoder())
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
+new file mode 100644
+index 00000000..7caea94b
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
+@@ -0,0 +1,119 @@
++package net.rsprot.protocol.android
++
++import net.rsprot.protocol.ClientProt
++import net.rsprot.protocol.Prot
++
++/**
++ * Client-to-server prots of the Android client, build 241.4. Opcodes and sizes come from the
++ * client's own size table (liblibs.hal.system.osclient.so, .rodata 0x109538, indexed by opcode),
++ * so framing is exact even for packets whose meaning has not been identified yet; those decode
++ * to [AndroidUnknownPacket].
++ */
++public enum class AndroidGameClientProt(
++    override val opcode: Int,
++    override val size: Int,
++) : ClientProt {
++    OP_0(0, Prot.VAR_BYTE),
++    OP_1(1, 11),
++    OP_2(2, 11),
++    OP_3(3, 8),
++    OP_4(4, 4),
++    OP_5(5, 11),
++    OP_6(6, 6),
++    OP_7(7, 8),
++    OP_8(8, Prot.VAR_SHORT),
++    OP_9(9, 4),
++    OP_10(10, 5),
++    OP_11(11, 3),
++    OP_12(12, Prot.VAR_BYTE),
++    OP_13(13, Prot.VAR_BYTE),
++    OP_14(14, Prot.VAR_BYTE),
++    OP_15(15, 16),
++    OP_16(16, 4),
++    OP_17(17, 3),
++    OP_18(18, Prot.VAR_BYTE),
++    OP_19(19, 10),
++    OP_20(20, Prot.VAR_BYTE),
++    OP_21(21, 6),
++    OP_22(22, Prot.VAR_BYTE),
++    OP_23(23, 0),
++    OP_24(24, 8),
++    OP_25(25, 3),
++    OP_26(26, 3),
++    OP_27(27, 7),
++    OP_28(28, Prot.VAR_BYTE),
++    OP_29(29, 4),
++    OP_30(30, 0),
++    MOVE_GAMECLICK(31, Prot.VAR_BYTE),
++    OP_32(32, Prot.VAR_BYTE),
++    OP_33(33, 4),
++    OP_34(34, 8),
++    OP_35(35, 9),
++    OP_36(36, 2),
++    OP_37(37, Prot.VAR_SHORT),
++    OP_38(38, 2),
++    OP_39(39, Prot.VAR_BYTE),
++    OP_40(40, 8),
++    OP_41(41, Prot.VAR_BYTE),
++    OP_42(42, Prot.VAR_SHORT),
++    OP_43(43, 16),
++    OP_44(44, 4),
++    OP_45(45, 1),
++    OP_46(46, 4),
++    OP_47(47, 3),
++    OP_48(48, 6),
++    OP_49(49, 2),
++    OP_50(50, Prot.VAR_SHORT),
++    OP_51(51, Prot.VAR_BYTE),
++    OP_52(52, 3),
++    OP_53(53, 3),
++    OP_54(54, 3),
++    OP_55(55, 8),
++    OP_56(56, 1),
++    OP_57(57, Prot.VAR_BYTE),
++    OP_58(58, 8),
++    OP_59(59, 3),
++    OP_60(60, Prot.VAR_BYTE),
++    OP_61(61, Prot.VAR_BYTE),
++    OP_62(62, 11),
++    OP_63(63, 15),
++    MESSAGE_PUBLIC(64, Prot.VAR_BYTE),
++    OP_65(65, 3),
++    OP_66(66, 8),
++    OP_67(67, 0),
++    OP_68(68, 3),
++    OP_69(69, 2),
++    OP_70(70, 10),
++    OP_71(71, 4),
++    OP_72(72, 1),
++    OP_73(73, 15),
++    OP_74(74, 15),
++    OP_75(75, 4),
++    OP_76(76, 11),
++    OP_77(77, 7),
++    OP_78(78, 3),
++    OP_79(79, 8),
++    OP_80(80, Prot.VAR_BYTE),
++    CLIENT_CHEAT(81, Prot.VAR_BYTE),
++    OP_82(82, 8),
++    OP_83(83, 15),
++    OP_84(84, 22),
++    OP_85(85, 11),
++    OP_86(86, 8),
++    OP_87(87, 1),
++    OP_88(88, Prot.VAR_BYTE),
++    OP_89(89, 2),
++    OP_90(90, 26),
++    OP_91(91, 3),
++    OP_92(92, 4),
++    NO_TIMEOUT(93, 0),
++    OP_94(94, Prot.VAR_BYTE),
++    OP_95(95, 4),
++    OP_96(96, Prot.VAR_BYTE),
++    OP_97(97, 0),
++    OP_98(98, 2),
++    IF_BUTTONX(99, 9),
++    OP_100(100, 1),
++    OP_101(101, 3),
++    ;
++}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
+new file mode 100644
+index 00000000..f177fe7e
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
+@@ -0,0 +1,36 @@
++package net.rsprot.protocol.android
++
++import net.rsprot.protocol.Prot
++import net.rsprot.protocol.ServerProt
++
++/**
++ * Server-to-client prots of the Android client, build 241.4, that have been identified so far.
++ *
++ * Opcodes are indices into the client's server-packet size table (.rodata 0x104c4c, 151 entries,
++ * read by the packet reader at Ghidra 0x5da16c); each one was matched by reading its case in the
++ * packet dispatcher (Ghidra 0x541dd4). See docs/android-protocol.md in the test-server project.
++ */
++public enum class AndroidGameServerProt(
++    override val opcode: Int,
++    override val size: Int,
++) : ServerProt {
++    UPDATE_STAT_V2(2, 7),
++    REBUILD_NORMAL_V2(6, Prot.VAR_SHORT),
++    UPDATE_INV_PARTIAL(8, Prot.VAR_SHORT),
++    UPDATE_RUNWEIGHT(26, 2),
++    SET_NPC_UPDATE_ORIGIN(30, 2),
++    UPDATE_INV_FULL(32, Prot.VAR_SHORT),
++    VARP_SMALL(34, 3),
++    LOGOUT(46, 0),
++    SERVER_TICK_END(55, 0),
++    IF_SETEVENTS_V2(59, 16),
++    VARP_LARGE(64, 6),
++    IF_OPENSUB(72, 7),
++    IF_OPENTOP(75, 2),
++    MESSAGE_GAME(81, Prot.VAR_BYTE),
++    PLAYER_INFO(90, Prot.VAR_SHORT),
++    SET_ACTIVE_WORLD_V2(99, 3),
++    UPDATE_RUNENERGY(102, 2),
++    NPC_INFO_LARGE_V6(145, Prot.VAR_SHORT),
++    NPC_INFO_SMALL_V6(150, Prot.VAR_SHORT),
++}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt
+new file mode 100644
+index 00000000..a6250dab
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt
+@@ -0,0 +1,64 @@
++package net.rsprot.protocol.android
++
++import net.rsprot.buffer.bitbuffer.BitBuf
++import net.rsprot.protocol.common.client.OldSchoolClientType
++import net.rsprot.protocol.internal.game.outgoing.info.CoordGrid
++import net.rsprot.protocol.internal.game.outgoing.info.npcinfo.NpcAvatarDetails
++import net.rsprot.protocol.internal.game.outgoing.info.npcinfo.encoder.NpcResolutionChangeEncoder
++
++public class AndroidLowResolutionChangeEncoder : NpcResolutionChangeEncoder {
++    override val clientType: OldSchoolClientType = OldSchoolClientType.ANDROID
++
++    override fun encode(
++        bitBuffer: BitBuf,
++        details: NpcAvatarDetails,
++        extendedInfo: Boolean,
++        localPlayerCoordGrid: CoordGrid,
++        largeDistance: Boolean,
++        cycleCount: Int,
++    ) {
++        val numOfBitsUsed = if (largeDistance) 8 else 6
++        val maximumDistanceTransmittableByBits = if (largeDistance) 0xFF else 0x3F
++        val deltaX = details.currentCoord.x - localPlayerCoordGrid.x
++        val deltaZ = details.currentCoord.z - localPlayerCoordGrid.z
++
++        // Android order (NPC_INFO reader, Ghidra 0x569778): index, dx, dz, spawn cycle, type,
++        // extended info, direction, jump. Desktop sends dz first and dx last.
++        bitBuffer.pBits(16, details.index)
++        bitBuffer.pBits(numOfBitsUsed, deltaX and maximumDistanceTransmittableByBits)
++        bitBuffer.pBits(numOfBitsUsed, deltaZ and maximumDistanceTransmittableByBits)
++
++        if (details.spawnCycle != 0) {
++            bitBuffer.pBits(1, 1)
++            val cycle = details.spawnCycle
++            val index =
++                if (cycle < 0) {
++                    spawnClockMaxValues.lastIndex
++                } else {
++                    spawnClockMaxValues.indexOfFirst { cycle <= it }
++                }
++            bitBuffer.pBits(2, index)
++            bitBuffer.pBits(spawnClockBitcodes[index], cycle)
++        } else {
++            bitBuffer.pBits(1, 0)
++        }
++
++        val type = details.id
++        val typeIndex = typeMaxValues.indexOfFirst { type <= it }
++        bitBuffer.pBits(2, typeIndex)
++        bitBuffer.pBits(typeBitcodes[typeIndex], type)
++
++        bitBuffer.pBits(1, if (extendedInfo) 1 else 0)
++        bitBuffer.pBits(3, details.direction)
++        // New NPCs jump unless this is explicitly a no-jump teleport.
++        val noJump = details.isTeleWithoutJump() && details.allocateCycle != cycleCount
++        bitBuffer.pBits(1, if (noJump) 0 else 1)
++    }
++
++    private companion object {
++        private val spawnClockBitcodes = intArrayOf(18, 19, 20, 32)
++        private val spawnClockMaxValues = spawnClockBitcodes.map { (1L shl it) - 1 }.toLongArray()
++        private val typeBitcodes = intArrayOf(12, 14, 17, 24)
++        private val typeMaxValues = typeBitcodes.map { (1 shl it) - 1 }.toIntArray()
++    }
++}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt
+new file mode 100644
+index 00000000..d083e608
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt
+@@ -0,0 +1,285 @@
++package net.rsprot.protocol.android
++
++import io.netty.buffer.ByteBufAllocator
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.buffer.extensions.toJagByteBuf
++import net.rsprot.compression.provider.HuffmanCodecProvider
++import net.rsprot.protocol.internal.game.outgoing.info.encoder.PrecomputedExtendedInfoEncoder
++import net.rsprot.protocol.internal.game.outgoing.info.playerinfo.extendedinfo.Appearance
++import net.rsprot.protocol.internal.game.outgoing.info.playerinfo.extendedinfo.ObjTypeCustomisation
++
++@Suppress("DuplicatedCode")
++/**
++ * Desktop appearance payload with the Android wrapping (player info flag 0x10, Ghidra 0x669a04):
++ * length as p1Alt1, payload bytes reversed with +128 each.
++ */
++public class AndroidPlayerAppearanceEncoder : PrecomputedExtendedInfoEncoder<Appearance> {
++    override fun precompute(
++        alloc: ByteBufAllocator,
++        huffmanCodecProvider: HuffmanCodecProvider,
++        extendedInfo: Appearance,
++    ): JagByteBuf {
++        val intermediate = alloc.buffer(100).toJagByteBuf()
++        intermediate.p1(extendedInfo.bodyType.toInt())
++        intermediate.p1(extendedInfo.skullIcon.toInt())
++        intermediate.p1(extendedInfo.overheadIcon.toInt())
++        if (extendedInfo.transformedNpcId != UShort.MAX_VALUE) {
++            pTransmog(intermediate, extendedInfo)
++        } else {
++            pEquipment(intermediate, extendedInfo)
++        }
++        pIdentKits(intermediate, extendedInfo)
++        pColours(intermediate, extendedInfo)
++        pBaseAnimationSet(intermediate, extendedInfo)
++        intermediate.pjstr(extendedInfo.name)
++        intermediate.p1(extendedInfo.combatLevel.toInt())
++        intermediate.p2(extendedInfo.skillLevel.toInt())
++        intermediate.p1(if (extendedInfo.hidden) 1 else 0)
++        pObjTypeCustomisations(intermediate, extendedInfo)
++        intermediate.pjstr(extendedInfo.beforeName)
++        intermediate.pjstr(extendedInfo.afterName)
++        intermediate.pjstr(extendedInfo.afterCombatLevel)
++        intermediate.p1(extendedInfo.pronoun.toInt())
++        val appearanceSize = intermediate.readableBytes()
++        if (appearanceSize > 255) {
++            intermediate.buffer.release()
++            error("Appearance payload exceeds the one-byte length: $appearanceSize")
++        }
++        val capacity = appearanceSize + 1
++        val buffer = alloc.buffer(capacity, capacity).toJagByteBuf()
++        buffer.p1Alt1(capacity - 1)
++        try {
++            buffer.pdataAlt3(intermediate.buffer)
++        } finally {
++            intermediate.buffer.release()
++        }
++        return buffer
++    }
++
++    private fun pTransmog(
++        intermediate: JagByteBuf,
++        extendedInfo: Appearance,
++    ) {
++        intermediate.p2(-1)
++        intermediate.p2(extendedInfo.transformedNpcId.toInt())
++    }
++
++    private fun buildHiddenWearposFlag(hidden: ByteArray): Int {
++        var hiddenWearposFlag = 0
++        for (i in 0..<12) {
++            val pos = hidden[i].toInt()
++            val wearpos2 = pos and 0xF
++            if (wearpos2 != 0xF) {
++                hiddenWearposFlag = hiddenWearposFlag or (1 shl wearpos2)
++            }
++            val wearpos3 = pos ushr 4 and 0xF
++            if (wearpos3 != 0xF) {
++                hiddenWearposFlag = hiddenWearposFlag or (1 shl wearpos3)
++            }
++        }
++        return hiddenWearposFlag
++    }
++
++    private fun pEquipment(
++        intermediate: JagByteBuf,
++        extendedInfo: Appearance,
++    ) {
++        val identKit = extendedInfo.identKit
++        val objs = extendedInfo.wornObjs
++        val hiddenWearposFlag = buildHiddenWearposFlag(extendedInfo.hiddenWearPos)
++        for (wearpos in 0..<12) {
++            if (hiddenWearposFlag and (1 shl wearpos) != 0) {
++                intermediate.p1(0)
++                continue
++            }
++            val obj = objs[wearpos].toInt() and 0xFFFF
++            if (obj != 0xFFFF) {
++                intermediate.p2(obj + 0x800)
++                continue
++            }
++            val identKitSlot = Appearance.identKitSlotList[wearpos]
++            if (identKitSlot == -1) {
++                intermediate.p1(0)
++                continue
++            }
++            val identKitValue = identKit[identKitSlot].toInt() and 0xFFFF
++            if (identKitValue == 0xFFFF) {
++                intermediate.p1(0)
++            } else {
++                intermediate.p2(identKitValue + 0x100)
++            }
++        }
++    }
++
++    private fun pIdentKits(
++        intermediate: JagByteBuf,
++        extendedInfo: Appearance,
++    ) {
++        val identKit = extendedInfo.identKit
++        for (wearpos in 0..<12) {
++            val identKitSlot = Appearance.identKitSlotList[wearpos]
++            if (identKitSlot == -1) {
++                intermediate.p1(0)
++                continue
++            }
++            val identKitValue = identKit[identKitSlot].toInt() and 0xFFFF
++            if (identKitValue == 0xFFFF) {
++                intermediate.p1(0)
++            } else {
++                intermediate.p2(identKitValue + 0x100)
++            }
++        }
++    }
++
++    private fun pColours(
++        intermediate: JagByteBuf,
++        extendedInfo: Appearance,
++    ) {
++        val colours = extendedInfo.colours
++        for (i in colours.indices) {
++            intermediate.p1(colours[i].toInt())
++        }
++    }
++
++    private fun pBaseAnimationSet(
++        intermediate: JagByteBuf,
++        extendedInfo: Appearance,
++    ) {
++        intermediate.p2(extendedInfo.readyAnim.toInt())
++        intermediate.p2(extendedInfo.turnAnim.toInt())
++        intermediate.p2(extendedInfo.walkAnim.toInt())
++        intermediate.p2(extendedInfo.walkAnimBack.toInt())
++        intermediate.p2(extendedInfo.walkAnimLeft.toInt())
++        intermediate.p2(extendedInfo.walkAnimRight.toInt())
++        intermediate.p2(extendedInfo.runAnim.toInt())
++    }
++
++    private fun pObjTypeCustomisations(
++        intermediate: JagByteBuf,
++        extendedInfo: Appearance,
++    ) {
++        val marker = intermediate.writerIndex()
++        intermediate.skipWrite(2)
++        val objTypeCustomisations = extendedInfo.objTypeCustomisation
++        var flag = 0
++        for (wearpos in objTypeCustomisations.indices) {
++            val objTypeCustomisation = objTypeCustomisations[wearpos] ?: continue
++            pObjTypeCustomisation(intermediate, objTypeCustomisation)
++            flag = flag or (1 shl (12 - wearpos))
++        }
++        if (extendedInfo.forceModelRefresh) flag = flag or 0x8000
++        val pos = intermediate.writerIndex()
++        intermediate.writerIndex(marker)
++        intermediate.p2(flag)
++        intermediate.writerIndex(pos)
++    }
++
++    private fun pObjTypeCustomisation(
++        intermediate: JagByteBuf,
++        customisation: ObjTypeCustomisation,
++    ) {
++        val recolIndices = customisation.recolIndices.toInt()
++        val retexIndices = customisation.retexIndices.toInt()
++        var flag = 0
++        if (customisation.recolours != null || recolIndices != 0xFF) {
++            flag = flag or 0x1
++        }
++        if (customisation.retextures != null || retexIndices != 0xFF) {
++            flag = flag or 0x2
++        }
++        if (customisation.manWear != ObjTypeCustomisation.DEFAULT_MODEL ||
++            customisation.womanWear != ObjTypeCustomisation.DEFAULT_MODEL
++        ) {
++            flag = flag or 0x4
++        }
++        if (customisation.manHead != ObjTypeCustomisation.DEFAULT_MODEL ||
++            customisation.womanHead != ObjTypeCustomisation.DEFAULT_MODEL
++        ) {
++            flag = flag or 0x8
++        }
++        if (customisation.recolAll != null) {
++            flag = flag or 0x10
++        }
++        intermediate.p1(flag)
++        if (flag and 0x1 != 0) {
++            val replacements = customisation.recolours
++            if (replacements != null) {
++                intermediate.p1(replacements.size)
++                for ((index, value) in replacements) {
++                    intermediate.p1(index)
++                    intermediate.p2(value)
++                }
++            } else {
++                pObjTypeCustomisation(
++                    intermediate,
++                    recolIndices,
++                    customisation.recol1.toInt(),
++                    customisation.recol2.toInt(),
++                )
++            }
++        }
++        if (flag and 0x2 != 0) {
++            val replacements = customisation.retextures
++            if (replacements != null) {
++                intermediate.p1(replacements.size)
++                for ((index, value) in replacements) {
++                    intermediate.p1(index)
++                    intermediate.p2(value)
++                }
++            } else {
++                pObjTypeCustomisation(
++                    intermediate,
++                    retexIndices,
++                    customisation.retex1.toInt(),
++                    customisation.retex2.toInt(),
++                )
++            }
++        }
++        if (flag and 0x10 != 0) {
++            intermediate.p1(1)
++            intermediate.p2(checkNotNull(customisation.recolAll))
++        }
++        if (flag and 0x4 != 0) {
++            pObjTypeWearModels(intermediate, customisation)
++        }
++        if (flag and 0x8 != 0) {
++            pObjTypeHeadModels(intermediate, customisation)
++        }
++    }
++
++    private fun pObjTypeCustomisation(
++        intermediate: JagByteBuf,
++        flag: Int,
++        value1: Int,
++        value2: Int,
++    ) {
++        val index1 = flag and 0xF
++        val index2 = (flag ushr 4) and 0xF
++        val count = (if (index1 != 0xF) 1 else 0) + (if (index2 != 0xF) 1 else 0)
++        intermediate.p1(count)
++        if (index1 != 0xF) {
++            intermediate.p1(index1)
++            intermediate.p2(value1)
++        }
++        if (index2 != 0xF) {
++            intermediate.p1(index2)
++            intermediate.p2(value2)
++        }
++    }
++
++    private fun pObjTypeWearModels(
++        intermediate: JagByteBuf,
++        customisation: ObjTypeCustomisation,
++    ) {
++        intermediate.p4(customisation.manWear)
++        intermediate.p4(customisation.womanWear)
++    }
++
++    private fun pObjTypeHeadModels(
++        intermediate: JagByteBuf,
++        customisation: ObjTypeCustomisation,
++    ) {
++        intermediate.p4(customisation.manHead)
++        intermediate.p4(customisation.womanHead)
++    }
++}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
+new file mode 100644
+index 00000000..db28c65a
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
+@@ -0,0 +1,103 @@
++package net.rsprot.protocol.android
++
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.compression.provider.HuffmanCodecProvider
++import net.rsprot.protocol.ClientProt
++import net.rsprot.protocol.ClientProtCategory
++import net.rsprot.protocol.ProtRepository
++import net.rsprot.protocol.common.client.OldSchoolClientType
++import net.rsprot.protocol.game.incoming.GameClientProtCategory
++import net.rsprot.protocol.game.outgoing.map.RebuildLoginV2
++import net.rsprot.protocol.game.outgoing.map.RebuildNormalV2
++import net.rsprot.protocol.internal.login.LoginCrcDecoder
++import net.rsprot.protocol.loginprot.incoming.codec.DesktopLoginCrcDecoder
++import net.rsprot.protocol.message.IncomingGameMessage
++import net.rsprot.protocol.message.codec.MessageDecoder
++import net.rsprot.protocol.message.codec.incoming.MessageDecoderRepository
++import net.rsprot.protocol.message.codec.incoming.MessageDecoderRepositoryBuilder
++import net.rsprot.protocol.message.codec.outgoing.MessageEncoderRepository
++import net.rsprot.protocol.message.codec.outgoing.MessageEncoderRepositoryBuilder
++
++public object AndroidGameMessageEncoderRepository {
++    @ExperimentalStdlibApi
++    @Suppress("UNUSED_PARAMETER")
++    public fun build(huffmanCodecProvider: HuffmanCodecProvider): MessageEncoderRepository<AndroidGameServerProt> =
++        MessageEncoderRepositoryBuilder(ProtRepository.of<AndroidGameServerProt>()).apply {
++            bind(AndroidUpdateStatV2Encoder())
++            bindWithAlts(AndroidRebuildNormalV2Encoder(), RebuildLoginV2::class.java, RebuildNormalV2::class.java)
++            bind(AndroidUpdateRunWeightEncoder())
++            bind(AndroidUpdateInvFullEncoder())
++            bind(androidUpdateInvPartialEncoder())
++            bind(AndroidSetNpcUpdateOriginEncoder())
++            bind(AndroidVarpSmallEncoder())
++            bind(AndroidVarpLargeEncoder())
++            bind(AndroidIfSetEventsV2Encoder())
++            bind(AndroidLogoutEncoder())
++            bind(AndroidServerTickEndEncoder())
++            bind(AndroidIfOpenSubEncoder())
++            bind(AndroidIfOpenTopEncoder())
++            bind(androidMessageGameEncoder())
++            bind(AndroidPlayerInfoEncoder())
++            bind(AndroidSetActiveWorldV2Encoder())
++            bind(AndroidUpdateRunEnergyEncoder())
++            bind(androidNpcInfoSmallV6Encoder())
++            bind(androidNpcInfoLargeV6Encoder())
++        }.build()
++}
++
++public object AndroidGameMessageDecoderRepository {
++    private val IDENTIFIED =
++        setOf(
++            AndroidGameClientProt.MOVE_GAMECLICK,
++            AndroidGameClientProt.CLIENT_CHEAT,
++            AndroidGameClientProt.MESSAGE_PUBLIC,
++            AndroidGameClientProt.IF_BUTTONX,
++        )
++
++    @ExperimentalStdlibApi
++    public fun build(huffmanCodecProvider: HuffmanCodecProvider): MessageDecoderRepository<AndroidGameClientProt> =
++        MessageDecoderRepositoryBuilder(ProtRepository.of<AndroidGameClientProt>()).apply {
++            bind(AndroidMoveGameClickDecoder())
++            bind(androidClientCheatDecoder())
++            bind(androidMessagePublicDecoder(huffmanCodecProvider))
++            bind(androidIfButtonXDecoder())
++            for (prot in AndroidGameClientProt.entries) {
++                if (prot in IDENTIFIED) continue
++                bind(AndroidUnknownPacket::class.java, AndroidUnknownPacketDecoder(prot))
++            }
++        }.build()
++}
++
++/**
++ * A client packet whose meaning has not been identified yet; framing is still exact because the
++ * size comes from the client's own table. Servers can log these to map the remaining prots.
++ */
++public class AndroidUnknownPacket(
++    public val opcode: Int,
++    public val payload: ByteArray,
++) : IncomingGameMessage {
++    override val category: ClientProtCategory
++        get() = GameClientProtCategory.CLIENT_EVENT
++
++    override fun toString(): String =
++        "AndroidUnknownPacket(opcode=$opcode, size=${payload.size}, payload=" +
++            payload.joinToString("") { "%02x".format(it) } + ")"
++}
++
++public class AndroidUnknownPacketDecoder(
++    override val prot: ClientProt,
++) : MessageDecoder<AndroidUnknownPacket> {
++    override fun decode(buffer: JagByteBuf): AndroidUnknownPacket {
++        val payload = ByteArray(buffer.readableBytes())
++        buffer.buffer.readBytes(payload)
++        return AndroidUnknownPacket(prot.opcode, payload)
++    }
++}
++
++/**
++ * The CRC section of the Android login block. Its order has not been reverse engineered; desktop
++ * order is assumed (the login succeeds either way, only CRC validation is affected).
++ */
++public object AndroidLoginCrcDecoder : LoginCrcDecoder by DesktopLoginCrcDecoder {
++    override val clientType: OldSchoolClientType = OldSchoolClientType.ANDROID
++}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt
+new file mode 100644
+index 00000000..fd855812
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt
+@@ -0,0 +1,98 @@
++@file:Suppress("DuplicatedCode")
++
++package net.rsprot.protocol.android
++
++import io.netty.buffer.ByteBufAllocator
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.buffer.extensions.toJagByteBuf
++import net.rsprot.compression.provider.HuffmanCodecProvider
++import net.rsprot.protocol.common.client.OldSchoolClientType
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcBaseAnimationSetEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcBodyCustomisationEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcCombatLevelChangeEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcExactMoveEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcFaceEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcFreezeEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcHeadCustomisationEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcHeadIconCustomisationEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcHeadbarEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcHitmarkEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcNameChangeEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcSayEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcSpotAnimEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcTintingEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcTransformationEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcTransparencyEncoder
++import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcVisibleOpsEncoder
++import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcAvatarExtendedInfo
++import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcAvatarExtendedInfoBlocks
++import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcAvatarExtendedInfoWriter
++import net.rsprot.protocol.internal.game.outgoing.info.encoder.PrecomputedExtendedInfoEncoder
++import net.rsprot.protocol.internal.game.outgoing.info.npcinfo.encoder.NpcExtendedInfoEncoders
++import net.rsprot.protocol.internal.game.outgoing.info.shared.extendedinfo.Sequence
++
++@Suppress("DuplicatedCode")
++public class NpcAvatarExtendedInfoAndroidWriter :
++    NpcAvatarExtendedInfoWriter(
++        OldSchoolClientType.ANDROID,
++        NpcExtendedInfoEncoders(
++            OldSchoolClientType.ANDROID,
++            NpcSpotAnimEncoder(),
++            NpcSayEncoder(),
++            NpcVisibleOpsEncoder(),
++            NpcExactMoveEncoder(),
++            AndroidNpcSequenceEncoder(),
++            NpcTintingEncoder(),
++            NpcHeadIconCustomisationEncoder(),
++            NpcNameChangeEncoder(),
++            NpcHeadCustomisationEncoder(),
++            NpcBodyCustomisationEncoder(),
++            NpcTransformationEncoder(),
++            NpcCombatLevelChangeEncoder(),
++            NpcHitmarkEncoder(),
++            NpcHeadbarEncoder(),
++            NpcFaceEncoder(),
++            NpcBaseAnimationSetEncoder(),
++            NpcTransparencyEncoder(),
++            NpcFreezeEncoder(),
++        ),
++    ) {
++    override fun pExtendedInfo(
++        buffer: JagByteBuf,
++        localIndex: Int,
++        observerIndex: Int,
++        flag: Int,
++        blocks: NpcAvatarExtendedInfoBlocks,
++    ) {
++        // Android NPC extended info (NPC_INFO reader, Ghidra 0x569778): flag bytes chain with
++        // 0x20, 0x2000 and 0x20000. Only blocks with a verified Android layout are written, in the
++        // client's read order: 0x2 transformation, 0x1 sequence, 0x4 say. Anything else is dropped.
++        var clientFlag = 0
++        if (flag and NpcAvatarExtendedInfo.TRANSFORMATION != 0) clientFlag = clientFlag or ANDROID_TRANSFORMATION
++        if (flag and NpcAvatarExtendedInfo.SEQUENCE != 0) clientFlag = clientFlag or ANDROID_SEQUENCE
++        if (flag and NpcAvatarExtendedInfo.SAY != 0) clientFlag = clientFlag or ANDROID_SAY
++        buffer.p1(clientFlag)
++        if (clientFlag and ANDROID_TRANSFORMATION != 0) pCachedData(buffer, blocks.transformation)
++        if (clientFlag and ANDROID_SEQUENCE != 0) pCachedData(buffer, blocks.sequence)
++        if (clientFlag and ANDROID_SAY != 0) pCachedData(buffer, blocks.say)
++    }
++
++    private companion object {
++        private const val ANDROID_SEQUENCE: Int = 0x1
++        private const val ANDROID_TRANSFORMATION: Int = 0x2
++        private const val ANDROID_SAY: Int = 0x4
++    }
++}
++
++/** NPC flag 0x1: [id lo^0x80, hi][delay]. */
++public class AndroidNpcSequenceEncoder : PrecomputedExtendedInfoEncoder<Sequence> {
++    override fun precompute(
++        alloc: ByteBufAllocator,
++        huffmanCodecProvider: HuffmanCodecProvider,
++        extendedInfo: Sequence,
++    ): JagByteBuf =
++        alloc.buffer(3, 3).toJagByteBuf().also {
++            it.p2Alt3(extendedInfo.id.toInt())
++            it.p1(extendedInfo.delay.toInt())
++        }
++}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/PlayerAvatarExtendedInfoAndroidWriter.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/PlayerAvatarExtendedInfoAndroidWriter.kt
+new file mode 100644
+index 00000000..85bfa09d
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/PlayerAvatarExtendedInfoAndroidWriter.kt
+@@ -0,0 +1,165 @@
++package net.rsprot.protocol.android
++
++import io.netty.buffer.ByteBufAllocator
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.buffer.extensions.toJagByteBuf
++import net.rsprot.compression.provider.HuffmanCodecProvider
++import net.rsprot.protocol.common.client.OldSchoolClientType
++import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerExactMoveEncoder
++import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerFacingEncoder
++import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerFreezeEncoder
++import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerHeadbarEncoder
++import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerHitEncoder
++import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerResetEncoder
++import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerSayEncoder
++import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerSpotAnimEncoder
++import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerTintingEncoder
++import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerTransparencyEncoder
++import net.rsprot.protocol.game.outgoing.info.playerinfo.PlayerAvatarExtendedInfo
++import net.rsprot.protocol.game.outgoing.info.playerinfo.PlayerAvatarExtendedInfoBlocks
++import net.rsprot.protocol.game.outgoing.info.playerinfo.PlayerAvatarExtendedInfoWriter
++import net.rsprot.protocol.internal.game.outgoing.info.encoder.PrecomputedExtendedInfoEncoder
++import net.rsprot.protocol.internal.game.outgoing.info.playerinfo.encoder.PlayerExtendedInfoEncoders
++import net.rsprot.protocol.internal.game.outgoing.info.playerinfo.extendedinfo.MoveSpeed
++import net.rsprot.protocol.internal.game.outgoing.info.playerinfo.extendedinfo.TemporaryMoveSpeed
++import net.rsprot.protocol.internal.game.outgoing.info.shared.extendedinfo.Sequence
++import net.rsprot.protocol.internal.game.outgoing.info.playerinfo.extendedinfo.Chat
++
++/**
++ * Player extended info for the Android client, from the PLAYER_INFO reader (Ghidra 0x669a04).
++ *
++ * Flags are 1-3 bytes: 0x80 in the first byte announces a second, 0x4000 a third. Blocks follow in
++ * the order the client tests them:
++ *   0x2 reset, 0x200 tinting, 0x4 sequence, 0x20000 hitmarks, 0x40 ?, 0x100 move speed,
++ *   0x8000 ?, 0x2000 temp move speed, 0x10000 ?, 0x400 chat, 0x10 appearance, 0x1 say,
++ *   0x80000 ?, 0x100000 ?, 0x20 ?, 0x1000 ?, 0x40000 headbars
++ *
++ * Only blocks whose Android layout has been verified are written; any other flagged block is
++ * dropped from the update rather than sent in a layout the client would misread.
++ */
++public class PlayerAvatarExtendedInfoAndroidWriter :
++    PlayerAvatarExtendedInfoWriter(
++        OldSchoolClientType.ANDROID,
++        PlayerExtendedInfoEncoders(
++            OldSchoolClientType.ANDROID,
++            AndroidPlayerAppearanceEncoder(),
++            AndroidPlayerChatEncoder(),
++            PlayerExactMoveEncoder(),
++            PlayerFacingEncoder(),
++            PlayerHitEncoder(),
++            PlayerHeadbarEncoder(),
++            AndroidPlayerMoveSpeedEncoder(),
++            PlayerSayEncoder(),
++            AndroidPlayerSequenceEncoder(),
++            PlayerSpotAnimEncoder(),
++            AndroidPlayerTemporaryMoveSpeedEncoder(),
++            PlayerTintingEncoder(),
++            PlayerTransparencyEncoder(),
++            PlayerFreezeEncoder(),
++            PlayerResetEncoder(),
++        ),
++    ) {
++    override fun pExtendedInfo(
++        buffer: JagByteBuf,
++        localIndex: Int,
++        observerIndex: Int,
++        flag: Int,
++        blocks: PlayerAvatarExtendedInfoBlocks,
++    ) {
++        var clientFlag = 0
++        if (flag and PlayerAvatarExtendedInfo.SEQUENCE != 0) clientFlag = clientFlag or SEQUENCE
++        if (flag and PlayerAvatarExtendedInfo.MOVE_SPEED != 0) clientFlag = clientFlag or MOVE_SPEED
++        if (flag and PlayerAvatarExtendedInfo.TEMP_MOVE_SPEED != 0) clientFlag = clientFlag or TEMP_MOVE_SPEED
++        if (flag and PlayerAvatarExtendedInfo.CHAT != 0) clientFlag = clientFlag or CHAT
++        if (flag and PlayerAvatarExtendedInfo.APPEARANCE != 0) clientFlag = clientFlag or APPEARANCE
++        if (clientFlag and 0xFF.inv() != 0) clientFlag = clientFlag or EXTENDED_SHORT
++        if (clientFlag and 0xFFFF.inv() != 0) clientFlag = clientFlag or EXTENDED_MEDIUM
++
++        buffer.p1(clientFlag)
++        if (clientFlag and EXTENDED_SHORT != 0) buffer.p1(clientFlag shr 8)
++        if (clientFlag and EXTENDED_MEDIUM != 0) buffer.p1(clientFlag shr 16)
++
++        if (clientFlag and SEQUENCE != 0) pCachedData(buffer, blocks.sequence)
++        if (clientFlag and MOVE_SPEED != 0) pCachedData(buffer, blocks.moveSpeed)
++        if (clientFlag and TEMP_MOVE_SPEED != 0) pCachedData(buffer, blocks.temporaryMoveSpeed)
++        if (clientFlag and CHAT != 0) pCachedData(buffer, blocks.chat)
++        if (clientFlag and APPEARANCE != 0) pCachedData(buffer, blocks.appearance)
++    }
++
++    private companion object {
++        private const val EXTENDED_SHORT = 0x80
++        private const val EXTENDED_MEDIUM = 0x4000
++
++        private const val SEQUENCE = 0x4
++        private const val APPEARANCE = 0x10
++        private const val MOVE_SPEED = 0x100
++        private const val TEMP_MOVE_SPEED = 0x2000
++        private const val CHAT = 0x400
++    }
++}
++
++/** Flag 0x100: one byte, read as -b. */
++public class AndroidPlayerMoveSpeedEncoder : PrecomputedExtendedInfoEncoder<MoveSpeed> {
++    override fun precompute(
++        alloc: ByteBufAllocator,
++        huffmanCodecProvider: HuffmanCodecProvider,
++        extendedInfo: MoveSpeed,
++    ): JagByteBuf = alloc.buffer(1, 1).toJagByteBuf().also { it.p1Alt2(extendedInfo.value) }
++}
++
++/** Flag 0x2000: one byte, read as b^0x80 (127 = teleport). */
++public class AndroidPlayerTemporaryMoveSpeedEncoder : PrecomputedExtendedInfoEncoder<TemporaryMoveSpeed> {
++    override fun precompute(
++        alloc: ByteBufAllocator,
++        huffmanCodecProvider: HuffmanCodecProvider,
++        extendedInfo: TemporaryMoveSpeed,
++    ): JagByteBuf = alloc.buffer(1, 1).toJagByteBuf().also { it.p1Alt1(extendedInfo.value) }
++}
++
++/** Flag 0x4: [id hi, lo^0x80][delay]. */
++public class AndroidPlayerSequenceEncoder : PrecomputedExtendedInfoEncoder<Sequence> {
++    override fun precompute(
++        alloc: ByteBufAllocator,
++        huffmanCodecProvider: HuffmanCodecProvider,
++        extendedInfo: Sequence,
++    ): JagByteBuf =
++        alloc.buffer(3, 3).toJagByteBuf().also {
++            it.p2Alt2(extendedInfo.id.toInt())
++            it.p1(extendedInfo.delay.toInt())
++        }
++}
++
++/**
++ * Flag 0x400: [colour << 8 | effects: lo^0x80, hi][modicon ^0x80][autotyper][huffman length -b]
++ * [huffman bytes reversed, ^0x80][pattern bytes ^0x80].
++ */
++public class AndroidPlayerChatEncoder : PrecomputedExtendedInfoEncoder<Chat> {
++    override fun precompute(
++        alloc: ByteBufAllocator,
++        huffmanCodecProvider: HuffmanCodecProvider,
++        extendedInfo: Chat,
++    ): JagByteBuf {
++        val text = extendedInfo.text ?: ""
++        val colour = extendedInfo.colour.toInt()
++        val patternLength = if (colour in 13..20) colour - 12 else 0
++        val buffer = alloc.buffer(5 + text.length + patternLength).toJagByteBuf()
++        buffer.p2Alt3(colour shl 8 or extendedInfo.effects.toInt())
++        buffer.p1Alt1(extendedInfo.modicon.toInt())
++        buffer.p1(if (extendedInfo.autotyper) 1 else 0)
++        val huffmanBuffer = alloc.buffer(text.length).toJagByteBuf()
++        try {
++            huffmanCodecProvider.provide().encode(huffmanBuffer, text)
++            buffer.p1Alt2(huffmanBuffer.readableBytes())
++            buffer.pdataAlt3(huffmanBuffer.buffer)
++        } finally {
++            huffmanBuffer.buffer.release()
++        }
++        if (patternLength in 1..8) {
++            val pattern = checkNotNull(extendedInfo.pattern)
++            for (i in 0..<patternLength) {
++                buffer.p1Alt1(pattern[i].toInt())
++            }
++        }
++        return buffer
++    }
++}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/unverified/AndroidWorldEntityResolutionChangeEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/unverified/AndroidWorldEntityResolutionChangeEncoder.kt
+new file mode 100644
+index 00000000..fc755f2d
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/unverified/AndroidWorldEntityResolutionChangeEncoder.kt
+@@ -0,0 +1,35 @@
++package net.rsprot.protocol.android.unverified
++
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.protocol.common.client.OldSchoolClientType
++import net.rsprot.protocol.internal.game.outgoing.info.worldentityinfo.encoder.WorldEntityResolutionChangeEncoder
++
++public class AndroidWorldEntityResolutionChangeEncoder : WorldEntityResolutionChangeEncoder {
++    override val clientType: OldSchoolClientType = OldSchoolClientType.ANDROID
++
++    override fun encodeAddition(
++        buffer: JagByteBuf,
++        id: Int,
++        sizeX: Int,
++        sizeZ: Int,
++        priority: Int,
++    ): Int {
++        buffer.p2Alt1(id)
++        val flagWriteIndex = buffer.writerIndex()
++        buffer.p1Alt3(0)
++        buffer.p1Alt2(priority)
++        buffer.p1Alt3((sizeX shl 4) or sizeZ)
++        return flagWriteIndex
++    }
++
++    override fun rewriteExtendedInfoFlag(
++        buffer: JagByteBuf,
++        flagWriteIndex: Int,
++        flag: Int,
++    ) {
++        val finalPosition = buffer.writerIndex()
++        buffer.writerIndex(flagWriteIndex)
++        buffer.p1Alt3(flag)
++        buffer.writerIndex(finalPosition)
++    }
++}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/unverified/WorldEntityAvatarExtendedInfoAndroidWriter.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/unverified/WorldEntityAvatarExtendedInfoAndroidWriter.kt
+new file mode 100644
+index 00000000..f48fc46c
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/unverified/WorldEntityAvatarExtendedInfoAndroidWriter.kt
+@@ -0,0 +1,101 @@
++@file:Suppress("DuplicatedCode")
++
++package net.rsprot.protocol.android.unverified
++
++import net.rsprot.protocol.game.outgoing.codec.worldentity.extendedinfo.WorldEntitySequenceEncoder
++import net.rsprot.protocol.game.outgoing.codec.worldentity.extendedinfo.WorldEntityVisibleOpsEncoder
++import com.github.michaelbull.logging.InlineLogger
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.protocol.common.client.OldSchoolClientType
++import net.rsprot.protocol.game.outgoing.info.worldentityinfo.WorldEntityAvatarExtendedInfo
++import net.rsprot.protocol.game.outgoing.info.worldentityinfo.WorldEntityAvatarExtendedInfoBlocks
++import net.rsprot.protocol.game.outgoing.info.worldentityinfo.WorldEntityAvatarExtendedInfoWriter
++import net.rsprot.protocol.internal.game.outgoing.info.ExtendedInfo
++import net.rsprot.protocol.internal.game.outgoing.info.encoder.OnDemandExtendedInfoEncoder
++import net.rsprot.protocol.internal.game.outgoing.info.encoder.PrecomputedExtendedInfoEncoder
++import net.rsprot.protocol.internal.game.outgoing.info.worldentityinfo.encoder.WorldEntityExtendedInfoEncoders
++
++public class WorldEntityAvatarExtendedInfoAndroidWriter :
++    WorldEntityAvatarExtendedInfoWriter(
++        OldSchoolClientType.ANDROID,
++        WorldEntityExtendedInfoEncoders(
++            OldSchoolClientType.ANDROID,
++            WorldEntitySequenceEncoder(),
++            WorldEntityVisibleOpsEncoder(),
++        ),
++    ) {
++    private fun convertFlags(constantFlags: Int): Int {
++        var clientFlags = 0
++        if (constantFlags and WorldEntityAvatarExtendedInfo.SEQUENCE != 0) {
++            clientFlags = clientFlags or SEQUENCE
++        }
++        if (constantFlags and WorldEntityAvatarExtendedInfo.VISIBLE_OPS != 0) {
++            clientFlags = clientFlags or VISIBLE_OPS
++        }
++        return clientFlags
++    }
++
++    @Suppress("DuplicatedCode")
++    override fun pExtendedInfo(
++        buffer: JagByteBuf,
++        flag: Int,
++        blocks: WorldEntityAvatarExtendedInfoBlocks,
++    ): Int {
++        val clientFlag = convertFlags(flag)
++        var outFlag = 0
++
++        outFlag = outFlag or pCached(buffer, clientFlag, SEQUENCE, blocks.sequence)
++        outFlag = outFlag or pCached(buffer, clientFlag, VISIBLE_OPS, blocks.visibleOps)
++        return outFlag
++    }
++
++    private fun <T : ExtendedInfo<T, E>, E : PrecomputedExtendedInfoEncoder<T>> pCached(
++        buffer: JagByteBuf,
++        clientFlag: Int,
++        blockFlag: Int,
++        block: T,
++    ): Int {
++        if (clientFlag and blockFlag == 0) return 0
++        val pos = buffer.writerIndex()
++        return try {
++            pCachedData(buffer, block)
++            blockFlag
++        } catch (e: Exception) {
++            buffer.writerIndex(pos)
++            logger.error(e) {
++                "Unable to put cached mask data for $block"
++            }
++            0
++        }
++    }
++
++    @Suppress("SameParameterValue", "unused")
++    private fun <T : ExtendedInfo<T, E>, E : OnDemandExtendedInfoEncoder<T>> pOnDemand(
++        buffer: JagByteBuf,
++        clientFlag: Int,
++        blockFlag: Int,
++        block: T,
++        localIndex: Int,
++        observerIndex: Int,
++    ): Int {
++        if (clientFlag and blockFlag == 0) return 0
++        val pos = buffer.writerIndex()
++        return try {
++            pOnDemandData(buffer, localIndex, block, observerIndex)
++            blockFlag
++        } catch (e: Exception) {
++            buffer.writerIndex(pos)
++            logger.error(e) {
++                "Unable to put on demand mask data for $block"
++            }
++            0
++        }
++    }
++
++    @Suppress("unused")
++    private companion object {
++        private val logger = InlineLogger()
++        private const val VISIBLE_OPS: Int = 0x2
++        private const val SEQUENCE: Int = 0x1
++    }
++}
+diff --git a/protocol/osrs-241/osrs-241-api/build.gradle.kts b/protocol/osrs-241/osrs-241-api/build.gradle.kts
+index 5ddc7a87..314d08a2 100644
+--- a/protocol/osrs-241/osrs-241-api/build.gradle.kts
++++ b/protocol/osrs-241/osrs-241-api/build.gradle.kts
+@@ -27,6 +27,7 @@ dependencies {
+     api(projects.protocol.osrs241.osrs241Model)
+     implementation(projects.protocol.osrs241.osrs241Internal)
+     implementation(projects.protocol.osrs241.osrs241Desktop)
++    implementation(projects.protocol.osrs241.osrs241Android)
+     implementation(projects.protocol.osrs241.osrs241Shared)
+     implementation(projects.buffer)
+ }
+diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/EntityInfoProtocols.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/EntityInfoProtocols.kt
+index 8fa46301..b5e4fc39 100644
+--- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/EntityInfoProtocols.kt
++++ b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/EntityInfoProtocols.kt
+@@ -6,6 +6,11 @@ import net.rsprot.protocol.api.suppliers.NpcInfoSupplier
+ import net.rsprot.protocol.api.suppliers.PlayerInfoSupplier
+ import net.rsprot.protocol.api.suppliers.WorldEntityInfoSupplier
+ import net.rsprot.protocol.common.client.OldSchoolClientType
++import net.rsprot.protocol.android.PlayerAvatarExtendedInfoAndroidWriter
++import net.rsprot.protocol.android.AndroidLowResolutionChangeEncoder
++import net.rsprot.protocol.android.unverified.AndroidWorldEntityResolutionChangeEncoder
++import net.rsprot.protocol.android.NpcAvatarExtendedInfoAndroidWriter
++import net.rsprot.protocol.android.unverified.WorldEntityAvatarExtendedInfoAndroidWriter
+ import net.rsprot.protocol.game.outgoing.codec.npcinfo.DesktopLowResolutionChangeEncoder
+ import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.writer.NpcAvatarExtendedInfoDesktopWriter
+ import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.writer.PlayerAvatarExtendedInfoDesktopWriter
+@@ -101,6 +106,13 @@ public class EntityInfoProtocols
+                     worldEntityWriters += WorldEntityAvatarExtendedInfoDesktopWriter()
+                     worldEntityResolutionChangeEncoders += DesktopWorldEntityResolutionChangeEncoder()
+                 }
++                if (OldSchoolClientType.ANDROID in clientTypes) {
++                    playerWriters += PlayerAvatarExtendedInfoAndroidWriter()
++                    npcWriters += NpcAvatarExtendedInfoAndroidWriter()
++                    npcResolutionChangeEncoders += AndroidLowResolutionChangeEncoder()
++                    worldEntityWriters += WorldEntityAvatarExtendedInfoAndroidWriter()
++                    worldEntityResolutionChangeEncoders += AndroidWorldEntityResolutionChangeEncoder()
++                }
+                 val zoneIndexStorage =
+                     ZoneIndexStorage(
+                         ZoneIndexStorage.WORLDENTITY_CAPACITY,
+diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageDecoderRepositories.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageDecoderRepositories.kt
+index f463c584..1d84192d 100644
+--- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageDecoderRepositories.kt
++++ b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageDecoderRepositories.kt
+@@ -4,6 +4,9 @@ import net.rsprot.compression.provider.HuffmanCodecProvider
+ import net.rsprot.crypto.rsa.RsaKeyPair
+ import net.rsprot.protocol.ClientProt
+ import net.rsprot.protocol.common.client.OldSchoolClientType
++import net.rsprot.protocol.android.AndroidGameMessageDecoderRepository
++import net.rsprot.protocol.android.AndroidLoginCrcDecoder
++import net.rsprot.protocol.common.client.OldSchoolClientType.ANDROID
+ import net.rsprot.protocol.common.client.OldSchoolClientType.DESKTOP
+ import net.rsprot.protocol.common.js5.incoming.prot.Js5MessageDecoderRepository
+ import net.rsprot.protocol.common.loginprot.incoming.prot.LoginMessageDecoderRepository
+@@ -48,6 +51,9 @@ public class MessageDecoderRepositories(
+                     if (DESKTOP in clientTypes) {
+                         add(DESKTOP to DesktopGameMessageDecoderRepository.build(huffmanCodecProvider))
+                     }
++                    if (ANDROID in clientTypes) {
++                        add(ANDROID to AndroidGameMessageDecoderRepository.build(huffmanCodecProvider))
++                    }
+                 }
+             val clientTypeMap =
+                 ClientTypeMap.of(
+@@ -60,6 +66,9 @@ public class MessageDecoderRepositories(
+                         if (DESKTOP in clientTypes) {
+                             add(DesktopLoginCrcDecoder)
+                         }
++                        if (ANDROID in clientTypes) {
++                            add(AndroidLoginCrcDecoder)
++                        }
+                     },
+                     OldSchoolClientType.COUNT,
+                     LoginCrcDecoder::clientType,
+diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageEncoderRepositories.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageEncoderRepositories.kt
+index d4b5ff15..0b7750ae 100644
+--- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageEncoderRepositories.kt
++++ b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageEncoderRepositories.kt
+@@ -1,5 +1,7 @@
+ package net.rsprot.protocol.api.repositories
+ 
++import net.rsprot.protocol.android.AndroidGameMessageEncoderRepository
++
+ import net.rsprot.compression.provider.HuffmanCodecProvider
+ import net.rsprot.protocol.ServerProt
+ import net.rsprot.protocol.common.client.OldSchoolClientType
+@@ -25,7 +27,10 @@ public class MessageEncoderRepositories(
+         Js5MessageEncoderRepository.build(),
+         ClientTypeMap.of(
+             OldSchoolClientType.COUNT,
+-            listOf(OldSchoolClientType.DESKTOP to DesktopGameMessageEncoderRepository.build(huffmanCodecProvider)),
++            listOf(
++                OldSchoolClientType.DESKTOP to DesktopGameMessageEncoderRepository.build(huffmanCodecProvider),
++                OldSchoolClientType.ANDROID to AndroidGameMessageEncoderRepository.build(huffmanCodecProvider),
++            ),
+         ),
+     )
+ }
+diff --git a/protocol/osrs-241/osrs-241-shared/src/main/kotlin/net/rsprot/protocol/common/loginprot/incoming/codec/GameLoginDecoder.kt b/protocol/osrs-241/osrs-241-shared/src/main/kotlin/net/rsprot/protocol/common/loginprot/incoming/codec/GameLoginDecoder.kt
+index 52030dc7..e6a8e59b 100644
+--- a/protocol/osrs-241/osrs-241-shared/src/main/kotlin/net/rsprot/protocol/common/loginprot/incoming/codec/GameLoginDecoder.kt
++++ b/protocol/osrs-241/osrs-241-shared/src/main/kotlin/net/rsprot/protocol/common/loginprot/incoming/codec/GameLoginDecoder.kt
+@@ -62,6 +62,13 @@ public class GameLoginDecoder(
+                     Token(buffer.gjstr().toByteArray()),
+                     otp,
+                 )
++            // Sent by the Android client for Jagex-account logins. The layout of the token data
++            // has not been reverse engineered, so the remainder of the RSA block is kept as is.
++            MOBILE_TOKEN_AUTHENTICATION -> {
++                val rest = ByteArray(buffer.readableBytes())
++                buffer.buffer.readBytes(rest)
++                AuthenticationType.TokenAuthentication(Token(rest), otp)
++            }
+             else -> {
+                 throw IllegalStateException("Unknown authentication type: $authenticationType")
+             }
+@@ -102,5 +109,6 @@ public class GameLoginDecoder(
+         private const val PASSWORD_AUTHENTICATION = 0
+         private const val TOKEN_AUTHENTICATION = 2
+         private const val MOBILE_PASSWORD_AUTHENTICATION = 5
++        private const val MOBILE_TOKEN_AUTHENTICATION = 7
+     }
+ }

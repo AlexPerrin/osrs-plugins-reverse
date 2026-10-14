@@ -1,0 +1,163 @@
+package net.runelite.host;
+
+import android.util.Log;
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import java.io.File;
+import java.util.Enumeration;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import dalvik.system.DexClassLoader;
+import net.runelite.api.Client;
+import net.runelite.api.GameState;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ClientTick;
+import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.NpcSpawned;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.client.plugins.HostPluginManager;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+
+/** Plugin host entry points, called from native code (native/src/jni_bridge.cpp). */
+public final class Host {
+    public static final String TAG = "osrsrl-host";
+
+    // Must match client_thread::EventType.
+    private static final int CLIENT_TICK = 0, GAME_TICK = 1, GAME_STATE_CHANGED = 2, VARBIT_CHANGED = 3,
+            NPC_SPAWNED = 4, NPC_DESPAWNED = 5;
+
+    private static final ConcurrentLinkedQueue<Runnable> queue = new ConcurrentLinkedQueue<>();
+    private static volatile HostEventBus eventBus;
+    private static Client client;
+    private static final NpcCache npcCache = new NpcCache();
+    private static final AndroidWorldView worldView = new AndroidWorldView(npcCache);
+    private static final ClientTick clientTick = new ClientTick();
+    private static final GameTick gameTick = new GameTick();
+
+    private Host() {}
+
+    /** Called once on a background thread. `pluginDir` holds plugin jars (classes.dex inside). */
+    public static void start(String pluginDir, String cacheDir) {
+        Log.i(TAG, "host starting; plugins from " + pluginDir);
+        client = new AndroidClient(worldView);
+        HostEventBus bus = new HostEventBus();
+        Injector injector = Guice.createInjector(new AbstractModule() {
+            @Override
+            protected void configure() {
+                bind(Client.class).toInstance(client);
+                bind(HostEventBus.class).toInstance(bus);
+            }
+        });
+        HostPluginManager plugins = new HostPluginManager(injector, bus);
+        File[] jars = new File(pluginDir).listFiles((d, n) -> n.endsWith(".jar"));
+        if (jars != null) {
+            for (File jar : jars) loadJar(plugins, jar, cacheDir);
+        }
+        eventBus = bus;
+        Log.i(TAG, "host ready; " + plugins.getPlugins().size() + " plugin(s) running");
+    }
+
+    private static void loadJar(HostPluginManager plugins, File jar, String cacheDir) {
+        try {
+            // Android 14+ refuses writable dex files; harmless before that.
+            File copy = new File(cacheDir, jar.getName());
+            java.nio.file.Files.copy(jar.toPath(), copy.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            copy.setReadOnly();
+            ClassLoader loader = new DexClassLoader(copy.getPath(), cacheDir, null, Host.class.getClassLoader());
+            // Plugin classes are found by scanning the jar's class list (kept beside the dex
+            // by tools/dex-plugin.sh) for @PluginDescriptor.
+            try (ZipFile zip = new ZipFile(copy)) {
+                ZipEntry list = zip.getEntry("plugin-classes.txt");
+                if (list == null) {
+                    Log.e(TAG, jar + ": no plugin-classes.txt");
+                    return;
+                }
+                String[] names = new String(readAll(zip.getInputStream(list)), "UTF-8").split("\n");
+                for (String name : names) {
+                    name = name.trim();
+                    if (name.isEmpty()) continue;
+                    Class<?> c = loader.loadClass(name);
+                    if (Plugin.class.isAssignableFrom(c) && c.isAnnotationPresent(PluginDescriptor.class)) {
+                        plugins.start(c.asSubclass(Plugin.class));
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "failed to load " + jar, t);
+        }
+    }
+
+    private static byte[] readAll(java.io.InputStream in) throws java.io.IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
+        return out.toByteArray();
+    }
+
+    /** Called on the game thread after every client cycle and for each derived event. */
+    public static void onEvent(int type, int a, int b) {
+        HostEventBus bus = eventBus;
+        if (bus == null) return;
+        switch (type) {
+            case CLIENT_TICK:
+                bus.post(clientTick);
+                runQueued();
+                break;
+            case GAME_TICK:
+                bus.post(gameTick);
+                break;
+            case GAME_STATE_CHANGED: {
+                GameStateChanged e = new GameStateChanged();
+                GameState s = GameState.of(a);
+                e.setGameState(s != null ? s : GameState.UNKNOWN);
+                bus.post(e);
+                break;
+            }
+            case NPC_SPAWNED: {
+                AndroidNPC npc = npcCache.get(a);
+                if (npc != null) bus.post(new NpcSpawned(npc));
+                break;
+            }
+            case NPC_DESPAWNED: {
+                AndroidNPC npc = npcCache.cached(a);
+                if (npc != null) bus.post(new NpcDespawned(npc));
+                break;
+            }
+            case VARBIT_CHANGED: {
+                VarbitChanged e = new VarbitChanged();
+                e.setVarpId(a);
+                e.setVarbitId(-1);
+                e.setValue(b);
+                bus.post(e);
+                break;
+            }
+        }
+    }
+
+    static AndroidWorldView worldView() {
+        return worldView;
+    }
+
+    /** RuneLite's ClientThread.invoke equivalent. */
+    public static void invoke(Runnable r) {
+        if (Native.isClientThread()) {
+            r.run();
+        } else {
+            queue.add(r);
+        }
+    }
+
+    static void runQueued() {
+        for (Runnable r; (r = queue.poll()) != null; ) {
+            try {
+                r.run();
+            } catch (Throwable t) {
+                Log.e(TAG, "client thread task threw", t);
+            }
+        }
+    }
+}

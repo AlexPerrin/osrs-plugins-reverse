@@ -1,0 +1,7 @@
+re/
+*.apk
+*.AppImage
+*.exe
+*:Zone.Identifier
+host/plugins/*/build/
+__pycache__/

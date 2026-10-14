@@ -14,6 +14,8 @@ import kotlin.concurrent.thread
  * `jav_config.ws` (world host, world id, world-list URL) and `slr.ws` (binary world list).
  */
 class Http(private val config: Config, private val online: () -> Int) {
+    private val localAuth = if (config.localAuth) LocalAuth(config) else null
+
     /**
      * A raw-socket responder rather than the JDK HttpServer: the game's HTTP client is picky,
      * so headers are written exactly (canonical case, explicit length, connection close).
@@ -36,11 +38,22 @@ class Http(private val config: Config, private val online: () -> Int) {
             val reader = socket.getInputStream().bufferedReader(Charsets.ISO_8859_1)
             val requestLine = reader.readLine() ?: return
             val headers = generateSequence { reader.readLine()?.takeIf { it.isNotEmpty() } }.toList()
+            val method = requestLine.substringBefore(' ')
             val target = requestLine.split(' ').getOrElse(1) { "/" }
             val path = target.substringBefore('?')
+            val query = target.substringAfter('?', "").split('&').filter { '=' in it }.associate {
+                java.net.URLDecoder.decode(it.substringBefore('='), Charsets.UTF_8) to
+                    java.net.URLDecoder.decode(it.substringAfter('='), Charsets.UTF_8)
+            }
+            val length = headers.firstOrNull { it.startsWith("content-length:", true) }?.substringAfter(':')?.trim()?.toIntOrNull() ?: 0
+            val body = if (length > 0) String(CharArray(length).also { buf -> var n = 0; while (n < length) n += reader.read(buf, n, length - n).takeIf { it > 0 } ?: break }) else ""
             log.info { "HTTP $requestLine from ${socket.inetAddress.hostAddress}" }
             log.debug { "HTTP headers: $headers" }
             val out = socket.getOutputStream()
+            localAuth?.handle(method, path, query, body)?.let {
+                respond(out, it.contentType, it.body, it.status, it.location)
+                return
+            }
             when {
                 path.endsWith("/jav_config.ws") -> respond(out, "text/plain; charset=ISO-8859-1", javConfig().toByteArray(Charsets.ISO_8859_1))
                 path.endsWith("/slr.ws") || path.endsWith("/worldlist.ws") -> respond(out, "application/octet-stream", worldList())
@@ -53,8 +66,9 @@ class Http(private val config: Config, private val online: () -> Int) {
         }
     }
 
-    private fun respond(out: OutputStream, type: String, body: ByteArray, status: String = "200 OK") {
+    private fun respond(out: OutputStream, type: String, body: ByteArray, status: String = "200 OK", location: String? = null) {
         val head = "HTTP/1.1 $status\r\n" +
+            (if (location != null) "Location: $location\r\n" else "") +
             "Content-Type: $type\r\n" +
             "Content-Length: ${body.size}\r\n" +
             "Connection: close\r\n\r\n"
@@ -66,7 +80,14 @@ class Http(private val config: Config, private val online: () -> Int) {
     /** Uses the template mirrored from the live config when present, else a minimal config. */
     fun javConfig(): String {
         val template = config.javConfigTemplate?.takeIf { Files.exists(it) } ?: return minimalJavConfig()
-        return Files.readString(template)
+        var text = Files.readString(template)
+        if (localAuth != null) {
+            // Point the sign-in (issuers, game-session API, account/social URLs) at this server.
+            text = text.lines().joinToString("\n") { line ->
+                if (AUTH_PARAMS.any { line.startsWith("param=$it=") }) line.substringBeforeLast('=') + "=" + localAuth.issuer else line
+            }
+        }
+        return text
             .replace("{{WORLD_HOST}}", config.worldHost)
             .replace("{{WORLD_ID}}", config.worldId.toString())
             .replace("{{WORLD_FLAGS}}", config.worldFlags.toString())
@@ -136,6 +157,8 @@ class Http(private val config: Config, private val online: () -> Int) {
     }
 
     private companion object {
+        /** jav_config params holding auth.jagex.com, social.auth.jagex.com, auth.runescape.com, account.jagex.com. */
+        private val AUTH_PARAMS = listOf(11, 20, 22, 28)
         private val log = com.github.michaelbull.logging.InlineLogger()
     }
 }

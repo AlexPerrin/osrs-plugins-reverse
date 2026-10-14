@@ -136,3 +136,21 @@ NPC extended info: flag bytes chain with `0x20` (second byte), `0x2000` (third) 
 | say `0x4` | `pjstr` (as desktop) |
 
 Other NPC blocks are not mapped; the Android writer drops them.
+
+## Local sign-in (no Jagex account)
+
+With `LOCAL_AUTH=true` (server) and a client built with `LOCAL_AUTH=1 SERVER=... tools/repack.sh`,
+the test server replaces Jagex's sign-in:
+
+- jav_config params 11, 20, 22 and 28 (auth.jagex.com, social.auth.jagex.com,
+  auth.runescape.com, account.jagex.com) point at the server's HTTP base.
+- The Java SDK (AppAuth) runs OpenID Connect against it: discovery, `oauth2/auth` (redirects
+  straight back with a code), `oauth2/token` (unsigned ID token echoing the nonce).
+- Native code then calls the game-session API at the param-11 base: `POST sessions`,
+  `GET accounts` (one character, `LOCAL_DISPLAY_NAME`) and `POST tokens`. That token goes into
+  the game login as auth type 7.
+- Client patches (tools/patch_local_auth.py): cleartext allowed in network_security_config, and
+  AppAuth's "only https connections" and "Issuer must be an https URL" checks removed.
+
+In-app: "Sign in with Email / Username", close the privacy screen, then Play Now. The client
+ID, scope and redirect URI are hard-coded in native code (Ghidra 0x59d638).

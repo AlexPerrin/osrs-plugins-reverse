@@ -21,3 +21,7 @@ services:
       JAV_CONFIG_TEMPLATE: "/app/protocol/jav_config.ws.template"
       LOG_LEVEL: "info"
       LOG_ANDROID_PACKETS: "true"     # log unidentified Android client packets (protocol RE aid)
+      # Serve the sign-in locally instead of Jagex; needs a client built with
+      # LOCAL_AUTH=1 tools/repack.sh. Display name of the single local character:
+      LOCAL_AUTH: "true"
+      LOCAL_DISPLAY_NAME: "Tester"

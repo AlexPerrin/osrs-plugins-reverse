@@ -25,6 +25,9 @@ class Config(
     val javConfigTemplate: Path?,
     /** Log every unidentified Android client packet, not just the first per opcode. */
     val logAndroidPackets: Boolean,
+    /** Serve the sign-in locally instead of Jagex (needs a client built with LOCAL_AUTH=1). */
+    val localAuth: Boolean,
+    val localDisplayName: String,
     val rsa: RsaKeyPair,
 ) {
     companion object {
@@ -51,6 +54,8 @@ class Config(
                 validateCrcs = env("VALIDATE_CRCS", "false").toBoolean(),
                 javConfigTemplate = env("JAV_CONFIG_TEMPLATE", "").takeIf { it.isNotEmpty() }?.let { Path(it) },
                 logAndroidPackets = env("LOG_ANDROID_PACKETS", "false").toBoolean(),
+                localAuth = env("LOCAL_AUTH", "false").toBoolean(),
+                localDisplayName = env("LOCAL_DISPLAY_NAME", "Tester"),
                 rsa = loadOrCreateRsa(dataDir.resolve("rsa.properties")),
             )
         }

@@ -5,6 +5,9 @@
 #   SERVER=10.0.2.2:8080 tools/repack.sh
 #                              -> also points the game at the test server in server/ (config URLs +
 #                                 login RSA modulus from server/data/rsa.properties, or $MODULUS)
+#   LOCAL_AUTH=1 SERVER=... tools/repack.sh
+#                              -> also lets the app sign in against the server's local OpenID
+#                                 provider (server LOCAL_AUTH=true) instead of a Jagex account
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -18,9 +21,15 @@ KS_PASS=android
 [[ -f $HOOK_SO ]] || { echo "build native/ first (missing $HOOK_SO)"; exit 1; }
 mkdir -p "$OUT"
 
-# 1. Decode classes only (-r keeps resources.arsc untouched; fewer rebuild failures).
+# 1. Decode classes only (-r keeps resources.arsc untouched; fewer rebuild failures). LOCAL_AUTH
+#    needs the resources decoded too, to allow cleartext HTTP in the network security config.
 rm -rf "$RE/apk/base"
-$APKTOOL d -q -r -f "$ROOT/base.apk" -o "$RE/apk/base"
+if [[ -n ${LOCAL_AUTH:-} ]]; then
+    $APKTOOL d -q -f "$ROOT/base.apk" -o "$RE/apk/base"
+    python3 -I "$ROOT/tools/patch_local_auth.py" "$RE/apk/base"
+else
+    $APKTOOL d -q -r -f "$ROOT/base.apk" -o "$RE/apk/base"
+fi
 
 # 2. Load our library right after the game's.
 SMALI=$(grep -rl 'const-string [vp][0-9]*, "libs.hal.system.osclient"' "$RE/apk/base"/smali*/com/jagex/android/)

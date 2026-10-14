@@ -1,7 +1,7 @@
 package java.awt;
 
 /** Android shim of java.awt.Color (sRGB only). */
-public class Color {
+public class Color implements Paint {
     public static final Color white = new Color(255, 255, 255), WHITE = white;
     public static final Color lightGray = new Color(192, 192, 192), LIGHT_GRAY = lightGray;
     public static final Color gray = new Color(128, 128, 128), GRAY = gray;

@@ -35,6 +35,11 @@ int g_last_state = -1;
 int g_last_tick = -1;
 std::vector<int32_t> g_varp_shadow;
 
+int g_next_message = -1;
+std::mutex g_messages_mutex;
+std::deque<game::ChatLine> g_messages;  // newest last, guarded by g_messages_mutex
+constexpr size_t kMessageHistory = 256;
+
 std::mutex g_npcs_mutex;
 std::vector<game::Npc> g_npcs;  // guarded by g_npcs_mutex; written only on the game thread
 
@@ -46,6 +51,7 @@ const char* name(EventType t) {
         case EventType::VarbitChanged: return "VarbitChanged";
         case EventType::NpcSpawned: return "NpcSpawned";
         case EventType::NpcDespawned: return "NpcDespawned";
+        case EventType::ChatMessage: return "ChatMessage";
     }
     return "?";
 }
@@ -100,6 +106,24 @@ void diff_npcs() {
     }
 }
 
+void poll_messages() {
+    int next = game::next_message_id();
+    if (g_next_message < 0 || next < g_next_message) {  // first cycle: don't replay history
+        g_next_message = next;
+        return;
+    }
+    for (; g_next_message < next; g_next_message++) {
+        game::ChatLine line;
+        if (!game::read_message(g_next_message, line)) continue;
+        {
+            std::lock_guard lock(g_messages_mutex);
+            g_messages.push_back(line);
+            if (g_messages.size() > kMessageHistory) g_messages.pop_front();
+        }
+        post({EventType::ChatMessage, line.id, line.type});
+    }
+}
+
 void after_cycle() {
     g_cycles++;
     post({EventType::ClientTick});
@@ -117,6 +141,7 @@ void after_cycle() {
     }
     diff_varps();
     diff_npcs();
+    poll_messages();
 
     std::vector<std::function<void()>> tasks;
     {
@@ -179,6 +204,17 @@ std::vector<std::string> recent_events() {
 }
 
 uint64_t cycles() { return g_cycles.load(); }
+
+bool message(int id, game::ChatLine& out) {
+    std::lock_guard lock(g_messages_mutex);
+    for (auto it = g_messages.rbegin(); it != g_messages.rend(); ++it) {
+        if (it->id == id) {
+            out = *it;
+            return true;
+        }
+    }
+    return false;
+}
 
 std::vector<game::Npc> npcs() {
     std::lock_guard lock(g_npcs_mutex);

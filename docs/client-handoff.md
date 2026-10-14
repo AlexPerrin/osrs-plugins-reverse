@@ -34,9 +34,12 @@ session; its notes are in `docs/android-protocol.md`.
 | `native/src/net_trace.*` | Owned by the server session (socket logging) |
 | `host/src/net/runelite/host/` | Host: `Host` (entry/events), `AndroidClient`, `AndroidPlayer`, `AndroidNPC`, `AndroidWorldView`, `NpcCache`, `HostEventBus`, `Native` |
 | `host/src/net/runelite/client/plugins/HostPluginManager.java` | Starts plugins (same package as `Plugin` to set `injector`) |
-| `host/awt/` | java.awt shim (geometry, Color, image/event shells). Graphics2D still empty |
+| `host/awt/` | java.awt shim (geometry, Color, Font, BasicStroke, Graphics/Graphics2D API) |
+| `host/src/net/runelite/host/CanvasGraphics.java`, `OverlayRenderer.java` | Graphics2D over android.graphics.Canvas; overlay layout and frame hand-off |
+| `host/src/net/runelite/client/ui/` | Same-name replacements for RuneLite's `OverlayManager` and `FontManager` |
+| `host/compile-stubs/` | Compile-only `LambdaMetafactory` (android.jar lacks it; d8 desugars lambdas) |
 | `host/gen/GenStub.java` | Generates `<Iface>Stub` classes that throw for every abstract method |
-| `host/build.sh` | Builds `re/host/host.jar`; list interfaces to stub in its `for iface` loop |
+| `host/build.sh` | Builds `re/host/host.jar`: compiles host + stubs + shim with `-source 8 -bootclasspath android.jar`, adds the RuneLite client classes it reuses (list in step 3), dexes, adds fonts. Interfaces to stub are in its `for iface` loop |
 | `tools/dex-plugin.sh` | Converts any RuneLite plugin jar into a host-loadable jar |
 | `tools/ghidra_scripts/` | Headless helpers: `Decompile.java`, `Xrefs.java`, `StringXrefs.java` |
 
@@ -69,8 +72,10 @@ Gotchas:
   (real Jagex login behind Cloudflare). `repack.sh --install` uses `install -r`.
 - Shared device: post "taking device" / "device free" to the server session (SendMessage)
   before adb input or reinstalls. Server container restarts log the client out.
-- adb text input into the game's chat doesn't register reliably, so find positions by memory
-  diffs instead of `::tele`.
+- Chat commands over adb: tap the keyboard button (90,220), wait about 1 s, `input text` (spaces as
+  `%s`), then `keyevent 66`. The first Enter is sometimes lost, so check the chat line before the
+  next command. `::tele x y plane`, `::pos`, `::npc id`, `::npcsay text` and `::npcanim id` are useful.
+- The example plugin logs a lot; run `adb logcat -G 16M` or the agent token scrolls out of the buffer.
 - Ghidra addresses = ELF vaddr + 0x100000. `docs/offsets.md` uses ELF vaddrs.
 
 ## How to find the next thing
@@ -92,14 +97,13 @@ as long as the call happens on the game thread.
 
 ## Suggested next steps
 
-1. Plane: probably near the WorldView base (`wv+0x20..0x30`) or the player object. Test on stairs.
+1. Projection: camera position/pitch/yaw near `Client+0x89488`, zoom, viewport; then
+   `Perspective.localToCanvas` works and DYNAMIC overlays (tile/NPC highlights) can follow the scene.
 2. Players: the PLAYER_INFO reader (`0x569a04`); the local player object holds the fine x/y
    seen at `Client+0x8950c`.
 3. Widgets and inventories (`IF_OPENSUB`/`UPDATE_INV_*` handlers), then items and `ItemContainerChanged`.
-4. Chat messages (`MESSAGE_GAME` → `ChatMessage` event) and menu entries (leads in `docs/offsets.md`).
-5. Overlays: implement Graphics2D on `android.graphics.Canvas` into a Bitmap, upload it as a GL
-   texture and draw it in the swap hook. Render on the game thread.
-6. Root-injector services plugins expect: `ClientThread`, `ConfigManager`, `OverlayManager`,
+4. Menu entries (leads in `docs/offsets.md`); NPC animation/overhead text (the server supports `::npcanim`, `::npcsay`).
+5. Root-injector services plugins expect: `ClientThread`, `ConfigManager`, `OverlayManager`,
    `ItemManager`, `ChatMessageManager`.
-7. Quest Helper (the target plugin) needs about 40 API types. Run it and implement whatever
+6. Quest Helper (the target plugin) needs about 40 API types. Run it and implement whatever
    `UnsupportedOperationException` it hits.

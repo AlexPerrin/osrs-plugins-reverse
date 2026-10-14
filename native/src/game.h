@@ -33,7 +33,9 @@ int changed_varp(uint32_t n);
 struct Point { int x, y; };
 Point scene_base();        // world tile of scene tile (0, 0) (top-level WorldView)
 Point player_world();       // world tile (x, y) = scene base + scene tile; {-1, -1} if unavailable
-Point walk_destination();   // tile the player was told to walk to; {-1, -1} when none
+Point walk_destination();
+int player_plane();         // 0-3; -1 if unavailable
+int scene_plane();          // WorldView plane (what RuneLite's WorldView.getPlane returns)   // tile the player was told to walk to; {-1, -1} when none
 Point player_local_tile();  // tile within the loaded scene
 Point player_fine();        // scene position in 1/128 tile units (RuneLite LocalPoint)
 
@@ -45,6 +47,22 @@ struct Npc {
     int world_x = 0, world_y = 0;  // world tile
     uintptr_t address = 0;         // Npc object; changes when the index is reused
 };
+// RuneLite conventions: x/y horizontal (local units), z height (negative is up).
+struct Camera {
+    bool valid = false;
+    int x = 0, y = 0, z = 0;
+    int pitch = 0, yaw = 0;  // 0..16383
+};
+Camera camera();
+
+struct ChatLine {
+    int id = -1, type = 0, cycle = 0;
+    std::string name, sender, text;
+};
+int next_message_id();
+// Looks up a chat message by id (the game keeps the last 100 per type). Game thread only.
+bool read_message(int id, ChatLine& out);
+
 // Walks the top-level WorldView's NPC table. Game thread only (the table is rebuilt by
 // NPC_INFO); other threads use client_thread::npcs().
 std::vector<Npc> read_npcs();

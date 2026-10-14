@@ -27,8 +27,11 @@ public final class HostPluginManager {
             PluginDescriptor d = type.getAnnotation(PluginDescriptor.class);
             String name = d != null ? d.name() : type.getSimpleName();
             Plugin plugin = type.getDeclaredConstructor().newInstance();
-            Injector child = root.createChildInjector(plugin);
-            child.injectMembers(plugin);
+            // As RuneLite: the plugin is its own module, and its class is bound to this
+            // instance so its overlays etc. can inject it. toInstance() injects its members.
+            @SuppressWarnings("unchecked")
+            Class<Plugin> cls = (Class<Plugin>) type;
+            Injector child = root.createChildInjector(plugin, binder -> binder.bind(cls).toInstance(plugin));
             plugin.injector = child;
             plugin.startUp();
             eventBus.register(plugin);

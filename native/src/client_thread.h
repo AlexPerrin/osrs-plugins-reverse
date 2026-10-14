@@ -16,6 +16,7 @@ enum class EventType {
     VarbitChanged,     // a = varp id, b = new value (any varp write, server or script)
     NpcSpawned,        // a = NPC index, b = NPC id
     NpcDespawned,      // a = NPC index, b = NPC id
+    ChatMessage,       // a = message id (see message()), b = type
 };
 
 struct Event {
@@ -39,6 +40,9 @@ void invoke(std::function<void()> task);
 // For the overlay: the most recent events (newest last), ClientTick excluded.
 std::vector<std::string> recent_events();
 uint64_t cycles();
+
+// A chat message captured when it was added (the last 256 are kept); safe from any thread.
+bool message(int id, game::ChatLine& out);
 
 // NPCs as of the end of the last cycle; safe from any thread.
 std::vector<game::Npc> npcs();

@@ -9,6 +9,7 @@ add_library(osrsrl SHARED
     src/agent.cpp
     src/client_thread.cpp
     src/game.cpp
+    src/gl_trace.cpp
     src/got_hook.cpp
     src/host_blob.S
     src/jni_bridge.cpp

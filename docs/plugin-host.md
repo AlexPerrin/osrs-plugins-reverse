@@ -11,7 +11,8 @@ game thread ── Client vtable slot 5 (doCycle) ──> client_thread.cpp ─�
               ├─ AndroidClient implements net.runelite.api.Client (generated ClientStub; overrides → Native)
               ├─ HostEventBus: honours net.runelite.client.eventbus.@Subscribe
               ├─ HostPluginManager: Guice child injector per plugin, startUp(), register
-              ├─ java.awt shim (host/awt): geometry, Color, image/event shells
+              ├─ java.awt shim (host/awt): geometry, Color, Font, strokes, Graphics2D; CanvasGraphics draws it
+              ├─ OverlayManager/FontManager replacements + RuneLite's own Overlay/components
               └─ slf4j → logcat binding (tags "rl.<Class>")
 ```
 
@@ -39,7 +40,9 @@ VarbitChanged).
 | `ClientTick`, `getGameCycle()` | doCycle hook, cycle global |
 | `VarbitChanged` (varp id + value), `getVarpValue`, `getServerVarpValue` | per-cycle diff of the varp table |
 | `getVarbitValue(id)` | the game's own varbit function `0x5d0040` (client thread only) |
-| `getLocalPlayer().getWorldLocation()/getLocalLocation()` | WorldView scene base + player scene tile (plane still 0) |
+| `getLocalPlayer().getWorldLocation()/getLocalLocation()`, `getPlane()` | WorldView scene base + player scene tile; plane from `Client+0xcb78` / `wv+0x18` |
+| `ChatMessage` (type, name, sender, text; `MessageNode` copy) | per-cycle poll of the game's next-message-id counter + by-id map |
+| Overlays: `OverlayManager`, `Overlay`, `OverlayPanel` + components, `OverlayUtil`, `FontManager` | `OverlayRenderer` draws on the game thread through `CanvasGraphics` (Graphics2D over android.graphics.Canvas) into a Bitmap at a 720-px-high logical canvas; `overlay.cpp` uploads it as a GL texture and composites it in the swap hook |
 | `getTopLevelWorldView()`, `getNpcs()`, `WorldView.npcs()`, `NpcSpawned`/`NpcDespawned` | NPC snapshot taken on the game thread every cycle (`client_thread::npcs()`); NPC id, name, index, world/local location |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
@@ -48,12 +51,13 @@ plugin logs show what to implement next.
 
 ## Gaps, in rough order
 
-- Plane; NPC composition/animation/health; other players; scene objects; widgets; items and
-  inventories; chat messages; menu entries.
+- Projection (camera, `Perspective`) so DYNAMIC overlays can follow the scene; NPC
+  composition/animation/overhead text; other players; scene objects; widgets; items and
+  inventories; menu entries; writing chat messages back.
 - `VarbitChanged` only has the varp id; RuneLite also posts one per affected varbit (needs the
   varbit → varp index from the cache).
-- Overlays: Graphics2D → Android Canvas → GL texture drawn in the eglSwapBuffers hook. Overlay
-  rendering must run on the game thread (desktop RuneLite draws on the client thread).
+- Overlays: no touch input, saved positions or menu entries yet; plugin canvas size is fixed
+  to 720 px height (the game's own UI scale is not matched).
 - ConfigManager, OverlayManager, ClientThread, ItemManager, etc. bound in the root injector.
   RuneLite's own EventBus can't be reused (needs `MethodHandles.privateLookupIn`, missing on API 28).
 - Script hooks, menu manager, inline hooks (needed for events without an obvious counter).

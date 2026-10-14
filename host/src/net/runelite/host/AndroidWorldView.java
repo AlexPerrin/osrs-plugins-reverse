@@ -14,8 +14,11 @@ public class AndroidWorldView extends WorldViewStub {
 
     @Override public int getId() { return -1; }
     @Override public boolean isTopLevel() { return true; }
-    // TODO: plane is not located yet.
-    @Override public int getPlane() { return 0; }
+    @Override
+    public int getPlane() {
+        int[] p = Native.playerPosition();
+        return p == null ? 0 : p[7];
+    }
 
     @Override
     public int getBaseX() {

@@ -27,15 +27,20 @@ struct Build {
     uint32_t f_changed_varps;    // Client: int[32] ring of varp ids changed by VARP_SMALL/LARGE
     uint32_t f_changed_count;    // Client: total writes into that ring
     uint32_t f_dest_x, f_dest_y;    // Client: walk destination tile (-1 when none)
+    uint32_t f_plane;               // Client: local player's plane
     uint32_t f_local_x, f_local_y;  // Client: local player's scene tile (world - scene base)
     uint32_t f_fine_x, f_fine_y;    // Client: local player's scene position, 128 units per tile
     uintptr_t get_varbit;           // int getVarbit(int id): looks up the varbit def, reads its varp bits
     uint32_t f_world_view;          // Client: WorldView* (NPC_INFO handlers pass Client[0x192a])
+    uint32_t wv_plane;                             // WorldView: current plane (then size x, y = 104)
     uint32_t wv_base_x, wv_base_y;                 // WorldView: world tile of scene (0, 0)
     uint32_t wv_npc_buckets, wv_npc_bucket_count;  // WorldView: hash map index -> Npc*
     uint32_t wv_npc_indices, wv_npc_count;         // WorldView: int[] of active NPC indices
     uint32_t npc_def, npc_fine_x, npc_fine_y;      // Npc: NpcType*, scene position (1/128 tile)
     uint32_t def_id, def_name;                     // NpcType: id, name (24-byte string)
+    uint32_t f_camera;          // Client: camera x, height, y, pitch, yaw (14-bit angles: 16384 per turn)
+    uintptr_t next_message_id;  // global int: id the next chat message gets (0x3f0a04 increments it)
+    uintptr_t messages_by_id;   // global hash map id -> Message* {?, buckets, u32 count}
 };
 
 constexpr Build kBuilds[] = {
@@ -43,8 +48,9 @@ constexpr Build kBuilds[] = {
      {0xf0, 0xff, 0xf1, 0x19, 0x1f, 0x3f, 0x23, 0x5d, 0x20, 0x85,
       0x7c, 0x02, 0x70, 0x44, 0xb9, 0xc9, 0xf7, 0x09, 0xcd, 0x8c},
      0xaee748, 0xaee6e8, 0x2020, 0xa69fe0, 0x411640, 0x1127ca0, 0x1127c60, 0x3058, 0x413c5c, 0x413cdc,
-     0xecdc, 0xece0, 0xcb7c, 0xcb80, 0x8950c, 0x89514, 0x5d0040,
-     0xc950, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x730, 0x1fc, 0x200, 0x0, 0x8},
+     0xecdc, 0xece0, 0xcb78, 0xcb7c, 0xcb80, 0x8950c, 0x89514, 0x5d0040,
+     0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x730, 0x1fc, 0x200, 0x0, 0x8,
+     0x89488, 0xaab658, 0xaab628},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -222,6 +228,54 @@ Point player_world() {
     if (!g_build || !client()) return {-1, -1};
     Point base = scene_base(), tile = player_local_tile();
     return {base.x + tile.x, base.y + tile.y};
+}
+
+Camera camera() {
+    Camera cam;
+    uintptr_t c = client();
+    if (!c) return cam;
+    uintptr_t b = c + g_build->f_camera;
+    cam.valid = true;
+    cam.x = read_at<int32_t>(b);
+    cam.z = read_at<int32_t>(b + 4);
+    cam.y = read_at<int32_t>(b + 8);
+    cam.pitch = read_at<int32_t>(b + 12) & 0x3fff;
+    cam.yaw = read_at<int32_t>(b + 16) & 0x3fff;
+    return cam;
+}
+
+int next_message_id() { return g_build ? read_at<int32_t>(g_base + g_build->next_message_id) : -1; }
+
+// Message (built by 0x3f0a04): +0x08 cycle, +0x40 type, +0x48 name, +0x70 sender, +0xa0 text.
+bool read_message(int id, ChatLine& out) {
+    if (!g_build) return false;
+    uintptr_t map = g_base + g_build->messages_by_id;
+    auto buckets = read_at<uintptr_t>(map + 8);
+    auto nb = read_at<uint32_t>(map + 0x10);
+    if (!buckets || !nb) return false;
+    for (auto node = read_at<uintptr_t>(buckets + (static_cast<uint32_t>(id) % nb) * 8); node;
+         node = read_at<uintptr_t>(node + 0x18)) {
+        if (read_at<int32_t>(node) != id) continue;
+        auto msg = read_at<uintptr_t>(node + 0x10);
+        if (!msg) return false;
+        out.id = id;
+        out.cycle = read_at<int32_t>(msg + 0x08);
+        out.type = read_at<int32_t>(msg + 0x40);
+        out.name = read_string(msg + 0x48);
+        out.sender = read_string(msg + 0x70);
+        out.text = read_string(msg + 0xa0);
+        return true;
+    }
+    return false;
+}
+
+int player_plane() { return g_build ? field(g_build->f_plane) : -1; }
+
+int scene_plane() {
+    uintptr_t c = client();
+    if (!c) return -1;
+    auto wv = read_at<uintptr_t>(c + g_build->f_world_view);
+    return wv ? read_at<int32_t>(wv + g_build->wv_plane) : -1;
 }
 
 Point walk_destination() {

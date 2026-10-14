@@ -14,6 +14,7 @@
 #include "client_thread.h"
 #include "game.h"
 #include "log.h"
+#include "overlay.h"
 
 extern "C" const char osrsrl_host_jar[];
 extern "C" const char osrsrl_host_jar_end[];
@@ -75,9 +76,9 @@ jboolean n_is_client_thread(JNIEnv*, jclass) { return client_thread::on_client_t
 jintArray n_player_position(JNIEnv* env, jclass) {
     if (game::game_state() != 30) return nullptr;
     game::Point w = game::player_world(), s = game::player_local_tile(), l = game::player_fine();
-    jint v[6] = {w.x, w.y, s.x, s.y, l.x, l.y};
-    jintArray arr = env->NewIntArray(6);
-    env->SetIntArrayRegion(arr, 0, 6, v);
+    jint v[8] = {w.x, w.y, s.x, s.y, l.x, l.y, game::player_plane(), game::scene_plane()};
+    jintArray arr = env->NewIntArray(8);
+    env->SetIntArrayRegion(arr, 0, 8, v);
     return arr;
 }
 
@@ -102,7 +103,58 @@ jobjectArray n_npcs(JNIEnv* env, jclass) {
     return out;
 }
 
+// {name, sender, text}, or null if the message is no longer kept.
+jobjectArray n_message(JNIEnv* env, jclass, jint id) {
+    game::ChatLine line;
+    if (!client_thread::message(id, line)) return nullptr;
+    jobjectArray out = env->NewObjectArray(3, env->FindClass("java/lang/String"), nullptr);
+    const std::string* parts[] = {&line.name, &line.sender, &line.text};
+    for (int i = 0; i < 3; i++) {
+        jstring str = env->NewStringUTF(parts[i]->c_str());
+        env->SetObjectArrayElement(out, i, str);
+        env->DeleteLocalRef(str);
+    }
+    return out;
+}
+
+jintArray n_screen_size(JNIEnv* env, jclass) {
+    jint v[2];
+    overlay_screen_size(&v[0], &v[1]);
+    jintArray arr = env->NewIntArray(2);
+    env->SetIntArrayRegion(arr, 0, 2, v);
+    return arr;
+}
+
+jobject n_overlay_buffer(JNIEnv* env, jclass, jint w, jint h) {
+    uint8_t* p = overlay_back_buffer(w, h);
+    return p ? env->NewDirectByteBuffer(p, static_cast<jlong>(w) * h * 4) : nullptr;
+}
+
+void n_overlay_publish(JNIEnv*, jclass, jint w, jint h) { overlay_publish(w, h); }
+
+jintArray n_camera(JNIEnv* env, jclass) {
+    game::Camera c = game::camera();
+    jint v[5] = {c.x, c.y, c.z, c.pitch, c.yaw};
+    jintArray arr = env->NewIntArray(5);
+    env->SetIntArrayRegion(arr, 0, 5, v);
+    return arr;
+}
+
+jstring n_property(JNIEnv* env, jclass, jstring name) {
+    const char* n = env->GetStringUTFChars(name, nullptr);
+    char value[PROP_VALUE_MAX] = "";
+    __system_property_get(n, value);
+    env->ReleaseStringUTFChars(name, n);
+    return env->NewStringUTF(value);
+}
+
 const JNINativeMethod kNatives[] = {
+    {"property", "(Ljava/lang/String;)Ljava/lang/String;", reinterpret_cast<void*>(n_property)},
+    {"camera", "()[I", reinterpret_cast<void*>(n_camera)},
+    {"screenSize", "()[I", reinterpret_cast<void*>(n_screen_size)},
+    {"overlayBuffer", "(II)Ljava/nio/ByteBuffer;", reinterpret_cast<void*>(n_overlay_buffer)},
+    {"overlayPublish", "(II)V", reinterpret_cast<void*>(n_overlay_publish)},
+    {"message", "(I)[Ljava/lang/String;", reinterpret_cast<void*>(n_message)},
     {"npcs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_npcs)},
     {"gameState", "()I", reinterpret_cast<void*>(n_game_state)},
     {"gameCycle", "()I", reinterpret_cast<void*>(n_game_cycle)},

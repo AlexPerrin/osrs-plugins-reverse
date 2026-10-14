@@ -22,6 +22,9 @@ public class Rectangle extends Rectangle2D {
     }
     public void setBounds(int x, int y, int w, int h) { this.x = x; this.y = y; width = w; height = h; }
     public void setLocation(int x, int y) { this.x = x; this.y = y; }
+    public void setLocation(Point p) { setLocation(p.x, p.y); }
+    public void setBounds(Rectangle r) { setBounds(r.x, r.y, r.width, r.height); }
+    public void setSize(Dimension d) { setSize(d.width, d.height); }
     public void setSize(int w, int h) { width = w; height = h; }
     public void translate(int dx, int dy) { x += dx; y += dy; }
     public void grow(int h, int v) { x -= h; y -= v; width += 2 * h; height += 2 * v; }

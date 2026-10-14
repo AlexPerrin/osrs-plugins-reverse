@@ -10,10 +10,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import dalvik.system.DexClassLoader;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
@@ -28,7 +30,7 @@ public final class Host {
 
     // Must match client_thread::EventType.
     private static final int CLIENT_TICK = 0, GAME_TICK = 1, GAME_STATE_CHANGED = 2, VARBIT_CHANGED = 3,
-            NPC_SPAWNED = 4, NPC_DESPAWNED = 5;
+            NPC_SPAWNED = 4, NPC_DESPAWNED = 5, CHAT_MESSAGE = 6;
 
     private static final ConcurrentLinkedQueue<Runnable> queue = new ConcurrentLinkedQueue<>();
     private static volatile HostEventBus eventBus;
@@ -36,6 +38,9 @@ public final class Host {
     private static final NpcCache npcCache = new NpcCache();
     private static final AndroidWorldView worldView = new AndroidWorldView(npcCache);
     private static final ClientTick clientTick = new ClientTick();
+    private static final net.runelite.client.ui.overlay.OverlayManager overlayManager =
+            new net.runelite.client.ui.overlay.OverlayManager();
+    private static final OverlayRenderer overlayRenderer = new OverlayRenderer(overlayManager);
     private static final GameTick gameTick = new GameTick();
 
     private Host() {}
@@ -50,6 +55,7 @@ public final class Host {
             protected void configure() {
                 bind(Client.class).toInstance(client);
                 bind(HostEventBus.class).toInstance(bus);
+                bind(net.runelite.client.ui.overlay.OverlayManager.class).toInstance(overlayManager);
             }
         });
         HostPluginManager plugins = new HostPluginManager(injector, bus);
@@ -106,6 +112,11 @@ public final class Host {
             case CLIENT_TICK:
                 bus.post(clientTick);
                 runQueued();
+                try {
+                    overlayRenderer.render();
+                } catch (Throwable t) {
+                    Log.e(TAG, "overlay rendering failed", t);
+                }
                 break;
             case GAME_TICK:
                 bus.post(gameTick);
@@ -125,6 +136,15 @@ public final class Host {
             case NPC_DESPAWNED: {
                 AndroidNPC npc = npcCache.cached(a);
                 if (npc != null) bus.post(new NpcDespawned(npc));
+                break;
+            }
+            case CHAT_MESSAGE: {
+                String[] m = Native.message(a);
+                if (m == null) break;
+                ChatMessageType chatType = ChatMessageType.of(b);
+                int now = (int) (System.currentTimeMillis() / 1000);
+                AndroidMessageNode node = new AndroidMessageNode(a, chatType, m[0], m[1], m[2], now);
+                bus.post(new ChatMessage(node, chatType, m[0], m[2], m[1], now));
                 break;
             }
             case VARBIT_CHANGED: {

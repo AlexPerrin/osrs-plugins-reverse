@@ -22,8 +22,8 @@ public class BufferedImage extends Image {
     public int getWidth() { return width; }
     public int getHeight() { return height; }
     public int getType() { return type; }
-    @Override public int getWidth(Object observer) { return width; }
-    @Override public int getHeight(Object observer) { return height; }
+    @Override public int getWidth(ImageObserver observer) { return width; }
+    @Override public int getHeight(ImageObserver observer) { return height; }
     public int getRGB(int x, int y) { return type == TYPE_INT_RGB ? pixels[y * width + x] | 0xff000000 : pixels[y * width + x]; }
     public void setRGB(int x, int y, int argb) { pixels[y * width + x] = argb; }
     public int[] getRGB(int x, int y, int w, int h, int[] out, int off, int scan) {
@@ -34,8 +34,19 @@ public class BufferedImage extends Image {
     public void setRGB(int x, int y, int w, int h, int[] in, int off, int scan) {
         for (int j = 0; j < h; j++) System.arraycopy(in, off + j * scan, pixels, (y + j) * width + x, w);
     }
+    /** Host extension: a cached android.graphics.Bitmap copy for drawing. */
+    public android.graphics.Bitmap toBitmap() {
+        return android.graphics.Bitmap.createBitmap(pixels, width, height, android.graphics.Bitmap.Config.ARGB_8888);
+    }
+
     /** Host extension: the backing ARGB pixels (row-major). */
     public int[] getPixels() { return pixels; }
     @Override public Graphics getGraphics() { return createGraphics(); }
-    public Graphics2D createGraphics() { throw new UnsupportedOperationException("BufferedImage.createGraphics: Graphics2D shim not implemented yet"); }
+    /**
+     * Draws into an android.graphics.Bitmap mirror of the pixels; the result is copied back
+     * when the Graphics is disposed (net.runelite.host.CanvasGraphics).
+     */
+    public Graphics2D createGraphics() {
+        return net.runelite.host.CanvasGraphics.forImage(this);
+    }
 }

@@ -18,7 +18,8 @@ public class AndroidNPC extends NPCStub {
     @Override public int getIndex() { return index; }
     @Override public int getId() { return id; }
     @Override public String getName() { return name; }
-    @Override public WorldPoint getWorldLocation() { return new WorldPoint(worldX, worldY, 0); }
+    // NPCs are on the scene's current plane until the per-NPC plane field is located.
+    @Override public WorldPoint getWorldLocation() { return new WorldPoint(worldX, worldY, Host.worldView().getPlane()); }
     @Override public LocalPoint getLocalLocation() { return new LocalPoint(localX, localY, -1); }
     @Override public WorldView getWorldView() { return Host.worldView(); }
 

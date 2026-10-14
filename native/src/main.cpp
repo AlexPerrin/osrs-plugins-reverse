@@ -5,6 +5,7 @@
 #include "agent.h"
 #include "client_thread.h"
 #include "game.h"
+#include "gl_trace.h"
 #include "got_hook.h"
 #include "jni_bridge.h"
 #include "log.h"
@@ -20,6 +21,7 @@ SwapFn g_orig_swap = nullptr;
 
 EGLBoolean hook_eglSwapBuffers(EGLDisplay display, EGLSurface surface) {
     overlay_frame(display, surface);
+    gl_trace_frame();
     return g_orig_swap(display, surface);
 }
 
@@ -33,6 +35,7 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void*) {
         g_orig_swap = eglSwapBuffers;
     }
     net_trace_init(kGameLib);
+    gl_trace_init(kGameLib);
     if (game::init()) client_thread::install();
     agent_start();
     jni_bridge_start(vm);

@@ -8,8 +8,7 @@ public class AndroidPlayer extends PlayerStub {
     @Override
     public WorldPoint getWorldLocation() {
         int[] p = Native.playerPosition();
-        // TODO: plane is not located yet.
-        return p == null ? null : new WorldPoint(p[0], p[1], 0);
+        return p == null ? null : new WorldPoint(p[0], p[1], p[6]);
     }
 
     @Override

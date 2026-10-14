@@ -15,6 +15,8 @@ public interface Shape {
     default boolean contains(double x, double y, double w, double h) {
         return contains(x, y) && contains(x + w, y) && contains(x, y + h) && contains(x + w, y + h);
     }
+    default boolean contains(Rectangle2D r) { return contains(r.getX(), r.getY(), r.getWidth(), r.getHeight()); }
+    default boolean intersects(Rectangle2D r) { return intersects(r.getX(), r.getY(), r.getWidth(), r.getHeight()); }
     PathIterator getPathIterator(AffineTransform at);
     default PathIterator getPathIterator(AffineTransform at, double flatness) { return getPathIterator(at); }
 }

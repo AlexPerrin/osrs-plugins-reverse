@@ -19,6 +19,8 @@ readelf/objdump). The Ghidra project in `re/ghidra` loads the library at image b
 | `Client::changedVarps[32]` / count | `+0x413c5c` / `+0x413cdc` | Ring of varp ids written by VARP_SMALL/LARGE (index = count & 31) |
 | walk destination tile x, y | `+0xecdc`, `+0xece0` | Walk diff; -1 when there is no destination (at first it was mistaken for the player position) |
 | `Client::worldView` (top-level WorldView*) | `+0xc950` | Passed to the NPC_INFO reader by dispatcher cases 0x91/0x96 (`Client[0x192a]`) |
+| WorldView plane, scene size x, y | `wv+0x18`, `wv+0x1c`, `wv+0x20` | Plane follows `::tele … 1/2/0`; size 104 × 104 |
+| local player plane | `+0xcb78` | Same teleport diff; just before the scene tile x/y |
 | WorldView scene base x, y | `wv+0x24`, `wv+0x28` | 3168, 3168 at Lumbridge; player world = base + scene tile |
 | WorldView NPC map | `wv+0x98` buckets, `wv+0xa0` bucket count | Hash map index → Npc*: node `{int index; …; +0x10 Npc*; +0x18 next}`, bucket = index % count |
 | WorldView NPC index list / count | `wv+0xd0` (int*), `wv+0xd8` | Rebuilt by NPC_INFO (`0x469778`) |
@@ -37,7 +39,11 @@ rewriting vtable slot 5 (`0xa6a008`, in .data.rel.ro) after checking that it hol
 |---|---|
 | `0x41aa80` | References "Login completed" |
 | `0x5d0040` | Varbit read: `varps[def.index] >> def.lsb & mask[msb - lsb]`; varbit defs via `0x64b450`, varp values at `0x1127cb0` |
-| plane | Not found yet; `+0xecd8` or nearby is a candidate |
+| next chat message id | `0xaab658` | Global counter, incremented by the Message constructor `0x3f0a04` |
+| chat messages by id | `0xaab628` | Hash map `{?, buckets +8, u32 count +0x10}`; node `{int id; +0x10 Message*; +0x18 next}` |
+| chat channels | `0xaab5e0` | Map type → channel: 100 × `{ctrl*, Message*}` ring, count `+0x640`, write index `+0x644` (`0x3ef964`) |
+| Message | | `+0x00` id node (`node+0x10` = id), `+0x08` cycle, `+0x40` type, `+0x48` name, `+0x70` sender, `+0xa0` text (24-byte strings) |
+| addChatMessage | `0x43a9c0(client, type, name, text)` | Called by MESSAGE_GAME (dispatcher case 0x51) |
 | `0x441dd4` | "Unrecognized packet type: %d" |
 | `0x51a7fc`, `0x50621c` | Only readers of the global "Walk here" `std::string` (`0x18d1a50`) → menu builders |
 | `0x5820b4` | Console `~debugproc` help → command table, script VM entry |

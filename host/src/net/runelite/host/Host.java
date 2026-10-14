@@ -6,7 +6,6 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import java.io.File;
 import java.util.Enumeration;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import dalvik.system.DexClassLoader;
@@ -30,13 +29,15 @@ public final class Host {
 
     // Must match client_thread::EventType.
     private static final int CLIENT_TICK = 0, GAME_TICK = 1, GAME_STATE_CHANGED = 2, VARBIT_CHANGED = 3,
-            NPC_SPAWNED = 4, NPC_DESPAWNED = 5, CHAT_MESSAGE = 6, WIDGET_LOADED = 7, WIDGET_CLOSED = 8;
+            NPC_SPAWNED = 4, NPC_DESPAWNED = 5, CHAT_MESSAGE = 6, WIDGET_LOADED = 7, WIDGET_CLOSED = 8,
+            PLAYER_SPAWNED = 9, PLAYER_DESPAWNED = 10;
 
-    private static final ConcurrentLinkedQueue<Runnable> queue = new ConcurrentLinkedQueue<>();
+    private static final net.runelite.client.callback.ClientThread clientThread = new net.runelite.client.callback.ClientThread();
     private static volatile HostEventBus eventBus;
     private static Client client;
     private static final NpcCache npcCache = new NpcCache();
-    private static final AndroidWorldView worldView = new AndroidWorldView(npcCache);
+    private static final PlayerCache playerCache = new PlayerCache();
+    private static final AndroidWorldView worldView = new AndroidWorldView(npcCache, playerCache);
     private static final ClientTick clientTick = new ClientTick();
     private static final net.runelite.client.ui.overlay.OverlayManager overlayManager =
             new net.runelite.client.ui.overlay.OverlayManager();
@@ -55,6 +56,7 @@ public final class Host {
             protected void configure() {
                 bind(Client.class).toInstance(client);
                 bind(HostEventBus.class).toInstance(bus);
+                bind(net.runelite.client.callback.ClientThread.class).toInstance(clientThread);
                 bind(net.runelite.client.ui.overlay.OverlayManager.class).toInstance(overlayManager);
                 bind(net.runelite.client.config.ConfigManager.class).toInstance(new net.runelite.client.config.ConfigManager(
                         new File(new File(pluginDir).getParentFile(), "settings.properties"), bus::post));
@@ -122,6 +124,7 @@ public final class Host {
                 break;
             case GAME_TICK:
                 bus.post(gameTick);
+                clientThread.runTickEnd();
                 break;
             case GAME_STATE_CHANGED: {
                 GameStateChanged e = new GameStateChanged();
@@ -149,6 +152,16 @@ public final class Host {
                 bus.post(new ChatMessage(node, chatType, m[0], m[2], m[1], now));
                 break;
             }
+            case PLAYER_SPAWNED: {
+                AndroidPlayer p = playerCache.get(a);
+                if (p != null) bus.post(new net.runelite.api.events.PlayerSpawned(p));
+                break;
+            }
+            case PLAYER_DESPAWNED: {
+                AndroidPlayer p = playerCache.cached(a);
+                if (p != null) bus.post(new net.runelite.api.events.PlayerDespawned(p));
+                break;
+            }
             case WIDGET_LOADED: {
                 net.runelite.api.events.WidgetLoaded e = new net.runelite.api.events.WidgetLoaded();
                 e.setGroupId(a);
@@ -169,26 +182,20 @@ public final class Host {
         }
     }
 
+    static AndroidPlayer localPlayer() {
+        return playerCache.local();
+    }
+
     static AndroidWorldView worldView() {
         return worldView;
     }
 
     /** RuneLite's ClientThread.invoke equivalent. */
     public static void invoke(Runnable r) {
-        if (Native.isClientThread()) {
-            r.run();
-        } else {
-            queue.add(r);
-        }
+        clientThread.invoke(r);
     }
 
     static void runQueued() {
-        for (Runnable r; (r = queue.poll()) != null; ) {
-            try {
-                r.run();
-            } catch (Throwable t) {
-                Log.e(TAG, "client thread task threw", t);
-            }
-        }
+        clientThread.runQueued();
     }
 }

@@ -156,7 +156,29 @@ jstring n_widget_text(JNIEnv* env, jclass, jint id) {
 }
 jint n_root_interface(JNIEnv*, jclass) { return game::root_interface(); }
 
+// {int[] packed (index, local, localX, localY, worldX, worldY), String[] names}
+jobjectArray n_players(JNIEnv* env, jclass) {
+    std::vector<game::PlayerInfo> players = client_thread::players();
+    jsize n = static_cast<jsize>(players.size());
+    std::vector<jint> packed;
+    jobjectArray names = env->NewObjectArray(n, env->FindClass("java/lang/String"), nullptr);
+    for (jsize i = 0; i < n; i++) {
+        const game::PlayerInfo& p = players[i];
+        packed.insert(packed.end(), {p.index, p.local ? 1 : 0, p.fine_x, p.fine_y, p.world_x, p.world_y});
+        jstring name = env->NewStringUTF(p.name.c_str());
+        env->SetObjectArrayElement(names, i, name);
+        env->DeleteLocalRef(name);
+    }
+    jintArray ints = env->NewIntArray(n * 6);
+    env->SetIntArrayRegion(ints, 0, n * 6, packed.data());
+    jobjectArray out = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(out, 0, ints);
+    env->SetObjectArrayElement(out, 1, names);
+    return out;
+}
+
 const JNINativeMethod kNatives[] = {
+    {"players", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_players)},
     {"widgetExists", "(I)Z", reinterpret_cast<void*>(n_widget_exists)},
     {"widgetHidden", "(I)Z", reinterpret_cast<void*>(n_widget_hidden)},
     {"widgetText", "(I)Ljava/lang/String;", reinterpret_cast<void*>(n_widget_text)},

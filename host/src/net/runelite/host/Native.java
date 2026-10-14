@@ -34,6 +34,8 @@ final class Native {
     static native java.nio.ByteBuffer overlayBuffer(int width, int height);
     /** Makes the back buffer the displayed overlay frame; (0, 0) hides overlays. */
     static native void overlayPublish(int width, int height);
+    /** Players as of the last cycle: {int[] packed, String[] names}, packed = {index, local, localX, localY, worldX, worldY}. */
+    static native Object[] players();
     /** {name, sender, text} of a captured chat message, or null. */
     static native String[] message(int id);
 }

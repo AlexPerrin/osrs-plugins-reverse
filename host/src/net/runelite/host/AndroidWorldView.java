@@ -7,9 +7,26 @@ import net.runelite.api.NPC;
 /** The top-level world view (the main scene). */
 public class AndroidWorldView extends WorldViewStub {
     private final NpcCache npcs;
+    private final PlayerCache players;
 
-    AndroidWorldView(NpcCache npcs) {
+    AndroidWorldView(NpcCache npcs, PlayerCache players) {
         this.npcs = npcs;
+        this.players = players;
+    }
+
+    @Override
+    public IndexedObjectSet<? extends net.runelite.api.Player> players() {
+        return new IndexedObjectSet<net.runelite.api.Player>() {
+            @Override
+            public net.runelite.api.Player byIndex(int index) {
+                return players.get(index);
+            }
+
+            @Override
+            public Iterator<net.runelite.api.Player> iterator() {
+                return java.util.Collections.<net.runelite.api.Player>unmodifiableList(players.all()).iterator();
+            }
+        };
     }
 
     @Override public int getId() { return -1; }

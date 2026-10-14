@@ -18,10 +18,12 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 /** Marks the player and NPCs through RuneLite's Perspective (checks the camera mapping). */
 class MarkerOverlay extends Overlay {
     private final Client client;
+    private final TickInfoConfig config;
 
     @Inject
-    MarkerOverlay(Client client) {
+    MarkerOverlay(Client client, TickInfoConfig config) {
         this.client = client;
+        this.config = config;
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ABOVE_SCENE);
     }
@@ -29,11 +31,11 @@ class MarkerOverlay extends Overlay {
     @Override
     public Dimension render(Graphics2D g) {
         Player p = client.getLocalPlayer();
-        if (p == null) return null;
+        if (p == null || !config.showMarkers()) return null;
         // Tile heights aren't mapped yet; the courtyard is flat, so use a fixed ground height.
         int z = -240;
         mark(g, p.getLocalLocation(), z, "you", Color.GREEN);
-        for (NPC npc : client.getNpcs()) mark(g, npc.getLocalLocation(), z, npc.getName(), Color.YELLOW);
+        for (NPC npc : client.getNpcs()) mark(g, npc.getLocalLocation(), z, npc.getName(), config.npcColor());
         return null;
     }
 

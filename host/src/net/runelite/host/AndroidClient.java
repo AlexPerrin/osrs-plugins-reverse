@@ -6,7 +6,6 @@ import net.runelite.api.WorldView;
 
 /** net.runelite.api.Client backed by the native game. Methods not overridden here throw. */
 public class AndroidClient extends ClientStub {
-    private final AndroidPlayer localPlayer = new AndroidPlayer();
     private final AndroidWorldView worldView;
 
     AndroidClient(AndroidWorldView worldView) {
@@ -51,7 +50,7 @@ public class AndroidClient extends ClientStub {
 
     @Override
     public Player getLocalPlayer() {
-        return getGameState() == GameState.LOGGED_IN ? localPlayer : null;
+        return getGameState() == GameState.LOGGED_IN ? Host.localPlayer() : null;
     }
 
     // --- camera and viewport (the viewport is the whole logical overlay canvas) ---

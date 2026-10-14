@@ -3,6 +3,7 @@
 #include <elf.h>
 #include <link.h>
 
+#include <algorithm>
 #include <cstring>
 
 #include "got_hook.h"
@@ -36,6 +37,10 @@ struct Build {
     uint32_t wv_base_x, wv_base_y;                 // WorldView: world tile of scene (0, 0)
     uint32_t wv_npc_buckets, wv_npc_bucket_count;  // WorldView: hash map index -> Npc*
     uint32_t wv_npc_indices, wv_npc_count;         // WorldView: int[] of active NPC indices
+    uint32_t wv_player_buckets, wv_player_bucket_count;  // WorldView: hash map index -> Player*
+    uint32_t f_local_player_index;                 // Client: local player's index in that map
+    uint32_t player_name;                          // Player: pointer to a 24-byte string (name)
+    uint32_t f_gpi;  // Client: player-info state; int count, then int[count] high-res player indices
     uint32_t npc_def, npc_fine_x, npc_fine_y;      // Npc: NpcType*, scene position (1/128 tile)
     uint32_t def_id, def_name;                     // NpcType: id, name (24-byte string)
     uint32_t f_camera;          // Client: camera x, height, y, pitch, yaw (14-bit angles: 16384 per turn)
@@ -53,7 +58,7 @@ constexpr Build kBuilds[] = {
       0x7c, 0x02, 0x70, 0x44, 0xb9, 0xc9, 0xf7, 0x09, 0xcd, 0x8c},
      0xaee748, 0xaee6e8, 0x2020, 0xa69fe0, 0x411640, 0x1127ca0, 0x1127c60, 0x3058, 0x413c5c, 0x413cdc,
      0xecdc, 0xece0, 0xcb78, 0xcb7c, 0xcb80, 0x8950c, 0x89514, 0x5d0040,
-     0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x730, 0x1fc, 0x200, 0x0, 0x8,
+     0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x68, 0x70, 0xcb0c, 0x718, 0xcb90, 0x730, 0x1fc, 0x200, 0x0, 0x8,
      0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0xaab658, 0xaab628},
 };
 
@@ -226,6 +231,46 @@ Point scene_base() {
     auto wv = read_at<uintptr_t>(c + g_build->f_world_view);
     if (!wv) return {-1, -1};
     return {read_at<int32_t>(wv + g_build->wv_base_x), read_at<int32_t>(wv + g_build->wv_base_y)};
+}
+
+std::vector<PlayerInfo> read_players() {
+    std::vector<PlayerInfo> out;
+    uintptr_t c = client();
+    if (!c || game_state() != 30) return out;
+    auto wv = read_at<uintptr_t>(c + g_build->f_world_view);
+    if (!wv) return out;
+    auto buckets = read_at<uintptr_t>(wv + g_build->wv_player_buckets);
+    auto count = read_at<uint64_t>(wv + g_build->wv_player_bucket_count) & 0xffffffff;
+    if (!buckets || !count || count > 1 << 16) return out;
+    uintptr_t sentinel = read_at<uintptr_t>(buckets + count * 8);
+    int base_x = read_at<int32_t>(wv + g_build->wv_base_x), base_y = read_at<int32_t>(wv + g_build->wv_base_y);
+    int local = read_at<int32_t>(c + g_build->f_local_player_index);
+    // The map keeps players that have left view; the GPI index list is the live set.
+    int active_count = read_at<int32_t>(c + g_build->f_gpi);
+    if (active_count < 0 || active_count > 2048) return out;
+    std::vector<int32_t> active(active_count);
+    for (int i = 0; i < active_count; i++) active[i] = read_at<int32_t>(c + g_build->f_gpi + 4 + i * 4);
+    std::sort(active.begin(), active.end());
+    for (uint64_t b = 0; b < count; b++) {
+        int guard = 0;
+        for (auto node = read_at<uintptr_t>(buckets + b * 8); node && node != sentinel && guard++ < 2048;
+             node = read_at<uintptr_t>(node + 0x18)) {
+            auto p = read_at<uintptr_t>(node + 0x10);
+            if (!p || !std::binary_search(active.begin(), active.end(), read_at<int32_t>(node))) continue;
+            PlayerInfo info;
+            info.index = read_at<int32_t>(node);
+            info.address = p;
+            info.local = info.index == local;
+            auto name = read_at<uintptr_t>(p + g_build->player_name);
+            if (name) info.name = read_string(name);
+            info.fine_x = read_at<int32_t>(p + g_build->npc_fine_x);
+            info.fine_y = read_at<int32_t>(p + g_build->npc_fine_y);
+            info.world_x = base_x + (info.fine_x >> 7);
+            info.world_y = base_y + (info.fine_y >> 7);
+            out.push_back(std::move(info));
+        }
+    }
+    return out;
 }
 
 Point player_world() {

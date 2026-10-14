@@ -55,7 +55,7 @@ host/build.sh                                    # Java host → re/host/host.ja
 cmake -S native -B re/build -G Ninja -DCMAKE_TOOLCHAIN_FILE=$HOME/Android/Sdk/ndk/android-ndk-r27d/build/cmake/android.toolchain.cmake \
       -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 -DCMAKE_BUILD_TYPE=Release   # once
 ninja -C re/build                                # libosrsrl.so (embeds host.jar)
-SERVER=10.0.2.2:8080 ADB=/mnt/c/Users/Alex/AppData/Local/Android/Sdk/platform-tools/adb.exe \
+LOCAL_AUTH=1 SERVER=10.0.2.2:8080 ADB=/mnt/c/Users/Alex/AppData/Local/Android/Sdk/platform-tools/adb.exe \
     ANDROID_SERIAL=127.0.0.1:5555 tools/repack.sh --install
 tools/dex-plugin.sh in.jar re/host/plugins/x.jar
 adb push re/host/plugins/x.jar /sdcard/Android/data/com.jagex.oldscape.android/files/plugins/
@@ -68,13 +68,15 @@ Gotchas:
 - Under WSL use Windows `adb.exe` (run `adb kill-server` in WSL first). BlueStacks is at `127.0.0.1:5555`.
 - Run `tools/repack.sh` bare. Don't prefix `cd … &&` or append a pipe, or the permission rule
   won't match.
-- Never uninstall the app: the login lives in app data, and signing in again needs the user
-  (real Jagex login behind Cloudflare). `repack.sh --install` uses `install -r`.
+- Sign-in: with `LOCAL_AUTH=1` builds the test server is the OAuth provider. If the app is
+  signed out: "Sign in with Email / Username", close the privacy screen (X), then Play Now
+  (957,563). Without LOCAL_AUTH the app wants the real Jagex login, which only the user may do.
+  `repack.sh --install` uses `install -r`, so reinstalls keep the login.
 - Shared device: post "taking device" / "device free" to the server session (SendMessage)
   before adb input or reinstalls. Server container restarts log the client out.
-- Chat commands over adb: tap the keyboard button (90,220), wait about 1 s, `input text` (spaces as
-  `%s`), then `keyevent 66`. The first Enter is sometimes lost, so check the chat line before the
-  next command. `::tele x y plane`, `::pos`, `::npc id`, `::npcsay text` and `::npcanim id` are useful.
+- Chat commands over adb: `input text` (spaces as `%s`), then `keyevent 66`. Enter only works
+  while the soft keyboard is shown (`dumpsys input_method | grep mInputShown`); tap the keyboard
+  button (90,220) first if it isn't. `::talk` opens a dialogue (group 231), `::obj id n` drops an item. `::tele x y plane`, `::pos`, `::npc id`, `::npcsay text` and `::npcanim id` are useful.
 - The example plugin logs a lot; run `adb logcat -G 16M` or the agent token scrolls out of the buffer.
 - Ghidra addresses = ELF vaddr + 0x100000. `docs/offsets.md` uses ELF vaddrs.
 
@@ -97,13 +99,15 @@ as long as the call happens on the game thread.
 
 ## Suggested next steps
 
-1. Projection: camera position/pitch/yaw near `Client+0x89488`, zoom, viewport; then
-   `Perspective.localToCanvas` works and DYNAMIC overlays (tile/NPC highlights) can follow the scene.
-2. Players: the PLAYER_INFO reader (`0x569a04`); the local player object holds the fine x/y
+1. Tile heights (for `Perspective` with real ground height) and the zoom field (scale is only
+   right at the default zoom); then NPC hulls/convex shapes need models (harder).
+2. Widget geometry (x/y/width/height, children, item ids/quantities, actions) so widget
+   overlays and `ItemContainer`s work; IF_SETEVENTS ops; inventory via UPDATE_INV_*.
+3. Players: the PLAYER_INFO reader (`0x569a04`); the local player object holds the fine x/y
    seen at `Client+0x8950c`.
-3. Widgets and inventories (`IF_OPENSUB`/`UPDATE_INV_*` handlers), then items and `ItemContainerChanged`.
 4. Menu entries (leads in `docs/offsets.md`); NPC animation/overhead text (the server supports `::npcanim`, `::npcsay`).
-5. Root-injector services plugins expect: `ClientThread`, `ConfigManager`, `OverlayManager`,
-   `ItemManager`, `ChatMessageManager`.
+5. Root-injector services plugins still expect: `ClientThread`, `ItemManager`,
+   `ChatMessageManager`, `InfoBoxManager`, `SpriteManager`, `Notifier`; touch input for overlays;
+   a settings UI for `ConfigManager` (values are in files/settings.properties for now).
 6. Quest Helper (the target plugin) needs about 40 API types. Run it and implement whatever
    `UnsupportedOperationException` it hits.

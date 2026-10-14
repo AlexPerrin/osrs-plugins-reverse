@@ -38,7 +38,12 @@ readelf/objdump). The Ghidra project in `re/ghidra` loads the library at image b
 | top-level interface id | `+0x413a88` | Set by IF_OPENTOP (case 0x4b) |
 | open sub-interfaces | `+0x413a60` buckets, `+0x413a68` count | Node `{u32 component, u32 group, …, +0x10 next}`; IF_OPENSUB (case 0x48) → `0x462640(client, component, group, type)` |
 | Widget fields | | `+0x78` hidden (IF_SETHIDE 0x4d), `+0x98` colour (IF_SETCOLOUR 0x1d), `+0xfc`/`+0x100` model type/id (IF_SETNPCHEAD 0x3e, IF_SETPLAYERHEAD 0x4f), `+0x10c` sequence (IF_SETANIM 0x1c), `+0x11c`/`+0x120`/`+0x128` rotation/zoom (0x6a), `+0x158` text (IF_SETTEXT 0x7a), `+0xb78` redraw cycle |
+| Widget geometry (unverified) | | `+0x54`/`+0x58` width/height, `+0x5c`/`+0x60` relative x/y, `+0x64`/`+0x68` second width/height (original?), `+0x94` type?, `+0x128` = 100 (zoom default). From 601:49 (519×145) and 162:568 (479×96 at 20,9) |
+| player-info (GPI) state | `Client+0xcb90` | `int count; int indices[count]` = high-resolution (visible) players, the live set; the WorldView map also keeps players that left. Passed to the PLAYER_INFO reader (`0x569a04`, dispatcher case 0x5a) |
+| Player name | `*(player+0x718)` → 24-byte string | "Tester" found by pointer scan |
 | local player getter | `0x43f8dc(client)` | Used by IF_SETPLAYERHEAD; player `+0x728` = appearance |
+| world views map | `Client+0xc878` | `{…, +0x20 buckets, +0x28 count}`, key = world view id (`Client+0xcb10` for the local player's), value WorldView* (`0x4ae3d8`) |
+| WorldView player map | `wv+0x68` buckets, `wv+0x70` count | Node `{int index; +0x10 Player*; +0x18 next}` (`0x4b0da4`); local player index at `Client+0xcb0c`. Player/NPC likely share the Actor layout (fine x/y `+0x1fc/+0x200`): unverified |
 
 `doCycle` is reached only through the vtable (no direct calls), so `client_thread.cpp` hooks it by
 rewriting vtable slot 5 (`0xa6a008`, in .data.rel.ro) after checking that it holds `0x411640`.

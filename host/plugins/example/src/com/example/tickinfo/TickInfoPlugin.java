@@ -14,6 +14,9 @@ import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
+import com.google.inject.Provides;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 import org.slf4j.Logger;
@@ -42,9 +45,23 @@ public class TickInfoPlugin extends Plugin {
     @Inject
     private MarkerOverlay markers;
 
+    @Inject
+    private TickInfoConfig config;
+
+    @Provides
+    TickInfoConfig provideConfig(ConfigManager configManager) {
+        return configManager.getConfig(TickInfoConfig.class);
+    }
+
+    @Subscribe
+    public void onConfigChanged(ConfigChanged e) {
+        log.info("config changed {}.{}: {} -> {}", e.getGroup(), e.getKey(), e.getOldValue(), e.getNewValue());
+    }
+
     @Override
     protected void startUp() {
-        log.info("Tick Info started; game state {}", client.getGameState());
+        log.info("Tick Info started; game state {}; config showMarkers={} npcColor={}", client.getGameState(),
+                config.showMarkers(), config.npcColor());
         overlayManager.add(overlay);
         overlayManager.add(markers);
     }
@@ -68,6 +85,7 @@ public class TickInfoPlugin extends Plugin {
         log.info("tick {} player at {} varbit8119={}", client.getTickCount(), p != null ? p.getWorldLocation() : null,
                 client.getVarbitValue(8119));
         log.info("npcs: {}", client.getNpcs());
+        log.info("players: {} local={}", client.getPlayers(), client.getLocalPlayer() != null ? client.getLocalPlayer().getName() : null);
     }
 
     @Subscribe

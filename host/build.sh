@@ -53,7 +53,8 @@ javac -nowarn -Xlint:none -source 8 -target 8 -bootclasspath "$ANDROID_JAR:$OUT/
     'net/runelite/client/ui/runescape*.ttf')
 # Classes the host replaces with same-name sources (d8 rejects duplicates).
 rm -f "$OUT"/client-classes/net/runelite/client/config/ConfigManager*.class \
-      "$OUT"/client-classes/net/runelite/client/config/ConfigInvocationHandler*.class
+      "$OUT"/client-classes/net/runelite/client/config/ConfigInvocationHandler*.class \
+      "$OUT"/client-classes/net/runelite/client/callback/ClientThread*.class
 (cd "$OUT/client-classes" && jar cf ../client-subset.jar .)
 # Resources (fonts) go into host.jar beside the dex files after dexing.
 mkdir -p "$OUT/resources/net/runelite/client/ui"

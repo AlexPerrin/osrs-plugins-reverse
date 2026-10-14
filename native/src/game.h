@@ -71,6 +71,16 @@ int next_message_id();
 // Looks up a chat message by id (the game keeps the last 100 per type). Game thread only.
 bool read_message(int id, ChatLine& out);
 
+struct PlayerInfo {
+    int index = -1;
+    bool local = false;
+    std::string name;
+    int fine_x = 0, fine_y = 0, world_x = 0, world_y = 0;
+    uintptr_t address = 0;
+};
+// Walks the top-level WorldView's player table. Game thread only.
+std::vector<PlayerInfo> read_players();
+
 // Walks the top-level WorldView's NPC table. Game thread only (the table is rebuilt by
 // NPC_INFO); other threads use client_thread::npcs().
 std::vector<Npc> read_npcs();

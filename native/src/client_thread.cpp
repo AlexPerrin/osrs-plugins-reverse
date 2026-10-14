@@ -43,6 +43,9 @@ std::mutex g_messages_mutex;
 std::deque<game::ChatLine> g_messages;  // newest last, guarded by g_messages_mutex
 constexpr size_t kMessageHistory = 256;
 
+std::mutex g_players_mutex;
+std::vector<game::PlayerInfo> g_players;  // guarded by g_players_mutex
+
 std::mutex g_npcs_mutex;
 std::vector<game::Npc> g_npcs;  // guarded by g_npcs_mutex; written only on the game thread
 
@@ -57,6 +60,8 @@ const char* name(EventType t) {
         case EventType::ChatMessage: return "ChatMessage";
         case EventType::WidgetLoaded: return "WidgetLoaded";
         case EventType::WidgetClosed: return "WidgetClosed";
+        case EventType::PlayerSpawned: return "PlayerSpawned";
+        case EventType::PlayerDespawned: return "PlayerDespawned";
     }
     return "?";
 }
@@ -145,6 +150,27 @@ void diff_interfaces() {
     g_open_groups.swap(now);
 }
 
+void diff_players() {
+    std::vector<game::PlayerInfo> now = game::read_players();
+    std::vector<game::PlayerInfo> old;
+    {
+        std::lock_guard lock(g_players_mutex);
+        old.swap(g_players);
+        g_players = now;
+    }
+    auto same = [](const game::PlayerInfo& a, const game::PlayerInfo& b) { return a.index == b.index && a.address == b.address; };
+    for (const auto& o : old) {
+        bool kept = false;
+        for (const auto& n : now) kept |= same(o, n);
+        if (!kept) post({EventType::PlayerDespawned, o.index});
+    }
+    for (const auto& n : now) {
+        bool existed = false;
+        for (const auto& o : old) existed |= same(o, n);
+        if (!existed) post({EventType::PlayerSpawned, n.index});
+    }
+}
+
 void after_cycle() {
     g_cycles++;
     post({EventType::ClientTick});
@@ -162,6 +188,7 @@ void after_cycle() {
     }
     diff_varps();
     diff_npcs();
+    diff_players();
     poll_messages();
     diff_interfaces();
 
@@ -236,6 +263,11 @@ bool message(int id, game::ChatLine& out) {
         }
     }
     return false;
+}
+
+std::vector<game::PlayerInfo> players() {
+    std::lock_guard lock(g_players_mutex);
+    return g_players;
 }
 
 std::vector<game::Npc> npcs() {

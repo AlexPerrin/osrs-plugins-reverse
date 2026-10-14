@@ -19,6 +19,8 @@ enum class EventType {
     ChatMessage,       // a = message id (see message()), b = type
     WidgetLoaded,      // a = interface group id
     WidgetClosed,      // a = interface group id
+    PlayerSpawned,     // a = player index
+    PlayerDespawned,   // a = player index
 };
 
 struct Event {
@@ -45,6 +47,9 @@ uint64_t cycles();
 
 // A chat message captured when it was added (the last 256 are kept); safe from any thread.
 bool message(int id, game::ChatLine& out);
+
+// Players as of the end of the last cycle; safe from any thread.
+std::vector<game::PlayerInfo> players();
 
 // NPCs as of the end of the last cycle; safe from any thread.
 std::vector<game::Npc> npcs();

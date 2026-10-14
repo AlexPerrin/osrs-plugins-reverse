@@ -28,7 +28,17 @@ readelf/objdump). The Ghidra project in `re/ghidra` loads the library at image b
 | NpcType: id, name | `+0x0`, `+0x8` | Name is a 24-byte fbstring-style string: inline with `23 - len` in byte 23, else `{char*, size, cap\|flags}` |
 | local player scene tile x, y | `+0xcb7c`, `+0xcb80` | Walk diff; world − scene base (3168, 3168 at Lumbridge) |
 | local player fine x, height, y | `+0x8950c`, `+0x89510`, `+0x89514` | Walk diff; 128 units per tile, tile centre = ×128 + 64 |
-| camera x, z, y, pitch, yaw | `+0x89488` … `+0x89498` | Moves with the player; not yet verified |
+| camera x, height, y | `+0x89488`, `+0x8948c`, `+0x89490` | Swipe diffs; local units (height negative = up) |
+| camera pitch, yaw | `+0x89494`, `+0x89498` | 14-bit angles (16384 per turn), the same units as RuneLite 1.13's API; written masked `& 0x3fff` by `0x4517a8`, pitch clamped 0x400–0xbf8 (wider if `+0x8951c` is set) |
+| camera pitch/yaw targets | `+0x8949c`, `+0x894a0` | Follow the swipe |
+| camera focal point x, height, y | `+0x89500`, `+0x89504`, `+0x89508` | Smoothed player position |
+| projection scale | 285 (fitted) | The game renders on the GPU (no `glUniformMatrix4fv`; likely a UBO). With RuneLite's CPU formula on a 720-px-high canvas, scale 285 puts four NPCs within ~15 px of their figures and stays aligned after rotating the camera. Default zoom only; the zoom field (maybe `+0x894ec`, 576) isn't mapped. Override with `setprop debug.osrsrl.scale N` |
+| tile heights | ? | Not found via WorldView pointers; Perspective callers pass an explicit height for now |
+| `Client::interfaces` (InterfaceManager*) | `+0x413a98` | Passed to the widget lookup `0x5d1ad8(im, componentId)`; groups at `im+0x6890` (`{?, u64 children, slot*}` × count at `im+0x6888`), slots `{?, Widget*}` |
+| top-level interface id | `+0x413a88` | Set by IF_OPENTOP (case 0x4b) |
+| open sub-interfaces | `+0x413a60` buckets, `+0x413a68` count | Node `{u32 component, u32 group, …, +0x10 next}`; IF_OPENSUB (case 0x48) → `0x462640(client, component, group, type)` |
+| Widget fields | | `+0x78` hidden (IF_SETHIDE 0x4d), `+0x98` colour (IF_SETCOLOUR 0x1d), `+0xfc`/`+0x100` model type/id (IF_SETNPCHEAD 0x3e, IF_SETPLAYERHEAD 0x4f), `+0x10c` sequence (IF_SETANIM 0x1c), `+0x11c`/`+0x120`/`+0x128` rotation/zoom (0x6a), `+0x158` text (IF_SETTEXT 0x7a), `+0xb78` redraw cycle |
+| local player getter | `0x43f8dc(client)` | Used by IF_SETPLAYERHEAD; player `+0x728` = appearance |
 
 `doCycle` is reached only through the vtable (no direct calls), so `client_thread.cpp` hooks it by
 rewriting vtable slot 5 (`0xa6a008`, in .data.rel.ro) after checking that it holds `0x411640`.

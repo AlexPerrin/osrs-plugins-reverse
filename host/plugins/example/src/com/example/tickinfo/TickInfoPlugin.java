@@ -9,6 +9,9 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.events.WidgetClosed;
+import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -70,6 +73,23 @@ public class TickInfoPlugin extends Plugin {
     @Subscribe
     public void onChatMessage(ChatMessage e) {
         log.info("chat [{}] name='{}' sender='{}': {}", e.getType(), e.getName(), e.getSender(), e.getMessage());
+    }
+
+    @Subscribe
+    public void onWidgetLoaded(WidgetLoaded e) {
+        log.info("widget loaded: group {}", e.getGroupId());
+        // chat_left (231): the NPC dialogue text is child 6 on desktop
+        if (e.getGroupId() == 231) {
+            for (int child = 0; child < 10; child++) {
+                Widget w = client.getWidget(231, child);
+                if (w != null && !w.getText().isEmpty()) log.info("  231:{} '{}' hidden={}", child, w.getText(), w.isHidden());
+            }
+        }
+    }
+
+    @Subscribe
+    public void onWidgetClosed(WidgetClosed e) {
+        log.info("widget closed: group {}", e.getGroupId());
     }
 
     @Subscribe

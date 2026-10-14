@@ -30,7 +30,7 @@ public final class Host {
 
     // Must match client_thread::EventType.
     private static final int CLIENT_TICK = 0, GAME_TICK = 1, GAME_STATE_CHANGED = 2, VARBIT_CHANGED = 3,
-            NPC_SPAWNED = 4, NPC_DESPAWNED = 5, CHAT_MESSAGE = 6;
+            NPC_SPAWNED = 4, NPC_DESPAWNED = 5, CHAT_MESSAGE = 6, WIDGET_LOADED = 7, WIDGET_CLOSED = 8;
 
     private static final ConcurrentLinkedQueue<Runnable> queue = new ConcurrentLinkedQueue<>();
     private static volatile HostEventBus eventBus;
@@ -56,6 +56,8 @@ public final class Host {
                 bind(Client.class).toInstance(client);
                 bind(HostEventBus.class).toInstance(bus);
                 bind(net.runelite.client.ui.overlay.OverlayManager.class).toInstance(overlayManager);
+                bind(net.runelite.client.config.ConfigManager.class).toInstance(new net.runelite.client.config.ConfigManager(
+                        new File(new File(pluginDir).getParentFile(), "settings.properties"), bus::post));
             }
         });
         HostPluginManager plugins = new HostPluginManager(injector, bus);
@@ -147,6 +149,15 @@ public final class Host {
                 bus.post(new ChatMessage(node, chatType, m[0], m[2], m[1], now));
                 break;
             }
+            case WIDGET_LOADED: {
+                net.runelite.api.events.WidgetLoaded e = new net.runelite.api.events.WidgetLoaded();
+                e.setGroupId(a);
+                bus.post(e);
+                break;
+            }
+            case WIDGET_CLOSED:
+                bus.post(new net.runelite.api.events.WidgetClosed(a, 0, true));
+                break;
             case VARBIT_CHANGED: {
                 VarbitChanged e = new VarbitChanged();
                 e.setVarpId(a);

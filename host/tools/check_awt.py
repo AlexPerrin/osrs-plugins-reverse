@@ -14,7 +14,7 @@ import zipfile
 shim_dir, jars = sys.argv[1], sys.argv[2:]
 
 refs = set()
-ref_re = re.compile(r"// (Method|Field|InterfaceMethod) (java/awt/[\w/$]+)\.(\"?[\w<>]+\"?):(\S+)")
+ref_re = re.compile(r"// (Method|Field|InterfaceMethod) ((?:java/awt|javax/imageio)/[\w/$]+)\.(\"?[\w<>]+\"?):(\S+)")
 for jar in jars:
     names = [n[:-6] for n in zipfile.ZipFile(jar).namelist() if n.endswith(".class")]
     for i in range(0, len(names), 200):
@@ -66,7 +66,7 @@ def has(cls, name, sig, seen=None):
     if (name, sig) in members[cls]: return True
     if name != "<init>":
         for s in supers.get(cls, []):
-            if s.startswith("java/awt/") and has(s, name, sig, seen): return True
+            if (s.startswith("java/awt/") or s.startswith("javax/imageio/")) and has(s, name, sig, seen): return True
             if s in ("java/lang/Object", "java/util/HashMap", "java/util/EventObject") : continue
     return False
 

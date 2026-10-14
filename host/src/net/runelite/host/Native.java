@@ -19,6 +19,11 @@ final class Native {
      * {index, id, localX, localY, worldX, worldY} per NPC.
      */
     static native Object[] npcs();
+    static native boolean widgetExists(int componentId);
+    static native boolean widgetHidden(int componentId);
+    /** Widget text, or null if the widget's group isn't loaded. */
+    static native String widgetText(int componentId);
+    static native int rootInterface();
     /** An Android system property ("" if unset). */
     static native String property(String name);
     /** {x, y, z, pitch, yaw}: camera in local units (z = height), 14-bit angles. */

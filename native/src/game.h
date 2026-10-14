@@ -55,6 +55,14 @@ struct Camera {
 };
 Camera camera();
 
+int root_interface();
+// Widget object for a component id (group << 16 | child), or 0 if its group isn't loaded.
+uintptr_t widget(int component);
+bool widget_hidden(uintptr_t widget);
+std::string widget_text(uintptr_t widget);
+struct SubInterface { int component, group; };  // `group` is open inside `component`
+std::vector<SubInterface> open_sub_interfaces();
+
 struct ChatLine {
     int id = -1, type = 0, cycle = 0;
     std::string name, sender, text;

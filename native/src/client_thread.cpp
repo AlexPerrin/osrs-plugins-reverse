@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include <deque>
+#include <algorithm>
 #include <mutex>
 
 #include "game.h"
@@ -35,6 +36,8 @@ int g_last_state = -1;
 int g_last_tick = -1;
 std::vector<int32_t> g_varp_shadow;
 
+std::vector<int> g_open_groups;  // root + open sub-interface groups, sorted
+
 int g_next_message = -1;
 std::mutex g_messages_mutex;
 std::deque<game::ChatLine> g_messages;  // newest last, guarded by g_messages_mutex
@@ -52,6 +55,8 @@ const char* name(EventType t) {
         case EventType::NpcSpawned: return "NpcSpawned";
         case EventType::NpcDespawned: return "NpcDespawned";
         case EventType::ChatMessage: return "ChatMessage";
+        case EventType::WidgetLoaded: return "WidgetLoaded";
+        case EventType::WidgetClosed: return "WidgetClosed";
     }
     return "?";
 }
@@ -124,6 +129,22 @@ void poll_messages() {
     }
 }
 
+void diff_interfaces() {
+    std::vector<int> now;
+    if (game::game_state() == 30) {
+        int root = game::root_interface();
+        if (root >= 0) now.push_back(root);
+        for (const auto& sub : game::open_sub_interfaces()) now.push_back(sub.group);
+        std::sort(now.begin(), now.end());
+        now.erase(std::unique(now.begin(), now.end()), now.end());
+    }
+    for (int g : g_open_groups)
+        if (!std::binary_search(now.begin(), now.end(), g)) post({EventType::WidgetClosed, g});
+    for (int g : now)
+        if (!std::binary_search(g_open_groups.begin(), g_open_groups.end(), g)) post({EventType::WidgetLoaded, g});
+    g_open_groups.swap(now);
+}
+
 void after_cycle() {
     g_cycles++;
     post({EventType::ClientTick});
@@ -142,6 +163,7 @@ void after_cycle() {
     diff_varps();
     diff_npcs();
     poll_messages();
+    diff_interfaces();
 
     std::vector<std::function<void()>> tasks;
     {

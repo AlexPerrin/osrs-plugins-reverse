@@ -20,9 +20,10 @@ rm -rf "$OUT/gen" "$OUT/classes" "$OUT/client-classes" "$OUT/awt-classes" "$OUT/
 mkdir -p "$OUT/gen/net/runelite/host" "$OUT/classes" "$OUT/client-classes"
 
 # 1. Throwing implementations of the API interfaces; host classes override what works.
-for iface in Client Player NPC WorldView MessageNode; do
-    java -cp "$API" "$ROOT/host/gen/GenStub.java" net.runelite.api.$iface net.runelite.host ${iface}Stub \
-        > "$OUT/gen/net/runelite/host/${iface}Stub.java"
+for iface in Client Player NPC WorldView MessageNode widgets.Widget; do
+    name=${iface##*.}
+    java -cp "$API" "$ROOT/host/gen/GenStub.java" net.runelite.api.$iface net.runelite.host ${name}Stub \
+        > "$OUT/gen/net/runelite/host/${name}Stub.java"
 done
 
 # 2. Compile the host, the generated stubs and the java.awt shim (host/awt) together against
@@ -42,9 +43,7 @@ javac -nowarn -Xlint:none -source 8 -target 8 -bootclasspath "$ANDROID_JAR:$OUT/
     'net/runelite/client/plugins/Plugin.class' 'net/runelite/client/plugins/PluginDescriptor.class' \
     'net/runelite/client/plugins/PluginDependency.class' 'net/runelite/client/plugins/PluginDependencies.class' \
     'net/runelite/client/eventbus/Subscribe.class' 'net/runelite/client/util/*.class' \
-    'net/runelite/client/config/Config.class' 'net/runelite/client/config/ConfigGroup.class' \
-    'net/runelite/client/config/ConfigItem.class' 'net/runelite/client/config/ConfigSection.class' \
-    'net/runelite/client/config/Range.class' 'net/runelite/client/config/Units.class' \
+    'net/runelite/client/config/*.class' 'net/runelite/client/events/*.class' \
     'net/runelite/client/ui/overlay/Overlay.class' 'net/runelite/client/ui/overlay/Overlay$*.class' \
     'net/runelite/client/ui/overlay/OverlayLayer.class' 'net/runelite/client/ui/overlay/OverlayPosition.class' \
     'net/runelite/client/ui/overlay/OverlayPriority.class' 'net/runelite/client/ui/overlay/OverlayMenuEntry.class' \
@@ -52,6 +51,9 @@ javac -nowarn -Xlint:none -source 8 -target 8 -bootclasspath "$ANDROID_JAR:$OUT/
     'net/runelite/client/ui/overlay/OverlayUtil.class' 'net/runelite/client/ui/overlay/RenderableEntity.class' \
     'net/runelite/client/ui/overlay/components/*' 'net/runelite/client/ui/overlay/infobox/InfoBox*.class' \
     'net/runelite/client/ui/runescape*.ttf')
+# Classes the host replaces with same-name sources (d8 rejects duplicates).
+rm -f "$OUT"/client-classes/net/runelite/client/config/ConfigManager*.class \
+      "$OUT"/client-classes/net/runelite/client/config/ConfigInvocationHandler*.class
 (cd "$OUT/client-classes" && jar cf ../client-subset.jar .)
 # Resources (fonts) go into host.jar beside the dex files after dexing.
 mkdir -p "$OUT/resources/net/runelite/client/ui"

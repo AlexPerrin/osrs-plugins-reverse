@@ -56,8 +56,11 @@ public class AndroidClient extends ClientStub {
 
     // --- camera and viewport (the viewport is the whole logical overlay canvas) ---
 
-    /** Projection scale; calibrated against the game's GPU camera, see docs/offsets.md. */
-    static volatile int scale = 1000;
+    /**
+     * Projection scale for the 720-px-high logical canvas, fitted to on-screen NPC positions at
+     * the default zoom (docs/offsets.md). The game's zoom field isn't mapped yet.
+     */
+    static volatile int scale = 285;
 
     @Override public int getCameraX() { return Native.camera()[0]; }
     @Override public int getCameraY() { return Native.camera()[1]; }
@@ -92,6 +95,23 @@ public class AndroidClient extends ClientStub {
     @Override public int getViewportHeight() { return OverlayRenderer.canvasSize().height; }
     @Override public int getCanvasWidth() { return getViewportWidth(); }
     @Override public int getCanvasHeight() { return getViewportHeight(); }
+
+    // --- widgets ---
+
+    @Override
+    public net.runelite.api.widgets.Widget getWidget(int componentId) {
+        return Native.widgetExists(componentId) ? new AndroidWidget(componentId) : null;
+    }
+
+    @Override
+    public net.runelite.api.widgets.Widget getWidget(int group, int child) {
+        return getWidget(group << 16 | child);
+    }
+
+    @Override
+    public int getTopLevelInterfaceId() {
+        return Native.rootInterface();
+    }
 
     @Override
     public boolean isClientThread() {

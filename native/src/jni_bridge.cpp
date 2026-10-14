@@ -148,7 +148,19 @@ jstring n_property(JNIEnv* env, jclass, jstring name) {
     return env->NewStringUTF(value);
 }
 
+jboolean n_widget_exists(JNIEnv*, jclass, jint id) { return game::widget(id) != 0; }
+jboolean n_widget_hidden(JNIEnv*, jclass, jint id) { return game::widget_hidden(game::widget(id)); }
+jstring n_widget_text(JNIEnv* env, jclass, jint id) {
+    uintptr_t w = game::widget(id);
+    return w ? env->NewStringUTF(game::widget_text(w).c_str()) : nullptr;
+}
+jint n_root_interface(JNIEnv*, jclass) { return game::root_interface(); }
+
 const JNINativeMethod kNatives[] = {
+    {"widgetExists", "(I)Z", reinterpret_cast<void*>(n_widget_exists)},
+    {"widgetHidden", "(I)Z", reinterpret_cast<void*>(n_widget_hidden)},
+    {"widgetText", "(I)Ljava/lang/String;", reinterpret_cast<void*>(n_widget_text)},
+    {"rootInterface", "()I", reinterpret_cast<void*>(n_root_interface)},
     {"property", "(Ljava/lang/String;)Ljava/lang/String;", reinterpret_cast<void*>(n_property)},
     {"camera", "()[I", reinterpret_cast<void*>(n_camera)},
     {"screenSize", "()[I", reinterpret_cast<void*>(n_screen_size)},

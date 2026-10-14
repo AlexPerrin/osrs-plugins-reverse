@@ -39,6 +39,10 @@ struct Build {
     uint32_t npc_def, npc_fine_x, npc_fine_y;      // Npc: NpcType*, scene position (1/128 tile)
     uint32_t def_id, def_name;                     // NpcType: id, name (24-byte string)
     uint32_t f_camera;          // Client: camera x, height, y, pitch, yaw (14-bit angles: 16384 per turn)
+    uint32_t f_interfaces;      // Client: InterfaceManager* (group table +0x6888 count, +0x6890 groups)
+    uint32_t f_root_interface;  // Client: top-level interface id (IF_OPENTOP)
+    uint32_t f_subs_buckets, f_subs_count;  // Client: open sub-interfaces, map id -> {id, group, ...}
+    uint32_t w_hidden, w_text;  // Widget: bool hidden (IF_SETHIDE), text (IF_SETTEXT)
     uintptr_t next_message_id;  // global int: id the next chat message gets (0x3f0a04 increments it)
     uintptr_t messages_by_id;   // global hash map id -> Message* {?, buckets, u32 count}
 };
@@ -50,7 +54,7 @@ constexpr Build kBuilds[] = {
      0xaee748, 0xaee6e8, 0x2020, 0xa69fe0, 0x411640, 0x1127ca0, 0x1127c60, 0x3058, 0x413c5c, 0x413cdc,
      0xecdc, 0xece0, 0xcb78, 0xcb7c, 0xcb80, 0x8950c, 0x89514, 0x5d0040,
      0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x730, 0x1fc, 0x200, 0x0, 0x8,
-     0x89488, 0xaab658, 0xaab628},
+     0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0xaab658, 0xaab628},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -242,6 +246,44 @@ Camera camera() {
     cam.pitch = read_at<int32_t>(b + 12) & 0x3fff;
     cam.yaw = read_at<int32_t>(b + 16) & 0x3fff;
     return cam;
+}
+
+int root_interface() { return g_build ? field(g_build->f_root_interface) : -1; }
+
+// Mirrors the lookup in 0x5d1ad8 without loading missing groups (that has to happen on
+// the game's own terms): groups are {?, u64 child count, slot*}, slots are {?, Widget*}.
+uintptr_t widget(int component) {
+    uintptr_t c = client();
+    if (!c || component < 0) return 0;
+    auto im = read_at<uintptr_t>(c + g_build->f_interfaces);
+    if (!im) return 0;
+    uint64_t group = static_cast<uint32_t>(component) >> 16, child = component & 0xffff;
+    if (group >= read_at<uint64_t>(im + 0x6888)) return 0;
+    uintptr_t g = read_at<uintptr_t>(im + 0x6890) + group * 0x18;
+    if (child >= read_at<uint64_t>(g + 8)) return 0;
+    auto slots = read_at<uintptr_t>(g + 0x10);
+    return slots ? read_at<uintptr_t>(slots + child * 0x10 + 8) : 0;
+}
+
+bool widget_hidden(uintptr_t w) { return w && read_at<uint8_t>(w + g_build->w_hidden) != 0; }
+std::string widget_text(uintptr_t w) { return w ? read_string(w + g_build->w_text) : std::string(); }
+
+std::vector<SubInterface> open_sub_interfaces() {
+    std::vector<SubInterface> out;
+    uintptr_t c = client();
+    if (!c) return out;
+    auto buckets = read_at<uintptr_t>(c + g_build->f_subs_buckets);
+    auto count = read_at<uint64_t>(c + g_build->f_subs_count) & 0xffffffff;
+    if (!buckets || !count || count > 1 << 20) return out;
+    uintptr_t sentinel = read_at<uintptr_t>(buckets + count * 8);
+    for (uint64_t b = 0; b < count; b++) {
+        int guard = 0;
+        for (auto node = read_at<uintptr_t>(buckets + b * 8); node && node != sentinel && guard++ < 1024;
+             node = read_at<uintptr_t>(node + 0x10)) {
+            out.push_back({read_at<int32_t>(node), read_at<int32_t>(node + 4)});
+        }
+    }
+    return out;
 }
 
 int next_message_id() { return g_build ? read_at<int32_t>(g_base + g_build->next_message_id) : -1; }

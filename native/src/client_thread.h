@@ -17,6 +17,8 @@ enum class EventType {
     NpcSpawned,        // a = NPC index, b = NPC id
     NpcDespawned,      // a = NPC index, b = NPC id
     ChatMessage,       // a = message id (see message()), b = type
+    WidgetLoaded,      // a = interface group id
+    WidgetClosed,      // a = interface group id
 };
 
 struct Event {

@@ -17,6 +17,7 @@ import net.rsprot.protocol.game.incoming.misc.user.ClientCheat
 import net.rsprot.protocol.game.incoming.misc.user.MoveGameClick
 import net.rsprot.protocol.game.incoming.misc.user.MoveMinimapClick
 import net.rsprot.protocol.game.incoming.buttons.If3Button
+import net.rsprot.protocol.game.incoming.resumed.ResumePauseButton
 import net.rsprot.protocol.loginprot.incoming.pow.ProofOfWorkProvider
 import net.rsprot.protocol.loginprot.incoming.pow.challenges.sha256.Sha256Challenge
 import net.rsprot.protocol.loginprot.incoming.pow.challenges.sha256.Sha256MetaData
@@ -111,6 +112,7 @@ private class NetworkFactory(
                 else if (world.button(this, it.interfaceId, it.componentId, it.sub, it.obj, it.op)) Unit
                 else log.info { "If3Button ${it.interfaceId}:${it.componentId} op=${it.op} sub=${it.sub} obj=${it.obj}" }
             }
+            .addListener<ResumePauseButton> { world.closeDialogue(this) }
             .addListener<AndroidUnknownPacket> { world.unknownAndroidPacket(this, it) }
             .addGlobalListener { player, message: IncomingGameMessage ->
                 log.debug { "<- ${player.username}: $message" }

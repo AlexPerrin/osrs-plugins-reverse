@@ -493,7 +493,7 @@ class World(
             }
             "obj" -> {
                 val obj = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::obj id [count]")
-                spawnGroundObj(player, obj, args.getOrNull(2)?.toIntOrNull() ?: 1)
+                spawnGroundObj(player, obj, args.getOrNull(2)?.toIntOrNull() ?: 1, dz = 1)
             }
             "npcsay" -> {
                 val text = line.trim().substringAfter(' ', "").ifBlank { return player.message("Usage: ::npcsay text") }
@@ -585,9 +585,9 @@ class World(
     }
 
     /** Shows an obj on the ground under the player (to that player only; no pickup yet). */
-    private fun spawnGroundObj(player: Player, obj: Int, count: Int) {
+    private fun spawnGroundObj(player: Player, obj: Int, count: Int, dz: Int = 0) {
         val c = player.coord
-        player.send(ObjAddSpecific(obj, count, c.level, c.x, c.z, OBJ_OPS_ALL, 0, 0, 0, false))
+        player.send(ObjAddSpecific(obj, count, c.level, c.x, c.z + dz, OBJ_OPS_ALL, 0, 0, 0, false))
     }
 
     private fun equip(player: Player, slot: Int) {
@@ -644,7 +644,8 @@ class World(
         private const val ANIM_EAT = 829
         private const val SCRIPT_CHATBOX_RESET_BACKGROUND = 2379
         private const val CHATBOX_INTERFACE = 162
-        private const val CHATBOX_MODAL = 566
+        /** chatbox:chatmodal; 566 in rev 239, 568 in rev 241 (two components were inserted before it). */
+        private const val CHATBOX_MODAL = 568
         private const val CHAT_LEFT = 231
         private const val CHAT_LEFT_HEAD = 2
         private const val CHAT_LEFT_NAME = 4

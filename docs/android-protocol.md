@@ -100,6 +100,7 @@ appearance, `0x1` say, `0x80000` ?, `0x100000` ?, `0x20` ?, `0x1000` ?, `0x40000
 | 64 | MESSAGE_PUBLIC | as desktop (type, colour, effect, huffman) |
 | 81 | CLIENT_CHEAT | as desktop (string, autocomplete byte) |
 | 93 | NO_TIMEOUT (probable) | — |
+| 48 | RESUME_PAUSEBUTTON | component `g4Alt3`, sub `g2` |
 | 99 | IF_BUTTONX | as desktop (combined id, sub, obj, op); inventory item ops arrive as 149:0 with sub = slot, op 3 = wield/wear |
 
 Seen but unidentified: 37 (keyboard events), 10 (5 bytes after login, looks like WINDOW_STATUS: `02 0780 0438` =
@@ -165,8 +166,11 @@ the test server replaces Jagex's sign-in:
 In-app: "Sign in with Email / Username", close the privacy screen, then Play Now. The client
 ID, scope and redirect URI are hard-coded in native code (Ghidra 0x59d638).
 
-## Dialogue (in progress)
+## Dialogue
 
-`::talk` sends the chat_left sequence (RUNCLIENTSCRIPT 2379, IF_OPENSUB 162:566 <- 231, head,
-anim, texts, pause-button events). As of 2026-10-14 nothing renders and no error occurs; nor
-does OBJ_ADD_SPECIFIC. Next: verify the open-sub table / widget text in client memory.
+`::talk` opens chat_left (231) in **chatbox:chatmodal = 162:568** (rev 241; it was 162:566 in
+rev 239, whose symbols this server's ids come from. Component ids can shift between revisions).
+Sequence: RUNCLIENTSCRIPT 2379 (reset background), IF_OPENSUB, IF_SETNPCHEAD, IF_SETANIM,
+IF_SETTEXT name/text/continue, IF_SETEVENTS (pause button). Tapping continue sends client opcode
+48 RESUME_PAUSEBUTTON (component `g4Alt3`, sub `g2`); the server closes with IF_CLOSESUB.
+Known gap: the chat history stays hidden after closing (2379's effect is not undone).

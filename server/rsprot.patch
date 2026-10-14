@@ -29,10 +29,10 @@ index 00000000..2a4d99f1
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt
 new file mode 100644
-index 00000000..981e3956
+index 00000000..c5a9540b
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt
-@@ -0,0 +1,51 @@
+@@ -0,0 +1,64 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -46,6 +46,8 @@ index 00000000..981e3956
 +import net.rsprot.protocol.game.incoming.misc.user.ClientCheat
 +import net.rsprot.protocol.game.incoming.misc.user.MoveGameClick
 +import net.rsprot.protocol.message.IncomingMessage
++import net.rsprot.protocol.game.incoming.resumed.ResumePauseButton
++import net.rsprot.protocol.util.CombinedId
 +import net.rsprot.protocol.message.codec.MessageDecoder
 +
 +// Client packets identified by observing the live client (tap the world, log the payload).
@@ -84,6 +86,17 @@ index 00000000..981e3956
 +/** Opcode 99: combined id, sub, obj, op (observed: 02590030 ffff ffff 01 = 601:48 op 1). */
 +public fun androidIfButtonXDecoder(): MessageDecoder<If3Button> =
 +    AndroidDelegatingDecoder(AndroidGameClientProt.IF_BUTTONX, IfButtonXDecoder())
++
++/** Opcode 48: [component g4Alt3][sub BE] (observed: 0500e700 ffff = 231:5, sub -1). */
++public class AndroidResumePauseButtonDecoder : MessageDecoder<ResumePauseButton> {
++    override val prot: ClientProt = AndroidGameClientProt.RESUME_PAUSEBUTTON
++
++    override fun decode(buffer: JagByteBuf): ResumePauseButton {
++        val combinedId = buffer.g4Alt3()
++        val sub = buffer.g2()
++        return ResumePauseButton(CombinedId(combinedId), sub)
++    }
++}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt
 new file mode 100644
 index 00000000..9385f138
@@ -429,7 +442,7 @@ index 00000000..9385f138
 +    AndroidDelegatingEncoder(AndroidGameServerProt.RUNCLIENTSCRIPT, RunClientScriptEncoder())
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
-index 00000000..7caea94b
+index 00000000..2eca1c0e
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 @@ -0,0 +1,119 @@
@@ -496,7 +509,7 @@ index 00000000..7caea94b
 +    OP_45(45, 1),
 +    OP_46(46, 4),
 +    OP_47(47, 3),
-+    OP_48(48, 6),
++    RESUME_PAUSEBUTTON(48, 6),
 +    OP_49(49, 2),
 +    OP_50(50, Prot.VAR_SHORT),
 +    OP_51(51, Prot.VAR_BYTE),
@@ -965,10 +978,10 @@ index 00000000..d083e608
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..e4f75891
+index 00000000..41f5ebfd
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,111 @@
+@@ -0,0 +1,113 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -1031,6 +1044,7 @@ index 00000000..e4f75891
 +            AndroidGameClientProt.CLIENT_CHEAT,
 +            AndroidGameClientProt.MESSAGE_PUBLIC,
 +            AndroidGameClientProt.IF_BUTTONX,
++            AndroidGameClientProt.RESUME_PAUSEBUTTON,
 +        )
 +
 +    @ExperimentalStdlibApi
@@ -1040,6 +1054,7 @@ index 00000000..e4f75891
 +            bind(androidClientCheatDecoder())
 +            bind(androidMessagePublicDecoder(huffmanCodecProvider))
 +            bind(androidIfButtonXDecoder())
++            bind(AndroidResumePauseButtonDecoder())
 +            for (prot in AndroidGameClientProt.entries) {
 +                if (prot in IDENTIFIED) continue
 +                bind(AndroidUnknownPacket::class.java, AndroidUnknownPacketDecoder(prot))

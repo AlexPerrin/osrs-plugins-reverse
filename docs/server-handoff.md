@@ -71,9 +71,13 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
 
 ## Open work
 
-- **Dialogue works** (`::talk`, continue closes it); the chat history stays hidden afterwards.
-- **Ground items** (`::obj`, drop) send OBJ_ADD_SPECIFIC without error but have not been seen
-  rendering; check client memory or the zone-packet flow (UPDATE_ZONE_PARTIAL_FOLLOWS) next.
+- **Dialogue works** (`::talk`, continue closes it); chat lines from before the dialogue stay
+  hidden afterwards (new lines show). Cosmetic.
+- **Ground items work** (`::obj`, drop): OBJ_ADD_SPECIFIC needs timeUntilDespawn > 0. Only the
+  owner sees them; pickup (OPOBJ client packets) is not implemented.
+- `server/tools/device.sh login|cmd|shot`: BlueStacks helpers (login after restart, chat commands
+  with the keyboard/Enter workaround, screenshots).
+- Relogin with the same name replaces the old session (fixes a ghost duplicate player).
 - Component ids come from rev-239 symbols and can be off in rev 241 (chatmodal 566 -> 568):
   verify against the cache (scratch tool: decode interface components, parent chain).
 - Commands added: `::xp skill n`, `::talk [npc] text`, `::obj id [n]`; in-game name = `LOCAL_DISPLAY_NAME`.

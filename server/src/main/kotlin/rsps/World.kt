@@ -200,13 +200,18 @@ class World(
     private fun processLogins() {
         while (true) {
             val (response, block) = pendingLogins.poll() ?: return
+            val loginName = block.username.ifBlank { if (config.localAuth) config.localDisplayName else "" }
+            val existing = players.firstOrNull { loginName.isNotEmpty() && it?.username.equals(loginName, ignoreCase = true) }
+            if (existing != null) {
+                // A fresh login takes over: drops the copy kept for reconnecting, or a session whose
+                // socket has not noticed the client went away (e.g. after a client restart).
+                existing.loggedOut = true
+                existing.session.requestClose()
+                remove(existing)
+            }
             val index = (1 until MAX_PLAYERS).firstOrNull { players[it] == null }
             if (index == null) {
                 response.writeFailedResponse(LoginResponse.ServerFull)
-                continue
-            }
-            if (players.any { it?.username.equals(block.username, ignoreCase = true) }) {
-                response.writeFailedResponse(LoginResponse.Duplicate)
                 continue
             }
             val id = block.username.lowercase().hashCode().toLong() and 0xFFFFFFFFL
@@ -582,12 +587,13 @@ class World(
         if (!player.dialogueOpen) return
         player.dialogueOpen = false
         player.send(IfCloseSub(CHATBOX_INTERFACE, CHATBOX_MODAL))
+        player.send(RunClientScript(SCRIPT_CHAT_DEFAULT_RESTORE_INPUT, emptyList()))
     }
 
     /** Shows an obj on the ground under the player (to that player only; no pickup yet). */
     private fun spawnGroundObj(player: Player, obj: Int, count: Int, dz: Int = 0) {
         val c = player.coord
-        player.send(ObjAddSpecific(obj, count, c.level, c.x, c.z + dz, OBJ_OPS_ALL, 0, 0, 0, false))
+        player.send(ObjAddSpecific(obj, count, c.level, c.x, c.z + dz, OBJ_OPS_ALL, 0, OBJ_DESPAWN_TICKS, 0, false))
     }
 
     private fun equip(player: Player, slot: Int) {
@@ -643,6 +649,7 @@ class World(
         private const val INTERFACE_WORN = 387
         private const val ANIM_EAT = 829
         private const val SCRIPT_CHATBOX_RESET_BACKGROUND = 2379
+        private const val SCRIPT_CHAT_DEFAULT_RESTORE_INPUT = 2158
         private const val CHATBOX_INTERFACE = 162
         /** chatbox:chatmodal; 566 in rev 239, 568 in rev 241 (two components were inserted before it). */
         private const val CHATBOX_MODAL = 568
@@ -656,6 +663,8 @@ class World(
         private const val IF_EVENT_PAUSE = 1
         /** All five ground ops visible. */
         private const val OBJ_OPS_ALL: Byte = 0x1F
+        /** Client-side lifetime of a dropped obj; 0 makes it expire immediately. */
+        private const val OBJ_DESPAWN_TICKS = 3000
         /** wornitems slot components -> wearpos. */
         private val WORN_SLOT_COMPONENTS = mapOf(
             15 to 0, 16 to 1, 17 to 2, 18 to 3, 19 to 4, 20 to 5, 21 to 7, 22 to 9, 23 to 10, 24 to 12, 25 to 13,

@@ -49,7 +49,7 @@ unassigned opcode), which is what made them easy to find.
 | 28 | IF_SETANIM | anim `p2Alt1`, component `p4` |
 | 30 | SET_NPC_UPDATE_ORIGIN | `p1`, `p1` |
 | 32 | UPDATE_INV_FULL | header as desktop; per slot id+1 `p2Alt2`, count `p1Alt1`, big count `p4Alt3` |
-| 42 | OBJ_ADD_SPECIFIC | timeUntilPublic `p2`, coord `p4Alt3`, ownership `p1Alt2`, neverPublic `p1Alt2`, id `p2`, timeUntilDespawn `p2Alt2`, opFlags `p1Alt2`, quantity `p4` (not yet seen rendering) |
+| 42 | OBJ_ADD_SPECIFIC | timeUntilPublic `p2`, coord `p4Alt3`, ownership `p1Alt2`, neverPublic `p1Alt2`, id `p2`, timeUntilDespawn `p2Alt2`, opFlags `p1Alt2`, quantity `p4`; timeUntilDespawn 0 = expires immediately |
 | 47 | IF_SETNPCHEAD_ACTIVE | component `p4Alt3`, slot `p2Alt2` |
 | 34 | VARP_SMALL | value `p1Alt2`, id `p2` |
 | 46 | LOGOUT | — |

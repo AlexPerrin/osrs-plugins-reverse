@@ -5,7 +5,7 @@ work. The client side (injected library + RuneLite plugin host) is developed in 
 another session; see `docs/client-handoff.md`. Protocol findings live in
 `docs/android-protocol.md`.
 
-## Where things stand (2026-10-14)
+## Where things stand (2026-10-15)
 
 - A rev-241 test server runs in Docker (`osrs-rsps-test`): JS5 cache (OpenRS2 cache 2735),
   `jav_config.ws` / `slr.ws`, login, a small game world, reconnect (60 s grace), and a local
@@ -17,6 +17,16 @@ another session; see `docs/client-handoff.md`. Protocol findings live in
   - Equipment tab with unequip.
   - Four wandering courtyard NPCs (Hans, man, woman, chicken) with say, animation and transform.
   - SERVER_TICK_END every tick, which drives GameTick in the plugin host.
+  - OPNPC/OPLOC/OPOBJ 1-5 decoded (layouts from the client's senders). The player walks next
+    to the target (straight line), then: Talk-to opens an NPC chat, Bank opens the bank, Open on
+    a door removes it (zone LOC_DEL), Take picks up an owned ground obj; other ops print the
+    NPC/loc/obj name and op. Verified live: OPLOC1 (door 1535) and OPLOC6 (examine).
+  - Zone packets: UPDATE_ZONE_PARTIAL_ENCLOSED with LOC_ADD_CHANGE_V2 / LOC_DEL / OBJ_ADD /
+    OBJ_DEL, plus top-level LOC_ADD_CHANGE_V2 / LOC_DEL (not yet verified on device).
+  - Bank (bankmain 12 in main modal 601:27, bankside 15 in side modal 601:114, inv 95) with
+    withdraw/deposit (not yet verified on device).
+  - NPC and loc configs decoded for names/ops (`EntityType`); rev-241 loc configs use opcodes 6/7
+    for int model ids.
 - The Android protocol differs from desktop: opcodes are permuted and field layouts differ per
   packet. It is implemented as a new `osrs-241-android` module inside a vendored RSProt
   (`server/rsprot`, gitignored), kept as `server/rsprot.patch` against upstream
@@ -80,21 +90,31 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
 - Relogin with the same name replaces the old session (fixes a ghost duplicate player).
 - Component ids come from rev-239 symbols and can be off in rev 241 (chatmodal 566 -> 568):
   verify against the cache (scratch tool: decode interface components, parent chain).
-- Commands added: `::xp skill n`, `::talk [npc] text`, `::obj id [n]`; in-game name = `LOCAL_DISPLAY_NAME`.
+- Commands: `::xp skill n`, `::talk [npc] text`, `::obj id [n] [dz]` (OBJ_ADD_SPECIFIC on your tile),
+  `::zobj id [n]` (zone OBJ_ADD), `::locadd id [shape] [rot]`, `::locdel [shape] [dx] [dz]`,
+  `::bank`, `::freeze` (toggle NPC wandering, makes NPCs tappable); in-game name = `LOCAL_DISPLAY_NAME`.
+- Tapping on the device: a plain tap often walks; long-press (`input swipe x y x y 1000`) opens the
+  minimenu. The default camera is far out and NPC overlay labels are offset from the models.
+- Component ids: RuneLite's `runelite-api-1.13.1.jar` in `re/runelite` has gameval `InterfaceID`
+  constants that match rev 241 (chatbox:chatmodal = 162:568); `javap -constants` on the nested class.
+- Docker Desktop may not be running after a Windows restart: start it with
+  `cmd.exe /c start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"`; the container restarts by itself.
 - adb input: `input text` always works, but keyevents (Enter) only while the soft keyboard is
   shown (`dumpsys input_method | grep mInputShown`; tap 90,220 to toggle it).
 - Unmapped: most NPC/player extended-info blocks (hits, facing, spotanims, ...), WORLDENTITY_INFO,
   zone packets (loc/obj updates), interface text/events beyond IF_SETEVENTS, the CRC order in the
   Android login block (CRC validation is off).
-- Client→server still unknown: 10 (window status?), 13, 21 (mouse click), 37 (keyboard), 67, 97, 98, 100.
+- Client→server still unknown: 10 (window status?), 13, 18, 21 (mouse click), 37 (keyboard), 67, 97, 98, 100.
+- NPC extended info `0x80` is not hits: it is spotanims (count `-b`, then 8 bytes each, handled by
+  `0x5714e8`, which removes on id 0xffff). Hits are still unmapped.
 - No collision/pathfinding: walking is a straight line.
 
 ## Next steps (priority order, driven by Quest Helper on the client side)
 
-1. Objects/locs: zone packets (UPDATE_ZONE_PARTIAL_FOLLOWS / ENCLOSED, LOC_ADD_CHANGE_V2, LOC_DEL,
-   OBJ_* zone variants) so quest objects can be added/highlighted; OPLOC/OPOBJ/OPNPC client packets
-   (capture by tapping with LOG_ANDROID_PACKETS=true).
-2. More interfaces: bank (inv 95 + interface 12), IF_SETHIDE (77) / IF_SETPLAYERHEAD (79) from the
+1. Verify on device: `::locadd 1124` (bush appears), `::locdel`, door Open, `::zobj 995 100` then Take,
+   OPNPC (`::freeze`, long-press an NPC, Talk-to), `::bank` with withdraw/deposit. Fix any field
+   order found wrong (layouts in android-protocol.md).
+2. More interfaces: IF_SETHIDE (77) / IF_SETPLAYERHEAD (79) from the
    client session's notes, varbit-driven quest journal; chat_right (player dialogue) and options menus.
 3. Skills/XP UI checks (`::xp` exists), hitsplats/headbars (player + NPC extended info).
 4. Cosmetic: chat history hidden after a dialogue.

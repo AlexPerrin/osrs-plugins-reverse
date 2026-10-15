@@ -24,6 +24,10 @@ final class Native {
     /** Widget text, or null if the widget's group isn't loaded. */
     static native String widgetText(int componentId);
     static native int rootInterface();
+    /** {x, y, width, height, parentId} (x/y relative to the parent), or null if not loaded. */
+    static native int[] widgetGeometry(int componentId);
+    /** Number of components in a loaded interface group. */
+    static native int widgetChildCount(int group);
     /** An Android system property ("" if unset). */
     static native String property(String name);
     /** {x, y, z, pitch, yaw}: camera in local units (z = height), 14-bit angles. */
@@ -36,6 +40,10 @@ final class Native {
     static native void overlayPublish(int width, int height);
     /** Players as of the last cycle: {int[] packed, String[] names}, packed = {index, local, localX, localY, worldX, worldY}. */
     static native Object[] players();
+    /** Item ids then quantities (2 x slots) of an inventory as of the last cycle, or null. */
+    static native int[] inventory(int id);
+    /** {current (boosted) levels[25], real levels[25], experience[25]}, indexed by Skill.ordinal(). */
+    static native int[] skills();
     /** {name, sender, text} of a captured chat message, or null. */
     static native String[] message(int id);
 }

@@ -11,6 +11,10 @@ public class Rectangle extends Rectangle2D {
     public Rectangle(int width, int height) { this(0, 0, width, height); }
     public Rectangle(Point p, Dimension d) { this(p.x, p.y, d.width, d.height); }
     public Rectangle(Rectangle r) { this(r.x, r.y, r.width, r.height); }
+    public Rectangle(Dimension d) { this(0, 0, d.width, d.height); }
+    public Rectangle(Point p) { this(p.x, p.y, 0, 0); }
+    public void add(Point p) { add(p.x, p.y); }
+    public boolean contains(Rectangle r) { return contains(r.x, r.y, r.width, r.height); }
 
     @Override public double getX() { return x; }
     @Override public double getY() { return y; }

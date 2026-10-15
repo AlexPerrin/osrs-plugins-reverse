@@ -41,6 +41,18 @@ public abstract class Rectangle2D implements Shape, Cloneable {
     public double getMaxY() { return getY() + getHeight(); }
     public double getCenterX() { return getX() + getWidth() / 2; }
     public double getCenterY() { return getY() + getHeight() / 2; }
+    public static final int OUT_LEFT = 1, OUT_TOP = 2, OUT_RIGHT = 4, OUT_BOTTOM = 8;
+    public int outcode(double px, double py) {
+        int out = 0;
+        if (getWidth() <= 0) out |= OUT_LEFT | OUT_RIGHT; else if (px < getX()) out |= OUT_LEFT; else if (px > getX() + getWidth()) out |= OUT_RIGHT;
+        if (getHeight() <= 0) out |= OUT_TOP | OUT_BOTTOM; else if (py < getY()) out |= OUT_TOP; else if (py > getY() + getHeight()) out |= OUT_BOTTOM;
+        return out;
+    }
+    public int outcode(Point2D p) { return outcode(p.getX(), p.getY()); }
+    public void setFrameFromDiagonal(double x1, double y1, double x2, double y2) {
+        setRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+    }
+    public void setFrame(double x, double y, double w, double h) { setRect(x, y, w, h); }
     public boolean isEmpty() { return getWidth() <= 0 || getHeight() <= 0; }
 
     @Override public boolean contains(double px, double py) {

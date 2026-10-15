@@ -5,7 +5,7 @@ import com.google.inject.Injector;
 import java.util.ArrayList;
 import java.util.List;
 import net.runelite.host.Host;
-import net.runelite.host.HostEventBus;
+import net.runelite.client.eventbus.EventBus;
 
 /**
  * Starts plugins the way RuneLite's PluginManager does: a child injector per plugin
@@ -14,10 +14,10 @@ import net.runelite.host.HostEventBus;
  */
 public final class HostPluginManager {
     private final Injector root;
-    private final HostEventBus eventBus;
+    private final EventBus eventBus;
     private final List<Plugin> running = new ArrayList<>();
 
-    public HostPluginManager(Injector root, HostEventBus eventBus) {
+    public HostPluginManager(Injector root, EventBus eventBus) {
         this.root = root;
         this.eventBus = eventBus;
     }

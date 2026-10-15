@@ -16,7 +16,7 @@ trap 'rm -rf "$WORK"' EXIT
 
 CLASSPATH_ARGS=()
 for j in "$RL"/runelite-api-1.13.1.jar "$RL"/client-1.13.1.jar "$RL"/guice-4.1.0-no_aop.jar "$RL"/guava-23.2-jre.jar \
-         "$RL"/javax.inject-1.jar "$RL"/slf4j-api-1.7.25.jar "$RL"/commons-text-1.2.jar "$RL"/commons-lang3-3.7.jar; do
+         "$RL"/javax.inject-1.jar "$RL"/slf4j-api-1.7.25.jar "$RL"/commons-text-1.2.jar "$RL"/commons-lang3-3.7.jar "$RL"/gson-2.8.5.jar; do
     CLASSPATH_ARGS+=(--classpath "$j")
 done
 java -cp "$SDK/build-tools/36.0.0/lib/d8.jar" com.android.tools.r8.D8 --release --min-api 26 \
@@ -30,4 +30,8 @@ mkdir "$WORK/classes"
 echo "plugin classes: $(tr '\n' ' ' < "$WORK/plugin-classes.txt")"
 cp "$WORK/dex.zip" "$OUT"
 (cd "$WORK" && zip -q "$OUT" plugin-classes.txt)
+# Resources (json, images, ...) stay loadable through the plugin's class loader.
+mkdir "$WORK/res"
+(cd "$WORK/res" && unzip -q "$IN" -x '*.class' 'META-INF/*' 2>/dev/null || true)
+if [[ -n $(ls -A "$WORK/res") ]]; then (cd "$WORK/res" && zip -qr "$OUT" .); fi
 ls -la "$OUT"

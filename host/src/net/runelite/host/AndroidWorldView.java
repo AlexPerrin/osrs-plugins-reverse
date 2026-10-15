@@ -31,6 +31,33 @@ public class AndroidWorldView extends WorldViewStub {
 
     @Override public int getId() { return -1; }
     @Override public boolean isTopLevel() { return true; }
+    @Override public boolean isInstance() { return false; }
+    @Override public int getSizeX() { return 104; }
+    @Override public int getSizeY() { return 104; }
+
+    @Override
+    public boolean contains(net.runelite.api.coords.WorldPoint p) {
+        int x = p.getX() - getBaseX(), y = p.getY() - getBaseY();
+        return p.getPlane() == getPlane() && x >= 0 && y >= 0 && x < 104 && y < 104;
+    }
+
+    @Override
+    public boolean contains(net.runelite.api.coords.LocalPoint p) {
+        return p != null && p.getX() >= 0 && p.getY() >= 0 && p.getX() < 104 * 128 && p.getY() < 104 * 128;
+    }
+
+    @Override
+    public int[] getMapRegions() {
+        // The 104x104 scene spans up to 4x4 64-tile regions around its base.
+        int bx = getBaseX(), by = getBaseY();
+        java.util.LinkedHashSet<Integer> ids = new java.util.LinkedHashSet<>();
+        for (int x = bx; x < bx + 104; x += 8)
+            for (int y = by; y < by + 104; y += 8) ids.add((x >> 6) << 8 | (y >> 6));
+        int[] out = new int[ids.size()];
+        int i = 0;
+        for (int id : ids) out[i++] = id;
+        return out;
+    }
     @Override
     public int getPlane() {
         int[] p = Native.playerPosition();

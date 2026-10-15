@@ -13,6 +13,12 @@ public class AndroidClient extends ClientStub {
     }
 
     @Override
+    public WorldView getWorldView(int id) {
+        // Only the top-level world view (-1) exists until world entities (boats) are mapped.
+        return id == -1 ? getTopLevelWorldView() : null;
+    }
+
+    @Override
     public WorldView getTopLevelWorldView() {
         return getGameState() == GameState.LOGGED_IN ? worldView : null;
     }
@@ -94,6 +100,56 @@ public class AndroidClient extends ClientStub {
     @Override public int getViewportHeight() { return OverlayRenderer.canvasSize().height; }
     @Override public int getCanvasWidth() { return getViewportWidth(); }
     @Override public int getCanvasHeight() { return getViewportHeight(); }
+
+    // --- skills (Skill.ordinal() is the game's stat index) ---
+
+    private static final int SKILLS = 25;
+
+    private static int[] slice(int part) {
+        return java.util.Arrays.copyOfRange(Native.skills(), part * SKILLS, (part + 1) * SKILLS);
+    }
+
+    @Override public int getBoostedSkillLevel(net.runelite.api.Skill s) { return Native.skills()[s.ordinal()]; }
+    @Override public int getRealSkillLevel(net.runelite.api.Skill s) { return Native.skills()[SKILLS + s.ordinal()]; }
+    @Override public int getSkillExperience(net.runelite.api.Skill s) { return Native.skills()[2 * SKILLS + s.ordinal()]; }
+    @Override public int[] getBoostedSkillLevels() { return slice(0); }
+    @Override public int[] getRealSkillLevels() { return slice(1); }
+    @Override public int[] getSkillExperiences() { return slice(2); }
+
+    @Override
+    public int getTotalLevel() {
+        int total = 0;
+        for (int l : slice(1)) total += l;
+        return total;
+    }
+
+    @Override
+    public long getOverallExperience() {
+        long total = 0;
+        for (int x : slice(2)) total += x;
+        return total;
+    }
+
+    // --- regions (no instances yet) ---
+
+    @Override public boolean isInInstancedRegion() { return false; }
+
+    @Override
+    public java.util.EnumSet<net.runelite.api.WorldType> getWorldType() {
+        return java.util.EnumSet.noneOf(net.runelite.api.WorldType.class);
+    }
+
+    // --- inventories ---
+
+    @Override
+    public net.runelite.api.ItemContainer getItemContainer(int id) {
+        return AndroidItemContainer.of(id);
+    }
+
+    @Override
+    public net.runelite.api.ItemContainer getItemContainer(net.runelite.api.InventoryID id) {
+        return AndroidItemContainer.of(id.getId());
+    }
 
     // --- widgets ---
 

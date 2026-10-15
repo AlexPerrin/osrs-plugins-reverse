@@ -1,0 +1,561 @@
+import java.io.*;
+import java.lang.reflect.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.stream.*;
+
+/**
+ * Generates a headless stand-in for the java.awt / javax.swing classes that RuneLite and its
+ * plugins reference but Android lacks: same class hierarchy as the JDK, referenced members
+ * only, methods do nothing and return defaults, constants keep the JDK's values.
+ *
+ *   java GenHeadless.java <refs.txt> <classes.txt> <handwritten shim dir> <out dir> <android.jar>
+ *
+ * refs.txt: "owner name descriptor" per line (JVM internal names); classes.txt: one class per line.
+ * Classes that exist in the hand-written shim are never generated.
+ */
+public class GenHeadless {
+    static Path shimDir;
+    static final Set<String> androidClasses = new HashSet<>();
+
+    /** True if the class exists on Android (android.jar) or will exist (shim / generated). */
+    static boolean available(Class<?> c) {
+        while (c.isArray()) c = c.getComponentType();
+        if (c.isPrimitive()) return true;
+        if (candidate(c)) return handwritten(c) || generate.contains(c) || want(c);
+        return androidClasses.contains(c.getName().replace('.', '/'));
+    }
+    static final Map<Class<?>, Set<Member>> members = new LinkedHashMap<>();
+    static final Set<Class<?>> generate = new LinkedHashSet<>();
+
+    public static void main(String[] a) throws Exception {
+        shimDir = Paths.get(a[2]);
+        try (java.util.zip.ZipFile z = new java.util.zip.ZipFile(a[4])) {
+            z.stream().map(e -> e.getName()).filter(n -> n.endsWith(".class")).forEach(n -> androidClasses.add(n.substring(0, n.length() - 6)));
+        }
+        Path out = Paths.get(a[3]);
+        for (String line : Files.readAllLines(Paths.get(a[1]))) if (!line.isBlank()) want(load(line.trim()));
+        // Default implementations that returnValue() hands out for interface-typed results.
+        for (String k : new String[] {"javax/swing/text/PlainDocument", "javax/swing/DefaultListModel", "javax/swing/DefaultButtonModel",
+                "javax/swing/text/DefaultCaret", "javax/swing/DefaultListSelectionModel"}) want(load(k));
+        for (String line : Files.readAllLines(Paths.get(a[0]))) {
+            String[] p = line.trim().split(" ");
+            if (p.length != 3) continue;
+            Class<?> owner = load(p[0]);
+            if (owner == null) continue;
+            Member m = resolve(owner, p[1].replace("\"", ""), p[2]);
+            if (m == null) { System.err.println("unresolved " + line); continue; }
+            Class<?> decl = m.getDeclaringClass();
+            if (!want(decl)) continue;
+            if (!types(m).stream().allMatch(GenHeadless::available)) { System.err.println("skipped (types) " + line); continue; }
+            members.computeIfAbsent(decl, k -> new LinkedHashSet<>()).add(m);
+            for (Class<?> t : types(m)) want(t);
+        }
+        // Property partners (setX <-> getX/isX) and listener trios, so state round-trips.
+        for (Class<?> c : new ArrayList<>(members.keySet())) {
+            for (Member m : new ArrayList<>(members.get(c))) {
+                if (!(m instanceof Method)) continue;
+                for (Method partner : partners(c, (Method) m)) {
+                    if (types(partner).stream().allMatch(GenHeadless::available) && members.get(c).add(partner)) {
+                        for (Class<?> t : types(partner)) want(t);
+                    }
+                }
+            }
+        }
+        // Concrete classes must implement abstract methods of their generated supertypes.
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (Class<?> c : new ArrayList<>(generate)) {
+                for (Method m : abstractToImplement(c)) {
+                    if (members.computeIfAbsent(c, k -> new LinkedHashSet<>()).add(m)) {
+                        changed = true;
+                        for (Class<?> t : types(m)) want(t);
+                    }
+                }
+                if (c.isInterface()) {
+                    for (Method m : c.getDeclaredMethods()) {
+                        if (Modifier.isPublic(m.getModifiers()) && !m.isSynthetic()
+                                && members.computeIfAbsent(c, k -> new LinkedHashSet<>()).add(m)) {
+                            changed = true;
+                            for (Class<?> t : types(m)) want(t);
+                        }
+                    }
+                }
+            }
+        }
+        int n = 0;
+        for (Class<?> c : generate) {
+            if (c.getEnclosingClass() != null) continue;  // emitted inside the top-level class
+            Path f = out.resolve(c.getName().replace('.', '/') + ".java");
+            Files.createDirectories(f.getParent());
+            Files.writeString(f, source(c));
+            n++;
+        }
+        System.err.println("generated " + n + " files, " + generate.size() + " classes");
+    }
+
+    static Class<?> load(String internal) {
+        try {
+            return Class.forName(internal.replace('/', '.'), false, GenHeadless.class.getClassLoader());
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    static boolean candidate(Class<?> c) {
+        if (c == null || c.isArray() || c.isPrimitive()) return false;
+        String n = c.getName();
+        return n.startsWith("java.awt.") || n.startsWith("javax.swing.");
+    }
+
+    static boolean handwritten(Class<?> c) {
+        Class<?> top = c;
+        while (top.getEnclosingClass() != null) top = top.getEnclosingClass();
+        return Files.exists(shimDir.resolve(top.getName().replace('.', '/') + ".java"));
+    }
+
+    /** Adds c (and its enclosing classes and supertypes) to the generated set; false if not ours. */
+    static boolean want(Class<?> c) {
+        while (c != null && c.isArray()) c = c.getComponentType();
+        if (!candidate(c) || handwritten(c) || !Modifier.isPublic(c.getModifiers()) && c.getEnclosingClass() == null) return false;
+        if (!generate.add(c)) return true;
+        if (c.getEnclosingClass() != null) want(c.getEnclosingClass());
+        want(c.getSuperclass());
+        for (Class<?> i : c.getInterfaces()) want(i);
+        for (Constructor<?> k : c.getDeclaredConstructors()) {
+            if (k.getParameterCount() == 0) members.computeIfAbsent(c, x -> new LinkedHashSet<>()).add(k);
+        }
+        return true;
+    }
+
+    static String prop(Method m) {
+        String n = m.getName();
+        if (n.startsWith("set") && m.getParameterCount() == 1 && m.getReturnType() == void.class) return n.substring(3);
+        if (n.startsWith("get") && m.getParameterCount() == 0 && m.getReturnType() != void.class) return n.substring(3);
+        if (n.startsWith("is") && m.getParameterCount() == 0 && m.getReturnType() == boolean.class) return n.substring(2);
+        return null;
+    }
+
+    static String listenerKind(Method m) {
+        String n = m.getName();
+        if (!n.endsWith("Listener") && !n.endsWith("Listeners")) return null;
+        if ((n.startsWith("add") || n.startsWith("remove")) && m.getParameterCount() == 1 && n.endsWith("Listener"))
+            return n.substring(n.startsWith("add") ? 3 : 6);
+        if (n.startsWith("get") && n.endsWith("Listeners") && m.getParameterCount() == 0 && m.getReturnType().isArray())
+            return n.substring(3, n.length() - 1);
+        return null;
+    }
+
+    /** The other half of a property (setter/getter) or listener trio, declared in the same class. */
+    static List<Method> partners(Class<?> c, Method m) {
+        List<Method> out = new ArrayList<>();
+        String p = prop(m), l = listenerKind(m);
+        for (Method x : c.getDeclaredMethods()) {
+            if (x.equals(m) || x.isBridge() || x.isSynthetic() || !Modifier.isPublic(x.getModifiers()) || Modifier.isStatic(x.getModifiers())) continue;
+            if (p != null && p.equals(prop(x))) out.add(x);
+            if (l != null && l.equals(listenerKind(x))) out.add(x);
+        }
+        return out;
+    }
+
+    static List<Class<?>> types(Member m) {
+        List<Class<?>> t = new ArrayList<>();
+        if (m instanceof Method) { t.add(((Method) m).getReturnType()); t.addAll(Arrays.asList(((Method) m).getParameterTypes())); }
+        if (m instanceof Constructor) t.addAll(Arrays.asList(((Constructor<?>) m).getParameterTypes()));
+        if (m instanceof Field) t.add(((Field) m).getType());
+        return t;
+    }
+
+    static Member resolve(Class<?> owner, String name, String desc) {
+        for (Class<?> c = owner; c != null; c = c.getSuperclass()) {
+            Member m = find(c, name, desc);
+            if (m != null) return m;
+            for (Class<?> i : allInterfaces(c)) { m = find(i, name, desc); if (m != null) return m; }
+        }
+        return null;
+    }
+
+    static Set<Class<?>> allInterfaces(Class<?> c) {
+        Set<Class<?>> s = new LinkedHashSet<>();
+        Deque<Class<?>> q = new ArrayDeque<>(Arrays.asList(c.getInterfaces()));
+        while (!q.isEmpty()) { Class<?> i = q.poll(); if (s.add(i)) q.addAll(Arrays.asList(i.getInterfaces())); }
+        return s;
+    }
+
+    static Member find(Class<?> c, String name, String desc) {
+        if (name.equals("<init>")) {
+            for (Constructor<?> k : c.getDeclaredConstructors()) if (desc(k.getParameterTypes(), void.class).equals(desc)) return k;
+            return null;
+        }
+        if (!desc.startsWith("(")) {
+            for (Field f : c.getDeclaredFields()) if (f.getName().equals(name) && descOf(f.getType()).equals(desc)) return f;
+            return null;
+        }
+        for (Method m : c.getDeclaredMethods()) {
+            if (m.getName().equals(name) && desc(m.getParameterTypes(), m.getReturnType()).equals(desc)) {
+                if (!m.isBridge()) return m;
+                // A bridge's descriptor is what callers link against; emit the real method instead,
+                // whose covariant return still satisfies that descriptor at runtime only if emitted
+                // as well, so keep the bridge's erased signature.
+                return m;
+            }
+        }
+        return null;
+    }
+
+    static String desc(Class<?>[] params, Class<?> ret) {
+        return "(" + Arrays.stream(params).map(GenHeadless::descOf).collect(Collectors.joining()) + ")" + descOf(ret);
+    }
+
+    static String descOf(Class<?> t) {
+        if (t == void.class) return "V";
+        if (t.isPrimitive()) return Map.of(int.class, "I", long.class, "J", boolean.class, "Z", byte.class, "B",
+                char.class, "C", short.class, "S", float.class, "F", double.class, "D").get(t);
+        if (t.isArray()) return "[" + descOf(t.getComponentType());
+        return "L" + t.getName().replace('.', '/') + ";";
+    }
+
+    /** Abstract methods a concrete generated class inherits from generated supertypes. */
+    static List<Method> abstractToImplement(Class<?> c) {
+        if (c.isInterface()) return List.of();
+        if (Modifier.isAbstract(c.getModifiers())) {
+            // Abstract classes: emit the interface methods the JDK class itself implements (MouseAdapter etc.).
+            List<Method> out = new ArrayList<>();
+            for (Class<?> i : allInterfaces(c)) {
+                if (!generate.contains(i) && !(handwritten(i) || !candidate(i) && available(i))) continue;
+                for (Method m : i.getDeclaredMethods()) {
+                    if (!Modifier.isAbstract(m.getModifiers())) continue;
+                    try {
+                        Method x = c.getDeclaredMethod(m.getName(), m.getParameterTypes());
+                        if (!Modifier.isAbstract(x.getModifiers())) out.add(x);
+                    } catch (NoSuchMethodException ignored) {
+                    }
+                }
+            }
+            return out;
+        }
+        List<Method> out = new ArrayList<>();
+        Set<String> have = new HashSet<>();
+        for (Class<?> k = c; k != null; k = k.getSuperclass()) {
+            for (Method m : k.getDeclaredMethods()) if (!Modifier.isAbstract(m.getModifiers())) have.add(m.getName() + desc(m.getParameterTypes(), m.getReturnType()));
+        }
+        List<Class<?>> supers = new ArrayList<>();
+        for (Class<?> k = c; k != null; k = k.getSuperclass()) { supers.add(k); supers.addAll(allInterfaces(k)); }
+        for (Class<?> s : supers) {
+            if (!generate.contains(s) && !(s.isInterface() && (handwritten(s) || !candidate(s) && available(s)))) continue;
+            for (Method m : s.getDeclaredMethods()) {
+                if (!Modifier.isAbstract(m.getModifiers()) || Modifier.isStatic(m.getModifiers())) continue;
+                // Implemented somewhere in the JDK chain: generate that implementation in c.
+                Method impl = null;
+                for (Class<?> k = c; k != null && impl == null; k = k.getSuperclass()) {
+                    try {
+                        Method x = k.getDeclaredMethod(m.getName(), m.getParameterTypes());
+                        if (!Modifier.isAbstract(x.getModifiers())) impl = x;
+                    } catch (NoSuchMethodException ignored) {
+                    }
+                }
+                Method pick = impl != null && generate.contains(impl.getDeclaringClass()) ? impl : impl == null ? m : null;
+                if (pick == null) continue;
+                if (!generate.contains(pick.getDeclaringClass()) && pick.getDeclaringClass() != c) {
+                    // Implement in c itself (the declaring class isn't generated).
+                    out.add(m);
+                } else {
+                    out.add(pick);
+                }
+            }
+        }
+        return out;
+    }
+
+    // --- source emission ---
+
+    static String typeName(Class<?> t) {
+        if (t.isArray()) return typeName(t.getComponentType()) + "[]";
+        return t.getName().replace('$', '.');
+    }
+
+    static String defaultValue(Class<?> t) {
+        if (t == void.class) return null;
+        if (t == boolean.class) return "false";
+        if (t == char.class) return "(char) 0";
+        if (t.isPrimitive()) return "(" + t.getName() + ") 0";
+        if (t == String.class) return "\"\"";
+        return "null";
+    }
+
+    /** Non-null stand-ins for method results, so headless UI code doesn't trip over nulls. */
+    static String returnValue(Class<?> t) {
+        String d = defaultValue(t);
+        if (!"null".equals(d)) return d;
+        if (t.isArray()) {
+            Class<?> base = t;
+            int dims = 0;
+            while (base.isArray()) { base = base.getComponentType(); dims++; }
+            return "new " + typeName(base) + "[0]" + "[]".repeat(dims - 1);
+        }
+        switch (t.getName()) {
+            case "java.awt.Dimension": return "new java.awt.Dimension()";
+            case "java.awt.Point": return "new java.awt.Point()";
+            case "java.awt.Rectangle": return "new java.awt.Rectangle()";
+            case "java.awt.Insets": return "new java.awt.Insets(0, 0, 0, 0)";
+            case "java.awt.Font": return "new java.awt.Font(java.awt.Font.DIALOG, java.awt.Font.PLAIN, 12)";
+            case "java.awt.Color": return "java.awt.Color.BLACK";
+            case "java.util.List": case "java.util.Collection": return "new java.util.ArrayList()";
+            case "java.util.Set": return "new java.util.HashSet()";
+            case "java.util.Map": return "new java.util.HashMap()";
+        }
+        Map<String, String> impl = Map.of("javax.swing.text.Document", "javax.swing.text.PlainDocument",
+                "javax.swing.ListModel", "javax.swing.DefaultListModel", "javax.swing.ButtonModel", "javax.swing.DefaultButtonModel",
+                "javax.swing.text.Caret", "javax.swing.text.DefaultCaret", "javax.swing.ListSelectionModel", "javax.swing.DefaultListSelectionModel");
+        if (impl.containsKey(t.getName())) {
+            Class<?> k = load(impl.get(t.getName()).replace('.', '/'));
+            if (k != null && generate.contains(k)) return "new " + typeName(k) + "()";
+        }
+        if (generate.contains(t) && !t.isInterface() && !t.isEnum() && !Modifier.isAbstract(t.getModifiers())
+                && t.getEnclosingClass() == null) {
+            return "new " + typeName(t) + "()";
+        }
+        return "null";
+    }
+
+    static String source(Class<?> c) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("// Generated by host/gen/GenHeadless.java: headless stand-in for ").append(c.getName()).append(". Do not edit.\n");
+        sb.append("package ").append(c.getPackageName()).append(";\n\n");
+        sb.append("@SuppressWarnings({\"unchecked\", \"rawtypes\", \"deprecation\"})\n");
+        emit(sb, c, "");
+        return sb.toString();
+    }
+
+    static void emit(StringBuilder sb, Class<?> c, String ind) {
+        int mod = c.getModifiers();
+        sb.append(ind).append("public ");
+        if (c.getEnclosingClass() != null && Modifier.isStatic(mod)) sb.append("static ");
+        boolean iface = c.isInterface();
+        if (c.isEnum()) {
+            sb.append("enum ").append(c.getSimpleName()).append(" {\n").append(ind).append("    ");
+            sb.append(Arrays.stream(c.getEnumConstants()).map(e -> ((Enum<?>) e).name()).collect(Collectors.joining(", "))).append(";\n");
+            sb.append(ind).append("}\n");
+            return;
+        }
+        if (!iface && Modifier.isAbstract(mod)) sb.append("abstract ");
+        sb.append(iface ? "interface " : "class ").append(c.getSimpleName());
+        Class<?> sup = c.getSuperclass();
+        if (!iface && sup != null && sup != Object.class) {
+            if (candidate(sup) && !generate.contains(sup) && !handwritten(sup)) sup = Object.class;
+            if (sup != Object.class) sb.append(" extends ").append(typeName(sup));
+        }
+        List<String> ifs = new ArrayList<>();
+        for (Class<?> i : c.getInterfaces()) {
+            if (candidate(i) && !generate.contains(i) && !handwritten(i)) continue;
+            if (!Modifier.isPublic(i.getModifiers()) || !available(i)) continue;
+            ifs.add(typeName(i));
+        }
+        if (!ifs.isEmpty()) sb.append(iface ? " extends " : " implements ").append(String.join(", ", ifs));
+        sb.append(" {\n");
+        String in = ind + "    ";
+        Set<Member> ms = members.getOrDefault(c, Set.of());
+        boolean hasCtor = false;
+        for (Member m : ms) {
+            if (m instanceof Field) {
+                Field f = (Field) m;
+                int fm = f.getModifiers();
+                sb.append(in).append("public ");
+                if (Modifier.isStatic(fm)) sb.append("static ");
+                Object v = null;
+                if (Modifier.isStatic(fm) && Modifier.isFinal(fm) && (f.getType().isPrimitive() || f.getType() == String.class)) {
+                    try { f.setAccessible(true); v = f.get(null); } catch (Throwable ignored) {}
+                }
+                if (v != null) sb.append("final ");
+                sb.append(typeName(f.getType())).append(" ").append(f.getName());
+                if (v != null) sb.append(" = ").append(literal(v, f.getType()));
+                sb.append(";\n");
+            }
+        }
+        for (Member m : ms) {
+            if (m instanceof Constructor) {
+                if (iface) continue;
+                Constructor<?> k = (Constructor<?>) m;
+                if (k.getParameterCount() == 0) hasCtor = true;
+                sb.append(in).append("public ").append(c.getSimpleName())
+                  .append("(").append(params(k.getParameterTypes())).append(") {");
+                sb.append(superCall(c));
+                sb.append(" }\n");
+            }
+        }
+        if (!iface && !hasCtor) {
+            sb.append(in).append("public ").append(c.getSimpleName()).append("() {");
+            sb.append(superCall(c));
+            sb.append(" }\n");
+        }
+        // Backing state for properties and listeners declared by this class.
+        Map<String, Class<?>> props = new LinkedHashMap<>();
+        Set<String> listenerKinds = new LinkedHashSet<>();
+        if (!iface) {
+            for (Member m : ms) {
+                if (!(m instanceof Method) || Modifier.isStatic(m.getModifiers()) || m.getDeclaringClass() != c) continue;
+                Method x = (Method) m;
+                String l = listenerKind(x);
+                if (l != null) { listenerKinds.add(l); continue; }
+                String p = prop(x);
+                if (p != null && x.getName().startsWith("set")) props.put(p, x.getParameterTypes()[0]);
+            }
+            for (Map.Entry<String, Class<?>> e : props.entrySet()) {
+                sb.append(in).append("private ").append(typeName(e.getValue())).append(" __").append(e.getKey()).append(";\n");
+                sb.append(in).append("private boolean __").append(e.getKey()).append("Set;\n");
+            }
+            for (String l : listenerKinds) sb.append(in).append("private final java.util.List __").append(l).append("s = new java.util.ArrayList();\n");
+            if (c == java.awt.Container.class) sb.append(in).append("private final java.util.List __children = new java.util.ArrayList();\n");
+            if (c == java.awt.Component.class) sb.append(in).append("java.awt.Container __parent;\n");
+        }
+        for (Member m : ms) {
+            if (!(m instanceof Method)) continue;
+            Method x = (Method) m;
+            String special = iface || Modifier.isStatic(x.getModifiers()) ? null : specialBody(c, x, props, listenerKinds);
+            if (special != null) {
+                sb.append(in).append(Modifier.isProtected(x.getModifiers()) ? "protected " : "public ")
+                  .append(typeName(x.getReturnType())).append(" ").append(x.getName()).append("(").append(params(x.getParameterTypes()))
+                  .append(") { ").append(special).append(" }\n");
+                continue;
+            }
+            int xm = x.getModifiers();
+            Class<?> ret = x.getReturnType();
+            sb.append(in);
+            boolean isStatic = Modifier.isStatic(xm);
+            if (iface) {
+                if (isStatic) sb.append("static ");
+                else if (!Modifier.isAbstract(xm)) sb.append("default ");
+            } else {
+                sb.append(Modifier.isProtected(xm) ? "protected " : "public ");
+                if (isStatic) sb.append("static ");
+                if (Modifier.isAbstract(xm) && Modifier.isAbstract(c.getModifiers())) sb.append("abstract ");
+            }
+            sb.append(typeName(ret)).append(" ").append(x.getName()).append("(").append(params(x.getParameterTypes())).append(")");
+            boolean body = iface ? (isStatic || !Modifier.isAbstract(xm)) : !(Modifier.isAbstract(xm) && Modifier.isAbstract(c.getModifiers()));
+            if (!body) { sb.append(";\n"); continue; }
+            String dv = ret == void.class ? null : returnValue(ret);
+            // add(x) style methods hand their argument back, as Swing does.
+            Class<?>[] ps = x.getParameterTypes();
+            if (dv != null && ps.length >= 1 && ret.isAssignableFrom(ps[0]) && !ret.isPrimitive() && ret != String.class) dv = "a0";
+            sb.append(dv == null ? " {}\n" : " { return " + dv + "; }\n");
+        }
+        for (Class<?> inner : c.getDeclaredClasses()) {
+            if (generate.contains(inner)) { sb.append("\n"); emit(sb, inner, in); }
+        }
+        sb.append(ind).append("}\n");
+    }
+
+    static String superCall(Class<?> c) {
+        return superCall0(c) + ctorExtras(c);
+    }
+
+    // Swing installs UI-delegate listeners in constructors; code like IconTextField relies on them.
+    static String ctorExtras(Class<?> c) {
+        if (c.getName().equals("javax.swing.text.JTextComponent") && generate.contains(java.awt.event.MouseAdapter.class))
+            return " addMouseListener(new java.awt.event.MouseAdapter() {});";
+        return "";
+    }
+
+    static String superCall0(Class<?> c) {
+        Class<?> s = c.getSuperclass();
+        if (s == null || s == Object.class || c.isEnum()) return "";
+        if (s == java.util.EventObject.class) return " super(new Object());";
+        if (generate.contains(s)) return hasNoArgCtor(s) ? "" : " super(" + superArgs(s) + ");";
+        if (candidate(s) && !handwritten(s)) return "";
+        try { s.getDeclaredConstructor(); return ""; } catch (NoSuchMethodException e) { /* fall through */ }
+        for (Constructor<?> k : s.getDeclaredConstructors()) {
+            if (Modifier.isPrivate(k.getModifiers())) continue;
+            return " super(" + Arrays.stream(k.getParameterTypes()).map(t -> t.isPrimitive() ? defaultValue(t) : "(" + typeName(t) + ") " + defaultValue(t)).collect(Collectors.joining(", ")) + ");";
+        }
+        return "";
+    }
+
+    /** Stateful bodies for properties, listeners and Container children; null = default. */
+    static String specialBody(Class<?> c, Method x, Map<String, Class<?>> props, Set<String> listenerKinds) {
+        String n = x.getName();
+        Class<?>[] ps = x.getParameterTypes();
+        if (c == java.awt.Container.class) {
+            if (n.equals("add") && ps.length >= 1 && ps[0] == java.awt.Component.class) {
+                String idx = ps.length == 2 && ps[1] == int.class ? "a1" : ps.length == 3 ? "a2" : "-1";
+                return "if (a0 != null) { if (" + idx + " >= 0 && " + idx + " <= __children.size()) __children.add(" + idx + ", a0); else __children.add(a0); a0.__parent = this; }"
+                        + (x.getReturnType() == void.class ? "" : " return a0;");
+            }
+            if (n.equals("add") && ps.length == 2 && ps[0] == String.class && ps[1] == java.awt.Component.class)
+                return "if (a1 != null) { __children.add(a1); a1.__parent = this; } return a1;";
+            if (n.equals("remove") && ps.length == 1 && ps[0] == java.awt.Component.class) return "__children.remove(a0); if (a0 != null) a0.__parent = null;";
+            if (n.equals("remove") && ps.length == 1 && ps[0] == int.class) return "if (a0 >= 0 && a0 < __children.size()) ((java.awt.Component) __children.remove(a0)).__parent = null;";
+            if (n.equals("removeAll") && ps.length == 0) return "for (Object o : __children) ((java.awt.Component) o).__parent = null; __children.clear();";
+            if (n.equals("getComponents") && ps.length == 0) return "return (java.awt.Component[]) __children.toArray(new java.awt.Component[0]);";
+            if (n.equals("getComponentCount") && ps.length == 0) return "return __children.size();";
+            if (n.equals("getComponent") && ps.length == 1 && ps[0] == int.class) return "return a0 >= 0 && a0 < __children.size() ? (java.awt.Component) __children.get(a0) : null;";
+            if (n.equals("isAncestorOf") && ps.length == 1) return "for (java.awt.Container p = a0 == null ? null : a0.__parent; p != null; p = p.__parent) if (p == this) return true; return false;";
+        }
+        if (c == java.awt.Component.class && n.equals("getParent") && ps.length == 0) return "return __parent;";
+        if (x.getDeclaringClass() != c) return null;
+        String l = listenerKind(x);
+        if (l != null && listenerKinds.contains(l)) {
+            if (n.startsWith("add")) return "if (a0 != null) __" + l + "s.add(a0);";
+            if (n.startsWith("remove")) return "__" + l + "s.remove(a0);";
+            return "return (" + typeName(x.getReturnType()) + ") __" + l + "s.toArray(new " + typeName(x.getReturnType().getComponentType()) + "[0]);";
+        }
+        String p = prop(x);
+        if (p != null && props.containsKey(p)) {
+            Class<?> t = props.get(p);
+            if (n.startsWith("set")) return "__" + p + " = a0; __" + p + "Set = true;";
+            if (!x.getReturnType().isAssignableFrom(t) && !(t.isPrimitive() && x.getReturnType() == t)) return null;
+            String dflt = returnValue(x.getReturnType());
+            if (dflt.startsWith("new ") && x.getReturnType() == t) {
+                // Objects handed out by a getter persist, as in Swing (listeners added to them stick).
+                return "if (!__" + p + "Set) { __" + p + " = " + dflt + "; __" + p + "Set = true; } return __" + p + ";";
+            }
+            return "return __" + p + "Set ? (" + typeName(x.getReturnType()) + ") __" + p + " : " + dflt + ";";
+        }
+        return null;
+    }
+
+    static boolean hasNoArgCtor(Class<?> c) {
+        if (c.isInterface()) return true;
+        for (Member m : members.getOrDefault(c, Set.of())) if (m instanceof Constructor && ((Constructor<?>) m).getParameterCount() == 0) return true;
+        return members.getOrDefault(c, Set.of()).stream().noneMatch(m -> m instanceof Constructor);
+    }
+
+    static String superArgs(Class<?> s) {
+        for (Member m : members.getOrDefault(s, Set.of())) {
+            if (m instanceof Constructor) {
+                return Arrays.stream(((Constructor<?>) m).getParameterTypes()).map(t -> {
+                    String d = defaultValue(t);
+                    return t.isPrimitive() ? d : "(" + typeName(t) + ") " + d;
+                }).collect(Collectors.joining(", "));
+            }
+        }
+        return "";
+    }
+
+    static String params(Class<?>[] ps) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < ps.length; i++) sb.append(i > 0 ? ", " : "").append(typeName(ps[i])).append(" a").append(i);
+        return sb.toString();
+    }
+
+    static String literal(Object v, Class<?> t) {
+        if (v instanceof String) return "\"" + v.toString().replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
+        if (t == long.class) return v + "L";
+        if (t == float.class) {
+            float f = (Float) v;
+            if (Float.isNaN(f)) return "Float.NaN";
+            if (Float.isInfinite(f)) return f > 0 ? "Float.POSITIVE_INFINITY" : "Float.NEGATIVE_INFINITY";
+            return v + "f";
+        }
+        if (t == double.class) {
+            double d = (Double) v;
+            if (Double.isNaN(d)) return "Double.NaN";
+            if (Double.isInfinite(d)) return d > 0 ? "Double.POSITIVE_INFINITY" : "Double.NEGATIVE_INFINITY";
+            return v + "d";
+        }
+        if (t == char.class) return "(char) " + (int) (Character) v;
+        if (t == byte.class) return "(byte) " + v;
+        if (t == short.class) return "(short) " + v;
+        return v.toString();
+    }
+}

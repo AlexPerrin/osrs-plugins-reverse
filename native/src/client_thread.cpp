@@ -43,6 +43,9 @@ std::mutex g_messages_mutex;
 std::deque<game::ChatLine> g_messages;  // newest last, guarded by g_messages_mutex
 constexpr size_t kMessageHistory = 256;
 
+std::mutex g_inv_mutex;
+std::vector<game::Inventory> g_inventories;  // guarded by g_inv_mutex
+
 std::mutex g_players_mutex;
 std::vector<game::PlayerInfo> g_players;  // guarded by g_players_mutex
 
@@ -62,6 +65,8 @@ const char* name(EventType t) {
         case EventType::WidgetClosed: return "WidgetClosed";
         case EventType::PlayerSpawned: return "PlayerSpawned";
         case EventType::PlayerDespawned: return "PlayerDespawned";
+        case EventType::ItemContainerChanged: return "ItemContainerChanged";
+        case EventType::StatChanged: return "StatChanged";
     }
     return "?";
 }
@@ -150,6 +155,40 @@ void diff_interfaces() {
     g_open_groups.swap(now);
 }
 
+game::Skills g_skills;
+bool g_skills_valid = false;
+
+void diff_skills() {
+    if (game::game_state() != 30) {
+        g_skills_valid = false;
+        return;
+    }
+    game::Skills now = game::skills();
+    if (g_skills_valid) {
+        for (int i = 0; i < game::kSkillCount; i++) {
+            if (now.current[i] != g_skills.current[i] || now.real[i] != g_skills.real[i] || now.xp[i] != g_skills.xp[i])
+                post({EventType::StatChanged, i});
+        }
+    }
+    g_skills = now;
+    g_skills_valid = true;
+}
+
+void diff_inventories() {
+    std::vector<game::Inventory> now = game::read_inventories();
+    std::vector<game::Inventory> old;
+    {
+        std::lock_guard lock(g_inv_mutex);
+        old.swap(g_inventories);
+        g_inventories = now;
+    }
+    for (const auto& n : now) {
+        const game::Inventory* before = nullptr;
+        for (const auto& o : old) if (o.id == n.id) before = &o;
+        if (!before || before->ids != n.ids || before->quantities != n.quantities) post({EventType::ItemContainerChanged, n.id});
+    }
+}
+
 void diff_players() {
     std::vector<game::PlayerInfo> now = game::read_players();
     std::vector<game::PlayerInfo> old;
@@ -189,6 +228,8 @@ void after_cycle() {
     diff_varps();
     diff_npcs();
     diff_players();
+    diff_inventories();
+    diff_skills();
     poll_messages();
     diff_interfaces();
 
@@ -263,6 +304,11 @@ bool message(int id, game::ChatLine& out) {
         }
     }
     return false;
+}
+
+std::vector<game::Inventory> inventories() {
+    std::lock_guard lock(g_inv_mutex);
+    return g_inventories;
 }
 
 std::vector<game::PlayerInfo> players() {

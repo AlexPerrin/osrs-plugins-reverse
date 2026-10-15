@@ -5,6 +5,7 @@ import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
@@ -94,13 +95,19 @@ public class TickInfoPlugin extends Plugin {
     }
 
     @Subscribe
+    public void onItemContainerChanged(ItemContainerChanged e) {
+        log.info("container changed: {}", e.getItemContainer());
+    }
+
+    @Subscribe
     public void onWidgetLoaded(WidgetLoaded e) {
         log.info("widget loaded: group {}", e.getGroupId());
         // chat_left (231): the NPC dialogue text is child 6 on desktop
         if (e.getGroupId() == 231) {
             for (int child = 0; child < 10; child++) {
                 Widget w = client.getWidget(231, child);
-                if (w != null && !w.getText().isEmpty()) log.info("  231:{} '{}' hidden={}", child, w.getText(), w.isHidden());
+                if (w != null && !w.getText().isEmpty())
+                    log.info("  231:{} '{}' hidden={} bounds={} parent={}", child, w.getText(), w.isHidden(), w.getBounds(), w.getParentId());
             }
         }
     }

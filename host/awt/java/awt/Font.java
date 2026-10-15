@@ -46,6 +46,16 @@ public class Font {
         }
     }
 
+    public Font deriveFont(java.util.Map<?, ?> attributes) {
+        Object size = attributes.get("size");
+        return size instanceof Number ? deriveFont(((Number) size).floatValue()) : this;
+    }
+    public java.util.Map<Object, Object> getAttributes() {
+        java.util.Map<Object, Object> m = new java.util.HashMap<>();
+        m.put("family", name);
+        m.put("size", size);
+        return m;
+    }
     public Font deriveFont(float size) { return new Font(name, style, size, typeface); }
     public Font deriveFont(int style) { return new Font(name, style, size, typeface); }
     public Font deriveFont(int style, float size) { return new Font(name, style, size, typeface); }

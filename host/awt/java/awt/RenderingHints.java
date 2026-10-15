@@ -31,7 +31,7 @@ public class RenderingHints extends HashMap<Object, Object> {
             VALUE_ANTIALIAS_DEFAULT = v("Antialias default"), VALUE_RENDER_SPEED = v("Render speed"),
             VALUE_RENDER_QUALITY = v("Render quality"), VALUE_RENDER_DEFAULT = v("Render default"),
             VALUE_TEXT_ANTIALIAS_ON = v("Text antialias on"), VALUE_TEXT_ANTIALIAS_OFF = v("Text antialias off"),
-            VALUE_TEXT_ANTIALIAS_DEFAULT = v("Text antialias default"), VALUE_FRACTIONALMETRICS_ON = v("Fractional on"),
+            VALUE_TEXT_ANTIALIAS_DEFAULT = v("Text antialias default"), VALUE_TEXT_ANTIALIAS_GASP = v("Text antialias GASP"), VALUE_FRACTIONALMETRICS_ON = v("Fractional on"),
             VALUE_FRACTIONALMETRICS_OFF = v("Fractional off"), VALUE_INTERPOLATION_NEAREST_NEIGHBOR = v("Nearest"),
             VALUE_INTERPOLATION_BILINEAR = v("Bilinear"), VALUE_INTERPOLATION_BICUBIC = v("Bicubic"),
             VALUE_STROKE_PURE = v("Stroke pure"), VALUE_STROKE_NORMALIZE = v("Stroke normalize"),

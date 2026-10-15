@@ -34,6 +34,12 @@ public class BufferedImage extends Image implements RenderedImage {
     public void setRGB(int x, int y, int w, int h, int[] in, int off, int scan) {
         for (int j = 0; j < h; j++) System.arraycopy(in, off + j * scan, pixels, (y + j) * width + x, w);
     }
+    public BufferedImage getSubimage(int x, int y, int w, int h) {
+        BufferedImage out = new BufferedImage(w, h, type);
+        for (int j = 0; j < h; j++) System.arraycopy(pixels, (y + j) * width + x, out.pixels, j * w, w);
+        return out;
+    }
+
     public ColorModel getColorModel() { return new DirectColorModel(32, 0xff0000, 0xff00, 0xff, 0xff000000); }
 
     public Image getScaledInstance(int w, int h, int hints) {

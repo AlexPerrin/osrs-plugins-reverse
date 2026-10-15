@@ -12,6 +12,7 @@ public class Point extends Point2D {
     @Override public double getY() { return y; }
     @Override public void setLocation(double x, double y) { this.x = (int) Math.floor(x + 0.5); this.y = (int) Math.floor(y + 0.5); }
     public void setLocation(int x, int y) { this.x = x; this.y = y; }
+    public void setLocation(Point p) { setLocation(p.x, p.y); }
     public void translate(int dx, int dy) { x += dx; y += dy; }
     public Point getLocation() { return new Point(x, y); }
     @Override public String toString() { return getClass().getName() + "[x=" + x + ",y=" + y + "]"; }

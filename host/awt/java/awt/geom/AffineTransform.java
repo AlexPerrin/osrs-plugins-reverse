@@ -38,6 +38,7 @@ public class AffineTransform implements Cloneable {
     public void translate(double tx, double ty) { concatenate(getTranslateInstance(tx, ty)); }
     public void scale(double sx, double sy) { concatenate(getScaleInstance(sx, sy)); }
     public void rotate(double theta) { concatenate(getRotateInstance(theta)); }
+    public void rotate(double vecx, double vecy) { rotate(Math.atan2(vecy, vecx)); }
     public void rotate(double theta, double x, double y) { translate(x, y); rotate(theta); translate(-x, -y); }
 
     public Point2D transform(Point2D src, Point2D dst) {

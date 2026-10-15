@@ -155,6 +155,17 @@ jstring n_widget_text(JNIEnv* env, jclass, jint id) {
     return w ? env->NewStringUTF(game::widget_text(w).c_str()) : nullptr;
 }
 jint n_root_interface(JNIEnv*, jclass) { return game::root_interface(); }
+// {x, y, width, height, parentId}, or null if the widget isn't loaded.
+jintArray n_widget_geometry(JNIEnv* env, jclass, jint id) {
+    uintptr_t w = game::widget(id);
+    if (!w) return nullptr;
+    game::WidgetGeometry g = game::widget_geometry(w);
+    jint v[5] = {g.x, g.y, g.width, g.height, g.parent};
+    jintArray arr = env->NewIntArray(5);
+    env->SetIntArrayRegion(arr, 0, 5, v);
+    return arr;
+}
+jint n_widget_child_count(JNIEnv*, jclass, jint group) { return game::widget_child_count(group); }
 
 // {int[] packed (index, local, localX, localY, worldX, worldY), String[] names}
 jobjectArray n_players(JNIEnv* env, jclass) {
@@ -177,12 +188,39 @@ jobjectArray n_players(JNIEnv* env, jclass) {
     return out;
 }
 
+// {id0, id1, ...} of an inventory's items followed by quantities (2 * slots ints), or null.
+jintArray n_inventory(JNIEnv* env, jclass, jint id) {
+    for (const auto& inv : client_thread::inventories()) {
+        if (inv.id != id) continue;
+        jsize n = static_cast<jsize>(inv.ids.size());
+        jintArray arr = env->NewIntArray(2 * n);
+        env->SetIntArrayRegion(arr, 0, n, inv.ids.data());
+        env->SetIntArrayRegion(arr, n, n, inv.quantities.data());
+        return arr;
+    }
+    return nullptr;
+}
+
+// {current[25], real[25], xp[25]}
+jintArray n_skills(JNIEnv* env, jclass) {
+    game::Skills sk = game::skills();
+    jintArray arr = env->NewIntArray(3 * game::kSkillCount);
+    env->SetIntArrayRegion(arr, 0, game::kSkillCount, sk.current);
+    env->SetIntArrayRegion(arr, game::kSkillCount, game::kSkillCount, sk.real);
+    env->SetIntArrayRegion(arr, 2 * game::kSkillCount, game::kSkillCount, sk.xp);
+    return arr;
+}
+
 const JNINativeMethod kNatives[] = {
+    {"skills", "()[I", reinterpret_cast<void*>(n_skills)},
+    {"inventory", "(I)[I", reinterpret_cast<void*>(n_inventory)},
     {"players", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_players)},
     {"widgetExists", "(I)Z", reinterpret_cast<void*>(n_widget_exists)},
     {"widgetHidden", "(I)Z", reinterpret_cast<void*>(n_widget_hidden)},
     {"widgetText", "(I)Ljava/lang/String;", reinterpret_cast<void*>(n_widget_text)},
     {"rootInterface", "()I", reinterpret_cast<void*>(n_root_interface)},
+    {"widgetGeometry", "(I)[I", reinterpret_cast<void*>(n_widget_geometry)},
+    {"widgetChildCount", "(I)I", reinterpret_cast<void*>(n_widget_child_count)},
     {"property", "(Ljava/lang/String;)Ljava/lang/String;", reinterpret_cast<void*>(n_property)},
     {"camera", "()[I", reinterpret_cast<void*>(n_camera)},
     {"screenSize", "()[I", reinterpret_cast<void*>(n_screen_size)},

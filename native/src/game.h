@@ -59,9 +59,30 @@ int root_interface();
 // Widget object for a component id (group << 16 | child), or 0 if its group isn't loaded.
 uintptr_t widget(int component);
 bool widget_hidden(uintptr_t widget);
+struct WidgetGeometry { int x = 0, y = 0, width = 0, height = 0, parent = -1, group = -1; };  // x/y relative to parent
+WidgetGeometry widget_geometry(uintptr_t widget);
+int widget_child_count(int group);  // components in a loaded group (0 if not loaded)
 std::string widget_text(uintptr_t widget);
 struct SubInterface { int component, group; };  // `group` is open inside `component`
 std::vector<SubInterface> open_sub_interfaces();
+
+constexpr int kSkillCount = 25;
+struct Skills {
+    int32_t current[kSkillCount] = {}, real[kSkillCount] = {}, xp[kSkillCount] = {};  // current = boosted
+    bool operator==(const Skills& o) const {
+        for (int i = 0; i < kSkillCount; i++)
+            if (current[i] != o.current[i] || real[i] != o.real[i] || xp[i] != o.xp[i]) return false;
+        return true;
+    }
+};
+Skills skills();
+
+struct Inventory {
+    int id = -1;                       // InventoryID / inv id (93 = inventory, 94 = worn, 95 = bank)
+    std::vector<int32_t> ids, quantities;  // per slot; id -1 = empty
+};
+// Every inventory the client holds. Game thread only.
+std::vector<Inventory> read_inventories();
 
 struct ChatLine {
     int id = -1, type = 0, cycle = 0;

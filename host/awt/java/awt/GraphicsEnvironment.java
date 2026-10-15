@@ -17,6 +17,8 @@ public abstract class GraphicsEnvironment {
         return true;
     }
 
+    public GraphicsDevice[] getScreenDevices() { return new GraphicsDevice[0]; }
+
     public String[] getAvailableFontFamilyNames() {
         String[] base = {Font.DIALOG, Font.SANS_SERIF, Font.SERIF, Font.MONOSPACED};
         String[] out = new String[base.length + registered.size()];

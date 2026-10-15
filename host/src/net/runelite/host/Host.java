@@ -19,6 +19,7 @@ import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.plugins.HostPluginManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -30,10 +31,10 @@ public final class Host {
     // Must match client_thread::EventType.
     private static final int CLIENT_TICK = 0, GAME_TICK = 1, GAME_STATE_CHANGED = 2, VARBIT_CHANGED = 3,
             NPC_SPAWNED = 4, NPC_DESPAWNED = 5, CHAT_MESSAGE = 6, WIDGET_LOADED = 7, WIDGET_CLOSED = 8,
-            PLAYER_SPAWNED = 9, PLAYER_DESPAWNED = 10;
+            PLAYER_SPAWNED = 9, PLAYER_DESPAWNED = 10, ITEM_CONTAINER_CHANGED = 11, STAT_CHANGED = 12;
 
     private static final net.runelite.client.callback.ClientThread clientThread = new net.runelite.client.callback.ClientThread();
-    private static volatile HostEventBus eventBus;
+    private static volatile EventBus eventBus;
     private static Client client;
     private static final NpcCache npcCache = new NpcCache();
     private static final PlayerCache playerCache = new PlayerCache();
@@ -50,19 +51,51 @@ public final class Host {
     public static void start(String pluginDir, String cacheDir) {
         Log.i(TAG, "host starting; plugins from " + pluginDir);
         client = new AndroidClient(worldView);
-        HostEventBus bus = new HostEventBus();
+        EventBus bus = new EventBus();
+        final HostPluginManager[] pluginManager = new HostPluginManager[1];
+        final net.runelite.client.config.ConfigManager configManager = new net.runelite.client.config.ConfigManager(
+                new File(new File(pluginDir).getParentFile(), "settings.properties"), bus::post);
         Injector injector = Guice.createInjector(new AbstractModule() {
             @Override
             protected void configure() {
                 bind(Client.class).toInstance(client);
-                bind(HostEventBus.class).toInstance(bus);
+                bind(EventBus.class).toInstance(bus);
+                // Named constants RuneLiteModule provides on desktop.
+                for (String flag : new String[] {"developerMode", "safeMode", "insecureWriteCredentials", "noupdate", "disableTelemetry"}) {
+                    bindConstant().annotatedWith(com.google.inject.name.Names.named(flag)).to(false);
+                }
+                bind(File.class).annotatedWith(com.google.inject.name.Names.named("runeLiteDir")).toInstance(new File(pluginDir).getParentFile());
+                bind(File.class).annotatedWith(com.google.inject.name.Names.named("sessionfile"))
+                        .toInstance(new File(new File(pluginDir).getParentFile(), "session"));
+                bind(String.class).annotatedWith(com.google.inject.name.Names.named("profile")).toInstance("default");
+                bind(EventBus.class).annotatedWith(com.google.inject.name.Names.named("Deferred EventBus")).toInstance(bus);
                 bind(net.runelite.client.callback.ClientThread.class).toInstance(clientThread);
                 bind(net.runelite.client.ui.overlay.OverlayManager.class).toInstance(overlayManager);
-                bind(net.runelite.client.config.ConfigManager.class).toInstance(new net.runelite.client.config.ConfigManager(
-                        new File(new File(pluginDir).getParentFile(), "settings.properties"), bus::post));
+                bind(net.runelite.client.config.ConfigManager.class).toInstance(configManager);
+                bind(net.runelite.client.config.RuneLiteConfig.class)
+                        .toInstance(configManager.getConfig(net.runelite.client.config.RuneLiteConfig.class));
+                bind(net.runelite.client.config.ChatColorConfig.class)
+                        .toInstance(configManager.getConfig(net.runelite.client.config.ChatColorConfig.class));
+                bind(java.util.concurrent.ScheduledExecutorService.class)
+                        .toInstance(java.util.concurrent.Executors.newSingleThreadScheduledExecutor());
+                bind(net.runelite.client.callback.Hooks.class).toInstance(new net.runelite.client.callback.Hooks());
+                bind(net.runelite.client.ui.ClientToolbar.class).toInstance(new net.runelite.client.ui.ClientToolbar());
+                bind(net.runelite.client.game.SpriteManager.class).toInstance(new net.runelite.client.game.SpriteManager());
+                bind(net.runelite.client.chat.ChatMessageManager.class).toInstance(new net.runelite.client.chat.ChatMessageManager());
+                bind(net.runelite.client.game.chatbox.ChatboxPanelManager.class)
+                        .toInstance(new net.runelite.client.game.chatbox.ChatboxPanelManager());
+                bind(net.runelite.client.plugins.PluginManager.class).toProvider(
+                        () -> new net.runelite.client.plugins.PluginManager(pluginManager[0]));
             }
         });
-        HostPluginManager plugins = new HostPluginManager(injector, bus);
+        // Some plugins call RuneLite.getInjector(); desktop main() sets this static.
+        try {
+            net.runelite.client.RuneLite.setInjector(injector);
+        } catch (Throwable t) {
+            Log.e(TAG, "could not set RuneLite.injector", t);
+        }
+        pluginManager[0] = new HostPluginManager(injector, bus);
+        HostPluginManager plugins = pluginManager[0];
         File[] jars = new File(pluginDir).listFiles((d, n) -> n.endsWith(".jar"));
         if (jars != null) {
             for (File jar : jars) loadJar(plugins, jar, cacheDir);
@@ -110,7 +143,7 @@ public final class Host {
 
     /** Called on the game thread after every client cycle and for each derived event. */
     public static void onEvent(int type, int a, int b) {
-        HostEventBus bus = eventBus;
+        EventBus bus = eventBus;
         if (bus == null) return;
         switch (type) {
             case CLIENT_TICK:
@@ -162,6 +195,18 @@ public final class Host {
                 if (p != null) bus.post(new net.runelite.api.events.PlayerDespawned(p));
                 break;
             }
+            case ITEM_CONTAINER_CHANGED: {
+                AndroidItemContainer c = AndroidItemContainer.of(a);
+                if (c != null) bus.post(new net.runelite.api.events.ItemContainerChanged(a, c));
+                break;
+            }
+            case STAT_CHANGED: {
+                net.runelite.api.Skill[] all = net.runelite.api.Skill.values();
+                if (a < 0 || a >= all.length) break;
+                int[] sk = Native.skills();
+                bus.post(new net.runelite.api.events.StatChanged(all[a], sk[50 + a], sk[25 + a], sk[a]));
+                break;
+            }
             case WIDGET_LOADED: {
                 net.runelite.api.events.WidgetLoaded e = new net.runelite.api.events.WidgetLoaded();
                 e.setGroupId(a);
@@ -180,6 +225,15 @@ public final class Host {
                 break;
             }
         }
+    }
+
+    /**
+     * Game UI pixels per overlay-canvas pixel. Widget coordinates are in screen pixels (assumed;
+     * see docs/offsets.md), the overlay canvas is the 720-px-high logical canvas.
+     */
+    static float uiScale() {
+        int[] s = Native.screenSize();
+        return s[1] > 0 ? Math.max(1f, s[1] / 720f) : 1f;
     }
 
     static AndroidPlayer localPlayer() {

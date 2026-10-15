@@ -7,5 +7,6 @@ public abstract class ColorModel {
     public int getPixelSize() { return bits; }
     public int getNumComponents() { return 4; }
     public boolean hasAlpha() { return true; }
+    public boolean isAlphaPremultiplied() { return false; }
     public static ColorModel getRGBdefault() { return new DirectColorModel(32, 0xff0000, 0xff00, 0xff, 0xff000000); }
 }

@@ -48,6 +48,10 @@ struct Build {
     uint32_t f_root_interface;  // Client: top-level interface id (IF_OPENTOP)
     uint32_t f_subs_buckets, f_subs_count;  // Client: open sub-interfaces, map id -> {id, group, ...}
     uint32_t w_hidden, w_text;  // Widget: bool hidden (IF_SETHIDE), text (IF_SETTEXT)
+    // Widget geometry, from the script interpreter's CC_GETX/Y/WIDTH/HEIGHT/LAYER (0x4e5960):
+    uint32_t w_x, w_y, w_width, w_height, w_parent, w_group;
+    uint32_t f_skill_current, f_skill_real, f_skill_xp;  // Client: int[25] each (UPDATE_STAT, case 2)
+    uintptr_t inventories;      // global map inv id -> {ids vector +0x08, quantities vector +0x20, next +0x38}
     uintptr_t next_message_id;  // global int: id the next chat message gets (0x3f0a04 increments it)
     uintptr_t messages_by_id;   // global hash map id -> Message* {?, buckets, u32 count}
 };
@@ -59,7 +63,7 @@ constexpr Build kBuilds[] = {
      0xaee748, 0xaee6e8, 0x2020, 0xa69fe0, 0x411640, 0x1127ca0, 0x1127c60, 0x3058, 0x413c5c, 0x413cdc,
      0xecdc, 0xece0, 0xcb78, 0xcb7c, 0xcb80, 0x8950c, 0x89514, 0x5d0040,
      0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x68, 0x70, 0xcb0c, 0x718, 0xcb90, 0x730, 0x1fc, 0x200, 0x0, 0x8,
-     0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0xaab658, 0xaab628},
+     0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0x5c, 0x60, 0x64, 0x68, 0x74, 0x6, 0x3210, 0x3274, 0x32d8, 0xaab690, 0xaab658, 0xaab628},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -310,6 +314,31 @@ uintptr_t widget(int component) {
     return slots ? read_at<uintptr_t>(slots + child * 0x10 + 8) : 0;
 }
 
+WidgetGeometry widget_geometry(uintptr_t w) {
+    WidgetGeometry g;
+    if (!w) return g;
+    g.x = read_at<int32_t>(w + g_build->w_x);
+    g.y = read_at<int32_t>(w + g_build->w_y);
+    g.width = read_at<int32_t>(w + g_build->w_width);
+    g.height = read_at<int32_t>(w + g_build->w_height);
+    g.parent = read_at<int32_t>(w + g_build->w_parent);
+    g.group = read_at<uint16_t>(w + g_build->w_group);
+    if (g.parent == -1) {
+        // A group's root layer: its parent is the component the group is mounted in (as CC_GETLAYER does).
+        for (const SubInterface& sub : open_sub_interfaces())
+            if (sub.group == g.group) { g.parent = sub.component; break; }
+    }
+    return g;
+}
+
+int widget_child_count(int group) {
+    uintptr_t c = client();
+    if (!c || group < 0) return 0;
+    auto im = read_at<uintptr_t>(c + g_build->f_interfaces);
+    if (!im || static_cast<uint64_t>(group) >= read_at<uint64_t>(im + 0x6888)) return 0;
+    return static_cast<int>(read_at<uint64_t>(read_at<uintptr_t>(im + 0x6890) + group * 0x18 + 8));
+}
+
 bool widget_hidden(uintptr_t w) { return w && read_at<uint8_t>(w + g_build->w_hidden) != 0; }
 std::string widget_text(uintptr_t w) { return w ? read_string(w + g_build->w_text) : std::string(); }
 
@@ -326,6 +355,46 @@ std::vector<SubInterface> open_sub_interfaces() {
         for (auto node = read_at<uintptr_t>(buckets + b * 8); node && node != sentinel && guard++ < 1024;
              node = read_at<uintptr_t>(node + 0x10)) {
             out.push_back({read_at<int32_t>(node), read_at<int32_t>(node + 4)});
+        }
+    }
+    return out;
+}
+
+Skills skills() {
+    Skills out;
+    uintptr_t c = client();
+    if (!c) return out;
+    for (int i = 0; i < kSkillCount; i++) {
+        out.current[i] = read_at<int32_t>(c + g_build->f_skill_current + i * 4);
+        out.real[i] = read_at<int32_t>(c + g_build->f_skill_real + i * 4);
+        out.xp[i] = read_at<int32_t>(c + g_build->f_skill_xp + i * 4);
+    }
+    return out;
+}
+
+std::vector<Inventory> read_inventories() {
+    std::vector<Inventory> out;
+    if (!g_build) return out;
+    uintptr_t map = g_base + g_build->inventories;
+    auto buckets = read_at<uintptr_t>(map + 8);
+    auto count = read_at<uint64_t>(map + 0x10) & 0xffffffff;
+    if (!buckets || !count || count > 1 << 16) return out;
+    uintptr_t sentinel = read_at<uintptr_t>(buckets + count * 8);
+    for (uint64_t b = 0; b < count; b++) {
+        int guard = 0;
+        for (auto node = read_at<uintptr_t>(buckets + b * 8); node && node != sentinel && guard++ < 1024;
+             node = read_at<uintptr_t>(node + 0x38)) {
+            Inventory inv;
+            inv.id = read_at<int32_t>(node);
+            auto ids = read_at<const int32_t*>(node + 0x08), ids_end = read_at<const int32_t*>(node + 0x10);
+            auto qty = read_at<const int32_t*>(node + 0x20), qty_end = read_at<const int32_t*>(node + 0x28);
+            size_t n = ids && ids_end > ids ? static_cast<size_t>(ids_end - ids) : 0;
+            size_t nq = qty && qty_end > qty ? static_cast<size_t>(qty_end - qty) : 0;
+            if (n > 4096) continue;
+            inv.ids.assign(ids, ids + n);
+            inv.quantities.assign(n, 0);
+            for (size_t i = 0; i < n && i < nq; i++) inv.quantities[i] = qty[i];
+            out.push_back(std::move(inv));
         }
     }
     return out;

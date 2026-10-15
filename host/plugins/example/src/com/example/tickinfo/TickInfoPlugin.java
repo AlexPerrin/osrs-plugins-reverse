@@ -3,6 +3,7 @@ package com.example.tickinfo;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
+import net.runelite.api.Quest;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
@@ -86,6 +87,8 @@ public class TickInfoPlugin extends Plugin {
         log.info("tick {} player at {} varbit8119={}", client.getTickCount(), p != null ? p.getWorldLocation() : null,
                 client.getVarbitValue(8119));
         log.info("npcs: {}", client.getNpcs());
+        log.info("quest states: cook={} sheep={} (stack size {}) varp29={} varp179={}", Quest.COOKS_ASSISTANT.getState(client),
+                Quest.SHEEP_SHEARER.getState(client), client.getIntStackSize(), client.getVarpValue(29), client.getVarpValue(179));
         log.info("players: {} local={}", client.getPlayers(), client.getLocalPlayer() != null ? client.getLocalPlayer().getName() : null);
     }
 

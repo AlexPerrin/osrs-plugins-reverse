@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <memory>
 
 #include "got_hook.h"
 #include "log.h"
@@ -54,6 +55,10 @@ struct Build {
     uintptr_t inventories;      // global map inv id -> {ids vector +0x08, quantities vector +0x20, next +0x38}
     uintptr_t next_message_id;  // global int: id the next chat message gets (0x3f0a04 increments it)
     uintptr_t messages_by_id;   // global hash map id -> Message* {?, buckets, u32 count}
+    // Script VM (static object; int locals vector +0x08, object locals +0x38, int stack +0x50 with
+    // size +0xff0, object stack of 0x28-byte variants +0xff8 with size +0xac38, running flag +0x04)
+    // and runScriptEvent(vm, ScriptEvent*, maxOps).
+    uintptr_t script_vm, run_script_event;
 };
 
 constexpr Build kBuilds[] = {
@@ -63,7 +68,8 @@ constexpr Build kBuilds[] = {
      0xaee748, 0xaee6e8, 0x2020, 0xa69fe0, 0x411640, 0x1127ca0, 0x1127c60, 0x3058, 0x413c5c, 0x413cdc,
      0xecdc, 0xece0, 0xcb78, 0xcb7c, 0xcb80, 0x8950c, 0x89514, 0x5d0040,
      0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x68, 0x70, 0xcb0c, 0x718, 0xcb90, 0x730, 0x1fc, 0x200, 0x0, 0x8,
-     0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0x5c, 0x60, 0x64, 0x68, 0x74, 0x6, 0x3210, 0x3274, 0x32d8, 0xaab690, 0xaab658, 0xaab628},
+     0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0x5c, 0x60, 0x64, 0x68, 0x74, 0x6, 0x3210, 0x3274, 0x32d8, 0xaab690, 0xaab658, 0xaab628,
+     0xaef1d0, 0x4df54c},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -445,6 +451,85 @@ Point player_local_tile() {
 Point player_fine() {
     if (!g_build || !client()) return {-1, -1};
     return {field(g_build->f_fine_x), field(g_build->f_fine_y)};
+}
+
+}  // namespace game
+
+namespace game {
+namespace {
+// A script value as the VM stores it: 32 bytes of payload, then a type tag (1 int, 2 string,
+// 4 object, 5 long). Strings use the 24-byte layout read_string() describes.
+struct Variant {
+    uint8_t payload[32];
+    uint32_t type;
+    uint32_t pad;
+};
+static_assert(sizeof(Variant) == 0x28, "variant size");
+
+void write_string(uint8_t* dst, const std::string& s, std::vector<std::unique_ptr<char[]>>& keep) {
+    memset(dst, 0, 24);
+    if (s.size() <= 22) {
+        memcpy(dst, s.data(), s.size());
+        dst[23] = static_cast<uint8_t>(23 - s.size());
+        return;
+    }
+    // The VM copies argument strings, so the buffer only has to live for the call.
+    keep.emplace_back(new char[s.size() + 1]);
+    char* buf = keep.back().get();
+    memcpy(buf, s.data(), s.size());
+    buf[s.size()] = 0;
+    uint64_t size = s.size(), cap = s.size() | 0x8000000000000000ull;
+    memcpy(dst, &buf, 8);
+    memcpy(dst + 8, &size, 8);
+    memcpy(dst + 16, &cap, 8);
+}
+}  // namespace
+
+bool run_script(const std::vector<ScriptArg>& args, ScriptResult& out, std::string& error) {
+    if (!g_build || !g_build->run_script_event) { error = "unsupported build"; return false; }
+    if (args.empty() || args[0].is_string) { error = "first argument must be the script id"; return false; }
+    uintptr_t vm = g_base + g_build->script_vm;
+    if (read_at<uint8_t>(vm + 4)) { error = "script VM busy"; return false; }
+
+    std::vector<std::unique_ptr<char[]>> keep;
+    std::vector<Variant> vars(args.size());
+    for (size_t i = 0; i < args.size(); i++) {
+        memset(&vars[i], 0, sizeof(Variant));
+        if (args[i].is_string) {
+            write_string(vars[i].payload, args[i].s, keep);
+            vars[i].type = 2;
+        } else {
+            memcpy(vars[i].payload, &args[i].i, 4);
+            vars[i].type = 1;
+        }
+    }
+    // ScriptEvent, as runScriptEvent (0x4df54c) reads it: +0x08 argc, +0x10 args, +0x40 source
+    // widget, +0x48.. mouse/op values for the magic int args, +0x60 drag target, +0x70 opbase
+    // string, +0x88 copied to vm+0xe0cc, +0x8c trigger type (0 = look the script up by id).
+    alignas(16) uint8_t ev[0x100] = {};
+    int32_t argc = static_cast<int32_t>(args.size());
+    Variant* argv = vars.data();
+    memcpy(ev + 0x08, &argc, 4);
+    memcpy(ev + 0x10, &argv, 8);
+    ev[0x70 + 23] = 23;  // empty inline string
+    auto fn = reinterpret_cast<void (*)(uintptr_t, void*, int)>(g_base + g_build->run_script_event);
+    fn(vm, ev, 500000);
+
+    int n = read_at<int32_t>(vm + 0xff0);
+    if (n < 0 || n > 1000) n = 0;
+    out.ints.resize(n);
+    if (n) memcpy(out.ints.data(), reinterpret_cast<const void*>(vm + 0x50), n * 4u);
+    int m = read_at<int32_t>(vm + 0xac38);
+    if (m < 0 || m > 1000) m = 0;
+    out.objects.clear();
+    out.object_is_string.clear();
+    for (int i = 0; i < m; i++) {
+        uintptr_t v = vm + 0xff8 + static_cast<uintptr_t>(i) * 0x28;
+        bool str = read_at<uint32_t>(v + 0x20) == 2;
+        out.object_is_string.push_back(str);
+        out.objects.push_back(str ? read_string(v) : std::string());
+    }
+    return true;
 }
 
 }  // namespace game

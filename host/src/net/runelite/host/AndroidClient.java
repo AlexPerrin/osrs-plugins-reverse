@@ -54,6 +54,30 @@ public class AndroidClient extends ClientStub {
         return Native.varbit(id);
     }
 
+    // --- client scripts: run in the game's VM; the stacks are a copy taken when the script returns ---
+
+    private final int[] intStack = new int[1000];
+    private final Object[] objectStack = new Object[1000];
+    private int intStackSize, objectStackSize;
+
+    @Override
+    public void runScript(Object... args) {
+        Object[] r = Native.runScript(args);
+        int[] ints = (int[]) r[0];
+        Object[] objs = (Object[]) r[1];
+        System.arraycopy(ints, 0, intStack, 0, ints.length);
+        System.arraycopy(objs, 0, objectStack, 0, objs.length);
+        intStackSize = ints.length;
+        objectStackSize = objs.length;
+    }
+
+    @Override public int[] getIntStack() { return intStack; }
+    @Override public int getIntStackSize() { return intStackSize; }
+    @Override public void setIntStackSize(int size) { intStackSize = size; }
+    @Override public Object[] getObjectStack() { return objectStack; }
+    @Override public int getObjectStackSize() { return objectStackSize; }
+    @Override public void setObjectStackSize(int size) { objectStackSize = size; }
+
     @Override
     public Player getLocalPlayer() {
         return getGameState() == GameState.LOGGED_IN ? Host.localPlayer() : null;

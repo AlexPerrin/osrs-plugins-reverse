@@ -15,6 +15,11 @@ final class Native {
     static native int[] playerPosition();
     static native boolean isClientThread();
     /**
+     * Runs a client script in the game's VM (args[0] = script id; Integer/String args). Game
+     * thread only. Returns {int[] intStack, String[] objectStack} as left by the script.
+     */
+    static native Object[] runScript(Object[] args);
+    /**
      * NPCs as of the last client cycle: {int[] packed, String[] names}, where packed holds
      * {index, id, localX, localY, worldX, worldY} per NPC.
      */

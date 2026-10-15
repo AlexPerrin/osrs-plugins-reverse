@@ -72,6 +72,54 @@ jint n_varbit(JNIEnv* env, jclass, jint id) {
     }
     return game::varbit(id);
 }
+// Object[] {int[] intStack, String[] objectStack (null for non-string entries)}.
+jobjectArray n_run_script(JNIEnv* env, jclass, jobjectArray jargs) {
+    if (!client_thread::on_client_thread()) {
+        env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "runScript must be called on the client thread");
+        return nullptr;
+    }
+    jclass integer = env->FindClass("java/lang/Integer");
+    jclass string = env->FindClass("java/lang/String");
+    jmethodID int_value = env->GetMethodID(integer, "intValue", "()I");
+    std::vector<game::ScriptArg> args;
+    jsize n = jargs ? env->GetArrayLength(jargs) : 0;
+    for (jsize i = 0; i < n; i++) {
+        jobject o = env->GetObjectArrayElement(jargs, i);
+        game::ScriptArg a;
+        if (o && env->IsInstanceOf(o, integer)) {
+            a.i = env->CallIntMethod(o, int_value);
+        } else if (o && env->IsInstanceOf(o, string)) {
+            a.is_string = true;
+            const char* c = env->GetStringUTFChars(static_cast<jstring>(o), nullptr);
+            a.s = c ? c : "";
+            if (c) env->ReleaseStringUTFChars(static_cast<jstring>(o), c);
+        } else {
+            env->ThrowNew(env->FindClass("java/lang/IllegalArgumentException"), "runScript: only Integer and String arguments are supported");
+            return nullptr;
+        }
+        env->DeleteLocalRef(o);
+        args.push_back(std::move(a));
+    }
+    game::ScriptResult r;
+    std::string error;
+    if (!game::run_script(args, r, error)) {
+        env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), ("runScript: " + error).c_str());
+        return nullptr;
+    }
+    jintArray ints = env->NewIntArray(static_cast<jsize>(r.ints.size()));
+    if (!r.ints.empty()) env->SetIntArrayRegion(ints, 0, static_cast<jsize>(r.ints.size()), r.ints.data());
+    jobjectArray objs = env->NewObjectArray(static_cast<jsize>(r.objects.size()), string, nullptr);
+    for (size_t i = 0; i < r.objects.size(); i++) {
+        if (!r.object_is_string[i]) continue;
+        jstring js = env->NewStringUTF(r.objects[i].c_str());
+        env->SetObjectArrayElement(objs, static_cast<jsize>(i), js);
+        env->DeleteLocalRef(js);
+    }
+    jobjectArray res = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(res, 0, ints);
+    env->SetObjectArrayElement(res, 1, objs);
+    return res;
+}
 jboolean n_is_client_thread(JNIEnv*, jclass) { return client_thread::on_client_thread(); }
 jintArray n_player_position(JNIEnv* env, jclass) {
     if (game::game_state() != 30) return nullptr;
@@ -235,6 +283,7 @@ const JNINativeMethod kNatives[] = {
     {"serverVarp", "(I)I", reinterpret_cast<void*>(n_server_varp)},
     {"varbit", "(I)I", reinterpret_cast<void*>(n_varbit)},
     {"playerPosition", "()[I", reinterpret_cast<void*>(n_player_position)},
+    {"runScript", "([Ljava/lang/Object;)[Ljava/lang/Object;", reinterpret_cast<void*>(n_run_script)},
     {"isClientThread", "()Z", reinterpret_cast<void*>(n_is_client_thread)},
 };
 

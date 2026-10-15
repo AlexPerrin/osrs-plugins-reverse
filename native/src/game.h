@@ -106,4 +106,18 @@ std::vector<PlayerInfo> read_players();
 // NPC_INFO); other threads use client_thread::npcs().
 std::vector<Npc> read_npcs();
 
+// Client scripts (CS2). Runs a script synchronously in the game's VM, the way the client runs
+// widget listeners; args[0] is the script id. Game thread only, and not from inside a script.
+struct ScriptArg {
+    bool is_string = false;
+    int i = 0;
+    std::string s;
+};
+struct ScriptResult {
+    std::vector<int32_t> ints;               // int stack after the script returned
+    std::vector<std::string> objects;        // object stack (strings; "" for other types)
+    std::vector<bool> object_is_string;
+};
+bool run_script(const std::vector<ScriptArg>& args, ScriptResult& out, std::string& error);
+
 }  // namespace game

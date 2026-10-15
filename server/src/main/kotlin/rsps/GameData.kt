@@ -181,6 +181,9 @@ class EntityType(
     val sizeZ: Int = 1,
     /** Locs: 0 = walk through, 1 = blocks walking only, 2 = blocks walking and projectiles (default). */
     val interactType: Int = 2,
+    /** NPCs: attack, defence, strength, hitpoints, ranged, magic levels (config opcodes 74-79). */
+    val stats: IntArray = intArrayOf(1, 1, 1, 1, 1, 1),
+    val combatLevel: Int = -1,
 ) {
     fun op(op: Int): String? = ops.getOrNull(op - 1)
 
@@ -191,6 +194,8 @@ class EntityType(
             var name = "null"
             var size = 1
             val ops = arrayOfNulls<String>(5)
+            val stats = intArrayOf(1, 1, 1, 1, 1, 1)
+            var combatLevel = -1
             try {
                 loop@ while (r.buf.hasRemaining()) {
                     when (val op = r.u1()) {
@@ -198,7 +203,9 @@ class EntityType(
                         1 -> r.skip(r.u1() * 2)
                         2 -> name = r.string()
                         12 -> size = r.u1()
-                        13, 14, 15, 16, 18, 74, 75, 76, 77, 78, 79, 95, 97, 98, 103, 114, 124, 126, 146 -> r.skip(2)
+                        in 74..79 -> stats[op - 74] = r.u2()
+                        95 -> combatLevel = r.u2()
+                        13, 14, 15, 16, 18, 97, 98, 103, 114, 124, 126, 146 -> r.skip(2)
                         17, 115, 117 -> r.skip(8)
                         in 30..34 -> ops[op - 30] = r.string().takeUnless { it.equals("hidden", true) }
                         40, 41 -> r.skip(r.u1() * 4)
@@ -216,7 +223,7 @@ class EntityType(
                 }
             } catch (e: java.nio.BufferUnderflowException) {
             }
-            return EntityType(name, ops, size, size)
+            return EntityType(name, ops, size, size, stats = stats, combatLevel = combatLevel)
         }
 
         /** Loc config (archive 2, group 6), following RuneLite's ObjectLoader; stops at unknown opcodes. */

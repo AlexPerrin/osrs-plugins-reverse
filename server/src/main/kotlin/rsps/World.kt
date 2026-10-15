@@ -75,6 +75,12 @@ class Player(
     val experience = IntArray(25).also { it[3] = 1154 }
     var hitpoints = 10
     var buildCenter = coord
+    /** NPC the player is fighting (melee); attacks every [World.ATTACK_SPEED] ticks while in reach. */
+    var combatTarget: Npc? = null
+    var attackDelay = 0
+    var lastAttackTick = -1L
+    /** Ticks left of the death animation, or -1 while alive. */
+    var deathTicks = -1
 
     val extendedInfo get() = infos.playerInfo.avatar.extendedInfo
 
@@ -93,7 +99,7 @@ class Player(
 }
 
 /** A ground obj visible to everyone (zone OBJ_ADD / OBJ_DEL). */
-class GroundObj(val obj: Int, val count: Int, val coord: Coord)
+class GroundObj(val obj: Int, val count: Int, val coord: Coord, val spawnTick: Long)
 
 class Interaction(val reached: (Player) -> Boolean, val repath: (Player) -> Unit, val action: (Player) -> Unit)
 
@@ -139,9 +145,21 @@ class Inventory(val id: Int, val capacity: Int) {
 }
 
 /** A wandering, non-interactive NPC; RSProt's avatar carries everything the client sees. */
-class Npc(val index: Int, val id: Int, val spawn: Coord, val avatar: NpcAvatar) {
+class Npc(val index: Int, val id: Int, val spawn: Coord, val avatar: NpcAvatar, val type: EntityType?) {
     var x = spawn.x
     var z = spawn.z
+    val maxHitpoints = (type?.stats?.get(3) ?: 1).coerceAtLeast(1)
+    var hitpoints = maxHitpoints
+    /** Player this NPC fights back against. */
+    var target: Player? = null
+    var attackDelay = 0
+    var lastAttackTick = -1L
+    /** Ticks left of the death animation (then hidden), -1 while alive. */
+    var deathTicks = -1
+    /** Ticks until respawn while hidden, -1 otherwise. */
+    var respawnTicks = -1
+    val alive get() = deathTicks < 0 && respawnTicks < 0
+    fun stat(i: Int) = type?.stats?.get(i) ?: 1
 }
 
 const val INV_INVENTORY = 93
@@ -238,8 +256,11 @@ class World(
                 log.warn(e) { "Packet processing failed for ${player.username}" }
             }
         }
-        for (player in players) player?.let { move(it); interact(it) }
-        if (!npcsFrozen) for (npc in npcs) wander(npc)
+        for (player in players) player?.let { move(it); interact(it); playerCombat(it) }
+        for (npc in npcs) npcCombat(npc)
+        if (!npcsFrozen) for (npc in npcs) if (npc.alive && npc.target == null) wander(npc)
+        // Ground objs vanish when the client's despawn timer runs out; forget them here too.
+        if (tick % 100 == 0L) groundObjs.filter { tick - it.spawnTick >= OBJ_DESPAWN_TICKS }.forEach(::removeGroundObj)
         service.infoProtocols.update()
         for (player in players) player?.let(::flush)
     }
@@ -350,6 +371,8 @@ class World(
         // varbit has_displayname_transmitter (varp 1737 bit 31): without it the chatbox script
         // refuses input with "You must set a name before you can chat".
         setVarp(player, VARP_DISPLAYNAME, 1 shl 31)
+        // NPC "Attack" option: 1 = always right-click. The client hides Attack with the unset value 0.
+        setVarp(player, VARP_NPC_ATTACK_OPTION, 1)
 
         for ((obj, count) in STARTER_KIT) give(player, obj, count)
         player.send(player.inventory.toMessage())
@@ -380,7 +403,7 @@ class World(
         if (npcs.size >= MAX_NPCS) return null
         val index = npcs.size + 1
         val avatar = service.npcAvatarFactory.alloc(index, id, coord.level, coord.x, coord.z, direction = random.nextInt(8))
-        return Npc(index, id, coord, avatar).also { npcs += it }
+        return Npc(index, id, coord, avatar, npcTypes[id]).also { npcs += it }
     }
 
     /** A random step now and then, staying within 3 tiles of the spawn point. */
@@ -530,13 +553,16 @@ class World(
     // -- Incoming messages (dispatched from processIncomingPackets on the game thread) --
 
     fun walkTo(player: Player, x: Int, z: Int, ctrlRun: Boolean) {
+        if (player.deathTicks >= 0) return
         player.interaction = null
+        player.combatTarget = null
         pathTo(player, Coord(x, z, player.coord.level)) { tx, tz -> tx == x && tz == z }
         player.running = ctrlRun
     }
 
     fun teleport(player: Player, to: Coord) {
         player.interaction = null
+        player.combatTarget = null
         player.path.clear()
         player.coord = to
         player.infos.updateRootCoord(to.level, to.x, to.z)
@@ -555,6 +581,14 @@ class World(
                 teleport(player, Coord(x, z, args.getOrNull(3)?.toIntOrNull() ?: player.coord.level))
             }
             "home" -> teleport(player, config.spawn)
+            "walk" -> {
+                // ::walk x z - walks to an absolute tile with the pathfinder (as a minimap click would).
+                val x = args.getOrNull(1)?.toIntOrNull()
+                val z = args.getOrNull(2)?.toIntOrNull()
+                if (x == null || z == null) return player.message("Usage: ::walk x z")
+                walkTo(player, x, z, ctrlRun = false)
+                player.message("Path: ${player.path.size} steps, ends at ${player.path.lastOrNull()?.let { "${it.x}, ${it.z}" } ?: "here"}")
+            }
             "pos" -> player.message("Position: ${player.coord.x}, ${player.coord.z}, ${player.coord.level}")
             "anim" -> player.extendedInfo.setSequence(args.getOrNull(1)?.toIntOrNull() ?: -1, 0)
             "players" -> player.message("Online: ${players.filterNotNull().joinToString { it.username }}")
@@ -657,6 +691,20 @@ class World(
             }
             "ptalk" -> openPlayerChat(player, line.trim().substringAfter(' ', "").ifBlank { "Hello! I am talking to myself." })
             "options" -> openOptions(player, "Select an Option", args.drop(1).ifEmpty { listOf("Yes", "No", "Maybe") })
+            "heal" -> {
+                player.hitpoints = levelForXp(player.experience[HITPOINTS])
+                sendStat(player, HITPOINTS)
+            }
+            "combat" -> {
+                // ::combat [level] - sets attack, strength, defence and hitpoints (default 99) for quick kills.
+                val level = (args.getOrNull(1)?.toIntOrNull() ?: 99).coerceIn(1, 99)
+                for (stat in intArrayOf(ATTACK, DEFENCE, STRENGTH, HITPOINTS)) {
+                    player.experience[stat] = maxOf(XP_TABLE[level - 1], if (stat == HITPOINTS) 1154 else 0)
+                    sendStat(player, stat)
+                }
+                player.hitpoints = levelForXp(player.experience[HITPOINTS])
+                sendStat(player, HITPOINTS)
+            }
             "freeze" -> {
                 npcsFrozen = !npcsFrozen
                 player.message("NPC wandering ${if (npcsFrozen) "off" else "on"}")
@@ -700,7 +748,7 @@ class World(
         players.filterNotNull().filter { it.android && !it.disconnected.get() && it.coord.level == coord.level && inBuildArea(it, coord) }
 
     fun addGroundObj(obj: Int, count: Int, coord: Coord) {
-        groundObjs += GroundObj(obj, count, coord)
+        groundObjs += GroundObj(obj, count, coord, tick)
         for (p in nearby(coord)) sendZone(p, coord, listOf(objAdd(obj, count, coord)))
     }
 
@@ -941,6 +989,7 @@ class World(
 
     /** chatmenu (219): script 58 builds the option list from "title|opt1|opt2..."; options resume with sub = index. */
     fun openOptions(player: Player, title: String, options: List<String>) {
+        player.send(RunClientScript(SCRIPT_CHATBOX_RESET_BACKGROUND, emptyList()))
         player.send(IfOpenSub(CHATBOX_INTERFACE, CHATBOX_MODAL, CHATMENU, 0))
         player.send(RunClientScript(SCRIPT_CHATBOX_MULTI, listOf(title, options.joinToString("|"))))
         player.send(IfSetEventsV2(CHATMENU, CHATMENU_OPTIONS, 1, options.size, IF_EVENT_PAUSE, 0))
@@ -958,6 +1007,8 @@ class World(
         player.dialogueOpen = false
         player.send(IfCloseSub(CHATBOX_INTERFACE, CHATBOX_MODAL))
         player.send(RunClientScript(SCRIPT_CHAT_DEFAULT_RESTORE_INPUT, emptyList()))
+        // Rebuilds the chat history, which stays hidden after a dialogue otherwise.
+        player.send(RunClientScript(SCRIPT_BUILD_CHATBOX, emptyList()))
     }
 
     /** Drops an obj on the ground at the player's tile (+dz), visible to everyone nearby. */
@@ -1032,6 +1083,9 @@ class World(
         val type = npcTypes[npc.id]
         val opName = type?.op(op)
         log.info { "${player.username} OPNPC$op #$index (${npc.id} ${type?.name}) '$opName'" }
+        if (!npc.alive || player.deathTicks >= 0) return
+        player.combatTarget = null
+        if (opName.equals("attack", true)) return attack(player, npc)
         pathToNpc(player, npc)
         val interaction = Interaction(
             reached = { abs(it.coord.x - npc.x) <= 1 && abs(it.coord.z - npc.z) <= 1 },
@@ -1119,6 +1173,219 @@ class World(
         )
     }
 
+    // -- Combat (melee only): attack NPCs, NPCs fight back, death and respawn --
+
+    private fun sendStat(player: Player, stat: Int) {
+        val level = levelForXp(player.experience[stat])
+        val current = if (stat == HITPOINTS) player.hitpoints else level
+        player.send(UpdateStatV2(stat, current, level, player.experience[stat]))
+    }
+
+    private fun addXp(player: Player, stat: Int, xp: Int) {
+        val before = levelForXp(player.experience[stat])
+        player.experience[stat] = (player.experience[stat] + xp).coerceAtMost(200_000_000)
+        val after = levelForXp(player.experience[stat])
+        if (stat == HITPOINTS) player.hitpoints += after - before
+        if (after > before) player.message("Congratulations, your ${SKILL_NAMES[stat]} level is now $after.")
+        sendStat(player, stat)
+    }
+
+    /** Melee reach: orthogonally next to the NPC with no wall in between. */
+    private fun inMeleeReach(x: Int, z: Int, level: Int, npc: Npc): Boolean {
+        val dx = npc.x - x
+        val dz = npc.z - z
+        return abs(dx) + abs(dz) == 1 && collision.canStep(x, z, level, dx, dz)
+    }
+
+    private fun pathToMelee(player: Player, npc: Npc) =
+        pathTo(player, Coord(npc.x, npc.z, player.coord.level)) { x, z -> inMeleeReach(x, z, player.coord.level, npc) }
+
+    private fun attack(player: Player, npc: Npc) {
+        player.interaction = null
+        player.combatTarget = npc
+        if (!inMeleeReach(player.coord.x, player.coord.z, player.coord.level, npc)) pathToMelee(player, npc)
+        playerCombat(player)
+    }
+
+    /** OSRS hit chance from the attack and defence rolls. */
+    private fun hits(attackRoll: Int, defenceRoll: Int): Boolean {
+        val chance = if (attackRoll > defenceRoll) {
+            1.0 - (defenceRoll + 2.0) / (2.0 * (attackRoll + 1))
+        } else {
+            attackRoll / (2.0 * (defenceRoll + 1))
+        }
+        return random.nextDouble() < chance
+    }
+
+    /** Melee max hit without equipment bonuses (strength level + 8, plus the weapon's rough bonus). */
+    private fun maxHit(strength: Int, bonus: Int) = (0.5 + (strength + 8) * (bonus + 64) / 640.0).toInt()
+
+    private fun weaponName(player: Player) = player.worn.objs[3].takeIf { it != -1 }?.let { objTypes[it]?.name?.lowercase() }
+
+    private fun attackAnim(player: Player): Int {
+        val weapon = weaponName(player) ?: return ANIM_PUNCH
+        return when {
+            "dagger" in weapon -> ANIM_STAB
+            "axe" in weapon -> ANIM_AXE
+            "sword" in weapon || "scimitar" in weapon -> ANIM_SLASH
+            else -> ANIM_PUNCH
+        }
+    }
+
+    private fun playerCombat(player: Player) {
+        if (player.deathTicks >= 0) return playerDeath(player)
+        if (player.attackDelay > 0) player.attackDelay--
+        val npc = player.combatTarget ?: return
+        val c = player.coord
+        if (!npc.alive || npc.spawn.level != c.level) {
+            player.combatTarget = null
+            return
+        }
+        if (!inMeleeReach(c.x, c.z, c.level, npc)) {
+            // The NPC may have moved: path again towards it every tick until in reach.
+            pathToMelee(player, npc)
+            if (player.path.isEmpty()) {
+                player.combatTarget = null
+                player.message("I can't reach that!")
+            }
+            return
+        }
+        player.path.clear()
+        if (player.attackDelay > 0) return
+        player.attackDelay = ATTACK_SPEED
+        player.lastAttackTick = tick
+        player.extendedInfo.setSequence(attackAnim(player), 0)
+        val attack = levelForXp(player.experience[ATTACK])
+        val strength = levelForXp(player.experience[STRENGTH])
+        val bonus = if (weaponName(player) != null) WEAPON_BONUS else 0
+        val damage = if (hits((attack + 8 + 3) * (bonus + 64), (npc.stat(1) + 9) * 64)) {
+            random.nextInt(maxHit(strength, bonus) + 1)
+        } else {
+            0
+        }
+        damageNpc(npc, player, damage)
+        if (damage > 0) {
+            addXp(player, ATTACK, damage * 4)
+            addXp(player, HITPOINTS, damage * 4 / 3)
+        }
+    }
+
+    private fun damageNpc(npc: Npc, attacker: Player, damage: Int) {
+        val dealt = minOf(damage, npc.hitpoints)
+        npc.hitpoints -= dealt
+        val info = npc.avatar.extendedInfo
+        info.addHitMark(0x10000 + attacker.index, if (dealt == 0) HITMARK_BLOCK else HITMARK_DAMAGE, value = dealt)
+        info.addHeadBar(0x10000 + attacker.index, 0, startFill = HEADBAR_WIDTH * npc.hitpoints / npc.maxHitpoints)
+        if (npc.hitpoints <= 0) {
+            npc.deathTicks = DEATH_TICKS
+            npc.target = null
+            info.setSequence(npcAnims(npc).death, 0)
+            for (p in players) if (p?.combatTarget === npc) p.combatTarget = null
+            return
+        }
+        if (npc.lastAttackTick != tick) info.setSequence(npcAnims(npc).block, 0)
+        if (npc.target == null) {
+            npc.target = attacker
+            npc.attackDelay = 1
+        }
+    }
+
+    private class NpcAnims(val attack: Int, val block: Int, val death: Int)
+
+    private fun npcAnims(npc: Npc) = NPC_ANIMS[npc.id] ?: HUMAN_ANIMS
+
+    private fun npcCombat(npc: Npc) {
+        if (npc.deathTicks >= 0) {
+            if (npc.deathTicks-- > 0) return
+            npc.deathTicks = -1
+            npc.respawnTicks = RESPAWN_TICKS
+            npc.avatar.setInaccessible(true)
+            for ((obj, count) in NPC_DROPS[npc.id] ?: listOf(OBJ_BONES to 1)) addGroundObj(obj, count, Coord(npc.x, npc.z, npc.spawn.level))
+            return
+        }
+        if (npc.respawnTicks >= 0) {
+            if (npc.respawnTicks-- > 0) return
+            npc.respawnTicks = -1
+            npc.hitpoints = npc.maxHitpoints
+            npc.x = npc.spawn.x
+            npc.z = npc.spawn.z
+            npc.avatar.teleport(npc.spawn.level, npc.x, npc.z, jump = true)
+            npc.avatar.setInaccessible(false)
+            return
+        }
+        if (npc.attackDelay > 0) npc.attackDelay--
+        val target = npc.target ?: return
+        val c = target.coord
+        if (players[target.index] !== target || target.disconnected.get() || target.deathTicks >= 0 || c.level != npc.spawn.level ||
+            abs(c.x - npc.spawn.x) > NPC_CHASE_RANGE || abs(c.z - npc.spawn.z) > NPC_CHASE_RANGE
+        ) {
+            npc.target = null
+            return
+        }
+        if (!inMeleeReach(c.x, c.z, c.level, npc)) {
+            stepTowards(npc, c)
+            return
+        }
+        if (npc.attackDelay > 0) return
+        npc.attackDelay = ATTACK_SPEED
+        npc.lastAttackTick = tick
+        npc.avatar.extendedInfo.setSequence(npcAnims(npc).attack, 0)
+        val defence = levelForXp(target.experience[DEFENCE])
+        val damage = if (hits((npc.stat(0) + 8) * 64, (defence + 9) * 64)) random.nextInt(maxHit(npc.stat(2), 0) + 1) else 0
+        damagePlayer(target, npc, damage)
+    }
+
+    /** One step towards [to] (x first, then z), not onto its tile; the NPC stays near its spawn. */
+    private fun stepTowards(npc: Npc, to: Coord) {
+        val dx = (to.x - npc.x).sign
+        val dz = (to.z - npc.z).sign
+        for ((sx, sz) in listOf(dx to dz, dx to 0, 0 to dz)) {
+            if (sx == 0 && sz == 0) continue
+            val nx = npc.x + sx
+            val nz = npc.z + sz
+            if (nx == to.x && nz == to.z) continue
+            if (abs(nx - npc.spawn.x) > NPC_CHASE_RANGE || abs(nz - npc.spawn.z) > NPC_CHASE_RANGE) continue
+            if (!collision.canStep(npc.x, npc.z, npc.spawn.level, sx, sz)) continue
+            npc.x = nx
+            npc.z = nz
+            npc.avatar.walk(sx, sz)
+            return
+        }
+    }
+
+    private fun damagePlayer(player: Player, npc: Npc, damage: Int) {
+        val dealt = minOf(damage, player.hitpoints)
+        player.hitpoints -= dealt
+        val max = levelForXp(player.experience[HITPOINTS])
+        val type = if (dealt == 0) HITMARK_BLOCK else HITMARK_DAMAGE
+        player.extendedInfo.addHitMark(npc.index, type, type, type, dealt)
+        player.extendedInfo.addHeadBar(npc.index, 0, startFill = HEADBAR_WIDTH * player.hitpoints / max)
+        sendStat(player, HITPOINTS)
+        if (player.hitpoints <= 0) {
+            player.deathTicks = DEATH_TICKS
+            player.combatTarget = null
+            player.interaction = null
+            player.path.clear()
+            player.extendedInfo.setSequence(ANIM_PLAYER_DEATH, 0)
+            return
+        }
+        if (player.lastAttackTick != tick) player.extendedInfo.setSequence(ANIM_BLOCK, 0)
+        // Auto retaliate when idle.
+        if (player.combatTarget == null && player.interaction == null && player.path.isEmpty()) {
+            player.combatTarget = npc
+        }
+    }
+
+    private fun playerDeath(player: Player) {
+        if (player.deathTicks-- > 0) return
+        player.deathTicks = -1
+        player.hitpoints = levelForXp(player.experience[HITPOINTS])
+        sendStat(player, HITPOINTS)
+        player.extendedInfo.setSequence(-1, 0)
+        teleport(player, config.spawn)
+        player.message("Oh dear, you are dead!")
+    }
+
     private fun equip(player: Player, slot: Int) {
         val inv = player.inventory
         val obj = inv.objs.getOrNull(slot)?.takeIf { it != -1 } ?: return
@@ -1168,6 +1435,41 @@ class World(
             3105 to Coord(3221, 3221), 3106 to Coord(3226, 3220), 3111 to Coord(3218, 3216), 1173 to Coord(3228, 3215),
         )
         const val TICK_MS = 600L
+        const val ATTACK_SPEED = 4
+        private const val ATTACK = 0
+        private const val DEFENCE = 1
+        private const val STRENGTH = 2
+        private val SKILL_NAMES = listOf(
+            "Attack", "Defence", "Strength", "Hitpoints", "Ranged", "Prayer", "Magic", "Cooking", "Woodcutting",
+            "Fletching", "Fishing", "Firemaking", "Crafting", "Smithing", "Mining", "Herblore", "Agility", "Thieving",
+            "Slayer", "Farming", "Runecraft", "Hunter", "Construction", "Sailing", "?",
+        )
+        /** XP_TABLE[l - 1] = experience for level l. */
+        private val XP_TABLE = IntArray(99).also { table ->
+            var points = 0.0
+            for (level in 1 until 99) {
+                points += Math.floor(level + 300.0 * Math.pow(2.0, level / 7.0))
+                table[level] = Math.floor(points / 4).toInt()
+            }
+        }
+        private const val HITMARK_BLOCK = 0
+        private const val HITMARK_DAMAGE = 1
+        /** Rough strength/accuracy bonus of a wielded weapon (bronze sword is +5). */
+        private const val WEAPON_BONUS = 5
+        private const val DEATH_TICKS = 4
+        private const val RESPAWN_TICKS = 25
+        private const val NPC_CHASE_RANGE = 8
+        private const val OBJ_BONES = 526
+        private const val ANIM_PUNCH = 422
+        private const val ANIM_STAB = 376
+        private const val ANIM_SLASH = 390
+        private const val ANIM_AXE = 395
+        private const val ANIM_BLOCK = 424
+        private const val ANIM_PLAYER_DEATH = 836
+        private val HUMAN_ANIMS = NpcAnims(422, 424, 836)
+        /** Attack, block and death animations by NPC id (others use the human ones). */
+        private val NPC_ANIMS = mapOf(1173 to NpcAnims(5387, 5388, 5389))
+        private val NPC_DROPS = mapOf(1173 to listOf(OBJ_BONES to 1, 2138 to 1, 314 to 5))
         private const val HITPOINTS = 3
         private const val INTERFACE_INVENTORY = 149
         private const val INTERFACE_WORN = 387
@@ -1179,6 +1481,8 @@ class World(
         private const val ANIM_EAT = 829
         private const val SCRIPT_CHATBOX_RESET_BACKGROUND = 2379
         private const val SCRIPT_CHAT_DEFAULT_RESTORE_INPUT = 2158
+        /** chat_build (RuneLite ScriptID.BUILD_CHATBOX): redraws the chat lines and the input line. */
+        private const val SCRIPT_BUILD_CHATBOX = 216
         private const val CHATBOX_INTERFACE = 162
         /** chatbox:chatmodal; 566 in rev 239, 568 in rev 241 (two components were inserted before it). */
         private const val CHATBOX_MODAL = 568
@@ -1207,6 +1511,7 @@ class World(
         /** V2 events1 (old layout): target mask bits 11-16, drag target bit 20, use target bit 21. */
         private const val IF_EVENTS_INV_TARGET = 0x1F800 or (1 shl 20) or (1 shl 21)
         private const val VARP_DISPLAYNAME = 1737
+        private const val VARP_NPC_ATTACK_OPTION = 1306
         private const val VARP_QUEST_POINTS = 101
         /** Headbar config 0 (30 pixels wide); fill is in the bar's width units. */
         private const val HEADBAR_WIDTH = 30

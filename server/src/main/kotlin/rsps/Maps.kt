@@ -18,15 +18,21 @@ object Maps {
 
     fun loadDoors(cache: Cache, locTypes: Map<Int, EntityType>): Map<Long, MapLoc> {
         val doors = HashMap<Long, MapLoc>()
+        var failed = 0
         val openable = locTypes.filterValues { t -> t.ops.any { it.equals("Open", true) || it.equals("Close", true) } }.keys
         for (group in cache.index(ARCHIVE_MAPS).groups.keys) {
             val data = runCatching { cache.files(ARCHIVE_MAPS, group)[FILE_LOCS] }.getOrNull() ?: continue
             val baseX = (group shr 8) shl 6
             val baseZ = (group and 0xFF) shl 6
-            decodeLocs(data) { id, lx, lz, level, shape, rot ->
-                if (shape == 0 && id in openable) doors[key(baseX + lx, baseZ + lz, level)] = MapLoc(id, shape, rot)
+            try {
+                decodeLocs(data) { id, lx, lz, level, shape, rot ->
+                    if (shape == 0 && id in openable) doors[key(baseX + lx, baseZ + lz, level)] = MapLoc(id, shape, rot)
+                }
+            } catch (e: RuntimeException) {
+                failed++ // a few squares are empty or differently formatted; keep what was read
             }
         }
+        if (failed > 0) System.err.println("Maps: $failed loc files could not be fully decoded")
         return doors
     }
 

@@ -127,14 +127,9 @@ field orders correct; the inventory needs events1 target bits 11-16 for "Use"), 
 (`::quest`; the client agent's runScript read 4029 = FINISHED / IN_PROGRESS), player hitsplats
 and headbars (`::hit`).
 
-1. Verify on device (built, committed, not yet deployed when this was written):
-   - Real doors: `Maps.loadDoors` reads map archive 5 (group `mx << 8 | mz`, file 1 = locs, no
-     XTEA in rev 241) and keeps shape-0 locs with Open/Close. Open moves the door one tile
-     towards its wall side (rot 0 west: x-1, 1 north: z+1, 2 east: x+1, 3 south: z-1) and turns it
-     to rot+1, swapping to the nearest id with the same name and the opposite op; Close reverses.
-     Check the open door's position/rotation on the Lumbridge courtyard doors (1535 at 3226,3223
-     rot 2) and adjust `Maps.openOffset` if it looks wrong.
-   - NPC hitsplats/headbars (`::npchit n`): flags 0x40000 / 0x1000000 with 4-byte flag chaining.
+1. Done and verified too: real doors (Open/Close round trip on Lumbridge door 1535 at 3226,3223
+   rot 2 <-> 1536 at 3227,3223 rot 3; `Maps.loadDoors`, map archive 5 group `mx << 8 | mz`, file 1,
+   no XTEA) and NPC hitsplats/headbars (`::npchit`). One map square fails to decode (logged).
 2. Collision + pathfinding from the same map data (file 0 = terrain/flags, locs for walls), so
    walking and interactions stop going through walls.
 3. Combat basics (attack NPCs with hitsplats, NPC death/respawn) if Quest Helper work needs it.

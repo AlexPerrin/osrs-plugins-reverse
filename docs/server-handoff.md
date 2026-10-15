@@ -127,6 +127,10 @@ field orders correct; the inventory needs events1 target bits 11-16 for "Use"), 
 (`::quest`; the client agent's runScript read 4029 = FINISHED / IN_PROGRESS), player hitsplats
 and headbars (`::hit`).
 
+0. **Deploy state:** the container runs 3b565e0 (doors, NPC hits). Collision (5ffe15e) is built but
+   not deployed: ask the client agent "restart ok?", redeploy, then check on device that walking
+   routes around the courtyard walls/fountain, that a closed door blocks and an opened one lets you
+   through, and that NPCs no longer wander into walls.
 1. Done and verified too: real doors (Open/Close round trip on Lumbridge door 1535 at 3226,3223
    rot 2 <-> 1536 at 3227,3223 rot 3; `Maps.loadDoors`, map archive 5 group `mx << 8 | mz`, file 1,
    no XTEA) and NPC hitsplats/headbars (`::npchit`). One map square fails to decode (logged).

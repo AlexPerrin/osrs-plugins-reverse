@@ -117,7 +117,7 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
   0x40000 and headbars 0x1000000; player hits 0x40000, headbars 0x20000 (see android-protocol.md).
 - The OutgoingMessageSizeEstimator error "Encoder not registered for AndroidUpdateZonePartialEnclosed"
   is harmless (the estimator only knows the desktop repository); the packet is still sent.
-- No collision/pathfinding: walking is a straight line.
+- Collision/pathfinding from map data (see Next steps 2).
 
 ## Next steps (priority order, driven by Quest Helper on the client side)
 
@@ -130,8 +130,15 @@ and headbars (`::hit`).
 1. Done and verified too: real doors (Open/Close round trip on Lumbridge door 1535 at 3226,3223
    rot 2 <-> 1536 at 3227,3223 rot 3; `Maps.loadDoors`, map archive 5 group `mx << 8 | mz`, file 1,
    no XTEA) and NPC hitsplats/headbars (`::npchit`). One map square fails to decode (logged).
-2. Collision + pathfinding from the same map data (file 0 = terrain/flags, locs for walls), so
-   walking and interactions stop going through walls.
+2. Collision + pathfinding (`Collision.kt`, committed 5ffe15e, checked headless with jshell, not yet
+   on device): flags per map square loaded lazily from archive 5 (file 0 terrain: u16 opcodes,
+   settings bit 1 = blocked, bit 2 on level 1 = bridge; file 1 locs: walls by shape/rot, shapes
+   9-11 solid by size, 22 if interactType 1); loc `interactType` from config opcodes 17/27. BFS in a
+   128x128 window (closest reachable tile within 10 when the target is unreachable). Used by
+   MOVE_GAMECLICK, all OP* interactions (goal = the interaction's `reached` test), NPC wandering;
+   doors update collision. The Collision keeps its own open `Cache` (game thread only).
+   Headless check: `jshell --class-path <build/install/*/lib/*.jar>` with `new rsps.Collision(...)`.
+   Not handled: multi-level bridges beyond the level shift, NPC size > 1, other players.
 3. Combat basics (attack NPCs with hitsplats, NPC death/respawn) if Quest Helper work needs it.
 4. Cosmetic: chat history hidden after a dialogue; options menu shows only 2 of 3 rows.
 

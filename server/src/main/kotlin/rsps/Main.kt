@@ -57,9 +57,15 @@ fun main() {
         "NPC configs: ${npcTypes.size} (3105 -> ${npcTypes[3105]?.name} ${npcTypes[3105]?.ops?.toList()}), " +
             "loc configs: ${locTypes.size} (1535 -> ${locTypes[1535]?.name} ${locTypes[1535]?.ops?.toList()})"
     }
+    val varbitTypes = cache.files(2, 14).mapNotNull { (id, data) -> VarbitType.decode(data)?.let { id to it } }.toMap()
+    val quests = Quests.load(cache)
+    log.info {
+        "Varbits: ${varbitTypes.size}, quests: ${quests.size} " +
+            "(${quests.firstOrNull { it.name == "Cook's Assistant" }?.let { "${it.name} -> varp ${it.varId}, end ${it.end}" }})"
+    }
     cache.close()
 
-    val world = World(config, gameframes, js5.crcs, objTypes, npcTypes, locTypes)
+    val world = World(config, gameframes, js5.crcs, objTypes, npcTypes, locTypes, varbitTypes, quests)
     val service = NetworkFactory(config, world, js5, DefaultHuffmanCodecProvider(huffman)).build()
     world.service = service
 

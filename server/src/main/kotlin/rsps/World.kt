@@ -83,6 +83,8 @@ class Player(
     val inventory = Inventory(INV_INVENTORY, 28)
     val worn = Inventory(INV_WORN, 14)
     val bank = Inventory(INV_BANK, 800)
+    /** Server-side varp values (only the ones set by the server). */
+    val varps = HashMap<Int, Int>()
 
     fun send(message: net.rsprot.protocol.message.OutgoingGameMessage) = session.queue(message)
 
@@ -157,6 +159,8 @@ class World(
     private val objTypes: Map<Int, ObjWear>,
     private val npcTypes: Map<Int, EntityType>,
     private val locTypes: Map<Int, EntityType>,
+    private val varbitTypes: Map<Int, VarbitType>,
+    private val quests: List<QuestType>,
 ) : GameConnectionHandler<Player> {
     private val log = InlineLogger()
     lateinit var service: NetworkService<Player>
@@ -345,8 +349,9 @@ class World(
         for ((obj, count) in STARTER_KIT) give(player, obj, count)
         player.send(player.inventory.toMessage())
         player.send(player.worn.toMessage())
-        // Enable item ops 1-10 on the 28 inventory slots (interface 149, component 0).
-        player.send(IfSetEventsV2(INTERFACE_INVENTORY, 0, 0, 27, 0, IF_EVENTS_OPS))
+        // Enable item ops 1-10 on the 28 inventory slots (interface 149, component 0), plus "Use"
+        // (targets: ground obj, NPC, loc, player, inv item, component) and being a use target.
+        player.send(IfSetEventsV2(INTERFACE_INVENTORY, 0, 0, 27, IF_EVENTS_INV_TARGET, IF_EVENTS_OPS))
         for (component in WORN_SLOT_COMPONENTS.keys) {
             player.send(IfSetEventsV2(INTERFACE_WORN, component, -1, -1, 0, IF_EVENTS_OPS))
         }
@@ -363,6 +368,7 @@ class World(
         player.message("Commands: ::tele x z [level], ::pos, ::home, ::players, ::anim id, ::item id [n], ::empty, ::wear id [slot], ::xp skill n, ::openbank")
         player.message("::talk [npc] text, ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::freeze, ::drop")
         player.message("::obj id [n] [dz], ::zobj id [n], ::locadd id [shape] [rot], ::locdel [shape] [dx] [dz]")
+        player.message("::quest name [start|done|reset|n], ::varp id [v], ::varbit id [v], ::events [e1] [e2]")
     }
 
     fun spawnNpc(id: Int, coord: Coord): Npc? {
@@ -385,7 +391,50 @@ class World(
     }
 
     fun setVarp(player: Player, id: Int, value: Int) {
+        player.varps[id] = value
         player.send(if (value in Byte.MIN_VALUE..Byte.MAX_VALUE) VarpSmall(id, value) else VarpLarge(id, value))
+    }
+
+    fun getVarbit(player: Player, id: Int): Int {
+        val type = varbitTypes[id] ?: return 0
+        return ((player.varps[type.varp] ?: 0) ushr type.lsb) and type.mask
+    }
+
+    fun setVarbit(player: Player, id: Int, value: Int) {
+        val type = varbitTypes[id] ?: return player.message("No varbit $id")
+        val mask = type.mask shl type.lsb
+        val old = player.varps[type.varp] ?: 0
+        setVarp(player, type.varp, (old and mask.inv()) or ((value shl type.lsb) and mask))
+    }
+
+    private fun questProgress(player: Player, quest: QuestType) =
+        if (quest.varbit) getVarbit(player, quest.varId) else player.varps[quest.varId] ?: 0
+
+    /** `::quest name [start|done|reset|value]`: shows or sets a quest's progress var. */
+    private fun questCommand(player: Player, args: List<String>) {
+        val state = args.lastOrNull()?.takeIf { it in QUEST_STATES || it.toIntOrNull() != null }
+        val query = (if (state != null) args.dropLast(1) else args).joinToString(" ").lowercase()
+        if (query.isBlank()) return player.message("::quest name [start|done|reset|value] (${quests.size} quests)")
+        val matches = quests.filter { query in it.name.lowercase() }
+        val quest = matches.firstOrNull { it.name.equals(query, true) } ?: matches.singleOrNull()
+            ?: return player.message(if (matches.isEmpty()) "No quest matches '$query'" else "Matches: ${matches.take(6).joinToString { it.name }}")
+        if (state != null) {
+            val value = when (state) {
+                "start" -> quest.unstarted + 1
+                "done" -> quest.end
+                "reset" -> quest.unstarted
+                else -> state.toInt()
+            }
+            if (quest.varbit) setVarbit(player, quest.varId, value) else setVarp(player, quest.varId, value)
+            setVarp(player, VARP_QUEST_POINTS, quests.filter { questProgress(player, it) >= it.end }.sumOf { it.questPoints })
+        }
+        val progress = questProgress(player, quest)
+        val status = when {
+            progress >= quest.end -> "done"
+            progress > quest.unstarted -> "started"
+            else -> "not started"
+        }
+        player.message("${quest.name}: ${if (quest.varbit) "varbit" else "varp"} ${quest.varId} = $progress ($status, end ${quest.end})")
     }
 
     private fun move(player: Player) {
@@ -571,6 +620,24 @@ class World(
             }
             // "::bank" itself never reaches the server: the client turns it into a joke public chat line.
             "openbank" -> openBank(player)
+            "varp" -> {
+                val id = args.getOrNull(1)?.toIntOrNull() ?: return player.message("::varp id [value]")
+                args.getOrNull(2)?.toIntOrNull()?.let { setVarp(player, id, it) }
+                player.message("varp $id = ${player.varps[id] ?: 0}")
+            }
+            "varbit" -> {
+                val id = args.getOrNull(1)?.toIntOrNull() ?: return player.message("::varbit id [value]")
+                args.getOrNull(2)?.toIntOrNull()?.let { setVarbit(player, id, it) }
+                player.message("varbit $id = ${getVarbit(player, id)} (varp ${varbitTypes[id]?.varp})")
+            }
+            "quest" -> questCommand(player, args.drop(1))
+            "events" -> {
+                // Debug: resend the inventory's IF_SETEVENTS with other events1/events2 values (hex ok).
+                val e1 = args.getOrNull(1)?.let { it.removePrefix("0x").toLongOrNull(if (it.startsWith("0x")) 16 else 10)?.toInt() } ?: IF_EVENTS_INV_TARGET
+                val e2 = args.getOrNull(2)?.let { it.removePrefix("0x").toLongOrNull(if (it.startsWith("0x")) 16 else 10)?.toInt() } ?: IF_EVENTS_OPS
+                player.send(IfSetEventsV2(INTERFACE_INVENTORY, 0, 0, 27, e1, e2))
+                player.message("inventory events1=0x${e1.toString(16)} events2=0x${e2.toString(16)}")
+            }
             "ptalk" -> openPlayerChat(player, line.trim().substringAfter(' ', "").ifBlank { "Hello! I am talking to myself." })
             "options" -> openOptions(player, "Select an Option", args.drop(1).ifEmpty { listOf("Yes", "No", "Maybe") })
             "freeze" -> {
@@ -1022,7 +1089,11 @@ class World(
         )
         /** V2 events2: one bit per op (ops 1-10, plus bit 0 in case numbering is 1-based). */
         private const val IF_EVENTS_OPS = 0x7FF
+        /** V2 events1 (old layout): target mask bits 11-16, drag target bit 20, use target bit 21. */
+        private const val IF_EVENTS_INV_TARGET = 0x1F800 or (1 shl 20) or (1 shl 21)
         private const val VARP_DISPLAYNAME = 1737
+        private const val VARP_QUEST_POINTS = 101
+        private val QUEST_STATES = setOf("start", "done", "reset")
         /** How long a dropped player is kept so the client can reconnect (60 seconds). */
         private const val RECONNECT_GRACE_TICKS = 100
         private const val REBUILD_DISTANCE = 4

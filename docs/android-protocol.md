@@ -220,6 +220,12 @@ NPC extended info: flag bytes chain with `0x20` (second byte), `0x2000` (third) 
 | transformation `0x2` | id `p2Alt2` (as desktop) |
 | sequence `0x1` | id `p2Alt3`, delay `p1` |
 | say `0x4` | `pjstr` (as desktop) |
+| headbars `0x1000000` | count `p1Alt2`; per bar: type smart, endTime smart (0x7FFF = remove), startTime smart, startFill `p1Alt1`, endFill `p1` if endTime != 0 |
+| hitmarks `0x40000` | count `p1`; per hit: type, value, delay, limit (smart1or2) |
+
+Full NPC read order (flag tests in 0x569778): 0x2, 0x800000, 0x200000, 0x80 (spotanims), 0x200,
+0x1, 0x4, 0x1000, 0x800, 0x1000000 (headbars), 0x10, 0x8, 0x100, 0x2000000, 0x400, 0x40,
+0x40000 (hitmarks), 0x4000, 0x10000, 0x80000, 0x100000, 0x8000, 0x400000.
 
 Other NPC blocks are not mapped; the Android writer drops them.
 

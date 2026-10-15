@@ -369,7 +369,7 @@ class World(
         player.message("Commands: ::tele x z [level], ::pos, ::home, ::players, ::anim id, ::item id [n], ::empty, ::wear id [slot], ::xp skill n, ::openbank")
         player.message("::talk [npc] text, ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::freeze, ::drop")
         player.message("::obj id [n] [dz], ::zobj id [n], ::locadd id [shape] [rot], ::locdel [shape] [dx] [dz]")
-        player.message("::quest name [start|done|reset|n], ::varp id [v], ::varbit id [v], ::events [e1] [e2], ::hit [n] [type]")
+        player.message("::quest name [start|done|reset|n], ::varp id [v], ::varbit id [v], ::events [e1] [e2], ::hit [n] [type], ::npchit [n]")
     }
 
     fun spawnNpc(id: Int, coord: Coord): Npc? {
@@ -655,6 +655,14 @@ class World(
             "freeze" -> {
                 npcsFrozen = !npcsFrozen
                 player.message("NPC wandering ${if (npcsFrozen) "off" else "on"}")
+            }
+            "npchit" -> {
+                // ::npchit [damage] - hitsplat + headbar on every NPC (tinted as dealt by you).
+                val damage = args.getOrNull(1)?.toIntOrNull() ?: 1
+                for (npc in npcs) {
+                    npc.avatar.extendedInfo.addHitMark(0x10000 + player.index, if (damage == 0) 0 else 1, value = damage)
+                    npc.avatar.extendedInfo.addHeadBar(0x10000 + player.index, 0, startFill = HEADBAR_WIDTH * 2 / 3)
+                }
             }
             "npcsay" -> {
                 val text = line.trim().substringAfter(' ', "").ifBlank { return player.message("Usage: ::npcsay text") }

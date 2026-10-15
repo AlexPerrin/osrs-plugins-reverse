@@ -1162,10 +1162,10 @@ index 00000000..d083e608
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerHitsEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerHitsEncoders.kt
 new file mode 100644
-index 00000000..b3a084a4
+index 00000000..b1436285
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerHitsEncoders.kt
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,142 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -1242,6 +1242,69 @@ index 00000000..b3a084a4
 +        val writerIndex = buffer.writerIndex()
 +        buffer.writerIndex(countMarker)
 +        buffer.p1(count)
++        buffer.writerIndex(writerIndex)
++    }
++}
++
++/** NPC flag 0x40000: [count] then per hit [type][value][delay][limit], all smart1or2 (0x569778). */
++public class AndroidNpcHitmarkEncoder : OnDemandExtendedInfoEncoder<HitmarkList> {
++    override fun encode(
++        buffer: JagByteBuf,
++        localPlayerIndex: Int,
++        updatedAvatarIndex: Int,
++        extendedInfo: HitmarkList,
++    ) {
++        val countMarker = buffer.writerIndex()
++        buffer.skipWrite(1)
++        var count = 0
++        for (hit in extendedInfo.elements) {
++            val tinted = localPlayerIndex == (hit.sourceIndex - 0x10_000)
++            val type = if (tinted) hit.selfType else hit.otherType
++            if (type == UShort.MAX_VALUE) continue
++            buffer.pSmart1or2(type.toInt())
++            buffer.pSmart1or2(hit.value.toInt())
++            buffer.pSmart1or2(hit.delay.toInt())
++            buffer.pSmart1or2(hit.limit.toInt())
++            if (++count >= 0xFF) break
++        }
++        val writerIndex = buffer.writerIndex()
++        buffer.writerIndex(countMarker)
++        buffer.p1(count)
++        buffer.writerIndex(writerIndex)
++    }
++}
++
++/**
++ * NPC flag 0x1000000: [count -b] then per bar [type smart][endTime smart], and unless endTime is
++ * 0x7FFF: [startTime smart][startFill b^0x80], plus [endFill] when endTime != 0.
++ */
++public class AndroidNpcHeadbarEncoder : OnDemandExtendedInfoEncoder<HeadbarList> {
++    override fun encode(
++        buffer: JagByteBuf,
++        localPlayerIndex: Int,
++        updatedAvatarIndex: Int,
++        extendedInfo: HeadbarList,
++    ) {
++        val countMarker = buffer.writerIndex()
++        buffer.skipWrite(1)
++        var count = 0
++        for (headBar in extendedInfo.elements) {
++            val isSelf = localPlayerIndex == (headBar.sourceIndex - 0x10_000)
++            val type = if (isSelf) headBar.selfType.toIntOrMinusOne() else headBar.otherType.toIntOrMinusOne()
++            if (type == -1) continue
++            buffer.pSmart1or2(type)
++            val endTime = headBar.endTime.toInt()
++            buffer.pSmart1or2(endTime)
++            if (endTime != 0x7FFF) {
++                buffer.pSmart1or2(headBar.startTime.toInt())
++                buffer.p1Alt1(headBar.startFill.toInt())
++                if (endTime != 0) buffer.p1(headBar.endFill.toInt())
++            }
++            if (++count >= 0xFF) break
++        }
++        val writerIndex = buffer.writerIndex()
++        buffer.writerIndex(countMarker)
++        buffer.p1Alt2(count)
 +        buffer.writerIndex(writerIndex)
 +    }
 +}
@@ -1567,10 +1630,10 @@ index 00000000..eea8a022
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt
 new file mode 100644
-index 00000000..fd855812
+index 00000000..ac4eb785
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,112 @@
 +@file:Suppress("DuplicatedCode")
 +
 +package net.rsprot.protocol.android
@@ -1588,8 +1651,6 @@ index 00000000..fd855812
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcFreezeEncoder
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcHeadCustomisationEncoder
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcHeadIconCustomisationEncoder
-+import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcHeadbarEncoder
-+import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcHitmarkEncoder
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcNameChangeEncoder
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcSayEncoder
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcSpotAnimEncoder
@@ -1622,8 +1683,8 @@ index 00000000..fd855812
 +            NpcBodyCustomisationEncoder(),
 +            NpcTransformationEncoder(),
 +            NpcCombatLevelChangeEncoder(),
-+            NpcHitmarkEncoder(),
-+            NpcHeadbarEncoder(),
++            AndroidNpcHitmarkEncoder(),
++            AndroidNpcHeadbarEncoder(),
 +            NpcFaceEncoder(),
 +            NpcBaseAnimationSetEncoder(),
 +            NpcTransparencyEncoder(),
@@ -1638,22 +1699,38 @@ index 00000000..fd855812
 +        blocks: NpcAvatarExtendedInfoBlocks,
 +    ) {
 +        // Android NPC extended info (NPC_INFO reader, Ghidra 0x569778): flag bytes chain with
-+        // 0x20, 0x2000 and 0x20000. Only blocks with a verified Android layout are written, in the
-+        // client's read order: 0x2 transformation, 0x1 sequence, 0x4 say. Anything else is dropped.
++        // 0x20 (second byte), 0x2000 (third) and 0x20000 (fourth). Only blocks with a verified
++        // Android layout are written, in the client's read order: 0x2 transformation, 0x1 sequence,
++        // 0x4 say, 0x1000000 headbars, 0x40000 hitmarks. Anything else is dropped.
 +        var clientFlag = 0
 +        if (flag and NpcAvatarExtendedInfo.TRANSFORMATION != 0) clientFlag = clientFlag or ANDROID_TRANSFORMATION
 +        if (flag and NpcAvatarExtendedInfo.SEQUENCE != 0) clientFlag = clientFlag or ANDROID_SEQUENCE
 +        if (flag and NpcAvatarExtendedInfo.SAY != 0) clientFlag = clientFlag or ANDROID_SAY
++        if (flag and NpcAvatarExtendedInfo.HEADBARS != 0) clientFlag = clientFlag or ANDROID_HEADBARS
++        if (flag and NpcAvatarExtendedInfo.HITMARKS != 0) clientFlag = clientFlag or ANDROID_HITMARKS
++        if (clientFlag and 0xFFFFFF.inv() != 0) clientFlag = clientFlag or EXTENDED_LARGE
++        if (clientFlag and 0xFFFF.inv() != 0) clientFlag = clientFlag or EXTENDED_MEDIUM
++        if (clientFlag and 0xFF.inv() != 0) clientFlag = clientFlag or EXTENDED_SHORT
 +        buffer.p1(clientFlag)
++        if (clientFlag and EXTENDED_SHORT != 0) buffer.p1(clientFlag shr 8)
++        if (clientFlag and EXTENDED_MEDIUM != 0) buffer.p1(clientFlag shr 16)
++        if (clientFlag and EXTENDED_LARGE != 0) buffer.p1(clientFlag shr 24)
 +        if (clientFlag and ANDROID_TRANSFORMATION != 0) pCachedData(buffer, blocks.transformation)
 +        if (clientFlag and ANDROID_SEQUENCE != 0) pCachedData(buffer, blocks.sequence)
 +        if (clientFlag and ANDROID_SAY != 0) pCachedData(buffer, blocks.say)
++        if (clientFlag and ANDROID_HEADBARS != 0) pOnDemandData(buffer, localIndex, blocks.headbarList, observerIndex)
++        if (clientFlag and ANDROID_HITMARKS != 0) pOnDemandData(buffer, localIndex, blocks.hitmarkList, observerIndex)
 +    }
 +
 +    private companion object {
 +        private const val ANDROID_SEQUENCE: Int = 0x1
 +        private const val ANDROID_TRANSFORMATION: Int = 0x2
 +        private const val ANDROID_SAY: Int = 0x4
++        private const val ANDROID_HITMARKS: Int = 0x40000
++        private const val ANDROID_HEADBARS: Int = 0x1000000
++        private const val EXTENDED_SHORT: Int = 0x20
++        private const val EXTENDED_MEDIUM: Int = 0x2000
++        private const val EXTENDED_LARGE: Int = 0x20000
 +    }
 +}
 +

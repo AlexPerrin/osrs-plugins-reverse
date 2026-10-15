@@ -63,9 +63,11 @@ fun main() {
         "Varbits: ${varbitTypes.size}, quests: ${quests.size} " +
             "(${quests.firstOrNull { it.name == "Cook's Assistant" }?.let { "${it.name} -> varp ${it.varId}, end ${it.end}" }})"
     }
+    val (doors, doorLoad) = measureTimedValue { Maps.loadDoors(cache, locTypes) }
+    log.info { "Map doors: ${doors.size} openable wall locs, loaded in $doorLoad (3226,3223 -> ${doors[Maps.key(3226, 3223, 0)]})" }
     cache.close()
 
-    val world = World(config, gameframes, js5.crcs, objTypes, npcTypes, locTypes, varbitTypes, quests)
+    val world = World(config, gameframes, js5.crcs, objTypes, npcTypes, locTypes, varbitTypes, quests, doors)
     val service = NetworkFactory(config, world, js5, DefaultHuffmanCodecProvider(huffman)).build()
     world.service = service
 

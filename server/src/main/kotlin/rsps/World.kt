@@ -162,6 +162,8 @@ class World(
     private val locTypes: Map<Int, EntityType>,
     private val varbitTypes: Map<Int, VarbitType>,
     private val quests: List<QuestType>,
+    /** Openable wall locs (doors, gates) from the map, by [Maps.key]. */
+    private val mapDoors: Map<Long, MapLoc>,
 ) : GameConnectionHandler<Player> {
     private val log = InlineLogger()
     lateinit var service: NetworkService<Player>
@@ -326,6 +328,7 @@ class World(
         player.infos.updateRootBuildAreaCenteredOnPlayer(c.x, c.z)
         player.send(RebuildLoginV2(c.zoneX, c.zoneZ, 0, player.infos.playerInfo))
         sendGroundObjs(player)
+        sendWallChanges(player)
 
         player.send(IfOpenTop(player.toplevel))
         val redirect = gameframes[player.toplevel].orEmpty()
@@ -466,6 +469,7 @@ class World(
         player.infos.updateRootBuildAreaCenteredOnPlayer(c.x, c.z)
         player.send(RebuildNormalV2(c.zoneX, c.zoneZ, 0))
         sendGroundObjs(player)
+        sendWallChanges(player)
     }
 
     private fun flush(player: Player) {
@@ -713,6 +717,73 @@ class World(
         groundObjs.filter { it.coord.level == player.coord.level && inBuildArea(player, it.coord) }
             .groupBy { Coord(it.coord.zoneX shl 3, it.coord.zoneZ shl 3, it.coord.level) }
             .forEach { (zone, objs) -> sendZone(player, zone, objs.map { objAdd(it.obj, it.count, it.coord) }) }
+    }
+
+    /** Wall-layer locs changed from the map (opened/closed doors): tile -> current loc, null = removed. */
+    private val wallChanges = HashMap<Long, MapLoc?>()
+
+    private fun wallAt(c: Coord): MapLoc? {
+        val key = Maps.key(c.x, c.z, c.level)
+        return if (key in wallChanges) wallChanges[key] else mapDoors[key]
+    }
+
+    private fun setWall(c: Coord, loc: MapLoc?, previous: MapLoc?) {
+        wallChanges[Maps.key(c.x, c.z, c.level)] = loc
+        val prot = wallProt(c, loc, previous) ?: return
+        for (p in nearby(c)) sendZone(p, c, listOf(prot))
+    }
+
+    private fun wallProt(c: Coord, loc: MapLoc?, previous: MapLoc?): ZoneProt? = when {
+        loc != null -> LocAddChangeV2(loc.id, c.x and 7, c.z and 7, loc.shape, loc.rot, 0x1F)
+        previous != null -> LocDel(c.x and 7, c.z and 7, previous.shape, previous.rot)
+        else -> null
+    }
+
+    /** The other state of a door: the nearest loc id with the same name and the opposite op. */
+    private fun doorPartner(id: Int, wantOp: String): Int? {
+        val name = locTypes[id]?.name ?: return null
+        return (1..4).flatMap { listOf(id + it, id - it) }.firstOrNull { other ->
+            val t = locTypes[other]
+            t != null && t.name == name && t.ops.any { it.equals(wantOp, true) }
+        }
+    }
+
+    /**
+     * Opens or closes a door from the map: the closed door (rotation r) moves one tile towards its
+     * wall side and turns to r + 1; closing reverses it. Unknown doors are just removed.
+     */
+    private fun toggleDoor(player: Player, id: Int, c: Coord, open: Boolean) {
+        val current = wallAt(c)?.takeIf { it.id == id }
+        if (current == null) {
+            log.info { "Door $id at $c is not in the map data; removing it" }
+            return setWall(c, null, MapLoc(id, 0, 0))
+        }
+        val partner = doorPartner(id, if (open) "Close" else "Open")
+        if (partner == null) {
+            log.info { "No ${if (open) "open" else "closed"} variant for door $id; removing it" }
+            return setWall(c, null, current)
+        }
+        val (target, rot) = if (open) {
+            val (dx, dz) = Maps.openOffset(current.rot)
+            Coord(c.x + dx, c.z + dz, c.level) to ((current.rot + 1) and 3)
+        } else {
+            val rot = (current.rot - 1) and 3
+            val (dx, dz) = Maps.openOffset(rot)
+            Coord(c.x - dx, c.z - dz, c.level) to rot
+        }
+        log.info { "${player.username} ${if (open) "opens" else "closes"} door $id at $c rot ${current.rot} -> $partner at $target rot $rot" }
+        setWall(c, null, current)
+        setWall(target, MapLoc(partner, current.shape, rot), wallAt(target))
+    }
+
+    /** Resends changed wall locs in the player's build area after a (re)build. */
+    private fun sendWallChanges(player: Player) {
+        wallChanges.entries.mapNotNull { (key, loc) ->
+            val c = Coord(((key shr 16) and 0xFFFF).toInt(), (key and 0xFFFF).toInt(), (key shr 32).toInt())
+            if (c.level != player.coord.level || !inBuildArea(player, c)) return@mapNotNull null
+            wallProt(c, loc, mapDoors[key])?.let { c to it }
+        }.groupBy { (c, _) -> Coord(c.zoneX shl 3, c.zoneZ shl 3, c.level) }
+            .forEach { (zone, prots) -> sendZone(player, zone, prots.map { it.second }) }
     }
 
     private fun inBuildArea(player: Player, coord: Coord): Boolean {
@@ -992,9 +1063,8 @@ class World(
             reached = { it.coord.x in x - 1..x + sx && it.coord.z in z - 1..z + sz },
             action = { p ->
                 when (opName?.lowercase()) {
-                    // No map data on the server yet: an opened door is simply removed (wall layer, shape 0).
                     "bank" -> openBank(p)
-                    "open" -> sendZone(p, Coord(x, z, p.coord.level), listOf(LocDel(x and 7, z and 7, 0, 0)))
+                    "open", "close" -> toggleDoor(p, id, Coord(x, z, p.coord.level), opName.lowercase() == "open")
                     else -> p.message("$opName ${type?.name ?: "loc $id"} ($id at $x, $z): nothing interesting happens.")
                 }
             },

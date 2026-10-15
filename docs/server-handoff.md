@@ -88,13 +88,16 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
 
 - **Dialogue works** (`::talk`, continue closes it); chat lines from before the dialogue stay
   hidden afterwards (new lines show). Cosmetic.
-- **Ground items work** (`::obj`, drop): OBJ_ADD_SPECIFIC needs timeUntilDespawn > 0. Only the
-  owner sees them; pickup (OPOBJ client packets) is not implemented.
+- **Ground items** (`::obj`, `::zobj`, drop, Take) are shared zone OBJ_ADD/OBJ_DEL, resent after
+  every rebuild. (OBJ_ADD_SPECIFIC, no longer used, needs timeUntilDespawn > 0.)
 - `server/tools/device.sh login|cmd|shot`: BlueStacks helpers (login after restart, chat commands
   with the keyboard/Enter workaround, screenshots).
 - Relogin with the same name replaces the old session (fixes a ghost duplicate player).
 - Component ids come from rev-239 symbols and can be off in rev 241 (chatmodal 566 -> 568):
   verify against the cache (scratch tool: decode interface components, parent chain).
+- Quest/var commands: `::quest name [start|done|reset|n]` (name substring; adb `input text`
+  breaks on apostrophes, so use e.g. `::quest assistant done`), `::varp id [v]`, `::varbit id [v]`,
+  `::hit [n] [type]`, `::npchit [n]`, `::events [e1] [e2]` (resend inventory IF_SETEVENTS).
 - Commands: `::xp skill n`, `::talk [npc] text`, `::obj id [n] [dz]` (OBJ_ADD_SPECIFIC on your tile),
   `::zobj id [n]` (zone OBJ_ADD), `::locadd id [shape] [rot]`, `::locdel [shape] [dx] [dz]`,
   `::openbank`, `::ptalk text`, `::options a b c`, `::freeze` (toggle NPC wandering, makes NPCs tappable); in-game name = `LOCAL_DISPLAY_NAME`.
@@ -106,37 +109,43 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
   `cmd.exe /c start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"`; the container restarts by itself.
 - adb input: `input text` always works, but keyevents (Enter) only while the soft keyboard is
   shown (`dumpsys input_method | grep mInputShown`; tap 90,220 to toggle it).
-- Unmapped: most NPC/player extended-info blocks (hits, facing, spotanims, ...), WORLDENTITY_INFO,
+- Unmapped: most NPC/player extended-info blocks (facing, spotanims, ...), WORLDENTITY_INFO,
   zone packets (loc/obj updates), interface text/events beyond IF_SETEVENTS, the CRC order in the
   Android login block (CRC validation is off).
 - Client→server still unknown: 10 (window status?), 13, 18, 21 (mouse click), 37 (keyboard), 67, 97, 98, 100.
-- NPC extended info `0x80` is not hits: it is spotanims (count `-b`, then 8 bytes each, handled by
-  `0x5714e8`, which removes on id 0xffff). Hits are still unmapped.
+- NPC extended info `0x80` is spotanims (count `-b`, 8 bytes each, `0x5714e8`). NPC hits are
+  0x40000 and headbars 0x1000000; player hits 0x40000, headbars 0x20000 (see android-protocol.md).
+- The OutgoingMessageSizeEstimator error "Encoder not registered for AndroidUpdateZonePartialEnclosed"
+  is harmless (the estimator only knows the desktop repository); the packet is still sent.
 - No collision/pathfinding: walking is a straight line.
 
 ## Next steps (priority order, driven by Quest Helper on the client side)
 
-1. Deploy and verify on device (built and committed, NOT yet deployed or tested; needs one
-   container restart, ask the client session first):
-   - Shared ground items: `addGroundObj`/`removeGroundObj` send zone OBJ_ADD/OBJ_DEL to every
-     Android player whose build area holds the tile; `sendGroundObjs` resends them after
-     RebuildLogin/RebuildNormal (check they survive a rebuild: walk 4+ zones away and back).
-     Drop, `::obj` and `::zobj` all use it; OBJ_ADD_SPECIFIC is no longer used.
-   - Stackables: `ObjWear.stackable` (obj opcode 11, or 98 certtemplate = noted); `give()` stacks.
-     Check coins withdraw/take into one slot.
-   - Use item on loc/obj/NPC (OPLOCT 63, OPOBJT 74, OPNPCT 2): select an inventory item, tap a
-     target; the server walks there and says "You use the X on the Y". Field orders are from the
-     senders only; if ids look wrong, compare the logged values with the tapped target.
-2. Varbit-driven quest journal, then hitsplats (player hitmark block: see android-protocol.md),
-   then doors with real map data (map archive + XTEA keys) last.
-2. More interfaces: IF_SETHIDE (77) and IF_SETPLAYERHEAD (79) now have encoders; from the
-   client session's notes, varbit-driven quest journal; chat_right (player dialogue) and options menus.
-3. Skills/XP UI checks (`::xp` exists), hitsplats/headbars (player + NPC extended info).
-4. Cosmetic: chat history hidden after a dialogue.
+Done and verified on device (2026-10-15, late): shared ground objs survive a rebuild (tele 82
+tiles away and back), coins stack (175 in one slot), use item on loc/NPC/obj (OPLOCT/OPNPCT/OPOBJT
+field orders correct; the inventory needs events1 target bits 11-16 for "Use"), quest vars
+(`::quest`; the client agent's runScript read 4029 = FINISHED / IN_PROGRESS), player hitsplats
+and headbars (`::hit`).
+
+1. Verify on device (built, committed, not yet deployed when this was written):
+   - Real doors: `Maps.loadDoors` reads map archive 5 (group `mx << 8 | mz`, file 1 = locs, no
+     XTEA in rev 241) and keeps shape-0 locs with Open/Close. Open moves the door one tile
+     towards its wall side (rot 0 west: x-1, 1 north: z+1, 2 east: x+1, 3 south: z-1) and turns it
+     to rot+1, swapping to the nearest id with the same name and the opposite op; Close reverses.
+     Check the open door's position/rotation on the Lumbridge courtyard doors (1535 at 3226,3223
+     rot 2) and adjust `Maps.openOffset` if it looks wrong.
+   - NPC hitsplats/headbars (`::npchit n`): flags 0x40000 / 0x1000000 with 4-byte flag chaining.
+2. Collision + pathfinding from the same map data (file 0 = terrain/flags, locs for walls), so
+   walking and interactions stop going through walls.
+3. Combat basics (attack NPCs with hitsplats, NPC death/respawn) if Quest Helper work needs it.
+4. Cosmetic: chat history hidden after a dialogue; options menu shows only 2 of 3 rows.
+
+Scratch Python helpers (cache reader, CS2 disassembler, quest/map decoders) were used for the
+static work; equivalents live in `Quests.kt` / `Maps.kt`.
 
 ## Coordination
 
-- The device is shared with the client session (Claude session named `osrs-plugins-reverse-79`;
+- The device is shared with the client session (Claude session named `osrs-plugins-reverse-62`; the client agent runs inside it;
   find it with ListAgents): post "taking device" / "device free" via SendMessage, and ask before
   restarting the container (it logs the client out). It answers widget/memory questions well.
 - Bookkeeping: keep this file and android-protocol.md current, `scripts/rsprot.sh export`, and

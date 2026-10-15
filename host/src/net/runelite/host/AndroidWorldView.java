@@ -76,6 +76,48 @@ public class AndroidWorldView extends WorldViewStub {
         return p == null ? 0 : p[1] - p[3];
     }
 
+    // --- ground heights: copied from the game's scene when the scene base changes ---
+
+    private int[][][] tileHeights;
+    private byte[][][] tileSettings;
+    private int heightsBase = Integer.MIN_VALUE, heightsCycle;
+
+    private synchronized void refreshHeights() {
+        int base = getBaseX() << 16 | getBaseY();
+        int cycle = Native.gameCycle();
+        if (tileHeights != null && base == heightsBase && cycle - heightsCycle < 250) return;
+        if (!Native.isClientThread()) return;  // keep the last copy
+        int[] r = Native.sceneHeights();
+        if (r == null) return;
+        int planes = r[0], sx = r[1], sy = r[2], o = 3;
+        int[][][] h = new int[4][sx + 1][sy + 1];
+        byte[][][] st = new byte[4][sx][sy];
+        for (int p = 0; p < planes; p++)
+            for (int x = 0; x <= sx; x++) {
+                System.arraycopy(r, o, h[p][x], 0, sy + 1);
+                o += sy + 1;
+            }
+        for (int p = 0; p < planes; p++)
+            for (int x = 0; x < sx; x++)
+                for (int y = 0; y < sy; y++) st[p][x][y] = (byte) r[o++];
+        tileHeights = h;
+        tileSettings = st;
+        heightsBase = base;
+        heightsCycle = cycle;
+    }
+
+    @Override
+    public int[][][] getTileHeights() {
+        refreshHeights();
+        return tileHeights != null ? tileHeights : new int[4][105][105];
+    }
+
+    @Override
+    public byte[][][] getTileSettings() {
+        refreshHeights();
+        return tileSettings != null ? tileSettings : new byte[4][104][104];
+    }
+
     @Override
     public IndexedObjectSet<? extends NPC> npcs() {
         return new IndexedObjectSet<NPC>() {

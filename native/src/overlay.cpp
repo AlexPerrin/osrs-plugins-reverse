@@ -7,6 +7,9 @@
 #include <atomic>
 #include <mutex>
 #include <unistd.h>
+#include <cfloat>
+#include <cstring>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -42,6 +45,189 @@ std::mutex g_frame_mutex;
 std::vector<uint8_t> g_back, g_front;
 int g_front_w = 0, g_front_h = 0;
 uint64_t g_front_seq = 0;
+
+// --- sidebar ---
+struct SidebarNode {
+    char kind;
+    int depth;
+    uint32_t color;  // ARGB, 0 = default
+    std::string text;
+};
+std::mutex g_sb_mutex;  // guards the model, events and touch queue
+std::string g_sb_model_text;
+bool g_sb_model_dirty = false;
+std::vector<int> g_sb_events;
+struct Touch { int action; float x, y; };
+std::vector<Touch> g_touches;
+std::atomic<bool> g_sb_open{false};
+// Screen rects (x0, y0, x1, y1) of the toggle button and the open window, from the last frame.
+std::atomic<float> g_toggle_rect[4], g_window_rect[4];
+bool g_touch_captured = false;  // UI thread only
+
+// Render-thread copy of the model.
+int g_sb_selected = 0;
+std::vector<std::string> g_sb_tabs;
+std::vector<SidebarNode> g_sb_nodes;
+
+void sidebar_parse(const std::string& m) {
+    g_sb_tabs.clear();
+    g_sb_nodes.clear();
+    size_t pos = 0;
+    bool header = true;
+    while (pos < m.size()) {
+        size_t end = m.find('\n', pos);
+        if (end == std::string::npos) end = m.size();
+        std::string line = m.substr(pos, end - pos);
+        pos = end + 1;
+        std::vector<std::string> f;
+        size_t a = 0;
+        while (true) {
+            size_t b = line.find('\t', a);
+            f.push_back(line.substr(a, b == std::string::npos ? std::string::npos : b - a));
+            if (b == std::string::npos) break;
+            a = b + 1;
+        }
+        if (header) {
+            header = false;
+            if (f.size() >= 2 && f[0] == "S") {
+                g_sb_selected = atoi(f[1].c_str());
+                for (size_t i = 2; i < f.size(); i++) g_sb_tabs.push_back(f[i]);
+            }
+            continue;
+        }
+        if (f.size() < 4 || f[0].empty()) continue;
+        g_sb_nodes.push_back({f[0][0], atoi(f[1].c_str()), static_cast<uint32_t>(strtoul(f[2].c_str(), nullptr, 16)), f[3]});
+    }
+}
+
+bool in_rect(const std::atomic<float>* r, float x, float y) {
+    return x >= r[0] && y >= r[1] && x < r[2] && y < r[3];
+}
+
+void store_rect(std::atomic<float>* r, ImVec2 p, ImVec2 s) {
+    r[0] = p.x; r[1] = p.y; r[2] = p.x + s.x; r[3] = p.y + s.y;
+}
+
+ImVec4 argb(uint32_t c) {
+    return ImVec4(((c >> 16) & 0xff) / 255.0f, ((c >> 8) & 0xff) / 255.0f, (c & 0xff) / 255.0f, 1.0f);
+}
+
+void sidebar_frame(int w, int h) {
+    ImGuiIO& io = ImGui::GetIO();
+    std::vector<int> events;
+    {
+        std::lock_guard lock(g_sb_mutex);
+        if (g_sb_model_dirty) {
+            sidebar_parse(g_sb_model_text);
+            g_sb_model_dirty = false;
+        }
+    }
+    bool tapped = io.MouseDragMaxDistanceSqr[0] < 24.0f * 24.0f;  // a tap, not a scroll drag
+    float unit = h / 720.0f;
+    bool open = g_sb_open;
+    if (!open) {
+        ImVec2 size(56 * unit, 40 * unit);
+        ImGui::SetNextWindowPos(ImVec2(0, h * 0.42f), ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.55f);
+        ImGui::Begin("##rltoggle", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing);
+        if (ImGui::Button("RL", size) && tapped) g_sb_open = true;
+        store_rect(g_toggle_rect, ImGui::GetWindowPos(), ImGui::GetWindowSize());
+        ImGui::End();
+        store_rect(g_window_rect, ImVec2(0, 0), ImVec2(0, 0));
+        return;
+    }
+    store_rect(g_toggle_rect, ImVec2(0, 0), ImVec2(0, 0));
+    float width = std::min(w * 0.34f, 420 * unit);
+    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(width, (float)h), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.88f);
+    ImGui::Begin("##rlsidebar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove);
+    if (ImGui::Button("Close") && tapped) g_sb_open = false;
+    for (size_t i = 0; i < g_sb_tabs.size(); i++) {
+        ImGui::SameLine();
+        bool sel = static_cast<int>(i) == g_sb_selected;
+        if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+        std::string label = g_sb_tabs[i] + "##tab" + std::to_string(i);
+        if (ImGui::Button(label.c_str()) && tapped) {
+            events.push_back(1);
+            events.push_back(static_cast<int>(i));
+            g_sb_selected = static_cast<int>(i);
+        }
+        if (sel) ImGui::PopStyleColor();
+    }
+    if (g_sb_tabs.empty()) ImGui::TextUnformatted("No plugin panels");
+    ImGui::Separator();
+    ImGui::BeginChild("##content", ImVec2(0, 0), false, ImGuiWindowFlags_NoScrollbar);
+    // Touch scrolling: drag anywhere in the content.
+    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsMouseDragging(0, 8.0f))
+        ImGui::SetScrollY(ImGui::GetScrollY() - io.MouseDelta.y);
+    int prev_depth = -1;
+    char prev_kind = 0;
+    for (size_t i = 0; i < g_sb_nodes.size(); i++) {
+        const SidebarNode& n = g_sb_nodes[i];
+        std::string id = "##n" + std::to_string(i);
+        bool same_row = n.kind == 'B' && n.text.size() <= 3 && (prev_kind == 'L' || prev_kind == 'B') && n.depth == prev_depth;
+        if (same_row) ImGui::SameLine();
+        bool clicked = false;
+        switch (n.kind) {
+            case 'L':
+                if (n.color) ImGui::PushStyleColor(ImGuiCol_Text, argb(n.color));
+                ImGui::TextWrapped("%s", n.text.c_str());
+                if (n.color) ImGui::PopStyleColor();
+                break;
+            case 'H':
+                clicked = ImGui::Selectable((n.text + id).c_str());
+                break;
+            case 'B':
+                clicked = ImGui::Button((n.text + id).c_str());
+                break;
+            case 'C': {
+                bool v = !n.text.empty() && n.text[0] == '1';
+                clicked = ImGui::Checkbox((n.text.substr(1) + id).c_str(), &v);
+                break;
+            }
+            case 'T':  // text components: QH uses JTextAreas as wrapping labels
+                if (n.text.empty()) ImGui::TextDisabled("[ ]");
+                else ImGui::TextWrapped("%s", n.text.c_str());
+                break;
+            case 'X':
+                ImGui::TextDisabled("%s v", n.text.c_str());
+                break;
+        }
+        if (clicked && tapped) {
+            events.push_back(2);
+            events.push_back(static_cast<int>(i));
+        }
+        prev_depth = n.depth;
+        prev_kind = n.kind;
+    }
+    ImGui::EndChild();
+    store_rect(g_window_rect, ImGui::GetWindowPos(), ImGui::GetWindowSize());
+    ImGui::End();
+    if (!events.empty()) {
+        std::lock_guard lock(g_sb_mutex);
+        g_sb_events.insert(g_sb_events.end(), events.begin(), events.end());
+    }
+}
+
+void feed_touches() {
+    std::vector<Touch> touches;
+    {
+        std::lock_guard lock(g_sb_mutex);
+        touches.swap(g_touches);
+    }
+    ImGuiIO& io = ImGui::GetIO();
+    for (const Touch& t : touches) {
+        io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
+        io.AddMousePosEvent(t.x, t.y);
+        if (t.action == 0) io.AddMouseButtonEvent(0, true);
+        if (t.action == 1 || t.action == 3) {
+            io.AddMouseButtonEvent(0, false);
+            io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+        }
+    }
+}
 
 // The bitmap is premultiplied; ImGui's backend blends with SRC_ALPHA.
 void premultiplied_blend(const ImDrawList*, const ImDrawCmd*) { glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA); }
@@ -128,6 +314,36 @@ void overlay_publish(int width, int height) {
     g_front_seq++;
 }
 
+void sidebar_set_model(const char* model) {
+    std::lock_guard lock(g_sb_mutex);
+    g_sb_model_text = model ? model : "";
+    g_sb_model_dirty = true;
+}
+
+std::vector<int> sidebar_poll_events() {
+    std::lock_guard lock(g_sb_mutex);
+    std::vector<int> out;
+    out.swap(g_sb_events);
+    return out;
+}
+
+bool sidebar_open() { return g_sb_open; }
+
+bool overlay_touch(int action, float x, float y) {
+    // MotionEvent: 0 down, 1 up, 2 move, 3 cancel, 5/6 pointer down/up.
+    if (action == 0) g_touch_captured = in_rect(g_toggle_rect, x, y) || in_rect(g_window_rect, x, y);
+    if (!g_touch_captured) return false;
+    if (action == 0 || action == 1 || action == 2 || action == 3) {
+        std::lock_guard lock(g_sb_mutex);
+        if (g_touches.size() < 512) g_touches.push_back({action, x, y});
+    }
+    if (action == 1 || action == 3) {
+        g_touch_captured = false;
+        return true;
+    }
+    return true;
+}
+
 void overlay_frame(EGLDisplay display, EGLSurface surface) {
     EGLContext ctx = eglGetCurrentContext();
     if (ctx == EGL_NO_CONTEXT) return;
@@ -154,15 +370,17 @@ void overlay_frame(EGLDisplay display, EGLSurface surface) {
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
+    feed_touches();
     ImGui_ImplOpenGL3_NewFrame();
     ImGui::NewFrame();
+    sidebar_frame(w, h);
     if (update_plugin_texture(st)) {
         ImDrawList* bg = ImGui::GetBackgroundDrawList();
         bg->AddCallback(premultiplied_blend, nullptr);
         bg->AddImage(static_cast<ImTextureID>(st.plugin_tex), ImVec2(0, 0), ImVec2((float)w, (float)h));
         bg->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
     }
-    if (!debug_window_enabled()) goto render;
+    if (!debug_window_enabled() || g_sb_open) goto render;
     ImGui::SetNextWindowPos(ImVec2(16, 16), ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.6f);
     ImGui::Begin("osrsrl", nullptr,

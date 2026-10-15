@@ -381,6 +381,7 @@ public class GenHeadless {
                 sb.append(in).append("public ").append(c.getSimpleName())
                   .append("(").append(params(k.getParameterTypes())).append(") {");
                 sb.append(superCall(c));
+                sb.append(ctorProperties(c, k.getParameterTypes()));
                 sb.append(" }\n");
             }
         }
@@ -407,14 +408,24 @@ public class GenHeadless {
             }
             for (String l : listenerKinds) sb.append(in).append("private final java.util.List __").append(l).append("s = new java.util.ArrayList();\n");
             if (c == java.awt.Container.class) sb.append(in).append("private final java.util.List __children = new java.util.ArrayList();\n");
+            if (c == java.awt.CardLayout.class)
+                sb.append(in).append("public final java.util.Map __cards = new java.util.HashMap();\n")
+                  .append(in).append("public final java.util.Map __current = new java.util.WeakHashMap();\n")
+                  .append(in).append("/** Host: the card show() selected in parent (default: the first child). */\n")
+                  .append(in).append("public java.awt.Component __visibleCard(java.awt.Container p) { Object n = __current.get(p); Object v = n != null ? __cards.get(n) : null; if (v instanceof java.awt.Component) return (java.awt.Component) v; java.awt.Component[] cs = p.getComponents(); return cs.length > 0 ? cs[0] : null; }\n");
+            if (c == javax.swing.SwingUtilities.class)
+                sb.append(in).append("/** Runnables posted to the \"EDT\"; the host drains them on the game thread (Sidebar.onCycle). */\n")
+                  .append(in).append("public static final java.util.concurrent.ConcurrentLinkedQueue<Runnable> __queue = new java.util.concurrent.ConcurrentLinkedQueue<Runnable>();\n")
+                  .append(in).append("public static volatile Thread __edt;\n");
             if (c == java.awt.Component.class) sb.append(in).append("java.awt.Container __parent;\n");
         }
         for (Member m : ms) {
             if (!(m instanceof Method)) continue;
             Method x = (Method) m;
-            String special = iface || Modifier.isStatic(x.getModifiers()) ? null : specialBody(c, x, props, listenerKinds);
+            String special = iface ? null : Modifier.isStatic(x.getModifiers()) ? staticBody(c, x) : specialBody(c, x, props, listenerKinds);
             if (special != null) {
                 sb.append(in).append(Modifier.isProtected(x.getModifiers()) ? "protected " : "public ")
+                  .append(Modifier.isStatic(x.getModifiers()) ? "static " : "")
                   .append(typeName(x.getReturnType())).append(" ").append(x.getName()).append("(").append(params(x.getParameterTypes()))
                   .append(") { ").append(special).append(" }\n");
                 continue;
@@ -446,6 +457,32 @@ public class GenHeadless {
         sb.append(ind).append("}\n");
     }
 
+    /** Constructor arguments that are properties (text, icon, scroll pane view, selection) are stored. */
+    static String ctorProperties(Class<?> c, Class<?>[] ps) {
+        StringBuilder b = new StringBuilder();
+        boolean textual = javax.swing.JLabel.class.isAssignableFrom(c) || javax.swing.AbstractButton.class.isAssignableFrom(c)
+                || javax.swing.text.JTextComponent.class.isAssignableFrom(c);
+        boolean textDone = false;
+        for (int i = 0; i < ps.length; i++) {
+            String a = "a" + i;
+            if (textual && ps[i] == String.class && !textDone && generatedHas(c, "setText", String.class)) { b.append(" setText(").append(a).append(");"); textDone = true; }
+            else if (ps[i] == java.awt.LayoutManager.class && generatedHas(c, "setLayout", java.awt.LayoutManager.class)) b.append(" setLayout(").append(a).append(");");
+            else if (ps[i] == javax.swing.Icon.class && generatedHas(c, "setIcon", javax.swing.Icon.class)) b.append(" setIcon(").append(a).append(");");
+            else if (c == javax.swing.JScrollPane.class && ps[i] == java.awt.Component.class && generatedHas(c, "setViewportView", java.awt.Component.class)) b.append(" setViewportView(").append(a).append(");");
+            else if (javax.swing.AbstractButton.class.isAssignableFrom(c) && ps[i] == boolean.class && generatedHas(c, "setSelected", boolean.class)) b.append(" setSelected(").append(a).append(");");
+            else if (javax.swing.JComboBox.class.isAssignableFrom(c) && ps[i] == Object[].class && generatedHas(c, "addItem", Object.class)) b.append(" if (").append(a).append(" != null) for (Object o : ").append(a).append(") addItem(o);");
+        }
+        return b.toString();
+    }
+
+    static boolean generatedHas(Class<?> c, String name, Class<?>... params) {
+        for (Class<?> k = c; k != null && generate.contains(k); k = k.getSuperclass()) {
+            for (Member m : members.getOrDefault(k, Set.of()))
+                if (m instanceof Method && m.getName().equals(name) && Arrays.equals(((Method) m).getParameterTypes(), params)) return true;
+        }
+        return false;
+    }
+
     static String superCall(Class<?> c) {
         return superCall0(c) + ctorExtras(c);
     }
@@ -471,18 +508,41 @@ public class GenHeadless {
         return "";
     }
 
+    /** Swing's event-dispatch entry points queue work for the host to run on the game thread. */
+    static String staticBody(Class<?> c, Method x) {
+        String n = x.getName();
+        Class<?>[] ps = x.getParameterTypes();
+        String q = "javax.swing.SwingUtilities.__queue";
+        if ((c == javax.swing.SwingUtilities.class || c == java.awt.EventQueue.class) && ps.length == 1 && ps[0] == Runnable.class) {
+            if (n.equals("invokeLater")) return q + ".add(a0);";
+            if (n.equals("invokeAndWait")) return "if (Thread.currentThread() == javax.swing.SwingUtilities.__edt) a0.run(); else " + q + ".add(a0);";
+        }
+        if ((c == javax.swing.SwingUtilities.class || c == java.awt.EventQueue.class) && n.equals("isEventDispatchThread") && ps.length == 0)
+            return "return Thread.currentThread() == javax.swing.SwingUtilities.__edt;";
+        return null;
+    }
+
     /** Stateful bodies for properties, listeners and Container children; null = default. */
     static String specialBody(Class<?> c, Method x, Map<String, Class<?>> props, Set<String> listenerKinds) {
         String n = x.getName();
         Class<?>[] ps = x.getParameterTypes();
+        if (c == java.awt.CardLayout.class) {
+            if (n.equals("show") && ps.length == 2) return "__current.put(a0, a1);";
+            if (n.equals("addLayoutComponent") && ps.length == 2 && ps[0] == String.class) return "__cards.put(a0, a1);";
+            if (n.equals("addLayoutComponent") && ps.length == 2 && ps[1] == Object.class) return "if (a1 instanceof String) __cards.put(a1, a0);";
+        }
         if (c == java.awt.Container.class) {
             if (n.equals("add") && ps.length >= 1 && ps[0] == java.awt.Component.class) {
                 String idx = ps.length == 2 && ps[1] == int.class ? "a1" : ps.length == 3 ? "a2" : "-1";
+                String card = ps.length == 2 && ps[1] == Object.class && generate.contains(java.awt.CardLayout.class)
+                        ? " if (getLayout() instanceof java.awt.CardLayout && a1 instanceof String) ((java.awt.CardLayout) getLayout()).__cards.put(a1, a0);" : "";
                 return "if (a0 != null) { if (" + idx + " >= 0 && " + idx + " <= __children.size()) __children.add(" + idx + ", a0); else __children.add(a0); a0.__parent = this; }"
-                        + (x.getReturnType() == void.class ? "" : " return a0;");
+                        + card + (x.getReturnType() == void.class ? "" : " return a0;");
             }
             if (n.equals("add") && ps.length == 2 && ps[0] == String.class && ps[1] == java.awt.Component.class)
-                return "if (a1 != null) { __children.add(a1); a1.__parent = this; } return a1;";
+                return "if (a1 != null) { __children.add(a1); a1.__parent = this; }"
+                        + (generate.contains(java.awt.CardLayout.class) ? " if (getLayout() instanceof java.awt.CardLayout) ((java.awt.CardLayout) getLayout()).__cards.put(a0, a1);" : "")
+                        + " return a1;";
             if (n.equals("remove") && ps.length == 1 && ps[0] == java.awt.Component.class) return "__children.remove(a0); if (a0 != null) a0.__parent = null;";
             if (n.equals("remove") && ps.length == 1 && ps[0] == int.class) return "if (a0 >= 0 && a0 < __children.size()) ((java.awt.Component) __children.remove(a0)).__parent = null;";
             if (n.equals("removeAll") && ps.length == 0) return "for (Object o : __children) ((java.awt.Component) o).__parent = null; __children.clear();";
@@ -505,6 +565,9 @@ public class GenHeadless {
             if (n.startsWith("set")) return "__" + p + " = a0; __" + p + "Set = true;";
             if (!x.getReturnType().isAssignableFrom(t) && !(t.isPrimitive() && x.getReturnType() == t)) return null;
             String dflt = returnValue(x.getReturnType());
+            // Swing components start visible and enabled (only top-level windows start hidden).
+            if (c == java.awt.Component.class && x.getReturnType() == boolean.class
+                    && (p.equals("Visible") || p.equals("Enabled") || p.equals("Focusable"))) dflt = "true";
             if (dflt.startsWith("new ") && x.getReturnType() == t) {
                 // Objects handed out by a getter persist, as in Swing (listeners added to them stick).
                 return "if (!__" + p + "Set) { __" + p + " = " + dflt + "; __" + p + "Set = true; } return __" + p + ";";

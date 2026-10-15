@@ -131,4 +131,23 @@ struct ItemDef {
 };
 bool item_def(int id, ItemDef& out);
 
+// NPC definitions (NpcType), from the game's cache. Game thread only.
+struct NpcDef {
+    int id = -1;
+    std::string name;
+    int size = 1, combat_level = 0;
+    bool minimap_visible = true, interactable = true;
+    std::string actions[5];  // current text (varp/varbit-conditional ops resolved by the game)
+};
+bool npc_def(int id, NpcDef& out);
+
+// Ground heights of the top-level scene: heights[(plane * (size_x + 1) + x) * (size_y + 1) + y]
+// (corner vertices, negative = up), settings[(plane * size_x + x) * size_y + y] (bit 2 = bridge).
+struct SceneHeights {
+    int planes = 0, size_x = 0, size_y = 0;
+    std::vector<int32_t> heights;
+    std::vector<uint8_t> settings;
+};
+bool scene_heights(SceneHeights& out);  // game thread only
+
 }  // namespace game

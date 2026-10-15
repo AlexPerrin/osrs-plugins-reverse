@@ -35,6 +35,7 @@ public final class Host {
 
     private static final net.runelite.client.callback.ClientThread clientThread = new net.runelite.client.callback.ClientThread();
     private static volatile EventBus eventBus;
+    private static boolean profilePosted;
     private static Client client;
     private static final NpcCache npcCache = new NpcCache();
     private static final PlayerCache playerCache = new PlayerCache();
@@ -94,6 +95,7 @@ public final class Host {
         } catch (Throwable t) {
             Log.e(TAG, "could not set RuneLite.injector", t);
         }
+        Sidebar.start(injector.getInstance(net.runelite.client.ui.ClientToolbar.class), new File(pluginDir).getParentFile());
         pluginManager[0] = new HostPluginManager(injector, bus);
         HostPluginManager plugins = pluginManager[0];
         File[] jars = new File(pluginDir).listFiles((d, n) -> n.endsWith(".jar"));
@@ -149,6 +151,7 @@ public final class Host {
             case CLIENT_TICK:
                 bus.post(clientTick);
                 runQueued();
+                Sidebar.onCycle();
                 try {
                     overlayRenderer.render();
                 } catch (Throwable t) {
@@ -162,6 +165,13 @@ public final class Host {
             case GAME_STATE_CHANGED: {
                 GameStateChanged e = new GameStateChanged();
                 GameState s = GameState.of(a);
+                // Desktop's ConfigManager switches the RuneScape profile while logging in; plugins
+                // (Quest Helper) wait for that event before their first LOGGED_IN setup.
+                if (s == GameState.LOGIN_SCREEN) profilePosted = false;
+                if (s == GameState.LOGGED_IN && !profilePosted) {
+                    profilePosted = true;
+                    bus.post(new net.runelite.client.events.RuneScapeProfileChanged(null, "default"));
+                }
                 e.setGameState(s != null ? s : GameState.UNKNOWN);
                 bus.post(e);
                 break;

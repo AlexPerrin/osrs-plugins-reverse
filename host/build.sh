@@ -20,7 +20,7 @@ rm -rf "$OUT/gen" "$OUT/classes" "$OUT/client-classes" "$OUT/awt-classes" "$OUT/
 mkdir -p "$OUT/gen/net/runelite/host" "$OUT/classes" "$OUT/client-classes"
 
 # 1. Throwing implementations of the API interfaces; host classes override what works.
-for iface in Client Player NPC WorldView MessageNode widgets.Widget ItemContainer ItemComposition; do
+for iface in Client Player NPC WorldView MessageNode widgets.Widget ItemContainer ItemComposition NPCComposition; do
     name=${iface##*.}
     java -cp "$API" "$ROOT/host/gen/GenStub.java" net.runelite.api.$iface net.runelite.host ${name}Stub \
         > "$OUT/gen/net/runelite/host/${name}Stub.java"
@@ -29,6 +29,11 @@ done
 # back into the game yet; the bag stores them instead of throwing.
 java -cp "$API" "$ROOT/host/gen/GenStub.java" net.runelite.api.widgets.Widget net.runelite.host WidgetBag --bag \
     > "$OUT/gen/net/runelite/host/WidgetBag.java"
+# Models aren't read from the game yet; plugins that build fake objects get inert bags.
+for iface in ModelData Model; do
+    java -cp "$API" "$ROOT/host/gen/GenStub.java" net.runelite.api.$iface net.runelite.host ${iface}Bag --bag \
+        > "$OUT/gen/net/runelite/host/${iface}Bag.java"
+done
 
 # 1b. Headless java.awt/javax.swing for everything the client and the plugin jars in re/hub
 #     reference but the hand-written shim lacks (plugins build Swing panels in startUp).

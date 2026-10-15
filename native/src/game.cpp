@@ -61,6 +61,11 @@ struct Build {
     uintptr_t script_vm, run_script_event;
     // shared_ptr<ObjType> getObjType(int id) (result via x8): definition cache lookup/load (OC_* ops).
     uintptr_t get_obj_type;
+    uintptr_t get_npc_type;  // shared_ptr<NpcType> getNpcType(int id), same convention (NPC_INFO 0x469778)
+    uintptr_t op_text;       // const string* opText(opVector*, int index): picks varp/varbit overrides (0x65c798)
+    // Scene (WorldView +0x10): +0x944 planes, +0x948/+0x94c size x/y, +0x3d0 int heights
+    // [planes][sx+1][sy+1]; tileSettings(scene, plane, x, y) (bit 2 = bridge).
+    uintptr_t tile_settings;
 };
 
 constexpr Build kBuilds[] = {
@@ -71,7 +76,7 @@ constexpr Build kBuilds[] = {
      0xecdc, 0xece0, 0xcb78, 0xcb7c, 0xcb80, 0x8950c, 0x89514, 0x5d0040,
      0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x68, 0x70, 0xcb0c, 0x718, 0xcb90, 0x730, 0x1fc, 0x200, 0x0, 0x8,
      0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0x5c, 0x60, 0x64, 0x68, 0x74, 0x6, 0x3210, 0x3274, 0x32d8, 0xaab690, 0xaab658, 0xaab628,
-     0xaef1d0, 0x4df54c, 0x63bfe8},
+     0xaef1d0, 0x4df54c, 0x63bfe8, 0x63633c, 0x65c798, 0x6de99c},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -579,6 +584,62 @@ bool item_def(int id, ItemDef& out) {
     auto iops = read_at<uintptr_t>(o + 0x108);
     for (int i = 0; i < 5; i++) out.inventory_actions[i] = iops ? read_string(iops + i * 0x18) : std::string();
     release_shared(sp[0]);
+    return true;
+}
+
+}  // namespace game
+
+namespace game {
+
+bool npc_def(int id, NpcDef& out) {
+    if (!g_build || !g_build->get_npc_type || id < 0 || id > 0xfffff) return false;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    SharedPtr r = reinterpret_cast<SharedPtr (*)(int)>(g_base + g_build->get_npc_type)(id);
+    uintptr_t ctrl = r.ctrl, o = r.obj;
+    if (!o) { release_shared(ctrl); return false; }
+    out.id = read_at<int32_t>(o);
+    out.name = read_string(o + 0x08);
+    out.size = read_at<int32_t>(o + 0x20);
+    out.combat_level = read_at<int32_t>(o + 0x11c);
+    out.minimap_visible = read_at<uint8_t>(o + 0x118) != 0;
+    out.interactable = read_at<uint8_t>(o + 0x158) != 0;
+    auto op_text = reinterpret_cast<uintptr_t (*)(uintptr_t, int)>(g_base + g_build->op_text);
+    for (int i = 0; i < 5; i++) {
+        uintptr_t str = op_text(o + 0x100, i);
+        out.actions[i] = str ? read_string(str) : std::string();
+    }
+    release_shared(ctrl);
+    return true;
+}
+
+}  // namespace game
+
+namespace game {
+
+bool scene_heights(SceneHeights& out) {
+    if (!g_build || !g_build->tile_settings) return false;
+    uintptr_t c = client();
+    if (!c) return false;
+    uintptr_t wv = read_at<uintptr_t>(c + g_build->f_world_view);
+    if (!wv) return false;
+    uintptr_t scene = read_at<uintptr_t>(wv + 0x10);
+    if (!scene) return false;
+    int planes = read_at<int32_t>(scene + 0x944), sx = read_at<int32_t>(scene + 0x948), sy = read_at<int32_t>(scene + 0x94c);
+    auto heights = read_at<const int32_t*>(scene + 0x3d0);
+    if (planes < 1 || planes > 4 || sx < 1 || sx > 512 || sy < 1 || sy > 512 || !heights) return false;
+    out.planes = planes;
+    out.size_x = sx;
+    out.size_y = sy;
+    size_t n = static_cast<size_t>(planes) * (sx + 1) * (sy + 1);
+    out.heights.assign(heights, heights + n);
+    out.settings.assign(static_cast<size_t>(planes) * sx * sy, 0);
+    auto settings = reinterpret_cast<uint32_t (*)(uintptr_t, int, int, int)>(g_base + g_build->tile_settings);
+    for (int p = 0; p < planes; p++)
+        for (int x = 0; x < sx; x++)
+            for (int y = 0; y < sy; y++) out.settings[(static_cast<size_t>(p) * sx + x) * sy + y] = static_cast<uint8_t>(settings(scene, p, x, y));
     return true;
 }
 

@@ -147,6 +147,57 @@ jobjectArray n_item_def(JNIEnv* env, jclass, jint id) {
     env->SetObjectArrayElement(res, 1, strs);
     return res;
 }
+// Object[] {int[] {id, size, combatLevel, minimapVisible, interactable}, String[] {name, 5 actions}}.
+jobjectArray n_npc_def(JNIEnv* env, jclass, jint id) {
+    if (!client_thread::on_client_thread()) {
+        env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "getNpcDefinition must be called on the client thread");
+        return nullptr;
+    }
+    game::NpcDef d;
+    if (!game::npc_def(id, d)) return nullptr;
+    jint v[5] = {d.id, d.size, d.combat_level, d.minimap_visible, d.interactable};
+    jintArray ints = env->NewIntArray(5);
+    env->SetIntArrayRegion(ints, 0, 5, v);
+    jclass string = env->FindClass("java/lang/String");
+    jobjectArray strs = env->NewObjectArray(6, string, nullptr);
+    for (int i = 0; i < 6; i++) {
+        const std::string& t = i == 0 ? d.name : d.actions[i - 1];
+        if (i > 0 && t.empty()) continue;
+        jstring js = env->NewStringUTF(t.c_str());
+        env->SetObjectArrayElement(strs, i, js);
+        env->DeleteLocalRef(js);
+    }
+    jobjectArray res = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(res, 0, ints);
+    env->SetObjectArrayElement(res, 1, strs);
+    return res;
+}
+void n_sidebar_set_model(JNIEnv* env, jclass, jstring model) {
+    const char* c = model ? env->GetStringUTFChars(model, nullptr) : nullptr;
+    sidebar_set_model(c ? c : "");
+    if (c) env->ReleaseStringUTFChars(model, c);
+}
+jintArray n_sidebar_poll_events(JNIEnv* env, jclass) {
+    std::vector<int> ev = sidebar_poll_events();
+    if (ev.empty()) return nullptr;
+    jintArray arr = env->NewIntArray(static_cast<jsize>(ev.size()));
+    env->SetIntArrayRegion(arr, 0, static_cast<jsize>(ev.size()), ev.data());
+    return arr;
+}
+jboolean n_sidebar_open(JNIEnv*, jclass) { return sidebar_open(); }
+jboolean n_overlay_touch(JNIEnv*, jclass, jint action, jfloat x, jfloat y) { return overlay_touch(action, x, y); }
+// {planes, sizeX, sizeY, heights..., settings...} (layouts in game.h), or null.
+jintArray n_scene_heights(JNIEnv* env, jclass) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    game::SceneHeights h;
+    if (!game::scene_heights(h)) return nullptr;
+    std::vector<jint> v = {h.planes, h.size_x, h.size_y};
+    v.insert(v.end(), h.heights.begin(), h.heights.end());
+    v.insert(v.end(), h.settings.begin(), h.settings.end());
+    jintArray arr = env->NewIntArray(static_cast<jsize>(v.size()));
+    env->SetIntArrayRegion(arr, 0, static_cast<jsize>(v.size()), v.data());
+    return arr;
+}
 jboolean n_is_client_thread(JNIEnv*, jclass) { return client_thread::on_client_thread(); }
 jintArray n_player_position(JNIEnv* env, jclass) {
     if (game::game_state() != 30) return nullptr;
@@ -311,6 +362,12 @@ const JNINativeMethod kNatives[] = {
     {"varbit", "(I)I", reinterpret_cast<void*>(n_varbit)},
     {"playerPosition", "()[I", reinterpret_cast<void*>(n_player_position)},
     {"itemDef", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_item_def)},
+    {"npcDef", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_npc_def)},
+    {"sidebarSetModel", "(Ljava/lang/String;)V", reinterpret_cast<void*>(n_sidebar_set_model)},
+    {"sidebarPollEvents", "()[I", reinterpret_cast<void*>(n_sidebar_poll_events)},
+    {"sidebarOpen", "()Z", reinterpret_cast<void*>(n_sidebar_open)},
+    {"overlayTouch", "(IFF)Z", reinterpret_cast<void*>(n_overlay_touch)},
+    {"sceneHeights", "()[I", reinterpret_cast<void*>(n_scene_heights)},
     {"runScript", "([Ljava/lang/Object;)[Ljava/lang/Object;", reinterpret_cast<void*>(n_run_script)},
     {"isClientThread", "()Z", reinterpret_cast<void*>(n_is_client_thread)},
 };

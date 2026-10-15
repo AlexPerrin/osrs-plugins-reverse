@@ -92,6 +92,11 @@ public class TickInfoPlugin extends Plugin {
         if (client.getTickCount() % 100 == 0)
             for (int id : new int[] {995, 1931, 1932, 1944, 4151, 1351})
                 log.info("item {}: {}", id, client.getItemDefinition(id));
+        if (client.getTickCount() % 100 == 0 && p != null)
+            log.info("ground height at player: {}", net.runelite.api.Perspective.getTileHeight(client, p.getLocalLocation(), client.getPlane()));
+        if (client.getTickCount() % 100 == 0)
+            for (net.runelite.api.NPC n : client.getNpcs())
+                log.info("npc {} combat {}: {}", n.getIndex(), n.getCombatLevel(), n.getComposition());
         log.info("players: {} local={}", client.getPlayers(), client.getLocalPlayer() != null ? client.getLocalPlayer().getName() : null);
     }
 

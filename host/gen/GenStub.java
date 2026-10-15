@@ -11,6 +11,7 @@ import java.util.stream.*;
 public class GenStub {
     public static void main(String[] args) throws Exception {
         Class<?> iface = Class.forName(args[0]);
+        bind(iface);
         String pkg = args[1], cls = args[2];
         // --bag: setX/getX pairs store a value and other methods return defaults instead of throwing.
         boolean bag = args.length > 3 && args[3].equals("--bag");
@@ -103,7 +104,25 @@ public class GenStub {
         return tv.getName() + " extends " + Arrays.stream(b).map(GenStub::name).collect(Collectors.joining(" & "));
     }
 
+    /** Type variables of generic superinterfaces (Mesh<T> in ModelData) bound to their arguments. */
+    static final Map<TypeVariable<?>, Type> bound = new HashMap<>();
+
+    static void bind(Class<?> c) {
+        for (Type g : c.getGenericInterfaces()) {
+            if (g instanceof ParameterizedType) {
+                ParameterizedType pt = (ParameterizedType) g;
+                TypeVariable<?>[] vars = ((Class<?>) pt.getRawType()).getTypeParameters();
+                Type[] argsT = pt.getActualTypeArguments();
+                for (int i = 0; i < vars.length; i++) bound.put(vars[i], argsT[i]);
+                bind((Class<?>) pt.getRawType());
+            } else if (g instanceof Class) {
+                bind((Class<?>) g);
+            }
+        }
+    }
+
     static String name(Type t) {
+        if (t instanceof TypeVariable && bound.containsKey(t)) return name(bound.get(t));
         return t.getTypeName().replace('$', '.');
     }
 }

@@ -83,6 +83,38 @@ public class AndroidClient extends ClientStub {
         return AndroidItemComposition.lookup(id);
     }
 
+    @Override
+    public net.runelite.api.NPCComposition getNpcDefinition(int id) {
+        return AndroidNPCComposition.lookup(id);
+    }
+
+    // --- models: not read from the game; inert placeholders so fake-object code runs (nothing is drawn) ---
+
+    static final class InertModelData extends ModelDataBag {
+        @Override public net.runelite.api.Model light() { return new ModelBag(); }
+        @Override public net.runelite.api.Model light(int a, int b, int c, int d, int e) { return new ModelBag(); }
+    }
+
+    @Override public net.runelite.api.ModelData loadModelData(int id) { return new InertModelData(); }
+    @Override public net.runelite.api.ModelData mergeModels(net.runelite.api.ModelData... m) { return new InertModelData(); }
+    @Override public net.runelite.api.ModelData mergeModels(net.runelite.api.ModelData[] m, int n) { return new InertModelData(); }
+    @Override public net.runelite.api.Model loadModel(int id) { return new ModelBag(); }
+    @Override public net.runelite.api.Model loadModel(int id, short[] a, short[] b) { return new ModelBag(); }
+    @Override public net.runelite.api.RuneLiteObject createRuneLiteObject() { return new net.runelite.api.RuneLiteObject(this); }
+    @Override public void registerRuneLiteObject(net.runelite.api.RuneLiteObjectController o) {}
+    @Override public void removeRuneLiteObject(net.runelite.api.RuneLiteObjectController o) {}
+    @Override public boolean isRuneLiteObjectRegistered(net.runelite.api.RuneLiteObjectController o) { return false; }
+
+    @Override public net.runelite.api.Animation loadAnimation(int id) { return null; }
+    /** Menus aren't mapped yet; the game's own menu is never reported as open. */
+    @Override public boolean isMenuOpen() { return false; }
+
+    /** Only the top-level world view exists (no boats / world entities yet). */
+    @Override
+    public WorldView findWorldViewFromWorldPoint(net.runelite.api.coords.WorldPoint p) {
+        return getTopLevelWorldView();
+    }
+
     /** CS1 text macros aren't expanded; widget text set by the server/scripts is returned as is. */
     @Override
     public String macroExpand(String text) {

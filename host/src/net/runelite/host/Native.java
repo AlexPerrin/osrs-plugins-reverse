@@ -25,6 +25,17 @@ final class Native {
      * inventory actions x5 (null = none)}}, or null.
      */
     static native Object[] itemDef(int id);
+    /** NPC definition (game thread only): {int[] {id, size, combatLevel, minimapVisible, interactable}, String[] {name, actions x5}}, or null. */
+    static native Object[] npcDef(int id);
+    /** Sidebar (overlay.cpp): replaces the model shown (format in Sidebar). */
+    static native void sidebarSetModel(String model);
+    /** Taps since the last call as (kind, index) pairs, or null. */
+    static native int[] sidebarPollEvents();
+    static native boolean sidebarOpen();
+    /** Game thread: {planes, sizeX, sizeY, heights[planes][sx+1][sy+1]..., settings[planes][sx][sy]...}, or null. */
+    static native int[] sceneHeights();
+    /** UI thread: offers a touch to the overlay; true if the overlay takes it (the game won't see it). */
+    static native boolean overlayTouch(int action, float x, float y);
     /**
      * NPCs as of the last client cycle: {int[] packed, String[] names}, where packed holds
      * {index, id, localX, localY, worldX, worldY} per NPC.

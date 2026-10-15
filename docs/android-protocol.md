@@ -114,9 +114,9 @@ The server sends them with `AndroidUpdateZonePartialEnclosed` + `AndroidZoneProt
 Flag bytes: 1–3; `0x80` in the first byte announces a second, `0x4000` a third (desktop uses
 `0x2000`). Blocks are read in this order:
 
-`0x2` reset, `0x200` tinting, `0x4` sequence, `0x20000` hitmarks, `0x40` ?, `0x100` move speed,
+`0x2` reset, `0x200` tinting, `0x4` sequence, `0x20000` headbars, `0x40` ?, `0x100` move speed,
 `0x8000` ? (three strings), `0x2000` temp move speed, `0x10000` ?, `0x400` chat, `0x10`
-appearance, `0x1` say, `0x80000` ?, `0x100000` ?, `0x20` ?, `0x1000` ?, `0x40000` headbars
+appearance, `0x1` say, `0x80000` ?, `0x100000` ?, `0x20` ?, `0x1000` ?, `0x40000` hitmarks
 
 | Block | Layout |
 |---|---|
@@ -125,6 +125,8 @@ appearance, `0x1` say, `0x80000` ?, `0x100000` ?, `0x20` ?, `0x1000` ?, `0x40000
 | temp move speed `0x2000` | `p1Alt1` (127 = teleport) |
 | chat `0x400` | colour<<8\|effects `p2Alt3`, modicon `p1Alt1`, autotyper `p1`, huffman length `p1Alt2`, huffman `pdataAlt3`, pattern bytes `p1Alt1` |
 | appearance `0x10` | length `p1Alt1`, payload `pdataAlt3` (reversed, +128); payload as desktop |
+| headbars `0x20000` | count `p1`; per bar: type smart, endTime smart (0x7FFF = remove, nothing follows), startTime smart, startFill `p1Alt2`, endFill `p1Alt3` only if endTime != 0 (client: `0x572780` → `0x575130(cycle+startTime, startFill, endFill, endTime)`) |
+| hitmarks `0x40000` | count `p1Alt1`; per hit: type, value, delay, limit, all smart1or2 (client: `0x572240(type, value, delay, cycle, limit)`) |
 
 ## Client→server (identified)
 
@@ -143,7 +145,7 @@ appearance, `0x1` say, `0x80000` ?, `0x100000` ?, `0x20` ?, `0x1000` ?, `0x40000
 | 2 | OPNPCT | selected sub `g2Alt2`, index `g2Alt2`, selected combined id `g4Alt3`, ctrl `g1Alt3`, selected obj `g2Alt3` (sender `0x61f9fc`) |
 | 38 / 6 / 49? | OPLOC6 / OPOBJ6 / OPNPC6? | examine; 6 (6 bytes) is OPOBJ6's sender `0x6211ac`, 49 (2 bytes) sender `0x620400` |
 
-The T packets were decoded from the senders only (not yet observed live). Other single-packet
+The T packets (63, 74, 2) were decoded from the senders and verified live (bush, cabbage, Hans; inventory "Use" needs events1 target bits 11-16). Other single-packet
 senders near them: 5 (11 bytes, `0x622bd4`, probably OPWORLDENTITYT), 69 (`0x623550`), 45
 (`0x623960`), 35 (`0x623a28`), 31 = MOVE_GAMECLICK (`0x61cbb8`).
 | 79, 24, 82, 34, 40 | OPOBJ1..5 | see below (sender `0x62073c`) |

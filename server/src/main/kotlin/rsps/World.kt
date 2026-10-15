@@ -73,6 +73,7 @@ class Player(
     var running = false
     var dialogueOpen = false
     val experience = IntArray(25).also { it[3] = 1154 }
+    var hitpoints = 10
     var buildCenter = coord
 
     val extendedInfo get() = infos.playerInfo.avatar.extendedInfo
@@ -368,7 +369,7 @@ class World(
         player.message("Commands: ::tele x z [level], ::pos, ::home, ::players, ::anim id, ::item id [n], ::empty, ::wear id [slot], ::xp skill n, ::openbank")
         player.message("::talk [npc] text, ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::freeze, ::drop")
         player.message("::obj id [n] [dz], ::zobj id [n], ::locadd id [shape] [rot], ::locdel [shape] [dx] [dz]")
-        player.message("::quest name [start|done|reset|n], ::varp id [v], ::varbit id [v], ::events [e1] [e2]")
+        player.message("::quest name [start|done|reset|n], ::varp id [v], ::varbit id [v], ::events [e1] [e2], ::hit [n] [type]")
     }
 
     fun spawnNpc(id: Int, coord: Coord): Npc? {
@@ -631,6 +632,17 @@ class World(
                 player.message("varbit $id = ${getVarbit(player, id)} (varp ${varbitTypes[id]?.varp})")
             }
             "quest" -> questCommand(player, args.drop(1))
+            "hit" -> {
+                // ::hit [damage] [hitmark type] - hitsplat + headbar on yourself (type 1 = damage, 0 = block).
+                val damage = args.getOrNull(1)?.toIntOrNull() ?: 1
+                val type = args.getOrNull(2)?.toIntOrNull() ?: if (damage == 0) 0 else 1
+                val max = levelForXp(player.experience[HITPOINTS])
+                player.hitpoints = (player.hitpoints - damage).coerceIn(0, max)
+                player.extendedInfo.addHitMark(-1, type, type, type, damage)
+                player.extendedInfo.addHeadBar(-1, 0, startFill = HEADBAR_WIDTH * player.hitpoints / max)
+                player.send(UpdateStatV2(HITPOINTS, player.hitpoints, player.hitpoints, player.experience[HITPOINTS]))
+                if (player.hitpoints == 0) player.hitpoints = max
+            }
             "events" -> {
                 // Debug: resend the inventory's IF_SETEVENTS with other events1/events2 values (hex ok).
                 val e1 = args.getOrNull(1)?.let { it.removePrefix("0x").toLongOrNull(if (it.startsWith("0x")) 16 else 10)?.toInt() } ?: IF_EVENTS_INV_TARGET
@@ -1093,6 +1105,8 @@ class World(
         private const val IF_EVENTS_INV_TARGET = 0x1F800 or (1 shl 20) or (1 shl 21)
         private const val VARP_DISPLAYNAME = 1737
         private const val VARP_QUEST_POINTS = 101
+        /** Headbar config 0 (30 pixels wide); fill is in the bar's width units. */
+        private const val HEADBAR_WIDTH = 30
         private val QUEST_STATES = setOf("start", "done", "reset")
         /** How long a dropped player is kept so the client can reconnect (60 seconds). */
         private const val RECONNECT_GRACE_TICKS = 100

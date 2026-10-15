@@ -1160,6 +1160,91 @@ index 00000000..d083e608
 +        intermediate.p4(customisation.womanHead)
 +    }
 +}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerHitsEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerHitsEncoders.kt
+new file mode 100644
+index 00000000..b3a084a4
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerHitsEncoders.kt
+@@ -0,0 +1,79 @@
++package net.rsprot.protocol.android
++
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.protocol.internal.game.outgoing.info.encoder.OnDemandExtendedInfoEncoder
++import net.rsprot.protocol.internal.game.outgoing.info.shared.extendedinfo.HeadbarList
++import net.rsprot.protocol.internal.game.outgoing.info.shared.extendedinfo.HitmarkList
++import net.rsprot.protocol.message.toIntOrMinusOne
++
++/**
++ * Player flag 0x40000: [count b^0x80] then per hit [type smart][value smart][delay smart][limit smart]
++ * (reader in Ghidra 0x669a04; the client passes them to 0x572240(type, value, delay, cycle, limit)).
++ */
++public class AndroidPlayerHitEncoder : OnDemandExtendedInfoEncoder<HitmarkList> {
++    override fun encode(
++        buffer: JagByteBuf,
++        localPlayerIndex: Int,
++        updatedAvatarIndex: Int,
++        extendedInfo: HitmarkList,
++    ) {
++        val countMarker = buffer.writerIndex()
++        buffer.skipWrite(1)
++        var count = 0
++        for (hit in extendedInfo.elements) {
++            val type =
++                when (localPlayerIndex) {
++                    (hit.sourceIndex - 0x10_000) -> hit.sourceType
++                    updatedAvatarIndex -> hit.selfType
++                    else -> hit.otherType
++                }
++            if (type == UShort.MAX_VALUE) continue
++            buffer.pSmart1or2(type.toInt())
++            buffer.pSmart1or2(hit.value.toInt())
++            buffer.pSmart1or2(hit.delay.toInt())
++            buffer.pSmart1or2(hit.limit.toInt())
++            if (++count >= 0xFF) break
++        }
++        val writerIndex = buffer.writerIndex()
++        buffer.writerIndex(countMarker)
++        buffer.p1Alt1(count)
++        buffer.writerIndex(writerIndex)
++    }
++}
++
++/**
++ * Player flag 0x20000: [count] then per bar [type smart][endTime smart], and unless endTime is
++ * 0x7FFF (remove): [startTime smart][startFill -b], plus [endFill 128-b] when endTime != 0.
++ */
++public class AndroidPlayerHeadbarEncoder : OnDemandExtendedInfoEncoder<HeadbarList> {
++    override fun encode(
++        buffer: JagByteBuf,
++        localPlayerIndex: Int,
++        updatedAvatarIndex: Int,
++        extendedInfo: HeadbarList,
++    ) {
++        val countMarker = buffer.writerIndex()
++        buffer.skipWrite(1)
++        var count = 0
++        for (headBar in extendedInfo.elements) {
++            val isSelf =
++                localPlayerIndex == updatedAvatarIndex ||
++                    localPlayerIndex == (headBar.sourceIndex - 0x10_000)
++            val type = if (isSelf) headBar.selfType.toIntOrMinusOne() else headBar.otherType.toIntOrMinusOne()
++            if (type == -1) continue
++            buffer.pSmart1or2(type)
++            val endTime = headBar.endTime.toInt()
++            buffer.pSmart1or2(endTime)
++            if (endTime != 0x7FFF) {
++                buffer.pSmart1or2(headBar.startTime.toInt())
++                buffer.p1Alt2(headBar.startFill.toInt())
++                if (endTime != 0) buffer.p1Alt3(headBar.endFill.toInt())
++            }
++            if (++count >= 0xFF) break
++        }
++        val writerIndex = buffer.writerIndex()
++        buffer.writerIndex(countMarker)
++        buffer.p1(count)
++        buffer.writerIndex(writerIndex)
++    }
++}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
 index 00000000..529eb8d9
@@ -1586,10 +1671,10 @@ index 00000000..fd855812
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/PlayerAvatarExtendedInfoAndroidWriter.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/PlayerAvatarExtendedInfoAndroidWriter.kt
 new file mode 100644
-index 00000000..85bfa09d
+index 00000000..eed518c2
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/PlayerAvatarExtendedInfoAndroidWriter.kt
-@@ -0,0 +1,165 @@
+@@ -0,0 +1,169 @@
 +package net.rsprot.protocol.android
 +
 +import io.netty.buffer.ByteBufAllocator
@@ -1600,8 +1685,6 @@ index 00000000..85bfa09d
 +import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerExactMoveEncoder
 +import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerFacingEncoder
 +import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerFreezeEncoder
-+import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerHeadbarEncoder
-+import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerHitEncoder
 +import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerResetEncoder
 +import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerSayEncoder
 +import net.rsprot.protocol.game.outgoing.codec.playerinfo.extendedinfo.PlayerSpotAnimEncoder
@@ -1622,9 +1705,9 @@ index 00000000..85bfa09d
 + *
 + * Flags are 1-3 bytes: 0x80 in the first byte announces a second, 0x4000 a third. Blocks follow in
 + * the order the client tests them:
-+ *   0x2 reset, 0x200 tinting, 0x4 sequence, 0x20000 hitmarks, 0x40 ?, 0x100 move speed,
++ *   0x2 reset, 0x200 tinting, 0x4 sequence, 0x20000 headbars, 0x40 ?, 0x100 move speed,
 + *   0x8000 ?, 0x2000 temp move speed, 0x10000 ?, 0x400 chat, 0x10 appearance, 0x1 say,
-+ *   0x80000 ?, 0x100000 ?, 0x20 ?, 0x1000 ?, 0x40000 headbars
++ *   0x80000 ?, 0x100000 ?, 0x20 ?, 0x1000 ?, 0x40000 hitmarks
 + *
 + * Only blocks whose Android layout has been verified are written; any other flagged block is
 + * dropped from the update rather than sent in a layout the client would misread.
@@ -1638,8 +1721,8 @@ index 00000000..85bfa09d
 +            AndroidPlayerChatEncoder(),
 +            PlayerExactMoveEncoder(),
 +            PlayerFacingEncoder(),
-+            PlayerHitEncoder(),
-+            PlayerHeadbarEncoder(),
++            AndroidPlayerHitEncoder(),
++            AndroidPlayerHeadbarEncoder(),
 +            AndroidPlayerMoveSpeedEncoder(),
 +            PlayerSayEncoder(),
 +            AndroidPlayerSequenceEncoder(),
@@ -1664,6 +1747,8 @@ index 00000000..85bfa09d
 +        if (flag and PlayerAvatarExtendedInfo.TEMP_MOVE_SPEED != 0) clientFlag = clientFlag or TEMP_MOVE_SPEED
 +        if (flag and PlayerAvatarExtendedInfo.CHAT != 0) clientFlag = clientFlag or CHAT
 +        if (flag and PlayerAvatarExtendedInfo.APPEARANCE != 0) clientFlag = clientFlag or APPEARANCE
++        if (flag and PlayerAvatarExtendedInfo.HEADBARS != 0) clientFlag = clientFlag or HEADBARS
++        if (flag and PlayerAvatarExtendedInfo.HITMARKS != 0) clientFlag = clientFlag or HITMARKS
 +        if (clientFlag and 0xFF.inv() != 0) clientFlag = clientFlag or EXTENDED_SHORT
 +        if (clientFlag and 0xFFFF.inv() != 0) clientFlag = clientFlag or EXTENDED_MEDIUM
 +
@@ -1672,10 +1757,12 @@ index 00000000..85bfa09d
 +        if (clientFlag and EXTENDED_MEDIUM != 0) buffer.p1(clientFlag shr 16)
 +
 +        if (clientFlag and SEQUENCE != 0) pCachedData(buffer, blocks.sequence)
++        if (clientFlag and HEADBARS != 0) pOnDemandData(buffer, localIndex, blocks.headbarList, observerIndex)
 +        if (clientFlag and MOVE_SPEED != 0) pCachedData(buffer, blocks.moveSpeed)
 +        if (clientFlag and TEMP_MOVE_SPEED != 0) pCachedData(buffer, blocks.temporaryMoveSpeed)
 +        if (clientFlag and CHAT != 0) pCachedData(buffer, blocks.chat)
 +        if (clientFlag and APPEARANCE != 0) pCachedData(buffer, blocks.appearance)
++        if (clientFlag and HITMARKS != 0) pOnDemandData(buffer, localIndex, blocks.hitmarkList, observerIndex)
 +    }
 +
 +    private companion object {
@@ -1687,6 +1774,8 @@ index 00000000..85bfa09d
 +        private const val MOVE_SPEED = 0x100
 +        private const val TEMP_MOVE_SPEED = 0x2000
 +        private const val CHAT = 0x400
++        private const val HEADBARS = 0x20000
++        private const val HITMARKS = 0x40000
 +    }
 +}
 +

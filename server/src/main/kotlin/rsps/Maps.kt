@@ -36,7 +36,7 @@ object Maps {
         return doors
     }
 
-    private fun decodeLocs(data: ByteArray, consumer: (id: Int, lx: Int, lz: Int, level: Int, shape: Int, rot: Int) -> Unit) {
+    fun decodeLocs(data: ByteArray, consumer: (id: Int, lx: Int, lz: Int, level: Int, shape: Int, rot: Int) -> Unit) {
         val buf = ByteBuffer.wrap(data)
         fun uSmart(): Int {
             val peek = buf.get(buf.position()).toInt() and 0xFF

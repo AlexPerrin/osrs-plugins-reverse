@@ -164,6 +164,7 @@ class World(
     private val quests: List<QuestType>,
     /** Openable wall locs (doors, gates) from the map, by [Maps.key]. */
     private val mapDoors: Map<Long, MapLoc>,
+    private val collision: Collision,
 ) : GameConnectionHandler<Player> {
     private val log = InlineLogger()
     lateinit var service: NetworkService<Player>
@@ -389,6 +390,7 @@ class World(
         val dz = random.nextInt(3) - 1
         if (dx == 0 && dz == 0) return
         if (abs(npc.x + dx - npc.spawn.x) > 3 || abs(npc.z + dz - npc.spawn.z) > 3) return
+        if (!collision.canStep(npc.x, npc.z, npc.spawn.level, dx, dz)) return
         npc.x += dx
         npc.z += dz
         npc.avatar.walk(dx, dz)
@@ -529,8 +531,7 @@ class World(
 
     fun walkTo(player: Player, x: Int, z: Int, ctrlRun: Boolean) {
         player.interaction = null
-        player.path.clear()
-        player.path += Coord(x, z, player.coord.level)
+        pathTo(player, Coord(x, z, player.coord.level)) { tx, tz -> tx == x && tz == z }
         player.running = ctrlRun
     }
 
@@ -774,6 +775,8 @@ class World(
         log.info { "${player.username} ${if (open) "opens" else "closes"} door $id at $c rot ${current.rot} -> $partner at $target rot $rot" }
         setWall(c, null, current)
         setWall(target, MapLoc(partner, current.shape, rot), wallAt(target))
+        collision.addLoc(current.id, c.x, c.z, c.level, current.shape, current.rot, add = false)
+        collision.addLoc(partner, target.x, target.z, target.level, current.shape, rot, add = true)
     }
 
     /** Resends changed wall locs in the player's build area after a (re)build. */
@@ -988,13 +991,37 @@ class World(
             interaction.action(player)
         } else if (player.path.isEmpty()) {
             interaction.repath(player)
+            if (player.path.isEmpty()) {
+                player.interaction = null
+                player.message("I can't reach that!")
+            }
         }
     }
 
-    private fun startInteraction(player: Player, target: Coord, reached: (Player) -> Boolean, action: (Player) -> Unit) {
+    /** Replaces the player's path with a collision-aware one towards [target], ending where [goal] holds. */
+    private fun pathTo(player: Player, target: Coord, goal: (Int, Int) -> Boolean) {
         player.path.clear()
-        player.path += target
-        val interaction = Interaction(reached, { it.path += target }, action)
+        player.path += collision.findPath(player.coord, target, goal)
+    }
+
+    /** Goal test for a [reached] predicate written against the player's position. */
+    private fun reachGoal(player: Player, reached: (Player) -> Boolean): (Int, Int) -> Boolean = { x, z ->
+        val old = player.coord
+        player.coord = Coord(x, z, old.level)
+        val result = reached(player)
+        player.coord = old
+        result
+    }
+
+    private fun pathToNpc(player: Player, npc: Npc) =
+        pathTo(player, Coord(npc.x, npc.z, player.coord.level)) { x, z ->
+            abs(x - npc.x) <= 1 && abs(z - npc.z) <= 1 && !(x == npc.x && z == npc.z)
+        }
+
+    private fun startInteraction(player: Player, target: Coord, reached: (Player) -> Boolean, action: (Player) -> Unit) {
+        val goal = reachGoal(player, reached)
+        pathTo(player, target, goal)
+        val interaction = Interaction(reached, { pathTo(it, target, goal) }, action)
         player.interaction = interaction
         // Already in reach: act this tick instead of waiting for movement.
         interact(player)
@@ -1005,11 +1032,10 @@ class World(
         val type = npcTypes[npc.id]
         val opName = type?.op(op)
         log.info { "${player.username} OPNPC$op #$index (${npc.id} ${type?.name}) '$opName'" }
-        player.path.clear()
-        player.path += Coord(npc.x, npc.z, player.coord.level)
+        pathToNpc(player, npc)
         val interaction = Interaction(
             reached = { abs(it.coord.x - npc.x) <= 1 && abs(it.coord.z - npc.z) <= 1 },
-            repath = { it.path += Coord(npc.x, npc.z, it.coord.level) },
+            repath = { pathToNpc(it, npc) },
             action = { p ->
                 when (opName?.lowercase()) {
                     "bank" -> openBank(p)
@@ -1041,11 +1067,10 @@ class World(
         val name = npcTypes[npc.id]?.name
         val usedName = objTypes[selectedObj]?.name ?: "obj $selectedObj"
         log.info { "${player.username} OPNPCT #$index ($name) with $usedName (if $selectedInterface slot $slot)" }
-        player.path.clear()
-        player.path += Coord(npc.x, npc.z, player.coord.level)
+        pathToNpc(player, npc)
         player.interaction = Interaction(
             reached = { abs(it.coord.x - npc.x) <= 1 && abs(it.coord.z - npc.z) <= 1 },
-            repath = { it.path += Coord(npc.x, npc.z, it.coord.level) },
+            repath = { pathToNpc(it, npc) },
             action = { it.message("You use the $usedName on $name. Nothing interesting happens.") },
         )
         interact(player)

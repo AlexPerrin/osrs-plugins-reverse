@@ -67,7 +67,7 @@ fun main() {
     log.info { "Map doors: ${doors.size} openable wall locs, loaded in $doorLoad (3226,3223 -> ${doors[Maps.key(3226, 3223, 0)]})" }
     cache.close()
 
-    val world = World(config, gameframes, js5.crcs, objTypes, npcTypes, locTypes, varbitTypes, quests, doors)
+    val world = World(config, gameframes, js5.crcs, objTypes, npcTypes, locTypes, varbitTypes, quests, doors, Collision(Cache(config.cacheDir), locTypes))
     val service = NetworkFactory(config, world, js5, DefaultHuffmanCodecProvider(huffman)).build()
     world.service = service
 

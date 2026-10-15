@@ -174,7 +174,14 @@ private class ConfigReader(val data: ByteArray) {
 }
 
 /** Name and ops of an NPC or loc config; ops[i] is op i+1 (null = none/hidden). */
-class EntityType(val name: String, val ops: Array<String?>, val sizeX: Int = 1, val sizeZ: Int = 1) {
+class EntityType(
+    val name: String,
+    val ops: Array<String?>,
+    val sizeX: Int = 1,
+    val sizeZ: Int = 1,
+    /** Locs: 0 = walk through, 1 = blocks walking only, 2 = blocks walking and projectiles (default). */
+    val interactType: Int = 2,
+) {
     fun op(op: Int): String? = ops.getOrNull(op - 1)
 
     companion object {
@@ -218,12 +225,15 @@ class EntityType(val name: String, val ops: Array<String?>, val sizeX: Int = 1, 
             var name = "null"
             var sizeX = 1
             var sizeZ = 1
+            var interactType = 2
             val ops = arrayOfNulls<String>(5)
             try {
                 loop@ while (r.buf.hasRemaining()) {
                     when (val op = r.u1()) {
                         0 -> break@loop
                         1 -> r.skip(r.u1() * 3)
+                        17 -> interactType = 0
+                        27 -> interactType = 1
                         2 -> name = r.string()
                         5 -> r.skip(r.u1() * 2)
                         // Rev 241 caches: models as int ids (6: model u4 + shape u1, 7: model u4).
@@ -231,7 +241,7 @@ class EntityType(val name: String, val ops: Array<String?>, val sizeX: Int = 1, 
                         7 -> r.skip(r.u1() * 4)
                         14 -> sizeX = r.u1()
                         15 -> sizeZ = r.u1()
-                        17, 18, 21, 22, 23, 27, 62, 64, 73, 74, 89, 90 -> Unit
+                        18, 21, 22, 23, 62, 64, 73, 74, 89, 90 -> Unit
                         19, 28, 29, 39, 69, 75, 81 -> r.skip(1)
                         24, 60, 61, 65, 66, 67, 68, 70, 71, 72, 82 -> r.skip(2)
                         in 30..34 -> ops[op - 30] = r.string().takeUnless { it.equals("hidden", true) }
@@ -252,7 +262,7 @@ class EntityType(val name: String, val ops: Array<String?>, val sizeX: Int = 1, 
                 }
             } catch (e: java.nio.BufferUnderflowException) {
             }
-            return EntityType(name, ops, sizeX, sizeZ)
+            return EntityType(name, ops, sizeX, sizeZ, interactType)
         }
     }
 }

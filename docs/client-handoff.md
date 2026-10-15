@@ -106,6 +106,18 @@ Gotchas:
 Calling game functions directly works (the varbit lookup `0x5d0040` is called from our code),
 as long as the call happens on the game thread.
 
+## Working with the server session
+
+A separate Claude session develops `server/` (it hands over to fresh agents too; find the
+current one with ListAgents). Protocol: post "taking device" / "device free" (SendMessage)
+before and after adb input or reinstalls, and ask "restart ok?" before container restarts.
+File ownership: client = native/ (except net_trace.*), host/, tools/agent.py,
+tools/dex-plugin.sh, tools/plugin-test.sh, tools/ghidra_scripts/, docs/offsets.md,
+docs/plugin-host.md, docs/client-handoff.md; server = server/, tools/repack.sh,
+tools/patch_server.py, docs/android-protocol.md, docs/server-handoff.md. Send it the
+protocol gaps plugins hit (it has implemented dialogue, ground items, bank, OP* packets).
+`server/tools/device.sh cmd '::talk'` types chat commands reliably.
+
 ## Suggested next steps
 
 0. Quest Helper's remaining runtime gaps (see the status above): `runScript` (find the CS2

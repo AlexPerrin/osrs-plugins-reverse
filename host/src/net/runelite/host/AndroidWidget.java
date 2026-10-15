@@ -51,7 +51,7 @@ public class AndroidWidget extends WidgetBag {
         return p == -1 ? null : new AndroidWidget(p);
     }
 
-    /** Position in game UI pixels, mapped onto the overlay canvas (Host.uiScale). */
+    /** Position on the game's UI canvas, which is also the overlay canvas. */
     @Override
     public Point getCanvasLocation() {
         int x = 0, y = 0, cur = id;
@@ -62,15 +62,13 @@ public class AndroidWidget extends WidgetBag {
             y += g[1];
             cur = g[4];
         }
-        float s = Host.uiScale();
-        return new Point(Math.round(x / s), Math.round(y / s));
+        return new Point(x, y);
     }
 
     @Override
     public Rectangle getBounds() {
         Point p = getCanvasLocation();
-        float s = Host.uiScale();
-        return new Rectangle(p.getX(), p.getY(), Math.round(getWidth() / s), Math.round(getHeight() / s));
+        return new Rectangle(p.getX(), p.getY(), getWidth(), getHeight());
     }
 
     @Override

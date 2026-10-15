@@ -19,11 +19,11 @@ import net.runelite.client.ui.overlay.OverlayPosition;
  * Draws registered overlays into a Bitmap on the game thread and hands the pixels to
  * libosrsrl, which composites them over the game in its eglSwapBuffers hook.
  *
- * Plugins see a canvas of (screen / SCALE) pixels, close to the desktop client's
- * resizable mode; the bitmap is that size and the GPU scales it up.
+ * Plugins see the game's UI canvas (canvasSize()); the bitmap is that size and the GPU scales
+ * it up to the screen.
  */
 final class OverlayRenderer {
-    private static final float TARGET_HEIGHT = 720f;  // logical canvas height plugins draw on
+    private static final float FALLBACK_HEIGHT = 503f;
     private static final int BORDER = 5, PADDING = 2;
     private static final OverlayLayer[] LAYERS = {
         OverlayLayer.UNDER_WIDGETS, OverlayLayer.ABOVE_SCENE, OverlayLayer.ABOVE_WIDGETS, OverlayLayer.ALWAYS_ON_TOP};
@@ -38,11 +38,20 @@ final class OverlayRenderer {
         this.overlays = overlays;
     }
 
-    /** Logical canvas size plugins draw on. */
+    /**
+     * Canvas size plugins draw on: the game's UI canvas (size of the root interface, 894x503 on a
+     * 1920x1080 screen), so widget coordinates, overlays and Perspective share one space as on
+     * desktop. Falls back to a 503-unit-high canvas before the root interface exists.
+     */
     static Dimension canvasSize() {
+        int root = Native.rootInterface();
+        if (root >= 0) {
+            int[] g = Native.widgetGeometry(root << 16);
+            if (g != null && g[2] > 0 && g[3] > 0) return new Dimension(g[2], g[3]);
+        }
         int[] s = Native.screenSize();
         if (s[0] <= 0 || s[1] <= 0) return new Dimension(0, 0);
-        float scale = Math.max(1f, s[1] / TARGET_HEIGHT);
+        float scale = s[1] / FALLBACK_HEIGHT;
         return new Dimension(Math.round(s[0] / scale), Math.round(s[1] / scale));
     }
 

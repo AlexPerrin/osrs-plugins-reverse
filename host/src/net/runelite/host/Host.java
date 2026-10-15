@@ -227,15 +227,6 @@ public final class Host {
         }
     }
 
-    /**
-     * Game UI pixels per overlay-canvas pixel. Widget coordinates are in screen pixels (assumed;
-     * see docs/offsets.md), the overlay canvas is the 720-px-high logical canvas.
-     */
-    static float uiScale() {
-        int[] s = Native.screenSize();
-        return s[1] > 0 ? Math.max(1f, s[1] / 720f) : 1f;
-    }
-
     static AndroidPlayer localPlayer() {
         return playerCache.local();
     }

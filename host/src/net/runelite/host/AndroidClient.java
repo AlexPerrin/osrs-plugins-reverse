@@ -62,10 +62,10 @@ public class AndroidClient extends ClientStub {
     // --- camera and viewport (the viewport is the whole logical overlay canvas) ---
 
     /**
-     * Projection scale for the 720-px-high logical canvas, fitted to on-screen NPC positions at
-     * the default zoom (docs/offsets.md). The game's zoom field isn't mapped yet.
+     * Projection scale fitted to on-screen NPC positions at the default zoom: 285 for a 720-high
+     * canvas (docs/offsets.md), scaled to the canvas height. The zoom field isn't mapped yet.
      */
-    static volatile int scale = 285;
+    static volatile int scaleOverride = -1;
 
     @Override public int getCameraX() { return Native.camera()[0]; }
     @Override public int getCameraY() { return Native.camera()[1]; }
@@ -86,11 +86,11 @@ public class AndroidClient extends ClientStub {
             scaleCheckedAt = now;
             try {
                 String v = Native.property("debug.osrsrl.scale");
-                if (!v.isEmpty()) scale = Integer.parseInt(v);
+                scaleOverride = v.isEmpty() ? -1 : Integer.parseInt(v);
             } catch (NumberFormatException ignored) {
             }
         }
-        return scale;
+        return scaleOverride > 0 ? scaleOverride : Math.round(285f * getViewportHeight() / 720f);
     }
     @Override public boolean isGpu() { return false; }
     @Override public boolean isResized() { return true; }

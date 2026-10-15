@@ -864,6 +864,35 @@ class World(
         interact(player)
     }
 
+    /** OPLOCT / OPOBJT: "Use <selected obj> -> <loc or ground obj>"; walks there and reports it. */
+    fun useOn(player: Player, kind: String, id: Int, x: Int, z: Int, selectedInterface: Int, slot: Int, selectedObj: Int) {
+        val targetName = if (kind == "loc") locTypes[id]?.name else objTypes[id]?.name
+        val usedName = objTypes[selectedObj]?.name ?: "obj $selectedObj"
+        log.info { "${player.username} OP${kind.uppercase()}T $id ($targetName) at $x,$z with $usedName (if $selectedInterface slot $slot)" }
+        startInteraction(
+            player,
+            Coord(x, z, player.coord.level),
+            reached = { abs(it.coord.x - x) <= 1 && abs(it.coord.z - z) <= 1 },
+            action = { it.message("You use the $usedName on the ${targetName ?: "$kind $id"}. Nothing interesting happens.") },
+        )
+    }
+
+    /** OPNPCT: "Use <selected obj> -> NPC". */
+    fun useOnNpc(player: Player, index: Int, selectedInterface: Int, slot: Int, selectedObj: Int) {
+        val npc = npcs.firstOrNull { it.index == index } ?: return
+        val name = npcTypes[npc.id]?.name
+        val usedName = objTypes[selectedObj]?.name ?: "obj $selectedObj"
+        log.info { "${player.username} OPNPCT #$index ($name) with $usedName (if $selectedInterface slot $slot)" }
+        player.path.clear()
+        player.path += Coord(npc.x, npc.z, player.coord.level)
+        player.interaction = Interaction(
+            reached = { abs(it.coord.x - npc.x) <= 1 && abs(it.coord.z - npc.z) <= 1 },
+            repath = { it.path += Coord(npc.x, npc.z, it.coord.level) },
+            action = { it.message("You use the $usedName on $name. Nothing interesting happens.") },
+        )
+        interact(player)
+    }
+
     fun opLoc(player: Player, id: Int, x: Int, z: Int, op: Int) {
         val type = locTypes[id]
         val opName = type?.op(op)

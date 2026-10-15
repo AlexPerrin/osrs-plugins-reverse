@@ -5,7 +5,7 @@ work. The client side (injected library + RuneLite plugin host) is developed in 
 another session; see `docs/client-handoff.md`. Protocol findings live in
 `docs/android-protocol.md`.
 
-## Where things stand (2026-10-15)
+## Where things stand (2026-10-15, evening)
 
 - A rev-241 test server runs in Docker (`osrs-rsps-test`): JS5 cache (OpenRS2 cache 2735),
   `jav_config.ws` / `slr.ws`, login, a small game world, reconnect (60 s grace), and a local
@@ -116,9 +116,19 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
 
 ## Next steps (priority order, driven by Quest Helper on the client side)
 
-1. Ground items for everyone (zone OBJ_ADD per zone observers), stackable objs in the inventory
-   (obj config opcode 11), door Open with real map data (loc shape/rotation needs the map
-   archive + XTEA keys), OPLOCT/OPOBJT/OPNPCT (use item on X).
+1. Deploy and verify on device (built and committed, NOT yet deployed or tested; needs one
+   container restart, ask the client session first):
+   - Shared ground items: `addGroundObj`/`removeGroundObj` send zone OBJ_ADD/OBJ_DEL to every
+     Android player whose build area holds the tile; `sendGroundObjs` resends them after
+     RebuildLogin/RebuildNormal (check they survive a rebuild: walk 4+ zones away and back).
+     Drop, `::obj` and `::zobj` all use it; OBJ_ADD_SPECIFIC is no longer used.
+   - Stackables: `ObjWear.stackable` (obj opcode 11, or 98 certtemplate = noted); `give()` stacks.
+     Check coins withdraw/take into one slot.
+   - Use item on loc/obj/NPC (OPLOCT 63, OPOBJT 74, OPNPCT 2): select an inventory item, tap a
+     target; the server walks there and says "You use the X on the Y". Field orders are from the
+     senders only; if ids look wrong, compare the logged values with the tapped target.
+2. Varbit-driven quest journal, then hitsplats (player hitmark block: see android-protocol.md),
+   then doors with real map data (map archive + XTEA keys) last.
 2. More interfaces: IF_SETHIDE (77) and IF_SETPLAYERHEAD (79) now have encoders; from the
    client session's notes, varbit-driven quest journal; chat_right (player dialogue) and options menus.
 3. Skills/XP UI checks (`::xp` exists), hitsplats/headbars (player + NPC extended info).

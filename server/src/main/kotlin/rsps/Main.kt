@@ -19,6 +19,9 @@ import net.rsprot.protocol.game.incoming.misc.user.MoveMinimapClick
 import net.rsprot.protocol.game.incoming.buttons.If3Button
 import net.rsprot.protocol.game.incoming.resumed.ResumePauseButton
 import net.rsprot.protocol.game.incoming.locs.OpLocV2
+import net.rsprot.protocol.game.incoming.locs.OpLocT
+import net.rsprot.protocol.game.incoming.objs.OpObjT
+import net.rsprot.protocol.game.incoming.npcs.OpNpcT
 import net.rsprot.protocol.game.incoming.npcs.OpNpcV2
 import net.rsprot.protocol.game.incoming.objs.OpObjV2
 import net.rsprot.protocol.loginprot.incoming.pow.ProofOfWorkProvider
@@ -125,6 +128,9 @@ private class NetworkFactory(
             .addListener<OpNpcV2> { world.opNpc(this, it.index, it.op) }
             .addListener<OpLocV2> { world.opLoc(this, it.id, it.x, it.z, it.op) }
             .addListener<OpObjV2> { world.opObj(this, it.id, it.x, it.z, it.op) }
+            .addListener<OpLocT> { world.useOn(this, "loc", it.id, it.x, it.z, it.selectedInterfaceId, it.selectedSub, it.selectedObj) }
+            .addListener<OpObjT> { world.useOn(this, "obj", it.id, it.x, it.z, it.selectedInterfaceId, it.selectedSub, it.selectedObj) }
+            .addListener<OpNpcT> { world.useOnNpc(this, it.index, it.selectedInterfaceId, it.selectedSub, it.selectedObj) }
             .addListener<AndroidUnknownPacket> { world.unknownAndroidPacket(this, it) }
             .addGlobalListener { player, message: IncomingGameMessage ->
                 log.debug { "<- ${player.username}: $message" }

@@ -29,10 +29,10 @@ index 00000000..2a4d99f1
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt
 new file mode 100644
-index 00000000..07661de3
+index 00000000..d509af58
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt
-@@ -0,0 +1,166 @@
+@@ -0,0 +1,210 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -115,6 +115,9 @@ index 00000000..07661de3
 +        "p2a1" -> g2Alt1()
 +        "p2a2" -> g2Alt2()
 +        "p2a3" -> g2Alt3()
++        "p4" -> g4()
++        "p4a1" -> g4Alt1()
++        "p4a3" -> g4Alt3()
 +        else -> error("unknown field transform $t")
 +    }
 +
@@ -199,6 +202,47 @@ index 00000000..07661de3
 +        Triple(AndroidGameClientProt.OPNPC4, 4, "subop:p1a1 ctrl:p1a3 index:p2a3"),
 +        Triple(AndroidGameClientProt.OPNPC5, 5, "index:p2a2 ctrl:p1a2 subop:p1a1"),
 +    )
++
++/**
++ * "Use selected item/spell on" packets. Fields: comb = selected component (interface << 16 |
++ * component), sub = selected slot, obj = selected obj. Senders: OPLOCT 0x61cfa8, OPOBJT 0x6205c4,
++ * OPNPCT 0x61f9fc.
++ */
++public class AndroidOpLocTDecoder : MessageDecoder<net.rsprot.protocol.game.incoming.locs.OpLocT> {
++    override val prot: ClientProt = AndroidGameClientProt.OPLOCT
++
++    override fun decode(buffer: JagByteBuf): net.rsprot.protocol.game.incoming.locs.OpLocT {
++        val f = buffer.readFields("ctrl:p1a1 comb:p4a1 id:p2a1 sub:p2a3 obj:p2a2 x:p2 z:p2")
++        return net.rsprot.protocol.game.incoming.locs.OpLocT(
++            f.getValue("id"), f.getValue("x"), f.getValue("z"), f.getValue("ctrl") == 1,
++            CombinedId(f.getValue("comb")), f.getValue("sub"), f.getValue("obj"),
++        )
++    }
++}
++
++public class AndroidOpObjTDecoder : MessageDecoder<net.rsprot.protocol.game.incoming.objs.OpObjT> {
++    override val prot: ClientProt = AndroidGameClientProt.OPOBJT
++
++    override fun decode(buffer: JagByteBuf): net.rsprot.protocol.game.incoming.objs.OpObjT {
++        val f = buffer.readFields("sub:p2 ctrl:p1a2 id:p2 comb:p4 z:p2a2 x:p2a2 obj:p2a1")
++        return net.rsprot.protocol.game.incoming.objs.OpObjT(
++            f.getValue("id"), f.getValue("x"), f.getValue("z"), f.getValue("ctrl") == 1,
++            CombinedId(f.getValue("comb")), f.getValue("sub"), f.getValue("obj"),
++        )
++    }
++}
++
++public class AndroidOpNpcTDecoder : MessageDecoder<net.rsprot.protocol.game.incoming.npcs.OpNpcT> {
++    override val prot: ClientProt = AndroidGameClientProt.OPNPCT
++
++    override fun decode(buffer: JagByteBuf): net.rsprot.protocol.game.incoming.npcs.OpNpcT {
++        val f = buffer.readFields("sub:p2a2 index:p2a2 comb:p4a3 ctrl:p1a3 obj:p2a3")
++        return net.rsprot.protocol.game.incoming.npcs.OpNpcT(
++            f.getValue("index"), f.getValue("ctrl") == 1,
++            CombinedId(f.getValue("comb")), f.getValue("sub"), f.getValue("obj"),
++        )
++    }
++}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt
 new file mode 100644
 index 00000000..ea743851
@@ -571,7 +615,7 @@ index 00000000..ea743851
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
-index 00000000..5a9fb809
+index 00000000..1cbc8805
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 @@ -0,0 +1,119 @@
@@ -592,7 +636,7 @@ index 00000000..5a9fb809
 +) : ClientProt {
 +    OP_0(0, Prot.VAR_BYTE),
 +    OP_1(1, 11),
-+    OP_2(2, 11),
++    OPNPCT(2, 11),
 +    OPLOC4(3, 8),
 +    OP_4(4, 4),
 +    OP_5(5, 11),
@@ -664,7 +708,7 @@ index 00000000..5a9fb809
 +    OPNPC3(71, 4),
 +    OP_72(72, 1),
 +    OP_73(73, 15),
-+    OP_74(74, 15),
++    OPOBJT(74, 15),
 +    OP_75(75, 4),
 +    OP_76(76, 11),
 +    OP_77(77, 7),
@@ -1118,10 +1162,10 @@ index 00000000..d083e608
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..3057afb2
+index 00000000..529eb8d9
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,123 @@
+@@ -0,0 +1,127 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -1192,7 +1236,8 @@ index 00000000..3057afb2
 +            AndroidGameClientProt.MESSAGE_PUBLIC,
 +            AndroidGameClientProt.IF_BUTTONX,
 +            AndroidGameClientProt.RESUME_PAUSEBUTTON,
-+        ) + (ANDROID_OPLOC + ANDROID_OPOBJ + ANDROID_OPNPC).map { it.first }
++        ) + (ANDROID_OPLOC + ANDROID_OPOBJ + ANDROID_OPNPC).map { it.first } +
++            setOf(AndroidGameClientProt.OPLOCT, AndroidGameClientProt.OPOBJT, AndroidGameClientProt.OPNPCT)
 +
 +    @ExperimentalStdlibApi
 +    public fun build(huffmanCodecProvider: HuffmanCodecProvider): MessageDecoderRepository<AndroidGameClientProt> =
@@ -1205,6 +1250,9 @@ index 00000000..3057afb2
 +            for ((prot, op, spec) in ANDROID_OPLOC) bind(AndroidOpLocDecoder(prot, op, spec))
 +            for ((prot, op, spec) in ANDROID_OPOBJ) bind(AndroidOpObjDecoder(prot, op, spec))
 +            for ((prot, op, spec) in ANDROID_OPNPC) bind(AndroidOpNpcDecoder(prot, op, spec))
++            bind(AndroidOpLocTDecoder())
++            bind(AndroidOpObjTDecoder())
++            bind(AndroidOpNpcTDecoder())
 +            for (prot in AndroidGameClientProt.entries) {
 +                if (prot in IDENTIFIED) continue
 +                bind(AndroidUnknownPacket::class.java, AndroidUnknownPacketDecoder(prot))

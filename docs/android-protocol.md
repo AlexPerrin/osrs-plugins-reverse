@@ -138,7 +138,14 @@ appearance, `0x1` say, `0x80000` ?, `0x100000` ?, `0x20` ?, `0x1000` ?, `0x40000
 | 99 | IF_BUTTONX | as desktop (combined id, sub, obj, op); inventory item ops arrive as 149:0 with sub = slot, op 3 = wield/wear |
 | 7, 55, 58, 3, 66 | OPLOC1..5 | see below (sender Ghidra `0x61d10c`; verified OPLOC1 on device) |
 | 38 | OPLOC6 (examine) | id `g2` (observed `0464` = bush 1124) |
-| 63 | OPLOCT | ctrl `g1Alt1`, selected combined id `g4Alt1`, id `g2Alt1`, selected sub `g2Alt3`, selected obj `g2Alt2`, x `g2`, z `g2` (sender `0x61cfa8`; not decoded yet) |
+| 63 | OPLOCT | ctrl `g1Alt1`, selected combined id `g4Alt1`, id `g2Alt1`, selected sub `g2Alt3`, selected obj `g2Alt2`, x `g2`, z `g2` (sender `0x61cfa8`) |
+| 74 | OPOBJT | selected sub `g2`, ctrl `g1Alt2`, id `g2`, selected combined id `g4`, z `g2Alt2`, x `g2Alt2`, selected obj `g2Alt1` (sender `0x6205c4`) |
+| 2 | OPNPCT | selected sub `g2Alt2`, index `g2Alt2`, selected combined id `g4Alt3`, ctrl `g1Alt3`, selected obj `g2Alt3` (sender `0x61f9fc`) |
+| 38 / 6 / 49? | OPLOC6 / OPOBJ6 / OPNPC6? | examine; 6 (6 bytes) is OPOBJ6's sender `0x6211ac`, 49 (2 bytes) sender `0x620400` |
+
+The T packets were decoded from the senders only (not yet observed live). Other single-packet
+senders near them: 5 (11 bytes, `0x622bd4`, probably OPWORLDENTITYT), 69 (`0x623550`), 45
+(`0x623960`), 35 (`0x623a28`), 31 = MOVE_GAMECLICK (`0x61cbb8`).
 | 79, 24, 82, 34, 40 | OPOBJ1..5 | see below (sender `0x62073c`) |
 | 92, 44, 71, 33, 9 | OPNPC1..5 | see below (sender `0x61fc20`) |
 

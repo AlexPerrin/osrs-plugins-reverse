@@ -3,6 +3,13 @@ package rsps
 import com.github.michaelbull.logging.InlineLogger
 import net.rsprot.crypto.xtea.XteaKey
 import net.rsprot.protocol.android.AndroidUnknownPacket
+import net.rsprot.protocol.android.AndroidUpdateZonePartialEnclosed
+import net.rsprot.protocol.android.AndroidZoneProts
+import net.rsprot.protocol.game.outgoing.zone.payload.LocAddChangeV2
+import net.rsprot.protocol.game.outgoing.zone.payload.LocDel
+import net.rsprot.protocol.game.outgoing.zone.payload.ObjAdd
+import net.rsprot.protocol.game.outgoing.zone.payload.ObjDel
+import net.rsprot.protocol.message.ZoneProt
 import net.rsprot.protocol.api.GameConnectionHandler
 import net.rsprot.protocol.api.NetworkService
 import net.rsprot.protocol.api.Session
@@ -76,13 +83,15 @@ class Player(
 
     val inventory = Inventory(INV_INVENTORY, 28)
     val worn = Inventory(INV_WORN, 14)
+    val bank = Inventory(INV_BANK, 800)
 
     fun send(message: net.rsprot.protocol.message.OutgoingGameMessage) = session.queue(message)
 
     fun message(text: String) = send(MessageGame(0, text))
 }
 
-class GroundObj(val obj: Int, val count: Int, val coord: Coord)
+/** [zone]: sent with zone OBJ_ADD (removed with OBJ_DEL) rather than the _SPECIFIC packets. */
+class GroundObj(val obj: Int, val count: Int, val coord: Coord, val zone: Boolean = false)
 
 class Interaction(val reached: (Player) -> Boolean, val repath: (Player) -> Unit, val action: (Player) -> Unit)
 
@@ -90,6 +99,16 @@ class Interaction(val reached: (Player) -> Boolean, val repath: (Player) -> Unit
 class Inventory(val id: Int, val capacity: Int) {
     val objs = IntArray(capacity) { -1 }
     val counts = IntArray(capacity)
+
+    /** Adds to an existing stack of [obj] if there is one (bank behaviour). */
+    fun addStacked(obj: Int, count: Int): Boolean {
+        val slot = objs.indexOf(obj)
+        if (slot >= 0) {
+            counts[slot] += count
+            return true
+        }
+        return add(obj, count)
+    }
 
     fun add(obj: Int, count: Int): Boolean {
         val slot = objs.indexOf(-1).takeIf { it >= 0 } ?: return false
@@ -117,6 +136,7 @@ class Npc(val index: Int, val id: Int, val spawn: Coord, val avatar: NpcAvatar) 
 
 const val INV_INVENTORY = 93
 const val INV_WORN = 94
+const val INV_BANK = 95
 
 /**
  * A deliberately tiny game world: players can log in with any credentials, see each other,
@@ -515,6 +535,29 @@ class World(
                 // ::obj id [count] [dz] - on the player's tile by default (long-press yourself to see Take).
                 spawnGroundObj(player, obj, args.getOrNull(2)?.toIntOrNull() ?: 1, dz = args.getOrNull(3)?.toIntOrNull() ?: 0)
             }
+            "locadd" -> {
+                // ::locadd id [shape] [rotation] - adds a loc on the player's tile (shape 10 = centrepiece).
+                val id = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::locadd id [shape] [rot]")
+                val c = player.coord
+                val shape = args.getOrNull(2)?.toIntOrNull() ?: 10
+                val rot = args.getOrNull(3)?.toIntOrNull() ?: 0
+                sendZone(player, c, listOf(LocAddChangeV2(id, c.x and 7, c.z and 7, shape, rot, 0x1F)))
+            }
+            "locdel" -> {
+                // ::locdel [shape] [dx] [dz] - removes the loc of that shape's layer at an offset from the player.
+                val shape = args.getOrNull(1)?.toIntOrNull() ?: 10
+                val c = player.coord.let { Coord(it.x + (args.getOrNull(2)?.toIntOrNull() ?: 0), it.z + (args.getOrNull(3)?.toIntOrNull() ?: 0), it.level) }
+                sendZone(player, c, listOf(LocDel(c.x and 7, c.z and 7, shape, 0)))
+            }
+            "zobj" -> {
+                // ::zobj id [count] - ground obj via zone OBJ_ADD (instead of OBJ_ADD_SPECIFIC).
+                val obj = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::zobj id [count]")
+                val count = args.getOrNull(2)?.toIntOrNull() ?: 1
+                val c = player.coord
+                player.groundObjs += GroundObj(obj, count, c, zone = true)
+                sendZone(player, c, listOf(ObjAdd(obj, count, c.x and 7, c.z and 7, OBJ_OPS_ALL, 0, OBJ_DESPAWN_TICKS, 0, false)))
+            }
+            "bank" -> openBank(player)
             "freeze" -> {
                 npcsFrozen = !npcsFrozen
                 player.message("NPC wandering ${if (npcsFrozen) "off" else "on"}")
@@ -554,6 +597,8 @@ class World(
     fun button(player: Player, interfaceId: Int, componentId: Int, sub: Int, obj: Int, op: Int): Boolean {
         when {
             interfaceId == INTERFACE_INVENTORY -> inventoryOp(player, sub, op)
+            interfaceId == INTERFACE_BANK && componentId == BANK_ITEMS -> withdraw(player, sub, op)
+            interfaceId == INTERFACE_BANKSIDE && componentId == BANKSIDE_ITEMS -> deposit(player, sub)
             interfaceId == INTERFACE_WORN && componentId in WORN_SLOT_COMPONENTS -> unequip(player, WORN_SLOT_COMPONENTS.getValue(componentId))
             else -> return false
         }
@@ -582,6 +627,64 @@ class World(
             }
             else -> player.message("Nothing interesting happens.")
         }
+    }
+
+    /** The component of the player's toplevel that a toplevel_osrs_stretch component redirects to. */
+    private fun paneTarget(player: Player, stretchComponent: Int): Int? {
+        val stretch = (Gameframe.TOPLEVEL_STRETCH shl 16) or stretchComponent
+        if (player.toplevel == Gameframe.TOPLEVEL_STRETCH) return stretch
+        return gameframes[player.toplevel].orEmpty()[stretch]
+    }
+
+    /** Opens bankmain (12) in the main modal and bankside (15) in the side modal. */
+    fun openBank(player: Player) {
+        val main = paneTarget(player, Gameframe.STRETCH_MAINMODAL) ?: return player.message("No main modal in this toplevel")
+        val side = paneTarget(player, Gameframe.STRETCH_SIDEMODAL) ?: return player.message("No side modal in this toplevel")
+        player.send(IfOpenSub(main ushr 16, main and 0xFFFF, INTERFACE_BANK, 0))
+        player.send(IfOpenSub(side ushr 16, side and 0xFFFF, INTERFACE_BANKSIDE, 0))
+        player.send(player.bank.toMessage())
+        player.send(player.inventory.toMessage())
+        player.send(IfSetEventsV2(INTERFACE_BANK, BANK_ITEMS, 0, player.bank.capacity - 1, 0, IF_EVENTS_OPS))
+        player.send(IfSetEventsV2(INTERFACE_BANKSIDE, BANKSIDE_ITEMS, 0, 27, 0, IF_EVENTS_OPS))
+        log.info { "${player.username} opened the bank (main modal ${main ushr 16}:${main and 0xFFFF}, side ${side ushr 16}:${side and 0xFFFF})" }
+    }
+
+    /** Bank op 1 withdraws one, any other op the whole stack. */
+    private fun withdraw(player: Player, slot: Int, op: Int) {
+        val bank = player.bank
+        val obj = bank.objs.getOrNull(slot)?.takeIf { it != -1 } ?: return
+        val amount = if (op == 1) 1 else bank.counts[slot]
+        var moved = 0
+        while (moved < amount && player.inventory.add(obj, 1)) moved++
+        if (moved == 0) return player.message("You don't have enough inventory space.")
+        bank.counts[slot] -= moved
+        if (bank.counts[slot] <= 0) {
+            // Shift later items left so the bank has no gaps, as in the real game.
+            for (i in slot until bank.capacity - 1) {
+                bank.objs[i] = bank.objs[i + 1]
+                bank.counts[i] = bank.counts[i + 1]
+            }
+            bank.objs[bank.capacity - 1] = -1
+            bank.counts[bank.capacity - 1] = 0
+        }
+        player.send(bank.toMessage())
+        player.send(player.inventory.toMessage())
+    }
+
+    /** Deposits every inventory item with the same id as the one in [slot]. */
+    private fun deposit(player: Player, slot: Int) {
+        val inv = player.inventory
+        val obj = inv.objs.getOrNull(slot)?.takeIf { it != -1 } ?: return
+        var total = 0
+        for (i in 0 until inv.capacity) {
+            if (inv.objs[i] != obj) continue
+            total += inv.counts[i]
+            inv.objs[i] = -1
+            inv.counts[i] = 0
+        }
+        if (!player.bank.addStacked(obj, total)) return player.message("Your bank is full.")
+        player.send(player.bank.toMessage())
+        player.send(inv.toMessage())
     }
 
     private fun levelForXp(xp: Int): Int {
@@ -619,6 +722,21 @@ class World(
         player.send(ObjAddSpecific(obj, count, c.level, c.x, c.z + dz, OBJ_OPS_ALL, 0, OBJ_DESPAWN_TICKS, 0, false))
     }
 
+    /**
+     * Sends zone prots for the zone containing [coord] (UPDATE_ZONE_PARTIAL_ENCLOSED). The zone base
+     * is in build-area tiles: the build area starts 6 zones south-west of the zone it was built
+     * around ([Player.buildCenter]).
+     */
+    fun sendZone(player: Player, coord: Coord, messages: List<ZoneProt>) {
+        if (!player.android) return log.info { "Zone prots are only implemented for Android" }
+        val baseX = (player.buildCenter.zoneX - 6) shl 3
+        val baseZ = (player.buildCenter.zoneZ - 6) shl 3
+        val zoneX = (coord.zoneX shl 3) - baseX
+        val zoneZ = (coord.zoneZ shl 3) - baseZ
+        if (zoneX !in 0 until 104 || zoneZ !in 0 until 104) return log.info { "$coord is outside ${player.username}'s build area" }
+        player.send(AndroidUpdateZonePartialEnclosed(zoneX, zoneZ, coord.level, AndroidZoneProts.encode(messages)))
+    }
+
     // -- Interactions (OPNPC / OPLOC / OPOBJ). No pathfinding: the player walks in a straight line. --
 
     private fun interact(player: Player) {
@@ -653,6 +771,7 @@ class World(
             repath = { it.path += Coord(npc.x, npc.z, it.coord.level) },
             action = { p ->
                 when (opName?.lowercase()) {
+                    "bank" -> openBank(p)
                     "talk-to" -> openNpcChat(p, npc.id, type?.name ?: "", "Hello, ${p.username}! This is a test server.")
                     else -> p.message("$opName ${type?.name ?: "npc ${npc.id}"}: nothing interesting happens.")
                 }
@@ -672,7 +791,14 @@ class World(
             player,
             Coord(x, z, player.coord.level),
             reached = { it.coord.x in x - 1..x + sx && it.coord.z in z - 1..z + sz },
-            action = { it.message("$opName ${type?.name ?: "loc $id"} ($id at $x, $z): nothing interesting happens.") },
+            action = { p ->
+                when (opName?.lowercase()) {
+                    // No map data on the server yet: an opened door is simply removed (wall layer, shape 0).
+                    "bank" -> openBank(p)
+                    "open" -> sendZone(p, Coord(x, z, p.coord.level), listOf(LocDel(x and 7, z and 7, 0, 0)))
+                    else -> p.message("$opName ${type?.name ?: "loc $id"} ($id at $x, $z): nothing interesting happens.")
+                }
+            },
         )
     }
 
@@ -691,7 +817,8 @@ class World(
                     opName.equals("take", true) -> {
                         if (!p.inventory.add(id, ground.count)) return@startInteraction p.message("You don't have enough inventory space.")
                         p.groundObjs.remove(ground)
-                        p.send(ObjDelSpecific(id, ground.count, ground.coord.level, x, z))
+                        if (ground.zone) sendZone(p, ground.coord, listOf(ObjDel(id, ground.count, x and 7, z and 7)))
+                        else p.send(ObjDelSpecific(id, ground.count, ground.coord.level, x, z))
                         p.send(p.inventory.toMessage())
                     }
                     else -> p.message("$opName ${type?.name}: nothing interesting happens.")
@@ -752,6 +879,11 @@ class World(
         private const val HITPOINTS = 3
         private const val INTERFACE_INVENTORY = 149
         private const val INTERFACE_WORN = 387
+        private const val INTERFACE_BANK = 12
+        /** bankmain:items (rev 241, from RuneLite's gameval InterfaceID.Bankmain.ITEMS). */
+        private const val BANK_ITEMS = 12
+        private const val INTERFACE_BANKSIDE = 15
+        private const val BANKSIDE_ITEMS = 3
         private const val ANIM_EAT = 829
         private const val SCRIPT_CHATBOX_RESET_BACKGROUND = 2379
         private const val SCRIPT_CHAT_DEFAULT_RESTORE_INPUT = 2158

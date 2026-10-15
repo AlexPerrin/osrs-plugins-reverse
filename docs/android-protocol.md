@@ -70,10 +70,44 @@ unassigned opcode), which is what made them easy to find.
 | 122 | IF_SETTEXT | component `p4Alt3`, string |
 | 145 / 150 | NPC_INFO_LARGE_V6 / NPC_INFO_SMALL_V6 | RSProt's NpcInfo bitstream; new NPCs use the Android order below |
 
-Recognised but not implemented: 8 UPDATE_INV_PARTIAL, 16 LOC_DEL (zone), 18
+| 7 | UPDATE_ZONE_PARTIAL_FOLLOWS | z `p1Alt3`, x `p1Alt1`, level `p1Alt1` |
+| 68 | UPDATE_ZONE_FULL_FOLLOWS | level `p1Alt1`, z `p1Alt1`, x `p1Alt2` |
+| 23 | UPDATE_ZONE_PARTIAL_ENCLOSED | level `p1Alt1`, z `p1Alt3`, x `p1`, then (Android zone index `p1`, payload)* |
+| 4 / 14 / 16 / 17 / 48 / 105 | MAP_ANIM / LOC_ADD_CHANGE_V2 / LOC_DEL / LOC_ANIM / SOUND_AREA / LOC_MERGE | top-level zone prots, payload as in the zone table below |
+
+Recognised but not implemented: 8 UPDATE_INV_PARTIAL, 18
 UPDATE_INV_STOPTRANSMIT, 35 LOGOUT_TRANSFER, 41 REBUILD_REGION_V2, 70 REBUILD_WORLDENTITY,
 117/43/9 clan and friends-chat messages. Not found yet: WORLDENTITY_INFO_V7 (the server
 skips it; nothing breaks without world entities).
+
+## Zone packets
+
+Zone x/z in the headers are build-area tiles of the zone's south-west corner (build area starts
+6 zones south-west of the rebuild zone); level is the plane. Zone prots carry coord-in-zone
+`x << 4 | z`. All zone prots are handled by one function (Ghidra `0x56edb0`) that switches on
+an Android index, which is also the sub-opcode inside PARTIAL_ENCLOSED:
+
+| Index | Prot | Size | Payload (implemented ones) |
+|---|---|---|---|
+| 0 | MAP_ANIM | 6 | |
+| 1 | LOC_ADD_CHANGE_V2 | var | op count `p1Alt2`, (op index 0-4 `p1`, string)*, shape<<2\|rot `p1`, coord `p1`, opFlags `p1Alt3`, id `p2Alt2` |
+| 2 | LOC_ANIM | 4 | |
+| 3 | OBJ_ENABLED_OPS | 4 | |
+| 4 | OBJ_UNCUSTOMISE | 7 | |
+| 5 | OBJ_DEL | 7 | coord `p1`, quantity `p4Alt2`, id `p2Alt3` |
+| 6 | MAP_PROJANIM_V2 | 24 | |
+| 7 | OBJ_CUSTOMISE | 17 | |
+| 8 | OBJ_COUNT | 11 | |
+| 9 | LOC_MERGE | 14 | |
+| 10 | LOC_DEL | 2 | shape<<2\|rot `p1Alt3`, coord `p1` |
+| 11 | OBJ_ADD | 14 | neverPublic `p1Alt1`, timeUntilDespawn `p2Alt1`, quantity `p4Alt1`, ownership `p1Alt1`, coord `p1`, id `p2`, opFlags `p1Alt2`, timeUntilPublic `p2Alt2` |
+| 12 | SCRIPTEDPROJ_ADD | | |
+| 13 | SOUND_AREA | 7 | |
+| 14 | SCRIPTEDPROJ_CHANGE | 18 | |
+
+Indices were matched by payload size and by what each case does with the tile's loc/obj lists
+(OBJ_ADD's argument order against OBJ_ADD_SPECIFIC, which calls the same function `0x55775c`).
+The server sends them with `AndroidUpdateZonePartialEnclosed` + `AndroidZoneProts.encode`.
 
 ## Player extended info
 

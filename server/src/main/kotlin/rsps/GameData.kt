@@ -39,6 +39,9 @@ object Gameframe {
     const val TOPLEVEL_FIXED = 548
     const val TOPLEVEL_STRETCH = 161
     const val TOPLEVEL_MOBILE = 601
+    /** toplevel_osrs_stretch:mainmodal and :sidemodal (RuneLite gameval ToplevelOsrsStretch). */
+    const val STRETCH_MAINMODAL = 16
+    const val STRETCH_SIDEMODAL = 74
 
     /** toplevel interface -> pane redirect enum id. */
     val redirectEnums = mapOf(TOPLEVEL_FIXED to 1129, TOPLEVEL_STRETCH to 1130, TOPLEVEL_MOBILE to 1745)

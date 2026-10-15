@@ -666,10 +666,10 @@ index 00000000..5a9fb809
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..30a694b2
+index 00000000..85ece5da
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,53 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.protocol.Prot
@@ -686,7 +686,16 @@ index 00000000..30a694b2
 +    override val opcode: Int,
 +    override val size: Int,
 +) : ServerProt {
++    MAP_ANIM(4, 6),
 +    UPDATE_STAT_V2(2, 7),
++    UPDATE_ZONE_PARTIAL_FOLLOWS(7, 3),
++    LOC_ADD_CHANGE_V2(14, Prot.VAR_SHORT),
++    LOC_DEL(16, 2),
++    LOC_ANIM(17, 4),
++    UPDATE_ZONE_PARTIAL_ENCLOSED(23, Prot.VAR_SHORT),
++    SOUND_AREA(48, 7),
++    UPDATE_ZONE_FULL_FOLLOWS(68, 3),
++    LOC_MERGE(105, 14),
 +    REBUILD_NORMAL_V2(6, Prot.VAR_SHORT),
 +    UPDATE_INV_PARTIAL(8, Prot.VAR_SHORT),
 +    RUNCLIENTSCRIPT(10, Prot.VAR_SHORT),
@@ -1077,10 +1086,10 @@ index 00000000..d083e608
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..e44a65ac
+index 00000000..75465cc6
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,116 @@
+@@ -0,0 +1,121 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -1133,6 +1142,11 @@ index 00000000..e44a65ac
 +            bind(AndroidIfSetTextEncoder())
 +            bind(AndroidObjDelSpecificEncoder())
 +            bind(androidNpcInfoLargeV6Encoder())
++            bind(AndroidUpdateZonePartialFollowsEncoder())
++            bind(AndroidUpdateZoneFullFollowsEncoder())
++            bind(AndroidUpdateZonePartialEnclosedEncoder())
++            bind(AndroidLocAddChangeV2Encoder())
++            bind(AndroidLocDelEncoder())
 +        }.build()
 +}
 +
@@ -1196,6 +1210,193 @@ index 00000000..e44a65ac
 + */
 +public object AndroidLoginCrcDecoder : LoginCrcDecoder by DesktopLoginCrcDecoder {
 +    override val clientType: OldSchoolClientType = OldSchoolClientType.ANDROID
++}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidZone.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidZone.kt
+new file mode 100644
+index 00000000..eea8a022
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidZone.kt
+@@ -0,0 +1,181 @@
++package net.rsprot.protocol.android
++
++import io.netty.buffer.Unpooled
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.buffer.extensions.toJagByteBuf
++import net.rsprot.crypto.cipher.StreamCipher
++import net.rsprot.protocol.ServerProt
++import net.rsprot.protocol.ServerProtCategory
++import net.rsprot.protocol.game.outgoing.GameServerProtCategory
++import net.rsprot.protocol.game.outgoing.zone.header.UpdateZoneFullFollows
++import net.rsprot.protocol.game.outgoing.zone.header.UpdateZonePartialFollows
++import net.rsprot.protocol.game.outgoing.zone.payload.LocAddChangeV2
++import net.rsprot.protocol.game.outgoing.zone.payload.LocDel
++import net.rsprot.protocol.game.outgoing.zone.payload.ObjAdd
++import net.rsprot.protocol.game.outgoing.zone.payload.ObjDel
++import net.rsprot.protocol.message.OutgoingGameMessage
++import net.rsprot.protocol.message.ZoneProt
++import net.rsprot.protocol.message.codec.MessageEncoder
++
++// Zone packets. The client keeps a zone base (x, z in build-area tiles, level) set by the
++// UPDATE_ZONE_* headers; zone prots carry a packed coord-in-zone (x << 4 | z). Zone prots are
++// handled by one function (Ghidra 0x56edb0) switching on an Android-specific index, which is
++// also the sub-opcode inside UPDATE_ZONE_PARTIAL_ENCLOSED:
++//   0 MAP_ANIM, 1 LOC_ADD_CHANGE_V2, 2 LOC_ANIM, 3 OBJ_ENABLED_OPS, 4 OBJ_UNCUSTOMISE, 5 OBJ_DEL,
++//   6 MAP_PROJANIM_V2, 7 OBJ_CUSTOMISE, 8 OBJ_COUNT, 9 LOC_MERGE, 10 LOC_DEL, 11 OBJ_ADD,
++//   12 SCRIPTEDPROJ_ADD, 13 SOUND_AREA, 14 SCRIPTEDPROJ_CHANGE
++// (identified by payload size and what each case does with the tile's obj/loc lists).
++
++/** Case 7: [z 128-b][x ^0x80][level ^0x80]. */
++public class AndroidUpdateZonePartialFollowsEncoder : MessageEncoder<UpdateZonePartialFollows> {
++    override val prot: ServerProt = AndroidGameServerProt.UPDATE_ZONE_PARTIAL_FOLLOWS
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: UpdateZonePartialFollows) {
++        buffer.p1Alt3(message.zoneZ)
++        buffer.p1Alt1(message.zoneX)
++        buffer.p1Alt1(message.level)
++    }
++}
++
++/** Case 68: [level ^0x80][z ^0x80][x -b]; clears the zone's objs/locs changes first. */
++public class AndroidUpdateZoneFullFollowsEncoder : MessageEncoder<UpdateZoneFullFollows> {
++    override val prot: ServerProt = AndroidGameServerProt.UPDATE_ZONE_FULL_FOLLOWS
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: UpdateZoneFullFollows) {
++        buffer.p1Alt1(message.level)
++        buffer.p1Alt1(message.zoneZ)
++        buffer.p1Alt2(message.zoneX)
++    }
++}
++
++/**
++ * Case 23: [level ^0x80][z 128-b][x p1], then (index p1, zone prot payload)* to the end.
++ * Build [payload] with [AndroidZoneProts.encode].
++ */
++public class AndroidUpdateZonePartialEnclosed(
++    public val zoneX: Int,
++    public val zoneZ: Int,
++    public val level: Int,
++    public val payload: ByteArray,
++) : OutgoingGameMessage {
++    override val category: ServerProtCategory
++        get() = GameServerProtCategory.HIGH_PRIORITY_PROT
++
++    override fun toString(): String =
++        "AndroidUpdateZonePartialEnclosed(zoneX=$zoneX, zoneZ=$zoneZ, level=$level, payload=${payload.size} bytes)"
++}
++
++public class AndroidUpdateZonePartialEnclosedEncoder : MessageEncoder<AndroidUpdateZonePartialEnclosed> {
++    override val prot: ServerProt = AndroidGameServerProt.UPDATE_ZONE_PARTIAL_ENCLOSED
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: AndroidUpdateZonePartialEnclosed) {
++        buffer.p1Alt1(message.level)
++        buffer.p1Alt3(message.zoneZ)
++        buffer.p1(message.zoneX)
++        buffer.buffer.writeBytes(message.payload)
++    }
++}
++
++/** Zone prot payloads with their Android index, for UPDATE_ZONE_PARTIAL_ENCLOSED. */
++public object AndroidZoneProts {
++    public const val LOC_ADD_CHANGE_V2: Int = 1
++    public const val OBJ_DEL: Int = 5
++    public const val LOC_DEL: Int = 10
++    public const val OBJ_ADD: Int = 11
++
++    /** Encodes [messages] (LocAddChangeV2, LocDel, ObjAdd, ObjDel) as index + payload each. */
++    public fun encode(messages: List<ZoneProt>): ByteArray {
++        val buf = Unpooled.buffer().toJagByteBuf()
++        try {
++            for (message in messages) {
++                when (message) {
++                    is LocAddChangeV2 -> {
++                        buf.p1(LOC_ADD_CHANGE_V2)
++                        writeLocAddChange(buf, message)
++                    }
++                    is LocDel -> {
++                        buf.p1(LOC_DEL)
++                        writeLocDel(buf, message)
++                    }
++                    is ObjAdd -> {
++                        buf.p1(OBJ_ADD)
++                        writeObjAdd(buf, message)
++                    }
++                    is ObjDel -> {
++                        buf.p1(OBJ_DEL)
++                        writeObjDel(buf, message)
++                    }
++                    else -> error("Zone prot not mapped for Android: $message")
++                }
++            }
++            val out = ByteArray(buf.buffer.readableBytes())
++            buf.buffer.readBytes(out)
++            return out
++        } finally {
++            buf.buffer.release()
++        }
++    }
++
++    /** Case 1: [op count -b]([op index p1][string])*[shape<<2|rot p1][coord p1][opFlags 128-b][id p2Alt2]. */
++    internal fun writeLocAddChange(buffer: JagByteBuf, message: LocAddChangeV2) {
++        val ops = message.ops
++        buffer.p1Alt2(ops?.size ?: 0)
++        if (ops != null) {
++            for ((key, value) in ops) {
++                buffer.p1(key.toInt() - 1)
++                buffer.pjstr(value)
++            }
++        }
++        buffer.p1(message.locPropertiesPacked)
++        buffer.p1(message.coordInZonePacked)
++        buffer.p1Alt3(message.opFlags.toInt())
++        buffer.p2Alt2(message.id)
++    }
++
++    /** Case 10: [shape<<2|rot 128-b][coord p1]. */
++    internal fun writeLocDel(buffer: JagByteBuf, message: LocDel) {
++        buffer.p1Alt3(message.locPropertiesPacked)
++        buffer.p1(message.coordInZonePacked)
++    }
++
++    /**
++     * Case 11 (14 bytes): [neverPublic ^0x80][timeUntilDespawn LE][quantity int LE][ownership ^0x80]
++     * [coord p1][id p2][opFlags -b][timeUntilPublic p2Alt2]. Argument order checked against
++     * OBJ_ADD_SPECIFIC, which calls the same obj-add function (0x55775c).
++     */
++    internal fun writeObjAdd(buffer: JagByteBuf, message: ObjAdd) {
++        buffer.p1Alt1(if (message.neverBecomesPublic) 1 else 0)
++        buffer.p2Alt1(message.timeUntilDespawn)
++        buffer.p4Alt1(message.quantity)
++        buffer.p1Alt1(message.ownershipType)
++        buffer.p1(message.coordInZonePacked)
++        buffer.p2(message.id)
++        buffer.p1Alt2(message.opFlags.toInt())
++        buffer.p2Alt2(message.timeUntilPublic)
++    }
++
++    /** Case 5 (7 bytes): [coord p1][quantity p4Alt2][id p2Alt3]; removes the matching obj. */
++    internal fun writeObjDel(buffer: JagByteBuf, message: ObjDel) {
++        buffer.p1(message.coordInZonePacked)
++        buffer.p4Alt2(message.quantity)
++        buffer.p2Alt3(message.id)
++    }
++}
++
++/** Case 14: LOC_ADD_CHANGE_V2 as a top-level packet (same payload as zone index 1). */
++public class AndroidLocAddChangeV2Encoder : MessageEncoder<LocAddChangeV2> {
++    override val prot: ServerProt = AndroidGameServerProt.LOC_ADD_CHANGE_V2
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: LocAddChangeV2) {
++        AndroidZoneProts.writeLocAddChange(buffer, message)
++    }
++}
++
++/** Case 16: LOC_DEL as a top-level packet. */
++public class AndroidLocDelEncoder : MessageEncoder<LocDel> {
++    override val prot: ServerProt = AndroidGameServerProt.LOC_DEL
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: LocDel) {
++        AndroidZoneProts.writeLocDel(buffer, message)
++    }
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt
 new file mode 100644

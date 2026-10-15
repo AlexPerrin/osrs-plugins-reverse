@@ -120,4 +120,15 @@ struct ScriptResult {
 };
 bool run_script(const std::vector<ScriptArg>& args, ScriptResult& out, std::string& error);
 
+// Item (obj) definitions, from the game's definition cache (loads on demand). Game thread only.
+struct ItemDef {
+    int id = -1;
+    std::string name;
+    int price = 0, weight = 0, category = -1;
+    bool stackable = false, members = false, tradeable_guess = false;
+    int linked_note = -1, note_template = -1, placeholder = -1, placeholder_template = -1;
+    std::string inventory_actions[5];
+};
+bool item_def(int id, ItemDef& out);
+
 }  // namespace game

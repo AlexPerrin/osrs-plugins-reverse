@@ -20,7 +20,7 @@ rm -rf "$OUT/gen" "$OUT/classes" "$OUT/client-classes" "$OUT/awt-classes" "$OUT/
 mkdir -p "$OUT/gen/net/runelite/host" "$OUT/classes" "$OUT/client-classes"
 
 # 1. Throwing implementations of the API interfaces; host classes override what works.
-for iface in Client Player NPC WorldView MessageNode widgets.Widget ItemContainer; do
+for iface in Client Player NPC WorldView MessageNode widgets.Widget ItemContainer ItemComposition; do
     name=${iface##*.}
     java -cp "$API" "$ROOT/host/gen/GenStub.java" net.runelite.api.$iface net.runelite.host ${name}Stub \
         > "$OUT/gen/net/runelite/host/${name}Stub.java"

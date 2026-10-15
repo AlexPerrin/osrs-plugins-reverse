@@ -20,6 +20,12 @@ final class Native {
      */
     static native Object[] runScript(Object[] args);
     /**
+     * Item definition (game thread only): {int[] {price, weight, category, stackable, members,
+     * tradeable?, linkedNote, noteTemplate, placeholder, placeholderTemplate}, String[] {name,
+     * inventory actions x5 (null = none)}}, or null.
+     */
+    static native Object[] itemDef(int id);
+    /**
      * NPCs as of the last client cycle: {int[] packed, String[] names}, where packed holds
      * {index, id, localX, localY, worldX, worldY} per NPC.
      */

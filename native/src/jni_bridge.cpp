@@ -120,6 +120,33 @@ jobjectArray n_run_script(JNIEnv* env, jclass, jobjectArray jargs) {
     env->SetObjectArrayElement(res, 1, objs);
     return res;
 }
+// Object[] {int[] {price, weight, category, stackable, members, tradeable?, linkedNote,
+// noteTemplate, placeholder, placeholderTemplate}, String[] {name, 5 inventory actions}}.
+jobjectArray n_item_def(JNIEnv* env, jclass, jint id) {
+    if (!client_thread::on_client_thread()) {
+        env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "getItemDefinition must be called on the client thread");
+        return nullptr;
+    }
+    game::ItemDef d;
+    if (!game::item_def(id, d)) return nullptr;
+    jint v[10] = {d.price, d.weight, d.category, d.stackable, d.members, d.tradeable_guess,
+                  d.linked_note, d.note_template, d.placeholder, d.placeholder_template};
+    jintArray ints = env->NewIntArray(10);
+    env->SetIntArrayRegion(ints, 0, 10, v);
+    jclass string = env->FindClass("java/lang/String");
+    jobjectArray strs = env->NewObjectArray(6, string, nullptr);
+    for (int i = 0; i < 6; i++) {
+        const std::string& t = i == 0 ? d.name : d.inventory_actions[i - 1];
+        if (i > 0 && t.empty()) continue;
+        jstring js = env->NewStringUTF(t.c_str());
+        env->SetObjectArrayElement(strs, i, js);
+        env->DeleteLocalRef(js);
+    }
+    jobjectArray res = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(res, 0, ints);
+    env->SetObjectArrayElement(res, 1, strs);
+    return res;
+}
 jboolean n_is_client_thread(JNIEnv*, jclass) { return client_thread::on_client_thread(); }
 jintArray n_player_position(JNIEnv* env, jclass) {
     if (game::game_state() != 30) return nullptr;
@@ -283,6 +310,7 @@ const JNINativeMethod kNatives[] = {
     {"serverVarp", "(I)I", reinterpret_cast<void*>(n_server_varp)},
     {"varbit", "(I)I", reinterpret_cast<void*>(n_varbit)},
     {"playerPosition", "()[I", reinterpret_cast<void*>(n_player_position)},
+    {"itemDef", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_item_def)},
     {"runScript", "([Ljava/lang/Object;)[Ljava/lang/Object;", reinterpret_cast<void*>(n_run_script)},
     {"isClientThread", "()Z", reinterpret_cast<void*>(n_is_client_thread)},
 };

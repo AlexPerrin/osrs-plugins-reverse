@@ -59,6 +59,8 @@ struct Build {
     // size +0xff0, object stack of 0x28-byte variants +0xff8 with size +0xac38, running flag +0x04)
     // and runScriptEvent(vm, ScriptEvent*, maxOps).
     uintptr_t script_vm, run_script_event;
+    // shared_ptr<ObjType> getObjType(int id) (result via x8): definition cache lookup/load (OC_* ops).
+    uintptr_t get_obj_type;
 };
 
 constexpr Build kBuilds[] = {
@@ -69,7 +71,7 @@ constexpr Build kBuilds[] = {
      0xecdc, 0xece0, 0xcb78, 0xcb7c, 0xcb80, 0x8950c, 0x89514, 0x5d0040,
      0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x68, 0x70, 0xcb0c, 0x718, 0xcb90, 0x730, 0x1fc, 0x200, 0x0, 0x8,
      0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0x5c, 0x60, 0x64, 0x68, 0x74, 0x6, 0x3210, 0x3274, 0x32d8, 0xaab690, 0xaab658, 0xaab628,
-     0xaef1d0, 0x4df54c},
+     0xaef1d0, 0x4df54c, 0x63bfe8},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -529,6 +531,54 @@ bool run_script(const std::vector<ScriptArg>& args, ScriptResult& out, std::stri
         out.object_is_string.push_back(str);
         out.objects.push_back(str ? read_string(v) : std::string());
     }
+    return true;
+}
+
+}  // namespace game
+
+namespace game {
+namespace {
+// shared_ptr control block as the game uses it: vtable, int uses (+8), int weak (+0xc).
+void release_shared(uintptr_t ctrl) {
+    if (!ctrl) return;
+    auto vcall = [](uintptr_t obj, size_t slot) {
+        auto vt = read_at<uintptr_t>(obj);
+        reinterpret_cast<void (*)(uintptr_t)>(read_at<uintptr_t>(vt + slot))(obj);
+    };
+    if (__atomic_fetch_add(reinterpret_cast<int*>(ctrl + 8), -1, __ATOMIC_ACQ_REL) == 1) {
+        vcall(ctrl, 0x10);
+        if (__atomic_fetch_add(reinterpret_cast<int*>(ctrl + 0xc), -1, __ATOMIC_ACQ_REL) == 1) vcall(ctrl, 0x18);
+    }
+}
+}  // namespace
+
+bool item_def(int id, ItemDef& out) {
+    if (!g_build || !g_build->get_obj_type || id < 0 || id > 0xfffff) return false;
+    // Returns shared_ptr<ObjType> by value: a non-trivial type, so the result goes through x8
+    // (AAPCS64 indirect result), not x0. A struct with a user-provided destructor gets the same ABI.
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    SharedPtr r = reinterpret_cast<SharedPtr (*)(int)>(g_base + g_build->get_obj_type)(id);
+    uintptr_t sp[2] = {r.ctrl, r.obj};
+    uintptr_t o = sp[1];
+    if (!o) { release_shared(sp[0]); return false; }
+    out.id = id;
+    out.name = read_string(o + 0x08);
+    out.price = read_at<int32_t>(o + 0xd8);
+    out.stackable = read_at<int32_t>(o + 0xd4) == 1;
+    out.members = read_at<uint8_t>(o + 0xe8) != 0;
+    out.linked_note = read_at<int32_t>(o + 0x2b0);
+    out.note_template = read_at<int32_t>(o + 0x2b4);
+    out.placeholder = read_at<int32_t>(o + 0x314);
+    out.placeholder_template = read_at<int32_t>(o + 0x318);
+    out.weight = read_at<int32_t>(o + 0x2d0);
+    out.category = read_at<int32_t>(o + 0x278);
+    out.tradeable_guess = read_at<uint8_t>(o + 0x308) != 0;
+    auto iops = read_at<uintptr_t>(o + 0x108);
+    for (int i = 0; i < 5; i++) out.inventory_actions[i] = iops ? read_string(iops + i * 0x18) : std::string();
+    release_shared(sp[0]);
     return true;
 }
 

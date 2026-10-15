@@ -89,6 +89,9 @@ public class TickInfoPlugin extends Plugin {
         log.info("npcs: {}", client.getNpcs());
         log.info("quest states: cook={} sheep={} (stack size {}) varp29={} varp179={}", Quest.COOKS_ASSISTANT.getState(client),
                 Quest.SHEEP_SHEARER.getState(client), client.getIntStackSize(), client.getVarpValue(29), client.getVarpValue(179));
+        if (client.getTickCount() % 100 == 0)
+            for (int id : new int[] {995, 1931, 1932, 1944, 4151, 1351})
+                log.info("item {}: {}", id, client.getItemDefinition(id));
         log.info("players: {} local={}", client.getPlayers(), client.getLocalPlayer() != null ? client.getLocalPlayer().getName() : null);
     }
 

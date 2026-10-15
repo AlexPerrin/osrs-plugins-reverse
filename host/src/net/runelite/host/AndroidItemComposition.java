@@ -1,0 +1,62 @@
+package net.runelite.host;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/** ItemComposition read from the game's obj definition cache (docs/offsets.md, ObjType). */
+final class AndroidItemComposition extends ItemCompositionStub {
+    private static final Map<Integer, AndroidItemComposition> cache = new LinkedHashMap<Integer, AndroidItemComposition>(256, 0.75f, true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<Integer, AndroidItemComposition> e) { return size() > 2048; }
+    };
+
+    private final int id;
+    private String name;
+    private final int[] v;
+    private final String[] actions = new String[5];
+    private int shiftClickIndex = -1;
+
+    private AndroidItemComposition(int id, int[] v, String[] s) {
+        this.id = id;
+        this.v = v;
+        this.name = s[0];
+        System.arraycopy(s, 1, actions, 0, 5);
+    }
+
+    /** Game thread only (the definition cache isn't thread-safe). */
+    static AndroidItemComposition lookup(int id) {
+        synchronized (cache) {
+            AndroidItemComposition c = cache.get(id);
+            if (c != null) return c;
+        }
+        Object[] r = Native.itemDef(id);
+        if (r == null) return null;
+        AndroidItemComposition c = new AndroidItemComposition(id, (int[]) r[0], (String[]) r[1]);
+        synchronized (cache) { cache.put(id, c); }
+        return c;
+    }
+
+    @Override public int getId() { return id; }
+    @Override public String getName() { return name; }
+    @Override public String getMembersName() { return name; }
+    @Override public void setName(String n) { name = n; }
+    @Override public int getPrice() { return v[0]; }
+    @Override public int getHaPrice() { return (int) (v[0] * 0.6f); }
+    @Override public boolean isStackable() { return v[3] != 0; }
+    @Override public boolean isMembers() { return v[4] != 0; }
+    @Override public boolean isTradeable() { return v[5] != 0; }
+    @Override public boolean isGeTradeable() { return v[5] != 0; }
+    @Override public int getLinkedNoteId() { return v[6]; }
+    @Override public int getNote() { return v[7]; }
+    @Override public int getPlaceholderId() { return v[8]; }
+    @Override public int getPlaceholderTemplateId() { return v[9]; }
+    @Override public String[] getInventoryActions() { return actions; }
+    @Override public int getShiftClickActionIndex() { return shiftClickIndex; }
+    @Override public void setShiftClickActionIndex(int i) { shiftClickIndex = i; }
+
+    @Override
+    public String toString() {
+        return "ItemComposition[" + id + " '" + name + "' price=" + v[0] + " stackable=" + isStackable() + " members=" + isMembers()
+                + " tradeable?=" + isTradeable() + " note=" + v[7] + "/" + v[6] + " placeholder=" + v[9] + "/" + v[8]
+                + " weight=" + v[1] + " actions=" + java.util.Arrays.toString(actions) + "]";
+    }
+}

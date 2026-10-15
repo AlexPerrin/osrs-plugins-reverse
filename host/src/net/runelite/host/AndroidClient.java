@@ -79,6 +79,17 @@ public class AndroidClient extends ClientStub {
     @Override public void setObjectStackSize(int size) { objectStackSize = size; }
 
     @Override
+    public net.runelite.api.ItemComposition getItemDefinition(int id) {
+        return AndroidItemComposition.lookup(id);
+    }
+
+    /** CS1 text macros aren't expanded; widget text set by the server/scripts is returned as is. */
+    @Override
+    public String macroExpand(String text) {
+        return text;
+    }
+
+    @Override
     public Player getLocalPlayer() {
         return getGameState() == GameState.LOGGED_IN ? Host.localPlayer() : null;
     }

@@ -22,7 +22,13 @@ public class ItemManager {
     }
 
     public ItemComposition getItemComposition(int id) { return client.getItemDefinition(id); }
-    public int canonicalize(int id) { return id; }
+    public int canonicalize(int id) {
+        ItemComposition c = client.getItemDefinition(id);
+        if (c == null) return id;
+        if (c.getNote() != -1) return c.getLinkedNoteId();
+        if (c.getPlaceholderTemplateId() != -1) return c.getPlaceholderId();
+        return id;
+    }
     public long getItemPrice(int id) { return 0; }
     public long getItemPriceWithSource(int id, boolean useWiki) { return 0; }
     public List<?> search(String query) { return Collections.emptyList(); }

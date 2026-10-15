@@ -102,8 +102,40 @@ appearance, `0x1` say, `0x80000` ?, `0x100000` ?, `0x20` ?, `0x1000` ?, `0x40000
 | 93 | NO_TIMEOUT (probable) | — |
 | 48 | RESUME_PAUSEBUTTON | component `g4Alt3`, sub `g2` |
 | 99 | IF_BUTTONX | as desktop (combined id, sub, obj, op); inventory item ops arrive as 149:0 with sub = slot, op 3 = wield/wear |
+| 7, 55, 58, 3, 66 | OPLOC1..5 | see below (sender Ghidra `0x61d10c`; verified OPLOC1 on device) |
+| 38 | OPLOC6 (examine) | id `g2` (observed `0464` = bush 1124) |
+| 63 | OPLOCT | ctrl `g1Alt1`, selected combined id `g4Alt1`, id `g2Alt1`, selected sub `g2Alt3`, selected obj `g2Alt2`, x `g2`, z `g2` (sender `0x61cfa8`; not decoded yet) |
+| 79, 24, 82, 34, 40 | OPOBJ1..5 | see below (sender `0x62073c`) |
+| 92, 44, 71, 33, 9 | OPNPC1..5 | see below (sender `0x61fc20`) |
 
-Seen but unidentified: 37 (keyboard events), 10 (5 bytes after login, looks like WINDOW_STATUS: `02 0780 0438` =
+Op packets (fields in wire order; `p2a2` = `[hi][lo+128]`, `p2a3` = `[lo+128][hi]`, `p2a1` =
+little endian, `p1a1` = b+128, `p1a2` = -b, `p1a3` = 128-b; x/z are absolute coordinates, ctrl
+is the run modifier, subop is the minimenu sub-op):
+
+| Packet | Layout |
+|---|---|
+| OPLOC1 (7) | id p2a2, subop p1a3, x p2a2, z p2, ctrl p1a2 |
+| OPLOC2 (55) | id p2a2, z p2, subop p1a1, x p2a2, ctrl p1a1 |
+| OPLOC3 (58) | ctrl p1, x p2, z p2a3, id p2a1, subop p1a3 |
+| OPLOC4 (3) | x p2, id p2, ctrl p1a2, z p2a1, subop p1a1 |
+| OPLOC5 (66) | subop p1a3, ctrl p1a1, x p2a3, z p2a1, id p2a1 |
+| OPOBJ1 (79) | id p2, subop p1a1, z p2a2, x p2, ctrl p1a1 |
+| OPOBJ2 (24) | id p2a2, ctrl p1a2, x p2a3, subop p1, z p2a1 |
+| OPOBJ3 (82) | x p2a2, id p2a1, ctrl p1a1, subop p1a1, z p2a2 |
+| OPOBJ4 (34) | subop p1a1, ctrl p1a2, id p2a3, x p2, z p2a2 |
+| OPOBJ5 (40) | id p2a2, ctrl p1a3, x p2a3, z p2a2, subop p1a2 |
+| OPNPC1 (92) | index p2a3, ctrl p1, subop p1a1 |
+| OPNPC2 (44) | index p2, subop p1, ctrl p1a1 |
+| OPNPC3 (71) | ctrl p1, subop p1, index p2 |
+| OPNPC4 (33) | subop p1a1, ctrl p1a3, index p2a3 |
+| OPNPC5 (9) | index p2a2, ctrl p1a2, subop p1a1 |
+
+The op senders were found by listing every call to the packet constructor `0x79cc90` (opcode
+is the second argument): functions with five calls are the op1-5 families (OPPLAYER1-8 is
+`0x623e7c`, OPWORLDENTITY1-5 `0x622f10`). OPLOC vs OPOBJ was told apart by OPLOC6/OPLOCT sharing
+the loc helper `0x623b5c`. A loc/obj x/z swap would show as a wrong tile; OPLOC1 was checked live.
+
+Seen but unidentified: 18 (8 bytes after a minimenu "Walk here": `0000ffff00ee01bf`), 37 (keyboard events), 10 (5 bytes after login, looks like WINDOW_STATUS: `02 0780 0438` =
 mode 2, 1920×1080), 13, 21 (6 bytes per tap, mouse click event), 67, 98, 100. The server logs
 every unidentified packet with `LOG_ANDROID_PACKETS=true`.
 

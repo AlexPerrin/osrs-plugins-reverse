@@ -18,6 +18,9 @@ import net.rsprot.protocol.game.incoming.misc.user.MoveGameClick
 import net.rsprot.protocol.game.incoming.misc.user.MoveMinimapClick
 import net.rsprot.protocol.game.incoming.buttons.If3Button
 import net.rsprot.protocol.game.incoming.resumed.ResumePauseButton
+import net.rsprot.protocol.game.incoming.locs.OpLocV2
+import net.rsprot.protocol.game.incoming.npcs.OpNpcV2
+import net.rsprot.protocol.game.incoming.objs.OpObjV2
 import net.rsprot.protocol.loginprot.incoming.pow.ProofOfWorkProvider
 import net.rsprot.protocol.loginprot.incoming.pow.challenges.sha256.Sha256Challenge
 import net.rsprot.protocol.loginprot.incoming.pow.challenges.sha256.Sha256MetaData
@@ -45,9 +48,15 @@ fun main() {
         "Obj configs: ${objTypes.size} objs, ${objTypes.values.count { it.wearable }} wearable " +
             "(bronze sword -> ${objTypes[1277]?.wearpos}, shrimps -> ${objTypes[315]?.iops?.toList()})"
     }
+    val npcTypes = cache.files(2, 9).mapValues { (_, data) -> EntityType.decodeNpc(data) }
+    val locTypes = cache.files(2, 6).mapValues { (_, data) -> EntityType.decodeLoc(data) }
+    log.info {
+        "NPC configs: ${npcTypes.size} (3105 -> ${npcTypes[3105]?.name} ${npcTypes[3105]?.ops?.toList()}), " +
+            "loc configs: ${locTypes.size} (1535 -> ${locTypes[1535]?.name} ${locTypes[1535]?.ops?.toList()})"
+    }
     cache.close()
 
-    val world = World(config, gameframes, js5.crcs, objTypes)
+    val world = World(config, gameframes, js5.crcs, objTypes, npcTypes, locTypes)
     val service = NetworkFactory(config, world, js5, DefaultHuffmanCodecProvider(huffman)).build()
     world.service = service
 
@@ -113,6 +122,9 @@ private class NetworkFactory(
                 else log.info { "If3Button ${it.interfaceId}:${it.componentId} op=${it.op} sub=${it.sub} obj=${it.obj}" }
             }
             .addListener<ResumePauseButton> { world.closeDialogue(this) }
+            .addListener<OpNpcV2> { world.opNpc(this, it.index, it.op) }
+            .addListener<OpLocV2> { world.opLoc(this, it.id, it.x, it.z, it.op) }
+            .addListener<OpObjV2> { world.opObj(this, it.id, it.x, it.z, it.op) }
             .addListener<AndroidUnknownPacket> { world.unknownAndroidPacket(this, it) }
             .addGlobalListener { player, message: IncomingGameMessage ->
                 log.debug { "<- ${player.username}: $message" }

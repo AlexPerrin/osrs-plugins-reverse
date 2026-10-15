@@ -31,6 +31,7 @@ import net.rsprot.protocol.game.outgoing.interfaces.IfSetNpcHead
 import net.rsprot.protocol.game.outgoing.interfaces.IfSetText
 import net.rsprot.protocol.game.outgoing.inv.UpdateInvFull
 import net.rsprot.protocol.game.outgoing.specific.ObjAddSpecific
+import net.rsprot.protocol.game.outgoing.specific.ObjDelSpecific
 import net.rsprot.protocol.game.outgoing.varp.VarpLarge
 import net.rsprot.protocol.game.outgoing.varp.VarpSmall
 import net.rsprot.protocol.loginprot.incoming.util.AuthenticationType
@@ -68,6 +69,11 @@ class Player(
 
     val extendedInfo get() = infos.playerInfo.avatar.extendedInfo
 
+    /** Ground objs this player can see (owner-only, sent with OBJ_ADD_SPECIFIC). */
+    val groundObjs = ArrayList<GroundObj>()
+    /** A pending op on an NPC, loc or obj: runs once [Interaction.reached] holds after movement. */
+    var interaction: Interaction? = null
+
     val inventory = Inventory(INV_INVENTORY, 28)
     val worn = Inventory(INV_WORN, 14)
 
@@ -75,6 +81,10 @@ class Player(
 
     fun message(text: String) = send(MessageGame(0, text))
 }
+
+class GroundObj(val obj: Int, val count: Int, val coord: Coord)
+
+class Interaction(val reached: (Player) -> Boolean, val repath: (Player) -> Unit, val action: (Player) -> Unit)
 
 /** An inventory without stacking rules: one obj id and count per slot. */
 class Inventory(val id: Int, val capacity: Int) {
@@ -118,6 +128,8 @@ class World(
     private val gameframes: Map<Int, Map<Int, Int>>,
     private val crcs: IntArray,
     private val objTypes: Map<Int, ObjWear>,
+    private val npcTypes: Map<Int, EntityType>,
+    private val locTypes: Map<Int, EntityType>,
 ) : GameConnectionHandler<Player> {
     private val log = InlineLogger()
     lateinit var service: NetworkService<Player>
@@ -191,8 +203,8 @@ class World(
                 log.warn(e) { "Packet processing failed for ${player.username}" }
             }
         }
-        for (player in players) player?.let(::move)
-        for (npc in npcs) wander(npc)
+        for (player in players) player?.let { move(it); interact(it) }
+        if (!npcsFrozen) for (npc in npcs) wander(npc)
         service.infoProtocols.update()
         for (player in players) player?.let(::flush)
     }
@@ -429,12 +441,14 @@ class World(
     // -- Incoming messages (dispatched from processIncomingPackets on the game thread) --
 
     fun walkTo(player: Player, x: Int, z: Int, ctrlRun: Boolean) {
+        player.interaction = null
         player.path.clear()
         player.path += Coord(x, z, player.coord.level)
         player.running = ctrlRun
     }
 
     fun teleport(player: Player, to: Coord) {
+        player.interaction = null
         player.path.clear()
         player.coord = to
         player.infos.updateRootCoord(to.level, to.x, to.z)
@@ -498,7 +512,12 @@ class World(
             }
             "obj" -> {
                 val obj = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::obj id [count]")
-                spawnGroundObj(player, obj, args.getOrNull(2)?.toIntOrNull() ?: 1, dz = 1)
+                // ::obj id [count] [dz] - on the player's tile by default (long-press yourself to see Take).
+                spawnGroundObj(player, obj, args.getOrNull(2)?.toIntOrNull() ?: 1, dz = args.getOrNull(3)?.toIntOrNull() ?: 0)
+            }
+            "freeze" -> {
+                npcsFrozen = !npcsFrozen
+                player.message("NPC wandering ${if (npcsFrozen) "off" else "on"}")
             }
             "npcsay" -> {
                 val text = line.trim().substringAfter(' ', "").ifBlank { return player.message("Usage: ::npcsay text") }
@@ -519,9 +538,12 @@ class World(
     }
 
     private val seenUnknownOpcodes = HashSet<Int>()
+    /** ::freeze stops NPC wandering (makes NPCs easy to tap while testing). */
+    private var npcsFrozen = false
 
     fun unknownAndroidPacket(player: Player, packet: AndroidUnknownPacket) {
-        if (seenUnknownOpcodes.add(packet.opcode) || config.logAndroidPackets) {
+        // 93 (NO_TIMEOUT, every ~600 ms while idle) would flood the log.
+        if (seenUnknownOpcodes.add(packet.opcode) || (config.logAndroidPackets && packet.opcode !in QUIET_OPCODES)) {
             log.info { "Unidentified Android packet from ${player.username}: $packet" }
         } else {
             log.debug { "<- ${player.username}: $packet" }
@@ -593,7 +615,89 @@ class World(
     /** Shows an obj on the ground under the player (to that player only; no pickup yet). */
     private fun spawnGroundObj(player: Player, obj: Int, count: Int, dz: Int = 0) {
         val c = player.coord
+        player.groundObjs += GroundObj(obj, count, Coord(c.x, c.z + dz, c.level))
         player.send(ObjAddSpecific(obj, count, c.level, c.x, c.z + dz, OBJ_OPS_ALL, 0, OBJ_DESPAWN_TICKS, 0, false))
+    }
+
+    // -- Interactions (OPNPC / OPLOC / OPOBJ). No pathfinding: the player walks in a straight line. --
+
+    private fun interact(player: Player) {
+        val interaction = player.interaction ?: return
+        if (interaction.reached(player)) {
+            player.interaction = null
+            player.path.clear()
+            interaction.action(player)
+        } else if (player.path.isEmpty()) {
+            interaction.repath(player)
+        }
+    }
+
+    private fun startInteraction(player: Player, target: Coord, reached: (Player) -> Boolean, action: (Player) -> Unit) {
+        player.path.clear()
+        player.path += target
+        val interaction = Interaction(reached, { it.path += target }, action)
+        player.interaction = interaction
+        // Already in reach: act this tick instead of waiting for movement.
+        interact(player)
+    }
+
+    fun opNpc(player: Player, index: Int, op: Int) {
+        val npc = npcs.firstOrNull { it.index == index } ?: return log.info { "OPNPC$op on unknown npc #$index" }
+        val type = npcTypes[npc.id]
+        val opName = type?.op(op)
+        log.info { "${player.username} OPNPC$op #$index (${npc.id} ${type?.name}) '$opName'" }
+        player.path.clear()
+        player.path += Coord(npc.x, npc.z, player.coord.level)
+        val interaction = Interaction(
+            reached = { abs(it.coord.x - npc.x) <= 1 && abs(it.coord.z - npc.z) <= 1 },
+            repath = { it.path += Coord(npc.x, npc.z, it.coord.level) },
+            action = { p ->
+                when (opName?.lowercase()) {
+                    "talk-to" -> openNpcChat(p, npc.id, type?.name ?: "", "Hello, ${p.username}! This is a test server.")
+                    else -> p.message("$opName ${type?.name ?: "npc ${npc.id}"}: nothing interesting happens.")
+                }
+            },
+        )
+        player.interaction = interaction
+        interact(player)
+    }
+
+    fun opLoc(player: Player, id: Int, x: Int, z: Int, op: Int) {
+        val type = locTypes[id]
+        val opName = type?.op(op)
+        log.info { "${player.username} OPLOC$op $id (${type?.name}) at $x,$z '$opName'" }
+        val sx = type?.sizeX ?: 1
+        val sz = type?.sizeZ ?: 1
+        startInteraction(
+            player,
+            Coord(x, z, player.coord.level),
+            reached = { it.coord.x in x - 1..x + sx && it.coord.z in z - 1..z + sz },
+            action = { it.message("$opName ${type?.name ?: "loc $id"} ($id at $x, $z): nothing interesting happens.") },
+        )
+    }
+
+    fun opObj(player: Player, id: Int, x: Int, z: Int, op: Int) {
+        val type = objTypes[id]
+        val opName = type?.ops?.getOrNull(op - 1)
+        log.info { "${player.username} OPOBJ$op $id (${type?.name}) at $x,$z '$opName'" }
+        startInteraction(
+            player,
+            Coord(x, z, player.coord.level),
+            reached = { it.coord.x == x && it.coord.z == z },
+            action = { p ->
+                val ground = p.groundObjs.firstOrNull { it.obj == id && it.coord.x == x && it.coord.z == z }
+                when {
+                    ground == null -> p.message("Too late - it's gone!")
+                    opName.equals("take", true) -> {
+                        if (!p.inventory.add(id, ground.count)) return@startInteraction p.message("You don't have enough inventory space.")
+                        p.groundObjs.remove(ground)
+                        p.send(ObjDelSpecific(id, ground.count, ground.coord.level, x, z))
+                        p.send(p.inventory.toMessage())
+                    }
+                    else -> p.message("$opName ${type?.name}: nothing interesting happens.")
+                }
+            },
+        )
     }
 
     private fun equip(player: Player, slot: Int) {
@@ -637,6 +741,7 @@ class World(
 
     companion object {
         const val MAX_PLAYERS = 2048
+        private val QUIET_OPCODES = setOf(93)
         const val MAX_NPCS = 1000
 
         /** Hans, a man, a woman and a chicken around the castle courtyard. */

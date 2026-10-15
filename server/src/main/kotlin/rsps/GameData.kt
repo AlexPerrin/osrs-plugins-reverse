@@ -77,7 +77,15 @@ object Gameframe {
  * so the whole config is walked using RuneLite's ItemLoader opcode list; decoding stops (keeping
  * what was read) only at an opcode it does not know.
  */
-class ObjWear(val wearpos: Int, val wearpos2: Int, val wearpos3: Int, val name: String, val iops: Array<String?>) {
+class ObjWear(
+    val wearpos: Int,
+    val wearpos2: Int,
+    val wearpos3: Int,
+    val name: String,
+    val iops: Array<String?>,
+    /** Ground ops 1-5 (op 3 defaults to Take). */
+    val ops: Array<String?> = arrayOfNulls(5),
+) {
     val wearable get() = wearpos >= 0
 
     companion object {
@@ -88,6 +96,7 @@ class ObjWear(val wearpos: Int, val wearpos2: Int, val wearpos3: Int, val name: 
             var wearpos3 = -1
             var name = "null"
             val iops = arrayOfNulls<String>(5).also { it[4] = "Drop" }
+            val ops = arrayOfNulls<String>(5).also { it[2] = "Take" }
             fun readString(): String {
                 val start = buf.position()
                 while (buf.get().toInt() != 0) Unit
@@ -110,7 +119,7 @@ class ObjWear(val wearpos: Int, val wearpos2: Int, val wearpos3: Int, val name: 
                         14 -> wearpos2 = buf.get().toInt()
                         23, 25 -> skip(3)
                         27 -> wearpos3 = buf.get().toInt()
-                        in 30..34 -> skipString()
+                        in 30..34 -> ops[op - 30] = readString().takeUnless { it.equals("hidden", true) }
                         in 35..39 -> iops[op - 35] = readString().takeUnless { it.equals("hidden", true) }
                         40, 41 -> skip(u1() * 4)
                         42, 113, 114, 115 -> skip(1)
@@ -133,7 +142,109 @@ class ObjWear(val wearpos: Int, val wearpos2: Int, val wearpos3: Int, val name: 
             } catch (e: java.nio.BufferUnderflowException) {
                 // Malformed or unknown layout: keep whatever was decoded.
             }
-            return ObjWear(wearpos, wearpos2, wearpos3, name, iops)
+            return ObjWear(wearpos, wearpos2, wearpos3, name, iops, ops)
+        }
+    }
+}
+
+/** Little reader for config records (cp1252/latin-1 strings, big-endian ints). */
+private class ConfigReader(val data: ByteArray) {
+    val buf: java.nio.ByteBuffer = java.nio.ByteBuffer.wrap(data)
+    fun u1() = buf.get().toInt() and 0xFF
+    fun u2() = buf.short.toInt() and 0xFFFF
+    fun skip(n: Int) { buf.position(buf.position() + n) }
+    fun string(): String {
+        val start = buf.position()
+        while (buf.get().toInt() != 0) Unit
+        return String(data, start, buf.position() - start - 1, Charsets.ISO_8859_1)
+    }
+    fun params() = repeat(u1()) {
+        val isString = u1() == 1
+        skip(3)
+        if (isString) string() else skip(4)
+    }
+}
+
+/** Name and ops of an NPC or loc config; ops[i] is op i+1 (null = none/hidden). */
+class EntityType(val name: String, val ops: Array<String?>, val sizeX: Int = 1, val sizeZ: Int = 1) {
+    fun op(op: Int): String? = ops.getOrNull(op - 1)
+
+    companion object {
+        /** NPC config (archive 2, group 9), following RuneLite's NpcLoader; stops at unknown opcodes. */
+        fun decodeNpc(data: ByteArray): EntityType {
+            val r = ConfigReader(data)
+            var name = "null"
+            var size = 1
+            val ops = arrayOfNulls<String>(5)
+            try {
+                loop@ while (r.buf.hasRemaining()) {
+                    when (val op = r.u1()) {
+                        0 -> break@loop
+                        1 -> r.skip(r.u1() * 2)
+                        2 -> name = r.string()
+                        12 -> size = r.u1()
+                        13, 14, 15, 16, 18, 74, 75, 76, 77, 78, 79, 95, 97, 98, 103, 114, 124, 126, 146 -> r.skip(2)
+                        17, 115, 117 -> r.skip(8)
+                        in 30..34 -> ops[op - 30] = r.string().takeUnless { it.equals("hidden", true) }
+                        40, 41 -> r.skip(r.u1() * 4)
+                        60 -> r.skip(r.u1() * 2)
+                        93, 99, 107, 109, 111, 122, 123, 145, 147 -> Unit
+                        100, 101 -> r.skip(1)
+                        106, 118 -> {
+                            r.skip(4)
+                            if (op == 118) r.skip(2)
+                            r.skip((r.u1() + 1) * 2)
+                        }
+                        249 -> r.params()
+                        else -> break@loop
+                    }
+                }
+            } catch (e: java.nio.BufferUnderflowException) {
+            }
+            return EntityType(name, ops, size, size)
+        }
+
+        /** Loc config (archive 2, group 6), following RuneLite's ObjectLoader; stops at unknown opcodes. */
+        fun decodeLoc(data: ByteArray): EntityType {
+            val r = ConfigReader(data)
+            var name = "null"
+            var sizeX = 1
+            var sizeZ = 1
+            val ops = arrayOfNulls<String>(5)
+            try {
+                loop@ while (r.buf.hasRemaining()) {
+                    when (val op = r.u1()) {
+                        0 -> break@loop
+                        1 -> r.skip(r.u1() * 3)
+                        2 -> name = r.string()
+                        5 -> r.skip(r.u1() * 2)
+                        // Rev 241 caches: models as int ids (6: model u4 + shape u1, 7: model u4).
+                        6 -> r.skip(r.u1() * 5)
+                        7 -> r.skip(r.u1() * 4)
+                        14 -> sizeX = r.u1()
+                        15 -> sizeZ = r.u1()
+                        17, 18, 21, 22, 23, 27, 62, 64, 73, 74, 89, 90 -> Unit
+                        19, 28, 29, 39, 69, 75, 81 -> r.skip(1)
+                        24, 60, 61, 65, 66, 67, 68, 70, 71, 72, 82 -> r.skip(2)
+                        in 30..34 -> ops[op - 30] = r.string().takeUnless { it.equals("hidden", true) }
+                        40, 41 -> r.skip(r.u1() * 4)
+                        77, 92 -> {
+                            r.skip(4)
+                            if (op == 92) r.skip(2)
+                            r.skip((r.u1() + 1) * 2)
+                        }
+                        78 -> r.skip(4)
+                        79 -> {
+                            r.skip(6)
+                            r.skip(r.u1() * 2)
+                        }
+                        249 -> r.params()
+                        else -> break@loop
+                    }
+                }
+            } catch (e: java.nio.BufferUnderflowException) {
+            }
+            return EntityType(name, ops, sizeX, sizeZ)
         }
     }
 }

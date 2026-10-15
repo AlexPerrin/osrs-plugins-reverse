@@ -22,9 +22,14 @@ another session; see `docs/client-handoff.md`. Protocol findings live in
     a door removes it (zone LOC_DEL), Take picks up an owned ground obj; other ops print the
     NPC/loc/obj name and op. Verified live: OPLOC1 (door 1535) and OPLOC6 (examine).
   - Zone packets: UPDATE_ZONE_PARTIAL_ENCLOSED with LOC_ADD_CHANGE_V2 / LOC_DEL / OBJ_ADD /
-    OBJ_DEL, plus top-level LOC_ADD_CHANGE_V2 / LOC_DEL (not yet verified on device).
+    OBJ_DEL, plus top-level LOC_ADD_CHANGE_V2 / LOC_DEL (verified: tree added/removed, zone obj
+    shown and taken).
   - Bank (bankmain 12 in main modal 601:27, bankside 15 in side modal 601:114, inv 95) with
-    withdraw/deposit (not yet verified on device).
+    withdraw (op 1 = one, else all) and deposit; verified. Open with `::openbank` (the client
+    swallows `::bank` and says a joke line in public chat instead).
+  - Dialogues: NPC (chat_left 231), player (chat_right 217, IF_SETPLAYERHEAD), options
+    (chatmenu 219 via script 58; resumes as 219:1 sub = option). Only two option rows showed
+    for three options (scroll? unverified).
   - NPC and loc configs decoded for names/ops (`EntityType`); rev-241 loc configs use opcodes 6/7
     for int model ids.
 - The Android protocol differs from desktop: opcodes are permuted and field layouts differ per
@@ -92,7 +97,7 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
   verify against the cache (scratch tool: decode interface components, parent chain).
 - Commands: `::xp skill n`, `::talk [npc] text`, `::obj id [n] [dz]` (OBJ_ADD_SPECIFIC on your tile),
   `::zobj id [n]` (zone OBJ_ADD), `::locadd id [shape] [rot]`, `::locdel [shape] [dx] [dz]`,
-  `::bank`, `::freeze` (toggle NPC wandering, makes NPCs tappable); in-game name = `LOCAL_DISPLAY_NAME`.
+  `::openbank`, `::ptalk text`, `::options a b c`, `::freeze` (toggle NPC wandering, makes NPCs tappable); in-game name = `LOCAL_DISPLAY_NAME`.
 - Tapping on the device: a plain tap often walks; long-press (`input swipe x y x y 1000`) opens the
   minimenu. The default camera is far out and NPC overlay labels are offset from the models.
 - Component ids: RuneLite's `runelite-api-1.13.1.jar` in `re/runelite` has gameval `InterfaceID`
@@ -111,10 +116,10 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
 
 ## Next steps (priority order, driven by Quest Helper on the client side)
 
-1. Verify on device: `::locadd 1124` (bush appears), `::locdel`, door Open, `::zobj 995 100` then Take,
-   OPNPC (`::freeze`, long-press an NPC, Talk-to), `::bank` with withdraw/deposit. Fix any field
-   order found wrong (layouts in android-protocol.md).
-2. More interfaces: IF_SETHIDE (77) / IF_SETPLAYERHEAD (79) from the
+1. Ground items for everyone (zone OBJ_ADD per zone observers), stackable objs in the inventory
+   (obj config opcode 11), door Open with real map data (loc shape/rotation needs the map
+   archive + XTEA keys), OPLOCT/OPOBJT/OPNPCT (use item on X).
+2. More interfaces: IF_SETHIDE (77) and IF_SETPLAYERHEAD (79) now have encoders; from the
    client session's notes, varbit-driven quest journal; chat_right (player dialogue) and options menus.
 3. Skills/XP UI checks (`::xp` exists), hitsplats/headbars (player + NPC extended info).
 4. Cosmetic: chat history hidden after a dialogue.

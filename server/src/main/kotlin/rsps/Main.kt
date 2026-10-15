@@ -121,7 +121,7 @@ private class NetworkFactory(
                 else if (world.button(this, it.interfaceId, it.componentId, it.sub, it.obj, it.op)) Unit
                 else log.info { "If3Button ${it.interfaceId}:${it.componentId} op=${it.op} sub=${it.sub} obj=${it.obj}" }
             }
-            .addListener<ResumePauseButton> { world.closeDialogue(this) }
+            .addListener<ResumePauseButton> { world.resumePause(this, it.interfaceId, it.componentId, it.sub) }
             .addListener<OpNpcV2> { world.opNpc(this, it.index, it.op) }
             .addListener<OpLocV2> { world.opLoc(this, it.id, it.x, it.z, it.op) }
             .addListener<OpObjV2> { world.opObj(this, it.id, it.x, it.z, it.op) }

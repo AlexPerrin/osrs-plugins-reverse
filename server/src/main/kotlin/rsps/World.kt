@@ -35,6 +35,7 @@ import net.rsprot.protocol.game.outgoing.interfaces.IfCloseSub
 import net.rsprot.protocol.game.outgoing.interfaces.IfSetAnim
 import net.rsprot.protocol.game.outgoing.interfaces.IfSetEventsV2
 import net.rsprot.protocol.game.outgoing.interfaces.IfSetNpcHead
+import net.rsprot.protocol.game.outgoing.interfaces.IfSetPlayerHead
 import net.rsprot.protocol.game.outgoing.interfaces.IfSetText
 import net.rsprot.protocol.game.outgoing.inv.UpdateInvFull
 import net.rsprot.protocol.game.outgoing.specific.ObjAddSpecific
@@ -350,7 +351,11 @@ class World(
             for (slot in 0 until 5) setColour(slot, 0)
             setBaseAnimationSet(808, 823, 819, 820, 821, 822, 824)
         }
-        player.message("Welcome to the test server (rev ${Config.REVISION}). Commands: ::tele x z [level], ::pos, ::anim id, ::home, ::players, ::item id [n], ::empty, ::wear id [slot], ::xp skill n, ::talk [npc] text, ::obj id [n], ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::drop")
+        // MESSAGE_GAME holds at most 255 bytes, so the command list is split over several lines.
+        player.message("Welcome to the test server (rev ${Config.REVISION}).")
+        player.message("Commands: ::tele x z [level], ::pos, ::home, ::players, ::anim id, ::item id [n], ::empty, ::wear id [slot], ::xp skill n, ::openbank")
+        player.message("::talk [npc] text, ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::freeze, ::drop")
+        player.message("::obj id [n] [dz], ::zobj id [n], ::locadd id [shape] [rot], ::locdel [shape] [dx] [dz]")
     }
 
     fun spawnNpc(id: Int, coord: Coord): Npc? {
@@ -557,7 +562,10 @@ class World(
                 player.groundObjs += GroundObj(obj, count, c, zone = true)
                 sendZone(player, c, listOf(ObjAdd(obj, count, c.x and 7, c.z and 7, OBJ_OPS_ALL, 0, OBJ_DESPAWN_TICKS, 0, false)))
             }
-            "bank" -> openBank(player)
+            // "::bank" itself never reaches the server: the client turns it into a joke public chat line.
+            "openbank" -> openBank(player)
+            "ptalk" -> openPlayerChat(player, line.trim().substringAfter(' ', "").ifBlank { "Hello! I am talking to myself." })
+            "options" -> openOptions(player, "Select an Option", args.drop(1).ifEmpty { listOf("Yes", "No", "Maybe") })
             "freeze" -> {
                 npcsFrozen = !npcsFrozen
                 player.message("NPC wandering ${if (npcsFrozen) "off" else "on"}")
@@ -706,6 +714,33 @@ class World(
         player.send(IfSetEventsV2(CHAT_LEFT, CHAT_LEFT_CONTINUE, -1, -1, IF_EVENT_PAUSE, 0))
         player.send(IfSetText(CHAT_LEFT, CHAT_LEFT_CONTINUE, "Click here to continue"))
         player.dialogueOpen = true
+    }
+
+    /** chat_right (217): the player's own chathead and name. */
+    fun openPlayerChat(player: Player, text: String) {
+        player.send(RunClientScript(SCRIPT_CHATBOX_RESET_BACKGROUND, emptyList()))
+        player.send(IfOpenSub(CHATBOX_INTERFACE, CHATBOX_MODAL, CHAT_RIGHT, 0))
+        player.send(IfSetPlayerHead(CHAT_RIGHT, CHAT_LEFT_HEAD))
+        player.send(IfSetAnim(CHAT_RIGHT, CHAT_LEFT_HEAD, ANIM_CHAT_NEUTRAL))
+        player.send(IfSetText(CHAT_RIGHT, CHAT_LEFT_NAME, player.username))
+        player.send(IfSetText(CHAT_RIGHT, CHAT_LEFT_TEXT, text))
+        player.send(IfSetEventsV2(CHAT_RIGHT, CHAT_LEFT_CONTINUE, -1, -1, IF_EVENT_PAUSE, 0))
+        player.send(IfSetText(CHAT_RIGHT, CHAT_LEFT_CONTINUE, "Click here to continue"))
+        player.dialogueOpen = true
+    }
+
+    /** chatmenu (219): script 58 builds the option list from "title|opt1|opt2..."; options resume with sub = index. */
+    fun openOptions(player: Player, title: String, options: List<String>) {
+        player.send(IfOpenSub(CHATBOX_INTERFACE, CHATBOX_MODAL, CHATMENU, 0))
+        player.send(RunClientScript(SCRIPT_CHATBOX_MULTI, listOf(title, options.joinToString("|"))))
+        player.send(IfSetEventsV2(CHATMENU, CHATMENU_OPTIONS, 1, options.size, IF_EVENT_PAUSE, 0))
+        player.dialogueOpen = true
+    }
+
+    fun resumePause(player: Player, interfaceId: Int, componentId: Int, sub: Int) {
+        log.info { "${player.username} RESUME_PAUSEBUTTON $interfaceId:$componentId sub=$sub" }
+        closeDialogue(player)
+        if (interfaceId == CHATMENU) player.message("You chose option $sub.")
     }
 
     fun closeDialogue(player: Player) {
@@ -891,6 +926,10 @@ class World(
         /** chatbox:chatmodal; 566 in rev 239, 568 in rev 241 (two components were inserted before it). */
         private const val CHATBOX_MODAL = 568
         private const val CHAT_LEFT = 231
+        private const val CHAT_RIGHT = 217
+        private const val CHATMENU = 219
+        private const val CHATMENU_OPTIONS = 1
+        private const val SCRIPT_CHATBOX_MULTI = 58
         private const val CHAT_LEFT_HEAD = 2
         private const val CHAT_LEFT_NAME = 4
         private const val CHAT_LEFT_CONTINUE = 5

@@ -134,7 +134,7 @@ appearance, `0x1` say, `0x80000` ?, `0x100000` ?, `0x20` ?, `0x1000` ?, `0x40000
 | 64 | MESSAGE_PUBLIC | as desktop (type, colour, effect, huffman) |
 | 81 | CLIENT_CHEAT | as desktop (string, autocomplete byte) |
 | 93 | NO_TIMEOUT (probable) | — |
-| 48 | RESUME_PAUSEBUTTON | component `g4Alt3`, sub `g2` |
+| 48 | RESUME_PAUSEBUTTON | component `g4Alt1` (int LE), sub `g2Alt1` (LE); chatmenu options arrive as 219:1 sub = option (1-based) |
 | 99 | IF_BUTTONX | as desktop (combined id, sub, obj, op); inventory item ops arrive as 149:0 with sub = slot, op 3 = wield/wear |
 | 7, 55, 58, 3, 66 | OPLOC1..5 | see below (sender Ghidra `0x61d10c`; verified OPLOC1 on device) |
 | 38 | OPLOC6 (examine) | id `g2` (observed `0464` = bush 1124) |
@@ -238,5 +238,5 @@ ID, scope and redirect URI are hard-coded in native code (Ghidra 0x59d638).
 rev 239, whose symbols this server's ids come from. Component ids can shift between revisions).
 Sequence: RUNCLIENTSCRIPT 2379 (reset background), IF_OPENSUB, IF_SETNPCHEAD, IF_SETANIM,
 IF_SETTEXT name/text/continue, IF_SETEVENTS (pause button). Tapping continue sends client opcode
-48 RESUME_PAUSEBUTTON (component `g4Alt3`, sub `g2`); the server closes with IF_CLOSESUB.
+48 RESUME_PAUSEBUTTON (component int LE, sub LE); the server closes with IF_CLOSESUB.
 Known gap: the chat history stays hidden after closing (2379's effect is not undone).

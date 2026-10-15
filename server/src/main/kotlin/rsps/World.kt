@@ -77,8 +77,6 @@ class Player(
 
     val extendedInfo get() = infos.playerInfo.avatar.extendedInfo
 
-    /** Ground objs this player can see (owner-only, sent with OBJ_ADD_SPECIFIC). */
-    val groundObjs = ArrayList<GroundObj>()
     /** A pending op on an NPC, loc or obj: runs once [Interaction.reached] holds after movement. */
     var interaction: Interaction? = null
 
@@ -91,8 +89,8 @@ class Player(
     fun message(text: String) = send(MessageGame(0, text))
 }
 
-/** [zone]: sent with zone OBJ_ADD (removed with OBJ_DEL) rather than the _SPECIFIC packets. */
-class GroundObj(val obj: Int, val count: Int, val coord: Coord, val zone: Boolean = false)
+/** A ground obj visible to everyone (zone OBJ_ADD / OBJ_DEL). */
+class GroundObj(val obj: Int, val count: Int, val coord: Coord)
 
 class Interaction(val reached: (Player) -> Boolean, val repath: (Player) -> Unit, val action: (Player) -> Unit)
 
@@ -109,6 +107,14 @@ class Inventory(val id: Int, val capacity: Int) {
             return true
         }
         return add(obj, count)
+    }
+
+    /** Adds [count] of [obj]: one stack if [stackable], otherwise one slot per item (all or nothing). */
+    fun add(obj: Int, count: Int, stackable: Boolean): Boolean {
+        if (stackable) return addStacked(obj, count)
+        if (objs.count { it == -1 } < count) return false
+        repeat(count) { add(obj, 1) }
+        return true
     }
 
     fun add(obj: Int, count: Int): Boolean {
@@ -314,6 +320,7 @@ class World(
         player.infos.updateRootCoord(c.level, c.x, c.z)
         player.infos.updateRootBuildAreaCenteredOnPlayer(c.x, c.z)
         player.send(RebuildLoginV2(c.zoneX, c.zoneZ, 0, player.infos.playerInfo))
+        sendGroundObjs(player)
 
         player.send(IfOpenTop(player.toplevel))
         val redirect = gameframes[player.toplevel].orEmpty()
@@ -335,7 +342,7 @@ class World(
         // refuses input with "You must set a name before you can chat".
         setVarp(player, VARP_DISPLAYNAME, 1 shl 31)
 
-        for ((obj, count) in STARTER_KIT) player.inventory.add(obj, count)
+        for ((obj, count) in STARTER_KIT) give(player, obj, count)
         player.send(player.inventory.toMessage())
         player.send(player.worn.toMessage())
         // Enable item ops 1-10 on the 28 inventory slots (interface 149, component 0).
@@ -408,6 +415,7 @@ class World(
         player.buildCenter = c
         player.infos.updateRootBuildAreaCenteredOnPlayer(c.x, c.z)
         player.send(RebuildNormalV2(c.zoneX, c.zoneZ, 0))
+        sendGroundObjs(player)
     }
 
     private fun flush(player: Player) {
@@ -497,7 +505,7 @@ class World(
             "players" -> player.message("Online: ${players.filterNotNull().joinToString { it.username }}")
             "item" -> {
                 val obj = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::item id [count]")
-                if (!player.inventory.add(obj, args.getOrNull(2)?.toIntOrNull() ?: 1)) return player.message("Inventory full")
+                if (!give(player, obj, args.getOrNull(2)?.toIntOrNull() ?: 1)) return player.message("Inventory full")
                 player.send(player.inventory.toMessage())
             }
             "empty" -> {
@@ -555,12 +563,11 @@ class World(
                 sendZone(player, c, listOf(LocDel(c.x and 7, c.z and 7, shape, 0)))
             }
             "zobj" -> {
-                // ::zobj id [count] - ground obj via zone OBJ_ADD (instead of OBJ_ADD_SPECIFIC).
+                // ::zobj id [count] - same as ::obj (both use shared zone ground objs now).
                 val obj = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::zobj id [count]")
                 val count = args.getOrNull(2)?.toIntOrNull() ?: 1
                 val c = player.coord
-                player.groundObjs += GroundObj(obj, count, c, zone = true)
-                sendZone(player, c, listOf(ObjAdd(obj, count, c.x and 7, c.z and 7, OBJ_OPS_ALL, 0, OBJ_DESPAWN_TICKS, 0, false)))
+                addGroundObj(obj, count, c)
             }
             // "::bank" itself never reaches the server: the client turns it into a joke public chat line.
             "openbank" -> openBank(player)
@@ -589,6 +596,43 @@ class World(
     }
 
     private val seenUnknownOpcodes = HashSet<Int>()
+    /** Ground objs, shared by all players. */
+    private val groundObjs = ArrayList<GroundObj>()
+
+    private fun stackable(obj: Int) = objTypes[obj]?.stackable == true
+
+    /** Puts [count] of [obj] in the player's inventory with the obj's stacking rule. */
+    fun give(player: Player, obj: Int, count: Int): Boolean = player.inventory.add(obj, count, stackable(obj))
+
+    private fun nearby(coord: Coord): List<Player> =
+        players.filterNotNull().filter { it.android && !it.disconnected.get() && it.coord.level == coord.level && inBuildArea(it, coord) }
+
+    fun addGroundObj(obj: Int, count: Int, coord: Coord) {
+        groundObjs += GroundObj(obj, count, coord)
+        for (p in nearby(coord)) sendZone(p, coord, listOf(objAdd(obj, count, coord)))
+    }
+
+    private fun removeGroundObj(ground: GroundObj) {
+        groundObjs.remove(ground)
+        val c = ground.coord
+        for (p in nearby(c)) sendZone(p, c, listOf(ObjDel(ground.obj, ground.count, c.x and 7, c.z and 7)))
+    }
+
+    private fun objAdd(obj: Int, count: Int, c: Coord) =
+        ObjAdd(obj, count, c.x and 7, c.z and 7, OBJ_OPS_ALL, 0, OBJ_DESPAWN_TICKS, 0, false)
+
+    /** After a (re)build the client has an empty scene: resend the ground objs of the new area, per zone. */
+    private fun sendGroundObjs(player: Player) {
+        groundObjs.filter { it.coord.level == player.coord.level && inBuildArea(player, it.coord) }
+            .groupBy { Coord(it.coord.zoneX shl 3, it.coord.zoneZ shl 3, it.coord.level) }
+            .forEach { (zone, objs) -> sendZone(player, zone, objs.map { objAdd(it.obj, it.count, it.coord) }) }
+    }
+
+    private fun inBuildArea(player: Player, coord: Coord): Boolean {
+        val baseX = (player.buildCenter.zoneX - 6) shl 3
+        val baseZ = (player.buildCenter.zoneZ - 6) shl 3
+        return coord.x - baseX in 0 until 104 && coord.z - baseZ in 0 until 104
+    }
     /** ::freeze stops NPC wandering (makes NPCs easy to tap while testing). */
     private var npcsFrozen = false
 
@@ -663,7 +707,12 @@ class World(
         val obj = bank.objs.getOrNull(slot)?.takeIf { it != -1 } ?: return
         val amount = if (op == 1) 1 else bank.counts[slot]
         var moved = 0
-        while (moved < amount && player.inventory.add(obj, 1)) moved++
+        val stack = stackable(obj)
+        if (stack) {
+            if (player.inventory.add(obj, amount, true)) moved = amount
+        } else {
+            while (moved < amount && player.inventory.add(obj, 1)) moved++
+        }
         if (moved == 0) return player.message("You don't have enough inventory space.")
         bank.counts[slot] -= moved
         if (bank.counts[slot] <= 0) {
@@ -750,11 +799,10 @@ class World(
         player.send(RunClientScript(SCRIPT_CHAT_DEFAULT_RESTORE_INPUT, emptyList()))
     }
 
-    /** Shows an obj on the ground under the player (to that player only; no pickup yet). */
+    /** Drops an obj on the ground at the player's tile (+dz), visible to everyone nearby. */
     private fun spawnGroundObj(player: Player, obj: Int, count: Int, dz: Int = 0) {
         val c = player.coord
-        player.groundObjs += GroundObj(obj, count, Coord(c.x, c.z + dz, c.level))
-        player.send(ObjAddSpecific(obj, count, c.level, c.x, c.z + dz, OBJ_OPS_ALL, 0, OBJ_DESPAWN_TICKS, 0, false))
+        addGroundObj(obj, count, Coord(c.x, c.z + dz, c.level))
     }
 
     /**
@@ -846,14 +894,12 @@ class World(
             Coord(x, z, player.coord.level),
             reached = { it.coord.x == x && it.coord.z == z },
             action = { p ->
-                val ground = p.groundObjs.firstOrNull { it.obj == id && it.coord.x == x && it.coord.z == z }
+                val ground = groundObjs.firstOrNull { it.obj == id && it.coord.x == x && it.coord.z == z && it.coord.level == p.coord.level }
                 when {
                     ground == null -> p.message("Too late - it's gone!")
                     opName.equals("take", true) -> {
-                        if (!p.inventory.add(id, ground.count)) return@startInteraction p.message("You don't have enough inventory space.")
-                        p.groundObjs.remove(ground)
-                        if (ground.zone) sendZone(p, ground.coord, listOf(ObjDel(id, ground.count, x and 7, z and 7)))
-                        else p.send(ObjDelSpecific(id, ground.count, ground.coord.level, x, z))
+                        if (!give(p, id, ground.count)) return@startInteraction p.message("You don't have enough inventory space.")
+                        removeGroundObj(ground)
                         p.send(p.inventory.toMessage())
                     }
                     else -> p.message("$opName ${type?.name}: nothing interesting happens.")
@@ -879,7 +925,7 @@ class World(
     private fun unequip(player: Player, wearpos: Int) {
         val obj = player.worn.objs[wearpos]
         if (obj == -1) return
-        if (!player.inventory.add(obj, player.worn.counts[wearpos])) return player.message("Your inventory is full.")
+        if (!give(player, obj, player.worn.counts[wearpos])) return player.message("Your inventory is full.")
         setWorn(player, wearpos, -1, 0)
         player.send(player.inventory.toMessage())
         player.send(player.worn.toMessage())

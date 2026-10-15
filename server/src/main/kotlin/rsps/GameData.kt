@@ -88,6 +88,8 @@ class ObjWear(
     val iops: Array<String?>,
     /** Ground ops 1-5 (op 3 defaults to Take). */
     val ops: Array<String?> = arrayOfNulls(5),
+    /** Stacks in one inventory slot (config opcode 11, or a noted obj: opcode 98 certtemplate). */
+    val stackable: Boolean = false,
 ) {
     val wearable get() = wearpos >= 0
 
@@ -100,6 +102,7 @@ class ObjWear(
             var name = "null"
             val iops = arrayOfNulls<String>(5).also { it[4] = "Drop" }
             val ops = arrayOfNulls<String>(5).also { it[2] = "Take" }
+            var stackable = false
             fun readString(): String {
                 val start = buf.position()
                 while (buf.get().toInt() != 0) Unit
@@ -112,11 +115,13 @@ class ObjWear(
                 loop@ while (buf.hasRemaining()) {
                     when (val op = u1()) {
                         0 -> break@loop
-                        1, 4, 5, 6, 7, 8, 24, 26, 75, 78, 79, 90, 91, 92, 93, 94, 95, 97, 98, 99,
+                        1, 4, 5, 6, 7, 8, 24, 26, 75, 78, 79, 90, 91, 92, 93, 94, 95, 97, 99,
                         110, 111, 112, 139, 140, 148, 149 -> skip(2)
                         2 -> name = readString()
                         3, 9 -> skipString()
-                        11, 15, 16, 65, 160, 251 -> Unit
+                        11 -> stackable = true
+                        98 -> { skip(2); stackable = true }
+                        15, 16, 65, 160, 251 -> Unit
                         12, 44, 46, 47, 49, 50, 51, 52, 53, 54 -> skip(4)
                         13 -> wearpos = buf.get().toInt()
                         14 -> wearpos2 = buf.get().toInt()
@@ -145,7 +150,7 @@ class ObjWear(
             } catch (e: java.nio.BufferUnderflowException) {
                 // Malformed or unknown layout: keep whatever was decoded.
             }
-            return ObjWear(wearpos, wearpos2, wearpos3, name, iops, ops)
+            return ObjWear(wearpos, wearpos2, wearpos3, name, iops, ops, stackable)
         }
     }
 }

@@ -943,6 +943,72 @@ bool run_script(const std::vector<ScriptArg>& args, ScriptResult& out, std::stri
 }  // namespace game
 
 namespace game {
+void release_shared_ptr(uintptr_t ctrl);
+
+// db_getfield (CS2 7502) in 0x5cd7f4(vm, opcode): pops row, packed column (table << 12 |
+// column << 4), tuple index; pushes the tuple's values onto the int (+0x50/+0xff0), object
+// (+0xff8/+0xac38) and long (+0xac40/+0xcb80) stacks. DBRowType 0x74f824 (+0x30 table id),
+// DBTableType 0x6eb2c4, column types 0x6ec320(table, column) → {+0x08 count, +0x10 type*[]},
+// each type's +0x08 = the int/long/string descriptor (globals 0x1d8aff8/0x1d8b000/0x1d8b008).
+bool db_field(int row, int column, int tuple, std::vector<DbValue>& out) {
+    out.clear();
+    if (!g_build || !g_build->script_vm || row < 0 || column < 0 || column > 255 || tuple < 0) return false;
+    uintptr_t vm = g_base + g_build->script_vm;
+    if (read_at<uint8_t>(vm + 4)) return false;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    SharedPtr r = reinterpret_cast<SharedPtr (*)(int)>(g_base + 0x74f824)(row);
+    if (!r.obj) { release_shared_ptr(r.ctrl); return false; }
+    int table = read_at<int32_t>(r.obj + 0x30);
+    release_shared_ptr(r.ctrl);
+    SharedPtr t = reinterpret_cast<SharedPtr (*)(int)>(g_base + 0x6eb2c4)(table);
+    if (!t.obj) { release_shared_ptr(t.ctrl); return false; }
+    uintptr_t types = reinterpret_cast<uintptr_t (*)(uintptr_t, int)>(g_base + 0x6ec320)(t.obj, column);
+    std::vector<int> kinds;
+    uintptr_t int_t = read_at<uintptr_t>(g_base + 0x1d8aff8), long_t = read_at<uintptr_t>(g_base + 0x1d8b000),
+              str_t = read_at<uintptr_t>(g_base + 0x1d8b008);
+    uint64_t n = types ? read_at<uint64_t>(types + 8) : 0;
+    uintptr_t arr = types ? read_at<uintptr_t>(types + 0x10) : 0;
+    for (uint64_t k = 0; arr && k < n && k < 64; k++) {
+        uintptr_t ty = read_at<uintptr_t>(read_at<uintptr_t>(arr + k * 8) + 8);
+        kinds.push_back(ty == int_t ? 0 : ty == long_t ? 1 : ty == str_t ? 2 : -1);
+    }
+    release_shared_ptr(t.ctrl);
+    if (kinds.empty()) return false;
+    for (int k : kinds) if (k < 0) return false;  // unknown type: the handler would throw
+    auto* ints = reinterpret_cast<int32_t*>(vm + 0x50);
+    *reinterpret_cast<int32_t*>(vm + 0xff0) = 3;
+    *reinterpret_cast<int32_t*>(vm + 0xac38) = 0;
+    *reinterpret_cast<int32_t*>(vm + 0xcb80) = 0;
+    ints[0] = row;
+    ints[1] = (table << 12) | (column << 4);
+    ints[2] = tuple;
+    int ok = reinterpret_cast<int (*)(uintptr_t, int)>(g_base + 0x5cd7f4)(vm, 7502);
+    int ni = read_at<int32_t>(vm + 0xff0), no = read_at<int32_t>(vm + 0xac38), nl = read_at<int32_t>(vm + 0xcb80);
+    auto reset = [vm] {
+        *reinterpret_cast<int32_t*>(vm + 0xff0) = 0;
+        *reinterpret_cast<int32_t*>(vm + 0xac38) = 0;
+        *reinterpret_cast<int32_t*>(vm + 0xcb80) = 0;
+    };
+    if (ok != 1 || ni < 0 || no < 0 || nl < 0 || ni > 64 || no > 64 || nl > 64) { reset(); return false; }
+    int ii = 0, io = 0, il = 0;
+    for (int k : kinds) {
+        DbValue v;
+        v.kind = k;
+        if (k == 0 && ii < ni) v.i = ints[ii++];
+        else if (k == 1 && il < nl) v.i = read_at<int64_t>(vm + 0xac40 + 8 * il++);
+        else if (k == 2 && io < no) v.s = read_string(vm + 0xff8 + 0x28 * io++);
+        else break;
+        out.push_back(std::move(v));
+    }
+    reset();
+    return !out.empty();
+}
+}  // namespace game
+
+namespace game {
 namespace {
 // shared_ptr control block as the game uses it: vtable, int uses (+8), int weak (+0xc).
 void release_shared(uintptr_t ctrl) {
@@ -957,6 +1023,8 @@ void release_shared(uintptr_t ctrl) {
     }
 }
 }  // namespace
+
+void release_shared_ptr(uintptr_t ctrl) { release_shared(ctrl); }
 
 bool set_varbit(int id, int value) {
     VarbitDef def;  // also rejects ids without a definition (the setter would dereference null)

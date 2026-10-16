@@ -168,6 +168,13 @@ void gl_trace_init(const char* module) {
     LOGI("gl trace enabled");
 }
 
+bool gl_view_transforms(float out[100]) {
+    std::lock_guard lock(g_mutex);
+    if (!g_ubo.valid || !g_ubo.full) return false;
+    for (int i = 0; i < 100; i++) out[i] = g_ubo.block[i];
+    return true;
+}
+
 void gl_trace_frame() {
     if (!g_enabled) return;
     static auto next = std::chrono::steady_clock::now();

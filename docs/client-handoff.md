@@ -197,6 +197,25 @@ session; its notes are in `docs/android-protocol.md`.
   Still unverified: sidebar combo boxes, NPC multi-transforms in game, createScriptEventBuilder,
   ground item timers/ownership, playSoundEffect audio. getWorld: the world id is jav_config
   param 12 (1 old server, 255 OpenRune); where the client stores it is not found yet.
+- **2026-10-16 (client dev gen 7)**: **the OpenRune wrong-tile highlight is a camera zoom problem,
+  not a wrong entity.** `setprop debug.osrsrl.drawlog 1` (41ee61f/6441dc8) hooks the Npc vtable slot 0
+  (getModel) and logs, every 50 cycles, each WorldView hash-map node near the player with fine x/y,
+  +0x268, path start, list membership and how often the renderer asked for its model (caller
+  `0x72dbbc` = drawRenderable). Romeo is a single entity (index 19868 that session; indices change per
+  login), in the map and the index list, drawn every frame; no duplicates or stale nodes. What differs:
+  this OpenRune account's view is zoomed in a lot (player ~3x bigger on screen than on the old server's
+  account), while every camera value we read is identical on both servers (Client camera 1136 behind /
+  470 above the focal point, pitch 1024, viewport zoom 512, scene trig). So the GPU applies a zoom that
+  none of our fields carry, and the fitted scale only matches the old account's zoom; highlights get
+  pulled toward the screen centre (the player). Probe: gltrace (`setprop debug.osrsrl.gltrace 1`, read at
+  startup) now scans glBufferSubData/BufferData/mapped-range uploads for the ViewTransforms UBO (std140:
+  camera position @0, view @16, inverse view @80, projection @144, view-projection @208) and logs it
+  every 5 s. Next: capture it on both servers, then project with the GPU's matrices (or derive camera +
+  scale from them) instead of the fitted 285/720.
+  getWorld = Client +0x3174, getWorldType = WorldType.fromMask(Client +0x2f64) (the CS2 map_world 3318 /
+  worldflags 3324 handlers in `0x5eaf30`); verified 255 on OpenRune, 1 on the old server, flags 0x1.
+  db_getfield (7502) is in `0x5cd7f4` (DBTableType `0x6eb2c4`, column types `0x6ec320`, DBRowType
+  `0x74f824`); getDBTableField not done.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

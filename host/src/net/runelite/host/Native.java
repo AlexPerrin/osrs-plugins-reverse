@@ -35,6 +35,10 @@ final class Native {
     static native int weight();
     static native int world();
     static native int worldFlags();
+    /** GPU ViewTransforms block (camera pos @0, view @4, inverse view @20, projection @36, view-projection @52), or null. */
+    static native float[] viewTransforms();
+    /** One tuple of a DB row column (Integer/Long/String values), or null. Game thread only. */
+    static native Object[] dbField(int row, int column, int tuple);
     static native int runEnergy();
     /** {height, x0, y0, z0, ...}: an NPC's or player's posed model this frame (unrotated); client thread only. */
     static native int[] actorModel(boolean player, int index);

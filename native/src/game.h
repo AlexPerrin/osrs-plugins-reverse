@@ -179,6 +179,15 @@ struct ScriptResult {
 };
 bool run_script(const std::vector<ScriptArg>& args, ScriptResult& out, std::string& error);
 
+// One tuple of a DB row's column, through the script VM's db_getfield (7502): values in column-type
+// order, each an int (kind 0), long (1) or string (2). False if the row/column doesn't exist.
+struct DbValue {
+    int kind = 0;
+    int64_t i = 0;
+    std::string s;
+};
+bool db_field(int row, int column, int tuple, std::vector<DbValue>& out);
+
 // Item (obj) definitions, from the game's definition cache (loads on demand). Game thread only.
 struct ItemDef {
     int id = -1;

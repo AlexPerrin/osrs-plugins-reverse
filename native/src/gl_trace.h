@@ -6,3 +6,6 @@
 void gl_trace_init(const char* module);
 // Called once per presented frame from the swap hook.
 void gl_trace_frame();
+// Latest ViewTransforms UBO block (100 floats from the camera position; projection at [36],
+// view-projection at [52]); false until one was captured (gltrace only, for now).
+bool gl_view_transforms(float out[100]);

@@ -1,4 +1,5 @@
 #include "jni_bridge.h"
+#include "gl_trace.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -67,6 +68,32 @@ jint n_varp(JNIEnv*, jclass, jint id) { return game::varp(id); }
 jint n_weight(JNIEnv*, jclass) { return game::weight(); }
 jint n_world(JNIEnv*, jclass) { return game::world(); }
 jint n_world_flags(JNIEnv*, jclass) { return game::world_flags(); }
+// getDBTableField: Object[] of Integer/Long/String, or null (game thread).
+jobjectArray n_db_field(JNIEnv* env, jclass, jint row, jint column, jint tuple) {
+    std::vector<game::DbValue> vals;
+    if (!game::db_field(row, column, tuple, vals)) return nullptr;
+    jclass obj = env->FindClass("java/lang/Object");
+    jclass ic = env->FindClass("java/lang/Integer"), lc = env->FindClass("java/lang/Long");
+    jmethodID iv = env->GetStaticMethodID(ic, "valueOf", "(I)Ljava/lang/Integer;");
+    jmethodID lv = env->GetStaticMethodID(lc, "valueOf", "(J)Ljava/lang/Long;");
+    jobjectArray a = env->NewObjectArray(static_cast<jsize>(vals.size()), obj, nullptr);
+    for (size_t k = 0; k < vals.size(); k++) {
+        jobject o = vals[k].kind == 0 ? env->CallStaticObjectMethod(ic, iv, static_cast<jint>(vals[k].i))
+                  : vals[k].kind == 1 ? env->CallStaticObjectMethod(lc, lv, static_cast<jlong>(vals[k].i))
+                                      : static_cast<jobject>(env->NewStringUTF(vals[k].s.c_str()));
+        env->SetObjectArrayElement(a, static_cast<jsize>(k), o);
+        env->DeleteLocalRef(o);
+    }
+    return a;
+}
+// The GPU's ViewTransforms block (100 floats), or null before one was captured.
+jfloatArray n_view_transforms(JNIEnv* env, jclass) {
+    float v[100];
+    if (!gl_view_transforms(v)) return nullptr;
+    jfloatArray a = env->NewFloatArray(100);
+    env->SetFloatArrayRegion(a, 0, 100, v);
+    return a;
+}
 jint n_run_energy(JNIEnv*, jclass) { return game::run_energy(); }
 // {height, x0, y0, z0, x1, ...} of an NPC's (player=false) or player's posed model; null if none.
 jintArray n_actor_model(JNIEnv* env, jclass, jboolean player, jint index) {
@@ -806,6 +833,8 @@ const JNINativeMethod kNatives[] = {
     {"weight", "()I", reinterpret_cast<void*>(n_weight)},
     {"world", "()I", reinterpret_cast<void*>(n_world)},
     {"worldFlags", "()I", reinterpret_cast<void*>(n_world_flags)},
+    {"viewTransforms", "()[F", reinterpret_cast<void*>(n_view_transforms)},
+    {"dbField", "(III)[Ljava/lang/Object;", reinterpret_cast<void*>(n_db_field)},
     {"runEnergy", "()I", reinterpret_cast<void*>(n_run_energy)},
     {"actorModel", "(ZI)[I", reinterpret_cast<void*>(n_actor_model)},
     {"objectModel", "(IIIIJ)[I", reinterpret_cast<void*>(n_object_model)},

@@ -48,6 +48,13 @@ final class Probe {
     private static void testSetter(net.runelite.api.Client c, String[] a) {
         if (a.length < 3) return;
         try {
+            if (a[0].equals("db")) {  // "db <row> <column> <tuple> [rows]": getDBTableField over rows row..row+rows-1
+                int row = Integer.parseInt(a[1]), col = Integer.parseInt(a[2]), tup = Integer.parseInt(a[3]);
+                int rows = a.length > 4 ? Integer.parseInt(a[4]) : 1;
+                for (int r = row; r < row + rows; r++)
+                    Log.i(TAG, "db row " + r + " col " + col + " tuple " + tup + " -> " + java.util.Arrays.toString(c.getDBTableField(r, col, tup)));
+                return;
+            }
             if (a[0].equals("quest")) {  // "quest <Quest enum name> <varp>": QUEST_STATUS_GET result and a varp
                 net.runelite.api.Quest q = net.runelite.api.Quest.valueOf(a[1]);
                 c.runScript(net.runelite.api.ScriptID.QUEST_STATUS_GET, q.getId());

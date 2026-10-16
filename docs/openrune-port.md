@@ -167,3 +167,24 @@ Notes:
 - `adb input keyevent 66` (Enter) sometimes leaves a `::` command in the chat input; deleting and
   retyping it works.
 - `::freeze` is world-wide server state; it was switched back on ("NPC wandering on").
+
+## Next steps
+
+1. Client dev, on OpenRune:
+   - Quest Helper's Cook's Assistant overlay steps;
+   - getWeight after `::give 1127` and wearing it (UPDATE_RUNWEIGHT);
+   - optionally, the root cause of the custom-clientscript crash.
+2. Phase 3, only after the user's go-ahead:
+   - Sheep Shearer and Romeo & Juliet on OpenRune's quest framework (`content/quest/.../area`;
+     `CooksAssistant.kt` is the model). Check what OpenRune already has first.
+   - R&J notes from the orchestrator: our server has no quest-complete scroll, only a chat line.
+     OpenRune's `Quest.completeQuest` opens one. The Apothecary should offer "Talk about Romeo &
+     Juliet" before the potion dialogue.
+   - Content reference, read-only: https://github.com/RSPSApp/tsps (clone to re/tsps, never run it,
+     check its license before copying).
+3. The switch:
+   - OpenRune on 43594 (compose port), with the app built without `GAME_PORT`;
+   - either keep the sidecar on 8080 or port Http/LocalAuth into OpenRune;
+   - retire `osrs-rsps-test` only when the orchestrator says so.
+4. Housekeeping: the spike containers `openrune-spike` and `openrune-spike-http` (stopped) and
+   `re/openrune` are superseded by `openrune/` and can be removed when the orchestrator agrees.

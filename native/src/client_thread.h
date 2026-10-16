@@ -70,5 +70,8 @@ void consume_menu_click();
 // During MenuTap: the menu model being tapped (0 otherwise), and the top-level node to run instead.
 uintptr_t tap_menu();
 void redirect_menu_tap(int index);
+// Runs the menu model's node `index` through its select (vtable slot 1, our hook included, so
+// MenuOptionClicked fires) as a pick of that row; no tap redirection. Game thread only.
+bool select_menu_node(int index);
 
 }  // namespace client_thread

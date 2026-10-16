@@ -392,6 +392,8 @@ public class AndroidClient extends ClientStub {
      */
     @Override
     public net.runelite.api.Point getMouseCanvasPosition() {
+        java.awt.Point v = DevInput.virtualMouse();
+        if (v != null) return new net.runelite.api.Point(v.x, v.y);
         float[] p = Sidebar.hoverPoint();
         int[] screen = Native.screenSize();
         java.awt.Dimension c = OverlayRenderer.canvasSize();
@@ -578,6 +580,12 @@ public class AndroidClient extends ClientStub {
     }
     @Override public boolean isGpu() { return false; }
     @Override public boolean isResized() { return true; }
+    /** AWT events dispatched here become Android input (DevInput). */
+    @Override public java.awt.Canvas getCanvas() { return DevInput.CANVAS; }
+    /** Runs an entry through the game's menu (DevMenu). Game thread. */
+    @Override public void menuAction(int p0, int p1, net.runelite.api.MenuAction action, int id, int itemId, String option, String target) {
+        DevMenu.menuAction(p0, p1, action, id, itemId, option, target);
+    }
     /** RuneLite's 3D zoom is the viewport zoom (same value as getScale). */
     @Override public int get3dZoom() { return getScale(); }
     @Override public int getViewportXOffset() { int[] z = gameViewport(); return z != null ? z[1] : 0; }

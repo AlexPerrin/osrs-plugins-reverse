@@ -280,6 +280,7 @@ game::MenuEntry g_clicked;
 bool g_click_consumed = false;
 uintptr_t g_tap_menu = 0;
 int g_tap_redirect = -1;
+bool g_direct_select = false;  // select_menu_node: no tap handling (MenuTap/redirect)
 
 uint64_t hook_menu_select(void* menu, const uint64_t* const* path, int x, int y, bool flag) {
     game::MenuEntry entry;
@@ -287,7 +288,7 @@ uint64_t hook_menu_select(void* menu, const uint64_t* const* path, int x, int y,
     // (RuneLite's PostMenuSort, Menu Entry Swapper); run the node they put on top instead.
     uint64_t tap_index[1];
     const uint64_t* tap_path[2];
-    if (path && path[0] && path[1] == path[0] + 1 && !game::menu_open() && on_client_thread()) {
+    if (!g_direct_select && path && path[0] && path[1] == path[0] + 1 && !game::menu_open() && on_client_thread()) {
         g_tap_menu = reinterpret_cast<uintptr_t>(menu);
         g_tap_redirect = -1;
         post({EventType::MenuTap, static_cast<int>(path[0][0])});
@@ -465,6 +466,23 @@ const game::MenuEntry& clicked_menu_entry() { return g_clicked; }
 void consume_menu_click() { g_click_consumed = true; }
 uintptr_t tap_menu() { return g_tap_menu; }
 void redirect_menu_tap(int index) { g_tap_redirect = index; }
+
+bool select_menu_node(int index) {
+    uintptr_t menu = game::menu_object();
+    if (!menu || index < 0 || !on_client_thread()) return false;
+    auto entries = game::read_menu(menu);
+    if (static_cast<size_t>(index) >= entries.size()) return false;
+    int x = 0, y = 0;
+    game::menu_point_raw(x, y);
+    uint64_t node[1] = {static_cast<uint64_t>(index)};
+    const uint64_t* vec[3] = {node, node + 1, node + 1};  // std::vector<uint64_t> {begin, end, cap}
+    using Select = uint64_t (*)(void*, const uint64_t* const*, int, int, bool);
+    auto select = *reinterpret_cast<Select*>(*reinterpret_cast<uintptr_t*>(menu) + sizeof(void*));
+    g_direct_select = true;
+    select(reinterpret_cast<void*>(menu), vec, x, y, game::menu_open());
+    g_direct_select = false;
+    return true;
+}
 
 std::vector<game::Npc> npcs() {
     std::lock_guard lock(g_npcs_mutex);

@@ -4,6 +4,7 @@
 
 #include "agent.h"
 #include "client_thread.h"
+#include "frame_capture.h"
 #include "game.h"
 #include "gl_trace.h"
 #include "got_hook.h"
@@ -23,6 +24,7 @@ SwapFn g_orig_swap = nullptr;
 
 EGLBoolean hook_eglSwapBuffers(EGLDisplay display, EGLSurface surface) {
     overlay_frame(display, surface);
+    frame_capture_frame(display, surface);
     gl_trace_frame();
     return g_orig_swap(display, surface);
 }

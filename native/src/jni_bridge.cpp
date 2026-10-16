@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "client_thread.h"
+#include "frame_capture.h"
 #include "game.h"
 #include "log.h"
 #include "overlay.h"
@@ -608,6 +609,33 @@ jobjectArray n_menu_entries(JNIEnv* env, jclass) {
     return menu_array(env, tap ? game::read_menu(tap) : game::read_menu());
 }
 void n_redirect_menu_tap(JNIEnv*, jclass, jint index) { client_thread::redirect_menu_tap(index); }
+// Game thread: builds the long-press menu at (x, y) (UI canvas units) without showing it.
+jboolean n_menu_build_at(JNIEnv*, jclass, jint x, jint y) {
+    return client_thread::on_client_thread() && game::menu_build_at(x, y) ? JNI_TRUE : JNI_FALSE;
+}
+void n_pick_at(JNIEnv*, jclass, jint x, jint y) {
+    if (client_thread::on_client_thread()) game::pick_at(x, y);
+}
+jboolean n_pick_ready(JNIEnv*, jclass) { return game::pick_ready() ? JNI_TRUE : JNI_FALSE; }
+void n_menu_discard(JNIEnv*, jclass) {
+    if (client_thread::on_client_thread()) game::menu_discard();
+}
+jboolean n_menu_select(JNIEnv*, jclass, jint index) {
+    return client_thread::select_menu_node(index) ? JNI_TRUE : JNI_FALSE;
+}
+void n_request_frame(JNIEnv*, jclass) { frame_capture_request(); }
+// {width, height, argb...} of the frame captured since requestFrame(), or null.
+jintArray n_take_frame(JNIEnv* env, jclass) {
+    std::vector<uint32_t> px;
+    int w = 0, h = 0;
+    if (!frame_capture_take(px, w, h)) return nullptr;
+    jintArray arr = env->NewIntArray(static_cast<jsize>(px.size() + 2));
+    if (!arr) return nullptr;
+    jint wh[2] = {w, h};
+    env->SetIntArrayRegion(arr, 0, 2, wh);
+    env->SetIntArrayRegion(arr, 2, static_cast<jsize>(px.size()), reinterpret_cast<const jint*>(px.data()));
+    return arr;
+}
 // Game thread: reorders the open menu (order[i] = old top-first index shown at position i).
 jboolean n_menu_reorder(JNIEnv* env, jclass, jintArray order) {
     if (!order || !client_thread::on_client_thread()) return JNI_FALSE;
@@ -1026,6 +1054,13 @@ const JNINativeMethod kNatives[] = {
     {"consumeMenuClick", "()V", reinterpret_cast<void*>(n_consume_menu_click)},
     {"redirectMenuTap", "(I)V", reinterpret_cast<void*>(n_redirect_menu_tap)},
     {"menuReorder", "([I)Z", reinterpret_cast<void*>(n_menu_reorder)},
+    {"menuBuildAt", "(II)Z", reinterpret_cast<void*>(n_menu_build_at)},
+    {"menuDiscard", "()V", reinterpret_cast<void*>(n_menu_discard)},
+    {"pickAt", "(II)V", reinterpret_cast<void*>(n_pick_at)},
+    {"pickReady", "()Z", reinterpret_cast<void*>(n_pick_ready)},
+    {"menuSelect", "(I)Z", reinterpret_cast<void*>(n_menu_select)},
+    {"requestFrame", "()V", reinterpret_cast<void*>(n_request_frame)},
+    {"takeFrame", "()[I", reinterpret_cast<void*>(n_take_frame)},
     {"menuTapping", "()Z", reinterpret_cast<void*>(n_menu_tapping)},
     {"gameState", "()I", reinterpret_cast<void*>(n_game_state)},
     {"gameCycle", "()I", reinterpret_cast<void*>(n_game_cycle)},

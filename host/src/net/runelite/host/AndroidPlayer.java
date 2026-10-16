@@ -177,4 +177,6 @@ public class AndroidPlayer extends PlayerStub {
     @Override public int getRunAnimation() { return pose[7]; }
     @Override public int getPoseAnimation() { return poseAnimation; }
     @Override public int getPoseAnimationFrame() { return poseAnimationFrame; }
+    @Override public net.runelite.api.IterableHashTable<net.runelite.api.ActorSpotAnim> getSpotAnims() { return NoSpotAnims.INSTANCE; }
+    @Override public boolean hasSpotAnim(int id) { return false; }
 }

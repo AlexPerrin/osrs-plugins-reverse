@@ -18,6 +18,7 @@ add_library(osrsrl SHARED
     src/overlay.cpp
     src/script_hooks.cpp
     src/npc_probe.cpp
+    src/frame_capture.cpp
     src/script_stubs.S
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp

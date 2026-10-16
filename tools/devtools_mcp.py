@@ -26,21 +26,42 @@ def log(msg):
     print(f"devtools-mcp: {msg}", file=sys.stderr, flush=True)
 
 
+CACHE = os.path.join(os.path.expanduser("~"), ".cache", "osrs-devtools", "token-" + re.sub(r"[^\w.-]", "_", SERIAL))
+PORT = os.environ.get("DEVTOOLS_PORT", "7780")
+
+
+def _from_logcat():
+    out = subprocess.run([ADB, "-s", SERIAL, "logcat", "-d", "-s", "osrsrl-host"],
+                         capture_output=True, text=True).stdout
+    found = re.findall(r"httpserver token ([0-9a-f]{32}) port (\d+)", out)
+    return found[-1] if found else None
+
+
 def auth(refresh=False):
+    """(token, port): cached in ~/.cache/osrs-devtools (0600), else from logcat. When logcat no longer
+    has it (cleared/rotated), an unauthenticated request makes the server log it again."""
     global _auth
-    if _auth is None or refresh:
-        out = subprocess.run([ADB, "-s", SERIAL, "logcat", "-d", "-s", "osrsrl-host"],
-                             capture_output=True, text=True).stdout
-        found = re.findall(r"httpserver token ([0-9a-f]{32}) port (\d+)", out)
-        if not found:
-            raise RuntimeError("no devtools server in logcat (push the plugin, setprop debug.osrsrl.devtools 1, "
-                               "restart the game; logcat may have rotated: restart again)")
-        _auth = found[-1]
+    if _auth is not None and not refresh:
+        return _auth
+    if not refresh and os.path.exists(CACHE):
+        _auth = tuple(open(CACHE).read().split())
+        return _auth
+    found = _from_logcat()
+    if not found:
+        _raw(b"{}", "", PORT)  # 401 -> the server re-logs its token
+        found = _from_logcat()
+    if not found:
+        raise RuntimeError("no devtools server on the device (push the plugin, setprop debug.osrsrl.devtools 1, "
+                           "restart the game)")
+    _auth = found
+    os.makedirs(os.path.dirname(CACHE), exist_ok=True)
+    fd = os.open(CACHE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(" ".join(found))
     return _auth
 
 
-def post(body: bytes, retry=True):
-    token, port = auth()
+def _raw(body: bytes, token: str, port: str):
     req = (f"POST /mcp HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nContent-Type: application/json\r\n"
            f"Accept: application/json, text/event-stream\r\nAuthorization: Bearer {token}\r\n"
            f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n").encode() + body
@@ -50,11 +71,17 @@ def post(body: bytes, retry=True):
     raw = p.stdout.replace(b"\r\n", b"\n")
     head, _, payload = raw.partition(b"\r\n\r\n")
     status = int(head.split(b" ", 2)[1]) if head.startswith(b"HTTP/") else 0
-    if status == 401 and retry:
+    return status, payload, p.stderr
+
+
+def post(body: bytes, retry=True):
+    token, port = auth()
+    status, payload, err = _raw(body, token, port)
+    if status in (0, 401) and retry:  # game restarted: new token (and the old one is cached)
         auth(refresh=True)
         return post(body, retry=False)
     if status == 0:
-        raise RuntimeError(f"no HTTP response (is the game running with the server on?) {p.stderr[:200]!r}")
+        raise RuntimeError(f"no HTTP response (is the game running with the server on?) {err[:200]!r}")
     return status, payload
 
 

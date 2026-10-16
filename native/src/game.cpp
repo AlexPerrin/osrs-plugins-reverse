@@ -92,6 +92,11 @@ struct Build {
     // Builds the displayed menu (+0x540) from the model (+0x140): (display, model, MenuManager
     // +0x7c8 layout), as the show branch of 0x599f68.
     uintptr_t menu_build_display;
+    // The long-press menu build: (MenuManager*, x, y) in UI canvas units (0x54ae24's touch handler).
+    uintptr_t menu_build_at;
+    // Scene picking for menus: set the pick point (screen px, mode; 0x72b758 as the touch handler
+    // 0x518840), the "picked" flag the menu build checks, and the pick mode (2 pending, 3 done).
+    uintptr_t pick_set, pick_ready, pick_mode;
 };
 
 constexpr Build kBuilds[] = {
@@ -105,7 +110,8 @@ constexpr Build kBuilds[] = {
      0xaef1d0, 0x4df54c, 0x63bfe8, 0x63633c, 0x65c798, 0x6de99c, 0x65cac8,
      0x4132b0, 0xa6d6c0, 0x515854, 0x62e5ec, 0x43a9c0,
      0x5d00fc, 0x3f804c, 0x3f8470, 0x64b450,
-     0x514f48, 0x507398, 0x50621c},
+     0x514f48, 0x507398, 0x50621c, 0x58fa84,
+     0x72b758, 0x1d2f52d, 0x1d7ddf0},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -1943,6 +1949,60 @@ bool menu_reorder(const std::vector<int>& order) {
         memcpy(reinterpret_cast<void*>(nb + i * kNodeSize), nodes.data() + order[i] * kNodeSize, kNodeSize);
     if (rebuild)
         reinterpret_cast<void (*)(uintptr_t, uintptr_t, uintptr_t)>(g_base + g_build->menu_build_display)(display, model, layout);
+    return true;
+}
+
+void pick_at(int screen_x, int screen_y) {
+    if (!g_build || !g_build->pick_set) return;
+    // As a touch down: one-shot pick of this point on the next rendered frame; clears "picked".
+    reinterpret_cast<void (*)(int, int, unsigned)>(g_base + g_build->pick_set)(screen_x, screen_y, 0);
+}
+
+bool pick_ready() {
+    return g_build && g_build->pick_ready && read_at<uint8_t>(g_base + g_build->pick_ready) != 0 &&
+           read_at<int32_t>(g_base + g_build->pick_mode) == 3;
+}
+
+bool menu_build_at(int x, int y) {
+    uintptr_t m = menu_manager();
+    if (!m || !g_build->menu_build_at || read_at<uintptr_t>(m + kMgrShown)) return false;
+    // The build also reads the touch handler's point (MenuManager +0x878 -> +0x2c/+0x30, canvas
+    // units, 0x518838) for widget entries: point it at (x, y) for the build, then restore it.
+    uintptr_t handler = read_at<uintptr_t>(m + 0x878);
+    int32_t saved[2] = {0, 0};
+    if (handler) {
+        saved[0] = read_at<int32_t>(handler + 0x2c);
+        saved[1] = read_at<int32_t>(handler + 0x30);
+        *reinterpret_cast<int32_t*>(handler + 0x2c) = x;
+        *reinterpret_cast<int32_t*>(handler + 0x30) = y;
+    }
+    reinterpret_cast<void (*)(uintptr_t, int, int)>(g_base + g_build->menu_build_at)(m, x, y);
+    if (handler) {
+        *reinterpret_cast<int32_t*>(handler + 0x2c) = saved[0];
+        *reinterpret_cast<int32_t*>(handler + 0x30) = saved[1];
+    }
+    // +0xa20 = 2 once built (1 = deferred to the next frame, which we don't use).
+    if (read_at<uint8_t>(m + 0xa20) != 2) {
+        menu_discard();
+        return false;
+    }
+    return true;
+}
+
+void menu_discard() {
+    uintptr_t m = menu_manager();
+    if (!m || read_at<uintptr_t>(m + kMgrShown)) return;
+    // As the touch handler after a tap's select: clear the model, build state back to 0, so the
+    // show branch of 0x599f68 (nodes non-empty) never shows it.
+    reinterpret_cast<void (*)(uintptr_t)>(g_base + g_build->menu_clear_model)(m + kMgrMenu);
+    *reinterpret_cast<uint8_t*>(m + 0xa20) = 0;
+}
+
+bool menu_point_raw(int& x, int& y) {
+    uintptr_t m = menu_manager();
+    if (!m) return false;
+    x = read_at<int32_t>(m + 0x2a8);
+    y = read_at<int32_t>(m + 0x2ac);
     return true;
 }
 

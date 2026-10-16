@@ -167,6 +167,7 @@ public class HttpServer {
             HttpContext ctx = match(uri.getPath());
             HttpExchange ex = new HttpExchange(c, parts[0], uri, headers, new ByteArrayInputStream(body), ctx);
             if (!authorized(headers, uri)) {
+                relogToken();
                 ex.sendResponseHeaders(401, -1);
                 ex.close();
                 return;
@@ -185,6 +186,22 @@ public class HttpServer {
             Log.w(TAG, "httpserver: " + t);
             try { c.close(); } catch (IOException ignored) {}
         }
+    }
+
+    private static long tokenLoggedAt;
+
+    /**
+     * After a refused request, the token goes to logcat again (at most once a second): tools that
+     * cleared logcat recover it through adb, the same channel and trust as the startup line.
+     */
+    private void relogToken() {
+        long now = System.currentTimeMillis();
+        synchronized (HttpServer.class) {
+            if (now - tokenLoggedAt < 1000) return;
+            tokenLoggedAt = now;
+        }
+        ServerSocket s = socket;
+        if (s != null) Log.i(TAG, "httpserver token " + token() + " port " + s.getLocalPort());
     }
 
     private static boolean authorized(Headers headers, URI uri) {

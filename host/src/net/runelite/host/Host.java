@@ -94,6 +94,7 @@ public final class Host {
             new net.runelite.client.ui.overlay.OverlayManager();
     private static final OverlayRenderer overlayRenderer = new OverlayRenderer(overlayManager);
     private static final GameTick gameTick = new GameTick();
+    private static final HostDrawManager drawManager = new HostDrawManager();
 
     private Host() {}
 
@@ -145,6 +146,7 @@ public final class Host {
                 bind(EventBus.class).annotatedWith(com.google.inject.name.Names.named("Deferred EventBus")).toInstance(bus);
                 bind(net.runelite.client.callback.ClientThread.class).toInstance(clientThread);
                 bind(net.runelite.client.ui.overlay.OverlayManager.class).toInstance(overlayManager);
+                bind(net.runelite.client.ui.DrawManager.class).toInstance(drawManager);
                 bind(net.runelite.client.config.ConfigManager.class).toInstance(configManager);
                 bind(net.runelite.client.config.RuneLiteConfig.class)
                         .toInstance(configManager.getConfig(net.runelite.client.config.RuneLiteConfig.class));
@@ -335,6 +337,16 @@ public final class Host {
                 AndroidMenu.onCycle();
                 HostSprites.onCycle(client);
                 Sidebar.onCycle();
+                try {
+                    DevMenu.onCycle();
+                } catch (Throwable t) {
+                    Log.e(TAG, "dev menu failed", t);
+                }
+                try {
+                    drawManager.onCycle();
+                } catch (Throwable t) {
+                    Log.e(TAG, "draw manager failed", t);
+                }
                 try {
                     overlayRenderer.render();
                 } catch (Throwable t) {

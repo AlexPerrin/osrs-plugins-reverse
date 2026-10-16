@@ -311,6 +311,16 @@ bool menu_close();
 // Permutes the menu's top-level nodes (as the game's sort does); rebuilds the display if one is shown.
 // Game thread only.
 bool menu_reorder(const std::vector<int>& order);
+// Builds the game's long-press menu at (x, y) in UI canvas units without showing it (no menu may be
+// open); read it with read_menu(), then menu_discard(). Game thread only.
+bool menu_build_at(int x, int y);
+// Scene picking for menu builds: pick_at asks the next frame to ray-pick (x, y) in screen pixels
+// (as a touch down does); pick_ready once that pick is done, so menu_build_at sees its hits.
+void pick_at(int screen_x, int screen_y);
+bool pick_ready();
+void menu_discard();
+// The point the model was last built at (MenuManager +0x2a8/+0x2ac), open or not.
+bool menu_point_raw(int& x, int& y);
 // The client-side varp table (RuneLite getVarps()).
 std::vector<int32_t> varps();
 int weight();      // kg (UPDATE_RUNWEIGHT)

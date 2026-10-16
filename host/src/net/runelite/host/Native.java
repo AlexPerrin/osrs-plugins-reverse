@@ -201,6 +201,20 @@ final class Native {
     static native void redirectMenuTap(int index);
     /** Game thread: shows the open menu reordered; order[i] = old top-first native index at position i. */
     static native boolean menuReorder(int[] order);
+    /** Game thread: builds the long-press menu at (x, y) (canvas units) without showing it. */
+    static native boolean menuBuildAt(int x, int y);
+    /** Game thread: the next frame ray-picks (x, y) in screen pixels, as a touch down does. */
+    static native void pickAt(int x, int y);
+    /** Whether the pick asked by pickAt is done (menuBuildAt then sees its hits). */
+    static native boolean pickReady();
+    /** Game thread: drops a menu built by menuBuildAt (never shown). */
+    static native void menuDiscard();
+    /** Game thread: runs node `index` (top first) of the current menu as a pick of that row. */
+    static native boolean menuSelect(int index);
+    /** Asks the next frame to be captured (glReadPixels); takeFrame() returns it once. */
+    static native void requestFrame();
+    /** {width, height, argb...} of the captured frame, or null while none is ready. */
+    static native int[] takeFrame();
 
     /** True while a MenuTap event is dispatched (menuEntries() then reads the tapped menu). */
     static native boolean menuTapping();

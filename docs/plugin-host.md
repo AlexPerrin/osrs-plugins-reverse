@@ -232,9 +232,24 @@ in the host so agents can drive device tests. Off by default and never in the de
   Java 9+ calls Android 9 lacks to `net.runelite.host.compat.JdkCompat`: `InputStream.readAllBytes/
   transferTo`, and `Package.getImplementationVersion`, where ART's "0.0" for dex-loaded classes
   becomes null as on desktop. Converted jars keep `META-INF/MANIFEST.MF`.
-- Verified 2026-10-16: `tools/list` (47 tools) and `get_client_state` over the tunnel. Not yet done:
-  `click`/keys (synthesized touches), `screenshot` (frame capture for DrawManager), and hover-based
-  interactions (`interact_npc` etc. hover, then `client.menuAction`).
+- Input and actions (host side, `DevInput`/`DevMenu`/`HostDrawManager`):
+  - `getCanvas()` events become Android input through Instrumentation on a background thread
+    (button 1 = tap, button 3 = long-press, keys = Android key events). Refused unless the game is
+    LOGGED_IN, so it never touches login or account screens.
+  - Mouse moves set a virtual mouse: `getMouseCanvasPosition()` and the menu under it.
+  - `client.menuAction` asks the game to ray-pick a point on the next frame (`0x72b758`, as a touch
+    down does), then builds the long-press menu there without showing it (`0x58fa84`) and runs the
+    entry through the game's select (vtable slot 1, so MenuOptionClicked fires), as picking that row.
+    It completes a frame or two later and tries points across the target (hull grid) until the entry
+    is there. Widget continue/op 1 actions are taps on the widget.
+  - `screenshot`: one-shot glReadPixels in the swap hook on request, scaled to the canvas.
+- Verified 2026-10-16 over the tunnel: `tools/list` (47 tools), `get_client_state`, `type_chat`
+  (`::tele` works), `list_npcs`, `interact_npc` (Talk-to a Man), `get_dialogue` ("Hello, how's it
+  going?"), `continue_dialogue`, `click` (walks), `walk_to` (exact tile), `screenshot` (894x503 in
+  0.7 s). Seen once: interact_npc on an NPC near the left edge found no point; retry after moving.
+- Token: cached per device in `~/.cache/osrs-devtools/` (0600); after a game restart or a cleared
+  logcat the bridge makes one unauthenticated request, and the server logs the token again (at most
+  once a second).
 
 ## Gaps, in rough order
 

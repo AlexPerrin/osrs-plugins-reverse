@@ -1186,14 +1186,9 @@ void drawlog_cycle() {
                  read_at<int32_t>(npc + 0x3f0), read_at<int32_t>(npc + 0x418), read_at<uint8_t>(npc + 0x768),
                  in_list.count(index) ? in_list[index] : 0, it != drawn.end() ? it->second : 0, (unsigned long)b);
         }
-    for (auto& [p, n] : drawn) {
-        if (seen.count(p)) continue;
-        int fx = read_at<int32_t>(p + 0x1fc), fy = read_at<int32_t>(p + 0x200);
-        auto def = read_at<uintptr_t>(p + g_build->npc_def);
-        LOGI("drawlog: drawn but not in map: %#lx id %d fine %d,%d (tile %d,%d) +268 %d,%d calls %d", (unsigned long)p,
-             def ? read_at<int32_t>(def) : -1, fx, fy, bx + (fx >> 7), by + (fy >> 7), read_at<int32_t>(p + 0x268),
-             read_at<int32_t>(p + 0x26c), n);
-    }
+    // Pointers not in the map may be freed already (region rebuild): don't dereference them.
+    for (auto& [p, n] : drawn)
+        if (!seen.count(p)) LOGI("drawlog: drawn but not in map: %#lx calls %d", (unsigned long)p, n);
 }
 
 bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height) {

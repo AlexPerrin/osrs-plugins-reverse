@@ -122,6 +122,18 @@ session; its notes are in `docs/android-protocol.md`.
   Next after R&J: object model hulls/click boxes (GameObject `+0x230` Renderable*, slot 0; AABB
   `0x71ae98`), the real viewport zoom (`renderer+0x630c60`) instead of the fitted scale,
   `getWeight`, `menuAction`, setters (setVarbit/setVarcIntValue), widget sprite ids.
+- **2026-10-16 (client dev gen 5)**: **Romeo & Juliet completed end to end with Quest Helper**
+  (third full quest): Message → Romeo, Father Lawrence, cadava bush Pick-from (23625), Apothecary,
+  potion → Juliet, Romeo; chat "Quest complete" and the QH overlay closed. 022f070's `::tele` crash
+  fix verified (many teleports). a4e3ae9: NPC/player spawn events are held back until the actor
+  has a position (a new Npc sits at fine 0,0 for a cycle; QH's NpcStep checks the roam range at
+  NpcSpawned time and dropped Romeo after a teleport), and spawn lookups re-read the snapshot when
+  the Java cache was refreshed earlier in the cycle (the event used to arrive with a null NPC).
+  Verified: Romeo highlighted again after teleporting away and back. Debug: `setprop
+  debug.osrsrl.actorlog 1` also logs each NpcSpawned with local/world/base.
+  `host/tools/menu_pick.py talk` long-presses QH's cyan highlight and taps the matching menu row
+  (wandering NPCs, no more "Walk here" misses). getEnergy reads 10000; getWeight can't be checked
+  against this server (it never sends UPDATE_RUNWEIGHT).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

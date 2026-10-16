@@ -348,9 +348,10 @@ session; its notes are in `docs/android-protocol.md`.
     Charges, Timers & Buffs, Agility, XP Drop icons, colour dialog. Table: 27 runs.
   - Config keys: `chatnotification.*` (no s). Append test keys with one `echo` per line (printf `\n` through
     adb shell is unreliable); the host rewrites settings.properties on any setConfiguration.
-  - Gaps found: ItemManager images are blank (Inventory Tags outline, InfoBox icons such as the stamina
-    timer). The game's obj icon renderer is behind the debug command `exportobjsprite` (handler 0x5948f8 ELF,
-    calls 0x4868bc(objId, w, h, dir) -> 0x641970(out, ObjType, w, h, 1, w/50+1, 1), retried until ready).
+  - **Item icons**: `Client.createItemSprite` calls the game's own createItemSprite (`0x63ff9c`, docs/offsets.md;
+    game thread, its LRU cache), so `ItemManager.getImage`/`getItemOutline` work (Inventory Tags outline,
+    stamina InfoBox icon verified 2026-10-16, no crash, 30 fps). `scale` != 512 is ignored.
+  - Table at the end of gen 11: 30 runs. Cannon: OpenRune doesn't set up cannons.
     OpenRune mining text was "pickaxe" (server fix requested); `::npc` takes `duration npcDebugName`.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 

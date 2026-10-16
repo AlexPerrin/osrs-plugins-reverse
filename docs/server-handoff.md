@@ -58,9 +58,22 @@ Tooling from this session (scratch, not in the repo, easy to redo):
 - building a test cache without touching the deployed one: copy `openrune/src` to a scratch dir and
   run `./gradlew :or-cache:buildCache` there (the Docker image copies `src/.data` at deploy).
 
-Remaining unverified: S→C 0 heatmap, 11 privatechat filter, 24 URL_OPEN, 120 IF_SETROTATESPEED (x/y
-order; component +0x134 = second short | first short << 16), 123 MIDI_SWAP, 148 CAM_SKYBOX; C→S
-8, 20, 28, 45, 46, 50, 57, 69, 84. GROUP_FULL caveat: the client has a third (scope-2) group var list.
+Later in the session (all static, from the client's own code; details in `docs/android-protocol.md`):
+11, 120, 123 (MIDI_SWAP encoder added) S→C; 8, 20, 46, 50, 84 C→S (decoders bound for 8, 20, 50,
+84). Verified 234/253 by tag count (progress.py's ApiCoverage step was failing while the client
+dev's host build ran).
+
+Remaining unverified (7):
+- S→C 0 heatmap: the dispatcher ignores 0.
+- S→C 24 URL_OPEN: one gjstr to bridge slot +0xf0, but the client drops the session; no browser
+  activity starts.
+- S→C 148 CAM_SKYBOX: an int at client+0x4ac*8; -1 calls FUN_007d97c8.
+- C→S 28/57: same layout; the senders FUN_0053b4b8/FUN_0053b090 are reached indirectly, so ban vs
+  kick is open. A lead is the CS2 op tables that call them.
+- C→S 45 SET_HEADING: minimap special mode (0x68d438).
+- C→S 69 OPWORLDENTITY6: found by elimination; no literal sender.
+
+GROUP_FULL caveat: the client has a third (scope-2) group var list.
 
 ## Earlier state (2026-10-16, third server dev; new hashes after the authorship rewrite)
 

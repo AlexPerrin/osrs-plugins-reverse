@@ -79,6 +79,7 @@ cd openrune && docker compose up -d --build
 |---|---|---|
 | `osrs-openrune` | 40255 | OpenRune: login, JS5, game (43594 inside) |
 | `osrs-openrune-http` | 8081 | jav_config.ws, slr.ws and the LOCAL_AUTH sign-in, from our own server image |
+| `osrs-openrune-http-desktop` | 8082 | the same for desktop RuneLite through RSProx (world host 127.0.0.1); see `docs/multi-client.md` |
 
 - Saves (embedded PostgreSQL) are in the named volume `osrs-openrune_openrune-pgdata`; it survives
   rebuilds.

@@ -39,5 +39,26 @@ services:
       PROOF_OF_WORK: "false"
       VALIDATE_CRCS: "false"
 
+  # The same sidecar for desktop clients (RuneLite through RSProx, docs/multi-client.md): its
+  # jav_config.ws/slr.ws advertise world host 127.0.0.1 instead of BlueStacks' 10.0.2.2, which does
+  # not exist on the Windows host. Game port as above (OPENRUNE_GAME_PORT, 43594 after the switch).
+  http-desktop:
+    image: osrs-rsps-test:241
+    container_name: osrs-openrune-http-desktop
+    restart: unless-stopped
+    ports:
+      - "${OPENRUNE_DESKTOP_HTTP_PORT:-8082}:8080"
+    volumes:
+      - ../server/data:/data:ro
+    environment:
+      WORLD_HOST: "127.0.0.1"
+      HTTP_PUBLIC_PORT: "${OPENRUNE_DESKTOP_HTTP_PORT:-8082}"
+      WORLD_ID: "255"
+      SAVE_DIR: "/tmp/saves"
+      JAV_CONFIG_TEMPLATE: "/app/protocol/jav_config.ws.template"
+      LOCAL_AUTH: "false"
+      PROOF_OF_WORK: "false"
+      VALIDATE_CRCS: "false"
+
 volumes:
   openrune-pgdata:

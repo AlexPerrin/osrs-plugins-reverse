@@ -476,6 +476,23 @@ class World(
         player.send(IfOpenSub(INTERFACE_SIDE_JOURNAL, SIDE_JOURNAL_CONTAINER, panel, 1))
         player.journalPanel = panel
         setVarbit(player, VARBIT_SIDE_JOURNAL_TAB, tab)
+        if (panel == 712) sendSummaryCombatLevel(player)
+    }
+
+    /**
+     * The character summary (712) shows varc 52 (combat level), which only the server sets: script
+     * 3954(712:2, 712:3, level) stores it and redraws via 3310 (args from 712:0's onload, 3174).
+     * Without it the panel shows -1.
+     */
+    fun sendSummaryCombatLevel(player: Player) {
+        if (player.journalPanel != 712) return
+        val l = IntArray(7) { levelForXp(player.experience[it]) }
+        val base = 0.25 * (l[1] + l[3] + l[5] / 2)
+        val melee = 0.325 * (l[0] + l[2])
+        val range = 0.325 * (l[4] * 3 / 2)
+        val mage = 0.325 * (l[6] * 3 / 2)
+        val level = (base + maxOf(melee, range, mage)).toInt()
+        player.send(RunClientScript(3954, listOf((712 shl 16) or 2, (712 shl 16) or 3, level)))
     }
 
     private fun questProgress(player: Player, quest: QuestType) =
@@ -671,6 +688,7 @@ class World(
                 player.experience[stat] = (player.experience[stat] + amount).coerceIn(0, 200_000_000)
                 val level = levelForXp(player.experience[stat])
                 player.send(UpdateStatV2(stat, level, level, player.experience[stat]))
+                sendSummaryCombatLevel(player)
                 player.message("Skill $stat: level $level, ${player.experience[stat]} xp")
             }
             "talk" -> {

@@ -758,7 +758,7 @@ index 00000000..a44d2077
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..c6ded22a
+index 00000000..757e6f78
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 @@ -0,0 +1,172 @@
@@ -931,7 +931,7 @@ index 00000000..c6ded22a
 +    CAM_LOOKAT_CYCLES(144, 10), // dispatcher case read
 +    WORLDENTITY_INFO_V7(146, Prot.VAR_SHORT), // dispatcher case read
 +    AMBIENTSOUND_START(147, 3), // dispatcher case read
-+    CAM_SKYBOX(148, 4), // unverified: last size-4 prot once 143 = SET_MAP_FLAG_V2; stores an int, -1 clears a world-view resource
++    CAM_SKYBOX(148, 4), // dispatcher case read + renderer use: the int at client+0x2560 is applied each frame (0x552260) to the renderer's sky slot, id at renderer+0x54dbc plus a loaded resource (setter 0x7d971c); -1 calls its clear twin 0x7d97c8
 +    AMBIENTSOUND_STOP(149, 1), // dispatcher case read
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt

@@ -193,7 +193,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 144 | CAM_LOOKAT_CYCLES | z `p2Alt1`, x `p2Alt1`, easing.id `p1Alt3`, height `p2Alt2`, if (heightRelative) 1 else 0 `p1`, cycles `p2Alt2` |
 | 146 | WORLDENTITY_INFO_V7 | recognised, no codec |
 | 147 | AMBIENTSOUND_START | id `p2Alt2`, if (fade) 1 else 0 `p1` |
-| 148 | CAM_SKYBOX (unverified) | model `p4` |
+| 148 | CAM_SKYBOX | model `p4` (see notes) |
 | 149 | AMBIENTSOUND_STOP | if (fade) 1 else 0 `p1Alt1` |
 
 Notes:
@@ -211,6 +211,11 @@ Notes:
   `OP_116` / `OP_137` (2026-10-16).
 - 148 CAM_SKYBOX: the last size-4 prot once 143 = SET_MAP_FLAG_V2 (stores an int; -1 clears a
   world-view resource).
+  Verified statically 2026-10-16 (fifth server dev): the frame code at 0x552260 reads the stored
+  int; when it is not -1 and differs from renderer+0x54dbc, it loads a resource for it (0x81d824 on
+  client+0x23f8, then a vtable +0x80 call) and passes id + resource to 0x7d971c, which keeps them at
+  renderer+0x54dbc/+0x54dc0. The -1 path's 0x7d97c8 clears exactly those fields. That is desktop
+  CAM_SKYBOX's "set the skybox model, -1 clears". Not tried live (no known skybox model id).
 - 41 REBUILD_REGION_V2 (FUN_00655510 -> parser 0x6580e4): reload `p1Alt3` (raw byte 0x7f = reload),
   zoneX `p2Alt1`, zoneZ `p2Alt1` (order from the base-coord call FUN_006d0a94(level 0, x*8-48,
   z*8-48)), then as desktop: distinct mapsquare count `p2`, and for 4 levels x 13 x 13 zones a 1-bit

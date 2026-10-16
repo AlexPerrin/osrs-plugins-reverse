@@ -42,7 +42,8 @@ this repo's `rsprot.patch`) all run there.
 - **Content**: Implings (catching; Puro-Puro spawns already existed) and the Genie random event
   (`::randomevent`), see `openrune/README.md` and `docs/openrune-port.md`. Upstreamable fixes are
   listed in `docs/openrune-port.md`.
-- Remaining unverified: S->C 0, 148; C->S 45, 69.
+- 148 CAM_SKYBOX verified statically (renderer sky slot set/clear, see android-protocol.md).
+- Remaining unverified: S->C 0; C->S 45, 69.
 
 ## Latest state (2026-10-16 evening, fourth server dev, on OpenRune)
 

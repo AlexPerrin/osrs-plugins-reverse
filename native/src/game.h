@@ -91,6 +91,9 @@ struct WidgetGeometry { int x = 0, y = 0, width = 0, height = 0, parent = -1, gr
 WidgetGeometry widget_geometry(uintptr_t widget);
 int widget_child_count(int group);  // components in a loaded group (0 if not loaded)
 std::string widget_text(uintptr_t widget);
+// {name (CC_SETOPBASE, +0x2c0), target verb (CC_SETTARGETVERB, +0x330), ops... (CC_SETOP: vector of
+// strings, size +0x2e0, data +0x2e8)} (handlers in 0x4e06dc; setOp 0x5dfae8).
+std::vector<std::string> widget_strings(uintptr_t widget);
 // Children created by CC_CREATE: Widget +0xb50 count, +0xb58 array of shared_ptr {ctrl, Widget*}.
 int widget_dynamic_count(uintptr_t widget);
 uintptr_t widget_dynamic(uintptr_t widget, int index);  // 0 if empty or out of range
@@ -98,7 +101,7 @@ struct WidgetItem { int id = -1, quantity = 0; };
 WidgetItem widget_item(uintptr_t widget);
 // scrollX, scrollY, scrollWidth, scrollHeight, modelZoom, rotationX, rotationY, rotationZ,
 // opacity, modelType, modelId, animationId.
-constexpr int kWidgetProps = 12;
+constexpr int kWidgetProps = 24;
 void widget_props(uintptr_t widget, int32_t out[kWidgetProps]);  // item set by IF_SETOBJECT / CC_SETOBJECT
 int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colour for text widgets
 void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty

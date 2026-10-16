@@ -595,6 +595,20 @@ jintArray n_widget_props(JNIEnv* env, jclass, jint id, jint index) {
     env->SetIntArrayRegion(arr, 0, game::kWidgetProps, v);
     return arr;
 }
+// {name, targetVerb, op1..opN} (null entries for empty strings), or null.
+jobjectArray n_widget_strings(JNIEnv* env, jclass, jint id, jint index) {
+    uintptr_t w = widget_or_child(id, index);
+    if (!w) return nullptr;
+    std::vector<std::string> v = game::widget_strings(w);
+    jobjectArray arr = env->NewObjectArray(static_cast<jsize>(v.size()), env->FindClass("java/lang/String"), nullptr);
+    for (size_t i = 0; i < v.size(); i++)
+        if (!v[i].empty()) {
+            jstring js = latin1_string(env, v[i]);
+            env->SetObjectArrayElement(arr, static_cast<jsize>(i), js);
+            env->DeleteLocalRef(js);
+        }
+    return arr;
+}
 jint n_widget_color(JNIEnv*, jclass, jint id, jint index) { return game::widget_color(widget_or_child(id, index)); }
 void n_widget_set_color(JNIEnv*, jclass, jint id, jint index, jint rgb) {
     if (client_thread::on_client_thread()) game::widget_set_color(widget_or_child(id, index), rgb);
@@ -692,6 +706,7 @@ const JNINativeMethod kNatives[] = {
     {"widgetItem", "(II)[I", reinterpret_cast<void*>(n_widget_item)},
     {"widgetColor", "(II)I", reinterpret_cast<void*>(n_widget_color)},
     {"widgetProps", "(II)[I", reinterpret_cast<void*>(n_widget_props)},
+    {"widgetStrings", "(II)[Ljava/lang/String;", reinterpret_cast<void*>(n_widget_strings)},
     {"widgetSetColor", "(III)V", reinterpret_cast<void*>(n_widget_set_color)},
     {"widgetDynamicText", "(II)Ljava/lang/String;", reinterpret_cast<void*>(n_widget_dynamic_text)},
     {"widgetDynamicGeometry", "(II)[I", reinterpret_cast<void*>(n_widget_dynamic_geometry)},

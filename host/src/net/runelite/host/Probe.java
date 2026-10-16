@@ -24,6 +24,25 @@ final class Probe {
     private static String lastSay = "";
 
     private static String lastSet = "";
+    private static String lastWdump = "";
+
+    private static void dumpGroup(net.runelite.api.Client c, String arg) {
+        try {
+            int group = Integer.parseInt(arg);
+            for (int child = 0; child < 1024; child++) {
+                net.runelite.api.widgets.Widget w = c.getWidget(group, child);
+                if (w == null) { if (child > 0) break; else continue; }
+                Log.i(TAG, "w " + group + ":" + child + " type " + w.getType() + " text '" + w.getText() + "' name '" + w.getName()
+                    + "' verb '" + w.getTargetVerb() + "' ops " + java.util.Arrays.toString(w.getActions()) + " sprite " + w.getSpriteId()
+                    + " tiling " + w.getSpriteTiling() + " border " + w.getBorderType() + " flip " + w.isFlippedHorizontally() + "/" + w.isFlippedVertically()
+                    + " filled " + w.isFilled() + " font " + w.getFontId() + " align " + w.getXTextAlignment() + "/" + w.getYTextAlignment()
+                    + " lineh " + w.getLineHeight() + " shadow " + w.getTextShadowed() + " colour " + Integer.toHexString(w.getTextColor())
+                    + " item " + w.getItemId());
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "wdump " + arg + " failed: " + t);
+        }
+    }
 
     private static void testSetter(net.runelite.api.Client c, String[] a) {
         if (a.length < 3) return;
@@ -82,6 +101,11 @@ final class Probe {
         if (!set.isEmpty() && !set.equals(lastSet) && Host.client() != null) {
             lastSet = set;
             testSetter(Host.client(), set.split(" ", 3));
+        }
+        String wdump = Native.property("debug.osrsrl.wdump");  // test hook: dump a widget group's getters, once per value
+        if (!wdump.isEmpty() && !wdump.equals(lastWdump) && Host.client() != null) {
+            lastWdump = wdump;
+            dumpGroup(Host.client(), wdump.trim());
         }
         String where = Native.property("debug.osrsrl.where");
         if (!where.isEmpty() && (tick % 5) == 0) logWhere(where);

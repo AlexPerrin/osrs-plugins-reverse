@@ -53,6 +53,24 @@ public class AndroidWidget extends WidgetBag {
     @Override public int getModelType() { return prop(9, 0); }
     @Override public int getModelId() { return prop(10, -1); }
     @Override public int getAnimationId() { return prop(11, -1); }
+    private String[] strings() { return Native.widgetStrings(id, childIndex()); }
+    @Override public String getName() { String[] s = strings(); return s != null && s[0] != null ? s[0] : ""; }
+    @Override public String getTargetVerb() { String[] s = strings(); return s != null && s[1] != null ? s[1] : ""; }
+    @Override public String[] getActions() {
+        String[] s = strings();
+        return s == null || s.length <= 2 ? null : java.util.Arrays.copyOfRange(s, 2, s.length);
+    }
+    @Override public int getSpriteId() { return prop(12, -1); }
+    @Override public boolean getSpriteTiling() { return prop(13, 0) != 0; }
+    @Override public int getBorderType() { return prop(14, 0); }
+    @Override public boolean isFlippedVertically() { return prop(16, 0) != 0; }
+    @Override public boolean isFlippedHorizontally() { return prop(17, 0) != 0; }
+    @Override public boolean isFilled() { return prop(18, 0) != 0; }
+    @Override public boolean getTextShadowed() { return prop(19, 0) != 0; }
+    @Override public int getXTextAlignment() { return prop(20, 0); }
+    @Override public int getYTextAlignment() { return prop(21, 0); }
+    @Override public int getLineHeight() { return prop(22, 0); }
+    @Override public int getFontId() { return prop(23, -1); }
     @Override public int getItemQuantity() { int[] it = Native.widgetItem(id, childIndex()); return it != null && it[0] != -1 ? it[1] : 0; }
 
     @Override

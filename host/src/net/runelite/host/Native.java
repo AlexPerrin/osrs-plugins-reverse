@@ -33,6 +33,8 @@ final class Native {
     static native int[] objectModel(int plane, int sceneX, int sceneY, int layer, long tag);
     /** {valid, zoom, centreX, centreY, clip x0, y0, x1, y1, far} of the scene renderer's viewport. */
     static native int[] viewport();
+    /** {name, targetVerb, op1..opN} of a widget (or its CC_CREATE child), null entries for empty strings. */
+    static native String[] widgetStrings(int id, int index);
     static native boolean playSound(int id, int loops, int delay);
     static native int varcInt(int id);
     static native String varcString(int id);

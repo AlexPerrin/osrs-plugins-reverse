@@ -547,9 +547,17 @@ uintptr_t widget_dynamic(uintptr_t w, int index) {
 // the IF_SET* packet handlers: scroll x/y (+0x84/+0x88), scroll width/height (+0x8c/+0x90),
 // model zoom (+0x128), model angle x/y/z (+0x11c/+0x120/+0x124), opacity (+0xb0), model type/id
 // (+0xfc/+0x100), sequence (+0x10c).
+// 12..: from the CC_SET* handlers (0x4e06dc, ops 1100-1120): 1105 graphic +0xc8, 1107 tiling
+// +0xec (bool), 1116 outline +0xf0, 1117 graphic shadow +0xf4, 1118/1119 v/h flip +0xf8/+0xf9
+// (bool), 1102 fill +0xa8 (bool), 1115 text shadow +0x194 (bool), 1114 text align x/y +0x18c/
+// +0x190 and line height +0x188, 1113 font +0x150.
 void widget_props(uintptr_t w, int32_t out[kWidgetProps]) {
-    static constexpr uint32_t kOffsets[kWidgetProps] = {0x84, 0x88, 0x8c, 0x90, 0x128, 0x11c, 0x120, 0x124, 0xb0, 0xfc, 0x100, 0x10c};
-    for (int i = 0; i < kWidgetProps; i++) out[i] = w ? read_at<int32_t>(w + kOffsets[i]) : 0;
+    static constexpr struct { uint32_t off; bool byte; } kFields[kWidgetProps] = {
+        {0x84}, {0x88}, {0x8c}, {0x90}, {0x128}, {0x11c}, {0x120}, {0x124}, {0xb0}, {0xfc}, {0x100}, {0x10c},
+        {0xc8}, {0xec, true}, {0xf0}, {0xf4}, {0xf8, true}, {0xf9, true}, {0xa8, true}, {0x194, true},
+        {0x18c}, {0x190}, {0x188}, {0x150}};
+    for (int i = 0; i < kWidgetProps; i++)
+        out[i] = !w ? 0 : kFields[i].byte ? read_at<uint8_t>(w + kFields[i].off) : read_at<int32_t>(w + kFields[i].off);
 }
 
 WidgetItem widget_item(uintptr_t w) {
@@ -615,6 +623,18 @@ int widget_child_count(int group) {
 
 bool widget_hidden(uintptr_t w) { return w && read_at<uint8_t>(w + g_build->w_hidden) != 0; }
 std::string widget_text(uintptr_t w) { return w ? read_string(w + g_build->w_text) : std::string(); }
+
+std::vector<std::string> widget_strings(uintptr_t w) {
+    std::vector<std::string> out;
+    if (!w) return out;
+    out.push_back(read_string(w + 0x2c0));
+    out.push_back(read_string(w + 0x330));
+    uint64_t n = read_at<uint64_t>(w + 0x2e0);
+    uintptr_t ops = read_at<uintptr_t>(w + 0x2e8);
+    if (ops && n <= 64)
+        for (uint64_t i = 0; i < n; i++) out.push_back(read_string(ops + i * 0x18));
+    return out;
+}
 
 std::vector<SubInterface> open_sub_interfaces() {
     std::vector<SubInterface> out;

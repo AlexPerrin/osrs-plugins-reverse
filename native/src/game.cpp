@@ -477,6 +477,10 @@ bool play_sound_effect(int id, int loops, int delay) {
     return true;
 }
 
+namespace {
+uintptr_t top_world_view();  // defined with the scene readers below
+}
+
 Viewport viewport() {
     Viewport v;
     uintptr_t c = client();
@@ -498,6 +502,12 @@ Viewport viewport() {
     v.centre_y = read_at<int32_t>(vp + 0x18);
     for (int i = 0; i < 4; i++) v.clip[i] = read_at<int32_t>(vp + 0x24 + 4 * i);
     v.far = read_at<int32_t>(vp + 0x6c);
+    uintptr_t wv = top_world_view();
+    uintptr_t scene = wv ? read_at<uintptr_t>(wv + 0x10) : 0;
+    if (scene) {
+        for (int i = 0; i < 3; i++) v.scene_cam[i] = read_at<int32_t>(scene + 0x288 + 4 * i);
+        for (int i = 0; i < 4; i++) v.trig[i] = static_cast<int>(read_at<float>(scene + 0x418 + 4 * i) * 65536.0f);
+    }
     return v;
 }
 

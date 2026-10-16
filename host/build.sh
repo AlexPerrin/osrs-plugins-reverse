@@ -69,7 +69,7 @@ javac -nowarn -Xlint:none -source 8 -target 8 -bootclasspath "$ANDROID_JAR:$OUT/
 for f in config/ConfigManager config/ConfigInvocationHandler callback/ClientThread eventbus/EventBus \
          ui/overlay/OverlayManager ui/FontManager callback/Hooks plugins/PluginManager ui/ClientToolbar \
          game/ItemManager game/SpriteManager chat/ChatMessageManager game/chatbox/ChatboxPanelManager \
-         ui/overlay/outline/ModelOutlineRenderer; do
+         ui/overlay/outline/ModelOutlineRenderer Notifier; do
     rm -f "$OUT"/client-classes/net/runelite/client/$f.class "$OUT"/client-classes/net/runelite/client/$f\$*.class
 done
 (cd "$OUT/client-classes" && jar cf ../client-subset.jar .)

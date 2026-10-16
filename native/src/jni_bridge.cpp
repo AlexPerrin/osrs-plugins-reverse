@@ -553,13 +553,14 @@ jintArray n_camera(JNIEnv* env, jclass) {
     return arr;
 }
 
-// {valid, zoom, centreX, centreY, clip x0, y0, x1, y1, far} (game thread only; valid 0 otherwise).
+// {valid, zoom, centreX, centreY, clip x0, y0, x1, y1, far, scene camera x/h/y, sin/cos pitch, sin/cos yaw x65536} (game thread only; valid 0 otherwise).
 jintArray n_viewport(JNIEnv* env, jclass) {
     game::Viewport v;
     if (client_thread::on_client_thread()) v = game::viewport();
-    jint a[9] = {v.valid, v.zoom, v.centre_x, v.centre_y, v.clip[0], v.clip[1], v.clip[2], v.clip[3], v.far};
-    jintArray arr = env->NewIntArray(9);
-    env->SetIntArrayRegion(arr, 0, 9, a);
+    jint a[16] = {v.valid, v.zoom, v.centre_x, v.centre_y, v.clip[0], v.clip[1], v.clip[2], v.clip[3], v.far,
+                  v.scene_cam[0], v.scene_cam[1], v.scene_cam[2], v.trig[0], v.trig[1], v.trig[2], v.trig[3]};
+    jintArray arr = env->NewIntArray(16);
+    env->SetIntArrayRegion(arr, 0, 16, a);
     return arr;
 }
 

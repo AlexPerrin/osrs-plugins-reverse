@@ -78,6 +78,9 @@ Camera camera();
 struct Viewport {
     bool valid = false;
     int zoom = 0, centre_x = 0, centre_y = 0, clip[4] = {}, far = 0;
+    // The renderer's camera from the top-level Scene (WorldView +0x10): position +0x288/+0x28c/
+    // +0x290 and sin/cos pitch, sin/cos yaw floats +0x418..+0x424 (x 65536).
+    int scene_cam[3] = {}, trig[4] = {};
 };
 Viewport viewport();
 // Queue a synth sound effect as SYNTH_SOUND (0x4ae508(Client +0x2610, id, loops, delay)). Game thread only.

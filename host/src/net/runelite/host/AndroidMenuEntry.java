@@ -50,6 +50,7 @@ final class AndroidMenuEntry implements MenuEntry {
             e.hasChildren = ints[12 * i + 1] != 0;
             System.arraycopy(ints, 12 * i + 2, e.raw, 0, 10);
             e.decode();
+            e.readTarget = e.target;
             out[i] = e;
         }
         return out;
@@ -91,6 +92,10 @@ final class AndroidMenuEntry implements MenuEntry {
                 break;
             case T_OBJ:  // ground item: [2] obj id, [3] quantity, op 3 = Take (seen on device 2026-10-15)
                 identifier = raw[2];
+                // The game appends " (n)" for stacks; RuneLite's target is the name alone (Ground Items
+                // adds its own quantity, which showed "Coins (500) (500)").
+                if (raw[3] > 1 && target.endsWith(" (" + raw[3] + ")"))
+                    target = target.substring(0, target.length() - (" (" + raw[3] + ")").length());
                 sceneParams();
                 type = op == OP_EXAMINE ? MenuAction.EXAMINE_ITEM_GROUND : groundOp(op);
                 break;

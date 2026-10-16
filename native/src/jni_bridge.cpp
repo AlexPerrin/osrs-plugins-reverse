@@ -256,6 +256,59 @@ jobjectArray n_npcs(JNIEnv* env, jclass) {
     return out;
 }
 
+// Game strings are CP1252/Latin-1 bytes; JNI wants (modified) UTF-8.
+jstring latin1_string(JNIEnv* env, const std::string& s) {
+    std::string u;
+    u.reserve(s.size());
+    for (unsigned char c : s) {
+        if (c >= 0x80) {
+            u.push_back(static_cast<char>(0xc0 | (c >> 6)));
+            u.push_back(static_cast<char>(0x80 | (c & 0x3f)));
+        } else if (c) {
+            u.push_back(static_cast<char>(c));
+        }
+    }
+    return env->NewStringUTF(u.c_str());
+}
+
+constexpr int kMenuInts = 12;  // per entry: kind, hasChildren, raw[10]
+jobjectArray menu_array(JNIEnv* env, const std::vector<game::MenuEntry>& entries) {
+    jsize n = static_cast<jsize>(entries.size());
+    std::vector<jint> packed;
+    jobjectArray strs = env->NewObjectArray(n * 2, env->FindClass("java/lang/String"), nullptr);
+    for (jsize i = 0; i < n; i++) {
+        const game::MenuEntry& e = entries[i];
+        packed.push_back(e.kind);
+        packed.push_back(e.has_children);
+        packed.insert(packed.end(), e.raw, e.raw + 10);
+        jstring o = latin1_string(env, e.option), t = latin1_string(env, e.target);
+        env->SetObjectArrayElement(strs, i * 2, o);
+        env->SetObjectArrayElement(strs, i * 2 + 1, t);
+        env->DeleteLocalRef(o);
+        env->DeleteLocalRef(t);
+    }
+    jintArray ints = env->NewIntArray(n * kMenuInts);
+    if (n) env->SetIntArrayRegion(ints, 0, n * kMenuInts, packed.data());
+    jobjectArray out = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(out, 0, ints);
+    env->SetObjectArrayElement(out, 1, strs);
+    return out;
+}
+
+// {int[] packed (kMenuInts per entry), String[] {option, target} per entry}; game thread only.
+jobjectArray n_menu_entries(JNIEnv* env, jclass) {
+    if (!client_thread::on_client_thread()) {
+        env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "getMenuEntries must be called on the client thread");
+        return nullptr;
+    }
+    return menu_array(env, game::read_menu());
+}
+jobjectArray n_clicked_menu_entry(JNIEnv* env, jclass) {
+    return menu_array(env, {client_thread::clicked_menu_entry()});
+}
+jboolean n_menu_open(JNIEnv*, jclass) { return game::menu_open(); }
+void n_consume_menu_click(JNIEnv*, jclass) { client_thread::consume_menu_click(); }
+
 // {name, sender, text}, or null if the message is no longer kept.
 jobjectArray n_message(JNIEnv* env, jclass, jint id) {
     game::ChatLine line;
@@ -381,6 +434,10 @@ const JNINativeMethod kNatives[] = {
     {"overlayPublish", "(II)V", reinterpret_cast<void*>(n_overlay_publish)},
     {"message", "(I)[Ljava/lang/String;", reinterpret_cast<void*>(n_message)},
     {"npcs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_npcs)},
+    {"menuEntries", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_menu_entries)},
+    {"clickedMenuEntry", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_clicked_menu_entry)},
+    {"menuOpen", "()Z", reinterpret_cast<void*>(n_menu_open)},
+    {"consumeMenuClick", "()V", reinterpret_cast<void*>(n_consume_menu_click)},
     {"gameState", "()I", reinterpret_cast<void*>(n_game_state)},
     {"gameCycle", "()I", reinterpret_cast<void*>(n_game_cycle)},
     {"serverTick", "()I", reinterpret_cast<void*>(n_server_tick)},

@@ -23,6 +23,8 @@ enum class EventType {
     PlayerDespawned,   // a = player index
     ItemContainerChanged,  // a = inventory id
     StatChanged,       // a = skill index
+    MenuOpened,        // the long-press menu was shown (entries: game::read_menu())
+    MenuOptionClicked, // an entry was selected (clicked_menu_entry()); runs before the game acts
 };
 
 struct Event {
@@ -58,5 +60,10 @@ std::vector<game::PlayerInfo> players();
 
 // NPCs as of the end of the last cycle; safe from any thread.
 std::vector<game::Npc> npcs();
+
+// The entry being selected while MenuOptionClicked is posted; consume_menu_click() from a
+// listener stops the game from running it.
+const game::MenuEntry& clicked_menu_entry();
+void consume_menu_click();
 
 }  // namespace client_thread

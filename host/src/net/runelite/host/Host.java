@@ -31,7 +31,8 @@ public final class Host {
     // Must match client_thread::EventType.
     private static final int CLIENT_TICK = 0, GAME_TICK = 1, GAME_STATE_CHANGED = 2, VARBIT_CHANGED = 3,
             NPC_SPAWNED = 4, NPC_DESPAWNED = 5, CHAT_MESSAGE = 6, WIDGET_LOADED = 7, WIDGET_CLOSED = 8,
-            PLAYER_SPAWNED = 9, PLAYER_DESPAWNED = 10, ITEM_CONTAINER_CHANGED = 11, STAT_CHANGED = 12;
+            PLAYER_SPAWNED = 9, PLAYER_DESPAWNED = 10, ITEM_CONTAINER_CHANGED = 11, STAT_CHANGED = 12,
+            MENU_OPENED = 13, MENU_OPTION_CLICKED = 14;
 
     private static final net.runelite.client.callback.ClientThread clientThread = new net.runelite.client.callback.ClientThread();
     private static volatile EventBus eventBus;
@@ -226,6 +227,21 @@ public final class Host {
             case WIDGET_CLOSED:
                 bus.post(new net.runelite.api.events.WidgetClosed(a, 0, true));
                 break;
+            case MENU_OPENED: {
+                AndroidClient.MENU.clearAdded();
+                net.runelite.api.events.MenuOpened e = new net.runelite.api.events.MenuOpened();
+                e.setMenuEntries(AndroidClient.MENU.getMenuEntries());
+                bus.post(e);
+                break;
+            }
+            case MENU_OPTION_CLICKED: {
+                AndroidMenuEntry[] es = AndroidMenuEntry.fromNative(Native.clickedMenuEntry());
+                if (es.length == 0) break;
+                net.runelite.api.events.MenuOptionClicked e = new net.runelite.api.events.MenuOptionClicked(es[0]);
+                bus.post(e);
+                if (e.isConsumed()) Native.consumeMenuClick();
+                break;
+            }
             case VARBIT_CHANGED: {
                 VarbitChanged e = new VarbitChanged();
                 e.setVarpId(a);

@@ -67,6 +67,10 @@ struct Build {
     // [planes][sx+1][sy+1]; tileSettings(scene, plane, x, y) (bit 2 = bridge).
     uintptr_t tile_settings;
     uintptr_t get_enum_type;  // shared_ptr<EnumType> getEnumType(int id) (ENUM ops 3400-3411)
+    // Menus: Client field holding the MenuManager* (built by the Client ctor 0x40c9b4 with
+    // 0x58dab8); the menu model's vtable, whose slot 1 = select(menu, path, x, y, flag) (0x515854); ELF vaddrs.
+    uint32_t f_menu_manager;
+    uintptr_t menu_vtable, menu_select;
 };
 
 constexpr Build kBuilds[] = {
@@ -77,7 +81,8 @@ constexpr Build kBuilds[] = {
      0xecdc, 0xece0, 0xcb78, 0xcb7c, 0xcb80, 0x8950c, 0x89514, 0x5d0040,
      0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x68, 0x70, 0xcb0c, 0x718, 0xcb90, 0x730, 0x1fc, 0x200, 0x0, 0x8,
      0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0x5c, 0x60, 0x64, 0x68, 0x74, 0x6, 0x3210, 0x3274, 0x32d8, 0xaab690, 0xaab658, 0xaab628,
-     0xaef1d0, 0x4df54c, 0x63bfe8, 0x63633c, 0x65c798, 0x6de99c, 0x65cac8},
+     0xaef1d0, 0x4df54c, 0x63bfe8, 0x63633c, 0x65c798, 0x6de99c, 0x65cac8,
+     0x4132b0, 0xa6d6c0, 0x515854},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -679,5 +684,90 @@ bool enum_def(int id, EnumDef& out) {
     release_shared(ctrl);
     return true;
 }
+
+}  // namespace game
+
+namespace game {
+namespace {
+// MenuManager: +0x140 menu model (vtable menu_vtable), +0x7c0 menu shown (0 when closed).
+// Menu model: +0x140 vector of 0x18-byte nodes {EntryList*, u64 index, children vector*};
+// EntryList: +0x00 callbacks (0xa0 each: invoker at +0, storage at +0x10), +0x18 entries
+// (0x150 each). Entry: +0x50 target, +0xb8 option (24-byte strings, each followed by a small
+// arena), +0x120..+0x148 parameters, +0x14f kind byte.
+constexpr uint32_t kMgrMenu = 0x140, kMgrShown = 0x7c0, kMenuNodes = 0x140, kListEntries = 0x18;
+constexpr uint32_t kEntrySize = 0x150, kNodeSize = 0x18;
+
+uintptr_t menu_manager() {
+    uintptr_t c = client();
+    return c ? read_at<uintptr_t>(c + g_build->f_menu_manager) : 0;
+}
+
+void read_entry(uintptr_t e, MenuEntry& out) {
+    out.address = e;
+    out.option = read_string(e + 0xb8);
+    out.target = read_string(e + 0x50);
+    memcpy(out.raw, reinterpret_cast<const void*>(e + 0x120), sizeof out.raw);
+    out.kind = read_at<uint8_t>(e + 0x14f);
+}
+
+uintptr_t node_entry(uintptr_t node) {
+    auto list = read_at<uintptr_t>(node);
+    if (!list) return 0;
+    auto entries = read_at<uintptr_t>(list + kListEntries);
+    auto end = read_at<uintptr_t>(list + kListEntries + 8);
+    uint64_t index = read_at<uint64_t>(node + 8);
+    if (!entries || index >= (end - entries) / kEntrySize) return 0;
+    return entries + index * kEntrySize;
+}
+}  // namespace
+
+uintptr_t menu_object() {
+    uintptr_t m = menu_manager();
+    return m ? m + kMgrMenu : 0;
+}
+
+bool menu_open() {
+    uintptr_t m = menu_manager();
+    return m && read_at<uintptr_t>(m + kMgrShown) != 0;
+}
+
+std::vector<MenuEntry> read_menu() {
+    std::vector<MenuEntry> out;
+    uintptr_t menu = menu_object();
+    if (!menu) return out;
+    auto b = read_at<uintptr_t>(menu + kMenuNodes), e = read_at<uintptr_t>(menu + kMenuNodes + 8);
+    if (!b || e < b || (e - b) / kNodeSize > 512) return out;
+    for (uintptr_t n = b; n < e; n += kNodeSize) {
+        uintptr_t entry = node_entry(n);
+        if (!entry) continue;
+        MenuEntry me;
+        read_entry(entry, me);
+        me.has_children = read_at<uintptr_t>(n + 0x10) != 0;
+        out.push_back(std::move(me));
+    }
+    return out;
+}
+
+// Mirrors the walk in select (0x515854): path[0] indexes the top-level nodes, later elements
+// index the children vector of the previous node.
+bool menu_entry_for_path(uintptr_t menu, const uint64_t* path, size_t len, MenuEntry& out) {
+    if (!menu || !len) return false;
+    uintptr_t vec = menu + kMenuNodes, node = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (!vec) return false;
+        auto b = read_at<uintptr_t>(vec), e = read_at<uintptr_t>(vec + 8);
+        if (path[i] >= (e - b) / kNodeSize) return false;
+        node = b + path[i] * kNodeSize;
+        vec = read_at<uintptr_t>(node + 0x10);
+    }
+    uintptr_t entry = node_entry(node);
+    if (!entry) return false;
+    read_entry(entry, out);
+    out.has_children = vec != 0;
+    return true;
+}
+
+uintptr_t menu_vtable() { return g_build ? g_base + g_build->menu_vtable : 0; }
+uintptr_t menu_select() { return g_build ? g_base + g_build->menu_select : 0; }
 
 }  // namespace game

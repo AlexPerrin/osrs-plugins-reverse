@@ -54,6 +54,7 @@ VarbitChanged).
 | `WorldView.getScene()`: `getTiles()` (locations only), tile heights/settings, base | `AndroidScene`; tiles carry no objects or ground items yet |
 | Sidebar: ClientToolbar buttons + the selected plugin panel, usable by touch | `Sidebar.java` (model + tap dispatch + touch router) and `overlay.cpp` (ImGui window); see "Sidebar" below |
 | Inert stand-ins so plugin code runs: models/`RuneLiteObject`s (`ModelDataBag`, `ModelBag`), world map (`WorldMapBag`), hint arrows (remembered only), sprites (blank 16×16), `isMenuOpen()` false, `getMinimapZoom()` 4, `getMinimapLocation()` null, `findWorldViewFromWorldPoint` = top level | nothing is drawn for them |
+| Menus (written, **not yet verified on device**): `getMenu()`, `getMenuEntries()`, `isMenuOpen()`, `createMenuEntry` (host-side only), `MenuOpened`, `MenuOptionClicked` (consumable) | `game::read_menu` over the menu model; select hooked through the menu vtable slot 1; option/target only, MenuAction guessed from the option text |
 | `macroExpand(text)` | identity (CS1 macros aren't expanded) |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 

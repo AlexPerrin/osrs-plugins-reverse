@@ -67,6 +67,8 @@ const char* name(EventType t) {
         case EventType::PlayerDespawned: return "PlayerDespawned";
         case EventType::ItemContainerChanged: return "ItemContainerChanged";
         case EventType::StatChanged: return "StatChanged";
+        case EventType::MenuOpened: return "MenuOpened";
+        case EventType::MenuOptionClicked: return "MenuOptionClicked";
     }
     return "?";
 }
@@ -210,6 +212,64 @@ void diff_players() {
     }
 }
 
+bool g_menu_was_open = false;
+
+void diff_menu() {
+    bool open = game::menu_open();
+    if (open && !g_menu_was_open) post({EventType::MenuOpened, static_cast<int>(game::read_menu().size())});
+    g_menu_was_open = open;
+}
+
+// Menu model vtable slot 1: select(menu, const std::vector<uint64_t>* path, x, y, flag).
+using MenuSelectFn = uint64_t (*)(void*, const uint64_t* const*, int, int, bool);
+MenuSelectFn g_orig_select = nullptr;
+game::MenuEntry g_clicked;
+bool g_click_consumed = false;
+
+uint64_t hook_menu_select(void* menu, const uint64_t* const* path, int x, int y, bool flag) {
+    game::MenuEntry entry;
+    if (path && path[0] && path[1] > path[0] &&
+        game::menu_entry_for_path(reinterpret_cast<uintptr_t>(menu), path[0], path[1] - path[0], entry)) {
+        g_clicked = entry;
+        g_click_consumed = false;
+        LOGI("menu: select '%s' '%s' kind %d on %s thread", entry.option.c_str(), entry.target.c_str(), entry.kind,
+             on_client_thread() ? "client" : "other");
+        post({EventType::MenuOptionClicked, static_cast<int>(path[0][0])});
+        if (g_click_consumed) {
+            g_click_consumed = false;
+            return 1;
+        }
+    }
+    return g_orig_select(menu, path, x, y, flag);
+}
+
+bool patch_slot(uintptr_t slot_addr, void* value, void** old) {
+    auto** slot = reinterpret_cast<void**>(slot_addr);
+    long page = sysconf(_SC_PAGESIZE);
+    auto start = reinterpret_cast<void*>(slot_addr & ~(page - 1));
+    if (mprotect(start, page, PROT_READ | PROT_WRITE) != 0) return false;
+    if (old) *old = *slot;
+    *slot = value;
+    mprotect(start, page, PROT_READ);
+    return true;
+}
+
+void install_menu_hook() {
+    uintptr_t vt = game::menu_vtable();
+    if (!vt) return;
+    uintptr_t slot = vt + sizeof(void*);
+    if (*reinterpret_cast<uintptr_t*>(slot) != game::menu_select()) {
+        LOGE("menu: vtable slot 1 is %p, expected %p; not hooking", *reinterpret_cast<void**>(slot),
+             reinterpret_cast<void*>(game::menu_select()));
+        return;
+    }
+    void* old = nullptr;
+    if (patch_slot(slot, reinterpret_cast<void*>(hook_menu_select), &old)) {
+        g_orig_select = reinterpret_cast<MenuSelectFn>(old);
+        LOGI("menu: select hooked");
+    }
+}
+
 void after_cycle() {
     g_cycles++;
     post({EventType::ClientTick});
@@ -232,6 +292,7 @@ void after_cycle() {
     diff_skills();
     poll_messages();
     diff_interfaces();
+    diff_menu();
 
     std::vector<std::function<void()>> tasks;
     {
@@ -268,6 +329,7 @@ bool install() {
     *slot = reinterpret_cast<void*>(hook_do_cycle);
     mprotect(start, page, PROT_READ);  // .data.rel.ro is read-only after relocation
     LOGI("client_thread: doCycle hooked");
+    install_menu_hook();
     return true;
 }
 
@@ -315,6 +377,9 @@ std::vector<game::PlayerInfo> players() {
     std::lock_guard lock(g_players_mutex);
     return g_players;
 }
+
+const game::MenuEntry& clicked_menu_entry() { return g_clicked; }
+void consume_menu_click() { g_click_consumed = true; }
 
 std::vector<game::Npc> npcs() {
     std::lock_guard lock(g_npcs_mutex);

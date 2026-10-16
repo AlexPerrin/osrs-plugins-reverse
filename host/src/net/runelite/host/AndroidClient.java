@@ -133,8 +133,13 @@ public class AndroidClient extends ClientStub {
     /** Minimap zoom isn't read from the game; RuneLite's default. */
     @Override public double getMinimapZoom() { return 4.0; }
 
-    /** Menus aren't mapped yet; the game's own menu is never reported as open. */
-    @Override public boolean isMenuOpen() { return false; }
+    /** The long-press menu (game::read_menu); plugin-created entries stay host-side for now. */
+    static final AndroidMenu MENU = new AndroidMenu();
+    @Override public boolean isMenuOpen() { return Native.menuOpen(); }
+    @Override public net.runelite.api.Menu getMenu() { return MENU; }
+    @Override public net.runelite.api.MenuEntry[] getMenuEntries() { return MENU.getMenuEntries(); }
+    @Override public void setMenuEntries(net.runelite.api.MenuEntry[] e) { MENU.setMenuEntries(e); }
+    @Override public net.runelite.api.MenuEntry createMenuEntry(int idx) { return MENU.createMenuEntry(idx); }
 
     /** Only the top-level world view exists (no boats / world entities yet). */
     @Override

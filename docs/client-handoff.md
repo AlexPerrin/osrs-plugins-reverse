@@ -41,6 +41,16 @@ session; its notes are in `docs/android-protocol.md`.
   Talk to Aris..."), no runtime exceptions left in that flow. Also `getEnum`, `WorldView.getScene`
   (tiles without objects), RuneScapeProfileChanged on login (QH waits for it before loading its
   quest list), inert models/world map/hint arrows.
+- **2026-10-15 (third client session, cut short by a wrap-up request)**: menu support written
+  and compiled, **not yet run on the device**. Native: `game::read_menu()/menu_open()/
+  menu_entry_for_path()` (game.cpp), MenuOpened (per-cycle diff of MenuManager+0x7c0) and
+  MenuOptionClicked (menu model vtable slot 1 `0xa6d6c8` patched to `hook_menu_select` in
+  client_thread.cpp; consume skips the game's select). JNI `Native.menuEntries/clickedMenuEntry/
+  menuOpen/consumeMenuClick`; Java `AndroidMenu`/`AndroidMenuEntry`, `Client.getMenu/
+  getMenuEntries/isMenuOpen/createMenuEntry` (plugin-created entries stay host-side, not yet
+  inserted into the game's menu). Layouts are from static RE (see docs/offsets.md "Menus").
+  The Quest Helper Cook's Assistant end-to-end test was **not done**: the test server container
+  was re-downloading its cache (fresh volume) when the session ended, so login failed.
 - Device protocol addition: `/tmp/osrs-device-status` holds the latest "taking device (…)" /
   "device free, restart ok (…)" line; check it before using adb and write it when you take or
   free the device (the server agent polls it), besides the SendMessage notes.
@@ -140,7 +150,22 @@ protocol gaps plugins hit (it has implemented dialogue, ground items, bank, OP* 
 
 ## Suggested next steps
 
-Quest Helper now runs end to end; what limits it next:
+First (unfinished work from the third session):
+1. Install the current build (`ninja -C re/build` is up to date; then repack), log in, long-press
+   the ground/an NPC, and check logcat for `menu: select ... on client thread` and that
+   MenuOpened/getMenuEntries return the right option/target. A ready-made memory dump script
+   idea: read Client(`0xaee748`)+0x4132b0 → MenuManager, nodes at mgr+0x280/+0x288 (0x18 each
+   {list*, index, children*}), entries at list+0x18 (0x150 each, option +0xb8, target +0x50).
+   Verify RuneLite order (getMenuEntries reverses the game's node order: assumed top-first).
+   Decode `raw` (+0x120..+0x147) per kind into MenuAction/identifier/param0/param1 (Walk here:
+   +0x138 plane?, +0x13c world x, +0x140 world y; +0x144 u16 world view | 0x101 << 16).
+   If the select hook runs on a non-game thread, queue the Java event instead.
+2. Quest Helper Cook's Assistant end-to-end test (server side is ready: Cook 4626 at 3209,3215,
+   `::item 1927/1944/1933`, `::quest cook reset`, varp 29): pick it in the sidebar
+   (`setprop debug.osrsrl.sbclick "Cook's Assistant"`), follow the steps, check that the step
+   overlay advances as varp 29 goes 0 → 1 → 2.
+
+Then, what limits Quest Helper next:
 - Menu entries (MenuEntryAdded/MenuOptionClicked). This client builds menus with std::function
   callbacks, not the Java client's parallel arrays: `0x51a7fc` builds the world menu ("Walk here"
   = global string `0x18d1a50`, GOT `0xa82958`), `0x51c810` appends one entry to a list at

@@ -159,4 +159,19 @@ struct EnumDef {
 };
 bool enum_def(int id, EnumDef& out);
 
+// Menus (long-press menu). Entries are what the game shows, top-level first as stored.
+struct MenuEntry {
+    std::string option, target;
+    int32_t raw[10] = {};  // entry +0x120..+0x147: parameters (meaning per entry kind; see offsets.md)
+    uint8_t kind = 0;      // entry +0x14f
+    bool has_children = false;
+    uintptr_t address = 0;
+};
+uintptr_t menu_object();  // the menu model (MenuManager +0x140), 0 if unavailable
+bool menu_open();
+std::vector<MenuEntry> read_menu();  // game thread only
+bool menu_entry_for_path(uintptr_t menu, const uint64_t* path, size_t len, MenuEntry& out);
+uintptr_t menu_vtable();  // menu model vtable; slot 1 = select
+uintptr_t menu_select();  // expected value of that slot
+
 }  // namespace game

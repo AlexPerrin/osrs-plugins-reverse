@@ -1581,6 +1581,11 @@ class World(
         interact(player)
     }
 
+    private fun climb(p: Player, level: Int) {
+        val c = p.coord
+        teleport(p, collision.nearestOpen(c.x, c.z, level) ?: Coord(c.x, c.z, level))
+    }
+
     /** OPLOCT / OPOBJT: "Use <selected obj> -> <loc or ground obj>"; walks there and reports it. */
     fun useOn(player: Player, kind: String, id: Int, x: Int, z: Int, selectedInterface: Int, slot: Int, selectedObj: Int) {
         val targetName = if (kind == "loc") locTypes[id]?.name else objTypes[id]?.name
@@ -1627,9 +1632,19 @@ class World(
                     "pick-from" -> if (type?.name.equals("Cadava bush", true)) {
                         if (give(p, OBJ_CADAVA_BERRIES, 1)) { p.send(p.inventory.toMessage()); p.message("You pick some cadava berries.") }
                     } else p.message("You find nothing of interest.")
-                    // Stairs/ladders: no destination table yet, so move one level up/down in place.
-                    "climb-up" -> if (p.coord.level < 3) teleport(p, Coord(p.coord.x, p.coord.z, p.coord.level + 1))
-                    "climb-down" -> if (p.coord.level > 0) teleport(p, Coord(p.coord.x, p.coord.z, p.coord.level - 1))
+                    // Stairs/ladders: no destination table; move one level up/down and land on the nearest open
+                    // tile (staircases usually block their own tiles on the other level).
+                    "climb-up" -> if (p.coord.level < 3) climb(p, p.coord.level + 1)
+                    "climb-down" -> if (p.coord.level > 0) climb(p, p.coord.level - 1)
+                    // Middle-floor staircases (Lumbridge castle 16672): "Climb" asks for the direction.
+                    "climb" -> choose(
+                        p,
+                        "Climb up." to { if (p.coord.level < 3) climb(p, p.coord.level + 1) },
+                        "Climb down." to { if (p.coord.level > 0) climb(p, p.coord.level - 1) },
+                    )
+                    // Lumbridge castle 56230 / 56231 shortcuts between the ground and top (level 2) floors.
+                    "top-floor" -> climb(p, minOf(p.coord.level + 2, 3))
+                    "bottom-floor" -> climb(p, 0)
                     else -> p.message("$opName ${type?.name ?: "loc $id"} ($id at $x, $z): nothing interesting happens.")
                 }
             },

@@ -39,9 +39,10 @@ class Collision(private val cache: Cache, private val locTypes: Map<Int, EntityT
         }
         val settings = runCatching { decodeTerrain(files[0]!!) }.getOrNull() ?: Array(4) { ByteArray(64 * 64) }
         for (level in 0 until 4) for (i in 0 until 64 * 64) {
-            if (settings[level][i].toInt() and 1 == 0) continue
             val l = if (settings[1][i].toInt() and 2 != 0) level - 1 else level
-            if (l >= 0) flags[l][i] = flags[l][i] or FLOOR
+            if (l < 0) continue
+            if (settings[level][i].toInt() and HAS_SURFACE != 0) flags[l][i] = flags[l][i] or SURFACE
+            if (settings[level][i].toInt() and 1 != 0) flags[l][i] = flags[l][i] or FLOOR
         }
         val locs = files[1] ?: return flags
         val baseX = mx shl 6
@@ -106,6 +107,22 @@ class Collision(private val cache: Cache, private val locTypes: Map<Int, EntityT
                 flags(x + 1, z, level) and BLOCK_E == 0 && flags(x, z + 1, level) and BLOCK_N == 0
             else -> true
         }
+    }
+
+    /**
+     * The closest tile to (x, z) on [level] that has a floor surface (underlay or overlay, so not the
+     * void around upper floors) and no solid loc or blocked floor, searching square rings out to
+     * [radius]; null if none. Used to land after Climb-up/down: there is no stairs destination table,
+     * and the tile in place is often the staircase itself or outside the room on the other level.
+     */
+    fun nearestOpen(x: Int, z: Int, level: Int, radius: Int = 4): Coord? {
+        for (r in 0..radius) {
+            for (dx in -r..r) for (dz in -r..r) {
+                if (maxOf(kotlin.math.abs(dx), kotlin.math.abs(dz)) != r) continue
+                if (flags(x + dx, z + dz, level) and (LOC or FLOOR or SURFACE) == SURFACE) return Coord(x + dx, z + dz, level)
+            }
+        }
+        return null
     }
 
     /**
@@ -185,8 +202,12 @@ class Collision(private val cache: Cache, private val locTypes: Map<Int, EntityT
                     buf.get()
                     break
                 }
-                if (op <= 49) buf.short
-                else if (op <= 81) settings[level][(x shl 6) or z] = (op - 49).toByte()
+                val i = (x shl 6) or z
+                if (op <= 49) {
+                    if (op >= 2 && buf.short.toInt() != 0) settings[level][i] = (settings[level][i].toInt() or HAS_SURFACE).toByte()
+                    else if (op < 2) buf.short
+                } else if (op <= 81) settings[level][i] = ((settings[level][i].toInt() and HAS_SURFACE) or (op - 49)).toByte()
+                else settings[level][i] = (settings[level][i].toInt() or HAS_SURFACE).toByte()
             }
         }
         return settings
@@ -205,6 +226,9 @@ class Collision(private val cache: Cache, private val locTypes: Map<Int, EntityT
         const val LOC = 0x100
         const val FLOOR_DECO = 0x40000
         const val FLOOR = 0x200000
+        /** Not a collision flag: the tile has an underlay or overlay (upper levels are void elsewhere). */
+        const val SURFACE = 0x4000000
+        private const val HAS_SURFACE = 0x40
 
         private const val BLOCK_W = 0x1240108
         private const val BLOCK_E = 0x1240180

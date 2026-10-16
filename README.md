@@ -13,21 +13,22 @@ account: the server is also the local sign-in provider.
 ## Status
 
 <!-- progress:start -->
-![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-94.1%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-87.0%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-31.6%25-blue)
+![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-94.1%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-87.0%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-36.6%25-blue)
 
 [![Progress map](docs/progress.svg)](docs/progress.md)
 
 - **Mobile packets mapped**: 238/253 (94.1%)
-- **Mobile packets mapped, verified**: 212/253 (83.8%)
+- **Live packets mapped**: 238/253 (94.1%)
+- **Mobile packets mapped, verified**: 213/253 (84.2%)
 - **Mobile packets implemented**: 220/253 (87.0%)
 - **Server→client mapped**: 148/151 (98.0%)
 - **Client→server mapped**: 90/102 (88.2%)
 - **Zone sub-prots implemented**: 15/15 (100.0%)
-- **RuneLite API implemented**: 274/866 (31.6%)
+- **RuneLite API implemented**: 317/866 (36.6%)
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-15, `0e2a79e`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-15, `be4b788+`).
 <!-- progress:end -->
 
 Milestones:
@@ -39,7 +40,9 @@ Milestones:
 - [x] Menu entries: MenuOpened / MenuOptionClicked with decoded params, verified on device
 - [x] **First full quest with Quest Helper on Android: Cook's Assistant** (dialogue start, step overlay
   follows the items, NPC highlight, hand-in, completion), 2026-10-15
-- [ ] Quest Helper complete: object/item highlights, minimap arrows, sidebar text input
+- [x] Quest Helper sidebar search (Android text dialog → Swing document), NPC highlights and arrows
+- [x] Test server: per-account saves (position, quest vars, items, bank, skills) that survive restarts
+- [ ] Quest Helper complete: inventory/object/ground-item highlights, minimap arrows
 - [ ] More quests end to end (server: Sheep Shearer, Romeo & Juliet ready)
 - [ ] Protocol: map the remaining opcodes (see `docs/progress.md` → Unmapped opcodes)
 - [ ] More plugins (GPU/region-dependent ones excluded)

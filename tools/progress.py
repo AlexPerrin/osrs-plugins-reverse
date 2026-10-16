@@ -50,6 +50,11 @@ def placeholder(name):
     return bool(re.fullmatch(r"OP_\d+|UNKNOWN\w*", name))
 
 
+def dead_entries(src):
+    """Entries tagged `// dead: <evidence>`: no sender/handler in the client, so never on the wire."""
+    return re.findall(r"^\s+([A-Z][A-Z0-9_]*)\((\d+),.*// dead", src, re.M)
+
+
 def unverified_entries(src):
     """Enum entries tagged `// unverified: <reason>` (identity or layout not read from the client)."""
     return re.findall(r"^\s+([A-Z][A-Z0-9_]*)\((\d+),.*// unverified", src, re.M)
@@ -79,6 +84,7 @@ def protocol():
     s2c = [(n, o) for n, o in s2c if not placeholder(n)]
     return {
         "s2c_ident": len(s2c), "s2c_impl": s2c_impl,
+        "dead": len(dead_entries(s2c_src)) + len(dead_entries(c2s_src)),
         "unverified": sum(1 for n, _ in unverified_entries(s2c_src) + unverified_entries(c2s_src) if not placeholder(n)),
         "c2s_ident": len(c2s_named), "c2s_impl": c2s_impl,
         "s2c_unknown": sorted(set(range(S2C_TOTAL)) - {int(o) for _, o in s2c}),
@@ -252,6 +258,8 @@ def main():
 
     head = [
         ("Mobile packets mapped", ident, total, "named opcodes, both directions, of the client's size tables"),
+        ("Live packets mapped", ident, total - p["dead"],
+         "mapped of the opcodes the client can actually send/handle (entries tagged `// dead: evidence` excluded)"),
         ("Mobile packets mapped, verified", ident - p["unverified"], total,
          "mapped minus entries tagged `// unverified` (identity/layout not read from the client code)"),
         ("Mobile packets implemented", impl, total, "opcodes with an Android codec bound on the server"),
@@ -294,7 +302,7 @@ def main():
         text = read(readme)
         badges = " ".join(
             f"![{n}](https://img.shields.io/badge/{n.replace(' ', '%20').replace('→', '%E2%86%92')}-{pct(a, b):.1f}%25-blue)"
-            for n, a, b, _ in (head[0], head[2], head[6]))
+            for n, a, b, _ in head if n in ("Mobile packets mapped", "Mobile packets implemented", "RuneLite API implemented"))
         block = (f"<!-- progress:start -->\n{badges}\n\n[![Progress map](docs/progress.svg)](docs/progress.md)\n\n"
                  + "\n".join(f"- **{n}**: {a}/{b} ({pct(a, b):.1f}%)" for n, a, b, _ in head)
                  + "\n\n\\* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the"

@@ -464,3 +464,21 @@ Chatmenu (219, root 479x122) does not fit chatbox:chatmodal 162:568 (479x96): se
 the lower rows are clipped and taps resolve to the wrong option.
 
 NPC "Attack" is hidden unless varp 1306 (attack option setting) is non-zero.
+
+### Live checks 2026-10-16 (23:33-23:39, `::trace` on)
+
+- 15 IF_BUTTONT verified: Use bronze axe (inventory slot 0) on tinderbox (slot 1) decoded as
+  selectedSub 0 / selectedObj 1351, targetSub 1 / targetObj 590.
+- 16 EVENT_CAMERA_POSITION verified after fixing the order from the sender (yaw first, then
+  pitch): arrow keys (`input keyevent --longpress 21/19`; one-finger swipes only send mouse
+  events) gave pitch 128..383 with yaw fixed and yaw 1608 -> 405 -> 1852 (wraps at 2048) with
+  pitch fixed.
+- 45 SET_HEADING: the sender sits in the minimap click handler (`0x68d438`) under a special
+  minimap mode; a plain long-press on the minimap sends nothing. Still unverified.
+- 46 SOUND_JINGLEEND: `::jingle 152` got no reply; the sender only fires with a positive volume
+  (client+0x2f58), and the emulator's audio is probably off. Still unverified.
+- 11 CHAT_FILTER_SETTINGS_PRIVATECHAT: stores at client+0x33c4, between 78's public (+0x33c0,
+  which gates overhead public chat) and trade (+0x33c8). Neither `::pmfilter 2` nor the control
+  `::chatfilter 2 2` (78) changes the chat tab labels, so the labels need a script redraw; still
+  unverified, but the structural evidence is good.
+

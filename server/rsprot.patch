@@ -615,7 +615,7 @@ index 00000000..ea743851
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
-index 00000000..65c8c74f
+index 00000000..a38ed703
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 @@ -0,0 +1,123 @@
@@ -653,8 +653,8 @@ index 00000000..65c8c74f
 +    OP_12(12, Prot.VAR_BYTE), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16)
 +    CONNECTION_TELEMETRY(13, Prot.VAR_BYTE), // sender read
 +    SEND_SNAPSHOT(14, Prot.VAR_BYTE), // sender read
-+    IF_BUTTONT(15, 16), // unverified: targetSub/targetObj order assumed
-+    EVENT_CAMERA_POSITION(16, 4), // unverified: pitch/yaw order assumed from desktop
++    IF_BUTTONT(15, 16), // verified live 2026-10-16: Use bronze axe (slot 0) on tinderbox (slot 1) -> selectedSub=0 selectedObj=1351 targetSub=1 targetObj=590
++    EVENT_CAMERA_POSITION(16, 4), // verified live 2026-10-16: yaw first, then pitch (sender); arrow keys: pitch 128-383 with yaw fixed, yaw 1608 -> 405 -> wraps to 1852 with pitch fixed
 +    OPPLAYER2(17, 3), // sender read
 +    EVENT_MOUSE_MOVE(18, Prot.VAR_BYTE), // sender read
 +    SEND_PING_REPLY(19, 10), // sender read
@@ -683,8 +683,8 @@ index 00000000..65c8c74f
 +    BUG_REPORT(42, Prot.VAR_SHORT), // sender read
 +    IF_BUTTOND(43, 16), // sender read
 +    OPNPC2(44, 4),
-+    SET_HEADING(45, 1), // unverified: medium: sender applies a heading locally
-+    SOUND_JINGLEEND(46, 4), // unverified: medium: called from audio code
++    SET_HEADING(45, 1), // unverified: medium: sent from a special minimap click mode (0x68d438, angle from the click); a plain minimap long-press sends nothing
++    SOUND_JINGLEEND(46, 4), // unverified: medium: sender 0x5694e4 writes the jingle id p4 as desktop, but only with volume > 0; ::jingle 152 got no reply (emulator audio muted?)
 +    SET_CHATFILTERSETTINGS(47, 3), // sender read
 +    RESUME_PAUSEBUTTON(48, 6),
 +    OPNPC6(49, 2), // verified live 2026-10-15: Examine on the chicken sent OpNpc6(id=1173), its type id
@@ -744,7 +744,7 @@ index 00000000..65c8c74f
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..c275ecce
+index 00000000..13fd7bb7
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 @@ -0,0 +1,172 @@
@@ -811,7 +811,7 @@ index 00000000..c275ecce
 +    HINT_ARROW(3, 6), // dispatcher case read
 +    NPC_HEADICON_SPECIFIC(5, 9), // dispatcher case read
 +    MESSAGE_CLANCHANNEL_SYSTEM(9, Prot.VAR_BYTE), // dispatcher case read
-+    CHAT_FILTER_SETTINGS_PRIVATECHAT(11, 1), // unverified: medium: one byte stored, values > 2 -> -1; ::pmfilter 2 and 1 left the Private tab label at On (2026-10-15, 2026-10-16)
++    CHAT_FILTER_SETTINGS_PRIVATECHAT(11, 1), // unverified: medium: stores the byte at client+0x33c4, between CHAT_FILTER_SETTINGS (78) public +0x33c0 and trade +0x33c8; no tab label change, but 78 (::chatfilter 2 2) does not change the labels either (they need a script redraw)
 +    OBJ_CUSTOMISE_SPECIFIC_V1(12, 20), // dispatcher case read
 +    UPDATE_IGNORELIST(13, Prot.VAR_SHORT), // dispatcher case read
 +    CAM_MODE(15, 1), // dispatcher case read

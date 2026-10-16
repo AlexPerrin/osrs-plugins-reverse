@@ -635,6 +635,21 @@ public class GenHeadless {
         }
         if (c == java.awt.Component.class && n.equals("getParent") && ps.length == 0) return "return __parent;";
         if (x.getDeclaringClass() != c) return null;
+        if (!Modifier.isStatic(x.getModifiers())) {
+            Class<?> r = x.getReturnType();
+            // JPopupMenu.add(JMenuItem), JMenu.add(JMenuItem): real children (getComponent(i) finds them).
+            if (n.equals("add") && ps.length == 1 && java.awt.Container.class.isAssignableFrom(c) && c != java.awt.Container.class
+                    && java.awt.Component.class.isAssignableFrom(ps[0]) && r == ps[0])
+                return "super.add((java.awt.Component) a0); return a0;";
+            // Builders (GroupLayout groups): add*/set*/link* returning their own type hand back this.
+            if ((n.startsWith("add") || n.startsWith("link")) && r != void.class && !r.isPrimitive() && r != Object.class
+                    && r.isAssignableFrom(c) && !(ps.length >= 1 && r.isAssignableFrom(ps[0])))
+                return "return this;";
+            // Factories of a class's own inner classes (GroupLayout.createParallelGroup).
+            if (n.startsWith("create") && r.getEnclosingClass() == c && generate.contains(r) && !r.isInterface()
+                    && !Modifier.isAbstract(r.getModifiers()))
+                return "return new " + typeName(r) + "();";
+        }
         String l = listenerKind(x);
         if (l != null && listenerKinds.contains(l)) {
             if (n.startsWith("add")) return "if (a0 != null) __" + l + "s.add(a0);";

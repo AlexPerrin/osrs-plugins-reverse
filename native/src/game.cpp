@@ -1226,6 +1226,18 @@ void release_shared_ptr(uintptr_t ctrl);
 // (+0xff8/+0xac38) and long (+0xac40/+0xcb80) stacks. DBRowType 0x74f824 (+0x30 table id),
 // DBTableType 0x6eb2c4, column types 0x6ec320(table, column) → {+0x08 count, +0x10 type*[]},
 // each type's +0x08 = the int/long/string descriptor (globals 0x1d8aff8/0x1d8b000/0x1d8b008).
+int db_row_table(int row) {
+    if (!g_build || !g_build->script_vm || row < 0 || row > 0xffff) return -1;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    SharedPtr r = reinterpret_cast<SharedPtr (*)(int)>(g_base + 0x64f824)(row);
+    int table = r.obj ? read_at<int32_t>(r.obj + 0x30) : -1;
+    release_shared_ptr(r.ctrl);
+    return table;
+}
+
 bool db_field(int row, int column, int tuple, std::vector<DbValue>& out) {
     out.clear();
     if (!g_build || !g_build->script_vm || row < 0 || column < 0 || column > 255 || tuple < 0) return false;

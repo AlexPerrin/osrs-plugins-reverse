@@ -256,14 +256,26 @@ final class DevMenu {
         if (p != null && !out.contains(p)) out.add(p);
     }
 
-    /** Hull centre, then a 3x3 grid over the hull's middle; projected body points if no hull. */
+    /**
+     * Centre and a 3x3 grid over the part of the hull that is on the canvas, points inside the
+     * hull and off the game's UI first (an NPC at the left edge is partly under the button
+     * column); projected body points if there's no hull.
+     */
     private static void hullPoints(java.awt.Shape hull, LocalPoint lp, int plane, int height, List<java.awt.Point> out) {
-        java.awt.Rectangle b = hull != null ? hull.getBounds() : null;
+        java.awt.Rectangle hb = hull != null ? hull.getBounds() : null;
+        java.awt.Dimension c = OverlayRenderer.canvasSize();
+        java.awt.Rectangle b = hb == null ? null : hb.intersection(new java.awt.Rectangle(0, 0, c.width, c.height));
         if (b != null && b.width > 0 && b.height > 0) {
-            add(out, clip(new java.awt.Point(b.x + b.width / 2, b.y + b.height / 2)));
+            List<java.awt.Point> grid = new ArrayList<>();
+            grid.add(new java.awt.Point(b.x + b.width / 2, b.y + b.height / 2));
             for (int gy = 1; gy <= 3; gy++)
                 for (int gx = 1; gx <= 3; gx++)
-                    add(out, clip(new java.awt.Point(b.x + b.width * gx / 4, b.y + b.height * gy / 4)));
+                    grid.add(new java.awt.Point(b.x + b.width * gx / 4, b.y + b.height * gy / 4));
+            for (int pass = 0; pass < 2; pass++)
+                for (java.awt.Point p : grid) {
+                    boolean good = hull.contains(p) && !OverlayRenderer.overUi(p.x, p.y);
+                    if (good == (pass == 0)) add(out, clip(p));
+                }
         }
         int h = height > 0 ? height : 200;
         for (int z : new int[] {h / 2, h / 4, h * 3 / 4}) add(out, project(Host.client(), lp, plane, z));

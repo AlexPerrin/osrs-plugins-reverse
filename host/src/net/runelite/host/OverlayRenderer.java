@@ -96,7 +96,11 @@ final class OverlayRenderer {
     void render() {
         // 25 Hz is plenty for overlays and halves the copy cost.
         if ((frame++ & 1) != 0) return;
-        if (overlays.isEmpty()) {
+        // As on desktop, overlays are only drawn while logged in (plugins assume a local player).
+        net.runelite.api.Client client = Host.client();
+        boolean loggedIn = client != null && client.getGameState() == net.runelite.api.GameState.LOGGED_IN
+            && client.getLocalPlayer() != null;
+        if (overlays.isEmpty() || !loggedIn) {
             if (published) Native.overlayPublish(0, 0);
             published = false;
             return;
@@ -151,6 +155,13 @@ final class OverlayRenderer {
     private static final int[] OPAQUE_ROOT_CHILDREN = {50, 36, 111, 41, 40};
     private int exclusionsCycle = Integer.MIN_VALUE;
     private List<Rect> exclusions = new ArrayList<>();
+    private static volatile List<Rect> lastExclusions = new ArrayList<>();
+
+    /** Whether a canvas point lies on the game's opaque UI (as of the last overlay frame). */
+    static boolean overUi(int x, int y) {
+        for (Rect r : lastExclusions) if (r.contains(x, y)) return true;
+        return false;
+    }
 
     /** UI-canvas rectangles scene overlays must not cover; refreshed every 25 cycles. */
     private List<Rect> uiExclusions() {
@@ -219,6 +230,7 @@ final class OverlayRenderer {
             Log.i(Host.TAG, sb.toString());
         }
         exclusions = out;
+        lastExclusions = out;
         return out;
     }
 

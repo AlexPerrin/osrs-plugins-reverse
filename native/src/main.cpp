@@ -5,6 +5,7 @@
 
 #include "agent.h"
 #include "client_thread.h"
+#include "crash_log.h"
 #include "frame_capture.h"
 #include "game.h"
 #include "gl_trace.h"
@@ -40,6 +41,7 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void*) {
         LOGI("debug.osrsrl.off=1: no hooks, no host");
         return JNI_VERSION_1_6;
     }
+    crash_log_install(kGameLib);
     g_orig_swap = reinterpret_cast<SwapFn>(got_hook(kGameLib, "eglSwapBuffers", reinterpret_cast<void*>(hook_eglSwapBuffers)));
     if (!g_orig_swap) {
         LOGE("eglSwapBuffers hook failed; overlay disabled");

@@ -215,6 +215,8 @@ struct DbValue {
     std::string s;
 };
 bool db_field(int row, int column, int tuple, std::vector<DbValue>& out);
+// The table a DB row belongs to (DBRowType +0x30), or -1 if the row doesn't exist. Game thread.
+int db_row_table(int row);
 
 // Item (obj) definitions, from the game's definition cache (loads on demand). Game thread only.
 struct ItemDef {

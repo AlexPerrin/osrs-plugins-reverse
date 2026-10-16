@@ -96,6 +96,7 @@ jobjectArray n_db_field(JNIEnv* env, jclass, jint row, jint column, jint tuple) 
     }
     return a;
 }
+jint n_db_row_table(JNIEnv*, jclass, jint row) { return game::db_row_table(row); }
 // The GPU's ViewTransforms block (100 floats), or null before one was captured.
 jfloatArray n_view_transforms(JNIEnv* env, jclass) {
     float v[100];
@@ -1073,6 +1074,7 @@ const JNINativeMethod kNatives[] = {
     {"viewportZoom", "()[I", reinterpret_cast<void*>(n_viewport_zoom)},
     {"viewTransforms", "()[F", reinterpret_cast<void*>(n_view_transforms)},
     {"dbField", "(III)[Ljava/lang/Object;", reinterpret_cast<void*>(n_db_field)},
+    {"dbRowTable", "(I)I", reinterpret_cast<void*>(n_db_row_table)},
     {"runEnergy", "()I", reinterpret_cast<void*>(n_run_energy)},
     {"actorModel", "(ZI)[I", reinterpret_cast<void*>(n_actor_model)},
     {"actorSetOverhead", "(ZILjava/lang/String;I)Z", reinterpret_cast<void*>(n_actor_set_overhead)},

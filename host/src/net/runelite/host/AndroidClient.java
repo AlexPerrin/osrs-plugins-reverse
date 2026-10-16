@@ -812,4 +812,75 @@ public class AndroidClient extends ClientStub {
     public boolean isClientThread() {
         return Native.isClientThread();
     }
+
+    // ---- Plugin Hub needs (2026-10-16) ----
+
+    private volatile Thread clientThread;
+    private final java.util.Map<Integer, java.util.List<Integer>> dbTableRows = new java.util.HashMap<>();
+    private int itemCount = -1;
+
+    /** The game thread (Thread objects compare equal by identity, as plugins use it). */
+    @Override public Thread getClientThread() {
+        if (isClientThread()) clientThread = Thread.currentThread();
+        return clientThread;
+    }
+
+    /**
+     * Rows of a DB table, found by scanning row ids through the game's DBRowType cache (rows are
+     * numbered densely across tables); scanned once, then cached. Client thread only (empty
+     * otherwise, and not cached).
+     */
+    @Override public java.util.List<Integer> getDBTableRows(int table) {
+        synchronized (dbTableRows) {
+            java.util.List<Integer> cached = dbTableRows.get(table);
+            if (cached != null) return cached;
+        }
+        if (!isClientThread()) return java.util.Collections.emptyList();
+        java.util.Map<Integer, java.util.List<Integer>> all = new java.util.HashMap<>();
+        int misses = 0;
+        for (int row = 0; row <= 0xffff && misses < 4096; row++) {
+            int t = Native.dbRowTable(row);
+            if (t < 0) { misses++; continue; }
+            misses = 0;
+            all.computeIfAbsent(t, k -> new java.util.ArrayList<>()).add(row);
+        }
+        synchronized (dbTableRows) {
+            for (java.util.Map.Entry<Integer, java.util.List<Integer>> e : all.entrySet())
+                dbTableRows.put(e.getKey(), java.util.Collections.unmodifiableList(e.getValue()));
+            java.util.List<Integer> r = dbTableRows.get(table);
+            if (r == null) dbTableRows.put(table, r = java.util.Collections.emptyList());
+            return r;
+        }
+    }
+
+    /** Number of item definitions: one past the highest id the game's obj cache resolves. */
+    @Override public int getItemCount() {
+        if (itemCount >= 0 || !isClientThread()) return Math.max(itemCount, 0);
+        int lo = 0, hi = 0x10000;  // lookup(lo) exists, lookup(hi) assumed not
+        if (getItemDefinition(hi - 1) != null) return itemCount = hi;
+        while (hi - lo > 1) {
+            int mid = (lo + hi) >>> 1;
+            if (getItemDefinition(mid) != null) lo = mid; else hi = mid;
+        }
+        return itemCount = hi;
+    }
+
+    /** Followers (pets) aren't tracked yet. */
+    @Override public net.runelite.api.NPC getFollower() { return null; }
+
+    @Override public net.runelite.api.Deque<net.runelite.api.GraphicsObject> getGraphicsObjects() {
+        return Inert.of(net.runelite.api.Deque.class);
+    }
+
+    /** The sprite index stands for the game's sprite cache; getSprites reads frame 0 from it. */
+    private final net.runelite.api.IndexDataBase spriteIndex = Inert.of(net.runelite.api.IndexDataBase.class);
+    @Override public net.runelite.api.IndexDataBase getIndexSprites() { return spriteIndex; }
+
+    @Override public net.runelite.api.SpritePixels[] getSprites(net.runelite.api.IndexDataBase source, int archiveId, int fileId) {
+        if (source != spriteIndex || fileId != 0 || !isClientThread()) return null;
+        int[] r = Native.sprite(archiveId);
+        if (r == null) return null;
+        int w = r[0], h = r[1];
+        return new net.runelite.api.SpritePixels[] {new HostSpritePixels(java.util.Arrays.copyOfRange(r, 2, 2 + w * h), w, h)};
+    }
 }

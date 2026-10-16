@@ -41,6 +41,8 @@ final class Native {
     static native float[] viewTransforms();
     /** One tuple of a DB row column (Integer/Long/String values), or null. Game thread only. */
     static native Object[] dbField(int row, int column, int tuple);
+    /** Table of DB row `row`, or -1 if there is no such row. Client thread only. */
+    static native int dbRowTable(int row);
     static native int runEnergy();
     /** {height, x0, y0, z0, ...}: an NPC's or player's posed model this frame (unrotated); client thread only. */
     static native int[] actorModel(boolean player, int index);

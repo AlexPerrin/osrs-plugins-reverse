@@ -59,6 +59,9 @@ final class PlayerCache {
             int changed = p.actor(packed, i * S + 6, overheads[i]);
             if (snap.length > 3) p.appearance((int[]) snap[3], i * AndroidPlayer.APPEARANCE_STRIDE);
             if (known && changed != 0) changes.add(new Object[] {p, changed});
+            // An actor that arrives already interacting (a random event NPC on its target) gets its
+            // InteractingChanged, as on desktop, where the spawn and the target come in separately.
+            else if (!known && (changed & AndroidNPC.CHANGED_INTERACTING) != 0) changes.add(new Object[] {p, AndroidNPC.CHANGED_INTERACTING});
             seen.put(index, p);
             next.add(p);
         }

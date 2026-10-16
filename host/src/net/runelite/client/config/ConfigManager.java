@@ -256,4 +256,43 @@ public class ConfigManager {
         }
         return o.toString();
     }
+
+    // One local profile; profiles aren't synced or switchable on the device.
+    private final ConfigProfile profile = newProfile();
+
+    private static ConfigProfile newProfile() {
+        ConfigProfile p = new ConfigProfile(0);
+        p.setName("default");
+        p.setActive(true);
+        return p;
+    }
+
+    public ConfigProfile getProfile() { return profile; }
+
+    /** As on desktop: the group, @ConfigSection fields and @ConfigItem methods of a config's interface. */
+    public ConfigDescriptor getConfigDescriptor(Config config) {
+        Class<?> type = null;
+        for (Class<?> iface : config.getClass().getInterfaces()) {
+            if (iface.getAnnotation(ConfigGroup.class) != null) { type = iface; break; }
+        }
+        if (type == null) throw new IllegalArgumentException("Not a config group");
+        java.util.List<ConfigSectionDescriptor> sections = new java.util.ArrayList<>();
+        for (java.lang.reflect.Field f : type.getDeclaredFields()) {
+            ConfigSection cs = f.getAnnotation(ConfigSection.class);
+            if (cs == null || f.getType() != String.class) continue;
+            try {
+                sections.add(new ConfigSectionDescriptor(String.valueOf(f.get(null)), cs));
+            } catch (IllegalAccessException ignored) { }
+        }
+        sections.sort(java.util.Comparator.comparingInt(ConfigSectionDescriptor::position).thenComparing(ConfigSectionDescriptor::name));
+        java.util.List<ConfigItemDescriptor> items = new java.util.ArrayList<>();
+        for (java.lang.reflect.Method m : type.getMethods()) {
+            ConfigItem ci = m.getAnnotation(ConfigItem.class);
+            if (ci == null || m.getParameterTypes().length != 0) continue;
+            items.add(new ConfigItemDescriptor(ci, m.getGenericReturnType(), m.getAnnotation(Range.class),
+                m.getAnnotation(Alpha.class), m.getAnnotation(Units.class)));
+        }
+        items.sort(java.util.Comparator.comparingInt(ConfigItemDescriptor::position).thenComparing(ConfigItemDescriptor::name));
+        return new ConfigDescriptor(type.getAnnotation(ConfigGroup.class), sections, items);
+    }
 }

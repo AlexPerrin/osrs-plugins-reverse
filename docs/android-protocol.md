@@ -84,6 +84,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 
 | Opcode | Prot | Layout |
 |---|---|---|
+| 0 | SET_HEATMAP_ENABLED (unverified, see notes) | enabled `p1`; the client ignores opcode 0 |
 | 1 | CAM_RESET | as desktop (zeroes the camera state) |
 | 3 | HINT_ARROW | as desktop (FUN_004fd3a4 switches on the desktop types) |
 | 5 | NPC_HEADICON_SPECIFIC | index `p2Alt2`, headIconSlot `p1Alt2`, spriteGroup `p4Alt2`, spriteIndex `p2Alt1` |
@@ -94,6 +95,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 15 | CAM_MODE | as desktop (oculus orb state) |
 | 18 | UPDATE_INV_STOPTRANSMIT | as desktop (inventory p2Alt2, clears it) |
 | 19 | CLANCHANNEL_FULL (unverified) | recognised, no codec |
+| 20 | HIDENPCOPS (unverified, see notes) | hidden `p1` (b & 1) |
 | 21 | UPDATE_UID192 | as desktop (24 bytes + crc32) |
 | 22 | VARP_RESET | as desktop (zeroes all varps) |
 | 24 | URL_OPEN (unverified) | recognised, no codec |
@@ -157,7 +159,9 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 108 | CAM_TARGET_V4 | [index p4][type -b] |
 | 111 | MAP_ANIM_SPECIFIC | delay `p2Alt3`, height `p1Alt3`, coordInBuildAreaPacked `p3Alt3`, id `p2Alt3` |
 | 112 | SET_PLAYER_OP | if (priority) 1 else 0 `p1Alt1`, id `p1Alt1`, op ?: "null" `pjstr` |
+| 113 | HIDELOCOPS (unverified, see notes) | hidden `p1` (b & 1) |
 | 114 | RESET_INTERACTION_MODE | as desktop (world id p2) |
+| 115 | HIDEOBJOPS (unverified, see notes) | hidden `p1` (b & 1) |
 | 117 | MESSAGE_CLANCHANNEL | as desktop (chat types 41/44) |
 | 118 | OBJ_COUNT_SPECIFIC | newQuantity `p4Alt1`, id `p2Alt2`, oldQuantity `p4Alt2`, coordGrid.packed `p4Alt1` |
 | 119 | VARCLAN | as desktop (id + typed value) |
@@ -190,8 +194,14 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 Notes:
 - The jump table is at vaddr 0x1040f6 (u16 entries, target = 0x441e8c + 4 × entry). Opcodes 0, 60,
   116 and 137 go straight to the exit path (the client ignores them; 60 is consumed in the reader).
-- Not identified: 20, 113, 115 (three flag bytes in one settings struct: HIDENPCOPS / HIDELOCOPS /
-  HIDEOBJOPS / SET_HEATMAP_ENABLED, assignment unknown), 65 and 110 (one string each: SITE_SETTINGS /
+- 0 / 20 / 113 / 115 (unverified): the server size table has 10 size-1 opcodes (0, 11, 15, 20, 27,
+  31, 113, 115, 128, 149) for desktop's 10 size-1 prots; the other six are mapped, leaving
+  SET_HEATMAP_ENABLED / HIDENPCOPS / HIDELOCOPS / HIDEOBJOPS. Cases 20, 113 and 115 store `b & 1` at
+  bytes +4, +3 and +5 of one settings struct (`*(client+0x4132b0)+0x3b8`, accessor FUN_0068fa48;
+  a CS2 op at 0x5c2b10 writes +2), and opcode 0 is ignored by the dispatcher, so 0 is taken as the
+  heatmap flag. Provisional names: 20 HIDENPCOPS, 113 HIDELOCOPS, 115 HIDEOBJOPS; test live with
+  `::hideops npc|loc|obj [1|0]` and rename by which minimenu ops disappear.
+- Not identified: 65 and 110 (one string each: SITE_SETTINGS /
   UNKNOWN_STRING), 143 (p4, picks the camera's world view; maybe SET_MAP_FLAG_V2 or a newer prot).
 - 41 REBUILD_REGION_V2: reload `p1Alt3`, zoneX `p2Alt1`, zoneZ `p2Alt1`, mapsquare count `p2`
   (skipped), then the desktop region bits (parser 0x6580e4). Not implemented.

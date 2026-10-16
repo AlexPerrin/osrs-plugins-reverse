@@ -744,10 +744,10 @@ index 00000000..8b5e4b64
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..a74b5050
+index 00000000..43649481
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,165 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.protocol.Prot
@@ -807,6 +807,7 @@ index 00000000..a74b5050
 +    NPC_INFO_LARGE_V6(145, Prot.VAR_SHORT),
 +    NPC_INFO_SMALL_V6(150, Prot.VAR_SHORT),
 +    CAM_RESET(1, 0), // dispatcher case read
++    SET_HEATMAP_ENABLED(0, 1), // unverified: by elimination: the 10th size-1 prot (desktop has 10), and the dispatcher ignores opcode 0 (no heatmap on mobile?)
 +    HINT_ARROW(3, 6), // dispatcher case read
 +    NPC_HEADICON_SPECIFIC(5, 9), // dispatcher case read
 +    MESSAGE_CLANCHANNEL_SYSTEM(9, Prot.VAR_BYTE), // dispatcher case read
@@ -816,6 +817,7 @@ index 00000000..a74b5050
 +    CAM_MODE(15, 1), // dispatcher case read
 +    UPDATE_INV_STOPTRANSMIT(18, 2), // dispatcher case read
 +    CLANCHANNEL_FULL(19, Prot.VAR_SHORT), // unverified: body parser not compared with desktop
++    HIDENPCOPS(20, 1), // unverified: one of HIDENPCOPS/HIDELOCOPS/HIDEOBJOPS (cases 20/113/115 store b&1 in bytes +4/+3/+5 of one settings struct at FUN_0068fa48); assignment pending a live test (::hideops)
 +    UPDATE_UID192(21, 28), // dispatcher case read
 +    VARP_RESET(22, 0), // dispatcher case read
 +    URL_OPEN(24, Prot.VAR_SHORT), // unverified: medium: one string to a Java bridge call
@@ -879,7 +881,9 @@ index 00000000..a74b5050
 +    CAM_TARGET_V4(108, 5), // dispatcher case read
 +    MAP_ANIM_SPECIFIC(111, 8), // dispatcher case read
 +    SET_PLAYER_OP(112, Prot.VAR_BYTE), // dispatcher case read
++    HIDELOCOPS(113, 1), // unverified: one of HIDENPCOPS/HIDELOCOPS/HIDEOBJOPS (cases 20/113/115 store b&1 in bytes +4/+3/+5 of one settings struct at FUN_0068fa48); assignment pending a live test (::hideops)
 +    RESET_INTERACTION_MODE(114, 2), // dispatcher case read
++    HIDEOBJOPS(115, 1), // unverified: one of HIDENPCOPS/HIDELOCOPS/HIDEOBJOPS (cases 20/113/115 store b&1 in bytes +4/+3/+5 of one settings struct at FUN_0068fa48); assignment pending a live test (::hideops)
 +    MESSAGE_CLANCHANNEL(117, Prot.VAR_BYTE), // dispatcher case read
 +    OBJ_COUNT_SPECIFIC(118, 14), // dispatcher case read
 +    VARCLAN(119, Prot.VAR_BYTE), // dispatcher case read
@@ -1294,10 +1298,10 @@ index 00000000..0fc21777
 +    )
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
 new file mode 100644
-index 00000000..b6bebe6e
+index 00000000..99bd00fd
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
-@@ -0,0 +1,838 @@
+@@ -0,0 +1,876 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -1401,7 +1405,11 @@ index 00000000..b6bebe6e
 +import net.rsprot.protocol.game.outgoing.inv.UpdateInvStopTransmit
 +import net.rsprot.protocol.game.outgoing.logout.LogoutTransfer
 +import net.rsprot.protocol.game.outgoing.logout.LogoutWithReason
++import net.rsprot.protocol.game.outgoing.misc.client.HideLocOps
++import net.rsprot.protocol.game.outgoing.misc.client.HideNpcOps
++import net.rsprot.protocol.game.outgoing.misc.client.HideObjOps
 +import net.rsprot.protocol.game.outgoing.misc.client.HintArrow
++import net.rsprot.protocol.game.outgoing.misc.client.SetHeatmapEnabled
 +import net.rsprot.protocol.game.outgoing.misc.client.MinimapToggle
 +import net.rsprot.protocol.game.outgoing.misc.client.ResetAnims
 +import net.rsprot.protocol.game.outgoing.misc.client.ResetInteractionMode
@@ -2136,6 +2144,40 @@ index 00000000..b6bebe6e
 +        buffer.p1Alt1(if (message.fade) 1 else 0)
 +    }
 +}
++
++/** Cases 20 / 113 / 115: one byte, b & 1 stored in a settings struct (which flag is which: unverified). */
++public class AndroidHideNpcOpsEncoder : MessageEncoder<HideNpcOps> {
++    override val prot: ServerProt = AndroidGameServerProt.HIDENPCOPS
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: HideNpcOps) {
++        buffer.pboolean(message.hidden)
++    }
++}
++
++public class AndroidHideLocOpsEncoder : MessageEncoder<HideLocOps> {
++    override val prot: ServerProt = AndroidGameServerProt.HIDELOCOPS
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: HideLocOps) {
++        buffer.pboolean(message.hidden)
++    }
++}
++
++public class AndroidHideObjOpsEncoder : MessageEncoder<HideObjOps> {
++    override val prot: ServerProt = AndroidGameServerProt.HIDEOBJOPS
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: HideObjOps) {
++        buffer.pboolean(message.hidden)
++    }
++}
++
++/** Opcode 0: the client ignores it (no dispatcher case); kept so the message can be sent harmlessly. */
++public class AndroidSetHeatmapEnabledEncoder : MessageEncoder<SetHeatmapEnabled> {
++    override val prot: ServerProt = AndroidGameServerProt.SET_HEATMAP_ENABLED
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: SetHeatmapEnabled) {
++        buffer.pboolean(message.enabled)
++    }
++}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt
 new file mode 100644
 index 00000000..d083e608
@@ -2577,10 +2619,10 @@ index 00000000..b1436285
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..455cbe4d
+index 00000000..95b45a29
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,228 @@
+@@ -0,0 +1,232 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2694,6 +2736,10 @@ index 00000000..455cbe4d
 +            bind(AndroidChatFilterSettingsPrivateChatEncoder())
 +            bind(AndroidIfSetColourEncoder())
 +            bind(AndroidMinimapToggleEncoder())
++            bind(AndroidHideNpcOpsEncoder())
++            bind(AndroidHideLocOpsEncoder())
++            bind(AndroidHideObjOpsEncoder())
++            bind(AndroidSetHeatmapEnabledEncoder())
 +            bind(AndroidNpcSpotAnimSpecificEncoder())
 +            bind(AndroidIfSetPositionEncoder())
 +            bind(AndroidIfClearInvEncoder())

@@ -30,6 +30,9 @@ import net.rsprot.protocol.game.outgoing.interfaces.IfOpenTop
 import net.rsprot.protocol.game.outgoing.logout.Logout
 import net.rsprot.protocol.game.outgoing.map.RebuildLoginV2
 import net.rsprot.protocol.game.outgoing.map.RebuildNormalV2
+import net.rsprot.protocol.game.outgoing.misc.client.HideLocOps
+import net.rsprot.protocol.game.outgoing.misc.client.HideNpcOps
+import net.rsprot.protocol.game.outgoing.misc.client.HideObjOps
 import net.rsprot.protocol.game.outgoing.misc.client.ServerTickEnd
 import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
 import net.rsprot.protocol.game.outgoing.misc.player.RunClientScript
@@ -787,6 +790,17 @@ class World(
                 }
                 player.hitpoints = levelForXp(player.experience[HITPOINTS])
                 sendStat(player, HITPOINTS)
+            }
+            "hideops" -> {
+                // Android opcodes 20 (npc) / 113 (loc) / 115 (obj) as provisionally named; see which ops vanish.
+                val on = args.getOrNull(2) != "0"
+                when (args.getOrNull(1)) {
+                    "npc" -> player.send(HideNpcOps(on))
+                    "loc" -> player.send(HideLocOps(on))
+                    "obj" -> player.send(HideObjOps(on))
+                    else -> return player.message("Usage: ::hideops npc|loc|obj [1|0]  (opcodes 20|113|115)")
+                }
+                player.message("Sent hideops ${args[1]} = $on")
             }
             "freeze" -> {
                 npcsFrozen = !npcsFrozen

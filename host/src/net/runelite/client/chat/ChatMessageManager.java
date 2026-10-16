@@ -25,7 +25,7 @@ public class ChatMessageManager {
     }
 
     /** RuneLite format -> game tags, with ChatColorConfig's transparent-chatbox game-message defaults. */
-    static String format(String s) {
+    public static String format(String s) {
         return s.replace("<col" + ChatColorType.NORMAL.name() + ">", "<col=ffffff>")
                 .replace("<col" + ChatColorType.HIGHLIGHT.name() + ">", "<col=ef5050>");
     }

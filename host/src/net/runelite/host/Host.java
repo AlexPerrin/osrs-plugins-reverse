@@ -357,6 +357,11 @@ public final class Host {
                 AndroidMessageNode node = new AndroidMessageNode(a, chatType, m[0], m[1], m[2], now);
                 AndroidClient.rememberMessage(node);
                 bus.post(new ChatMessage(node, chatType, m[0], m[2], m[1], now));
+                // RuneLite's ChatMessageManager applies a node's RuneLite-format message (colour
+                // placeholders such as <colHIGHLIGHT>, set by Chat Notifications) when the chat
+                // line is built ("chatMessageBuilding"); here once, after the ChatMessage handlers.
+                if (node.getRuneLiteFormatMessage() != null)
+                    node.setValue(net.runelite.client.chat.ChatMessageManager.format(node.getRuneLiteFormatMessage()));
                 chatFilterCheck(bus, node, b);
                 break;
             }

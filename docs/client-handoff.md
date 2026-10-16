@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 8 entry (2026-10-16) at the end of "Where things stand".
+> Latest state: see the gen 9 entry (2026-10-16) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -262,6 +262,29 @@ session; its notes are in `docs/android-protocol.md`.
   - Next: ScriptPreFired/ScriptPostFired (hook the script VM entry; unlocks XP Drop and many others), verify
     Status Bars, friends with a real friend, chat line buffers, InfoBox overlay (InfoBoxManager has no
     renderer; Boosts used its own overlay).
+- **2026-10-16 (client dev gen 9)**, commits f63a715..:
+  - **Inline arm64 hooks work under libnb** (`native/src/inline_hook.cpp`): patch the first 4
+    instructions (must not be PC-relative; expected bytes are checked) with `ldr x16,#8; br x16`, from
+    JNI_OnLoad before the target ever runs. Used for **ScriptPreFired/ScriptPostFired**
+    (`script_hooks.cpp`: runScriptEvent = root; script lookup `0x3f5658` called from GOSUB = proc entry
+    with args on the stacks; locals swap `0x4dfd5c` called from RETURN = proc exit). Listeners see the
+    VM's live stacks (int stack edits written back). On by default; `setprop debug.osrsrl.scripts 0`
+    off, `2` logs every script. 30 fps with everything delivered.
+  - **Core plugin batch**: `## Core plugin status` table in docs/plugin-host.md (the orchestrator's
+    progress.py parses it; keep its format: `| Plugin | Status | Notes |`, status runs/starts/throws/untested).
+    `EXTRA="a b" tools/plugin-test.sh` pushes `re/host/plugins-extra/<name>.jar` (make them with
+    `tools/dex-plugin.sh --core <pkg> re/host/plugins-extra/<pkg>.jar`). Always restore the default set
+    (grounditems, opponentinfo, quest-helper) afterwards.
+  - Host fixes from the batch: @PluginDependency installs the dependency's `getPublicModule()` (as
+    RuneLite; XpTrackerService, ItemStatChangesService), config interface defaults
+    (`setDefaultConfiguration`), Notification config as on/off, `runelite.title`/`runelite.ws`, protobuf-javalite +
+    RuneLite http-api in host.jar, WidgetItemOverlay gets its OverlayManager + inventory/bank WidgetItems,
+    Status Bars' viewport 161:73 → side panel 601:111, `getChatLineMap` (host-side), `getStructComposition`.
+  - **Android 9 lacks Java 9+ APIs**: `host/tools/api_gaps.py` (dexdump.exe of host.jar vs the SDK's
+    api-versions.xml) lists them; RuneLite's `Text` and `WildcardMatcher` are same-name replacements for that.
+  - Open: mobile orbs aren't group 160 (Regen Meter, Run Energy anchor there; find with
+    `setprop debug.osrsrl.wdump all` and grep the text '99'); Attack Styles draws nothing (struct support
+    added, unverified); XP Drop's hideSkillIcons (children array is a copy); ChatIconManager.loadRankIcons NPE.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

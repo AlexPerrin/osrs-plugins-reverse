@@ -91,7 +91,11 @@ void post(const Event& e) {
 
 void diff_varps() {
     int n = game::varp_count();
-    if (n <= 0 || n > 1 << 16) return;
+    // OpenRune's cache defines far more varps than the stock one; a 1 << 16 bound silently skipped
+    // the whole diff there (no VarbitChanged at all).
+    static int logged = -1;
+    if (n != logged) { LOGI("varps: %d", n); logged = n; }
+    if (n <= 0 || n > 1 << 22) return;
     std::vector<int32_t> now(n);
     for (int i = 0; i < n; i++) now[i] = game::varp(i);
     if (g_varp_shadow.size() == now.size()) {

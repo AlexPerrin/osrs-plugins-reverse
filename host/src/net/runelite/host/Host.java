@@ -316,6 +316,8 @@ public final class Host {
                 break;
             }
             case VARBIT_CHANGED: {
+                if ("1".equals(Native.property("debug.osrsrl.varlog")))
+                    Log.i(TAG, "VarbitChanged varp " + a + " = " + b + " state " + client.getGameState());
                 VarbitChanged e = new VarbitChanged();
                 e.setVarpId(a);
                 e.setVarbitId(-1);

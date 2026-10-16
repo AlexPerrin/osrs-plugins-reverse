@@ -7,9 +7,23 @@ another session; see `docs/client-handoff.md`. Protocol findings live in
 
 ## Latest state (2026-10-16, third server dev; new hashes after the authorship rewrite)
 
-Container runs 7ee343a (deployed 23:18 local); later commits are offline-only (cd901ea adds
-`::trace` / `::jingle`, needs a deploy). Metric (`tools/progress.py --working`): mapped 241/253,
-live opcodes 241/241, verified 216/253.
+Container runs ac31a14 (deployed 23:34 local); 39e7f91 after it is tags/docs only. Metric
+(`tools/progress.py --working`; revert its output files, they belong to the orchestrator): mapped
+241/253, live opcodes 241/241, verified 218/253.
+
+Test commands added this session: `::trace` (log every incoming message, Event* included),
+`::jingle id`, `::chatfilter pub trade` (78), `::give id [n]` (alias of `::item`), `::proj id dx
+mode`. Device tips: camera rotation = `input keyevent --longpress 21/22/19/20` (one-finger swipes
+only send mouse events); after a container restart the app can hang at "Connecting to server..."
+with no requests: `am force-stop com.jagex.oldscape.android`, relaunch with monkey, tap Play Now
+(958,550). The client dev's Quest Helper sidebar may be left open and swallow typed input.
+
+Next steps: remaining unverified entries (see `grep unverified` in the two enums): 45 SET_HEADING
+(special minimap mode), 46 SOUND_JINGLEEND (needs audio on), 11 (labels need a script redraw:
+find the chat-tab script and run it after the packet), 24 URL_OPEN, 120 IF_SETROTATESPEED, 123
+MIDI_SWAP, 148 CAM_SKYBOX, clan/group bodies (19/84/87/88, 134/138/140/141), 8 IF_SCRIPT_TRIGGER,
+50 MESSAGE_PRIVATE. Untested on device: Spin at the castle wheel via door 1543, Fred's gate
+double-open.
 
 - **Persistence** (7ee343a, verified live: survives relog and `docker compose restart`):
   `Saves.kt` writes one JSON file per account (Gson) with position, HP, XP, varps, inventory,

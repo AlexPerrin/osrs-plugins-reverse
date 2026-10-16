@@ -5,3 +5,4 @@ build
 rsprot/**/build
 rsprot/.gradle
 rsprot/.git
+!data/rsa.properties

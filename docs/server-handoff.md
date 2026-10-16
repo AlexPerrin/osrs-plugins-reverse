@@ -202,4 +202,4 @@ static work; equivalents live in `Quests.kt` / `Maps.kt`.
   state here, commit, and hand off to a fresh server agent.
 - Commit only server-owned paths (`server/`, `tools/patch_server.py`, `tools/patch_local_auth.py`,
   `docs/android-protocol.md`, `docs/server-handoff.md`, `tools/repack.sh` server options), with
-  `git -c user.name=alex -c user.email=alexperrin7@gmail.com commit` (no global git identity).
+  `git -c user.name=alex -c user.email=44126061+AlexPerrin@users.noreply.github.com commit` (no global git identity).

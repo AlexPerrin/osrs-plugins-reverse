@@ -740,10 +740,10 @@ index 00000000..1cbc8805
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..2ab28738
+index 00000000..a74b5050
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,161 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.protocol.Prot
@@ -755,6 +755,10 @@ index 00000000..2ab28738
 + * Opcodes are indices into the client's server-packet size table (.rodata 0x104c4c, 151 entries,
 + * read by the packet reader at Ghidra 0x5da16c); each one was matched by reading its case in the
 + * packet dispatcher (Ghidra 0x541dd4). See docs/android-protocol.md in the test-server project.
++ *
++ * Tags on entries added in the 2026-10-16 pass: "dispatcher case read" = the prot was matched by
++ * reading its dispatcher case (field reads/transforms compared with RSProt's desktop encoder);
++ * "unverified" = identity or layout is weaker (reason given). None of those are verified live yet.
 + */
 +public enum class AndroidGameServerProt(
 +    override val opcode: Int,
@@ -798,6 +802,108 @@ index 00000000..2ab28738
 +    IF_SETTEXT(122, Prot.VAR_SHORT),
 +    NPC_INFO_LARGE_V6(145, Prot.VAR_SHORT),
 +    NPC_INFO_SMALL_V6(150, Prot.VAR_SHORT),
++    CAM_RESET(1, 0), // dispatcher case read
++    HINT_ARROW(3, 6), // dispatcher case read
++    NPC_HEADICON_SPECIFIC(5, 9), // dispatcher case read
++    MESSAGE_CLANCHANNEL_SYSTEM(9, Prot.VAR_BYTE), // dispatcher case read
++    CHAT_FILTER_SETTINGS_PRIVATECHAT(11, 1), // unverified: medium: one byte stored, values > 2 -> -1
++    OBJ_CUSTOMISE_SPECIFIC_V1(12, 20), // dispatcher case read
++    UPDATE_IGNORELIST(13, Prot.VAR_SHORT), // dispatcher case read
++    CAM_MODE(15, 1), // dispatcher case read
++    UPDATE_INV_STOPTRANSMIT(18, 2), // dispatcher case read
++    CLANCHANNEL_FULL(19, Prot.VAR_SHORT), // unverified: body parser not compared with desktop
++    UPDATE_UID192(21, 28), // dispatcher case read
++    VARP_RESET(22, 0), // dispatcher case read
++    URL_OPEN(24, Prot.VAR_SHORT), // unverified: medium: one string to a Java bridge call
++    UPDATE_FRIENDLIST(25, Prot.VAR_SHORT), // dispatcher case read
++    LOGOUT_WITHREASON(27, 1), // dispatcher case read
++    IF_SETCOLOUR(29, 6), // dispatcher case read
++    MINIMAP_TOGGLE(31, 1), // unverified: medium: byte stored in the minimap renderer
++    UPDATE_FRIENDCHAT_CHANNEL_SINGLEUSER(33, Prot.VAR_BYTE), // dispatcher case read
++    LOGOUT_TRANSFER(35, Prot.VAR_BYTE), // dispatcher case read
++    MESSAGE_PRIVATE_ECHO(36, Prot.VAR_SHORT), // dispatcher case read
++    NPC_SPOTANIM_SPECIFIC(37, 9), // dispatcher case read
++    ACCOUNT_FLAGS(38, 8), // dispatcher case read
++    UPDATE_TRADINGPOST_V2(39, Prot.VAR_SHORT), // dispatcher case read
++    UPDATE_FRIENDCHAT_CHANNEL_FULL_V2(40, Prot.VAR_SHORT), // dispatcher case read
++    REBUILD_REGION_V2(41, Prot.VAR_SHORT), // dispatcher case read
++    MESSAGE_FRIENDCHANNEL(43, Prot.VAR_BYTE), // dispatcher case read
++    OCULUS_SYNC(44, 4), // dispatcher case read
++    IF_SETPOSITION(45, 8), // dispatcher case read
++    RESET_ANIMS(49, 0), // dispatcher case read
++    ANIM_SPECIFIC(50, 3), // dispatcher case read
++    CAM_SHAKE(51, 4), // dispatcher case read
++    IF_CLEARINV(52, 4), // dispatcher case read
++    VARP_LONG(53, 10), // dispatcher case read
++    UPDATE_STOCKMARKET_SLOT_V1(54, 20), // dispatcher case read
++    CAM_ROTATEBY(56, 7), // dispatcher case read
++    MIDI_SONG_V2(57, 10), // dispatcher case read
++    UPDATE_TRADINGPOST_V1(58, Prot.VAR_SHORT), // dispatcher case read
++    UPDATE_REBOOT_TIMER_V2(61, Prot.VAR_BYTE), // dispatcher case read
++    IF_SETPLAYERMODEL_BASECOLOUR(63, 6), // dispatcher case read
++    UPDATE_STOCKMARKET_SLOT_V2(66, 34), // dispatcher case read
++    VARCLAN_ENABLE(67, 0), // dispatcher case read
++    FRIENDLIST_LOADED(69, 0), // dispatcher case read
++    REBUILD_WORLDENTITY_V4(70, Prot.VAR_SHORT), // dispatcher case read
++    SYNTH_SOUND(71, 5), // dispatcher case read
++    CAM_ROTATETO(73, 7), // dispatcher case read
++    MIDI_SONG_WITHSECONDARY(74, 12), // dispatcher case read
++    PROJANIM_SPECIFIC_V4(76, 27), // dispatcher case read
++    CHAT_FILTER_SETTINGS(78, 2), // dispatcher case read
++    MIDI_JINGLE(80, 5), // dispatcher case read
++    HISCORE_REPLY(82, Prot.VAR_SHORT), // dispatcher case read
++    IF_SETPLAYERMODEL_OBJ(83, 8), // dispatcher case read
++    CLANSETTINGS_FULL(84, Prot.VAR_SHORT), // unverified: body parser not compared
++    SET_INTERACTION_MODE(85, 4), // dispatcher case read
++    MIDI_SONG_STOP(86, 4), // dispatcher case read
++    CLANSETTINGS_DELTA(87, Prot.VAR_SHORT), // unverified: body parser not compared
++    CLANCHANNEL_DELTA(88, Prot.VAR_SHORT), // unverified: body parser not compared
++    CAM_TARGET_V3(89, 5), // dispatcher case read
++    NPC_ANIM_SPECIFIC(91, 5), // dispatcher case read
++    SEND_PING(92, 8), // dispatcher case read
++    MESSAGE_PRIVATE(93, Prot.VAR_SHORT), // dispatcher case read
++    CAM_SMOOTHRESET(94, 4), // dispatcher case read
++    OBJ_ENABLED_OPS_SPECIFIC(95, 7), // dispatcher case read
++    VARP_SYNC(96, 0), // dispatcher case read
++    OBJ_UNCUSTOMISE_SPECIFIC(97, 10), // dispatcher case read
++    PLAYER_SPOTANIM_SPECIFIC(98, 9), // dispatcher case read
++    IF_SETPLAYERMODEL_SELF(100, 5), // dispatcher case read
++    IF_SETPLAYERMODEL_BODYTYPE(103, 5), // dispatcher case read
++    LOC_ANIM_SPECIFIC(104, 6), // dispatcher case read
++    IF_SETANGLE(106, 10), // dispatcher case read
++    TRIGGER_ONDIALOGABORT(107, 0), // dispatcher case read
++    CAM_TARGET_V4(108, 5), // dispatcher case read
++    MAP_ANIM_SPECIFIC(111, 8), // dispatcher case read
++    SET_PLAYER_OP(112, Prot.VAR_BYTE), // dispatcher case read
++    RESET_INTERACTION_MODE(114, 2), // dispatcher case read
++    MESSAGE_CLANCHANNEL(117, Prot.VAR_BYTE), // dispatcher case read
++    OBJ_COUNT_SPECIFIC(118, 14), // dispatcher case read
++    VARCLAN(119, Prot.VAR_BYTE), // dispatcher case read
++    IF_SETROTATESPEED(120, 8), // unverified: prot by size elimination; x/y order guessed
++    MIDI_SWAP(123, 8), // unverified: field names unknown
++    VARCLAN_DISABLE(124, 0), // dispatcher case read
++    IF_SETSCROLLPOS(125, 6), // dispatcher case read
++    IF_MOVESUB(126, 8), // dispatcher case read
++    IF_SETOBJECT(127, 10), // dispatcher case read
++    CAM_UNLOCK(128, 1), // dispatcher case read
++    CAM_MOVETO_ARC_V3(129, 15), // dispatcher case read
++    IF_SETMODEL_V2(130, 8), // dispatcher case read
++    CAM_LOOKAT_V3(131, 9), // dispatcher case read
++    OBJ_CUSTOMISE_SPECIFIC_V2(132, Prot.VAR_SHORT), // dispatcher case read
++    CAM_MOVETO_CYCLES_V3(133, 11), // dispatcher case read
++    GROUP_VAR_INT(134, 9), // unverified: shared handler; INT/VAR/LONG assigned by size
++    OBJUNLOCK_RESET(135, 0), // dispatcher case read
++    CAM_MOVETO_V3(136, 9), // dispatcher case read
++    GROUP_VAR(138, Prot.VAR_SHORT), // unverified: shared handler; INT/VAR/LONG assigned by size
++    OBJUNLOCK_UPDATE(139, Prot.VAR_SHORT), // dispatcher case read
++    GROUP_FULL(140, Prot.VAR_SHORT), // unverified: payload not traced
++    GROUP_VAR_LONG(141, 13), // unverified: shared handler; INT/VAR/LONG assigned by size
++    CAM_ROTATETO_COORDINATE_V3(142, 11), // dispatcher case read
++    CAM_LOOKAT_CYCLES(144, 10), // dispatcher case read
++    WORLDENTITY_INFO_V7(146, Prot.VAR_SHORT), // dispatcher case read
++    AMBIENTSOUND_START(147, 3), // dispatcher case read
++    CAM_SKYBOX(148, 4), // unverified: prot by size elimination (vs SET_MAP_FLAG_V2)
++    AMBIENTSOUND_STOP(149, 1), // dispatcher case read
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt
 new file mode 100644
@@ -867,6 +973,850 @@ index 00000000..a6250dab
 +        private val spawnClockMaxValues = spawnClockBitcodes.map { (1L shl it) - 1 }.toLongArray()
 +        private val typeBitcodes = intArrayOf(12, 14, 17, 24)
 +        private val typeMaxValues = typeBitcodes.map { (1 shl it) - 1 }.toIntArray()
++    }
++}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
+new file mode 100644
+index 00000000..b6bebe6e
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
+@@ -0,0 +1,838 @@
++package net.rsprot.protocol.android
++
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.compression.provider.HuffmanCodecProvider
++import net.rsprot.crypto.cipher.StreamCipher
++import net.rsprot.protocol.ServerProt
++import net.rsprot.protocol.message.codec.MessageEncoder
++import net.rsprot.protocol.util.pCombinedId
++import net.rsprot.protocol.util.pCombinedIdAlt1
++import net.rsprot.protocol.util.pCombinedIdAlt2
++import net.rsprot.protocol.util.pCombinedIdAlt3
++import net.rsprot.protocol.game.outgoing.camera.CamLookAtCycles
++import net.rsprot.protocol.game.outgoing.camera.CamLookAtV3
++import net.rsprot.protocol.game.outgoing.camera.CamMode
++import net.rsprot.protocol.game.outgoing.camera.CamMoveToArcV3
++import net.rsprot.protocol.game.outgoing.camera.CamMoveToCyclesV3
++import net.rsprot.protocol.game.outgoing.camera.CamMoveToV3
++import net.rsprot.protocol.game.outgoing.camera.CamReset
++import net.rsprot.protocol.game.outgoing.camera.CamRotateBy
++import net.rsprot.protocol.game.outgoing.camera.CamRotateTo
++import net.rsprot.protocol.game.outgoing.camera.CamRotateToCoordinateV3
++import net.rsprot.protocol.game.outgoing.camera.CamShake
++import net.rsprot.protocol.game.outgoing.camera.CamSkybox
++import net.rsprot.protocol.game.outgoing.camera.CamSmoothReset
++import net.rsprot.protocol.game.outgoing.camera.CamTargetV3
++import net.rsprot.protocol.game.outgoing.camera.CamTargetV4
++import net.rsprot.protocol.game.outgoing.camera.CamUnlock
++import net.rsprot.protocol.game.outgoing.camera.OculusSync
++import net.rsprot.protocol.game.outgoing.clan.MessageClanChannel
++import net.rsprot.protocol.game.outgoing.clan.MessageClanChannelSystem
++import net.rsprot.protocol.game.outgoing.clan.VarClan
++import net.rsprot.protocol.game.outgoing.clan.VarClanDisable
++import net.rsprot.protocol.game.outgoing.clan.VarClanEnable
++import net.rsprot.protocol.game.outgoing.codec.camera.CamModeEncoder
++import net.rsprot.protocol.game.outgoing.codec.camera.CamResetEncoder
++import net.rsprot.protocol.game.outgoing.codec.camera.CamRotateByEncoder
++import net.rsprot.protocol.game.outgoing.codec.camera.CamRotateToEncoder
++import net.rsprot.protocol.game.outgoing.codec.camera.CamShakeEncoder
++import net.rsprot.protocol.game.outgoing.codec.camera.CamSmoothResetEncoder
++import net.rsprot.protocol.game.outgoing.codec.camera.CamTargetV3Encoder
++import net.rsprot.protocol.game.outgoing.codec.camera.CamUnlockEncoder
++import net.rsprot.protocol.game.outgoing.codec.camera.OculusSyncEncoder
++import net.rsprot.protocol.game.outgoing.codec.clan.MessageClanChannelEncoder
++import net.rsprot.protocol.game.outgoing.codec.clan.MessageClanChannelSystemEncoder
++import net.rsprot.protocol.game.outgoing.codec.clan.VarClanDisableEncoder
++import net.rsprot.protocol.game.outgoing.codec.clan.VarClanEnableEncoder
++import net.rsprot.protocol.game.outgoing.codec.clan.VarClanEncoder
++import net.rsprot.protocol.game.outgoing.codec.friendchat.MessageFriendChannelEncoder
++import net.rsprot.protocol.game.outgoing.codec.friendchat.UpdateFriendChatChannelFullV2Encoder
++import net.rsprot.protocol.game.outgoing.codec.friendchat.UpdateFriendChatChannelSingleUserEncoder
++import net.rsprot.protocol.game.outgoing.codec.group.GroupFullEncoder
++import net.rsprot.protocol.game.outgoing.codec.group.GroupVarEncoder
++import net.rsprot.protocol.game.outgoing.codec.group.GroupVarIntEncoder
++import net.rsprot.protocol.game.outgoing.codec.group.GroupVarLongEncoder
++import net.rsprot.protocol.game.outgoing.codec.inv.UpdateInvStopTransmitEncoder
++import net.rsprot.protocol.game.outgoing.codec.logout.LogoutTransferEncoder
++import net.rsprot.protocol.game.outgoing.codec.logout.LogoutWithReasonEncoder
++import net.rsprot.protocol.game.outgoing.codec.misc.client.HintArrowEncoder
++import net.rsprot.protocol.game.outgoing.codec.misc.client.ResetAnimsEncoder
++import net.rsprot.protocol.game.outgoing.codec.misc.client.ResetInteractionModeEncoder
++import net.rsprot.protocol.game.outgoing.codec.misc.client.SendPingEncoder
++import net.rsprot.protocol.game.outgoing.codec.misc.client.SetInteractionModeEncoder
++import net.rsprot.protocol.game.outgoing.codec.misc.client.UpdateUid192Encoder
++import net.rsprot.protocol.game.outgoing.codec.misc.player.AccountFlagsEncoder
++import net.rsprot.protocol.game.outgoing.codec.misc.player.ObjUnlockResetEncoder
++import net.rsprot.protocol.game.outgoing.codec.misc.player.ObjUnlockUpdateEncoder
++import net.rsprot.protocol.game.outgoing.codec.misc.player.TriggerOnDialogAbortEncoder
++import net.rsprot.protocol.game.outgoing.codec.misc.player.UpdateStockMarketSlotV1Encoder
++import net.rsprot.protocol.game.outgoing.codec.misc.player.UpdateStockMarketSlotV2Encoder
++import net.rsprot.protocol.game.outgoing.codec.misc.player.UpdateTradingPostV1Encoder
++import net.rsprot.protocol.game.outgoing.codec.misc.player.UpdateTradingPostV2Encoder
++import net.rsprot.protocol.game.outgoing.codec.social.FriendListLoadedEncoder
++import net.rsprot.protocol.game.outgoing.codec.social.MessagePrivateEchoEncoder
++import net.rsprot.protocol.game.outgoing.codec.social.MessagePrivateEncoder
++import net.rsprot.protocol.game.outgoing.codec.social.UpdateFriendListEncoder
++import net.rsprot.protocol.game.outgoing.codec.social.UpdateIgnoreListEncoder
++import net.rsprot.protocol.game.outgoing.codec.sound.SynthSoundEncoder
++import net.rsprot.protocol.game.outgoing.codec.specific.AnimSpecificEncoder
++import net.rsprot.protocol.game.outgoing.codec.varp.VarpResetEncoder
++import net.rsprot.protocol.game.outgoing.codec.varp.VarpSyncEncoder
++import net.rsprot.protocol.game.outgoing.friendchat.MessageFriendChannel
++import net.rsprot.protocol.game.outgoing.friendchat.UpdateFriendChatChannelFullV2
++import net.rsprot.protocol.game.outgoing.friendchat.UpdateFriendChatChannelSingleUser
++import net.rsprot.protocol.game.outgoing.group.GroupFull
++import net.rsprot.protocol.game.outgoing.group.GroupVar
++import net.rsprot.protocol.game.outgoing.group.GroupVarInt
++import net.rsprot.protocol.game.outgoing.group.GroupVarLong
++import net.rsprot.protocol.game.outgoing.interfaces.IfClearInv
++import net.rsprot.protocol.game.outgoing.interfaces.IfMoveSub
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetAngle
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetColour
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetModelV2
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetObject
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetPlayerModelBaseColour
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetPlayerModelBodyType
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetPlayerModelObj
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetPlayerModelSelf
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetPosition
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetRotateSpeed
++import net.rsprot.protocol.game.outgoing.interfaces.IfSetScrollPos
++import net.rsprot.protocol.game.outgoing.inv.UpdateInvStopTransmit
++import net.rsprot.protocol.game.outgoing.logout.LogoutTransfer
++import net.rsprot.protocol.game.outgoing.logout.LogoutWithReason
++import net.rsprot.protocol.game.outgoing.misc.client.HintArrow
++import net.rsprot.protocol.game.outgoing.misc.client.MinimapToggle
++import net.rsprot.protocol.game.outgoing.misc.client.ResetAnims
++import net.rsprot.protocol.game.outgoing.misc.client.ResetInteractionMode
++import net.rsprot.protocol.game.outgoing.misc.client.SendPing
++import net.rsprot.protocol.game.outgoing.misc.client.SetInteractionMode
++import net.rsprot.protocol.game.outgoing.misc.client.UpdateRebootTimerV2
++import net.rsprot.protocol.game.outgoing.misc.client.UpdateUid192
++import net.rsprot.protocol.game.outgoing.misc.player.AccountFlags
++import net.rsprot.protocol.game.outgoing.misc.player.ChatFilterSettings
++import net.rsprot.protocol.game.outgoing.misc.player.ChatFilterSettingsPrivateChat
++import net.rsprot.protocol.game.outgoing.misc.player.ObjUnlockReset
++import net.rsprot.protocol.game.outgoing.misc.player.ObjUnlockUpdate
++import net.rsprot.protocol.game.outgoing.misc.player.SetPlayerOp
++import net.rsprot.protocol.game.outgoing.misc.player.TriggerOnDialogAbort
++import net.rsprot.protocol.game.outgoing.misc.player.UpdateStockMarketSlotV1
++import net.rsprot.protocol.game.outgoing.misc.player.UpdateStockMarketSlotV2
++import net.rsprot.protocol.game.outgoing.misc.player.UpdateTradingPostV1
++import net.rsprot.protocol.game.outgoing.misc.player.UpdateTradingPostV2
++import net.rsprot.protocol.game.outgoing.social.FriendListLoaded
++import net.rsprot.protocol.game.outgoing.social.MessagePrivate
++import net.rsprot.protocol.game.outgoing.social.MessagePrivateEcho
++import net.rsprot.protocol.game.outgoing.social.UpdateFriendList
++import net.rsprot.protocol.game.outgoing.social.UpdateIgnoreList
++import net.rsprot.protocol.game.outgoing.sound.AmbientSoundStart
++import net.rsprot.protocol.game.outgoing.sound.AmbientSoundStop
++import net.rsprot.protocol.game.outgoing.sound.MidiJingle
++import net.rsprot.protocol.game.outgoing.sound.MidiSongStop
++import net.rsprot.protocol.game.outgoing.sound.MidiSongV2
++import net.rsprot.protocol.game.outgoing.sound.MidiSongWithSecondary
++import net.rsprot.protocol.game.outgoing.sound.SynthSound
++import net.rsprot.protocol.game.outgoing.specific.AnimSpecific
++import net.rsprot.protocol.game.outgoing.specific.LocAnimSpecific
++import net.rsprot.protocol.game.outgoing.specific.MapAnimSpecific
++import net.rsprot.protocol.game.outgoing.specific.NpcAnimSpecific
++import net.rsprot.protocol.game.outgoing.specific.NpcHeadIconSpecific
++import net.rsprot.protocol.game.outgoing.specific.NpcSpotAnimSpecific
++import net.rsprot.protocol.game.outgoing.specific.ObjCountSpecific
++import net.rsprot.protocol.game.outgoing.specific.ObjCustomiseSpecificV1
++import net.rsprot.protocol.game.outgoing.specific.ObjEnabledOpsSpecific
++import net.rsprot.protocol.game.outgoing.specific.ObjUncustomiseSpecific
++import net.rsprot.protocol.game.outgoing.specific.PlayerSpotAnimSpecific
++import net.rsprot.protocol.game.outgoing.varp.VarpLong
++import net.rsprot.protocol.game.outgoing.varp.VarpReset
++import net.rsprot.protocol.game.outgoing.varp.VarpSync
++
++// Server prots identified from the dispatcher cases (Ghidra 0x541dd4) in the 2026-10-16 mapping
++// pass. "As desktop" ones delegate to RSProt's desktop encoder; the others mirror the client's
++// reads (see docs/android-protocol.md for the transform table).
++
++/** Case 1: as desktop (zeroes the camera state). */
++public fun androidCamResetEncoder(): MessageEncoder<CamReset> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CAM_RESET, CamResetEncoder())
++
++/** Case 3: as desktop (FUN_004fd3a4 switches on the desktop types). */
++public fun androidHintArrowEncoder(): MessageEncoder<HintArrow> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.HINT_ARROW, HintArrowEncoder())
++
++/** Case 9: as desktop (chat type 43 / 46 guest). */
++public fun androidMessageClanChannelSystemEncoder(huffmanCodecProvider: HuffmanCodecProvider): MessageEncoder<MessageClanChannelSystem> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.MESSAGE_CLANCHANNEL_SYSTEM, MessageClanChannelSystemEncoder(huffmanCodecProvider))
++
++/** Case 13: as desktop (FUN_0066ee54 on the ignore list). */
++public fun androidUpdateIgnoreListEncoder(): MessageEncoder<UpdateIgnoreList> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.UPDATE_IGNORELIST, UpdateIgnoreListEncoder())
++
++/** Case 15: as desktop (oculus orb state). */
++public fun androidCamModeEncoder(): MessageEncoder<CamMode> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CAM_MODE, CamModeEncoder())
++
++/** Case 18: as desktop (inventory p2Alt2, clears it). */
++public fun androidUpdateInvStopTransmitEncoder(): MessageEncoder<UpdateInvStopTransmit> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.UPDATE_INV_STOPTRANSMIT, UpdateInvStopTransmitEncoder())
++
++/** Case 21: as desktop (24 bytes + crc32). */
++public fun androidUpdateUid192Encoder(): MessageEncoder<UpdateUid192> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.UPDATE_UID192, UpdateUid192Encoder())
++
++/** Case 22: as desktop (zeroes all varps). */
++public fun androidVarpResetEncoder(): MessageEncoder<VarpReset> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.VARP_RESET, VarpResetEncoder())
++
++/** Case 25: as desktop (FUN_0066e448). */
++public fun androidUpdateFriendListEncoder(): MessageEncoder<UpdateFriendList> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.UPDATE_FRIENDLIST, UpdateFriendListEncoder())
++
++/** Case 27: as desktop (reason p1). */
++public fun androidLogoutWithReasonEncoder(): MessageEncoder<LogoutWithReason> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.LOGOUT_WITHREASON, LogoutWithReasonEncoder())
++
++/** Case 33: as desktop (FUN_00569184). */
++public fun androidUpdateFriendChatChannelSingleUserEncoder(): MessageEncoder<UpdateFriendChatChannelSingleUser> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.UPDATE_FRIENDCHAT_CHANNEL_SINGLEUSER, UpdateFriendChatChannelSingleUserEncoder())
++
++/** Case 35: as desktop (host, id, properties). */
++public fun androidLogoutTransferEncoder(): MessageEncoder<LogoutTransfer> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.LOGOUT_TRANSFER, LogoutTransferEncoder())
++
++/** Case 36: as desktop (chat type 6). */
++public fun androidMessagePrivateEchoEncoder(huffmanCodecProvider: HuffmanCodecProvider): MessageEncoder<MessagePrivateEcho> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.MESSAGE_PRIVATE_ECHO, MessagePrivateEchoEncoder(huffmanCodecProvider))
++
++/** Case 38: as desktop (p8). */
++public fun androidAccountFlagsEncoder(): MessageEncoder<AccountFlags> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.ACCOUNT_FLAGS, AccountFlagsEncoder())
++
++/** Case 39: as desktop (FUN_006ff0cc(version 2)). */
++public fun androidUpdateTradingPostV2Encoder(): MessageEncoder<UpdateTradingPostV2> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.UPDATE_TRADINGPOST_V2, UpdateTradingPostV2Encoder())
++
++/** Case 40: as desktop (FUN_005689fc). */
++public fun androidUpdateFriendChatChannelFullV2Encoder(): MessageEncoder<UpdateFriendChatChannelFullV2> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.UPDATE_FRIENDCHAT_CHANNEL_FULL_V2, UpdateFriendChatChannelFullV2Encoder())
++
++/** Case 43: as desktop (chat type 9). */
++public fun androidMessageFriendChannelEncoder(huffmanCodecProvider: HuffmanCodecProvider): MessageEncoder<MessageFriendChannel> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.MESSAGE_FRIENDCHANNEL, MessageFriendChannelEncoder(huffmanCodecProvider))
++
++/** Case 44: as desktop (p4). */
++public fun androidOculusSyncEncoder(): MessageEncoder<OculusSync> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.OCULUS_SYNC, OculusSyncEncoder())
++
++/** Case 49: as desktop (resets every actor sequence/spotanim). */
++public fun androidResetAnimsEncoder(): MessageEncoder<ResetAnims> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.RESET_ANIMS, ResetAnimsEncoder())
++
++/** Case 50: as desktop (local player anim). */
++public fun androidAnimSpecificEncoder(): MessageEncoder<AnimSpecific> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.ANIM_SPECIFIC, AnimSpecificEncoder())
++
++/** Case 51: as desktop (camera shake arrays). */
++public fun androidCamShakeEncoder(): MessageEncoder<CamShake> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CAM_SHAKE, CamShakeEncoder())
++
++/** Case 54: as desktop (FUN_00700428). */
++public fun androidUpdateStockMarketSlotV1Encoder(): MessageEncoder<UpdateStockMarketSlotV1> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.UPDATE_STOCKMARKET_SLOT_V1, UpdateStockMarketSlotV1Encoder())
++
++/** Case 56: as desktop (relative yaw/pitch). */
++public fun androidCamRotateByEncoder(): MessageEncoder<CamRotateBy> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CAM_ROTATEBY, CamRotateByEncoder())
++
++/** Case 58: as desktop (FUN_006ff0cc(version 1)). */
++public fun androidUpdateTradingPostV1Encoder(): MessageEncoder<UpdateTradingPostV1> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.UPDATE_TRADINGPOST_V1, UpdateTradingPostV1Encoder())
++
++/** Case 66: as desktop (FUN_00700428). */
++public fun androidUpdateStockMarketSlotV2Encoder(): MessageEncoder<UpdateStockMarketSlotV2> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.UPDATE_STOCKMARKET_SLOT_V2, UpdateStockMarketSlotV2Encoder())
++
++/** Case 67: as desktop (creates the varclan store). */
++public fun androidVarClanEnableEncoder(): MessageEncoder<VarClanEnable> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.VARCLAN_ENABLE, VarClanEnableEncoder())
++
++/** Case 69: as desktop (friend manager state). */
++public fun androidFriendListLoadedEncoder(): MessageEncoder<FriendListLoaded> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.FRIENDLIST_LOADED, FriendListLoadedEncoder())
++
++/** Case 71: as desktop (FUN_005ae508(id, loops, delay)). */
++public fun androidSynthSoundEncoder(): MessageEncoder<SynthSound> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.SYNTH_SOUND, SynthSoundEncoder())
++
++/** Case 73: as desktop (absolute yaw/pitch). */
++public fun androidCamRotateToEncoder(): MessageEncoder<CamRotateTo> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CAM_ROTATETO, CamRotateToEncoder())
++
++/** Case 85: as desktop (world id + two modes). */
++public fun androidSetInteractionModeEncoder(): MessageEncoder<SetInteractionMode> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.SET_INTERACTION_MODE, SetInteractionModeEncoder())
++
++/** Case 89: as desktop (type, world entity, target). */
++public fun androidCamTargetV3Encoder(): MessageEncoder<CamTargetV3> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CAM_TARGET_V3, CamTargetV3Encoder())
++
++/** Case 92: as desktop (client answers with opcode 19). */
++public fun androidSendPingEncoder(): MessageEncoder<SendPing> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.SEND_PING, SendPingEncoder())
++
++/** Case 93: as desktop (chat type 3/7). */
++public fun androidMessagePrivateEncoder(huffmanCodecProvider: HuffmanCodecProvider): MessageEncoder<MessagePrivate> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.MESSAGE_PRIVATE, MessagePrivateEncoder(huffmanCodecProvider))
++
++/** Case 94: as desktop (four speeds). */
++public fun androidCamSmoothResetEncoder(): MessageEncoder<CamSmoothReset> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CAM_SMOOTHRESET, CamSmoothResetEncoder())
++
++/** Case 96: as desktop (copies server varps). */
++public fun androidVarpSyncEncoder(): MessageEncoder<VarpSync> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.VARP_SYNC, VarpSyncEncoder())
++
++/** Case 107: as desktop (root interface event 0x17). */
++public fun androidTriggerOnDialogAbortEncoder(): MessageEncoder<TriggerOnDialogAbort> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.TRIGGER_ONDIALOGABORT, TriggerOnDialogAbortEncoder())
++
++/** Case 114: as desktop (world id p2). */
++public fun androidResetInteractionModeEncoder(): MessageEncoder<ResetInteractionMode> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.RESET_INTERACTION_MODE, ResetInteractionModeEncoder())
++
++/** Case 117: as desktop (chat types 41/44). */
++public fun androidMessageClanChannelEncoder(huffmanCodecProvider: HuffmanCodecProvider): MessageEncoder<MessageClanChannel> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.MESSAGE_CLANCHANNEL, MessageClanChannelEncoder(huffmanCodecProvider))
++
++/** Case 119: as desktop (id + typed value). */
++public fun androidVarClanEncoder(): MessageEncoder<VarClan> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.VARCLAN, VarClanEncoder())
++
++/** Case 124: as desktop (clears the varclan store). */
++public fun androidVarClanDisableEncoder(): MessageEncoder<VarClanDisable> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.VARCLAN_DISABLE, VarClanDisableEncoder())
++
++/** Case 128: as desktop (p1Alt3). */
++public fun androidCamUnlockEncoder(): MessageEncoder<CamUnlock> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CAM_UNLOCK, CamUnlockEncoder())
++
++/** Case 134: as desktop (shared handler FUN_006871e0). */
++public fun androidGroupVarIntEncoder(): MessageEncoder<GroupVarInt> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.GROUP_VAR_INT, GroupVarIntEncoder())
++
++/** Case 135: as desktop (frees the obj-unlock array). */
++public fun androidObjUnlockResetEncoder(): MessageEncoder<ObjUnlockReset> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.OBJUNLOCK_RESET, ObjUnlockResetEncoder())
++
++/** Case 138: as desktop (shared handler FUN_006871e0). */
++public fun androidGroupVarEncoder(): MessageEncoder<GroupVar> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.GROUP_VAR, GroupVarEncoder())
++
++/** Case 139: as desktop (obj-unlock long array). */
++public fun androidObjUnlockUpdateEncoder(): MessageEncoder<ObjUnlockUpdate> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.OBJUNLOCK_UPDATE, ObjUnlockUpdateEncoder())
++
++/** Case 140: as desktop (smart id / p8 header). */
++public fun androidGroupFullEncoder(): MessageEncoder<GroupFull> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.GROUP_FULL, GroupFullEncoder())
++
++/** Case 141: as desktop (shared handler FUN_006871e0). */
++public fun androidGroupVarLongEncoder(): MessageEncoder<GroupVarLong> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.GROUP_VAR_LONG, GroupVarLongEncoder())
++
++/** Case 5: [index p2Alt2][slot -b][spriteGroup p4Alt2][spriteIndex LE]; FUN_0056e14c(npc, slot, group, index). */
++public class AndroidNpcHeadIconSpecificEncoder : MessageEncoder<NpcHeadIconSpecific> {
++    override val prot: ServerProt = AndroidGameServerProt.NPC_HEADICON_SPECIFIC
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: NpcHeadIconSpecific) {
++        buffer.p2Alt2(message.index)
++        buffer.p1Alt2(message.headIconSlot)
++        buffer.p4Alt2(message.spriteGroup)
++        buffer.p2Alt1(message.spriteIndex)
++    }
++}
++
++/** Case 12: argument order of FUN_005580c0 (same as zone OBJ_CUSTOMISE). */
++public class AndroidObjCustomiseSpecificV1Encoder : MessageEncoder<ObjCustomiseSpecificV1> {
++    override val prot: ServerProt = AndroidGameServerProt.OBJ_CUSTOMISE_SPECIFIC_V1
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: ObjCustomiseSpecificV1) {
++        buffer.p2(message.retex)
++        buffer.p2(message.retexIndex)
++        buffer.p4(message.coordGrid.packed)
++        buffer.p2Alt2(message.model)
++        buffer.p2Alt1(message.recolIndex)
++        buffer.p2Alt2(message.id)
++        buffer.p2Alt2(message.recol)
++        buffer.p4(message.quantity)
++    }
++}
++
++/** Case 11: value p1 (values > 2 become -1). */
++public class AndroidChatFilterSettingsPrivateChatEncoder : MessageEncoder<ChatFilterSettingsPrivateChat> {
++    override val prot: ServerProt = AndroidGameServerProt.CHAT_FILTER_SETTINGS_PRIVATECHAT
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: ChatFilterSettingsPrivateChat) {
++        buffer.p1(message.privateChatFilter)
++    }
++}
++
++/** Case 29: [combinedId p4Alt1][colour p2Alt2] -> component +0x98. */
++public class AndroidIfSetColourEncoder : MessageEncoder<IfSetColour> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETCOLOUR
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetColour) {
++        buffer.pCombinedIdAlt1(message.combinedId)
++        buffer.p2Alt2(message.colour15BitPacked)
++    }
++}
++
++/** Case 31: state p1, stored in the minimap renderer. */
++public class AndroidMinimapToggleEncoder : MessageEncoder<MinimapToggle> {
++    override val prot: ServerProt = AndroidGameServerProt.MINIMAP_TOGGLE
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: MinimapToggle) {
++        buffer.p1(message.minimapState)
++    }
++}
++
++/** Case 37: [index p2Alt3][slot 128-b][id p2][height LE][delay LE] -> FUN_005714e8(npc, slot, id, height, delay). */
++public class AndroidNpcSpotAnimSpecificEncoder : MessageEncoder<NpcSpotAnimSpecific> {
++    override val prot: ServerProt = AndroidGameServerProt.NPC_SPOTANIM_SPECIFIC
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: NpcSpotAnimSpecific) {
++        buffer.p2Alt3(message.index)
++        buffer.p1Alt3(message.slot)
++        buffer.p2(message.id)
++        buffer.p2Alt1(message.height)
++        buffer.p2Alt1(message.delay)
++    }
++}
++
++/** Case 45: [combinedId p4Alt3][y p2Alt2][x p2Alt2]. */
++public class AndroidIfSetPositionEncoder : MessageEncoder<IfSetPosition> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETPOSITION
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetPosition) {
++        buffer.pCombinedIdAlt3(message.combinedId)
++        buffer.p2Alt2(message.y)
++        buffer.p2Alt2(message.x)
++    }
++}
++
++/** Case 52: [combinedId p4Alt1]. */
++public class AndroidIfClearInvEncoder : MessageEncoder<IfClearInv> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_CLEARINV
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfClearInv) {
++        buffer.pCombinedIdAlt1(message.combinedId)
++    }
++}
++
++/** Case 53: [high int LE][low int LE][id p2] -> FUN_006d0848(id, value). */
++public class AndroidVarpLongEncoder : MessageEncoder<VarpLong> {
++    override val prot: ServerProt = AndroidGameServerProt.VARP_LONG
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: VarpLong) {
++        buffer.p4Alt1((message.value ushr 32).toInt())
++        buffer.p4Alt1(message.value.toInt())
++        buffer.p2(message.id)
++    }
++}
++
++/** Case 57: FUN_00541360(songs, @8, @6, @0, @4); fade field names assume (outDelay, outSpeed, inDelay, inSpeed). */
++public class AndroidMidiSongV2Encoder : MessageEncoder<MidiSongV2> {
++    override val prot: ServerProt = AndroidGameServerProt.MIDI_SONG_V2
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: MidiSongV2) {
++        buffer.p2Alt2(message.fadeInDelay)
++        buffer.p2(message.id)
++        buffer.p2Alt3(message.fadeInSpeed)
++        buffer.p2Alt1(message.fadeOutSpeed)
++        buffer.p2(message.fadeOutDelay)
++    }
++}
++
++/** Case 61: [gameCycles p2][message string]; "\u0018" cancels. */
++public class AndroidUpdateRebootTimerV2Encoder : MessageEncoder<UpdateRebootTimerV2> {
++    override val prot: ServerProt = AndroidGameServerProt.UPDATE_REBOOT_TIMER_V2
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: UpdateRebootTimerV2) {
++        buffer.p2(message.gameCycles)
++        when (val mes = message.messageType) {
++            UpdateRebootTimerV2.ClearUpdateMessage -> buffer.pjstr("\u0018")
++            UpdateRebootTimerV2.IgnoreUpdateMessage -> buffer.pjstr("")
++            is UpdateRebootTimerV2.SetUpdateMessage -> buffer.pjstr(mes.message)
++        }
++    }
++}
++
++/** Case 63: [index ^0x80][colour -b][combinedId p4Alt2]. */
++public class AndroidIfSetPlayerModelBaseColourEncoder : MessageEncoder<IfSetPlayerModelBaseColour> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETPLAYERMODEL_BASECOLOUR
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetPlayerModelBaseColour) {
++        buffer.p1Alt1(message.index)
++        buffer.p1Alt2(message.colour)
++        buffer.pCombinedIdAlt2(message.combinedId)
++    }
++}
++
++/** Case 74: FUN_00541360(ids[@2, @4], @8, @10, @6, @0). */
++public class AndroidMidiSongWithSecondaryEncoder : MessageEncoder<MidiSongWithSecondary> {
++    override val prot: ServerProt = AndroidGameServerProt.MIDI_SONG_WITHSECONDARY
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: MidiSongWithSecondary) {
++        buffer.p2Alt3(message.fadeInSpeed)
++        buffer.p2Alt1(message.primaryId)
++        buffer.p2(message.secondaryId)
++        buffer.p2Alt3(message.fadeInDelay)
++        buffer.p2(message.fadeOutDelay)
++        buffer.p2(message.fadeOutSpeed)
++    }
++}
++
++/** Case 78: [public ^0x80][trade 128-b]. */
++public class AndroidChatFilterSettingsEncoder : MessageEncoder<ChatFilterSettings> {
++    override val prot: ServerProt = AndroidGameServerProt.CHAT_FILTER_SETTINGS
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: ChatFilterSettings) {
++        buffer.p1Alt1(message.publicChatFilter)
++        buffer.p1Alt3(message.tradeChatFilter)
++    }
++}
++
++/** Case 80: [length, 3 bytes, unread][id p2Alt3]. */
++public class AndroidMidiJingleEncoder : MessageEncoder<MidiJingle> {
++    override val prot: ServerProt = AndroidGameServerProt.MIDI_JINGLE
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: MidiJingle) {
++        buffer.p3Alt1(message.lengthInMillis)
++        buffer.p2Alt3(message.id)
++    }
++}
++
++/** Case 83: [combinedId p4][obj p4Alt3]. */
++public class AndroidIfSetPlayerModelObjEncoder : MessageEncoder<IfSetPlayerModelObj> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETPLAYERMODEL_OBJ
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetPlayerModelObj) {
++        buffer.pCombinedId(message.combinedId)
++        buffer.p4Alt3(message.obj)
++    }
++}
++
++/** Case 86: FUN_00790000(@2, @0). */
++public class AndroidMidiSongStopEncoder : MessageEncoder<MidiSongStop> {
++    override val prot: ServerProt = AndroidGameServerProt.MIDI_SONG_STOP
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: MidiSongStop) {
++        buffer.p2(message.fadeOutSpeed)
++        buffer.p2(message.fadeOutDelay)
++    }
++}
++
++/** Case 91: [index p2][id p2][delay -b] -> FUN_0056e020(npc, id, delay). */
++public class AndroidNpcAnimSpecificEncoder : MessageEncoder<NpcAnimSpecific> {
++    override val prot: ServerProt = AndroidGameServerProt.NPC_ANIM_SPECIFIC
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: NpcAnimSpecific) {
++        buffer.p2(message.index)
++        buffer.p2(message.id)
++        buffer.p1Alt2(message.delay)
++    }
++}
++
++/** Case 95: [id p2Alt2][coord p4][opFlags ^0x80]. */
++public class AndroidObjEnabledOpsSpecificEncoder : MessageEncoder<ObjEnabledOpsSpecific> {
++    override val prot: ServerProt = AndroidGameServerProt.OBJ_ENABLED_OPS_SPECIFIC
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: ObjEnabledOpsSpecific) {
++        buffer.p2Alt2(message.id)
++        buffer.p4(message.coordGrid.packed)
++        buffer.p1Alt1(message.opFlags.toInt())
++    }
++}
++
++/** Case 97: [id p2Alt3][coord p4Alt3][quantity p4Alt3]. */
++public class AndroidObjUncustomiseSpecificEncoder : MessageEncoder<ObjUncustomiseSpecific> {
++    override val prot: ServerProt = AndroidGameServerProt.OBJ_UNCUSTOMISE_SPECIFIC
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: ObjUncustomiseSpecific) {
++        buffer.p2Alt3(message.id)
++        buffer.p4Alt3(message.coordGrid.packed)
++        buffer.p4Alt3(message.quantity)
++    }
++}
++
++/** Case 98: [id p2Alt2][height<<16|delay LE][index p2Alt3][slot -b]. */
++public class AndroidPlayerSpotAnimSpecificEncoder : MessageEncoder<PlayerSpotAnimSpecific> {
++    override val prot: ServerProt = AndroidGameServerProt.PLAYER_SPOTANIM_SPECIFIC
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: PlayerSpotAnimSpecific) {
++        buffer.p2Alt2(message.id)
++        buffer.p4Alt1((message.height shl 16) or message.delay)
++        buffer.p2Alt3(message.index)
++        buffer.p1Alt2(message.slot)
++    }
++}
++
++/** Case 100: [copyObjs p1 (== 1)][combinedId p4Alt1]. */
++public class AndroidIfSetPlayerModelSelfEncoder : MessageEncoder<IfSetPlayerModelSelf> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETPLAYERMODEL_SELF
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetPlayerModelSelf) {
++        buffer.p1(if (message.copyObjs) 1 else 0)
++        buffer.pCombinedIdAlt1(message.combinedId)
++    }
++}
++
++/** Case 103: [bodyType -b][combinedId p4Alt2]. */
++public class AndroidIfSetPlayerModelBodyTypeEncoder : MessageEncoder<IfSetPlayerModelBodyType> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETPLAYERMODEL_BODYTYPE
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetPlayerModelBodyType) {
++        buffer.p1Alt2(message.bodyType)
++        buffer.pCombinedIdAlt2(message.combinedId)
++    }
++}
++
++/** Case 104: [shape<<2|rot 128-b][id LE][coord p3Alt3]. */
++public class AndroidLocAnimSpecificEncoder : MessageEncoder<LocAnimSpecific> {
++    override val prot: ServerProt = AndroidGameServerProt.LOC_ANIM_SPECIFIC
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: LocAnimSpecific) {
++        buffer.p1Alt3(message.locPropertiesPacked)
++        buffer.p2Alt1(message.id)
++        buffer.p3Alt3(message.coordInBuildAreaPacked)
++    }
++}
++
++/** Case 106: [zoom p2Alt2][angleX p2Alt2][angleY p2Alt3][combinedId p4]. */
++public class AndroidIfSetAngleEncoder : MessageEncoder<IfSetAngle> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETANGLE
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetAngle) {
++        buffer.p2Alt2(message.zoom)
++        buffer.p2Alt2(message.angleX)
++        buffer.p2Alt3(message.angleY)
++        buffer.pCombinedId(message.combinedId)
++    }
++}
++
++/** Case 108: [index p4][type -b]. */
++public class AndroidCamTargetV4Encoder : MessageEncoder<CamTargetV4> {
++    override val prot: ServerProt = AndroidGameServerProt.CAM_TARGET_V4
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: CamTargetV4) {
++        when (val type = message.type) {
++            is CamTargetV4.PlayerCamTarget -> { buffer.p4(type.index); buffer.p1Alt2(0) }
++            is CamTargetV4.NpcCamTarget -> { buffer.p4(type.index); buffer.p1Alt2(1) }
++            is CamTargetV4.WorldEntityTarget -> { buffer.p4(type.index); buffer.p1Alt2(2) }
++            is CamTargetV4.CoordGridTarget -> { buffer.p4(type.coordGrid.packed); buffer.p1Alt2(3) }
++        }
++    }
++}
++
++/** Case 111: [delay p2Alt3][height 128-b][coord p3Alt3][id p2Alt3]. */
++public class AndroidMapAnimSpecificEncoder : MessageEncoder<MapAnimSpecific> {
++    override val prot: ServerProt = AndroidGameServerProt.MAP_ANIM_SPECIFIC
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: MapAnimSpecific) {
++        buffer.p2Alt3(message.delay)
++        buffer.p1Alt3(message.height)
++        buffer.p3Alt3(message.coordInBuildAreaPacked)
++        buffer.p2Alt3(message.id)
++    }
++}
++
++/** Case 112: [priority ^0x80][id ^0x80, 1-based][op string]. */
++public class AndroidSetPlayerOpEncoder : MessageEncoder<SetPlayerOp> {
++    override val prot: ServerProt = AndroidGameServerProt.SET_PLAYER_OP
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: SetPlayerOp) {
++        buffer.p1Alt1(if (message.priority) 1 else 0)
++        buffer.p1Alt1(message.id)
++        buffer.pjstr(message.op ?: "null")
++    }
++}
++
++/** Case 118: [new p4Alt1][id p2Alt2][old p4Alt2][coord p4Alt1]. */
++public class AndroidObjCountSpecificEncoder : MessageEncoder<ObjCountSpecific> {
++    override val prot: ServerProt = AndroidGameServerProt.OBJ_COUNT_SPECIFIC
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: ObjCountSpecific) {
++        buffer.p4Alt1(message.newQuantity)
++        buffer.p2Alt2(message.id)
++        buffer.p4Alt2(message.oldQuantity)
++        buffer.p4Alt1(message.coordGrid.packed)
++    }
++}
++
++/** Case 120: [combinedId p4Alt3][xSpeed p2][ySpeed p2]; widget field = first << 16 | second (by size elimination). */
++public class AndroidIfSetRotateSpeedEncoder : MessageEncoder<IfSetRotateSpeed> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETROTATESPEED
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetRotateSpeed) {
++        buffer.pCombinedIdAlt3(message.combinedId)
++        buffer.p2(message.xSpeed)
++        buffer.p2(message.ySpeed)
++    }
++}
++
++/** Case 125: [combinedId p4Alt3][scrollPos p2]. */
++public class AndroidIfSetScrollPosEncoder : MessageEncoder<IfSetScrollPos> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETSCROLLPOS
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetScrollPos) {
++        buffer.pCombinedIdAlt3(message.combinedId)
++        buffer.p2(message.scrollPos)
++    }
++}
++
++/** Case 126: [destination p4][source p4]. */
++public class AndroidIfMoveSubEncoder : MessageEncoder<IfMoveSub> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_MOVESUB
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfMoveSub) {
++        buffer.pCombinedId(message.destinationCombinedId)
++        buffer.pCombinedId(message.sourceCombinedId)
++    }
++}
++
++/** Case 127: [count p4Alt2][obj p2Alt3][combinedId p4Alt1]. */
++public class AndroidIfSetObjectEncoder : MessageEncoder<IfSetObject> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETOBJECT
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetObject) {
++        buffer.p4Alt2(message.count)
++        buffer.p2Alt3(message.obj)
++        buffer.pCombinedIdAlt1(message.combinedId)
++    }
++}
++
++/** Case 129: arc tween. */
++public class AndroidCamMoveToArcV3Encoder : MessageEncoder<CamMoveToArcV3> {
++    override val prot: ServerProt = AndroidGameServerProt.CAM_MOVETO_ARC_V3
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: CamMoveToArcV3) {
++        buffer.p2Alt3(message.destinationX)
++        buffer.p2(message.centerX)
++        buffer.p2Alt1(message.centerZ)
++        buffer.p2Alt3(message.destinationZ)
++        buffer.p1Alt2(if (message.ignoreTerrain) 1 else 0)
++        buffer.p1Alt2(message.easing.id)
++        buffer.p2Alt2(message.cycles)
++        buffer.p2(message.height)
++        buffer.p1Alt1(if (message.heightRelative) 1 else 0)
++    }
++}
++
++/** Case 130: [model p4Alt1][combinedId p4Alt1]. */
++public class AndroidIfSetModelV2Encoder : MessageEncoder<IfSetModelV2> {
++    override val prot: ServerProt = AndroidGameServerProt.IF_SETMODEL_V2
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: IfSetModelV2) {
++        buffer.p4Alt1(message.model)
++        buffer.pCombinedIdAlt1(message.combinedId)
++    }
++}
++
++/** Case 131: [x LE][rate2 p1][height p2][z LE][rate 128-b][heightRelative p1]; rate2 >= 100 = instant. */
++public class AndroidCamLookAtV3Encoder : MessageEncoder<CamLookAtV3> {
++    override val prot: ServerProt = AndroidGameServerProt.CAM_LOOKAT_V3
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: CamLookAtV3) {
++        buffer.p2Alt1(message.x)
++        buffer.p1(message.rate2)
++        buffer.p2(message.height)
++        buffer.p2Alt1(message.z)
++        buffer.p1Alt3(message.rate)
++        buffer.p1(if (message.heightRelative) 1 else 0)
++    }
++}
++
++/** Case 133: camera position tween. */
++public class AndroidCamMoveToCyclesV3Encoder : MessageEncoder<CamMoveToCyclesV3> {
++    override val prot: ServerProt = AndroidGameServerProt.CAM_MOVETO_CYCLES_V3
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: CamMoveToCyclesV3) {
++        buffer.p1Alt3(message.easing.id)
++        buffer.p2(message.x)
++        buffer.p2(message.cycles)
++        buffer.p2(message.z)
++        buffer.p1(if (message.ignoreTerrain) 1 else 0)
++        buffer.p1(if (message.heightRelative) 1 else 0)
++        buffer.p2(message.height)
++    }
++}
++
++/** Case 136: [heightRelative ^0x80][height LE][x LE][rate -b][z p2Alt2][rate2 p1]. */
++public class AndroidCamMoveToV3Encoder : MessageEncoder<CamMoveToV3> {
++    override val prot: ServerProt = AndroidGameServerProt.CAM_MOVETO_V3
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: CamMoveToV3) {
++        buffer.p1Alt1(if (message.heightRelative) 1 else 0)
++        buffer.p2Alt1(message.height)
++        buffer.p2Alt1(message.x)
++        buffer.p1Alt2(message.rate)
++        buffer.p2Alt2(message.z)
++        buffer.p1(message.rate2)
++    }
++}
++
++/** Case 142: pitch/yaw towards a point. */
++public class AndroidCamRotateToCoordinateV3Encoder : MessageEncoder<CamRotateToCoordinateV3> {
++    override val prot: ServerProt = AndroidGameServerProt.CAM_ROTATETO_COORDINATE_V3
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: CamRotateToCoordinateV3) {
++        buffer.p2Alt1(message.height)
++        buffer.p1(if (message.trackTarget) 1 else 0)
++        buffer.p1Alt3(message.easing.id)
++        buffer.p2Alt1(message.cycles)
++        buffer.p1Alt1(if (message.heightRelative) 1 else 0)
++        buffer.p2Alt3(message.z)
++        buffer.p2Alt1(message.x)
++    }
++}
++
++/** Case 144: lookat tween. */
++public class AndroidCamLookAtCyclesEncoder : MessageEncoder<CamLookAtCycles> {
++    override val prot: ServerProt = AndroidGameServerProt.CAM_LOOKAT_CYCLES
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: CamLookAtCycles) {
++        buffer.p2Alt1(message.z)
++        buffer.p2Alt1(message.x)
++        buffer.p1Alt3(message.easing.id)
++        buffer.p2Alt2(message.height)
++        buffer.p1(if (message.heightRelative) 1 else 0)
++        buffer.p2Alt2(message.cycles)
++    }
++}
++
++/** Case 147: [id p2Alt2][fade p1]. */
++public class AndroidAmbientSoundStartEncoder : MessageEncoder<AmbientSoundStart> {
++    override val prot: ServerProt = AndroidGameServerProt.AMBIENTSOUND_START
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: AmbientSoundStart) {
++        buffer.p2Alt2(message.id)
++        buffer.p1(if (message.fade) 1 else 0)
++    }
++}
++
++/** Case 148: [model p4]; -1 clears (by size elimination with OCULUS_SYNC at 44). */
++public class AndroidCamSkyboxEncoder : MessageEncoder<CamSkybox> {
++    override val prot: ServerProt = AndroidGameServerProt.CAM_SKYBOX
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: CamSkybox) {
++        buffer.p4(message.model)
++    }
++}
++
++/** Case 149: [fade ^0x80]. */
++public class AndroidAmbientSoundStopEncoder : MessageEncoder<AmbientSoundStop> {
++    override val prot: ServerProt = AndroidGameServerProt.AMBIENTSOUND_STOP
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: AmbientSoundStop) {
++        buffer.p1Alt1(if (message.fade) 1 else 0)
 +    }
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt
@@ -1310,10 +2260,10 @@ index 00000000..b1436285
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..529eb8d9
+index 00000000..514483eb
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,127 @@
+@@ -0,0 +1,220 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -1336,7 +2286,6 @@ index 00000000..529eb8d9
 +
 +public object AndroidGameMessageEncoderRepository {
 +    @ExperimentalStdlibApi
-+    @Suppress("UNUSED_PARAMETER")
 +    public fun build(huffmanCodecProvider: HuffmanCodecProvider): MessageEncoderRepository<AndroidGameServerProt> =
 +        MessageEncoderRepositoryBuilder(ProtRepository.of<AndroidGameServerProt>()).apply {
 +            bind(AndroidUpdateStatV2Encoder())
@@ -1371,6 +2320,100 @@ index 00000000..529eb8d9
 +            bind(AndroidUpdateZonePartialEnclosedEncoder())
 +            bind(AndroidLocAddChangeV2Encoder())
 +            bind(AndroidLocDelEncoder())
++            bind(AndroidMapAnimEncoder())
++            bind(AndroidLocAnimEncoder())
++            bind(AndroidSoundAreaEncoder())
++            bind(AndroidLocMergeEncoder())
++            bind(androidCamResetEncoder())
++            bind(androidHintArrowEncoder())
++            bind(androidMessageClanChannelSystemEncoder(huffmanCodecProvider))
++            bind(androidUpdateIgnoreListEncoder())
++            bind(androidCamModeEncoder())
++            bind(androidUpdateInvStopTransmitEncoder())
++            bind(androidUpdateUid192Encoder())
++            bind(androidVarpResetEncoder())
++            bind(androidUpdateFriendListEncoder())
++            bind(androidLogoutWithReasonEncoder())
++            bind(androidUpdateFriendChatChannelSingleUserEncoder())
++            bind(androidLogoutTransferEncoder())
++            bind(androidMessagePrivateEchoEncoder(huffmanCodecProvider))
++            bind(androidAccountFlagsEncoder())
++            bind(androidUpdateTradingPostV2Encoder())
++            bind(androidUpdateFriendChatChannelFullV2Encoder())
++            bind(androidMessageFriendChannelEncoder(huffmanCodecProvider))
++            bind(androidOculusSyncEncoder())
++            bind(androidResetAnimsEncoder())
++            bind(androidAnimSpecificEncoder())
++            bind(androidCamShakeEncoder())
++            bind(androidUpdateStockMarketSlotV1Encoder())
++            bind(androidCamRotateByEncoder())
++            bind(androidUpdateTradingPostV1Encoder())
++            bind(androidUpdateStockMarketSlotV2Encoder())
++            bind(androidVarClanEnableEncoder())
++            bind(androidFriendListLoadedEncoder())
++            bind(androidSynthSoundEncoder())
++            bind(androidCamRotateToEncoder())
++            bind(androidSetInteractionModeEncoder())
++            bind(androidCamTargetV3Encoder())
++            bind(androidSendPingEncoder())
++            bind(androidMessagePrivateEncoder(huffmanCodecProvider))
++            bind(androidCamSmoothResetEncoder())
++            bind(androidVarpSyncEncoder())
++            bind(androidTriggerOnDialogAbortEncoder())
++            bind(androidResetInteractionModeEncoder())
++            bind(androidMessageClanChannelEncoder(huffmanCodecProvider))
++            bind(androidVarClanEncoder())
++            bind(androidVarClanDisableEncoder())
++            bind(androidCamUnlockEncoder())
++            bind(androidGroupVarIntEncoder())
++            bind(androidObjUnlockResetEncoder())
++            bind(androidGroupVarEncoder())
++            bind(androidObjUnlockUpdateEncoder())
++            bind(androidGroupFullEncoder())
++            bind(androidGroupVarLongEncoder())
++            bind(AndroidNpcHeadIconSpecificEncoder())
++            bind(AndroidObjCustomiseSpecificV1Encoder())
++            bind(AndroidChatFilterSettingsPrivateChatEncoder())
++            bind(AndroidIfSetColourEncoder())
++            bind(AndroidMinimapToggleEncoder())
++            bind(AndroidNpcSpotAnimSpecificEncoder())
++            bind(AndroidIfSetPositionEncoder())
++            bind(AndroidIfClearInvEncoder())
++            bind(AndroidVarpLongEncoder())
++            bind(AndroidMidiSongV2Encoder())
++            bind(AndroidUpdateRebootTimerV2Encoder())
++            bind(AndroidIfSetPlayerModelBaseColourEncoder())
++            bind(AndroidMidiSongWithSecondaryEncoder())
++            bind(AndroidChatFilterSettingsEncoder())
++            bind(AndroidMidiJingleEncoder())
++            bind(AndroidIfSetPlayerModelObjEncoder())
++            bind(AndroidMidiSongStopEncoder())
++            bind(AndroidNpcAnimSpecificEncoder())
++            bind(AndroidObjEnabledOpsSpecificEncoder())
++            bind(AndroidObjUncustomiseSpecificEncoder())
++            bind(AndroidPlayerSpotAnimSpecificEncoder())
++            bind(AndroidIfSetPlayerModelSelfEncoder())
++            bind(AndroidIfSetPlayerModelBodyTypeEncoder())
++            bind(AndroidLocAnimSpecificEncoder())
++            bind(AndroidIfSetAngleEncoder())
++            bind(AndroidCamTargetV4Encoder())
++            bind(AndroidMapAnimSpecificEncoder())
++            bind(AndroidSetPlayerOpEncoder())
++            bind(AndroidObjCountSpecificEncoder())
++            bind(AndroidIfSetRotateSpeedEncoder())
++            bind(AndroidIfSetScrollPosEncoder())
++            bind(AndroidIfMoveSubEncoder())
++            bind(AndroidIfSetObjectEncoder())
++            bind(AndroidCamMoveToArcV3Encoder())
++            bind(AndroidIfSetModelV2Encoder())
++            bind(AndroidCamLookAtV3Encoder())
++            bind(AndroidCamMoveToCyclesV3Encoder())
++            bind(AndroidCamMoveToV3Encoder())
++            bind(AndroidCamRotateToCoordinateV3Encoder())
++            bind(AndroidCamLookAtCyclesEncoder())
++            bind(AndroidAmbientSoundStartEncoder())
++            bind(AndroidCamSkyboxEncoder())
++            bind(AndroidAmbientSoundStopEncoder())
 +            bind(AndroidIfSetHideEncoder())
 +            bind(AndroidIfSetPlayerHeadEncoder())
 +        }.build()
@@ -1443,10 +2486,10 @@ index 00000000..529eb8d9
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidZone.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidZone.kt
 new file mode 100644
-index 00000000..eea8a022
+index 00000000..7be07ad5
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidZone.kt
-@@ -0,0 +1,181 @@
+@@ -0,0 +1,383 @@
 +package net.rsprot.protocol.android
 +
 +import io.netty.buffer.Unpooled
@@ -1462,6 +2505,17 @@ index 00000000..eea8a022
 +import net.rsprot.protocol.game.outgoing.zone.payload.LocDel
 +import net.rsprot.protocol.game.outgoing.zone.payload.ObjAdd
 +import net.rsprot.protocol.game.outgoing.zone.payload.ObjDel
++import net.rsprot.protocol.game.outgoing.zone.payload.LocAnim
++import net.rsprot.protocol.game.outgoing.zone.payload.LocMerge
++import net.rsprot.protocol.game.outgoing.zone.payload.MapAnim
++import net.rsprot.protocol.game.outgoing.zone.payload.MapProjAnimV2
++import net.rsprot.protocol.game.outgoing.zone.payload.ObjCount
++import net.rsprot.protocol.game.outgoing.zone.payload.ObjCustomise
++import net.rsprot.protocol.game.outgoing.zone.payload.ObjEnabledOps
++import net.rsprot.protocol.game.outgoing.zone.payload.ObjUncustomise
++import net.rsprot.protocol.game.outgoing.zone.payload.ScriptedProjAdd
++import net.rsprot.protocol.game.outgoing.zone.payload.ScriptedProjChange
++import net.rsprot.protocol.game.outgoing.zone.payload.SoundArea
 +import net.rsprot.protocol.message.OutgoingGameMessage
 +import net.rsprot.protocol.message.ZoneProt
 +import net.rsprot.protocol.message.codec.MessageEncoder
@@ -1527,35 +2581,51 @@ index 00000000..eea8a022
 +
 +/** Zone prot payloads with their Android index, for UPDATE_ZONE_PARTIAL_ENCLOSED. */
 +public object AndroidZoneProts {
++    public const val MAP_ANIM: Int = 0
 +    public const val LOC_ADD_CHANGE_V2: Int = 1
++    public const val LOC_ANIM: Int = 2
++    public const val OBJ_ENABLED_OPS: Int = 3
++    public const val OBJ_UNCUSTOMISE: Int = 4
 +    public const val OBJ_DEL: Int = 5
++    public const val MAP_PROJANIM_V2: Int = 6
++    public const val OBJ_CUSTOMISE: Int = 7
++    public const val OBJ_COUNT: Int = 8
++    public const val LOC_MERGE: Int = 9
 +    public const val LOC_DEL: Int = 10
 +    public const val OBJ_ADD: Int = 11
++    public const val SCRIPTEDPROJ_ADD: Int = 12
++    public const val SOUND_AREA: Int = 13
++    public const val SCRIPTEDPROJ_CHANGE: Int = 14
++
++    /** Writes [message]'s Android index and payload; false if it is not a known zone prot. */
++    public fun write(buf: JagByteBuf, message: ZoneProt): Boolean {
++        when (message) {
++            is MapAnim -> { buf.p1(MAP_ANIM); writeMapAnim(buf, message) }
++            is LocAddChangeV2 -> { buf.p1(LOC_ADD_CHANGE_V2); writeLocAddChange(buf, message) }
++            is LocAnim -> { buf.p1(LOC_ANIM); writeLocAnim(buf, message) }
++            is ObjEnabledOps -> { buf.p1(OBJ_ENABLED_OPS); writeObjEnabledOps(buf, message) }
++            is ObjUncustomise -> { buf.p1(OBJ_UNCUSTOMISE); writeObjUncustomise(buf, message) }
++            is ObjDel -> { buf.p1(OBJ_DEL); writeObjDel(buf, message) }
++            is MapProjAnimV2 -> { buf.p1(MAP_PROJANIM_V2); writeMapProjAnim(buf, message) }
++            is ObjCustomise -> { buf.p1(OBJ_CUSTOMISE); writeObjCustomise(buf, message) }
++            is ObjCount -> { buf.p1(OBJ_COUNT); writeObjCount(buf, message) }
++            is LocMerge -> { buf.p1(LOC_MERGE); writeLocMerge(buf, message) }
++            is LocDel -> { buf.p1(LOC_DEL); writeLocDel(buf, message) }
++            is ObjAdd -> { buf.p1(OBJ_ADD); writeObjAdd(buf, message) }
++            is ScriptedProjAdd -> { buf.p1(SCRIPTEDPROJ_ADD); writeScriptedProjAdd(buf, message) }
++            is SoundArea -> { buf.p1(SOUND_AREA); writeSoundArea(buf, message) }
++            is ScriptedProjChange -> { buf.p1(SCRIPTEDPROJ_CHANGE); writeScriptedProjChange(buf, message) }
++            else -> return false
++        }
++        return true
++    }
 +
 +    /** Encodes [messages] (LocAddChangeV2, LocDel, ObjAdd, ObjDel) as index + payload each. */
 +    public fun encode(messages: List<ZoneProt>): ByteArray {
 +        val buf = Unpooled.buffer().toJagByteBuf()
 +        try {
 +            for (message in messages) {
-+                when (message) {
-+                    is LocAddChangeV2 -> {
-+                        buf.p1(LOC_ADD_CHANGE_V2)
-+                        writeLocAddChange(buf, message)
-+                    }
-+                    is LocDel -> {
-+                        buf.p1(LOC_DEL)
-+                        writeLocDel(buf, message)
-+                    }
-+                    is ObjAdd -> {
-+                        buf.p1(OBJ_ADD)
-+                        writeObjAdd(buf, message)
-+                    }
-+                    is ObjDel -> {
-+                        buf.p1(OBJ_DEL)
-+                        writeObjDel(buf, message)
-+                    }
-+                    else -> error("Zone prot not mapped for Android: $message")
-+                }
++                check(write(buf, message)) { "Zone prot not mapped for Android: $message" }
 +            }
 +            val out = ByteArray(buf.buffer.readableBytes())
 +            buf.buffer.readBytes(out)
@@ -1579,6 +2649,145 @@ index 00000000..eea8a022
 +        buffer.p1(message.coordInZonePacked)
 +        buffer.p1Alt3(message.opFlags.toInt())
 +        buffer.p2Alt2(message.id)
++    }
++
++    /** Case 0 (6 bytes): [coord -b][id p2Alt3][delay p2Alt2][height -b] (client: ground height - height). */
++    internal fun writeMapAnim(buffer: JagByteBuf, message: MapAnim) {
++        buffer.p1Alt2(message.coordInZonePacked)
++        buffer.p2Alt3(message.id)
++        buffer.p2Alt2(message.delay)
++        buffer.p1Alt2(message.height)
++    }
++
++    /** Case 2 (4 bytes): [shape<<2|rot ^0x80][anim id LE][coord p1]. */
++    internal fun writeLocAnim(buffer: JagByteBuf, message: LocAnim) {
++        buffer.p1Alt1(message.locPropertiesPacked)
++        buffer.p2Alt1(message.id)
++        buffer.p1(message.coordInZonePacked)
++    }
++
++    /** Case 3 (4 bytes): [coord p1][id p2][opFlags p1]; sets the ops of the matching obj. */
++    internal fun writeObjEnabledOps(buffer: JagByteBuf, message: ObjEnabledOps) {
++        buffer.p1(message.coordInZonePacked)
++        buffer.p2(message.id)
++        buffer.p1(message.opFlags.toInt())
++    }
++
++    /** Case 4 (7 bytes): [quantity p4][coord 128-b][id LE]; matched against the obj's id/count. */
++    internal fun writeObjUncustomise(buffer: JagByteBuf, message: ObjUncustomise) {
++        buffer.p4(message.quantity)
++        buffer.p1Alt3(message.coordInZonePacked)
++        buffer.p2Alt1(message.id)
++    }
++
++    /**
++     * Case 6 (24 bytes). Field roles from the projectile struct built on the stack (start block,
++     * end block, then times/angle/progress/id); the two cycle-relative times are told apart only by
++     * struct order (unverified), as are endHeight vs progress.
++     */
++    internal fun writeMapProjAnim(buffer: JagByteBuf, message: MapProjAnimV2) {
++        buffer.p2Alt3(message.endTime)
++        buffer.p2Alt1(message.startHeight)
++        buffer.p2Alt3(message.endHeight)
++        buffer.p2Alt3(message.progress)
++        buffer.p4(message.end.packed)
++        buffer.p2Alt2(message.id)
++        buffer.p3(message.targetIndex)
++        buffer.p1(message.coordInZonePacked)
++        buffer.p2Alt3(message.startTime)
++        buffer.p3Alt1(message.sourceIndex)
++        buffer.p1Alt2(message.angle)
++    }
++
++    /**
++     * Case 7 (17 bytes): [quantity p4][coord p1][retexIndex LE][model p2Alt2][recolIndex LE]
++     * [recol p2Alt3][retex LE][id p2Alt2]; argument order of the customise call (0x5580c0) matches
++     * desktop's objCustomise(level, x, z, id, count, recol, recolIndex, retex, retexIndex, model).
++     */
++    internal fun writeObjCustomise(buffer: JagByteBuf, message: ObjCustomise) {
++        buffer.p4(message.quantity)
++        buffer.p1(message.coordInZonePacked)
++        buffer.p2Alt1(message.retexIndex)
++        buffer.p2Alt2(message.model)
++        buffer.p2Alt1(message.recolIndex)
++        buffer.p2Alt3(message.recol)
++        buffer.p2Alt1(message.retex)
++        buffer.p2Alt2(message.id)
++    }
++
++    /** Case 8 (11 bytes): [coord p1][new quantity p4][old quantity p4Alt2][id p2Alt3]. */
++    internal fun writeObjCount(buffer: JagByteBuf, message: ObjCount) {
++        buffer.p1(message.coordInZonePacked)
++        buffer.p4(message.newQuantity)
++        buffer.p4Alt2(message.oldQuantity)
++        buffer.p2Alt3(message.id)
++    }
++
++    /** Case 9 (14 bytes): the Android client skips the payload, so the desktop layout is used. */
++    internal fun writeLocMerge(buffer: JagByteBuf, message: LocMerge) {
++        buffer.p1Alt3(message.coordInZonePacked)
++        buffer.p1(message.maxZ)
++        buffer.p2(message.end)
++        buffer.p1Alt1(message.minX)
++        buffer.p1Alt3(message.locPropertiesPacked)
++        buffer.p2Alt1(message.index)
++        buffer.p2Alt3(message.start)
++        buffer.p1Alt3(message.maxX)
++        buffer.p2Alt3(message.id)
++        buffer.p1Alt1(message.minZ)
++    }
++
++    /**
++     * Case 12 (37 bytes). Roles from the struct order (source offsets/height, sourceIndex, target
++     * coord, target offsets/height, targetIndex, times, curve scripts H/A/T); slot is the hash key.
++     * Offsets X/Z/height and the curve-script order are inferred, not verified.
++     */
++    internal fun writeScriptedProjAdd(buffer: JagByteBuf, message: ScriptedProjAdd) {
++        buffer.p2Alt1(message.sourceHeight)
++        buffer.p2Alt3(message.id)
++        buffer.p3(message.sourceIndex)
++        buffer.p3Alt2(message.targetIndex)
++        buffer.p2Alt3(message.targetOffsetX)
++        buffer.p2(message.curveScriptT)
++        buffer.p2Alt3(message.sourceOffsetX)
++        buffer.p2Alt1(message.slot)
++        buffer.p2Alt1(message.endTime)
++        buffer.p4(message.targetCoord.packed)
++        buffer.p2Alt1(message.curveScriptH)
++        buffer.p2Alt3(message.targetOffsetZ)
++        buffer.p2Alt3(message.targetHeight)
++        buffer.p2Alt3(message.sourceOffsetZ)
++        buffer.p2Alt1(message.startTime)
++        buffer.p2(message.curveScriptA)
++        buffer.p1Alt3(message.coordInZonePacked)
++    }
++
++    /**
++     * Case 13 (7 bytes): [id p2Alt3][loops -b][range p1][dropOffRange -b][delay p1][coord p1];
++     * call order matches playAreaSound(world, id, x, z, range, dropOffRange, loops, delay).
++     */
++    internal fun writeSoundArea(buffer: JagByteBuf, message: SoundArea) {
++        buffer.p2Alt3(message.id)
++        buffer.p1Alt2(message.loops)
++        buffer.p1(message.range)
++        buffer.p1Alt2(message.dropOffRange)
++        buffer.p1(message.delay)
++        buffer.p1(message.coordInZonePacked)
++    }
++
++    /**
++     * Case 14 (18 bytes): [offsetX p2Alt3][deleteOnFreezeEnd p1][slot LE][height LE][targetIndex
++     * p3Alt2][targetCoord p4Alt3][offsetZ p2][freezeDuration p2]. Offset/height roles inferred.
++     */
++    internal fun writeScriptedProjChange(buffer: JagByteBuf, message: ScriptedProjChange) {
++        buffer.p2Alt3(message.targetOffsetX)
++        buffer.p1(if (message.deleteOnFreezeEnd) 1 else 0)
++        buffer.p2Alt1(message.slot)
++        buffer.p2Alt1(message.targetHeight)
++        buffer.p3Alt2(message.targetIndex)
++        buffer.p4Alt3(message.targetCoord.packed)
++        buffer.p2(message.targetOffsetZ)
++        buffer.p2(message.freezeDuration)
 +    }
 +
 +    /** Case 10: [shape<<2|rot 128-b][coord p1]. */
@@ -1626,6 +2835,42 @@ index 00000000..eea8a022
 +
 +    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: LocDel) {
 +        AndroidZoneProts.writeLocDel(buffer, message)
++    }
++}
++
++/** Case 4: MAP_ANIM as a top-level packet (zone index 0). */
++public class AndroidMapAnimEncoder : MessageEncoder<MapAnim> {
++    override val prot: ServerProt = AndroidGameServerProt.MAP_ANIM
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: MapAnim) {
++        AndroidZoneProts.writeMapAnim(buffer, message)
++    }
++}
++
++/** Case 17: LOC_ANIM as a top-level packet (zone index 2). */
++public class AndroidLocAnimEncoder : MessageEncoder<LocAnim> {
++    override val prot: ServerProt = AndroidGameServerProt.LOC_ANIM
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: LocAnim) {
++        AndroidZoneProts.writeLocAnim(buffer, message)
++    }
++}
++
++/** Case 48: SOUND_AREA as a top-level packet (zone index 13). */
++public class AndroidSoundAreaEncoder : MessageEncoder<SoundArea> {
++    override val prot: ServerProt = AndroidGameServerProt.SOUND_AREA
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: SoundArea) {
++        AndroidZoneProts.writeSoundArea(buffer, message)
++    }
++}
++
++/** Case 105: LOC_MERGE as a top-level packet (zone index 9; the client skips the payload). */
++public class AndroidLocMergeEncoder : MessageEncoder<LocMerge> {
++    override val prot: ServerProt = AndroidGameServerProt.LOC_MERGE
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: LocMerge) {
++        AndroidZoneProts.writeLocMerge(buffer, message)
 +    }
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt

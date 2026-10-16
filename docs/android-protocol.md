@@ -75,10 +75,130 @@ unassigned opcode), which is what made them easy to find.
 | 23 | UPDATE_ZONE_PARTIAL_ENCLOSED | level `p1Alt1`, z `p1Alt3`, x `p1`, then (Android zone index `p1`, payload)* |
 | 4 / 14 / 16 / 17 / 48 / 105 | MAP_ANIM / LOC_ADD_CHANGE_V2 / LOC_DEL / LOC_ANIM / SOUND_AREA / LOC_MERGE | top-level zone prots, payload as in the zone table below |
 
-Recognised but not implemented: 8 UPDATE_INV_PARTIAL, 18
-UPDATE_INV_STOPTRANSMIT, 35 LOGOUT_TRANSFER, 41 REBUILD_REGION_V2, 70 REBUILD_WORLDENTITY,
-117/43/9 clan and friends-chat messages. Not found yet: WORLDENTITY_INFO_V7 (the server
-skips it; nothing breaks without world entities).
+### Server→client, second pass (2026-10-16)
+
+Identified by reading each dispatcher case (helpers decompiled headlessly) and comparing reads with
+RSProt's desktop encoder. "As desktop" = same order and transforms, so the Android encoder delegates.
+Entries marked (unverified) have weaker identity or layout evidence (reason in the enum comment);
+none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
+
+| Opcode | Prot | Layout |
+|---|---|---|
+| 1 | CAM_RESET | as desktop (zeroes the camera state) |
+| 3 | HINT_ARROW | as desktop (FUN_004fd3a4 switches on the desktop types) |
+| 5 | NPC_HEADICON_SPECIFIC | index `p2Alt2`, headIconSlot `p1Alt2`, spriteGroup `p4Alt2`, spriteIndex `p2Alt1` |
+| 9 | MESSAGE_CLANCHANNEL_SYSTEM | as desktop (chat type 43 / 46 guest) |
+| 11 | CHAT_FILTER_SETTINGS_PRIVATECHAT (unverified) | privateChatFilter `p1` |
+| 12 | OBJ_CUSTOMISE_SPECIFIC_V1 | retex `p2`, retexIndex `p2`, coordGrid.packed `p4`, model `p2Alt2`, recolIndex `p2Alt1`, id `p2Alt2`, recol `p2Alt2`, quantity `p4` |
+| 13 | UPDATE_IGNORELIST | as desktop (FUN_0066ee54 on the ignore list) |
+| 15 | CAM_MODE | as desktop (oculus orb state) |
+| 18 | UPDATE_INV_STOPTRANSMIT | as desktop (inventory p2Alt2, clears it) |
+| 19 | CLANCHANNEL_FULL (unverified) | recognised, no codec |
+| 21 | UPDATE_UID192 | as desktop (24 bytes + crc32) |
+| 22 | VARP_RESET | as desktop (zeroes all varps) |
+| 24 | URL_OPEN (unverified) | recognised, no codec |
+| 25 | UPDATE_FRIENDLIST | as desktop (FUN_0066e448) |
+| 27 | LOGOUT_WITHREASON | as desktop (reason p1) |
+| 29 | IF_SETCOLOUR | combinedId `pCombinedIdAlt1`, colour15BitPacked `p2Alt2` |
+| 31 | MINIMAP_TOGGLE (unverified) | minimapState `p1` |
+| 33 | UPDATE_FRIENDCHAT_CHANNEL_SINGLEUSER | as desktop (FUN_00569184) |
+| 35 | LOGOUT_TRANSFER | as desktop (host, id, properties) |
+| 36 | MESSAGE_PRIVATE_ECHO | as desktop (chat type 6) |
+| 37 | NPC_SPOTANIM_SPECIFIC | index `p2Alt3`, slot `p1Alt3`, id `p2`, height `p2Alt1`, delay `p2Alt1` |
+| 38 | ACCOUNT_FLAGS | as desktop (p8) |
+| 39 | UPDATE_TRADINGPOST_V2 | as desktop (FUN_006ff0cc(version 2)) |
+| 40 | UPDATE_FRIENDCHAT_CHANNEL_FULL_V2 | as desktop (FUN_005689fc) |
+| 41 | REBUILD_REGION_V2 | recognised, no codec |
+| 43 | MESSAGE_FRIENDCHANNEL | as desktop (chat type 9) |
+| 44 | OCULUS_SYNC | as desktop (p4) |
+| 45 | IF_SETPOSITION | combinedId `pCombinedIdAlt3`, y `p2Alt2`, x `p2Alt2` |
+| 49 | RESET_ANIMS | as desktop (resets every actor sequence/spotanim) |
+| 50 | ANIM_SPECIFIC | as desktop (local player anim) |
+| 51 | CAM_SHAKE | as desktop (camera shake arrays) |
+| 52 | IF_CLEARINV | combinedId `pCombinedIdAlt1` |
+| 53 | VARP_LONG | (value ushr 32).toInt() `p4Alt1`, value.toInt() `p4Alt1`, id `p2` |
+| 54 | UPDATE_STOCKMARKET_SLOT_V1 | as desktop (FUN_00700428) |
+| 56 | CAM_ROTATEBY | as desktop (relative yaw/pitch) |
+| 57 | MIDI_SONG_V2 | fadeInDelay `p2Alt2`, id `p2`, fadeInSpeed `p2Alt3`, fadeOutSpeed `p2Alt1`, fadeOutDelay `p2` |
+| 58 | UPDATE_TRADINGPOST_V1 | as desktop (FUN_006ff0cc(version 1)) |
+| 61 | UPDATE_REBOOT_TIMER_V2 | [gameCycles p2][message string]; "\u0018" cancels |
+| 63 | IF_SETPLAYERMODEL_BASECOLOUR | index `p1Alt1`, colour `p1Alt2`, combinedId `pCombinedIdAlt2` |
+| 66 | UPDATE_STOCKMARKET_SLOT_V2 | as desktop (FUN_00700428) |
+| 67 | VARCLAN_ENABLE | as desktop (creates the varclan store) |
+| 69 | FRIENDLIST_LOADED | as desktop (friend manager state) |
+| 70 | REBUILD_WORLDENTITY_V4 | recognised, no codec |
+| 71 | SYNTH_SOUND | as desktop (FUN_005ae508(id, loops, delay)) |
+| 73 | CAM_ROTATETO | as desktop (absolute yaw/pitch) |
+| 74 | MIDI_SONG_WITHSECONDARY | fadeInSpeed `p2Alt3`, primaryId `p2Alt1`, secondaryId `p2`, fadeInDelay `p2Alt3`, fadeOutDelay `p2`, fadeOutSpeed `p2` |
+| 76 | PROJANIM_SPECIFIC_V4 | recognised, no codec |
+| 78 | CHAT_FILTER_SETTINGS | publicChatFilter `p1Alt1`, tradeChatFilter `p1Alt3` |
+| 80 | MIDI_JINGLE | lengthInMillis `p3Alt1`, id `p2Alt3` |
+| 82 | HISCORE_REPLY | recognised, no codec |
+| 83 | IF_SETPLAYERMODEL_OBJ | combinedId `pCombinedId`, obj `p4Alt3` |
+| 84 | CLANSETTINGS_FULL (unverified) | recognised, no codec |
+| 85 | SET_INTERACTION_MODE | as desktop (world id + two modes) |
+| 86 | MIDI_SONG_STOP | fadeOutSpeed `p2`, fadeOutDelay `p2` |
+| 87 | CLANSETTINGS_DELTA (unverified) | recognised, no codec |
+| 88 | CLANCHANNEL_DELTA (unverified) | recognised, no codec |
+| 89 | CAM_TARGET_V3 | as desktop (type, world entity, target) |
+| 91 | NPC_ANIM_SPECIFIC | index `p2`, id `p2`, delay `p1Alt2` |
+| 92 | SEND_PING | as desktop (client answers with opcode 19) |
+| 93 | MESSAGE_PRIVATE | as desktop (chat type 3/7) |
+| 94 | CAM_SMOOTHRESET | as desktop (four speeds) |
+| 95 | OBJ_ENABLED_OPS_SPECIFIC | id `p2Alt2`, coordGrid.packed `p4`, opFlags.toInt() `p1Alt1` |
+| 96 | VARP_SYNC | as desktop (copies server varps) |
+| 97 | OBJ_UNCUSTOMISE_SPECIFIC | id `p2Alt3`, coordGrid.packed `p4Alt3`, quantity `p4Alt3` |
+| 98 | PLAYER_SPOTANIM_SPECIFIC | id `p2Alt2`, (height shl 16) or delay `p4Alt1`, index `p2Alt3`, slot `p1Alt2` |
+| 100 | IF_SETPLAYERMODEL_SELF | if (copyObjs) 1 else 0 `p1`, combinedId `pCombinedIdAlt1` |
+| 103 | IF_SETPLAYERMODEL_BODYTYPE | bodyType `p1Alt2`, combinedId `pCombinedIdAlt2` |
+| 104 | LOC_ANIM_SPECIFIC | locPropertiesPacked `p1Alt3`, id `p2Alt1`, coordInBuildAreaPacked `p3Alt3` |
+| 106 | IF_SETANGLE | zoom `p2Alt2`, angleX `p2Alt2`, angleY `p2Alt3`, combinedId `pCombinedId` |
+| 107 | TRIGGER_ONDIALOGABORT | as desktop (root interface event 0x17) |
+| 108 | CAM_TARGET_V4 | [index p4][type -b] |
+| 111 | MAP_ANIM_SPECIFIC | delay `p2Alt3`, height `p1Alt3`, coordInBuildAreaPacked `p3Alt3`, id `p2Alt3` |
+| 112 | SET_PLAYER_OP | if (priority) 1 else 0 `p1Alt1`, id `p1Alt1`, op ?: "null" `pjstr` |
+| 114 | RESET_INTERACTION_MODE | as desktop (world id p2) |
+| 117 | MESSAGE_CLANCHANNEL | as desktop (chat types 41/44) |
+| 118 | OBJ_COUNT_SPECIFIC | newQuantity `p4Alt1`, id `p2Alt2`, oldQuantity `p4Alt2`, coordGrid.packed `p4Alt1` |
+| 119 | VARCLAN | as desktop (id + typed value) |
+| 120 | IF_SETROTATESPEED (unverified) | combinedId `pCombinedIdAlt3`, xSpeed `p2`, ySpeed `p2` |
+| 123 | MIDI_SWAP (unverified) | recognised, no codec |
+| 124 | VARCLAN_DISABLE | as desktop (clears the varclan store) |
+| 125 | IF_SETSCROLLPOS | combinedId `pCombinedIdAlt3`, scrollPos `p2` |
+| 126 | IF_MOVESUB | destinationCombinedId `pCombinedId`, sourceCombinedId `pCombinedId` |
+| 127 | IF_SETOBJECT | count `p4Alt2`, obj `p2Alt3`, combinedId `pCombinedIdAlt1` |
+| 128 | CAM_UNLOCK | as desktop (p1Alt3) |
+| 129 | CAM_MOVETO_ARC_V3 | destinationX `p2Alt3`, centerX `p2`, centerZ `p2Alt1`, destinationZ `p2Alt3`, if (ignoreTerrain) 1 else 0 `p1Alt2`, easing.id `p1Alt2`, cycles `p2Alt2`, height `p2`, if (heightRelative) 1 else 0 `p1Alt1` |
+| 130 | IF_SETMODEL_V2 | model `p4Alt1`, combinedId `pCombinedIdAlt1` |
+| 131 | CAM_LOOKAT_V3 | x `p2Alt1`, rate2 `p1`, height `p2`, z `p2Alt1`, rate `p1Alt3`, if (heightRelative) 1 else 0 `p1` |
+| 132 | OBJ_CUSTOMISE_SPECIFIC_V2 | recognised, no codec |
+| 133 | CAM_MOVETO_CYCLES_V3 | easing.id `p1Alt3`, x `p2`, cycles `p2`, z `p2`, if (ignoreTerrain) 1 else 0 `p1`, if (heightRelative) 1 else 0 `p1`, height `p2` |
+| 134 | GROUP_VAR_INT (unverified) | as desktop (shared handler FUN_006871e0) |
+| 135 | OBJUNLOCK_RESET | as desktop (frees the obj-unlock array) |
+| 136 | CAM_MOVETO_V3 | if (heightRelative) 1 else 0 `p1Alt1`, height `p2Alt1`, x `p2Alt1`, rate `p1Alt2`, z `p2Alt2`, rate2 `p1` |
+| 138 | GROUP_VAR (unverified) | as desktop (shared handler FUN_006871e0) |
+| 139 | OBJUNLOCK_UPDATE | as desktop (obj-unlock long array) |
+| 140 | GROUP_FULL (unverified) | as desktop (smart id / p8 header) |
+| 141 | GROUP_VAR_LONG (unverified) | as desktop (shared handler FUN_006871e0) |
+| 142 | CAM_ROTATETO_COORDINATE_V3 | height `p2Alt1`, if (trackTarget) 1 else 0 `p1`, easing.id `p1Alt3`, cycles `p2Alt1`, if (heightRelative) 1 else 0 `p1Alt1`, z `p2Alt3`, x `p2Alt1` |
+| 144 | CAM_LOOKAT_CYCLES | z `p2Alt1`, x `p2Alt1`, easing.id `p1Alt3`, height `p2Alt2`, if (heightRelative) 1 else 0 `p1`, cycles `p2Alt2` |
+| 146 | WORLDENTITY_INFO_V7 | recognised, no codec |
+| 147 | AMBIENTSOUND_START | id `p2Alt2`, if (fade) 1 else 0 `p1` |
+| 148 | CAM_SKYBOX (unverified) | model `p4` |
+| 149 | AMBIENTSOUND_STOP | if (fade) 1 else 0 `p1Alt1` |
+
+Notes:
+- The jump table is at vaddr 0x1040f6 (u16 entries, target = 0x441e8c + 4 × entry). Opcodes 0, 60,
+  116 and 137 go straight to the exit path (the client ignores them; 60 is consumed in the reader).
+- Not identified: 20, 113, 115 (three flag bytes in one settings struct: HIDENPCOPS / HIDELOCOPS /
+  HIDEOBJOPS / SET_HEATMAP_ENABLED, assignment unknown), 65 and 110 (one string each: SITE_SETTINGS /
+  UNKNOWN_STRING), 143 (p4, picks the camera's world view; maybe SET_MAP_FLAG_V2 or a newer prot).
+- 41 REBUILD_REGION_V2: reload `p1Alt3`, zoneX `p2Alt1`, zoneZ `p2Alt1`, mapsquare count `p2`
+  (skipped), then the desktop region bits (parser 0x6580e4). Not implemented.
+- 132 OBJ_CUSTOMISE_SPECIFIC_V2: id `p2`, recol count `p1`, (index `p1Alt1`, value `p2Alt3`)*,
+  colour flag `p1Alt3` [+ colour `p2Alt2`], model `p2Alt3`, retex count `p1`, (index `p1Alt1`,
+  value `p2`)*, coord `p4`, quantity `p4`. Not implemented.
+- NPC vs player lookups: FUN_00685094 resolves NPCs (5, 37, 91), FUN_00684e20 players (98).
 
 ## Zone packets
 
@@ -89,25 +209,26 @@ an Android index, which is also the sub-opcode inside PARTIAL_ENCLOSED:
 
 | Index | Prot | Size | Payload (implemented ones) |
 |---|---|---|---|
-| 0 | MAP_ANIM | 6 | |
+| 0 | MAP_ANIM | 6 | coord `p1Alt2`, id `p2Alt3`, delay `p2Alt2`, height `p1Alt2` |
 | 1 | LOC_ADD_CHANGE_V2 | var | op count `p1Alt2`, (op index 0-4 `p1`, string)*, shape<<2\|rot `p1`, coord `p1`, opFlags `p1Alt3`, id `p2Alt2` |
-| 2 | LOC_ANIM | 4 | |
-| 3 | OBJ_ENABLED_OPS | 4 | |
-| 4 | OBJ_UNCUSTOMISE | 7 | |
+| 2 | LOC_ANIM | 4 | shape<<2\|rot `p1Alt1`, anim id `p2Alt1`, coord `p1` |
+| 3 | OBJ_ENABLED_OPS | 4 | coord `p1`, id `p2`, opFlags `p1` |
+| 4 | OBJ_UNCUSTOMISE | 7 | quantity `p4`, coord `p1Alt3`, id `p2Alt1` |
 | 5 | OBJ_DEL | 7 | coord `p1`, quantity `p4Alt2`, id `p2Alt3` |
-| 6 | MAP_PROJANIM_V2 | 24 | |
-| 7 | OBJ_CUSTOMISE | 17 | |
-| 8 | OBJ_COUNT | 11 | |
-| 9 | LOC_MERGE | 14 | |
+| 6 | MAP_PROJANIM_V2 | 24 | endTime `p2Alt3`, startHeight `p2Alt1`, endHeight `p2Alt3`, progress `p2Alt3`, end coord `p4`, id `p2Alt2`, targetIndex `p3`, coord `p1`, startTime `p2Alt3`, sourceIndex `p3Alt1`, angle `p1Alt2` (start/end time and endHeight/progress by struct order, unverified) |
+| 7 | OBJ_CUSTOMISE | 17 | quantity `p4`, coord `p1`, retexIndex `p2Alt1`, model `p2Alt2`, recolIndex `p2Alt1`, recol `p2Alt3`, retex `p2Alt1`, id `p2Alt2` |
+| 8 | OBJ_COUNT | 11 | coord `p1`, newQuantity `p4`, oldQuantity `p4Alt2`, id `p2Alt3` |
+| 9 | LOC_MERGE | 14 | skipped by the client (14 bytes, ignored); server writes the desktop layout |
 | 10 | LOC_DEL | 2 | shape<<2\|rot `p1Alt3`, coord `p1` |
 | 11 | OBJ_ADD | 14 | neverPublic `p1Alt1`, timeUntilDespawn `p2Alt1`, quantity `p4Alt1`, ownership `p1Alt1`, coord `p1`, id `p2`, opFlags `p1Alt2`, timeUntilPublic `p2Alt2` |
-| 12 | SCRIPTEDPROJ_ADD | | |
-| 13 | SOUND_AREA | 7 | |
-| 14 | SCRIPTEDPROJ_CHANGE | 18 | |
+| 12 | SCRIPTEDPROJ_ADD | 37 | sourceHeight `p2Alt1`, id `p2Alt3`, sourceIndex `p3`, targetIndex `p3Alt2`, targetOffsetX `p2Alt3`, curveScriptT `p2`, sourceOffsetX `p2Alt3`, slot `p2Alt1`, endTime `p2Alt1`, targetCoord `p4`, curveScriptH `p2Alt1`, targetOffsetZ `p2Alt3`, targetHeight `p2Alt3`, sourceOffsetZ `p2Alt3`, startTime `p2Alt1`, curveScriptA `p2`, coord `p1Alt3` (offset/height/time/curve roles by struct order, unverified) |
+| 13 | SOUND_AREA | 7 | id `p2Alt3`, loops `p1Alt2`, range `p1`, dropOffRange `p1Alt2`, delay `p1`, coord `p1` |
+| 14 | SCRIPTEDPROJ_CHANGE | 18 | targetOffsetX `p2Alt3`, deleteOnFreezeEnd `p1`, slot `p2Alt1`, targetHeight `p2Alt1`, targetIndex `p3Alt2`, targetCoord `p4Alt3`, targetOffsetZ `p2`, freezeDuration `p2` (offset/height roles by struct order) |
 
 Indices were matched by payload size and by what each case does with the tile's loc/obj lists
 (OBJ_ADD's argument order against OBJ_ADD_SPECIFIC, which calls the same function `0x55775c`).
-The server sends them with `AndroidUpdateZonePartialEnclosed` + `AndroidZoneProts.encode`.
+The server sends them with `AndroidUpdateZonePartialEnclosed` + `AndroidZoneProts.encode`; all 15
+have encoders (`AndroidZoneProts.write`). `::zfx mapanim|locanim|sound|proj id ...` exercises some.
 
 ## Player extended info
 

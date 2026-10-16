@@ -12,6 +12,10 @@ WORKDIR /app
 COPY --from=build /src/build/install/rsps-test-server /app
 COPY protocol /app/protocol
 COPY docker-entrypoint.sh /app/
+# The login RSA key is baked in: the /data bind mount is not reliable under Docker Desktop (after a
+# restart it can come up empty), and a regenerated key breaks every patched client.
+COPY data/rsa.properties /app/rsa.properties
+ENV RSA_FILE=/app/rsa.properties
 ENV DATA_DIR=/data
 VOLUME /data
 EXPOSE 43594 8080

@@ -9,6 +9,10 @@ import net.rsprot.protocol.game.outgoing.zone.payload.LocAddChangeV2
 import net.rsprot.protocol.game.outgoing.zone.payload.LocDel
 import net.rsprot.protocol.game.outgoing.zone.payload.ObjAdd
 import net.rsprot.protocol.game.outgoing.zone.payload.ObjDel
+import net.rsprot.protocol.game.outgoing.zone.payload.LocAnim
+import net.rsprot.protocol.game.outgoing.zone.payload.MapAnim
+import net.rsprot.protocol.game.outgoing.zone.payload.MapProjAnimV2
+import net.rsprot.protocol.game.outgoing.zone.payload.SoundArea
 import net.rsprot.protocol.message.ZoneProt
 import net.rsprot.protocol.api.GameConnectionHandler
 import net.rsprot.protocol.api.NetworkService
@@ -688,6 +692,24 @@ class World(
                 val c = player.coord.let { Coord(it.x + (args.getOrNull(2)?.toIntOrNull() ?: 0), it.z + (args.getOrNull(3)?.toIntOrNull() ?: 0), it.level) }
                 sendZone(player, c, listOf(LocDel(c.x and 7, c.z and 7, shape, 0)))
             }
+            "zfx" -> {
+                // ::zfx mapanim id [height] | locanim anim [shape] [dx] [dz] | sound id [loops] | proj id [dx]
+                val n = args.getOrNull(2)?.toIntOrNull() ?: return player.message("::zfx mapanim|locanim|sound|proj id ...")
+                val c = player.coord
+                val a3 = args.getOrNull(3)?.toIntOrNull()
+                val msg: ZoneProt = when (args.getOrNull(1)) {
+                    "mapanim" -> MapAnim(n, 0, a3 ?: 0, c.x and 7, c.z and 7)
+                    "locanim" -> {
+                        val t = Coord(c.x + (args.getOrNull(4)?.toIntOrNull() ?: 0), c.z + (args.getOrNull(5)?.toIntOrNull() ?: 0), c.level)
+                        return sendZone(player, t, listOf(LocAnim(n, t.x and 7, t.z and 7, a3 ?: 10, 0)))
+                    }
+                    "sound" -> SoundArea(n, 0, a3 ?: 1, 10, 0, c.x and 7, c.z and 7)
+                    "proj" -> MapProjAnimV2(n, 40, 30, 0, 60, 16, 64, 0, 0, c.x and 7, c.z and 7,
+                        c.x + (a3 ?: 5), c.z, c.level)
+                    else -> return player.message("::zfx mapanim|locanim|sound|proj id ...")
+                }
+                sendZone(player, c, listOf(msg))
+            }
             "zobj" -> {
                 // ::zobj id [count] - same as ::obj (both use shared zone ground objs now).
                 val obj = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::zobj id [count]")
@@ -907,12 +929,18 @@ class World(
         return true
     }
 
-    /** Inventory item ops arrive as op = option index + 2 (option 1 "Wield" is op 3). */
+    /**
+     * Inventory item ops: op 2/3/4 = iop1-3, op 5 = Use, op 6 = iop4, op 7 = iop5 (Drop), op 10 =
+     * Examine. (Bucket of milk has iop4 "Empty", which made Drop arrive as op 7.)
+     */
     private fun inventoryOp(player: Player, slot: Int, op: Int) {
         val inv = player.inventory
         val obj = inv.objs.getOrNull(slot)?.takeIf { it != -1 } ?: return
         val type = objTypes[obj]
-        when (type?.iops?.getOrNull(op - 2)?.lowercase()) {
+        val iop = when (op) { 2, 3, 4 -> op - 2; 6 -> 3; 7 -> 4; else -> -1 }
+        val opName = type?.iops?.getOrNull(iop)
+        log.info { "${player.username} inv op $op (${opName ?: "?"}) on $obj slot $slot" }
+        when (opName?.lowercase()) {
             "wield", "wear", "equip" -> equip(player, slot)
             "drop" -> {
                 spawnGroundObj(player, obj, inv.counts[slot])
@@ -920,12 +948,20 @@ class World(
                 inv.counts[slot] = 0
                 player.send(inv.toMessage())
             }
+            "empty" -> {
+                // bucket of milk/water -> bucket, pot of flour -> pot, jug of water -> jug
+                val empty = mapOf(1927 to 1925, 1929 to 1925, 1933 to 1931, 1937 to 1935)[obj]
+                    ?: return player.message("Nothing interesting happens.")
+                inv.objs[slot] = empty
+                player.send(inv.toMessage())
+                player.message("You empty the ${type?.name?.lowercase()}.")
+            }
             "eat", "drink" -> {
                 inv.objs[slot] = -1
                 inv.counts[slot] = 0
                 player.send(inv.toMessage())
                 player.extendedInfo.setSequence(ANIM_EAT, 0)
-                player.message("You ${type?.iops?.get(op - 2)?.lowercase()} the ${type?.name}.")
+                player.message("You ${opName?.lowercase()} the ${type?.name}.")
             }
             else -> player.message("Nothing interesting happens.")
         }

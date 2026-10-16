@@ -56,7 +56,8 @@ class Config(
                 logAndroidPackets = env("LOG_ANDROID_PACKETS", "false").toBoolean(),
                 localAuth = env("LOCAL_AUTH", "false").toBoolean(),
                 localDisplayName = env("LOCAL_DISPLAY_NAME", "Tester"),
-                rsa = loadOrCreateRsa(dataDir.resolve("rsa.properties")),
+                rsa = env("RSA_FILE", "").takeIf { it.isNotEmpty() }?.let { loadRsa(Path(it)) }
+                    ?: loadOrCreateRsa(dataDir.resolve("rsa.properties")),
             )
         }
 
@@ -64,6 +65,12 @@ class Config(
          * 1024-bit key, matching the size of the modulus embedded in the client, so the client's
          * 256-hex-digit modulus string can be swapped in place.
          */
+        /** A fixed key (RSA_FILE, baked into the image) so restarts never invalidate patched clients. */
+        private fun loadRsa(file: Path): RsaKeyPair {
+            check(Files.exists(file)) { "RSA_FILE $file does not exist" }
+            return loadOrCreateRsa(file)
+        }
+
         private fun loadOrCreateRsa(file: Path): RsaKeyPair {
             val props = Properties()
             if (Files.exists(file)) {

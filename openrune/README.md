@@ -43,6 +43,13 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   `::item` and `::invclear`), and numeric ids for `::varp`/`::varbit`/`::getvarp`/`::getvarbit`.
   OpenRune already has `::tele x z [level]`, `::item id|name [count]`, `::npcanim id` (nearest NPC),
   `::mypos`, `::openbank`, `::master` and more.
+- **Quests:** Sheep Shearer and Romeo & Juliet (`content/quest/.../lumbridge/SheepShearer.kt`,
+  `.../varrock/romeoandjuliet/RomeoAndJuliet.kt`) on varps 179/144 with the OSRS stages Quest
+  Helper reads, plus Juliet's house stairs and one Juliet spawn instead of two.
+- **Shared login key:** `RsaProvider` uses `.data/rsa.properties` (our server's key format) when it
+  exists; see "Switch" below.
+- **Database:** transactions on the shared JDBC connection are serialized (a login and a save could
+  interleave and fail the save).
 - **Lumbridge castle doors:** the kitchen door and the hallway double doors are their Recipe for
   Disaster variants in the map, which had no door tag
   (`.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml`).
@@ -93,6 +100,19 @@ reads its game port from the client binary, not from jav_config, so `tools/openr
 patches it (43594 -> 40255). Sign in with "Sign in with Email/Username" (LOCAL_AUTH), then Play Now.
 
 To go back to our current server: `LOCAL_AUTH=1 SERVER=10.0.2.2:8080 tools/repack.sh --install`.
+
+## Switch (OpenRune as the default server)
+
+Prepared, not done; the orchestrator flips it with the user's OK. See `docs/openrune-port.md` 3.4.
+
+```
+scripts/openrune.sh shared-key                     # bake server/data/rsa.properties into the image
+docker stop osrs-rsps-test                         # kept as a stopped fallback
+docker compose --env-file switch.env up -d --build # 43594 (game) and 8080 (jav_config/LOCAL_AUTH)
+```
+
+Afterwards the plain app build (`LOCAL_AUTH=1 SERVER=10.0.2.2:8080 tools/repack.sh --install`)
+connects to OpenRune. Going back: `docker compose down`, then `docker start osrs-rsps-test`.
 
 ## License
 

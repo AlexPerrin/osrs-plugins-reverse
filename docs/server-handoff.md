@@ -5,6 +5,22 @@ work. The client side (injected library + RuneLite plugin host) is developed in 
 another session; see `docs/client-handoff.md`. Protocol findings live in
 `docs/android-protocol.md`.
 
+## Migration to OpenRune (2026-10-16, prepared)
+
+The test server is moving to OpenRune-Server (`openrune/`, `docs/openrune-port.md`). Cook's
+Assistant, Sheep Shearer and Romeo & Juliet, the test commands and the Android protocol (through
+this repo's `rsprot.patch`) all run there.
+- **Until the switch:** `server/` (`osrs-rsps-test`, 43594/8080) stays the default and is not
+  changed.
+- **After the switch:** `osrs-rsps-test` is stopped but kept as a fallback (`docker start
+  osrs-rsps-test` after `docker compose down` in `openrune/`), and its `rsps-saves` volume is left
+  alone. OpenRune serves 43594, and its sidecar (this server's image, HTTP only) serves
+  jav_config/LOCAL_AUTH on 8080.
+- **Login key:** the shared key (`server/data/rsa.properties`) keeps existing app builds working.
+- **Where work goes:** new content goes into `openrune/src` (exported to `openrune/openrune.patch`).
+  Protocol work stays in `server/rsprot.patch`, which both servers build from
+  (`openrune/scripts/openrune.sh rsprot`).
+
 ## Latest state (2026-10-16, third server dev; new hashes after the authorship rewrite)
 
 Container runs ac31a14 (deployed 23:34 local); 39e7f91 after it is tags/docs only. Metric

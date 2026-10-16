@@ -20,7 +20,10 @@ Staged port of our Android test server onto OpenRune-Server, approved 2026-10-16
 | 1.4 | Door content gaps (castle) | kitchen + dining-room double doors tagged; front doors need nothing |
 | 1.5 | Docker deploy beside osrs-rsps-test; app build option in `repack.sh` | done |
 | 2 | Device checklist | done except Quest Helper's overlay steps and weight, which need the client dev |
-| 3 | Sheep Shearer, Romeo & Juliet; make OpenRune the default | waiting for the go-ahead |
+| 3.1 | Sheep Shearer, Romeo & Juliet on OpenRune's quest framework | done (14d4034); headless tests pass |
+| 3.2 | Test commands | done (`::quest` also takes ids, per-quest start stage) |
+| 3.3 | Device runs with Quest Helper | Sheep Shearer done (spinning wheel open), R&J open |
+| 3.4 | Switch preparation | ready (1cf7727), not flipped: see "The switch" |
 
 ## Phase 1 findings
 
@@ -167,6 +170,142 @@ Notes:
 - `adb input keyevent 66` (Enter) sometimes leaves a `::` command in the chat input; deleting and
   retyping it works.
 - `::freeze` is world-wide server state; it was switched back on ("NPC wandering on").
+
+## Phase 3
+
+### 3.1 Sheep Shearer and Romeo & Juliet
+
+OpenRune already had the pieces around the quests:
+- spawns for Fred, the sheep, The Thing, Romeo, Juliet, Father Lawrence, the Apothecary, Draul and
+  Phillipa;
+- shearing (`Sheep`);
+- spinning (the crafting skill opens skillmulti, interface 270);
+- the castle stairs (`SpiralStaircaseScript`, already with "Climb up the stairs." / "Climb down the
+  stairs.", as in OSRS and QH);
+- the picket gates by Fred's pen;
+- the cadava bushes (`Pickables`).
+
+What was missing is the quest scripts. `content/quest/.../lumbridge/SheepShearer.kt` and
+`.../varrock/romeoandjuliet/RomeoAndJuliet.kt` follow `CooksAssistant.kt`. Each keeps its progress
+in a server-only varbit over the OSRS quest varp, so the client sees varp 179/144 as in OSRS:
+
+| Quest | Varp | Stages (QH reads these) |
+|---|---|---|
+| Sheep Shearer | 179 (`varp.sheep`) | 0, 1 started, 1 + balls handed in, 21 done |
+| Romeo & Juliet | 144 (`varp.rjquest`) | 0, 10 Juliet, 20 message, 30 Lawrence, 40 Apothecary, 50 berries/potion, 60 Romeo, 100 done |
+
+- **Dialogue:** taken from the OSRS wiki transcripts (via tsps' `npc-dialogues.json`, BSD-2; only
+  game text, no code copied).
+- **Sheep Shearer extras:** Fred gives shears when you have none, partial hand-ins, the "20 balls
+  already" shortcut, and The Thing (Shear: "The... whatever it is... manages to get away from you!",
+  then Fred's "I've seen The Thing!" option; a server-only varbit).
+- **Apothecary:** "Talk about something else." leads to "Talk about Romeo & Juliet." (shown from
+  stage 40 on). The first visit sets 50; with berries it makes the potion.
+- **Completion:** both quests end through `Quest.setQuestStage`/`completeQuest`, so they show the
+  quest-complete scroll (Sheep Shearer: 1 QP, 150 Crafting XP, 60 coins; R&J: 5 QP).
+- **Juliet's house stairs** (`fai_varrock_stairs_taller` 11797 / `_top` 11799) had no handler. They
+  get straight-staircase offsets in `StraightStaircaseScript`, so going up from the foot (east)
+  lands west of the flight on level 1.
+- **Tests:** `QuestTalkFixture` (test sources) runs NPC conversations headless.
+  `SheepShearerInteractionTest` (4) and `RomeoAndJulietInteractionTest` (3) walk every stage and
+  check the items moved.
+- Gamevals: varps/varbits 63740-63742 in the quest pack's `gamevals.toml`.
+
+### 3.2 Test commands
+
+All of `::quest`, `::give`, `::empty`, `::tele`, `::freeze`, `::npcsay`, `::npcanim`, `::options`,
+`::varp` and `::varbit` exist (see 1.3). `::quest` now also takes a quest id or dbrow
+(`::quest 131 done`), and `start` uses a per-quest first stage (`Quest.debugStartStage`; R&J: 10).
+
+### 3.3 Device runs with Quest Helper
+
+Start QH's helper with `adb shell setprop debug.osrsrl.sbclick '"Sheep Shearer"'`, without
+touching the RL panel.
+
+**Sheep Shearer (slot 1, 2026-10-16 02:28-02:42).** The QH overlay showed, in order:
+
+| Step | What QH showed | Result |
+|---|---|---|
+| Start at Fred | Fred highlighted | Fred's dialogue, then the 3-option menu with all rows visible, then "Start the Sheep Shearer quest?" Yes; objbox "Fred gives you a set of sharp shears."; varp 179 = 1 |
+| Shear | "Shear sheep in the nearby field." (1 x Shears green, 20 x Wool red), sheep highlighted | "You get some wool." |
+| Stairs | "Climb the staircase in the Lumbridge Castle..." (20 x Wool green), stairs highlighted with an arrow | Climb-up to level 1 |
+| Spin | "Spin your wool into balls." | not tapped (see below) |
+| Hand in | "Bring Fred the Farmer north of Lumbridge your balls of wool..." | "You give Fred 20 balls of wool.", then the scroll "You have completed Sheep Shearer!" (1 Quest Point, 150 crafting XP, 60 Coins, total 2) |
+
+Open points:
+- the wheel and make-x (270) were not reached. QH's outlines are drawn offset from the models, so
+  the wheel was hard to find;
+- the QH overlay stayed on "Bring Fred..." after completion (client side, passed to the client
+  dev).
+
+**Romeo & Juliet (slot 2, 02:51-02:58).**
+
+| Step | What QH showed | Result |
+|---|---|---|
+| Romeo | "Talk to Romeo in Varrock Square.", with "Yes, I have seen her actually!" and "Yes." highlighted in the chatmenus | stage 10 |
+| (relog) | "Talk to Juliet in the house west of Varrock.", stairs highlighted | Climb-up from the foot (3159,3436) lands at 3155,3436,1 |
+| Juliet | (same step) | "Juliet gives you a message." objbox, stage 20 |
+
+The run stopped there because QH did not follow live stage changes. The server had varp 144 = 10
+(`::quest`, `::getvarp`; `::varp 144 10` changed nothing either), but QH kept "Talk to Romeo"
+until a relog. The same thing kept the Sheep Shearer overlay open after completion. OpenRune
+sends varps like our server does (rsprot VarpSmall/VarpLarge, Android encoders bound), so this
+went to the client dev first.
+
+Also found:
+- **Two Juliets:** OpenRune spawned the plain `juliet` (5035) and the multinpc
+  `juliet_multi_visible` (6268, shown as 5035 by varbit `romjul_juliet_visible`) side by side. OSRS
+  has only the multinpc; the plain spawn is removed (7790921).
+- **QH outlines** sit on another tile than the NPC model (Romeo, sheep), and for Juliet on the
+  player's tile. Every other quest NPC spawns once, so this is not a duplicate. Client-side
+  candidate: the coordinate base (OpenRune's build area origin, see `::mypos`).
+
+### 3.4 The switch (prepared, not flipped)
+
+Goal: the plain app build (`LOCAL_AUTH=1 SERVER=10.0.2.2:8080 tools/repack.sh`, our server's
+modulus, port 43594) works against OpenRune unchanged.
+
+| Piece | How |
+|---|---|
+| Ports | `docker-compose.yml` takes `OPENRUNE_GAME_PORT` / `OPENRUNE_HTTP_PORT` (default 40255/8081); `switch.env` sets 43594/8080 |
+| Login key | `RsaProvider` loads `.data/rsa.properties` (hex modulus/private_exponent, our server's format) when present; `scripts/openrune.sh shared-key` copies `server/data/rsa.properties` there (git-ignored, baked into the image). `openrune.sh modulus` then prints that modulus too |
+| jav_config / LOCAL_AUTH | the sidecar keeps serving them, now on 8080 |
+| Saves | OpenRune's accounts stay in the volume `osrs-openrune_openrune-pgdata` (unchanged by the switch). Our server's `rsps-saves` volume stays as it is with `osrs-rsps-test`; nothing is migrated (different formats; the test account starts from OpenRune's save) |
+| Fallback | `osrs-rsps-test` is stopped, not removed; going back is the reverse |
+
+Steps, once the orchestrator has the user's OK:
+
+```
+openrune/scripts/openrune.sh shared-key
+docker stop osrs-rsps-test
+cd openrune && docker compose --env-file switch.env up -d --build
+LOCAL_AUTH=1 SERVER=10.0.2.2:8080 tools/repack.sh --install   # the usual build
+```
+
+Back to the old server:
+
+```
+cd openrune && docker compose down
+docker start osrs-rsps-test
+```
+
+Delete `src/.data/rsa.properties` and rebuild to return OpenRune to its own key (40255 builds).
+
+### CS2 crash (optional item)
+
+Likely cause: the quest pack's scripts use varcstr 1293/1294 (`quest_available_ids`,
+`quest_policy_complete_ids`, `varc.sym`). Rev 241's varclient config (archive 2, group 19) has
+entries 0-1568 except exactly 1293 and 1294, and the client likely faults on a varc without a
+config. A varclient entry carries no type (plain varcs are just `00`).
+`scripts/add_varcs.py` adds empty entries for every id in the packs' `varc.sym` to the packed
+cache, in place: a new group 19 container and the archive-2 reference table (version + 1).
+
+Prepared but not yet run on the device:
+- the cache is built with `OPENRUNE_SKIP_CS2_PACKS=spawn` (quest scripts in), then `add_varcs.py`;
+- the pre-test caches are backed up.
+
+If the app no longer crashes, `add_varcs.py` goes into `openrune.sh build` and the default skip
+list becomes `spawn`, so the quest-list filter comes back.
 
 ## Next steps
 

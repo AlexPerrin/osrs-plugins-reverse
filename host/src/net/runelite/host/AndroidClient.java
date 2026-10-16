@@ -18,9 +18,13 @@ public class AndroidClient extends ClientStub {
         return id == -1 ? getTopLevelWorldView() : null;
     }
 
+    /**
+     * Never null, as in RuneLite: plugins (QH's minimap overlay) call getPlane()/isInstance() on it
+     * before login. Its accessors fall back to zeros/empty sets while no scene is loaded.
+     */
     @Override
     public WorldView getTopLevelWorldView() {
-        return getGameState() == GameState.LOGGED_IN ? worldView : null;
+        return worldView;
     }
 
     @Override
@@ -155,7 +159,10 @@ public class AndroidClient extends ClientStub {
 
     @Override
     public Player getLocalPlayer() {
-        return getGameState() == GameState.LOGGED_IN ? Host.localPlayer() : null;
+        // RuneLite keeps the local player through LOADING (teleports, region changes); QH's
+        // NpcStep.scanForNpcs calls getLocalPlayer().getWorldView() on GameStateChanged(LOADING).
+        GameState s = getGameState();
+        return s == GameState.LOGGED_IN || s == GameState.LOADING ? Host.localPlayer() : null;
     }
 
     // --- camera and viewport (the viewport is the whole logical overlay canvas) ---

@@ -10,6 +10,8 @@ final class Native {
     static native boolean widgetDynamicHidden(int id, int index);
     static native String widgetDynamicText(int id, int index);
     static native int[] widgetDynamicGeometry(int id, int index);
+    /** {itemId, quantity} of component id (index < 0) or its CC_CREATE child; null if absent. */
+    static native int[] widgetItem(int id, int index);
     /** Scene objects, all planes: 5 ints each (see jni_bridge.cpp n_scene_objects). Client thread only. */
     static native int[] sceneObjects();
     /** Ground items, all planes: 3 ints each (plane << 16 | x << 8 | y, id, quantity). Client thread only. */

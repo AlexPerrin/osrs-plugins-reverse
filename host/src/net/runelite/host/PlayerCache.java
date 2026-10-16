@@ -39,7 +39,12 @@ final class PlayerCache {
         byIndex.clear();
         byIndex.putAll(seen);
         list = Collections.unmodifiableList(next);
-        local = me;
+        // The game's player list is empty while a region loads and for the first cycles after
+        // (QH's NpcStep reads getLocalPlayer().getWorldView() on GameStateChanged(LOGGED_IN)).
+        // RuneLite keeps the local player meanwhile, so keep the last one until logout.
+        int st = Native.gameState();
+        if (me != null || (st != net.runelite.api.GameState.LOADING.getState()
+                && st != net.runelite.api.GameState.LOGGED_IN.getState())) local = me;
     }
 
     synchronized AndroidPlayer cached(int index) { return byIndex.get(index); }

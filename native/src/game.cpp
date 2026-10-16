@@ -331,6 +331,13 @@ uintptr_t widget_dynamic(uintptr_t w, int index) {
     return read_at<uintptr_t>(read_at<uintptr_t>(w + 0xb58) + static_cast<size_t>(index) * 0x10 + 8);
 }
 
+// IF_SETOBJECT (if3 widgets) and CC_SETOBJECT (op 1200) store {item id (-1 none), quantity}
+// at Widget +0xb38 (one 8-byte store in the script VM, 0x5e06dc).
+WidgetItem widget_item(uintptr_t w) {
+    if (!w) return {};
+    return {read_at<int32_t>(w + 0xb38), read_at<int32_t>(w + 0xb3c)};
+}
+
 uintptr_t widget(int component) {
     uintptr_t c = client();
     if (!c || component < 0) return 0;

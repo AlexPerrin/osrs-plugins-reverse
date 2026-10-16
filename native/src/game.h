@@ -66,6 +66,8 @@ std::string widget_text(uintptr_t widget);
 // Children created by CC_CREATE: Widget +0xb50 count, +0xb58 array of shared_ptr {ctrl, Widget*}.
 int widget_dynamic_count(uintptr_t widget);
 uintptr_t widget_dynamic(uintptr_t widget, int index);  // 0 if empty or out of range
+struct WidgetItem { int id = -1, quantity = 0; };
+WidgetItem widget_item(uintptr_t widget);  // item set by IF_SETOBJECT / CC_SETOBJECT
 struct SubInterface { int component, group; };  // `group` is open inside `component`
 std::vector<SubInterface> open_sub_interfaces();
 

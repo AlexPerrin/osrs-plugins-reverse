@@ -413,6 +413,17 @@ jintArray n_widget_geometry(JNIEnv* env, jclass, jint id) {
     return arr;
 }
 jint n_widget_child_count(JNIEnv*, jclass, jint group) { return game::widget_child_count(group); }
+// {itemId, quantity} of a component (index < 0) or of its CC_CREATE child `index`; null if absent.
+jintArray n_widget_item(JNIEnv* env, jclass, jint id, jint index) {
+    uintptr_t w = game::widget(id);
+    if (w && index >= 0) w = game::widget_dynamic(w, index);
+    if (!w) return nullptr;
+    game::WidgetItem it = game::widget_item(w);
+    jint v[2] = {it.id, it.quantity};
+    jintArray arr = env->NewIntArray(2);
+    env->SetIntArrayRegion(arr, 0, 2, v);
+    return arr;
+}
 
 // Dynamic (CC_CREATE) children: index into the component's created-children array.
 jint n_widget_dynamic_count(JNIEnv*, jclass, jint id) { return game::widget_dynamic_count(game::widget(id)); }
@@ -491,6 +502,7 @@ const JNINativeMethod kNatives[] = {
     {"widgetChildCount", "(I)I", reinterpret_cast<void*>(n_widget_child_count)},
     {"widgetDynamicCount", "(I)I", reinterpret_cast<void*>(n_widget_dynamic_count)},
     {"widgetDynamicHidden", "(II)Z", reinterpret_cast<void*>(n_widget_dynamic_hidden)},
+    {"widgetItem", "(II)[I", reinterpret_cast<void*>(n_widget_item)},
     {"widgetDynamicText", "(II)Ljava/lang/String;", reinterpret_cast<void*>(n_widget_dynamic_text)},
     {"widgetDynamicGeometry", "(II)[I", reinterpret_cast<void*>(n_widget_dynamic_geometry)},
     {"property", "(Ljava/lang/String;)Ljava/lang/String;", reinterpret_cast<void*>(n_property)},

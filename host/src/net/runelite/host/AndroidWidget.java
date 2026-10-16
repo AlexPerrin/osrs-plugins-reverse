@@ -8,7 +8,8 @@ import net.runelite.api.widgets.Widget;
 
 /**
  * A widget by component id; every getter reads the game's current state. Backed so far:
- * text, visibility, geometry (relative position, size, parent) and static children.
+ * text, visibility, geometry (relative position, size, parent), item id/quantity, static and
+ * CC_CREATE children.
  */
 public class AndroidWidget extends WidgetBag {
     final int id;
@@ -29,6 +30,13 @@ public class AndroidWidget extends WidgetBag {
     @Override public int getType() { return 0; }
     @Override public String getText() { String t = Native.widgetText(id); return t != null ? t : ""; }
     @Override public boolean isSelfHidden() { return Native.widgetHidden(id); }
+
+    /** CC_CREATE child index for {@link Native#widgetItem}; -1 for a component. */
+    int childIndex() { return -1; }
+
+    /** Item set by IF_SETOBJECT / CC_SETOBJECT (inventory slots, bank items): -1 if none. */
+    @Override public int getItemId() { int[] it = Native.widgetItem(id, childIndex()); return it != null ? it[0] : -1; }
+    @Override public int getItemQuantity() { int[] it = Native.widgetItem(id, childIndex()); return it != null && it[0] != -1 ? it[1] : 0; }
 
     @Override
     public boolean isHidden() {
@@ -146,6 +154,7 @@ public class AndroidWidget extends WidgetBag {
 
         @Override int[] rawGeo() { return Native.widgetDynamicGeometry(id, index); }
         @Override public int getIndex() { return index; }
+        @Override int childIndex() { return index; }
         @Override public String getText() { String t = Native.widgetDynamicText(id, index); return t != null ? t : ""; }
         @Override public boolean isSelfHidden() { return Native.widgetDynamicHidden(id, index); }
         @Override public boolean isHidden() { return isSelfHidden() || ancestorsHidden(id); }

@@ -106,6 +106,7 @@ public final class Host {
             for (File jar : jars) loadJar(plugins, jar, cacheDir);
         }
         worldView().androidScene().objects.bus = bus;
+        Probe.init(plugins.getPlugins());
         eventBus = bus;
         Log.i(TAG, "host ready; " + plugins.getPlugins().size() + " plugin(s) running");
     }
@@ -172,6 +173,7 @@ public final class Host {
                 }
                 bus.post(gameTick);
                 clientThread.runTickEnd();
+                Probe.onGameTick();
                 break;
             case GAME_STATE_CHANGED: {
                 GameStateChanged e = new GameStateChanged();

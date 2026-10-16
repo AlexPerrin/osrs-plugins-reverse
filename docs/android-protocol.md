@@ -420,4 +420,8 @@ After IF_CLOSESUB the server runs scripts 2158 and 216 (chat_build); without 216
 
 The journal side tab (629) is filled by the server: IF_OPENSUB of 712 (summary), 399 (quest list)
 or 259 (diaries) into 629:43, plus varbit 8168; its subtab buttons arrive as IF_BUTTON 629:2-25.
+Chatmenu (219, root 479x122) does not fit chatbox:chatmodal 162:568 (479x96): set varbit 10670
+(chatmodal_unclamp) = 1 and run clientscript 113 so 113 sizes 162:568 to its parent; without it
+the lower rows are clipped and taps resolve to the wrong option.
+
 NPC "Attack" is hidden unless varp 1306 (attack option setting) is non-zero.

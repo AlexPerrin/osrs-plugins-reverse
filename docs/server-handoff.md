@@ -5,7 +5,7 @@ work. The client side (injected library + RuneLite plugin host) is developed in 
 another session; see `docs/client-handoff.md`. Protocol findings live in
 `docs/android-protocol.md`.
 
-## Where things stand (2026-10-16, early; container runs 5c5aa00)
+## Where things stand (2026-10-16 evening; container runs the chatmenu fix after 47f6549)
 
 - A rev-241 test server runs in Docker (`osrs-rsps-test`): JS5 cache (OpenRS2 cache 2735),
   `jav_config.ws` / `slr.ws`, login, a small game world, reconnect (60 s grace), and a local
@@ -154,42 +154,56 @@ Done, for reference:
   (varp 29: 0/1/2; ingredients 1927/1944/1933; quest points + 300 cooking XP). Cook 4626 spawns at
   3209,3215. Add more quests the same way.
 
-In progress (2026-10-16, server agent; NOT yet compiled or deployed, Docker Desktop was down
-and was being started):
-- **Journal totals** (uncommitted -> committed untested): varbits from RuneLite gameval names,
-  read by summary script 3310: qp_max 1782 (varp 904 bits 0-9), quests_completed_count 6347
-  (varp 904 bits 20-28), quests_total_count 11877 (varp 2920 bits 0-8), subquests_completed_count
-  13987, miniquests_completed_count 14162. `Quests.totals` counts the quest dbtable (table 0,
-  dbrows in 2/38): column 4 = 1 miniquest, column 21 = parent quest (RFD subquests). Cache 2735:
-  187 quests, 10 subquests, 19 miniquests, 347 QP. `updateQuestPoints` now sets all of them and
-  runs at login before the journal panel opens. Dbrow value counts are smart (1 or 2 bytes); the
-  Kotlin decoder was fixed. Next: `./gradlew-docker installDist`, deploy, check the summary panel.
-- **Options menu clipping, root cause found**: 219:1 is 479x122 at y=12, but chatbox:chatmodal
-  162:568 is only 479x96 (centred), so rows below ~84 are clipped. Script 2581 (mobile only,
-  gosub 1972) resizes 162:34 (chatbox container) to 519 x (165 + 20 [+30]) via if_setsize (2001)
-  and 2000; script 908 toggles 162:568 / 162:567 / 162:561 / 162:57 visibility. Next: find what
-  sizes 162:568 on desktop vs mobile (scripts 80, 113, 922, 925, 1701, 2068, 2251, 3179, 7616
-  reference 162:568), or open 219 into a taller component; compare with how 231 fits (content
-  within 110).
-- Scratch tools (Python cache reader, CS2 disassembler with switch tables, if3 geometry decoder,
-  dbrow decoder) were in the session scratchpad; they are small to rewrite (see Quests.kt for the
-  CS2 / dbrow formats). RuneLite gameval VarbitID/VarPlayerID/VarClientID (javap -constants on
-  re/runelite/runelite-api-1.13.1.jar) give var names and were the quickest way to find vars.
+Done 2026-10-16 (commits 9c34817, 47f6549, deployed ~21:17 local):
+- Journal totals verified on device: summary "Quests Completed: 0/187", quest list "Completed:
+  0/187", "Quest Points: 0/347" (varbits qp_max 1782, quests_completed_count 6347,
+  quests_total_count 11877, sub/miniquest counts; `Quests.totals` from the quest dbtable).
+- RSA key is baked into the image (`COPY data/rsa.properties`, `RSA_FILE=/app/rsa.properties`):
+  under Docker Desktop the `./data` bind mount came up as an empty VM directory and the key was
+  regenerated on restart. Current key: modulus 8555c56c... (host `server/data/rsa.properties`; the
+  old c72642... key is in `rsa.properties.c72642.bak`). Note: `docker cp` reads the host path, use
+  `docker exec cat` to see what the container really has.
+- Protocol mapping push: S→C 140/151, C→S 90/102, zone 15/15 (see android-protocol.md; enum
+  entries tagged "dispatcher case read" / "sender read" / "unverified: reason").
+  `AndroidMoreEncoders.kt`, `AndroidMoreDecoders.kt`. rsprot core change: the decoder repository
+  keys message classes by opcode (`getMessageClass(opcode)`), since one delegating decoder class
+  is bound under many opcodes. New client messages without game logic go to `World.incoming`
+  (logged once per class). Decoded live: 10, 13, 21, 37, 67, 98, 100.
+- Inventory IF_BUTTONX ops: 2/3/4 = iop1-3, 5 = Use, 6 = iop4, 7 = iop5 (Drop), 10 = Examine
+  (bucket of milk has iop4 "Empty", so Drop came as op 7). "Empty" implemented.
+- `::quest name|index [state]`: exact name, list index, unique prefix, then unique substring.
+- `::zfx mapanim|locanim|sound|proj id ...` sends the new zone prots (untested on device).
+
+Verified on device 2026-10-16 21:24 (deployed):
+- **Chatmenu clipping / hit offset fixed**: chatbox:chatmodal 162:568 is 479x96, chatmenu root 219:1
+  is 479x122 at y=12, and script 58's mobile layout (gosub 1972: varbit 6352 osm_simulate or
+  client op 6519 == 7) puts 4 options at y=25/48/71/94 (23 px), so rows below ~84 are clipped;
+  the client dev saw taps on row 1 resume sub=2. Script 113 (chat layout) sizes 162:568 to fill
+  its parent when varbit 10670 CHATMODAL_UNCLAMP = 1 (else 479x96). `setChatmodalUnclamp` sets it
+  for chatmenu (and back to 0 for chat_left/right and on close), then runs script 113. Test: Talk
+  `::options One Two Three Four`: all four rows visible, taps give sub 1/2/3/4, chat history back
+  after closing.
 
 Open, in priority order:
-1. Whatever the client agent reports as a Quest Helper gap (it is testing Cook's Assistant end to end).
-2. Options menu shows only 2 of 3+ rows: on mobile the chatbox is clipped at ~y=260 px (the third row
-   is drawn but cut off; 5 options show A, B, C partly). Script 58 has a mobile branch (gosub 1972 =
-   varbit 6352 osm_simulate / mobile check) with different y positions; maybe a varbit/varc picks the
-   compact layout. Sending 2379 first did not change it.
-3. Journal totals (see above); more quests (Sheep Shearer, Romeo & Juliet...) with the dialogue engine.
+1. Quest Helper gaps from the client agent (Cook's Assistant end to end).
+2. More quests on the dialogue engine (Sheep Shearer, Romeo & Juliet).
+3. Remaining S→C unknowns: 20/113/115 (HIDE*OPS / heatmap flags), 65/110 (one string), 143 (p4),
+   codecs for REBUILD_REGION_V2 (41), OBJ_CUSTOMISE_SPECIFIC_V2 (132), PROJANIM_SPECIFIC_V4 (76),
+   clan bodies (19, 84, 87, 88). C→S: 12, 87, 27, the 11-byte (1/62/76/85) and 15-byte (73/83)
+   U/T groups need live captures; EVENT_KEYBOARD delta transform.
 4. Facing for combat (map the Android "face" extended-info block for players and NPCs).
+5. Combat level shows -1 in the journal summary (some var not set).
 
-Scratch Python helpers (cache reader, CS2 disassembler, quest/map decoders) were used for the
-static work; equivalents live in `Quests.kt` / `Maps.kt`.
+Scratch helpers (Python cache reader with reference tables, CS2 disassembler with opcode names,
+if3 geometry decoder, script reference scanner) were in the session scratchpad; small to rewrite.
+RuneLite gameval VarbitID/VarPlayerID (javap -constants on re/runelite/runelite-api-1.13.1.jar)
+names vars quickly (e.g. 10670 CHATMODAL_UNCLAMP).
 
 ## Coordination
 
+- Device and restarts (2026-10-16 rule): NO container restart or adb action without an explicit
+  per-action "OK restart" / "OK device" from the orchestrator; read the status file in its own
+  step right before acting (never batch the read with the write/restart).
 - Device status is ALSO kept in `/tmp/osrs-device-status` (both agents write "taking device (...)" /
   "device free, restart ok (...)" there). A server subagent's SendMessage replies go to its parent
   session, so poll that file. Deploy = `docker compose up -d` in its own command (the auto-mode

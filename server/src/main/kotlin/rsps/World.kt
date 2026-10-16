@@ -1061,6 +1061,7 @@ class World(
     fun openNpcChat(player: Player, npcId: Int, name: String, text: String) {
         player.send(RunClientScript(SCRIPT_CHATBOX_RESET_BACKGROUND, emptyList()))
         player.send(IfOpenSub(CHATBOX_INTERFACE, CHATBOX_MODAL, CHAT_LEFT, 0))
+        setChatmodalUnclamp(player, false)
         player.send(IfSetNpcHead(CHAT_LEFT, CHAT_LEFT_HEAD, npcId))
         player.send(IfSetAnim(CHAT_LEFT, CHAT_LEFT_HEAD, ANIM_CHAT_NEUTRAL))
         player.send(IfSetText(CHAT_LEFT, CHAT_LEFT_NAME, name))
@@ -1074,6 +1075,7 @@ class World(
     fun openPlayerChat(player: Player, text: String) {
         player.send(RunClientScript(SCRIPT_CHATBOX_RESET_BACKGROUND, emptyList()))
         player.send(IfOpenSub(CHATBOX_INTERFACE, CHATBOX_MODAL, CHAT_RIGHT, 0))
+        setChatmodalUnclamp(player, false)
         player.send(IfSetPlayerHead(CHAT_RIGHT, CHAT_LEFT_HEAD))
         player.send(IfSetAnim(CHAT_RIGHT, CHAT_LEFT_HEAD, ANIM_CHAT_NEUTRAL))
         player.send(IfSetText(CHAT_RIGHT, CHAT_LEFT_NAME, player.username))
@@ -1087,6 +1089,7 @@ class World(
     fun openOptions(player: Player, title: String, options: List<String>) {
         player.send(RunClientScript(SCRIPT_CHATBOX_RESET_BACKGROUND, emptyList()))
         player.send(IfOpenSub(CHATBOX_INTERFACE, CHATBOX_MODAL, CHATMENU, 0))
+        setChatmodalUnclamp(player, true)
         player.send(RunClientScript(SCRIPT_CHATBOX_MULTI, listOf(title, options.joinToString("|"))))
         player.send(IfSetEventsV2(CHATMENU, CHATMENU_OPTIONS, 1, options.size, IF_EVENT_PAUSE, 0))
         player.dialogueOpen = true
@@ -1203,10 +1206,23 @@ class World(
         }
     }
 
+    /**
+     * chatbox:chatmodal (162:568) is 479x96 by default; chatmenu (219, root 479x122 at y=12) does not
+     * fit, so its lower rows were clipped on mobile. Varbit 10670 (chatmodal_unclamp) makes script
+     * 113 (chat layout) size 162:568 to fill its parent instead; 113 runs here to apply it.
+     */
+    private fun setChatmodalUnclamp(player: Player, on: Boolean) {
+        val value = if (on) 1 else 0
+        if (getVarbit(player, VARBIT_CHATMODAL_UNCLAMP) == value) return
+        setVarbit(player, VARBIT_CHATMODAL_UNCLAMP, value)
+        player.send(RunClientScript(SCRIPT_CHAT_LAYOUT, emptyList()))
+    }
+
     fun closeDialogue(player: Player) {
         if (!player.dialogueOpen) return
         player.dialogueOpen = false
         player.send(IfCloseSub(CHATBOX_INTERFACE, CHATBOX_MODAL))
+        setChatmodalUnclamp(player, false)
         player.send(RunClientScript(SCRIPT_CHAT_DEFAULT_RESTORE_INPUT, emptyList()))
         // Rebuilds the chat history, which stays hidden after a dialogue otherwise.
         player.send(RunClientScript(SCRIPT_BUILD_CHATBOX, emptyList()))
@@ -1704,6 +1720,8 @@ class World(
         private const val CHATMENU = 219
         private const val CHATMENU_OPTIONS = 1
         private const val SCRIPT_CHATBOX_MULTI = 58
+        private const val SCRIPT_CHAT_LAYOUT = 113
+        private const val VARBIT_CHATMODAL_UNCLAMP = 10670
         private const val CHAT_LEFT_HEAD = 2
         private const val CHAT_LEFT_NAME = 4
         private const val CHAT_LEFT_CONTINUE = 5

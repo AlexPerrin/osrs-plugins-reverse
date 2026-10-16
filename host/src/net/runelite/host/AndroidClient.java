@@ -417,8 +417,29 @@ public class AndroidClient extends ClientStub {
 
     @Override
     public java.util.EnumSet<net.runelite.api.WorldType> getWorldType() {
-        return java.util.EnumSet.noneOf(net.runelite.api.WorldType.class);
+        return net.runelite.api.WorldType.fromMask(Native.worldFlags());
     }
+
+    // Client +0x3174 / +0x2f64 (the CS2 map_world / worldflags handlers).
+    @Override public int getWorld() { return Native.world(); }
+
+    // Friends chat / clans: not in a channel (RuneLite returns null then).
+    @Override public net.runelite.api.FriendsChatManager getFriendsChatManager() { return null; }
+    @Override public net.runelite.api.clan.ClanChannel getClanChannel() { return null; }
+    @Override public net.runelite.api.clan.ClanChannel getGuestClanChannel() { return null; }
+    @Override public net.runelite.api.clan.ClanSettings getClanSettings() { return null; }
+    @Override public net.runelite.api.clan.ClanSettings getGuestClanSettings() { return null; }
+    @Override public net.runelite.api.clan.ClanChannel getClanChannel(int clanId) { return null; }
+    @Override public net.runelite.api.clan.ClanSettings getClanSettings(int clanId) { return null; }
+
+    // Sprite overrides are kept (plugins fill them) but the game never reads them.
+    private final java.util.Map<Integer, net.runelite.api.SpritePixels> spriteOverrides = new java.util.HashMap<>();
+    private final java.util.Map<Integer, net.runelite.api.SpritePixels> widgetSpriteOverrides = new java.util.HashMap<>();
+    @Override public java.util.Map<Integer, net.runelite.api.SpritePixels> getSpriteOverrides() { return spriteOverrides; }
+    @Override public java.util.Map<Integer, net.runelite.api.SpritePixels> getWidgetSpriteOverrides() { return widgetSpriteOverrides; }
+    @Override public net.runelite.api.IndexedSprite[] getModIcons() { return null; }
+    // No instances yet: an empty template table.
+    @Override public int[][][] getInstanceTemplateChunks() { return new int[4][13][13]; }
 
     // --- inventories ---
 

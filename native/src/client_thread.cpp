@@ -306,6 +306,7 @@ void after_cycle() {
     poll_messages();
     diff_interfaces();
     diff_menu();
+    game::drawlog_cycle();
 
     std::vector<std::function<void()>> tasks;
     {

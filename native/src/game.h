@@ -203,6 +203,7 @@ struct NpcDef {
 bool npc_def(int id, NpcDef& out);
 // Vertices {x, y, z}* of an Npc/Player's posed model this frame (unrotated, local units, y
 // negative = up) and its height. Game thread only.
+void drawlog_cycle();  // debug.osrsrl.drawlog: which Npc objects the renderer draws (game thread)
 bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height);
 // A scene object's model vertices this frame (layer = SceneLayer, tag = the object's tag; same
 // vertex convention as actor_model, wall decoration offsets applied), with its local position,
@@ -261,6 +262,8 @@ bool menu_open();
 // The client-side varp table (RuneLite getVarps()).
 std::vector<int32_t> varps();
 int weight();      // kg (UPDATE_RUNWEIGHT)
+int world();       // Client +0x3174 (CS2 map_world 3318; jav_config param 12)
+int world_flags(); // Client +0x2f64 (CS2 worldflags 3324)
 int run_energy();  // 0..10000 (UPDATE_RUNENERGY)
 // The game's addChatMessage (what MESSAGE_GAME calls). Game thread only.
 bool add_chat_message(int type, const std::string& name, const std::string& text);

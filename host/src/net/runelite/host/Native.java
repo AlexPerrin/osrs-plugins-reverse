@@ -33,6 +33,8 @@ final class Native {
     static native int varp(int id);
     static native int[] varps();
     static native int weight();
+    static native int world();
+    static native int worldFlags();
     static native int runEnergy();
     /** {height, x0, y0, z0, ...}: an NPC's or player's posed model this frame (unrotated); client thread only. */
     static native int[] actorModel(boolean player, int index);

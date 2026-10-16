@@ -3,6 +3,12 @@
 #include <elf.h>
 #include <link.h>
 
+#include <mutex>
+#include <unordered_map>
+#include <sys/mman.h>
+#include <sys/system_properties.h>
+#include <unistd.h>
+#include <cstdlib>
 #include <algorithm>
 #include <cstring>
 #include <memory>
@@ -99,6 +105,7 @@ constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
 
 const Build* g_build = nullptr;
 uintptr_t g_base = 0;
+thread_local bool g_own_model_call = false;  // our own getModel calls (drawlog ignores them)
 
 struct NoteSearch {
     const uint8_t* id = nullptr;
@@ -194,6 +201,8 @@ int varp(int id) { return g_build ? read_varp_table(g_build->varps, id) : 0; }
 
 // UPDATE_RUNWEIGHT (dispatcher case 0x1a) stores s16 at Client+0x33a4; UPDATE_RUNENERGY (0x66)
 // stores 0..10000 at Client+0x33a0.
+int world() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x3174) : 0; }
+int world_flags() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x2f64) : 0; }
 int weight() { uintptr_t c = client(); return c ? read_at<int16_t>(c + 0x33a4) : 0; }
 int run_energy() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x33a0) : 0; }
 
@@ -1056,7 +1065,9 @@ bool append_model(uintptr_t renderable, int dx, int dz, std::vector<int32_t>& xy
         ~SharedPtr() {}
     };
     auto fn = reinterpret_cast<SharedPtr (*)(uintptr_t, int)>(read_at<uintptr_t>(vt));
+    g_own_model_call = true;
     SharedPtr r = fn(renderable, cycle());
+    g_own_model_call = false;
     uintptr_t ctrl = r.ctrl, m = r.obj;
     if (!m) { release_shared(ctrl); return false; }
     int n = read_at<int32_t>(m + 0x20);
@@ -1077,6 +1088,113 @@ bool append_model(uintptr_t renderable, int dx, int dz, std::vector<int32_t>& xy
     return ok;
 }
 }  // namespace
+
+// Draw log (setprop debug.osrsrl.drawlog 1): hooks the Npc vtable slot 0 (getModel) to record
+// which Npc objects the renderer asks for a model, then logs them every ~50 cycles next to the
+// WorldView's hash map nodes and index list (which entity the game draws vs which one we read).
+namespace {
+struct DrawSp {
+    uintptr_t ctrl, obj;
+    ~DrawSp() {}
+};
+using DrawGetModel = DrawSp (*)(uintptr_t, int);
+DrawGetModel g_draw_orig = nullptr;
+std::mutex g_draw_mutex;
+std::unordered_map<uintptr_t, int> g_drawn;
+uintptr_t g_draw_caller = 0;
+DrawSp draw_hook(uintptr_t self, int cyc) {
+    if (!g_own_model_call) {
+        std::lock_guard lock(g_draw_mutex);
+        g_drawn[self]++;
+        if (!g_draw_caller) g_draw_caller = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
+    }
+    return g_draw_orig(self, cyc);
+}
+}  // namespace
+
+void drawlog_cycle() {
+    static int counter = 0;
+    static bool enabled = false;
+    if (++counter % 50 != 0) return;
+    char value[PROP_VALUE_MAX] = {};
+    __system_property_get("debug.osrsrl.drawlog", value);
+    enabled = value[0] == '1';
+    if (!enabled) return;
+    uintptr_t c = client();
+    if (!c || game_state() != 30) return;
+    auto wv = read_at<uintptr_t>(c + g_build->f_world_view);
+    if (!wv) return;
+    auto buckets = read_at<uintptr_t>(wv + g_build->wv_npc_buckets);
+    auto nb = read_at<uint64_t>(wv + g_build->wv_npc_bucket_count) & 0xffffffff;
+    if (!buckets || !nb || nb > 1000000) return;
+    // Install the hook on the first Npc's vtable.
+    if (!g_draw_orig) {
+        for (uint64_t b = 0; b < nb && !g_draw_orig; b++)
+            for (auto node = read_at<uintptr_t>(buckets + b * 8); node; node = read_at<uintptr_t>(node + 24)) {
+                uintptr_t npc = read_at<uintptr_t>(node + 16);
+                if (!npc) continue;
+                uintptr_t vt = read_at<uintptr_t>(npc);
+                LOGI("drawlog: Npc vtable %#lx (elf %#lx) slot0 %#lx (elf %#lx)", (unsigned long)vt,
+                     (unsigned long)(vt - g_base), (unsigned long)read_at<uintptr_t>(vt),
+                     (unsigned long)(read_at<uintptr_t>(vt) - g_base));
+                void* old = nullptr;
+                auto** slot = reinterpret_cast<void**>(vt);
+                long page = sysconf(_SC_PAGESIZE);
+                auto start = reinterpret_cast<void*>(vt & ~(page - 1));
+                if (mprotect(start, page * 2, PROT_READ | PROT_WRITE) == 0) {
+                    old = *slot;
+                    g_draw_orig = reinterpret_cast<DrawGetModel>(old);
+                    *slot = reinterpret_cast<void*>(draw_hook);
+                    mprotect(start, page * 2, PROT_READ);
+                    LOGI("drawlog: getModel hooked");
+                } else {
+                    LOGE("drawlog: mprotect failed");
+                }
+                break;
+            }
+        return;
+    }
+    std::unordered_map<uintptr_t, int> drawn;
+    uintptr_t caller;
+    {
+        std::lock_guard lock(g_draw_mutex);
+        drawn.swap(g_drawn);
+        caller = g_draw_caller;
+    }
+    int px = read_at<int32_t>(c + 0xcb7c), py = read_at<int32_t>(c + 0xcb80);
+    int bx = read_at<int32_t>(wv + g_build->wv_base_x), by = read_at<int32_t>(wv + g_build->wv_base_y);
+    int count = read_at<int32_t>(wv + g_build->wv_npc_count);
+    auto indices = read_at<const int32_t*>(wv + g_build->wv_npc_indices);
+    std::unordered_map<int, int> in_list;
+    for (int i = 0; indices && i < count && i < 65536; i++) in_list[indices[i]]++;
+    LOGI("drawlog: player scene %d,%d base %d,%d list %d buckets %lu drawn objects %zu caller elf %#lx world %d flags %#x", px, py, bx, by,
+         count, (unsigned long)nb, drawn.size(), (unsigned long)(caller ? caller - g_base : 0), world(), world_flags());
+    std::unordered_map<uintptr_t, int> seen;
+    for (uint64_t b = 0; b < nb; b++)
+        for (auto node = read_at<uintptr_t>(buckets + b * 8); node; node = read_at<uintptr_t>(node + 24)) {
+            int index = read_at<int32_t>(node);
+            uintptr_t npc = read_at<uintptr_t>(node + 16);
+            if (!npc) continue;
+            seen[npc]++;
+            int fx = read_at<int32_t>(npc + 0x1fc), fy = read_at<int32_t>(npc + 0x200);
+            if (std::abs((fx >> 7) - px) > 16 || std::abs((fy >> 7) - py) > 16) continue;
+            auto def = read_at<uintptr_t>(npc + g_build->npc_def);
+            auto it = drawn.find(npc);
+            LOGI("drawlog: node idx %d npc %#lx id %d '%s' fine %d,%d (tile %d,%d) +268 %d,%d path0 %d,%d upd %d list %d drawn %d bucket %lu",
+                 index, (unsigned long)npc, def ? read_at<int32_t>(def) : -1, def ? read_string(def + g_build->def_name).c_str() : "",
+                 fx, fy, bx + (fx >> 7), by + (fy >> 7), read_at<int32_t>(npc + 0x268), read_at<int32_t>(npc + 0x26c),
+                 read_at<int32_t>(npc + 0x3f0), read_at<int32_t>(npc + 0x418), read_at<uint8_t>(npc + 0x768),
+                 in_list.count(index) ? in_list[index] : 0, it != drawn.end() ? it->second : 0, (unsigned long)b);
+        }
+    for (auto& [p, n] : drawn) {
+        if (seen.count(p)) continue;
+        int fx = read_at<int32_t>(p + 0x1fc), fy = read_at<int32_t>(p + 0x200);
+        auto def = read_at<uintptr_t>(p + g_build->npc_def);
+        LOGI("drawlog: drawn but not in map: %#lx id %d fine %d,%d (tile %d,%d) +268 %d,%d calls %d", (unsigned long)p,
+             def ? read_at<int32_t>(def) : -1, fx, fy, bx + (fx >> 7), by + (fy >> 7), read_at<int32_t>(p + 0x268),
+             read_at<int32_t>(p + 0x26c), n);
+    }
+}
 
 bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height) {
     xyz.clear();

@@ -254,10 +254,10 @@ index 00000000..a11c5f82
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt
 new file mode 100644
-index 00000000..ea743851
+index 00000000..4302ebc2
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidEncoders.kt
-@@ -0,0 +1,364 @@
+@@ -0,0 +1,369 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -496,6 +496,11 @@ index 00000000..ea743851
 +    override val prot: ServerProt,
 +    private val delegate: MessageEncoder<T>,
 +) : MessageEncoder<T> {
++    // URL_OPEN's payload is ISAAC-encrypted byte by byte; the Android reader (0x5da16c)
++    // decrypts opcode 24 the same way, so the flag must carry over.
++    override val encryptedPayload: Boolean
++        get() = delegate.encryptedPayload
++
 +    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: T) {
 +        delegate.encode(streamCipher, buffer, message)
 +    }

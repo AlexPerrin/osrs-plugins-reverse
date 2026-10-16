@@ -216,7 +216,10 @@ bool g_menu_was_open = false;
 
 void diff_menu() {
     bool open = game::menu_open();
-    if (open && !g_menu_was_open) post({EventType::MenuOpened, static_cast<int>(game::read_menu().size())});
+    if (open && !g_menu_was_open) {
+        auto entries = game::read_menu();
+        post({EventType::MenuOpened, static_cast<int>(entries.size())});
+    }
     g_menu_was_open = open;
 }
 
@@ -232,8 +235,9 @@ uint64_t hook_menu_select(void* menu, const uint64_t* const* path, int x, int y,
         game::menu_entry_for_path(reinterpret_cast<uintptr_t>(menu), path[0], path[1] - path[0], entry)) {
         g_clicked = entry;
         g_click_consumed = false;
-        LOGI("menu: select '%s' '%s' kind %d on %s thread", entry.option.c_str(), entry.target.c_str(), entry.kind,
-             on_client_thread() ? "client" : "other");
+        LOGI("menu: select '%s' '%s' kind %d path[0] %llu len %zu x %d y %d flag %d open %d on %s thread",
+             entry.option.c_str(), entry.target.c_str(), entry.kind, (unsigned long long)path[0][0],
+             (size_t)(path[1] - path[0]), x, y, flag, game::menu_open(), on_client_thread() ? "client" : "other");
         post({EventType::MenuOptionClicked, static_cast<int>(path[0][0])});
         if (g_click_consumed) {
             g_click_consumed = false;

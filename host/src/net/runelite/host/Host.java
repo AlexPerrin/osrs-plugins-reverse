@@ -38,6 +38,8 @@ public final class Host {
     private static volatile EventBus eventBus;
     private static boolean profilePosted;
     private static Client client;
+
+    static Client client() { return client; }
     private static final NpcCache npcCache = new NpcCache();
     private static final PlayerCache playerCache = new PlayerCache();
     private static final AndroidWorldView worldView = new AndroidWorldView(npcCache, playerCache);
@@ -231,6 +233,7 @@ public final class Host {
                 AndroidClient.MENU.clearAdded();
                 net.runelite.api.events.MenuOpened e = new net.runelite.api.events.MenuOpened();
                 e.setMenuEntries(AndroidClient.MENU.getMenuEntries());
+                for (net.runelite.api.MenuEntry m : e.getMenuEntries()) Log.i(TAG, "MenuOpened " + m);
                 bus.post(e);
                 break;
             }
@@ -238,6 +241,7 @@ public final class Host {
                 AndroidMenuEntry[] es = AndroidMenuEntry.fromNative(Native.clickedMenuEntry());
                 if (es.length == 0) break;
                 net.runelite.api.events.MenuOptionClicked e = new net.runelite.api.events.MenuOptionClicked(es[0]);
+                Log.i(TAG, "MenuOptionClicked " + es[0]);
                 bus.post(e);
                 if (e.isConsumed()) Native.consumeMenuClick();
                 break;

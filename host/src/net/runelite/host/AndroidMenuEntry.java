@@ -25,6 +25,7 @@ final class AndroidMenuEntry implements MenuEntry {
     int kind = -1;
     int[] raw = new int[10];
     boolean hasChildren;
+    int npcId = -1;
     /** Created by a plugin (not in the game's menu). */
     boolean synthetic;
 
@@ -47,14 +48,86 @@ final class AndroidMenuEntry implements MenuEntry {
         return out;
     }
 
-    /** Maps the game's entry kinds onto RuneLite's MenuAction/identifier/params (verified ones only). */
-    private void decode() {
-        if ("Walk here".equals(option)) {
-            type = MenuAction.WALK;
-        } else if ("Cancel".equals(option)) {
-            type = MenuAction.CANCEL;
-        } else if ("Examine".equals(option)) {
-            type = MenuAction.EXAMINE_OBJECT;
+    // raw[] = entry +0x120..+0x147 (verified on device 2026-10-15, docs/offsets.md "Menu entry"):
+    // [2] id (NPC/loc/obj type id, or widget component id), [3] NPC index / widget child slot,
+    // [5] op (1-based for world entries, 0-based widget op; 0x7ffffffe = Examine, 0x7fffffff none),
+    // [6] plane, [7]/[8] world x/y, [9] = u16 world view | target type << 16 | ? << 24.
+    static final int T_CANCEL = 0, T_WALK = 1, T_NPC = 2, T_LOC = 3, T_WIDGET = 7;
+    static final int OP_EXAMINE = 0x7ffffffe;
+
+    int targetType() { return raw[9] >>> 16 & 0xff; }
+    int op() { return raw[5]; }
+    int worldX() { return raw[7]; }
+    int worldY() { return raw[8]; }
+
+    /** Maps the game's entry onto RuneLite's MenuAction/identifier/params. */
+    void decode() {
+        worldViewId = -1;  // only the top-level world view (id 0 in the game) is mapped
+        int op = op();
+        switch (targetType()) {
+            case T_CANCEL:
+                type = MenuAction.CANCEL;
+                break;
+            case T_WALK:
+                type = MenuAction.WALK;
+                sceneParams();
+                break;
+            case T_NPC:
+                identifier = raw[3];
+                npcId = raw[2];
+                type = op == OP_EXAMINE ? MenuAction.EXAMINE_NPC : npcOp(op);
+                break;
+            case T_LOC:
+                identifier = raw[2];
+                sceneParams();
+                type = op == OP_EXAMINE ? MenuAction.EXAMINE_OBJECT : locOp(op);
+                break;
+            case T_WIDGET:
+                param0 = raw[3];
+                param1 = raw[2];
+                if ("Use".equals(option)) {
+                    type = MenuAction.WIDGET_TARGET;
+                    identifier = 0;
+                } else {
+                    identifier = op + 1;
+                    type = identifier > 5 ? MenuAction.CC_OP_LOW_PRIORITY : MenuAction.CC_OP;
+                }
+                break;
+            default:
+                // Ground items and players: type bytes not seen yet.
+                identifier = raw[2];
+                sceneParams();
+                type = MenuAction.UNKNOWN;
+                break;
+        }
+    }
+
+    private void sceneParams() {
+        net.runelite.api.WorldView v = Host.client() != null ? Host.client().getTopLevelWorldView() : null;
+        if (v == null) return;
+        param0 = worldX() - v.getBaseX();
+        param1 = worldY() - v.getBaseY();
+    }
+
+    private static MenuAction npcOp(int op) {
+        switch (op) {
+            case 1: return MenuAction.NPC_FIRST_OPTION;
+            case 2: return MenuAction.NPC_SECOND_OPTION;
+            case 3: return MenuAction.NPC_THIRD_OPTION;
+            case 4: return MenuAction.NPC_FOURTH_OPTION;
+            case 5: return MenuAction.NPC_FIFTH_OPTION;
+            default: return MenuAction.UNKNOWN;
+        }
+    }
+
+    private static MenuAction locOp(int op) {
+        switch (op) {
+            case 1: return MenuAction.GAME_OBJECT_FIRST_OPTION;
+            case 2: return MenuAction.GAME_OBJECT_SECOND_OPTION;
+            case 3: return MenuAction.GAME_OBJECT_THIRD_OPTION;
+            case 4: return MenuAction.GAME_OBJECT_FOURTH_OPTION;
+            case 5: return MenuAction.GAME_OBJECT_FIFTH_OPTION;
+            default: return MenuAction.UNKNOWN;
         }
     }
 
@@ -82,15 +155,24 @@ final class AndroidMenuEntry implements MenuEntry {
     @Override public int getItemOp() { return -1; }
     @Override public int getItemId() { return itemId; }
     @Override public MenuEntry setItemId(int id) { itemId = id; return this; }
-    @Override public Widget getWidget() { return null; }
-    @Override public NPC getNpc() { return null; }
+    @Override public Widget getWidget() {
+        if (targetType() != T_WIDGET || Host.client() == null) return null;
+        Widget w = Host.client().getWidget(param1);
+        return w != null && param0 >= 0 && w.getChild(param0) != null ? w.getChild(param0) : w;
+    }
+    @Override public NPC getNpc() {
+        if (targetType() != T_NPC || Host.client() == null) return null;
+        net.runelite.api.WorldView v = Host.client().getTopLevelWorldView();
+        return v != null ? v.npcs().byIndex(identifier) : null;
+    }
     @Override public Player getPlayer() { return null; }
-    @Override public Actor getActor() { return null; }
+    @Override public Actor getActor() { return getNpc(); }
     @Override public Menu getSubMenu() { return null; }
     @Override public Menu createSubMenu() { return new AndroidMenu(); }
     @Override public void deleteSubMenu() {}
 
     @Override public String toString() {
-        return "MenuEntry(" + option + " | " + target + " kind=" + kind + " raw=" + java.util.Arrays.toString(raw) + ")";
+        return "MenuEntry(" + option + " | " + target + " kind=" + kind + " type=" + type + " id=" + identifier + " p0=" + param0 + " p1=" + param1
+            + " raw=" + java.util.Arrays.toString(raw) + ")";
     }
 }

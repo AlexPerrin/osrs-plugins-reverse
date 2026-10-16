@@ -51,6 +51,17 @@ session; its notes are in `docs/android-protocol.md`.
   inserted into the game's menu). Layouts are from static RE (see docs/offsets.md "Menus").
   The Quest Helper Cook's Assistant end-to-end test was **not done**: the test server container
   was re-downloading its cache (fresh volume) when the session ended, so login failed.
+- **2026-10-15 (fourth client session)**: menus **verified on device**: MenuOpened, select hook on
+  the client thread, game node order top-first (getMenuEntries reverses it), plain taps also go
+  through select (node 0, the default action) so MenuOptionClicked fires for left-clicks too.
+  Entry params decoded (docs/offsets.md "Menu entry"): NPC_*_OPTION/EXAMINE_NPC (identifier = NPC
+  index), GAME_OBJECT_*/EXAMINE_OBJECT (loc id, scene x/y), WALK, CANCEL, CC_OP/WIDGET_TARGET
+  (widget id, slot). Not seen yet: ground items, players (decode as UNKNOWN). Quest Helper's Cook's
+  Assistant overlay follows the inventory (egg/flour/milk steps, requirement colours). Gaps it hits:
+  `NPC.getInteracting`, `NPC.getConvexHull` (NpcStep highlight/arrow), no dialogue-option
+  highlight. The quest start through dialogue is blocked server-side (chatmenu option hit offset,
+  `::quest cook` ambiguous), reported. The server's RSA key is now baked into its image; build with
+  `MODULUS=8555c56c...` (or whatever server/data/rsa.properties holds) if the repack can't log in.
 - Device protocol addition: `/tmp/osrs-device-status` holds the latest "taking device (…)" /
   "device free, restart ok (…)" line; check it before using adb and write it when you take or
   free the device (the server agent polls it), besides the SendMessage notes.

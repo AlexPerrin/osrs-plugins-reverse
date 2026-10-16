@@ -14,8 +14,9 @@ public class AndroidClient extends ClientStub {
 
     @Override
     public WorldView getWorldView(int id) {
-        // Only the top-level world view (-1) exists until world entities (boats) are mapped.
-        return id == -1 ? getTopLevelWorldView() : null;
+        // Only the top-level world view (WorldView.TOPLEVEL = 0; -1 accepted too) exists until
+        // world entities (boats) are mapped.
+        return id == WorldView.TOPLEVEL || id == -1 ? getTopLevelWorldView() : null;
     }
 
     /**
@@ -178,6 +179,10 @@ public class AndroidClient extends ClientStub {
     @Override public int getCameraZ() { return Native.camera()[2]; }
     @Override public int getCameraPitch() { return Native.camera()[3]; }
     @Override public int getCameraYaw() { return Native.camera()[4]; }
+    // Targets (+0x8949c/+0x894a0) aren't read separately; the camera settles on them within frames.
+    @Override public int getCameraYawTarget() { return getCameraYaw(); }
+    @Override public int getCameraPitchTarget() { return getCameraPitch(); }
+    @Override public net.runelite.api.CameraFocusableEntity getCameraFocusEntity() { return getLocalPlayer(); }
     @Override public float getCameraFpX() { return getCameraX(); }
     @Override public float getCameraFpY() { return getCameraY(); }
     @Override public float getCameraFpZ() { return getCameraZ(); }
@@ -261,7 +266,22 @@ public class AndroidClient extends ClientStub {
 
     @Override
     public net.runelite.api.widgets.Widget getWidget(int componentId) {
+        componentId = mapDesktopComponent(componentId);
         return Native.widgetExists(componentId) ? new AndroidWidget(componentId) : null;
+    }
+
+    /** Android's root interface (601) has no desktop group ids; route the ones the API needs. */
+    private static final int ANDROID_ROOT = 601, ANDROID_MINIMAP_DRAW_AREA = ANDROID_ROOT << 16 | 34;
+
+    static int mapDesktopComponent(int id) {
+        switch (id) {
+            case net.runelite.api.widgets.ComponentID.RESIZABLE_VIEWPORT_MINIMAP_DRAW_AREA:
+            case net.runelite.api.widgets.ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_MINIMAP_DRAW_AREA:
+            case net.runelite.api.widgets.ComponentID.FIXED_VIEWPORT_MINIMAP_DRAW_AREA:
+                return Native.rootInterface() == ANDROID_ROOT ? ANDROID_MINIMAP_DRAW_AREA : id;
+            default:
+                return id;
+        }
     }
 
     @Override

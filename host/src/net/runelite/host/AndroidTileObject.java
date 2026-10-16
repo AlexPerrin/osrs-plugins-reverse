@@ -46,7 +46,7 @@ abstract class AndroidTileObject implements net.runelite.api.TileObject {
     @Override public WorldView getWorldView() { return Host.worldView(); }
     @Override public int getId() { return id; }
     @Override public WorldPoint getWorldLocation() { return new WorldPoint(worldX, worldY, plane); }
-    @Override public LocalPoint getLocalLocation() { return new LocalPoint(getX(), getY(), -1); }
+    @Override public LocalPoint getLocalLocation() { return new LocalPoint(getX(), getY(), WorldView.TOPLEVEL); }
 
     @Override public Point getCanvasLocation() { return getCanvasLocation(0); }
     @Override public Point getCanvasLocation(int zOffset) {

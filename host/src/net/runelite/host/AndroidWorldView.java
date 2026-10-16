@@ -29,7 +29,7 @@ public class AndroidWorldView extends WorldViewStub {
         };
     }
 
-    @Override public int getId() { return -1; }
+    @Override public int getId() { return net.runelite.api.WorldView.TOPLEVEL; }  // 0 in API 1.13
     @Override public boolean isTopLevel() { return true; }
     @Override public boolean isInstance() { return false; }
     @Override public int getSizeX() { return 104; }
@@ -111,7 +111,7 @@ public class AndroidWorldView extends WorldViewStub {
     public int getTileHeight(int localX, int localY, int plane) {
         net.runelite.api.Client c = Host.client();
         if (c == null) return 0;
-        return net.runelite.api.Perspective.getTileHeight(c, new net.runelite.api.coords.LocalPoint(localX, localY, -1), plane);
+        return net.runelite.api.Perspective.getTileHeight(c, new net.runelite.api.coords.LocalPoint(localX, localY, net.runelite.api.WorldView.TOPLEVEL), plane);
     }
 
     @Override

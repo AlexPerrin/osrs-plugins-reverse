@@ -122,7 +122,7 @@ final class Probe {
             if (cam == null || pos == null) return;
             net.runelite.api.Client c = Host.client();
             AndroidWorldView wv = Host.worldView();
-            net.runelite.api.coords.LocalPoint lp = new net.runelite.api.coords.LocalPoint(pos[4], pos[5], -1);
+            net.runelite.api.coords.LocalPoint lp = new net.runelite.api.coords.LocalPoint(pos[4], pos[5], net.runelite.api.WorldView.TOPLEVEL);
             net.runelite.api.Point p = net.runelite.api.Perspective.localToCanvas(c, lp, wv.getPlane());
             Log.i(TAG, "cam " + java.util.Arrays.toString(cam) + " player world " + pos[0] + "," + pos[1]
                 + " tile " + pos[2] + "," + pos[3] + " fine " + pos[4] + "," + pos[5]

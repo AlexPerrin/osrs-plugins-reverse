@@ -5,6 +5,7 @@ import java.util.Arrays;
 
 import net.runelite.api.Client;
 import net.runelite.api.Perspective;
+import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.model.Jarvis;
 
@@ -23,7 +24,7 @@ final class Hulls {
     static Shape box(int centerX, int centerY, int halfX, int halfY, int plane, int height) {
         Client client = Host.client();
         if (client == null) return null;
-        int ground = Perspective.getTileHeight(client, new LocalPoint(centerX, centerY, -1), plane);
+        int ground = Perspective.getTileHeight(client, new LocalPoint(centerX, centerY, WorldView.TOPLEVEL), plane);
         int[] xs = new int[8], ys = new int[8];
         int n = 0;
         for (int dz = 0; dz < 2; dz++)

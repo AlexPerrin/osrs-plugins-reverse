@@ -26,7 +26,7 @@ public class AndroidNPC extends NPCStub {
     }
     // NPCs are on the scene's current plane until the per-NPC plane field is located.
     @Override public WorldPoint getWorldLocation() { return new WorldPoint(worldX, worldY, Host.worldView().getPlane()); }
-    @Override public LocalPoint getLocalLocation() { return new LocalPoint(localX, localY, -1); }
+    @Override public LocalPoint getLocalLocation() { return new LocalPoint(localX, localY, WorldView.TOPLEVEL); }
     @Override public WorldView getWorldView() { return Host.worldView(); }
 
     @Override
@@ -82,8 +82,26 @@ public class AndroidNPC extends NPCStub {
     }
     /** Animations/orientation aren't read yet. */
     @Override public int getAnimation() { return -1; }
+    @Override public int getAnimationFrame() { return 0; }
+    @Override public int getPoseAnimation() { return -1; }
+    @Override public int getGraphic() { return -1; }
     @Override public int getOrientation() { return 0; }
+    @Override public int getCurrentOrientation() { return 0; }
+    @Override public boolean isInteracting() { return getInteracting() != null; }
+    @Override public int getHealthRatio() { return -1; }
+    @Override public int getHealthScale() { return -1; }
+    @Override public String getOverheadText() { return null; }
+    @Override public boolean isDead() { return false; }
+    @Override public int getFootprintSize() {
+        net.runelite.api.NPCComposition c = getComposition();
+        return c != null ? Math.max(1, c.getSize()) : 1;
+    }
 
-    /** Minimap geometry isn't mapped yet: treated as off the minimap. */
-    @Override public net.runelite.api.Point getMinimapLocation() { return null; }
+    /** Position on the minimap (null when off it), as RuneLite computes it. */
+    @Override public net.runelite.api.Point getMinimapLocation() {
+        net.runelite.api.Client c = Host.client();
+        LocalPoint lp = getLocalLocation();
+        return c == null || lp == null ? null : net.runelite.api.Perspective.localToMinimap(c, lp);
+    }
+    @Override public LocalPoint getCameraFocus() { return getLocalLocation(); }
 }

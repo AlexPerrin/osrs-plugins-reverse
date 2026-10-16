@@ -64,9 +64,11 @@ public class OverlayManager {
         List<Overlay> out = new ArrayList<>();
         for (Overlay o : overlays) {
             OverlayLayer l = o.getLayer() == OverlayLayer.MANUAL ? OverlayLayer.ABOVE_WIDGETS : o.getLayer();
+            // Tooltips (TooltipOverlay) go last, after every overlay that may add one this frame.
+            if (o.getPosition() == OverlayPosition.TOOLTIP) l = OverlayLayer.ALWAYS_ON_TOP;
             if (l == layer) out.add(o);
         }
-        out.sort(Comparator.comparingDouble(Overlay::getPriority));
+        out.sort(Comparator.comparingDouble((Overlay o) -> o.getPosition() == OverlayPosition.TOOLTIP ? Float.MAX_VALUE : o.getPriority()));
         return out;
     }
 

@@ -100,6 +100,12 @@ final class Native {
     /** Taps since the last call as (kind, index) pairs, or null. */
     static native int[] sidebarPollEvents();
     static native boolean sidebarOpen();
+    /** The virtual Shift toggle under the RL button. */
+    static native boolean shiftHeld();
+    /** Plugin menu entries shown under the game's menu at (x, y), width w (UI canvas); null/empty hides. */
+    static native void pluginMenu(String[] labels, int x, int y, int w, int canvasHeight);
+    /** Closes the open long-press menu (game thread). */
+    static native boolean menuClose();
     /** Game thread: {planes, sizeX, sizeY, heights[planes][sx+1][sy+1]..., settings[planes][sx][sy]...}, or null. */
     static native int[] sceneHeights();
     /** Game thread: {int[] {keyType, valueType, defaultInt}, String defaultString, int[] keys, int[] intValues, String[] stringValues}, or null. */

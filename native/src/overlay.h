@@ -17,5 +17,11 @@ void overlay_publish(int width, int height);
 void sidebar_set_model(const char* model);
 std::vector<int> sidebar_poll_events();
 bool sidebar_open();
+// The virtual Shift toggle under the RL button.
+bool virtual_shift();
+// Plugin-created menu entries drawn as a strip at (x, y), width w, in UI-canvas units (canvas_h
+// = canvas height, for scaling); empty hides it. Taps come back as sidebar events (3, index).
+#include <string>
+void plugin_menu_set(const std::vector<std::string>& labels, float x, float y, float w, float canvas_h);
 // Offers a touch (MotionEvent masked action, window pixels); true = consumed by the overlay.
 bool overlay_touch(int action, float x, float y);

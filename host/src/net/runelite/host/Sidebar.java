@@ -39,6 +39,38 @@ final class Sidebar {
     /** Last touch/key event seen by the touch router (uptime ms), for the idle-tick getters. */
     static volatile long lastInputMillis = android.os.SystemClock.uptimeMillis();
 
+    // The "mouse" for plugins on a touch screen: where the finger is (or last lifted), in window
+    // pixels; it counts as hovering while down and for HOVER_LINGER_MS after it lifts.
+    static final long HOVER_LINGER_MS = 3000;
+    static volatile float touchX = -1, touchY = -1;
+    static volatile boolean touchDown;
+    static volatile long touchUpMillis;
+
+    static void noteTouch(int action, float x, float y) {
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_MOVE:
+                touchX = x;
+                touchY = y;
+                touchDown = true;
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                touchUpMillis = android.os.SystemClock.uptimeMillis();
+                touchDown = false;
+                break;
+            default:
+                break;
+        }
+    }
+
+    /** The hover point in window pixels, or null when nothing is touched (or it lifted a while ago). */
+    static float[] hoverPoint() {
+        if (touchX < 0) return null;
+        if (!touchDown && android.os.SystemClock.uptimeMillis() - touchUpMillis > HOVER_LINGER_MS) return null;
+        return new float[] {touchX, touchY};
+    }
+
     private static final String TAG = Host.TAG;
     private static ClientToolbar toolbar;
     private static int selected = 0;
@@ -275,6 +307,10 @@ final class Sidebar {
     }
 
     private static void handle(int kind, int index) {
+        if (kind == 3) {  // a plugin entry under the game's long-press menu
+            AndroidMenu.tapped(index, Host.eventBus());
+            return;
+        }
         if (kind == 1) {
             selected = index;
             return;
@@ -436,6 +472,7 @@ final class Sidebar {
                     if (m.getName().equals("dispatchTouchEvent") && args != null && args[0] instanceof MotionEvent) {
                         MotionEvent e = (MotionEvent) args[0];
                         if (Native.overlayTouch(e.getActionMasked(), e.getX(), e.getY())) return true;
+                        noteTouch(e.getActionMasked(), e.getX(), e.getY());
                     }
                     try {
                         return m.invoke(orig, args);

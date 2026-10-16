@@ -43,6 +43,7 @@ public final class Host {
     private static Client client;
 
     public static Client client() { return client; }
+    static EventBus eventBus() { return eventBus; }
     private static final NpcCache npcCache = new NpcCache();
     private static final PlayerCache playerCache = new PlayerCache();
     static AndroidNPC npc(int index) { return npcCache.get(index); }
@@ -156,6 +157,13 @@ public final class Host {
             Log.e(TAG, "could not set RuneLite.injector", t);
         }
         Sidebar.start(injector.getInstance(net.runelite.client.ui.ClientToolbar.class), new File(pluginDir).getParentFile());
+        // RuneLite core overlay (desktop adds it in RuneLite.start): draws TooltipManager's tooltips
+        // at the "mouse", which is the touch point here (AndroidClient.getMouseCanvasPosition).
+        try {
+            overlayManager.add(injector.getInstance(net.runelite.client.ui.overlay.tooltip.TooltipOverlay.class));
+        } catch (Throwable t) {
+            Log.e(TAG, "tooltip overlay failed", t);
+        }
         pluginManager[0] = new HostPluginManager(injector, bus);
         HostPluginManager plugins = pluginManager[0];
         File[] jars = new File(pluginDir).listFiles((d, n) -> n.endsWith(".jar"));
@@ -211,11 +219,20 @@ public final class Host {
     public static void onEvent(int type, int a, int b) {
         EventBus bus = eventBus;
         if (bus == null) return;
+        try {
+            dispatch(bus, type, a, b);
+        } finally {
+            AndroidWidget.applyChildEdits();
+        }
+    }
+
+    private static void dispatch(EventBus bus, int type, int a, int b) {
         switch (type) {
             case CLIENT_TICK:
                 bus.post(clientTick);
                 postActorChanges(bus);
                 runQueued();
+                AndroidMenu.onCycle();
                 Sidebar.onCycle();
                 try {
                     overlayRenderer.render();
@@ -330,6 +347,7 @@ public final class Host {
                 bus.post(e);
                 for (net.runelite.api.MenuEntry m : entries)
                     if (m instanceof AndroidMenuEntry && ((AndroidMenuEntry) m).writeBack()) Log.i(TAG, "menu entry rewritten: " + m);
+                AndroidClient.MENU.publishPluginEntries();
                 break;
             }
             case MENU_OPTION_CLICKED: {
@@ -448,6 +466,7 @@ public final class Host {
         } catch (Throwable t) {
             Log.e(TAG, "script event " + id + " failed", t);
         } finally {
+            AndroidWidget.applyChildEdits();
             ac.endScriptEvent();
         }
     }

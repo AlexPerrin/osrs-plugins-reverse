@@ -201,7 +201,29 @@ public class AndroidWidget extends WidgetBag {
     }
     @Override public Widget[] getChildren() {
         Widget[] d = getDynamicChildren();
-        return d.length == 0 ? null : d;
+        if (d.length == 0) return null;
+        synchronized (issued) { if (issued.size() < 4096) issued.add(new Widget[][] {d, d.clone()}); }
+        return d;
+    }
+
+    // On desktop getChildren() is the game's own array: a plugin that nulls a slot (XP Drop's
+    // hideSkillIcons) removes that child. Here the array is a copy, so the arrays handed out are
+    // remembered and, after each event dispatch (applyChildEdits), a game child whose slot was
+    // nulled is hidden in the game instead.
+    private static final List<Widget[][]> issued = new ArrayList<>();
+
+    static void applyChildEdits() {
+        List<Widget[][]> list;
+        synchronized (issued) {
+            if (issued.isEmpty()) return;
+            list = new ArrayList<>(issued);
+            issued.clear();
+        }
+        for (Widget[][] pair : list) {
+            Widget[] now = pair[0], was = pair[1];
+            for (int i = 0; i < now.length; i++)
+                if (now[i] == null && was[i] instanceof Dynamic) was[i].setHidden(true);
+        }
     }
     @Override public Widget getChild(int index) {
         Widget[] d = getDynamicChildren();

@@ -3,6 +3,8 @@ package net.runelite.host;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.util.Log;
+
 import net.runelite.api.Menu;
 import net.runelite.api.MenuEntry;
 
@@ -37,6 +39,57 @@ final class AndroidMenu implements Menu {
     @Override public void removeMenuEntry(MenuEntry e) { added.remove(e); }
 
     void clearAdded() { added.clear(); }
+
+    // --- plugin entries under the game's menu (native strip; see overlay.cpp plugin_menu_frame) ---
+
+    private static List<AndroidMenuEntry> shown = new ArrayList<>();
+
+    /** Game thread, after MenuOpened: shows the entries plugins created, under the game's menu. */
+    void publishPluginEntries() {
+        shown = new ArrayList<>(added);
+        // RuneLite order puts the newest entry (index -1) at the top; show the topmost first.
+        java.util.Collections.reverse(shown);
+        java.awt.Rectangle r = bounds();
+        if (shown.isEmpty() || r == null) {
+            Native.pluginMenu(null, 0, 0, 0, 0);
+            return;
+        }
+        String[] labels = new String[shown.size()];
+        for (int i = 0; i < labels.length; i++) {
+            AndroidMenuEntry e = shown.get(i);
+            labels[i] = (net.runelite.client.util.Text.removeTags(e.getOption()) + " "
+                + net.runelite.client.util.Text.removeTags(e.getTarget())).trim();
+        }
+        int canvasH = Host.client().getCanvasHeight();
+        int y = r.y + r.height;
+        if (y + ROW * labels.length + 8 > canvasH) y = Math.max(0, r.y - ROW * labels.length - 8);
+        Native.pluginMenu(labels, r.x, y, r.width, canvasH);
+        Log.i(Host.TAG, "plugin menu entries: " + java.util.Arrays.toString(labels));
+    }
+
+    /** Game thread, every cycle: hides the strip once the game's menu has closed. */
+    static void onCycle() {
+        if (!shown.isEmpty() && !Native.menuOpen()) {
+            shown = new ArrayList<>();
+            Native.pluginMenu(null, 0, 0, 0, 0);
+        }
+    }
+
+    /** Game thread: a plugin entry was tapped. Runs it as RuneLite does, then closes the menu. */
+    static void tapped(int index, net.runelite.client.eventbus.EventBus bus) {
+        List<AndroidMenuEntry> list = shown;
+        if (index < 0 || index >= list.size()) return;
+        AndroidMenuEntry e = list.get(index);
+        shown = new ArrayList<>();
+        Native.pluginMenu(null, 0, 0, 0, 0);
+        Log.i(Host.TAG, "plugin menu entry tapped: " + e);
+        try {
+            if (e.onClick != null) e.onClick.accept(e);
+            if (bus != null) bus.post(new net.runelite.api.events.MenuOptionClicked(e));
+        } finally {
+            Log.i(Host.TAG, "menu close: " + Native.menuClose());
+        }
+    }
 
     @Override public int getMenuX() { java.awt.Rectangle r = bounds(); return r != null ? r.x : 0; }
     @Override public int getMenuY() { java.awt.Rectangle r = bounds(); return r != null ? r.y : 0; }

@@ -116,6 +116,23 @@ void diff_varps() {
     uint32_t count = game::changed_varp_count();
     if (have_count && count != last_count) {
         uint32_t from = count - last_count > 32 ? count - 32 : last_count;
+        if (count - last_count > 32) {
+            // The ring overflowed (the login burst sends hundreds): the lost ids are unknown, so
+            // resync as if the server had sent every varp of the stock range (stock caches define
+            // under 5000) plus every non-zero one, so plugins that read their state on login (Attack
+            // Styles, varp 43 = 0) still get their event.
+            int resync = 0;
+            for (int i = 0; i < n; i++) {
+                if (i >= 8192 && now[i] == 0) continue;
+                if (std::find(posted.begin(), posted.end(), i) != posted.end()) continue;
+                post({EventType::VarbitChanged, i, now[i]});
+                resync++;
+            }
+            LOGI("varps: changed-varp ring overflowed (%u ids), resynced %d varps", count - last_count, resync);
+            last_count = count;
+            g_varp_shadow.swap(now);
+            return;
+        }
         for (uint32_t k = from; k != count; k++) {
             int id = game::changed_varp(k);
             if (id < 0 || id >= n) continue;

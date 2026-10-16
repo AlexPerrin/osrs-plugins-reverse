@@ -131,8 +131,12 @@ final class OverlayRenderer {
         published = true;
     }
 
-    /** Android root (601) children that are opaque panels: side tab stones, minimap block, side panel. */
-    private static final int[] OPAQUE_ROOT_CHILDREN = {50, 36, 111};  // + open side panel (inventory etc.)
+    /**
+     * Android root (601) children that are opaque panels: side tab stones, minimap block, side
+     * panel (inventory etc.), and the left button column (41: logout / chat toggle / chat buttons,
+     * 40: the button below them).
+     */
+    private static final int[] OPAQUE_ROOT_CHILDREN = {50, 36, 111, 41, 40};
     private int exclusionsCycle = Integer.MIN_VALUE;
     private List<Rect> exclusions = new ArrayList<>();
 

@@ -86,6 +86,9 @@ struct Build {
     // const variant*) (op 49; 0x28-byte variant, index at +0x20, 2 = string).
     uintptr_t set_varbit, set_varc_int, set_varc_string;
     uintptr_t get_varbit_type;  // shared_ptr<VarbitType> getVarbitType(int id) (x8): {int varp, lsb, msb}
+    // Menu close, as the close branch of 0x599f68: clear the model (MenuManager+0x140) and the
+    // displayed menu (+0x540), then shown (+0x7c0) = 0.
+    uintptr_t menu_clear_model, menu_clear_display;
 };
 
 constexpr Build kBuilds[] = {
@@ -98,7 +101,8 @@ constexpr Build kBuilds[] = {
      0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0x5c, 0x60, 0x64, 0x68, 0x74, 0x6, 0x3210, 0x3274, 0x32d8, 0xaab690, 0xaab658, 0xaab628,
      0xaef1d0, 0x4df54c, 0x63bfe8, 0x63633c, 0x65c798, 0x6de99c, 0x65cac8,
      0x4132b0, 0xa6d6c0, 0x515854, 0x62e5ec, 0x43a9c0,
-     0x5d00fc, 0x3f804c, 0x3f8470, 0x64b450},
+     0x5d00fc, 0x3f804c, 0x3f8470, 0x64b450,
+     0x514f48, 0x507398},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -1684,6 +1688,16 @@ uintptr_t menu_object() {
 bool menu_open() {
     uintptr_t m = menu_manager();
     return m && read_at<uintptr_t>(m + kMgrShown) != 0;
+}
+
+bool menu_close() {
+    uintptr_t m = menu_manager();
+    if (!m || !g_build->menu_clear_model) return false;
+    if (!read_at<uintptr_t>(m + kMgrShown)) return true;
+    reinterpret_cast<void (*)(uintptr_t)>(g_base + g_build->menu_clear_model)(m + kMgrMenu);
+    reinterpret_cast<void (*)(uintptr_t)>(g_base + g_build->menu_clear_display)(m + 0x540);
+    *reinterpret_cast<uintptr_t*>(m + kMgrShown) = 0;
+    return true;
 }
 
 bool menu_point(int& x, int& y) {

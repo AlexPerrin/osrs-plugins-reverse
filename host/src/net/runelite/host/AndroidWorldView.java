@@ -140,6 +140,41 @@ public class AndroidWorldView extends WorldViewStub {
     @Override public IndexedObjectSet<? extends net.runelite.api.WorldEntity> worldEntities() { return emptySet(); }
 
     @Override public net.runelite.api.Scene getScene() { return scene; }
+
+    /**
+     * The tile the open long-press menu is for (desktop: the tile under the mouse): the tile of the
+     * menu's "Walk here" entry, else the tile whose polygon contains the long-press point.
+     */
+    @Override
+    public net.runelite.api.Tile getSelectedSceneTile() {
+        if (!Native.menuOpen()) return null;
+        int plane = getPlane();
+        net.runelite.api.Tile[][][] tiles = scene.getTiles();
+        if (tiles == null || plane < 0 || plane >= tiles.length) return null;
+        for (AndroidMenuEntry e : AndroidMenuEntry.fromNative(Native.menuEntries())) {
+            if (e.getType() != net.runelite.api.MenuAction.WALK || e.worldX() == -1) continue;
+            int x = e.getParam0(), y = e.getParam1();
+            if (x >= 0 && y >= 0 && x < tiles[plane].length && y < tiles[plane][x].length) return tiles[plane][x][y];
+        }
+        int[] p = Native.menuPoint();
+        net.runelite.api.Player me = Host.localPlayer();
+        if (p == null || me == null) return null;
+        net.runelite.api.coords.LocalPoint lp = me.getLocalLocation();
+        if (lp == null) return null;
+        int cx = lp.getSceneX(), cy = lp.getSceneY();
+        for (int r = 0; r <= 25; r++) {
+            for (int x = cx - r; x <= cx + r; x++) {
+                for (int y = cy - r; y <= cy + r; y++) {
+                    if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) != r) continue;
+                    if (x < 0 || y < 0 || x >= tiles[plane].length || y >= tiles[plane][x].length) continue;
+                    java.awt.Polygon poly = net.runelite.api.Perspective.getCanvasTilePoly(Host.client(),
+                            net.runelite.api.coords.LocalPoint.fromScene(x, y, this));
+                    if (poly != null && poly.contains(p[0], p[1])) return tiles[plane][x][y];
+                }
+            }
+        }
+        return null;
+    }
     AndroidScene androidScene() { return scene; }
 
     @Override

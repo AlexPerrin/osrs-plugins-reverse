@@ -303,17 +303,30 @@ public class AndroidClient extends ClientStub {
     /** The game redraws its chat itself; nothing to rebuild. */
     @Override public void refreshChat() {}
 
-    /** No physical keyboard modifiers on a touch screen. */
-    @Override public boolean isKeyPressed(int keycode) { return false; }
+    /**
+     * No physical keyboard on a touch screen: Shift is the virtual toggle under the RL button
+     * (Ground/Object Markers add their entries to the long-press menu while it is on).
+     */
+    @Override public boolean isKeyPressed(int keycode) {
+        return keycode == net.runelite.api.KeyCode.KC_SHIFT && Native.shiftHeld();
+    }
     @Override public net.runelite.api.StructComposition getStructComposition(int id) { return new AndroidStruct(id); }
 
     /** No "Use" / spell target selection is tracked yet. */
     @Override public boolean isWidgetSelected() { return false; }
 
-    /** No hover on a touch screen: (-1, -1) is what RuneLite reports with the mouse off the canvas. */
+    /**
+     * The touch point stands in for the mouse: while a finger is down and for a few seconds after
+     * it lifts (Sidebar.hoverPoint), so hover tooltips (Run Energy, Item Stats) show on a tap or a
+     * long-press. Otherwise (-1, -1), what RuneLite reports with the mouse off the canvas.
+     */
     @Override
     public net.runelite.api.Point getMouseCanvasPosition() {
-        return new net.runelite.api.Point(-1, -1);
+        float[] p = Sidebar.hoverPoint();
+        int[] screen = Native.screenSize();
+        java.awt.Dimension c = OverlayRenderer.canvasSize();
+        if (p == null || screen == null || screen[0] <= 0 || screen[1] <= 0 || c.width <= 0) return new net.runelite.api.Point(-1, -1);
+        return new net.runelite.api.Point(Math.round(p[0] * c.width / screen[0]), Math.round(p[1] * c.height / screen[1]));
     }
 
     @Override
@@ -580,7 +593,18 @@ public class AndroidClient extends ClientStub {
     private final java.util.Map<Integer, net.runelite.api.SpritePixels> widgetSpriteOverrides = new java.util.HashMap<>();
     @Override public java.util.Map<Integer, net.runelite.api.SpritePixels> getSpriteOverrides() { return spriteOverrides; }
     @Override public java.util.Map<Integer, net.runelite.api.SpritePixels> getWidgetSpriteOverrides() { return widgetSpriteOverrides; }
-    @Override public net.runelite.api.IndexedSprite[] getModIcons() { return null; }
+    // Chat (mod) icons are kept host-side: plugins (ChatIconManager) append their icons to this
+    // array; the game's own chat doesn't draw them. Starts with blank 13x13 slots for the game's icons.
+    private net.runelite.api.IndexedSprite[] modIcons;
+    @Override public synchronized net.runelite.api.IndexedSprite[] getModIcons() {
+        if (modIcons == null) {
+            modIcons = new net.runelite.api.IndexedSprite[32];
+            for (int i = 0; i < modIcons.length; i++) modIcons[i] = HostIndexedSprite.blank(13, 13);
+        }
+        return modIcons;
+    }
+    @Override public synchronized void setModIcons(net.runelite.api.IndexedSprite[] icons) { modIcons = icons; }
+    @Override public net.runelite.api.IndexedSprite createIndexedSprite() { return new HostIndexedSprite(); }
     // No instances yet: an empty template table.
     @Override public int[][][] getInstanceTemplateChunks() { return new int[4][13][13]; }
 

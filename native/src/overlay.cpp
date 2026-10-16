@@ -60,9 +60,16 @@ std::vector<int> g_sb_events;
 struct Touch { int action; float x, y; };
 std::vector<Touch> g_touches;
 std::atomic<bool> g_sb_open{false};
+std::atomic<bool> g_shift{false};  // virtual Shift key (toggle under the RL button)
 // Screen rects (x0, y0, x1, y1) of the toggle button and the open window, from the last frame.
 std::atomic<float> g_toggle_rect[4], g_window_rect[4];
 bool g_touch_captured = false;  // UI thread only
+
+// Plugin menu entries (createMenuEntry) shown as a strip under the game's long-press menu.
+// Set from the game thread; UI-canvas units, scaled to the screen with the canvas height.
+std::vector<std::string> g_pm_labels;
+float g_pm_x = 0, g_pm_y = 0, g_pm_w = 0, g_pm_canvas_h = 0;
+std::atomic<float> g_pm_rect[4];
 
 // Render-thread copy of the model.
 int g_sb_selected = 0;
@@ -132,6 +139,12 @@ void sidebar_frame(int w, int h) {
         ImGui::Begin("##rltoggle", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing);
         if (ImGui::Button("RL", size) && tapped) g_sb_open = true;
+        // Virtual Shift for plugins that check isKeyPressed(KC_SHIFT) (Ground/Object Markers'
+        // shift + long-press menu entries). A toggle: tap to hold, tap again to release.
+        bool shift = g_shift;
+        if (shift) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.85f, 0.55f, 0.1f, 1.0f));
+        if (ImGui::Button("Shift", size) && tapped) g_shift = !shift;
+        if (shift) ImGui::PopStyleColor();
         store_rect(g_toggle_rect, ImGui::GetWindowPos(), ImGui::GetWindowSize());
         ImGui::End();
         store_rect(g_window_rect, ImVec2(0, 0), ImVec2(0, 0));
@@ -216,6 +229,46 @@ void sidebar_frame(int w, int h) {
     ImGui::EndChild();
     store_rect(g_window_rect, ImGui::GetWindowPos(), ImGui::GetWindowSize());
     ImGui::End();
+    if (!events.empty()) {
+        std::lock_guard lock(g_sb_mutex);
+        g_sb_events.insert(g_sb_events.end(), events.begin(), events.end());
+    }
+}
+
+// The plugin entries strip; a tap queues event (3, index) for Sidebar.java.
+void plugin_menu_frame(int h, bool tapped) {
+    std::vector<std::string> labels;
+    float x, y, w, ch;
+    {
+        std::lock_guard lock(g_sb_mutex);
+        labels = g_pm_labels;
+        x = g_pm_x; y = g_pm_y; w = g_pm_w; ch = g_pm_canvas_h;
+    }
+    if (labels.empty() || ch <= 0) {
+        store_rect(g_pm_rect, ImVec2(0, 0), ImVec2(0, 0));
+        return;
+    }
+    float s = h / ch;  // canvas units -> screen pixels
+    ImGui::SetNextWindowPos(ImVec2(x * s, y * s), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(w * s, 0), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.92f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.29f, 0.25f, 0.19f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
+    ImGui::Begin("##rlmenu", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings |
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing);
+    std::vector<int> events;
+    for (size_t i = 0; i < labels.size(); i++) {
+        std::string id = labels[i] + "##pm" + std::to_string(i);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 1.0f, 1.0f));
+        if (ImGui::Selectable(id.c_str(), false, 0, ImVec2(0, 25 * s * 0.8f)) && tapped) {
+            events.push_back(3);
+            events.push_back(static_cast<int>(i));
+        }
+        ImGui::PopStyleColor();
+    }
+    store_rect(g_pm_rect, ImGui::GetWindowPos(), ImGui::GetWindowSize());
+    ImGui::End();
+    ImGui::PopStyleColor(2);
     if (!events.empty()) {
         std::lock_guard lock(g_sb_mutex);
         g_sb_events.insert(g_sb_events.end(), events.begin(), events.end());
@@ -339,10 +392,18 @@ std::vector<int> sidebar_poll_events() {
 }
 
 bool sidebar_open() { return g_sb_open; }
+bool virtual_shift() { return g_shift; }
+
+void plugin_menu_set(const std::vector<std::string>& labels, float x, float y, float w, float canvas_h) {
+    std::lock_guard lock(g_sb_mutex);
+    g_pm_labels = labels;
+    g_pm_x = x; g_pm_y = y; g_pm_w = w; g_pm_canvas_h = canvas_h;
+    if (labels.empty()) store_rect(g_pm_rect, ImVec2(0, 0), ImVec2(0, 0));
+}
 
 bool overlay_touch(int action, float x, float y) {
     // MotionEvent: 0 down, 1 up, 2 move, 3 cancel, 5/6 pointer down/up.
-    if (action == 0) g_touch_captured = in_rect(g_toggle_rect, x, y) || in_rect(g_window_rect, x, y);
+    if (action == 0) g_touch_captured = in_rect(g_toggle_rect, x, y) || in_rect(g_window_rect, x, y) || in_rect(g_pm_rect, x, y);
     if (!g_touch_captured) return false;
     if (action == 0 || action == 1 || action == 2 || action == 3) {
         std::lock_guard lock(g_sb_mutex);
@@ -385,6 +446,7 @@ void overlay_frame(EGLDisplay display, EGLSurface surface) {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui::NewFrame();
     sidebar_frame(w, h);
+    plugin_menu_frame(h, io.MouseDragMaxDistanceSqr[0] < 24.0f * 24.0f);
     if (update_plugin_texture(st)) {
         ImDrawList* bg = ImGui::GetBackgroundDrawList();
         bg->AddCallback(premultiplied_blend, nullptr);

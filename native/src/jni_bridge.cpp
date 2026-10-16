@@ -339,6 +339,20 @@ jintArray n_sidebar_poll_events(JNIEnv* env, jclass) {
     return arr;
 }
 jboolean n_sidebar_open(JNIEnv*, jclass) { return sidebar_open(); }
+jboolean n_shift_held(JNIEnv*, jclass) { return virtual_shift(); }
+void n_plugin_menu(JNIEnv* env, jclass, jobjectArray labels, jint x, jint y, jint w, jint canvas_h) {
+    std::vector<std::string> out;
+    jsize n = labels ? env->GetArrayLength(labels) : 0;
+    for (jsize i = 0; i < n; i++) {
+        auto s = static_cast<jstring>(env->GetObjectArrayElement(labels, i));
+        const char* c = s ? env->GetStringUTFChars(s, nullptr) : nullptr;
+        out.emplace_back(c ? c : "");
+        if (c) env->ReleaseStringUTFChars(s, c);
+        if (s) env->DeleteLocalRef(s);
+    }
+    plugin_menu_set(out, x, y, w, canvas_h);
+}
+jboolean n_menu_close(JNIEnv*, jclass) { return game::menu_close(); }
 jboolean n_overlay_touch(JNIEnv*, jclass, jint action, jfloat x, jfloat y) { return overlay_touch(action, x, y); }
 // {planes, sizeX, sizeY, heights..., settings...} (layouts in game.h), or null.
 jintArray n_scene_heights(JNIEnv* env, jclass) {
@@ -970,6 +984,9 @@ const JNINativeMethod kNatives[] = {
     {"sidebarSetModel", "(Ljava/lang/String;)V", reinterpret_cast<void*>(n_sidebar_set_model)},
     {"sidebarPollEvents", "()[I", reinterpret_cast<void*>(n_sidebar_poll_events)},
     {"sidebarOpen", "()Z", reinterpret_cast<void*>(n_sidebar_open)},
+    {"shiftHeld", "()Z", reinterpret_cast<void*>(n_shift_held)},
+    {"pluginMenu", "([Ljava/lang/String;IIII)V", reinterpret_cast<void*>(n_plugin_menu)},
+    {"menuClose", "()Z", reinterpret_cast<void*>(n_menu_close)},
     {"overlayTouch", "(IFF)Z", reinterpret_cast<void*>(n_overlay_touch)},
     {"sceneHeights", "()[I", reinterpret_cast<void*>(n_scene_heights)},
     {"enumDef", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_enum_def)},

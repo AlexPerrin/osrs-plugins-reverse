@@ -70,6 +70,15 @@ final class Probe {
                 }
                 case "iparam": {  // "iparam <item id> <param>": item param as int and string
                     int key = Integer.parseInt(a[2]);
+                    if (key < 0) {  // -1: list every param 0..4095 the item has
+                        StringBuilder sb = new StringBuilder();
+                        for (int k = 0; k < 4096; k++) {
+                            Object v = Native.typeParam(Params.OBJ, id, k);
+                            if (v != null) sb.append(' ').append(k).append('=').append(v);
+                        }
+                        Log.i(TAG, "item " + id + " params:" + sb);
+                        break;
+                    }
                     net.runelite.api.ItemComposition ic = c.getItemDefinition(id);
                     Log.i(TAG, "item " + id + " param " + key + " int " + ic.getIntValue(key) + " string '" + ic.getStringValue(key) + "'");
                     break;
@@ -162,7 +171,10 @@ final class Probe {
         if (me != null)
             Log.i(TAG, "self " + me.getName() + " weight " + c.getWeight() + " energy " + c.getEnergy() + " cb " + me.getCombatLevel() + " skull " + me.getSkullIcon() + " prayer " + me.getOverheadIcon()
                     + " team " + me.getTeam() + " pose " + me.getPoseAnimation() + " idle/walk/run " + me.getIdlePoseAnimation() + "/"
-                    + me.getWalkAnimation() + "/" + me.getRunAnimation() + " " + me.getPlayerComposition());
+                    + me.getWalkAnimation() + "/" + me.getRunAnimation() + " " + me.getPlayerComposition()
+                    + " regions " + java.util.Arrays.toString(c.getMapRegions()) + " dest " + c.getLocalDestinationLocation()
+                    + " idle " + c.getMouseIdleTicks() + " protect-melee " + c.isPrayerActive(net.runelite.api.Prayer.PROTECT_FROM_MELEE)
+                    + " messages " + com.google.common.collect.Iterables.size(c.getMessages()));
         for (net.runelite.api.NPC n : c.getTopLevelWorldView().npcs()) {
             net.runelite.api.NPCComposition comp = n.getComposition();
             Log.i(TAG, "npc " + n.getName() + " id " + n.getId() + " pose " + n.getPoseAnimation() + " idle/walk " + n.getIdlePoseAnimation()

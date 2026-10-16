@@ -71,6 +71,17 @@ struct Camera {
     int render_base_x = 0, render_base_y = 0, render_wv_same = 0;  // debug: WorldView at Client+0xc940
 };
 Camera camera();
+// The 3D viewport the scene renderer projects with (drawRenderable 0x72db3c): screen offset =
+// r * zoom / depth, centre, clip rect, far plane. Reached as renderer = holder->vtbl[3](holder),
+// holder = *(Client +0x90) + 0x1b0 (scene draw caller 0x457128), viewport = *(renderer +0x630c60).
+// Game thread only. Unverified.
+struct Viewport {
+    bool valid = false;
+    int zoom = 0, centre_x = 0, centre_y = 0, clip[4] = {}, far = 0;
+};
+Viewport viewport();
+// Queue a synth sound effect as SYNTH_SOUND (0x4ae508(Client +0x2610, id, loops, delay)). Game thread only.
+bool play_sound_effect(int id, int loops, int delay);
 
 int root_interface();
 // Widget object for a component id (group << 16 | child), or 0 if its group isn't loaded.

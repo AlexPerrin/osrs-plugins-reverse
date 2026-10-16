@@ -64,6 +64,10 @@ VarbitChanged).
 | `Menu`/`Client.getMenuX/Y/Width/Height`; overlays are clipped out of the open long-press menu | press point at MenuManager+0x2a8 plus the measured layout (docs/offsets.md) |
 | Debug hooks: `debug.osrsrl.where <loc id>` logs an object's world position and click-box centre in canvas and screen pixels (find adb tap targets); `debug.osrsrl.widgetlog 1` logs WidgetLoaded/Closed; `debug.osrsrl.probe <path>` (see Probe.java) | `Probe.java` |
 | `macroExpand(text)` | identity (CS1 macros aren't expanded) |
+| Client-side setters: `setVarbit`, `setVarcIntValue`, `setVarcStrValue`, `getVarbit(id)` (VarbitComposition), `setVarbitValue(int[], …)` + `queueChangedVarp` (writes the edited `getVarps()` array entry back) | the script VM's own setters (docs/offsets.md "Client-side setters"); test hook `setprop debug.osrsrl.set 'varbit|varp|varc|varcstr <id> <value>'`. Verified 2026-10-16 (varbit 8119 0/1 via varp 1737 bit 31, varp 1000, varc 1000, varcstr 1001) |
+| `playSoundEffect(...)` | the SYNTH_SOUND path `0x4ae508(Client +0x2610, id, loops, delay)` (volume/position ignored). Unverified |
+| Scene object click boxes / hulls (`getClickbox`, `getConvexHull`) from the object's model: GameObject (with orientation), walls (both renderables), wall decorations (offsets), ground decorations | `game::object_model` (docs/offsets.md "Scene object models"); footprint boxes when the model can't be read or with `debug.osrsrl.modelhull 0`. GameObject verified (bush 34737: model at its local position and tile height, 17 vertices, click-box centre on the bush); walls/decorations unverified |
+| NPC/player spawn events are posted once the actor has a position (a new Npc is at fine 0,0 for a cycle) | `diff_npcs/diff_players` in client_thread.cpp (verified: QH NpcStep after a teleport) |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so

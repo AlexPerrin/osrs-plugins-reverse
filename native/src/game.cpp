@@ -470,6 +470,37 @@ Point player_world() {
     return {base.x + tile.x, base.y + tile.y};
 }
 
+bool play_sound_effect(int id, int loops, int delay) {
+    uintptr_t c = client();
+    if (!c || id < 0 || id > 0xffff || loops <= 0) return false;
+    reinterpret_cast<void (*)(uintptr_t, uint32_t, char, int)>(g_base + 0x4ae508)(c + 0x2610, id, static_cast<char>(std::min(loops, 127)), delay);
+    return true;
+}
+
+Viewport viewport() {
+    Viewport v;
+    uintptr_t c = client();
+    if (!c) return v;
+    uintptr_t holder_base = read_at<uintptr_t>(c + 0x90);
+    if (!holder_base) return v;
+    uintptr_t holder = holder_base + 0x1b0;
+    uintptr_t vt = read_at<uintptr_t>(holder);
+    if (!vt) return v;
+    uintptr_t get = read_at<uintptr_t>(vt + 0x18);
+    if (!get) return v;
+    uintptr_t renderer = reinterpret_cast<uintptr_t (*)(uintptr_t)>(get)(holder);
+    if (!renderer) return v;
+    uintptr_t vp = read_at<uintptr_t>(renderer + 0x630c60);
+    if (!vp) return v;
+    v.valid = true;
+    v.zoom = read_at<int32_t>(vp + 0x10);
+    v.centre_x = read_at<int32_t>(vp + 0x14);
+    v.centre_y = read_at<int32_t>(vp + 0x18);
+    for (int i = 0; i < 4; i++) v.clip[i] = read_at<int32_t>(vp + 0x24 + 4 * i);
+    v.far = read_at<int32_t>(vp + 0x6c);
+    return v;
+}
+
 Camera camera() {
     Camera cam;
     uintptr_t c = client();

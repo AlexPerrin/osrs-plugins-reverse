@@ -530,6 +530,20 @@ jintArray n_camera(JNIEnv* env, jclass) {
     return arr;
 }
 
+// {valid, zoom, centreX, centreY, clip x0, y0, x1, y1, far} (game thread only; valid 0 otherwise).
+jintArray n_viewport(JNIEnv* env, jclass) {
+    game::Viewport v;
+    if (client_thread::on_client_thread()) v = game::viewport();
+    jint a[9] = {v.valid, v.zoom, v.centre_x, v.centre_y, v.clip[0], v.clip[1], v.clip[2], v.clip[3], v.far};
+    jintArray arr = env->NewIntArray(9);
+    env->SetIntArrayRegion(arr, 0, 9, a);
+    return arr;
+}
+
+jboolean n_play_sound(JNIEnv*, jclass, jint id, jint loops, jint delay) {
+    return client_thread::on_client_thread() && game::play_sound_effect(id, loops, delay);
+}
+
 jstring n_property(JNIEnv* env, jclass, jstring name) {
     const char* n = env->GetStringUTFChars(name, nullptr);
     char value[PROP_VALUE_MAX] = "";
@@ -683,6 +697,8 @@ const JNINativeMethod kNatives[] = {
     {"widgetDynamicGeometry", "(II)[I", reinterpret_cast<void*>(n_widget_dynamic_geometry)},
     {"property", "(Ljava/lang/String;)Ljava/lang/String;", reinterpret_cast<void*>(n_property)},
     {"camera", "()[I", reinterpret_cast<void*>(n_camera)},
+    {"viewport", "()[I", reinterpret_cast<void*>(n_viewport)},
+    {"playSound", "(III)Z", reinterpret_cast<void*>(n_play_sound)},
     {"screenSize", "()[I", reinterpret_cast<void*>(n_screen_size)},
     {"overlayBuffer", "(II)Ljava/nio/ByteBuffer;", reinterpret_cast<void*>(n_overlay_buffer)},
     {"overlayPublish", "(II)V", reinterpret_cast<void*>(n_overlay_publish)},

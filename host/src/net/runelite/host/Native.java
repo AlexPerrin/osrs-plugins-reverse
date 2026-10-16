@@ -31,6 +31,9 @@ final class Native {
     /** Client varcs (0 / null when unset). */
     /** {x, y, height, orientation, modelHeight, vx, vy, vz...} of a scene object's model this frame, or null. */
     static native int[] objectModel(int plane, int sceneX, int sceneY, int layer, long tag);
+    /** {valid, zoom, centreX, centreY, clip x0, y0, x1, y1, far} of the scene renderer's viewport. */
+    static native int[] viewport();
+    static native boolean playSound(int id, int loops, int delay);
     static native int varcInt(int id);
     static native String varcString(int id);
     /** Client-side writes through the game's setters; false off the client thread or for unknown ids. */

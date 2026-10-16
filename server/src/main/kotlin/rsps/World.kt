@@ -1150,6 +1150,118 @@ class World(
     }
 
     /** Cook's Assistant (varp 29: 0 not started, 1 started, 2 done), following the real dialogue. */
+    private fun countObj(p: Player, obj: Int) = p.inventory.objs.indices.sumOf { if (p.inventory.objs[it] == obj) maxOf(1, p.inventory.counts[it]) else 0 }
+
+    /** Removes up to [n] of [obj] (unstacked slots); returns how many were removed. */
+    private fun takeObj(p: Player, obj: Int, n: Int): Int {
+        var left = n
+        for (i in p.inventory.objs.indices) {
+            if (left == 0) break
+            if (p.inventory.objs[i] != obj) continue
+            p.inventory.objs[i] = -1
+            p.inventory.counts[i] = 0
+            left--
+        }
+        p.send(p.inventory.toMessage())
+        return n - left
+    }
+
+    /** Shear on a sheep: needs shears; gives one wool. */
+    private fun shear(p: Player, npc: Npc) {
+        if (countObj(p, OBJ_SHEARS) == 0) return p.message("You need a set of shears to do this.")
+        if (!give(p, OBJ_WOOL, 1)) return p.message("You don't have enough inventory space.")
+        p.extendedInfo.setSequence(ANIM_SHEAR, 0)
+        p.send(p.inventory.toMessage())
+        p.message("You get some wool.")
+        npc.avatar.extendedInfo.setSay("Baa!")
+    }
+
+    /** Spin on a spinning wheel: all wool into balls of wool (2.5 Crafting XP each). */
+    private fun spin(p: Player) {
+        val n = takeObj(p, OBJ_WOOL, countObj(p, OBJ_WOOL))
+        if (n == 0) return p.message("You need some wool to spin.")
+        repeat(n) { give(p, OBJ_BALL_OF_WOOL, 1) }
+        p.send(p.inventory.toMessage())
+        p.extendedInfo.setSequence(ANIM_SPIN, 0)
+        addXp(p, CRAFTING, n * 5 / 2)
+        p.message("You spin the wool into ${if (n == 1) "a ball" else "$n balls"} of wool.")
+    }
+
+    /**
+     * Sheep Shearer (varp 179: 0 not started, 1 started, 1 + balls handed in, 21 done). Fred takes
+     * any balls of wool you carry; 20 finish the quest (1 QP, 150 Crafting XP, 60 coins).
+     */
+    private fun fredDialogue(p: Player) {
+        val fred = NPC_FRED
+        val v = p.varps[VARP_SHEEPSHEARER] ?: 0
+        when {
+            v == 0 -> npcSay(p, fred, "What are you doing on my land? You're not the one who keeps leaving all my gates open and letting out all my chickens are you?") {
+                choose(
+                    p,
+                    "I'm looking for a quest." to {
+                        playerSay(p, "I'm looking for a quest.") {
+                            npcSay(p, fred, "You're after a quest, you say? Actually I could do with a bit of help. My sheep are getting mighty woolly. I'd be much obliged if you could shear them. And while you're at it spin the wool for me too.") {
+                                npcSay(p, fred, "Yes, that's it. Bring me 20 balls of wool. And I'm sure I could sort out some sort of payment. Of course, there's the small matter of The Thing.") {
+                                    choose(
+                                        p,
+                                        "Yes, okay. I can do that." to {
+                                            playerSay(p, "Yes, okay. I can do that.") {
+                                                setVarp(p, VARP_SHEEPSHEARER, 1)
+                                                if (countObj(p, OBJ_SHEARS) == 0) give(p, OBJ_SHEARS, 1).also { p.send(p.inventory.toMessage()) }
+                                                npcSay(p, fred, "Good! Now one more thing, do you actually know how to shear a sheep? Here, take these shears. The spinning wheel is in Lumbridge Castle, upstairs.")
+                                            }
+                                        },
+                                        "That doesn't sound a very exciting quest." to {
+                                            playerSay(p, "That doesn't sound a very exciting quest.") {
+                                                npcSay(p, fred, "Well what do you expect if you ask a farmer for a quest?")
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    "I'm looking for something to kill." to {
+                        playerSay(p, "I'm looking for something to kill.") {
+                            npcSay(p, fred, "What, on my land? Leave my livestock alone you scoundrel!")
+                        }
+                    },
+                    "I'm lost." to {
+                        playerSay(p, "I'm lost.") {
+                            npcSay(p, fred, "How can you be lost? Just follow the road east and south. You'll end up in Lumbridge fairly quickly.")
+                        }
+                    },
+                )
+            }
+            v < 21 -> npcSay(p, fred, "How are you doing getting those balls of wool?") {
+                val have = countObj(p, OBJ_BALL_OF_WOOL)
+                if (have == 0) {
+                    playerSay(p, "I haven't got any at the moment.") {
+                        npcSay(p, fred, "Ah well at least you haven't been eaten. You still need to bring me ${21 - v} more.")
+                    }
+                } else {
+                    val given = takeObj(p, OBJ_BALL_OF_WOOL, minOf(have, 21 - v))
+                    val now = v + given
+                    setVarp(p, VARP_SHEEPSHEARER, now)
+                    playerSay(p, "I have some.") {
+                        if (now < 21) {
+                            npcSay(p, fred, "Give 'em here then. You need to bring me ${21 - now} more.")
+                        } else {
+                            updateQuestPoints(p)
+                            addXp(p, CRAFTING, 150)
+                            give(p, OBJ_COINS, 60)
+                            p.send(p.inventory.toMessage())
+                            npcSay(p, fred, "I guess I'd better pay you then.") {
+                                p.message("Congratulations! Quest complete: Sheep Shearer.")
+                            }
+                        }
+                    }
+                }
+            }
+            else -> npcSay(p, fred, "What are you doing on my land?")
+        }
+    }
+
     private fun cookDialogue(p: Player) {
         val cook = NPC_COOK
         when (p.varps[VARP_COOKQUEST] ?: 0) {
@@ -1329,7 +1441,8 @@ class World(
             action = { p ->
                 when (opName?.lowercase()) {
                     "bank" -> openBank(p)
-                    "talk-to" -> if (npc.id == NPC_COOK) cookDialogue(p) else openNpcChat(p, npc.id, type?.name ?: "", "Hello, ${p.username}! This is a test server.")
+                    "shear" -> shear(p, npc)
+                    "talk-to" -> if (npc.id == NPC_COOK) cookDialogue(p) else if (npc.id == NPC_FRED) fredDialogue(p) else openNpcChat(p, npc.id, type?.name ?: "", "Hello, ${p.username}! This is a test server.")
                     else -> p.message("$opName ${type?.name ?: "npc ${npc.id}"}: nothing interesting happens.")
                 }
             },
@@ -1380,6 +1493,10 @@ class World(
                 when (opName?.lowercase()) {
                     "bank" -> openBank(p)
                     "open", "close" -> toggleDoor(p, id, Coord(x, z, p.coord.level), opName.lowercase() == "open")
+                    "spin" -> spin(p)
+                    // Stairs/ladders: no destination table yet, so move one level up/down in place.
+                    "climb-up" -> if (p.coord.level < 3) teleport(p, Coord(p.coord.x, p.coord.z, p.coord.level + 1))
+                    "climb-down" -> if (p.coord.level > 0) teleport(p, Coord(p.coord.x, p.coord.z, p.coord.level - 1))
                     else -> p.message("$opName ${type?.name ?: "loc $id"} ($id at $x, $z): nothing interesting happens.")
                 }
             },
@@ -1685,7 +1802,18 @@ class World(
         private val DEFAULT_NPCS = listOf(
             3105 to Coord(3221, 3221), 3106 to Coord(3226, 3220), 3111 to Coord(3218, 3216), 1173 to Coord(3228, 3215),
             4626 to Coord(3209, 3215),
+            // Sheep Shearer: Fred the Farmer in his farmhouse, sheep in the pen east of it.
+            NPC_FRED to Coord(3190, 3273), 2786 to Coord(3202, 3266), 2787 to Coord(3206, 3262), 2788 to Coord(3199, 3270),
         )
+        private const val NPC_FRED = 732
+        private const val VARP_SHEEPSHEARER = 179
+        private const val CRAFTING = 12
+        private const val OBJ_SHEARS = 1735
+        private const val OBJ_WOOL = 1737
+        private const val OBJ_BALL_OF_WOOL = 1759
+        private const val OBJ_COINS = 995
+        private const val ANIM_SHEAR = 893
+        private const val ANIM_SPIN = 894
         private const val NPC_COOK = 4626
         private const val VARP_COOKQUEST = 29
         private const val COOKING = 7

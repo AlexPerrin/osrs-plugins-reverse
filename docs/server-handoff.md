@@ -184,6 +184,18 @@ Verified on device 2026-10-16 21:24 (deployed):
   `::options One Two Three Four`: all four rows visible, taps give sub 1/2/3/4, chat history back
   after closing.
 
+Committed, NOT deployed (waiting for an explicit restart OK while the client dev runs the Cook test):
+- 0a7b20e journal summary combat level (script 3954 sets varc 52 COMBAT_LEVEL; was -1).
+- 25582e5 facing: player face = Android flag 0x40 (desktop payload, flag p1Alt3); NPC face = flag
+  0x40 with a raw flag byte. Player faces NPC on attack/auto-retaliate/any NPC op; NPC faces its
+  attacker, resets on death or when it gives up the chase.
+- Sheep Shearer (varp 179, end 21): Fred the Farmer 732 at 3190,3273, sheep 2786-2788 in the pen
+  (Shear needs shears 1735, gives wool 1737), any loc op "Spin" turns all wool into balls 1759
+  (Lumbridge castle level 1 wheel), Fred takes balls (varp = 1 + balls), done at 21 (1 QP, 150
+  Crafting XP, 60 coins). Fred hands out shears when the quest starts. Loc ops "Climb-up" /
+  "Climb-down" move one level in place (no stair destination table yet).
+  Test: `::tele 3190 3273`, Talk-to Fred, shear, climb to the castle wheel, spin, hand in.
+
 Open, in priority order:
 1. Quest Helper gaps from the client agent (Cook's Assistant end to end).
 2. More quests on the dialogue engine (Sheep Shearer, Romeo & Juliet).

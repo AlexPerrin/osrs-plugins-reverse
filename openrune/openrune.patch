@@ -58,6 +58,90 @@ index 000000000..be7534f2b
 +
 +[object.params]
 +"param.next_loc_stage" = "loc.opencastledoubledoorr"
+diff --git a/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt b/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt
+index eddd260e2..5509c7c4a 100644
+--- a/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt
++++ b/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt
+@@ -24,6 +24,13 @@ constructor(
+ 
+     private lateinit var connection: Connection
+ 
++    /**
++     * osrs-plugins-reverse: the game thread (logins) and the account-saving service share
++     * [connection]. Interleaved transactions on one JDBC connection commit each other's work and
++     * drop `SET LOCAL search_path`, which showed as "schema 'main' does not exist" on a save.
++     */
++    private val transactionLock = Any()
++
+     public fun connect(connector: GameConnection) {
+         check(!::connection.isInitialized) { "Connection already initialized." }
+         val config = configProvider.get()
+@@ -67,19 +74,21 @@ constructor(
+         block: (DatabaseConnection) -> T,
+     ): T =
+         withConnection { connection ->
+-            val wrapped = DatabaseConnection(connection)
+-            try {
+-                applySchemaSearchPath(connection, schema)
+-                val result = block(wrapped)
+-                connection.commit()
+-                result
+-            } catch (t: Throwable) {
++            synchronized(transactionLock) {
++                val wrapped = DatabaseConnection(connection)
+                 try {
+-                    connection.rollback()
+-                } catch (rollbackEx: Throwable) {
+-                    throw DatabaseRollbackException(t, rollbackEx)
++                    applySchemaSearchPath(connection, schema)
++                    val result = block(wrapped)
++                    connection.commit()
++                    result
++                } catch (t: Throwable) {
++                    try {
++                        connection.rollback()
++                    } catch (rollbackEx: Throwable) {
++                        throw DatabaseRollbackException(t, rollbackEx)
++                    }
++                    throw t
+                 }
+-                throw t
+             }
+         }
+ 
+@@ -89,19 +98,21 @@ constructor(
+         block: (DatabaseConnection) -> T,
+     ): T {
+         assertValidConnection()
+-        try {
+-            val wrapped = DatabaseConnection(connection)
+-            applySchemaSearchPath(connection, schema)
+-            val result = block(wrapped)
+-            connection.commit()
+-            return result
+-        } catch (t: Throwable) {
++        synchronized(transactionLock) {
+             try {
+-                connection.rollback()
+-            } catch (rollbackEx: Throwable) {
+-                throw DatabaseRollbackException(t, rollbackEx)
++                val wrapped = DatabaseConnection(connection)
++                applySchemaSearchPath(connection, schema)
++                val result = block(wrapped)
++                connection.commit()
++                return result
++            } catch (t: Throwable) {
++                try {
++                    connection.rollback()
++                } catch (rollbackEx: Throwable) {
++                    throw DatabaseRollbackException(t, rollbackEx)
++                }
++                throw t
+             }
+-            throw t
+         }
+     }
+ 
 diff --git a/api/game-process/build.gradle.kts b/api/game-process/build.gradle.kts
 index d151c8e7d..c43ae9c21 100644
 --- a/api/game-process/build.gradle.kts

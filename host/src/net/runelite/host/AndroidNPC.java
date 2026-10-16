@@ -51,6 +51,10 @@ public class AndroidNPC extends NPCStub {
      * model hull (highlights, arrows, click boxes).
      */
     @Override public java.awt.Shape getConvexHull() {
+        if (Hulls.modelHulls() && Native.isClientThread()) {
+            java.awt.Shape s = Hulls.model(Native.actorModel(false, index), localX, localY, currentOrientation, Host.worldView().getPlane());
+            if (s != null) return s;
+        }
         net.runelite.api.NPCComposition c = getComposition();
         int size = c != null ? Math.max(1, c.getSize()) : 1;
         int half = size * 64 - 16;

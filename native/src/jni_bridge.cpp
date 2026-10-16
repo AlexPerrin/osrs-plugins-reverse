@@ -64,6 +64,23 @@ jint n_game_state(JNIEnv*, jclass) { return game::game_state(); }
 jint n_game_cycle(JNIEnv*, jclass) { return game::cycle(); }
 jint n_server_tick(JNIEnv*, jclass) { return game::server_tick(); }
 jint n_varp(JNIEnv*, jclass, jint id) { return game::varp(id); }
+// {height, x0, y0, z0, x1, ...} of an NPC's (player=false) or player's posed model; null if none.
+jintArray n_actor_model(JNIEnv* env, jclass, jboolean player, jint index) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    uintptr_t a = 0;
+    if (player) {
+        for (const auto& p : client_thread::players()) if (p.index == index) a = p.address;
+    } else {
+        for (const auto& n : client_thread::npcs()) if (n.index == index) a = n.address;
+    }
+    std::vector<int32_t> xyz;
+    int height = 0;
+    if (!game::actor_model(a, xyz, height)) return nullptr;
+    jintArray arr = env->NewIntArray(static_cast<jsize>(xyz.size() + 1));
+    env->SetIntArrayRegion(arr, 0, 1, &height);
+    env->SetIntArrayRegion(arr, 1, static_cast<jsize>(xyz.size()), xyz.data());
+    return arr;
+}
 jintArray n_varps(JNIEnv* env, jclass) {
     std::vector<int32_t> v = game::varps();
     jintArray arr = env->NewIntArray(static_cast<jsize>(v.size()));
@@ -644,6 +661,7 @@ const JNINativeMethod kNatives[] = {
     {"serverTick", "()I", reinterpret_cast<void*>(n_server_tick)},
     {"varp", "(I)I", reinterpret_cast<void*>(n_varp)},
     {"varps", "()[I", reinterpret_cast<void*>(n_varps)},
+    {"actorModel", "(ZI)[I", reinterpret_cast<void*>(n_actor_model)},
     {"varcInt", "(I)I", reinterpret_cast<void*>(n_varc_int)},
     {"varcString", "(I)Ljava/lang/String;", reinterpret_cast<void*>(n_varc_string)},
     {"addChatMessage", "(ILjava/lang/String;Ljava/lang/String;)Z", reinterpret_cast<void*>(n_add_chat_message)},

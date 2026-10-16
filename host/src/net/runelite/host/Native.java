@@ -24,6 +24,8 @@ final class Native {
     static native int serverTick();
     static native int varp(int id);
     static native int[] varps();
+    /** {height, x0, y0, z0, ...}: an NPC's or player's posed model this frame (unrotated); client thread only. */
+    static native int[] actorModel(boolean player, int index);
     /** Client varcs (0 / null when unset). */
     static native int varcInt(int id);
     static native String varcString(int id);

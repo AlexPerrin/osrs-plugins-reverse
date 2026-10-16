@@ -52,6 +52,12 @@ final class PlayerCache {
             seen.put(index, p);
             next.add(p);
         }
+        // Keep what just left the snapshot until its despawn event is posted (the event can be
+        // handled after a refresh in the same cycle; QH's NpcStep drops spawns while it still
+        // holds the old object).
+        for (Map.Entry<Integer, AndroidPlayer> e : byIndex.entrySet())
+            if (seen.get(e.getKey()) != e.getValue()) departed.put(e.getKey(), e.getValue());
+        if (departed.size() > 512) departed.clear();  // events never came (logout etc.)
         byIndex.clear();
         byIndex.putAll(seen);
         list = Collections.unmodifiableList(next);
@@ -63,7 +69,19 @@ final class PlayerCache {
                 && st != net.runelite.api.GameState.LOGGED_IN.getState())) local = me;
     }
 
-    synchronized AndroidPlayer cached(int index) { return byIndex.get(index); }
+    /** Objects that left the snapshot, kept for despawn events (cleared by {@link #despawned}). */
+    private final Map<Integer, AndroidPlayer> departed = new HashMap<>();
+
+    /** The last known object at `index` (for despawn events): a departed one first, else the current one. */
+    synchronized AndroidPlayer cached(int index) {
+        AndroidPlayer d = departed.get(index);
+        return d != null ? d : byIndex.get(index);
+    }
+
+    /** The despawn event for `index` was posted. */
+    synchronized void despawned(int index) {
+        departed.remove(index);
+    }
     synchronized AndroidPlayer get(int index) { refresh(); return byIndex.get(index); }
     List<AndroidPlayer> all() { refresh(); return list; }
     AndroidPlayer local() { refresh(); return local; }

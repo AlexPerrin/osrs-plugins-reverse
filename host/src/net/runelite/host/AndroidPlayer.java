@@ -47,7 +47,12 @@ public class AndroidPlayer extends PlayerStub {
     // Geometry: players are 1x1; models aren't read, so hulls are boxes (as for NPCs).
     @Override public int getLogicalHeight() { return 200; }
     @Override public int getFootprintSize() { return 1; }
-    @Override public java.awt.Shape getConvexHull() { return Hulls.box(localX, localY, 48, 48, Host.worldView().getPlane(), getLogicalHeight()); }
+    @Override public java.awt.Shape getConvexHull() {
+        if (Hulls.modelHulls() && Native.isClientThread()) {
+            java.awt.Shape s = Hulls.model(Native.actorModel(true, index), localX, localY, currentOrientation, Host.worldView().getPlane());
+            if (s != null) return s;
+        }
+        return Hulls.box(localX, localY, 48, 48, Host.worldView().getPlane(), getLogicalHeight()); }
     @Override public net.runelite.api.Point getCanvasImageLocation(java.awt.image.BufferedImage image, int zOffset) {
         net.runelite.api.Client c = Host.client();
         return c == null ? null : net.runelite.api.Perspective.getCanvasImageLocation(c, getLocalLocation(), image, getLogicalHeight() + zOffset);

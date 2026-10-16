@@ -40,4 +40,33 @@ final class Hulls {
         if (n < 3) return null;
         return Jarvis.convexHull(Arrays.copyOf(xs, n), Arrays.copyOf(ys, n));
     }
+
+    /**
+     * Convex hull of a posed model (Native.actorModel: {height, x0, y0, z0, ...}), rotated by the
+     * orientation (0..2047, Jagex direction) and placed at the local point on the ground, as
+     * RuneLite's Model.getConvexHull. Null when nothing projects.
+     */
+    static Shape model(int[] m, int localX, int localY, int orientation, int plane) {
+        Client client = Host.client();
+        if (client == null || m == null || m.length < 4) return null;
+        int ground = Perspective.getTileHeight(client, new LocalPoint(localX, localY, WorldView.TOPLEVEL), plane);
+        int sin = Perspective.SINE[orientation & 2047], cos = Perspective.COSINE[orientation & 2047];
+        int n = (m.length - 1) / 3;
+        int[] xs = new int[n], ys = new int[n];
+        int k = 0;
+        for (int i = 0; i < n; i++) {
+            int vx = m[1 + 3 * i], vy = m[2 + 3 * i], vz = m[3 + 3 * i];
+            int rx = (vx * cos + vz * sin) >> 16, rz = (vz * cos - vx * sin) >> 16;
+            net.runelite.api.Point p = Perspective.localToCanvas(client, localX + rx, localY + rz, ground + vy);
+            if (p == null) continue;
+            xs[k] = p.getX();
+            ys[k] = p.getY();
+            k++;
+        }
+        if (k < 3) return null;
+        return Jarvis.convexHull(Arrays.copyOf(xs, k), Arrays.copyOf(ys, k));
+    }
+
+    /** Model hulls are on unless `setprop debug.osrsrl.modelhull 0`. */
+    static boolean modelHulls() { return !"0".equals(Native.property("debug.osrsrl.modelhull")); }
 }

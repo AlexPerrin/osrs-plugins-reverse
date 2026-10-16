@@ -49,14 +49,30 @@ final class NpcCache {
             seen.put(index, npc);
             next.add(npc);
         }
+        // Keep what just left the snapshot until its despawn event is posted (the event can be
+        // handled after a refresh in the same cycle; QH's NpcStep drops spawns while it still
+        // holds the old object).
+        for (Map.Entry<Integer, AndroidNPC> e : byIndex.entrySet())
+            if (seen.get(e.getKey()) != e.getValue()) departed.put(e.getKey(), e.getValue());
+        if (departed.size() > 512) departed.clear();  // events never came (logout etc.)
         byIndex.clear();
         byIndex.putAll(seen);
         list = Collections.unmodifiableList(next);
     }
 
     /** The last known NPC at `index`, without refreshing (for despawn events). */
+    /** Objects that left the snapshot, kept for despawn events (cleared by {@link #despawned}). */
+    private final Map<Integer, AndroidNPC> departed = new HashMap<>();
+
+    /** The last known object at `index` (for despawn events): a departed one first, else the current one. */
     synchronized AndroidNPC cached(int index) {
-        return byIndex.get(index);
+        AndroidNPC d = departed.get(index);
+        return d != null ? d : byIndex.get(index);
+    }
+
+    /** The despawn event for `index` was posted. */
+    synchronized void despawned(int index) {
+        departed.remove(index);
     }
 
     synchronized AndroidNPC get(int index) {

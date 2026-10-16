@@ -230,6 +230,7 @@ public final class Host {
             }
             case NPC_DESPAWNED: {
                 AndroidNPC npc = npcCache.cached(a);
+                npcCache.despawned(a);
                 if (npc != null) bus.post(new NpcDespawned(npc));
                 break;
             }
@@ -249,6 +250,7 @@ public final class Host {
             }
             case PLAYER_DESPAWNED: {
                 AndroidPlayer p = playerCache.cached(a);
+                playerCache.despawned(a);
                 if (p != null) bus.post(new net.runelite.api.events.PlayerDespawned(p));
                 break;
             }

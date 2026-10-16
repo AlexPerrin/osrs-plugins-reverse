@@ -177,6 +177,9 @@ struct NpcDef {
     std::vector<int32_t> transforms;  // multi-NPC ids, last = default (-1 = none); empty if none
 };
 bool npc_def(int id, NpcDef& out);
+// Vertices {x, y, z}* of an Npc/Player's posed model this frame (unrotated, local units, y
+// negative = up) and its height. Game thread only.
+bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height);
 
 // Loc (scene object) definitions (LocType), from the game's cache. Game thread only.
 struct LocDef {

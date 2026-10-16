@@ -774,6 +774,37 @@ bool item_def(int id, ItemDef& out) {
 
 namespace game {
 
+// Posed model of an Npc/Player: vtable slot 0 = getModel(this, cycle) → shared_ptr<Model> (x8),
+// what the renderer calls every frame (Npc 0x475908, Player 0x45df78). Model: +0x20 vertex count,
+// +0x38/+0x50/+0x68 int* x/y/z (local units, y negative = up), +0x18 height. Game thread only.
+bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height) {
+    xyz.clear();
+    if (!actor) return false;
+    uintptr_t vt = read_at<uintptr_t>(actor);
+    if (!vt) return false;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    auto fn = reinterpret_cast<SharedPtr (*)(uintptr_t, int)>(read_at<uintptr_t>(vt));
+    SharedPtr r = fn(actor, cycle());
+    uintptr_t ctrl = r.ctrl, m = r.obj;
+    if (!m) { release_shared(ctrl); return false; }
+    int n = read_at<int32_t>(m + 0x20);
+    auto xs = read_at<const int32_t*>(m + 0x38), ys = read_at<const int32_t*>(m + 0x50), zs = read_at<const int32_t*>(m + 0x68);
+    height = read_at<int32_t>(m + 0x18);
+    if (n > 0 && n < 20000 && xs && ys && zs) {
+        xyz.resize(static_cast<size_t>(n) * 3);
+        for (int i = 0; i < n; i++) {
+            xyz[3 * i] = xs[i];
+            xyz[3 * i + 1] = ys[i];
+            xyz[3 * i + 2] = zs[i];
+        }
+    }
+    release_shared(ctrl);
+    return !xyz.empty();
+}
+
 bool npc_def(int id, NpcDef& out) {
     if (!g_build || !g_build->get_npc_type || id < 0 || id > 0xfffff) return false;
     struct SharedPtr {

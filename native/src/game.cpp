@@ -857,6 +857,13 @@ int scene_plane() {
 
 Point walk_destination() {
     if (!g_build || !client()) return {-1, -1};
+    // The map flag (SET_MAP_FLAG_V2 and the client's own walk): Client +0x40e970 -> {scene x, y},
+    // 0,0 when cleared (setter 0x4410b0). OpenRune flags every route; the older Client +0xecdc pair
+    // only showed client-side walks on our old server.
+    if (auto flag = read_at<uintptr_t>(client() + 0x40e970)) {
+        int x = read_at<int32_t>(flag), y = read_at<int32_t>(flag + 4);
+        if (x > 0 || y > 0) return {x, y};
+    }
     return {field(g_build->f_dest_x), field(g_build->f_dest_y)};
 }
 Point player_local_tile() {
@@ -966,13 +973,13 @@ bool db_field(int row, int column, int tuple, std::vector<DbValue>& out) {
         uintptr_t ctrl, obj;
         ~SharedPtr() {}
     };
-    SharedPtr r = reinterpret_cast<SharedPtr (*)(int)>(g_base + 0x74f824)(row);
+    SharedPtr r = reinterpret_cast<SharedPtr (*)(int)>(g_base + 0x64f824)(row);
     if (!r.obj) { release_shared_ptr(r.ctrl); return false; }
     int table = read_at<int32_t>(r.obj + 0x30);
     release_shared_ptr(r.ctrl);
-    SharedPtr t = reinterpret_cast<SharedPtr (*)(int)>(g_base + 0x6eb2c4)(table);
+    SharedPtr t = reinterpret_cast<SharedPtr (*)(int)>(g_base + 0x5eb2c4)(table);
     if (!t.obj) { release_shared_ptr(t.ctrl); return false; }
-    uintptr_t types = reinterpret_cast<uintptr_t (*)(uintptr_t, int)>(g_base + 0x6ec320)(t.obj, column);
+    uintptr_t types = reinterpret_cast<uintptr_t (*)(uintptr_t, int)>(g_base + 0x5ec320)(t.obj, column);
     std::vector<int> kinds;
     uintptr_t int_t = read_at<uintptr_t>(g_base + 0x1d8aff8), long_t = read_at<uintptr_t>(g_base + 0x1d8b000),
               str_t = read_at<uintptr_t>(g_base + 0x1d8b008);
@@ -992,7 +999,7 @@ bool db_field(int row, int column, int tuple, std::vector<DbValue>& out) {
     ints[0] = row;
     ints[1] = (table << 12) | (column << 4);
     ints[2] = tuple;
-    int ok = reinterpret_cast<int (*)(uintptr_t, int)>(g_base + 0x5cd7f4)(vm, 7502);
+    int ok = reinterpret_cast<int (*)(uintptr_t, int)>(g_base + 0x4cd7f4)(vm, 7502);
     int ni = read_at<int32_t>(vm + 0xff0), no = read_at<int32_t>(vm + 0xac38), nl = read_at<int32_t>(vm + 0xcb80);
     auto reset = [vm] {
         *reinterpret_cast<int32_t*>(vm + 0xff0) = 0;

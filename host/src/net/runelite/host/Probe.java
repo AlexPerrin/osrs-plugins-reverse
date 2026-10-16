@@ -49,6 +49,7 @@ final class Probe {
         if (a.length < 3) return;
         try {
             if (a[0].equals("db")) {  // "db <row> <column> <tuple> [rows]": getDBTableField over rows row..row+rows-1
+                a = String.join(" ", a).split(" +");
                 int row = Integer.parseInt(a[1]), col = Integer.parseInt(a[2]), tup = Integer.parseInt(a[3]);
                 int rows = a.length > 4 ? Integer.parseInt(a[4]) : 1;
                 for (int r = row; r < row + rows; r++)
@@ -218,7 +219,7 @@ final class Probe {
             Log.i(TAG, "self " + me.getName() + " weight " + c.getWeight() + " energy " + c.getEnergy() + " cb " + me.getCombatLevel() + " skull " + me.getSkullIcon() + " prayer " + me.getOverheadIcon()
                     + " team " + me.getTeam() + " pose " + me.getPoseAnimation() + " idle/walk/run " + me.getIdlePoseAnimation() + "/"
                     + me.getWalkAnimation() + "/" + me.getRunAnimation() + " " + me.getPlayerComposition()
-                    + " regions " + java.util.Arrays.toString(c.getMapRegions()) + " dest " + c.getLocalDestinationLocation()
+                    + " regions " + java.util.Arrays.toString(c.getMapRegions()) + " dest " + c.getLocalDestinationLocation() + " raw " + java.util.Arrays.toString(Native.walkDestination())
                     + " idle " + c.getMouseIdleTicks() + " protect-melee " + c.isPrayerActive(net.runelite.api.Prayer.PROTECT_FROM_MELEE)
                     + " messages " + com.google.common.collect.Iterables.size(c.getMessages()));
         for (net.runelite.api.NPC n : c.getTopLevelWorldView().npcs()) {

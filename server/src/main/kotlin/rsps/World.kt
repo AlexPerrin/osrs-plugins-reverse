@@ -440,7 +440,7 @@ class World(
         }
         // MESSAGE_GAME holds at most 255 bytes, so the command list is split over several lines.
         player.message("Welcome to the test server (rev ${Config.REVISION}).")
-        player.message("Commands: ::tele x z [level], ::pos, ::home, ::players, ::anim id, ::item id [n], ::empty, ::wear id [slot], ::xp skill n, ::openbank")
+        player.message("Commands: ::tele x z [level], ::pos, ::home, ::players, ::anim id, ::item|::give id [n], ::empty, ::wear id [slot], ::xp skill n, ::openbank")
         player.message("::talk [npc] text, ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::freeze, ::drop")
         player.message("::obj id [n] [dz], ::zobj id [n], ::locadd id [shape] [rot], ::locdel [shape] [dx] [dz]")
         player.message("::quest name [start|done|reset|n], ::varp id [v], ::varbit id [v], ::events [e1] [e2], ::hit [n] [type], ::npchit [n]")
@@ -695,8 +695,9 @@ class World(
             "pos" -> player.message("Position: ${player.coord.x}, ${player.coord.z}, ${player.coord.level}")
             "anim" -> player.extendedInfo.setSequence(args.getOrNull(1)?.toIntOrNull() ?: -1, 0)
             "players" -> player.message("Online: ${players.filterNotNull().joinToString { it.username }}")
-            "item" -> {
-                val obj = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::item id [count]")
+            // ::give is an alias (client-dev request); non-stackables go one per slot, stackables into one stack.
+            "item", "give" -> {
+                val obj = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::item|::give id [count]")
                 if (!give(player, obj, args.getOrNull(2)?.toIntOrNull() ?: 1)) return player.message("Inventory full")
                 player.send(player.inventory.toMessage())
             }

@@ -63,13 +63,18 @@ Later in the session (all static, from the client's own code; details in `docs/a
 84). Verified 234/253 by tag count (progress.py's ApiCoverage step was failing while the client
 dev's host build ran).
 
-Remaining unverified (5; 28/57 settled afterwards by their CS2 op callers):
+Remaining unverified (5; 28/57 settled afterwards by their CS2 op callers). Live-slot plan, once
+the devtools MCP can drive the client: deploy the pending installDist first (MIDI_SWAP encoder, decoders
+for 8/20/28/50/57/84); then send a PM (50) and trigger a settings IfScriptTrigger (8; OpenRune's
+AudioSettingsScript uses one) while watching `docker logs`; then try the compass/minimap modes for 45.
 - S→C 0 heatmap: the dispatcher ignores 0.
 - S→C 24 URL_OPEN: one gjstr to bridge slot +0xf0, but the client drops the session; no browser
   activity starts.
 - S→C 148 CAM_SKYBOX: an int at client+0x4ac*8; -1 calls FUN_007d97c8.
-- C→S 45 SET_HEADING: minimap special mode (0x68d438).
-- C→S 69 OPWORLDENTITY6: found by elimination; no literal sender.
+- C→S 45 SET_HEADING: sender FUN_00623960 writes -heading and also applies it locally; called from the
+  minimap handler (0x68d7b8) and a pointer thunk (0x61ccf8). The UI that triggers it is unknown.
+- C→S 69 OPWORLDENTITY6: sender FUN_00623550 writes an id g2Alt3, next to the other examine senders,
+  but is reached only indirectly. Found with a 24-instruction scan window; the 6-instruction one missed it.
 
 GROUP_FULL caveat: the client has a third (scope-2) group var list.
 

@@ -624,7 +624,7 @@ index 00000000..ea743851
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
-index 00000000..a186a964
+index 00000000..a44d2077
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 @@ -0,0 +1,123 @@
@@ -692,7 +692,7 @@ index 00000000..a186a964
 +    BUG_REPORT(42, Prot.VAR_SHORT), // sender read
 +    IF_BUTTOND(43, 16), // sender read
 +    OPNPC2(44, 4),
-+    SET_HEADING(45, 1), // unverified: medium: sent from a special minimap click mode (0x68d438, angle from the click); a plain minimap long-press sends nothing
++    SET_HEADING(45, 1), // unverified: senders FUN_00623960 (heading byte g1Alt2 = -b, also applied locally via FUN_00561670) from the minimap handler (0x68d7b8) and a pointer thunk (0x61ccf8); the triggering UI is not identified
 +    SOUND_JINGLEEND(46, 4), // sender read: FUN_005694e4 writes the jingle id p4 (only while volume +0x2f58 > 0); called by the music module when it stops a jingle player (FUN_00790634, FUN_0079a8e0)
 +    SET_CHATFILTERSETTINGS(47, 3), // sender read
 +    RESUME_PAUSEBUTTON(48, 6),
@@ -716,7 +716,7 @@ index 00000000..a186a964
 +    OPLOC5(66, 8),
 +    MAP_BUILD_COMPLETE(67, 0), // sender read
 +    OPPLAYER7(68, 3), // sender read
-+    OPWORLDENTITY6(69, 2), // unverified: prot by elimination in the world-entity op cluster
++    OPWORLDENTITY6(69, 2), // unverified: sender FUN_00623550 writes one id g2Alt3 (like OPNPC6/OPOBJ6 examine, in the same 0x62xxxx cluster); reached only indirectly, so world-entity examine is still by elimination
 +    IF_SUBOP(70, 10), // sender read
 +    OPNPC3(71, 4),
 +    CLANSETTINGS_FULL_REQUEST(72, 1), // sender read

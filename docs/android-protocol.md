@@ -98,7 +98,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 20 | HIDELOCOPS | hidden `p1` (b & 1); verified live (loc ops vanish) |
 | 21 | UPDATE_UID192 | as desktop (24 bytes + crc32) |
 | 22 | VARP_RESET | as desktop (zeroes all varps) |
-| 24 | URL_OPEN (unverified) | one plain gjstr (FUN_0058d824 flag 0) to a Java bridge call (vtable +0xf0); encoder bound for `::url`. Live 2026-10-16: `::url https://example.com` dropped the app to the login screen ("Unexpected server response", no server error), so identity or layout is doubtful |
+| 24 | URL_OPEN (unverified) | one plain gjstr (FUN_0058d824 flag 0) to a Java bridge call (vtable +0xf0); encoder bound for `::url`. Live 2026-10-16 (twice): `::url https://example.com` drops the app to the login screen ("Unexpected server response" from the reconnect, no server error), and no activity starts (logcat), so no browser opens: the client closes the session itself. Identity doubtful; next lead is what the bridge slot +0xf0 does (the app has `ApplicationContext.openBrowser`/`openOverlaidBrowser`) |
 | 25 | UPDATE_FRIENDLIST | as desktop (FUN_0066e448) |
 | 27 | LOGOUT_WITHREASON | as desktop (reason p1) |
 | 29 | IF_SETCOLOUR | combinedId `pCombinedIdAlt1`, colour15BitPacked `p2Alt2` |

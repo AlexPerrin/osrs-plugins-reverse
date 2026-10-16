@@ -377,7 +377,9 @@ list becomes `spawn`, so the quest-list filter comes back.
      were the cause. `openrune.sh build` now runs both scripts after the cache build, and the skip
      default is `spawn` only, so the quest pack's scripts (and the quest-list filter) are back. The
      `build` output was checked identical, archive by archive, to the cache tested on the device.
-   - Still to check by eye: the quest tab shows only the implemented quests.
+   - Quest-list filter verified on the device (18:24): the journal shows "Quests Completed: 7/11" and
+     the Quest List only the implemented quests (Cook's Assistant, Ernest the Chicken, Misthalin
+     Mystery, Sheep Shearer, Imp Catcher, ...).
 3. **Client side (client dev):** QH highlights on the wrong tile on OpenRune.
 4. **Housekeeping:**
    - `re/openrune` (spike) can go;

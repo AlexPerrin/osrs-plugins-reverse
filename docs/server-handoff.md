@@ -39,10 +39,11 @@ Done this session:
   `add_varcs.py`, and only the spawn pack's scripts stay out. Verified on the device. The quest
   tab filter itself was not looked at yet.
 - **Bankers** (00127f7): every Banker type gets `content.banker`, so Bank/Collect/Talk-to work
-  across the booth (was "I can't reach that!"). Not yet deployed or device-checked when written.
+  across the booth (was "I can't reach that!"). Verified on the device: Bank on the Lumbridge banker
+  across the booth opens the bank. The quest-list filter is verified too (7/11 quests).
 - **URL_OPEN 24**: an encoder is bound (`::url`). A live `::url` dropped the app to the login screen.
   The client reads exactly one string and calls `ApplicationContext.openBrowser`/
-  `openOverlaidBrowser`, so the drop is probably the app pausing for the browser. Still tagged.
+  `openOverlaidBrowser`, but no activity starts (logcat): the client closes the session itself. Still tagged.
 
 Tooling from this session (scratch, not in the repo, easy to redo):
 - CS2 decoder: trailer of 16 bytes (int/string/long locals and args), name string first;

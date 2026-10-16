@@ -100,6 +100,9 @@ public final class Host {
     /** Called once on a background thread. `pluginDir` holds plugin jars (classes.dex inside). */
     public static void start(String pluginDir, String cacheDir) {
         Log.i(TAG, "host starting; plugins from " + pluginDir);
+        // RuneLite.RUNELITE_DIR/CACHE_DIR come from user.home (empty on Android, so plugins wrote to
+        // relative paths that fail: Emojis' cache). Use the app's files dir, before RuneLite loads.
+        System.setProperty("user.home", new File(pluginDir).getParentFile().getPath());
         client = new AndroidClient(worldView);
         EventBus bus = new EventBus();
         final HostPluginManager[] pluginManager = new HostPluginManager[1];
@@ -176,6 +179,7 @@ public final class Host {
         bus.subscribersChanged = Host::updateScriptEvents;
         updateScriptEvents();
         Log.i(TAG, "host ready; " + plugins.getPlugins().size() + " plugin(s) running");
+        startStackSampler();
     }
 
     private static void loadJar(HostPluginManager plugins, File jar, String cacheDir) {
@@ -216,9 +220,33 @@ public final class Host {
     }
 
     /** Called on the game thread after every client cycle and for each derived event. */
+    private static volatile Thread gameThread;
+    /** Incremented every client cycle (Java-side caches key on it). */
+    static volatile int cycleStamp;
+
+    /** `setprop debug.osrsrl.stacks 1`: logs the game and main threads' Java stacks every 2 s. */
+    private static void startStackSampler() {
+        Thread t = new Thread(() -> {
+            while (true) {
+                try { Thread.sleep(2000); } catch (InterruptedException e) { return; }
+                if (!"1".equals(Native.property("debug.osrsrl.stacks"))) continue;
+                for (Thread th : new Thread[] {gameThread, android.os.Looper.getMainLooper().getThread()}) {
+                    if (th == null) continue;
+                    StringBuilder sb = new StringBuilder("stack " + th.getName() + ":");
+                    StackTraceElement[] st = th.getStackTrace();
+                    for (int i = 0; i < Math.min(st.length, 14); i++) sb.append("\n  ").append(st[i]);
+                    Log.i(TAG, sb.toString());
+                }
+            }
+        }, "osrsrl-stacks");
+        t.setDaemon(true);
+        t.start();
+    }
+
     public static void onEvent(int type, int a, int b) {
         EventBus bus = eventBus;
         if (bus == null) return;
+        if (gameThread == null) gameThread = Thread.currentThread();
         try {
             dispatch(bus, type, a, b);
         } finally {
@@ -226,11 +254,19 @@ public final class Host {
         }
     }
 
+    private static final java.util.List<Integer> pendingStats = new java.util.ArrayList<>();
+
     private static void dispatch(EventBus bus, int type, int a, int b) {
         switch (type) {
             case CLIENT_TICK:
+                cycleStamp++;
                 bus.post(clientTick);
                 postActorChanges(bus);
+                if (!pendingStats.isEmpty() && localPlayer() != null) {
+                    java.util.List<Integer> held = new java.util.ArrayList<>(new java.util.LinkedHashSet<>(pendingStats));
+                    pendingStats.clear();
+                    for (int skill : held) dispatch(bus, STAT_CHANGED, skill, 0);
+                }
                 runQueued();
                 AndroidMenu.onCycle();
                 Sidebar.onCycle();
@@ -317,6 +353,12 @@ public final class Host {
             case STAT_CHANGED: {
                 net.runelite.api.Skill[] all = net.runelite.api.Skill.values();
                 if (a < 0 || a >= all.length) break;
+                // The login burst sends stats before the local player exists; desktop plugins (Agility)
+                // assume a local player in StatChanged, so hold them until it does.
+                if (localPlayer() == null) {
+                    pendingStats.add(a);
+                    break;
+                }
                 int[] sk = Native.skills();
                 bus.post(new net.runelite.api.events.StatChanged(all[a], sk[50 + a], sk[25 + a], sk[a]));
                 break;

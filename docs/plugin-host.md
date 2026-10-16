@@ -41,10 +41,10 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Chat Filter | starts | |
 | Chat History | starts | getChatLineMap is host-side (no removal from the game's chat) |
 | Chat Timestamps | starts | |
-| Combat Level | starts | |
+| Combat Level | runs | precise level in the combat tab ("Combat Lvl: 126.1", verified 2026-10-16) |
 | Cannon | starts | |
 | Daily Task Indicator | starts | |
-| Emojis | starts | |
+| Emojis | starts | cache dir now under the app's files dir (user.home); emoji rendering in chat not possible (game chat) |
 | Examine | starts | |
 | Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Submenus (colour, label) not shown |
 | Implings | starts | |
@@ -62,8 +62,8 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Run Energy | runs | orb tooltip (weight, run time, 100% in) on a tap of the run orb (touch-as-mouse + TooltipOverlay, verified 2026-10-16) |
 | Timers & Buffs | starts | |
 | Woodcutting | starts | |
-| XP Tracker | starts | sidebar panel not checked |
-| Agility | starts | needs XP Tracker's public module (installed as RuneLite does) |
+| XP Tracker | starts | initialises at login after the getAccountHash fix (OAuthApi); sidebar panel not checked |
+| Agility | starts | needs XP Tracker's public module (installed as RuneLite does); its login StatChanged NPE fixed (StatChanged is held until the local player exists) |
 | Chat Notifications | starts | |
 | Fishing | starts | |
 | Idle Notifier | starts | config defaults now registered; Notification config values were a ClassCastException on GameTick (fixed after the run: stored as on/off) |
@@ -156,6 +156,9 @@ VarbitChanged).
 | VarbitChanged after a changed-varp ring overflow (login burst): every varp below 8192 plus every non-zero one is posted once | `diff_varps`; verified (Attack Styles at login; ~8k events, no visible hitch) |
 | `getModIcons/setModIcons/createIndexedSprite` host-side (32 blank slots; the game's chat doesn't draw plugin icons) | fixes ChatIconManager.loadRankIcons NPE; unverified |
 | `Widget.getChildren()` slot nulling hides that game child after the event (XP Drop `hideSkillIcons`) | `AndroidWidget.applyChildEdits`; unverified |
+| Per-cycle caches for camera, viewport, canvas size, player position and tile heights (`Host.cycleStamp`) | Perspective reads them per vertex: with NPC Indicators hulls on ~40 goblins the JNI reads took the game to 0 fps (taps stopped working); 30 fps after (verified 2026-10-16, all 41 plugins loaded) |
+| Scene overlays are also clipped out of small sprite widgets (type 5, area < 1/12 canvas) of the root and its overlay sub-interfaces: mobile button columns, orbs, chat tabs | `OverlayRenderer.uiExclusions` (looked right with NPC Indicators on 2026-10-16) |
+| `user.home` = the app's files dir, so `RuneLite.RUNELITE_DIR/CACHE_DIR` are writable | Host.start |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so

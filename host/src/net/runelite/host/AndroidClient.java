@@ -444,20 +444,20 @@ public class AndroidClient extends ClientStub {
     private float eyeOffset(int axis) {
         float d = eyeBack();
         if (d == 0) return 0;
-        int[] cam = Native.camera();
+        int[] cam = cam();
         double pitch = cam[3] * Math.PI * 2 / 16384, yaw = cam[4] * Math.PI * 2 / 16384;
         double[] f = {-Math.sin(yaw) * Math.cos(pitch), Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch)};
         return (float) (-d * f[axis]);
     }
-    @Override public int getCameraPitch() { return Native.camera()[3]; }
-    @Override public int getCameraYaw() { return Native.camera()[4]; }
+    @Override public int getCameraPitch() { return cam()[3]; }
+    @Override public int getCameraYaw() { return cam()[4]; }
     // Targets (+0x8949c/+0x894a0) aren't read separately; the camera settles on them within frames.
     @Override public int getCameraYawTarget() { return getCameraYaw(); }
     @Override public int getCameraPitchTarget() { return getCameraPitch(); }
     @Override public net.runelite.api.CameraFocusableEntity getCameraFocusEntity() { return getLocalPlayer(); }
-    @Override public float getCameraFpX() { return Native.camera()[0] + eyeOffset(0); }
-    @Override public float getCameraFpY() { return Native.camera()[1] + eyeOffset(1); }
-    @Override public float getCameraFpZ() { return Native.camera()[2] + eyeOffset(2); }
+    @Override public float getCameraFpX() { return cam()[0] + eyeOffset(0); }
+    @Override public float getCameraFpY() { return cam()[1] + eyeOffset(1); }
+    @Override public float getCameraFpZ() { return cam()[2] + eyeOffset(2); }
     @Override public float getCameraFpPitch() { return (float) (getCameraPitch() * Math.PI * 2 / 16384); }
     @Override public float getCameraFpYaw() { return (float) (getCameraYaw() * Math.PI * 2 / 16384); }
     private long scaleCheckedAt;
@@ -485,8 +485,26 @@ public class AndroidClient extends ClientStub {
      * and pinch zoom). Null while unset; `setprop debug.osrsrl.scale N` still wins for getScale.
      */
     private int[] gameViewport() {
-        int[] z = Native.viewportZoom();
-        return z != null && z[0] > 0 && z[3] > 0 && z[4] > 0 ? z : null;
+        int stamp = Host.cycleStamp;
+        if (viewportStamp != stamp || viewportCache == null) {
+            int[] z = Native.viewportZoom();
+            viewportCache = new Object[] {z != null && z[0] > 0 && z[3] > 0 && z[4] > 0 ? z : null};
+            viewportStamp = stamp;
+        }
+        return (int[]) viewportCache[0];
+    }
+    // Camera and viewport are read once per client cycle: Perspective calls the getters per vertex
+    // (NPC model hulls), and a JNI read each time took the game to ~0 fps with many NPCs highlighted.
+    private int viewportStamp = -1, cameraStamp = -1;
+    private Object[] viewportCache;
+    private int[] cameraCache;
+    private int[] cam() {
+        int stamp = Host.cycleStamp;
+        if (cameraStamp != stamp || cameraCache == null) {
+            cameraCache = Native.camera();
+            cameraStamp = stamp;
+        }
+        return cameraCache;
     }
     @Override public boolean isGpu() { return false; }
     @Override public boolean isResized() { return true; }

@@ -46,7 +46,19 @@ final class OverlayRenderer {
      * 1920x1080 screen), so widget coordinates, overlays and Perspective share one space as on
      * desktop. Falls back to a 503-unit-high canvas before the root interface exists.
      */
+    private static int canvasStamp = -1;
+    private static Dimension canvasCache;
+
     static Dimension canvasSize() {
+        int stamp = Host.cycleStamp;
+        if (stamp != canvasStamp || canvasCache == null) {
+            canvasCache = readCanvasSize();
+            canvasStamp = stamp;
+        }
+        return new Dimension(canvasCache);
+    }
+
+    private static Dimension readCanvasSize() {
         int root = Native.rootInterface();
         if (root >= 0) {
             int[] g = Native.widgetGeometry(root << 16);
@@ -159,6 +171,28 @@ final class OverlayRenderer {
                 if (w.rawGeo() == null || w.isHidden() || w.getWidth() <= 0) continue;
                 java.awt.Rectangle b = w.getBounds();
                 out.add(new Rect(b.x, b.y, b.x + b.width, b.y + b.height));
+            }
+        }
+        // Small opaque graphics anywhere in the root or its overlay sub-interfaces (the mobile button
+        // columns, orbs, minimap frame are sprite components): RuneLite draws scene overlays under
+        // every widget. Large sprites are skipped: some interfaces lay translucent full-screen ones.
+        if (root >= 0) {
+            Dimension c = canvasSize();
+            int maxArea = c.width * c.height / 12;
+            List<Integer> groups = new ArrayList<>();
+            groups.add(root);
+            int[] subsAll = Native.subInterfaces();
+            for (int i = 0; i + 2 < subsAll.length; i += 3) if (subsAll[i + 2] != 0) groups.add(subsAll[i + 1]);
+            for (int group : groups) {
+                for (int child = 0; child < 1024; child++) {
+                    int id = group << 16 | child;
+                    if (!Native.widgetExists(id)) break;
+                    AndroidWidget w = new AndroidWidget(id);
+                    if (w.getType() != 5 || w.getSpriteId() < 0 || w.getWidth() <= 0 || w.getWidth() * w.getHeight() > maxArea) continue;
+                    if (w.isHidden()) continue;
+                    java.awt.Rectangle b = w.getBounds();
+                    out.add(new Rect(b.x, b.y, b.x + b.width, b.y + b.height));
+                }
             }
         }
         // Modal interfaces (IF_OPENSUB mode 0, e.g. the quest-complete scroll): their root layer and

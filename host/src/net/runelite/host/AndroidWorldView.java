@@ -60,19 +60,19 @@ public class AndroidWorldView extends WorldViewStub {
     }
     @Override
     public int getPlane() {
-        int[] p = Native.playerPosition();
+        int[] p = pos();
         return p == null ? 0 : p[7];
     }
 
     @Override
     public int getBaseX() {
-        int[] p = Native.playerPosition();
+        int[] p = pos();
         return p == null ? 0 : p[0] - p[2];
     }
 
     @Override
     public int getBaseY() {
-        int[] p = Native.playerPosition();
+        int[] p = pos();
         return p == null ? 0 : p[1] - p[3];
     }
 
@@ -82,7 +82,21 @@ public class AndroidWorldView extends WorldViewStub {
     private byte[][][] tileSettings;
     private int heightsBase = Integer.MIN_VALUE, heightsCycle;
 
+    // The player position is read once per client cycle (Perspective asks per vertex).
+    private int posStamp = -1, heightsStamp = -1;
+    private int[] posCache;
+    private synchronized int[] pos() {
+        int stamp = Host.cycleStamp;
+        if (stamp != posStamp) {
+            posCache = Native.playerPosition();
+            posStamp = stamp;
+        }
+        return posCache;
+    }
+
     private synchronized void refreshHeights() {
+        if (tileHeights != null && heightsStamp == Host.cycleStamp) return;
+        heightsStamp = Host.cycleStamp;
         int base = getBaseX() << 16 | getBaseY();
         int cycle = Native.gameCycle();
         if (tileHeights != null && base == heightsBase && cycle - heightsCycle < 250) return;

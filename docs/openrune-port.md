@@ -23,7 +23,7 @@ Staged port of our Android test server onto OpenRune-Server, approved 2026-10-16
 | 3.1 | Sheep Shearer, Romeo & Juliet on OpenRune's quest framework | done (14d4034); headless tests pass |
 | 3.2 | Test commands | done (`::quest` also takes ids, per-quest start stage) |
 | 3.3 | Device runs with Quest Helper | done: all three quests pass with QH (slot 3, after the client fix d67379a) |
-| 3.4 | Switch preparation | ready (1cf7727), not flipped: see "The switch" |
+| 3.4 | Switch | **done 2026-10-16 10:57** (orchestrator): OpenRune on 43594/8080 with the shared key, `osrs-rsps-test` stopped; normal app build signs in (verified on device) |
 
 ## Phase 1 findings
 
@@ -281,7 +281,7 @@ defines 65660 varps. Fixed in d67379a.
 - **CS2 varc test:** the first try hung at "Loading config 1%", because `add_varcs.py` omitted the
   2-byte group version trailer (fixed in 779c96b). Not retested yet; the clean cache is deployed.
 
-### 3.4 The switch (prepared, not flipped)
+### 3.4 The switch (done 2026-10-16)
 
 Goal: the plain app build (`LOCAL_AUTH=1 SERVER=10.0.2.2:8080 tools/repack.sh`, our server's
 modulus, port 43594) works against OpenRune unchanged.

@@ -6,14 +6,16 @@ Android build (241.4) is repacked to load `libosrsrl.so`, which hooks the native
 (`liblibs.hal.system.osclient.so`), reads its state, and runs an in-process Java plugin host. That
 host loads unmodified RuneLite plugins on ART. The target plugin is **Quest Helper**.
 
-Development runs against a rev-241 test server (`server/`) that speaks the Android game protocol.
+Development runs against a rev-241 test server that speaks the Android game protocol: since 2026-10-16
+that is OpenRune-Server with our Android support (`openrune/`); the original hand-written server
+(`server/`) is kept as a fallback.
 That protocol differs from the desktop one, and no public mapping of it exists. Nobody needs a Jagex
 account: the server is also the local sign-in provider.
 
 ## Status
 
 <!-- progress:start -->
-![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-95.3%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-87.7%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-46.7%25-blue)
+![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-95.3%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-87.7%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-52.9%25-blue)
 
 [![Progress map](docs/progress.svg)](docs/progress.md)
 
@@ -24,11 +26,11 @@ account: the server is also the local sign-in provider.
 - **Server→client mapped**: 148/151 (98.0%)
 - **Client→server mapped**: 93/102 (91.2%)
 - **Zone sub-prots implemented**: 15/15 (100.0%)
-- **RuneLite API implemented**: 404/866 (46.7%)
+- **RuneLite API implemented**: 458/866 (52.9%)
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-16, `36687d0+`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-16, `8727b33+`).
 <!-- progress:end -->
 
 Milestones:
@@ -49,7 +51,8 @@ Milestones:
   dialogue-option highlights, item requirements turning green, completion), 2026-10-16
 - [x] OpenRune-Server port: Android client in game; Cook's Assistant, Sheep Shearer and Romeo & Juliet
   pass end to end with Quest Helper on it (`openrune/`, `docs/openrune-port.md`), 2026-10-16
-- [ ] Switch the default test server to OpenRune
+- [x] **Default test server switched to OpenRune** (ports 43594/8080, shared login key; old server kept
+  as the stopped fallback `osrs-rsps-test`), 2026-10-16
 - [ ] Multi-client: desktop RuneLite (via RSProx) and the Android client on the same server
 - [x] **Protocol: every live Android opcode mapped** (241/241; 12 opcodes have no sender or no-op handlers in the client and are tagged dead), 2026-10-15
 - [ ] Protocol: verify the remaining `// unverified` entries live

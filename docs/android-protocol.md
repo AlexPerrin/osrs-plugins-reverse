@@ -384,7 +384,8 @@ too large, so the g3Alt3 transform is unconfirmed).
 | 50 | MESSAGE_PRIVATE | name gjstr, Huffman message, as desktop (CS2 op 5009 = 0x1391 in FUN_005bdf14: CP1252 C string, then FUN_008668f0); decoder bound |
 | 20 | AFFINEDCLANSETTINGS_SETMUTED_FROMCHANNEL | clanId `g1`, memberIndex `g2`, muted `g1`, name (sender FUN_0053b714), as desktop; decoder bound |
 | 28 / 57 | AFFINEDCLANSETTINGS_ADDBANNED_FROMCHANNEL / CLANCHANNEL_KICKUSER (unverified) | both clanId `g1`, memberIndex `g2`, name, as desktop, and both only for guests (rank -1); senders FUN_0053b4b8 / FUN_0053b090 are reached indirectly, so which one is ban and which kick is not settled |
-| 8, 84 | IF_SCRIPT_TRIGGER, IF_CRMVIEW_OP | named, unverified, no codec |
+| 8 | IF_SCRIPT_TRIGGER | combinedId `g4Alt3`, obj `g2` (component +0xb38, which IF_SETOBJECT sets), sub `g2Alt1`, crc `g4Alt3` (the CS2 op's first int), then the args by the signature string, as desktop (ints as zigzag LEB128 varints, `gVarInt2s`). Sender 0x5e6af4, CS2 op 0x789/0xb71 |
+| 84 | IF_CRMVIEW_OP | behaviour2 `g4Alt1`, behaviour1 `g4Alt1`, sub `g2Alt1`, serverTarget `g4Alt2`, behaviour3 `g4Alt1`, combinedId `g4Alt2` (sender 0x51fc20: behaviours = the 3-int array at +0x148 from FUN_006cf41c, target from FUN_006cf688, sub/combinedId from the component +8/+4) |
 
 Third pass (2026-10-16): a raw scan of every `bl` to the packet constructor `0x79cc90` over the
 whole text segment (capstone, not limited to Ghidra-analysed functions; the opcode is the `w0`

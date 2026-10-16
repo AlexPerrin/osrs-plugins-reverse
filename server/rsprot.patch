@@ -624,7 +624,7 @@ index 00000000..ea743851
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
-index 00000000..61fa46ca
+index 00000000..1fe5b2e8
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 @@ -0,0 +1,123 @@
@@ -655,7 +655,7 @@ index 00000000..61fa46ca
 +    OPPLAYERT(5, 11), // sender read
 +    OPOBJ6(6, 6), // sender read (0x6211ac): id, z, x as the OPOBJ1-5 sender's struct; examine on a ground obj
 +    OPLOC1(7, 8),
-+    IF_SCRIPT_TRIGGER(8, Prot.VAR_SHORT), // unverified: args use zigzag varints, layout differs from desktop; no codec
++    IF_SCRIPT_TRIGGER(8, Prot.VAR_SHORT), // sender read (0x5e6af4): combinedId p4Alt3, obj p2, sub p2Alt1, crc p4Alt3, args as desktop (zigzag varints)
 +    OPNPC5(9, 4),
 +    WINDOW_STATUS(10, 5), // sender read
 +    OPWORLDENTITY3(11, 3), // sender read
@@ -731,7 +731,7 @@ index 00000000..61fa46ca
 +    CLIENT_CHEAT(81, Prot.VAR_BYTE),
 +    OPOBJ3(82, 8),
 +    OP_83(83, 15), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16); deprecated U prot (OPLOCU/OPOBJU), size group 15
-+    IF_CRMVIEW_OP(84, 22), // unverified: fields not matched to desktop; no codec
++    IF_CRMVIEW_OP(84, 22), // sender read (0x51fc20): behaviour2 g4Alt1, behaviour1 g4Alt1, sub g2Alt1, serverTarget g4Alt2, behaviour3 g4Alt1, combinedId g4Alt2
 +    OP_85(85, 11), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16); deprecated U prot (OPNPCU/OPPLAYERU/OPWORLDENTITYU) or OPWORLDENTITYT, size group 11
 +    RESUME_P_LONGDIALOG(86, 8), // sender read
 +    OP_87(87, 1), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16)
@@ -1001,12 +1001,14 @@ index 00000000..a6250dab
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
 new file mode 100644
-index 00000000..65408450
+index 00000000..2de0c432
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
-@@ -0,0 +1,327 @@
+@@ -0,0 +1,354 @@
 +package net.rsprot.protocol.android
 +
++import net.rsprot.protocol.game.incoming.buttons.IfScriptTrigger
++import net.rsprot.protocol.game.incoming.misc.user.IfCrmViewOp
 +import net.rsprot.protocol.game.incoming.codec.clan.AffinedClanSettingsSetMutedFromChannelDecoder
 +import com.github.michaelbull.logging.InlineLogger
 +import net.rsprot.buffer.JagByteBuf
@@ -1177,6 +1179,31 @@ index 00000000..65408450
 +/** Decoders with Android-specific layouts, in the sender's write order. */
 +internal fun androidCustomDecoders(): List<BoundDecoder> =
 +    listOf(
++        // 8 (sender 0x5e6af4, CS2 op 0x789/0xb71 in FUN_005e681c): combinedId p4Alt3, obj p2 (the
++        // component's +0xb38, which IF_SETOBJECT sets), sub p2Alt1, crc p4Alt3 (the op's first int),
++        // then the args by the signature string, as desktop (ints as zigzag LEB128 = gVarInt2s), kept
++        // raw for IfScriptTrigger.decode.
++        bound(P.IF_SCRIPT_TRIGGER) { b ->
++            val combinedId = b.g4Alt3()
++            val obj = b.g2()
++            val sub = b.g2Alt1()
++            val crc = b.g4Alt3()
++            val args = b.buffer.copy()
++            b.buffer.readerIndex(b.buffer.writerIndex())
++            IfScriptTrigger(CombinedId(combinedId), sub, obj, crc, args)
++        },
++        // 84 (sender 0x51fc20 in FUN_0051d0a4): behaviours are the 3-int array at +0x148 (filled by
++        // FUN_006cf41c), the server target comes from FUN_006cf688, sub/combinedId from the target
++        // component (+8/+4).
++        bound(P.IF_CRMVIEW_OP) { b ->
++            val behaviour2 = b.g4Alt1()
++            val behaviour1 = b.g4Alt1()
++            val sub = b.g2Alt1()
++            val serverTarget = b.g4Alt2()
++            val behaviour3 = b.g4Alt1()
++            val combinedId = b.g4Alt2()
++            IfCrmViewOp(serverTarget, CombinedId(combinedId), sub, behaviour1, behaviour2, behaviour3)
++        },
 +        // 13 (sender 0x51d0a4 -> 0x4fa578): 7 x g2 like desktop, minus desktop's zero checks.
 +        bound(P.CONNECTION_TELEMETRY) { b ->
 +            val lost = b.g2()

@@ -159,7 +159,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 106 | IF_SETANGLE | zoom `p2Alt2`, angleX `p2Alt2`, angleY `p2Alt3`, combinedId `pCombinedId` |
 | 107 | TRIGGER_ONDIALOGABORT | as desktop (root interface event 0x17) |
 | 108 | CAM_TARGET_V4 | [index p4][type -b] |
-| 110 | UNKNOWN_STRING (unverified) | one string, read and discarded; by elimination; no codec |
+| 110 | OP_110 (dead) | one string, read into a local and dropped (case 0x6e); every desktop S->C prot except REFLECTION_CHECKER already has an Android opcode, so it stays unnamed; no codec |
 | 111 | MAP_ANIM_SPECIFIC | delay `p2Alt3`, height `p1Alt3`, coordInBuildAreaPacked `p3Alt3`, id `p2Alt3` |
 | 112 | SET_PLAYER_OP | if (priority) 1 else 0 `p1Alt1`, id `p1Alt1`, op ?: "null" `pjstr` |
 | 113 | HIDENPCOPS | hidden `p1` (b & 1); verified live (NPC ops vanish) |
@@ -207,7 +207,8 @@ Notes:
   heatmap flag. Live test 2026-10-15 (`::hideops npc|loc|obj [1|0]`): 113 hides NPC ops, 20 hides
   loc ops, so 115 is HIDEOBJOPS by elimination (struct bytes: +3 npc, +4 loc, +5 obj).
 - 116 and 137 (var-short) are ignored by the dispatcher: REFLECTION_CHECKER (no Java reflection on
-  Android) and the opcode desktop leaves unassigned, in some order. Left unnamed.
+  Android) and the opcode desktop leaves unassigned, in some order. Left unnamed, tagged `// dead:` as
+  `OP_116` / `OP_137` (2026-10-16).
 - 148 CAM_SKYBOX: the last size-4 prot once 143 = SET_MAP_FLAG_V2 (stores an int; -1 clears a
   world-view resource).
 - 41 REBUILD_REGION_V2 (FUN_00655510 -> parser 0x6580e4): reload `p1Alt3` (raw byte 0x7f = reload),

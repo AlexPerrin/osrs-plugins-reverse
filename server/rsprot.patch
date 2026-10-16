@@ -744,10 +744,10 @@ index 00000000..65c8c74f
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..4f1519cb
+index 00000000..c275ecce
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
-@@ -0,0 +1,170 @@
+@@ -0,0 +1,172 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.protocol.Prot
@@ -881,12 +881,13 @@ index 00000000..4f1519cb
 +    IF_SETANGLE(106, 10), // dispatcher case read
 +    TRIGGER_ONDIALOGABORT(107, 0), // dispatcher case read
 +    CAM_TARGET_V4(108, 5), // dispatcher case read
-+    UNKNOWN_STRING(110, Prot.VAR_BYTE), // unverified: by elimination (last var-byte string prot); the client reads one string and discards it (no codec)
++    OP_110(110, Prot.VAR_BYTE), // dead: dispatcher case 0x6e reads one string into a local and drops it (no effect); every desktop S->C prot but REFLECTION_CHECKER already has an Android opcode, so no identity is left to match
 +    MAP_ANIM_SPECIFIC(111, 8), // dispatcher case read
 +    SET_PLAYER_OP(112, Prot.VAR_BYTE), // dispatcher case read
 +    HIDENPCOPS(113, 1), // verified live 2026-10-15: removed all NPC ops (only Walk here/Cancel left), 0 restored them
 +    RESET_INTERACTION_MODE(114, 2), // dispatcher case read
 +    HIDEOBJOPS(115, 1), // verified live 2026-10-16: ::hideops obj 1 left only Walk here on a ground Pot, 0 restored Take/Examine
++    OP_116(116, Prot.VAR_SHORT), // dead: the dispatcher jumps straight to its exit path (jump table 0x1040f6), so the client ignores it; REFLECTION_CHECKER or the opcode desktop leaves unassigned
 +    MESSAGE_CLANCHANNEL(117, Prot.VAR_BYTE), // dispatcher case read
 +    OBJ_COUNT_SPECIFIC(118, 14), // dispatcher case read
 +    VARCLAN(119, Prot.VAR_BYTE), // dispatcher case read
@@ -906,6 +907,7 @@ index 00000000..4f1519cb
 +    GROUP_VAR_INT(134, 9), // unverified: shared handler; INT/VAR/LONG assigned by size
 +    OBJUNLOCK_RESET(135, 0), // dispatcher case read
 +    CAM_MOVETO_V3(136, 9), // dispatcher case read
++    OP_137(137, Prot.VAR_SHORT), // dead: the dispatcher jumps straight to its exit path (jump table 0x1040f6), so the client ignores it; REFLECTION_CHECKER or the opcode desktop leaves unassigned
 +    GROUP_VAR(138, Prot.VAR_SHORT), // unverified: shared handler; INT/VAR/LONG assigned by size
 +    OBJUNLOCK_UPDATE(139, Prot.VAR_SHORT), // dispatcher case read
 +    GROUP_FULL(140, Prot.VAR_SHORT), // unverified: payload not traced

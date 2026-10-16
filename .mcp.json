@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "osrs-mcp": {
+      "type": "stdio",
+      "command": "tools/osrs-mcp/run.sh",
+      "args": []
+    }
+  }
+}

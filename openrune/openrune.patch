@@ -4777,6 +4777,219 @@ index d5436b90c..7996755f3 100644
              mine(rock, type)
          }
      }
+diff --git a/content/skills/slayer/build.gradle.kts b/content/skills/slayer/build.gradle.kts
+index 3d20c293c..b587c8d62 100644
+--- a/content/skills/slayer/build.gradle.kts
++++ b/content/skills/slayer/build.gradle.kts
+@@ -1,6 +1,6 @@
+ plugins {
+     id("base-conventions")
+-
++    id("integration-test-suite")
+ }
+ 
+ dependencies {
+@@ -23,3 +23,10 @@ dependencies {
+     implementation(projects.api.invtx)
+     implementation(projects.content.skills.utils)
+ }
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.generated)
++        implementation(projects.api.player)
++    }
++}
+diff --git a/content/skills/slayer/src/integration/kotlin/org/rsmod/content/slayer/SlayerTaskVarsTest.kt b/content/skills/slayer/src/integration/kotlin/org/rsmod/content/slayer/SlayerTaskVarsTest.kt
+new file mode 100644
+index 000000000..fcb97ccf5
+--- /dev/null
++++ b/content/skills/slayer/src/integration/kotlin/org/rsmod/content/slayer/SlayerTaskVarsTest.kt
+@@ -0,0 +1,74 @@
++package org.rsmod.content.slayer
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.api.testing.scope.GameTestScope
++import org.rsmod.content.slayer.core.SlayerTaskManager
++import org.rsmod.content.slayer.dialogue.SlayerContact.checkSlayerTask
++import org.rsmod.game.entity.Npc
++import org.rsmod.map.CoordGrid
++
++/**
++ * osrs-plugins-reverse: the task state RuneLite's Slayer plugin reads lives in the OSRS vars (varp
++ * slayer_count 394, slayer_target 395, varbit slayer_tasks_completed 4069 for the streak), and the
++ * gem check and the completion message use the OSRS wording.
++ */
++@Execution(ExecutionMode.SAME_THREAD)
++class SlayerTaskVarsTest {
++    @Test
++    fun GameTestState.`the gem check uses the OSRS wording`() = runGameTest {
++        val cow = setUp(count = 5)
++        player.withProtectedAccess { checkSlayerTask() }
++        val sent = messages()
++        assertTrue("You're assigned to kill Cows; only 5 more to go." in sent, sent.toString())
++        assertTrue(cow.isSlotAssigned)
++    }
++
++    @Test
++    fun GameTestState.`the last kill completes the task and raises the client-visible streak`() =
++        runGameTest {
++            val cow = setUp(count = 1)
++            assertTrue(SlayerTaskManager.decreaseTask(player, cow))
++            val sent = messages()
++            assertEquals(0, player.vars["varp.slayer_count"])
++            assertEquals(0, player.vars["varp.slayer_target"])
++            assertEquals(1, player.vars["varbit.slayer_tasks_completed"])
++            assertEquals(4069, "varbit.slayer_tasks_completed".asRSCM(RSCMType.VARBIT))
++            val expected =
++                "You've completed 1 task and received 0 points, giving you a total of 0; " +
++                    "return to a Slayer master."
++            assertTrue(expected in sent, sent.toString())
++        }
++
++    private fun GameTestScope.setUp(count: Int): Npc {
++        val task = SlayerTaskManager.slayerTargets.first { it.nameUppercase == "Cows" }
++        val cowType = checkNotNull(ServerCacheManager.getNpc("npc.cow".asRSCM(RSCMType.NPC)))
++        assertTrue(SlayerTaskManager.isTaskNpcType(cowType, task.id))
++        val center = CoordGrid(0, 50, 50, 20, 20)
++        allocZoneCollision(center)
++        player.teleport(center)
++        VarPlayerIntMapSetter.set(player, "varbit.slayer_master", 1)
++        VarPlayerIntMapSetter.set(player, "varp.slayer_target", task.id)
++        VarPlayerIntMapSetter.set(player, "varp.slayer_count", count)
++        VarPlayerIntMapSetter.set(player, "varp.slayer_count_original", count)
++        return spawnNpc(center.translate(1, 0), cowType)
++    }
++
++    private fun GameTestScope.messages(): List<String> {
++        val sent = client.mapOf(MessageGame::message).toMutableList()
++        repeat(2) {
++            advance(ticks = 1)
++            sent += client.mapOf(MessageGame::message)
++        }
++        return sent
++    }
++}
+diff --git a/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt b/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt
+index 39eb8404d..3d282add1 100644
+--- a/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt
++++ b/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt
+@@ -124,20 +124,26 @@ object SlayerTaskManager {
+ 
+         val master = getCurrentAssignedMaster(player) ?: return clearAssignedTask(player)
+ 
++        // osrs-plugins-reverse: as in OSRS, the completion message counts the streak ("N Wilderness
++        // tasks" for Krystilia), which is what RuneLite-style chat parsers read as the streak.
++        var shownTasks = totalTasksDone
++        var wildernessTask = false
+         val pointsToAdd =
+             if (MortimerAssignment.isMortimer(master)) {
+                 MortimerAssignment.onTaskComplete(player)
+             } else {
+                 val streak =
+                     if (isWildernessMaster(master)) {
+-                        val next = player.vars["varbit.slayer_wildy_streak"] + 1
+-                        VarPlayerIntMapSetter.set(player, "varbit.slayer_wildy_streak", next)
++                        val next = player.vars[VARBIT_WILDY_STREAK] + 1
++                        VarPlayerIntMapSetter.set(player, VARBIT_WILDY_STREAK, next)
++                        wildernessTask = true
+                         next
+                     } else {
+-                        val next = player.vars["varbit.slayer_streak"] + 1
+-                        VarPlayerIntMapSetter.set(player, "varbit.slayer_streak", next)
++                        val next = player.vars[VARBIT_STREAK] + 1
++                        VarPlayerIntMapSetter.set(player, VARBIT_STREAK, next)
+                         next
+                     }
++                shownTasks = streak
+ 
+                 val basePoints = master.pointsPerTask
+                 val multiplier = streakPointMultiplier(streak)
+@@ -158,7 +164,8 @@ object SlayerTaskManager {
+         }
+ 
+         player.mes(
+-            "You've completed $totalTasksDone task${if (totalTasksDone == 1) "" else "s"} and " +
++            "You've completed $shownTasks ${if (wildernessTask) "Wilderness " else ""}" +
++                "task${if (shownTasks == 1) "" else "s"} and " +
+                 "received $pointsToAdd points, giving you a total of " +
+                 "${player.vars["varbit.slayer_points"]}; return to a Slayer master.",
+         )
+@@ -277,12 +284,12 @@ object SlayerTaskManager {
+         )
+     }
+ 
+-    fun slayerStreak(access: ProtectedAccess): Int = access.vars["varbit.slayer_streak"]
++    fun slayerStreak(access: ProtectedAccess): Int = access.vars[VARBIT_STREAK]
+ 
+-    fun slayerWildyStreak(access: ProtectedAccess): Int = access.vars["varbit.slayer_wildy_streak"]
++    fun slayerWildyStreak(access: ProtectedAccess): Int = access.vars[VARBIT_WILDY_STREAK]
+ 
+     fun setSlayerStreak(access: ProtectedAccess, value: Int) {
+-        VarPlayerIntMapSetter.set(access.player, "varbit.slayer_streak", value)
++        VarPlayerIntMapSetter.set(access.player, VARBIT_STREAK, value)
+     }
+ 
+     fun rollAssignment(
+@@ -636,7 +643,7 @@ object SlayerTaskManager {
+         recordLastAssignment(player, master.masterId, task.task.id, assignedKonarArea, amount)
+ 
+         if (master.masterId == TURAEL_MASTER_ID) {
+-            VarPlayerIntMapSetter.set(player, "varbit.slayer_streak", 0)
++            VarPlayerIntMapSetter.set(player, VARBIT_STREAK, 0)
+         }
+     }
+ 
+@@ -707,6 +714,11 @@ object SlayerTaskManager {
+     private const val VARP_LAST_AREA = "varp.slayer_last_area"
+     private const val VARBIT_TOTAL_TASKS_DONE = "varbit.slayer_total_tasks_done"
+ 
++    // osrs-plugins-reverse: the streaks live in the client-visible OSRS varbits, which RuneLite's
++    // Slayer plugin shows in its task tooltip (it was the server-only slayer_streak/_wildy_streak).
++    private const val VARBIT_STREAK = "varbit.slayer_tasks_completed"
++    private const val VARBIT_WILDY_STREAK = "varbit.slayer_wilderness_tasks_completed"
++
+     const val BLOCKED_PREVIOUS_TASK_MESSAGE = "You could not be reassigned your previous Slayer task because you have blocked that task."
+ 
+     data class CapePerkOffer(val taskName: String)
+diff --git a/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/dialogue/SlayerContact.kt b/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/dialogue/SlayerContact.kt
+index 8bb9da437..49086c8c8 100644
+--- a/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/dialogue/SlayerContact.kt
++++ b/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/dialogue/SlayerContact.kt
+@@ -54,18 +54,20 @@ object SlayerContact {
+         }
+ 
+         val count = vars["varp.slayer_count"]
++        // osrs-plugins-reverse: OSRS wording ("...; only N more to go."), which RuneLite's slayer
++        // gem regex (and plugins derived from it) parse; Konar's check also says "kill ... in ...".
+         val master = SlayerTaskManager.getCurrentAssignedMaster(player)
+         if (master?.masterId == SlayerMasters.TASK_KONAR) {
+             val monster = KonarSlayerDialogueHelpers.monsterName(task)
+             val area = KonarSlayerDialogueHelpers.currentArea(player)
+                 ?.let { KonarSlayerDialogueHelpers.areaShortName(it) }
+             if (area != null) {
+-                mes("You're assigned to bring balance to $monster in $area; you have $count to go.")
++                mes("You're assigned to kill $monster in $area; only $count more to go.")
+             } else {
+-                mes("You're assigned to bring balance to $monster; you have $count to go.")
++                mes("You're assigned to kill $monster; only $count more to go.")
+             }
+         } else {
+-            mes("You're assigned to kill ${task.nameUppercase}; you have $count to go.")
++            mes("You're assigned to kill ${task.nameUppercase}; only $count more to go.")
+         }
+ 
+         if (MortimerAssignment.isMortimer(master)) {
 diff --git a/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/CannonBallScript.kt b/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/CannonBallScript.kt
 index dd7c61d52..366a28005 100644
 --- a/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/CannonBallScript.kt

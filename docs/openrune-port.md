@@ -330,21 +330,23 @@ list becomes `spawn`, so the quest-list filter comes back.
 
 ## Next steps
 
-1. Client dev, on OpenRune:
-   - Quest Helper's Cook's Assistant overlay steps;
-   - getWeight after `::give 1127` and wearing it (UPDATE_RUNWEIGHT);
-   - optionally, the root cause of the custom-clientscript crash.
-2. Phase 3, only after the user's go-ahead:
-   - Sheep Shearer and Romeo & Juliet on OpenRune's quest framework (`content/quest/.../area`;
-     `CooksAssistant.kt` is the model). Check what OpenRune already has first.
-   - R&J notes from the orchestrator: our server has no quest-complete scroll, only a chat line.
-     OpenRune's `Quest.completeQuest` opens one. The Apothecary should offer "Talk about Romeo &
-     Juliet" before the potion dialogue.
-   - Content reference, read-only: https://github.com/RSPSApp/tsps (clone to re/tsps, never run it,
-     check its license before copying).
-3. The switch:
-   - OpenRune on 43594 (compose port), with the app built without `GAME_PORT`;
-   - either keep the sidecar on 8080 or port Http/LocalAuth into OpenRune;
-   - retire `osrs-rsps-test` only when the orchestrator says so.
-4. Housekeeping: the spike containers `openrune-spike` and `openrune-spike-http` (stopped) and
-   `re/openrune` are superseded by `openrune/` and can be removed when the orchestrator agrees.
+1. **The switch:** waiting for the user's decision through the orchestrator. The steps are in 3.4,
+   and nothing has been flipped.
+2. **CS2 varc retest** (one short slot with an osrs-openrune rebuild). `src/.data/cache` holds the
+   clean cache, the one deployed. To test:
+   ```
+   cp -r src/.data/cache/LIVE src/.data/cache/SERVER <backup dir>/
+   OPENRUNE_SKIP_CS2_PACKS=spawn scripts/openrune.sh gradle :or-cache:buildCache
+   python3 -I scripts/add_varcs.py && python3 -I scripts/check_cache.py   # expect 9975 groups
+   docker compose up -d --build openrune
+   ```
+   Then launch the OpenRune app build and watch for "Loading config" and a SIGSEGV.
+   - If it signs in: run `add_varcs.py` at the end of `openrune.sh build`, make `spawn` the default
+     `OPENRUNE_SKIP_CS2_PACKS`, and check that the quest list only shows implemented quests.
+   - If not: restore the backup and rebuild the image.
+3. **Client side (client dev):** QH highlights on the wrong tile on OpenRune.
+4. **Housekeeping:**
+   - `re/openrune` (spike) can go;
+   - `re/tsps` (read-only content reference, BSD-2) can stay or go;
+   - the `AndroidUpdateZonePartialEnclosed` size-estimate errors go away with the next RSProt
+     build (1cf7727, already in the deployed image).

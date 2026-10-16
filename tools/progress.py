@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Computes project progress from the code and writes docs/progress.md + docs/progress-history.csv.
+"""Computes project progress from the code; writes docs/progress.md, docs/progress.svg (map),
+the README status block and docs/progress-history.csv.
 
 Metrics (all counted from source, nothing hand-maintained):
 - Mobile protocol: opcodes named in the Android prot enums (identified) and opcodes with a real
@@ -9,13 +10,16 @@ Metrics (all counted from source, nothing hand-maintained):
 - RuneLite API: abstract methods of each interface the host backs that the Android* class
   implements (tools/progress/ApiCoverage.java; needs host/build.sh output in re/host/classes).
 
-Usage: tools/progress.py [--no-history]   (needs server/rsprot: server/scripts/rsprot.sh init)
+Usage: tools/progress.py [--no-history] [--working]
+  Protocol numbers come from server/rsprot.patch as committed in HEAD; --working reads the
+  server/rsprot working copy instead (uncommitted work, never for published numbers).
 """
 import csv
 import datetime
 import os
 import re
 import subprocess
+import tempfile
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -64,7 +68,8 @@ def protocol():
 
 
 def zone():
-    doc = read(os.path.join(ROOT, "docs/android-protocol.md")).split("## Zone packets")[1].split("\n## ")[0]
+    doc = (git("show", "HEAD:docs/android-protocol.md") if COMMITTED else read(os.path.join(ROOT, "docs/android-protocol.md")))
+    doc = doc.split("## Zone packets")[1].split("\n## ")[0]
     rows = re.findall(r"^\| (\d+) \| (\w+) \|[^|]*\|([^|]*)\|", doc, re.M)
     return sum(1 for _, _, payload in rows if payload.strip()), [n for _, n, p in rows if p.strip()]
 
@@ -93,11 +98,125 @@ def bar(p, width=20):
     return "█" * n + "░" * (width - n)
 
 
+GREEN, AMBER, GREY, BG, FG = "#2ea043", "#d29922", "#6e7681", "#0d1117", "#ffffff"
+
+
+def squarify(sizes, x, y, w, h):
+    """Squarified treemap: returns one (x, y, w, h) per size (sizes sorted descending)."""
+    out, sizes = [], [s * w * h / sum(sizes) for s in sizes]
+    while sizes:
+        short = min(w, h)
+        row = [sizes[0]]
+
+        def worst(r):
+            s = sum(r)
+            return max(max(short * short * v / (s * s), s * s / (short * short * v)) for v in r)
+
+        i = 1
+        while i < len(sizes) and worst(row + [sizes[i]]) <= worst(row):
+            row.append(sizes[i])
+            i += 1
+        sizes = sizes[i:]
+        s = sum(row)
+        if w >= h:  # lay the row out as a column on the left
+            cw, cy = s / h, y
+            for v in row:
+                out.append((x, cy, cw, v / cw))
+                cy += v / cw
+            x, w = x + cw, w - cw
+        else:  # as a row on top
+            rh, cx = s / w, x
+            for v in row:
+                out.append((cx, y, v / rh, rh))
+                cx += v / rh
+            y, h = y + rh, h - rh
+    return out
+
+
+def esc(t):
+    return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def svg_section(groups, x, y, w, h):
+    """groups: (label, title, [colour per cell]); boxes sized by cell count, cells in a grid."""
+    groups = sorted(groups, key=lambda g: -len(g[2]))
+    parts = []
+    for (label, title, cells), (gx, gy, gw, gh) in zip(groups, squarify([len(g[2]) for g in groups], x, y, w, h)):
+        n = len(cells)
+        cols = max(1, min(n, round((n * gw / gh) ** 0.5)))
+        rows = -(-n // cols)
+        cw, ch = (gw - 2) / cols, (gh - 2) / rows
+        parts.append(f"<g><title>{esc(title)}</title>")
+        for i, colour in enumerate(cells):
+            r, c = divmod(i, cols)
+            parts.append(f'<rect x="{gx + 1 + c * cw:.2f}" y="{gy + 1 + r * ch:.2f}" width="{cw:.2f}" height="{ch:.2f}" '
+                         f'fill="{colour}" stroke="{BG}" stroke-width="0.5"/>')
+        parts.append(f'<rect x="{gx:.2f}" y="{gy:.2f}" width="{gw:.2f}" height="{gh:.2f}" fill="none" stroke="{BG}" stroke-width="2"/>')
+        if gw > 7 * len(label) + 8 and gh > 18:
+            parts.append(f'<text x="{gx + 5:.2f}" y="{gy + 16:.2f}" font-family="sans-serif" font-size="12" fill="{FG}" '
+                         f'stroke="{BG}" stroke-width="3" paint-order="stroke">{esc(label)}</text>')
+        parts.append("</g>")
+    return parts
+
+
+def heading(text, y):
+    return f'<text x="4" y="{y}" font-family="sans-serif" font-size="16" fill="{FG}">{esc(text)}</text>'
+
+
+def write_svg(path, p, z_done, rows):
+    def cells(impl, mapped, total):
+        return [GREEN] * impl + [AMBER] * (mapped - impl) + [GREY] * (total - mapped)
+
+    W = 1000
+    ident, impl, total = p["s2c_ident"] + p["c2s_ident"], p["s2c_impl"] + p["c2s_impl"], S2C_TOTAL + C2S_TOTAL
+    packets = [
+        ("Server→client", f"Server→client: {p['s2c_ident']}/{S2C_TOTAL} mapped, {p['s2c_impl']} implemented",
+         cells(p["s2c_impl"], p["s2c_ident"], S2C_TOTAL)),
+        ("Client→server", f"Client→server: {p['c2s_ident']}/{C2S_TOTAL} mapped, {p['c2s_impl']} implemented",
+         cells(p["c2s_impl"], p["c2s_ident"], C2S_TOTAL)),
+        ("Zone", f"Zone sub-prots: {z_done}/{ZONE_TOTAL} implemented", cells(z_done, z_done, ZONE_TOTAL)),
+    ]
+    api_done, api_total = sum(r[1] for r in rows), sum(r[2] for r in rows)
+    api_groups = [(iface, f"{iface}: {a}/{b} ({pct(a, b):.0f}%)", cells(a, a, b)) for iface, a, b in rows]
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} 470" width="{W}" height="470">',
+           f'<rect x="0" y="0" width="{W}" height="470" fill="{BG}"/>',
+           heading(f"Mobile packets: {pct(ident, total):.2f}% mapped ({ident}/{total}), "
+                   f"{pct(impl, total):.2f}% implemented ({impl})", 21)]
+    out += svg_section(packets, 1, 31, W - 2, 150)
+    out.append(heading(f"RuneLite API*: {pct(api_done, api_total):.2f}% ({api_done}/{api_total})", 210))
+    out += svg_section(api_groups, 1, 220, W - 2, 230)
+    legend = [(GREEN, "implemented"), (AMBER, "mapped, not implemented"), (GREY, "unknown / missing")]
+    lx = 4
+    for colour, text in legend:
+        out.append(f'<rect x="{lx}" y="457" width="10" height="10" fill="{colour}"/>')
+        out.append(f'<text x="{lx + 14}" y="466" font-family="sans-serif" font-size="11" fill="{FG}">{text}</text>')
+        lx += 30 + 6 * len(text)
+    out.append("</svg>")
+    with open(path, "w") as f:
+        f.write("\n".join(out) + "\n")
+
+
 def git(*args):
     return subprocess.run(["git", "-C", ROOT] + list(args), capture_output=True, text=True).stdout.strip()
 
 
+COMMITTED = False
+
+
+def use_committed_protocol():
+    """Point ANDROID at the Android module as committed (server/rsprot.patch in HEAD), so the
+    published numbers never include another agent's uncommitted work."""
+    global ANDROID, COMMITTED
+    COMMITTED = True
+    tmp = tempfile.mkdtemp(prefix="progress-rsprot-")
+    patch = subprocess.run(["git", "-C", ROOT, "show", "HEAD:server/rsprot.patch"], capture_output=True, check=True).stdout
+    subprocess.run(["git", "apply", "--include=protocol/osrs-241/osrs-241-android/*", "-"], cwd=tmp, input=patch, check=True)
+    ANDROID = os.path.join(tmp, os.path.relpath(ANDROID, os.path.join(ROOT, "server/rsprot")))
+
+
 def main():
+    if "--working" not in sys.argv:
+        use_committed_protocol()
     p = protocol()
     z_done, z_names = zone()
     rows = api()
@@ -144,14 +263,18 @@ def main():
     with open(os.path.join(ROOT, "docs/progress.md"), "w") as f:
         f.write("\n".join(md))
 
+    write_svg(os.path.join(ROOT, "docs/progress.svg"), p, z_done, rows)
+
     readme = os.path.join(ROOT, "README.md")
     if os.path.exists(readme):
         text = read(readme)
         badges = " ".join(
             f"![{n}](https://img.shields.io/badge/{n.replace(' ', '%20').replace('→', '%E2%86%92')}-{pct(a, b):.1f}%25-blue)"
             for n, a, b, _ in head[:2] + head[5:])
-        block = (f"<!-- progress:start -->\n{badges}\n\n"
+        block = (f"<!-- progress:start -->\n{badges}\n\n[![Progress map](docs/progress.svg)](docs/progress.md)\n\n"
                  + "\n".join(f"- **{n}**: {a}/{b} ({pct(a, b):.1f}%)" for n, a, b, _ in head)
+                 + "\n\n\\* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the"
+                 " whole RuneLite API. Mobile packets count the opcodes in the client's own size tables."
                  + f"\n\nDetails: [docs/progress.md](docs/progress.md) (as of {today}, `{commit}{dirty}`).\n<!-- progress:end -->")
         text = re.sub(r"<!-- progress:start -->.*?<!-- progress:end -->", lambda _: block, text, flags=re.S)
         with open(readme, "w") as f:

@@ -59,7 +59,8 @@ final class Probe {
             if (a[0].equals("npcmodel")) {  // "npcmodel <npc id> 0": model bounds and hull of each NPC with that id
                 int want = Integer.parseInt(a[1]);
                 for (net.runelite.api.NPC n : c.getTopLevelWorldView().npcs()) {
-                    if (n.getId() != want) continue;
+                    net.runelite.api.NPCComposition base = n.getComposition();
+                    if (n.getId() != want && (base == null || base.getId() != want)) continue;
                     int[] m = Native.actorModel(false, n.getIndex());
                     String b = "no model";
                     if (m != null) {
@@ -70,7 +71,7 @@ final class Probe {
                     }
                     java.awt.Shape h = n.getConvexHull();
                     net.runelite.api.NPCComposition comp = n.getComposition();
-                    Log.i(TAG, "npcmodel " + want + " index " + n.getIndex() + " name " + n.getName() + " world " + n.getWorldLocation()
+                    Log.i(TAG, "npcmodel " + want + " getId " + n.getId() + " base " + (base != null ? base.getId() + " configs " + java.util.Arrays.toString(base.getConfigs()) : "?") + " index " + n.getIndex() + " name " + n.getName() + " world " + n.getWorldLocation()
                             + " local " + n.getLocalLocation() + " orient " + n.getCurrentOrientation() + " size " + (comp != null ? comp.getSize() : -1)
                             + " scale " + (comp != null ? comp.getWidthScale() + "/" + comp.getHeightScale() : "?") + "; " + b
                             + "; hull " + (h != null ? h.getBounds() : null) + " feet " + net.runelite.api.Perspective.localToCanvas(c, n.getLocalLocation(), c.getTopLevelWorldView().getPlane()));

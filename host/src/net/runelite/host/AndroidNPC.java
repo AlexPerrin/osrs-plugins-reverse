@@ -16,8 +16,22 @@ public class AndroidNPC extends NPCStub {
     }
 
     @Override public int getIndex() { return index; }
-    @Override public int getId() { return id; }
-    @Override public String getName() { return name; }
+    /**
+     * As RuneLite's client: a multi-NPC reports the id/name it currently transforms into, and -1/null
+     * while it transforms to nothing (the game doesn't draw it), so id-matching plugins skip it.
+     */
+    @Override public int getId() {
+        net.runelite.api.NPCComposition base = getComposition();
+        if (base == null || base.getConfigs() == null || base.getConfigs().length == 0) return id;
+        net.runelite.api.NPCComposition t = base.transform();
+        return t == null ? -1 : t.getId();
+    }
+    @Override public String getName() {
+        net.runelite.api.NPCComposition base = getComposition();
+        if (base == null || base.getConfigs() == null || base.getConfigs().length == 0) return name;
+        net.runelite.api.NPCComposition t = base.transform();
+        return t == null ? null : t.getName();
+    }
     @Override public net.runelite.api.NPCComposition getComposition() { return AndroidNPCComposition.lookup(id); }
     @Override public net.runelite.api.NPCComposition getTransformedComposition() {
         net.runelite.api.NPCComposition c = getComposition();

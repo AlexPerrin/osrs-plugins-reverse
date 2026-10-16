@@ -28,13 +28,15 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
 - **Token login:** auth type 7 (the app's Jagex-account token) maps to one local account, "tester".
 - **Mobile gameframe:** toplevel_osm (601), built from enum 1745, opened for Android sessions.
 - **Camera API:** follows our newer RSProt pin (CamLookAtV2/CamMoveToV2 aliases).
-- **Custom clientscripts left out:** the Android client crashes (SIGSEGV in the game thread, about
-  2 s after start) on OpenRune's own clientscripts. Their content is the cause, not their ids: it
-  still crashed with them renumbered densely after the stock maximum (9972). The cache build leaves
-  out the clientscripts of the `spawn` (dev spawn menu) and `quest` (quest-list filter) packs
-  (`OPENRUNE_SKIP_CS2_PACKS`, default `spawn,quest`). The scripts keep the dense ids 9973-9985 in
-  case they come back. `PluginPacks` fails the build on custom ids above 9999, and
-  `scripts/check_cache.py` checks the packed cache.
+- **Custom clientscripts:** OpenRune's packer gives the clientscript groups it *adds* zero sizes
+  and a zero name hash in archive 12's reference table, and the Android client crashes on that
+  during cache sync (SIGSEGV in the game thread). `openrune.sh build` therefore runs
+  `scripts/fix_reftable.py` (real sizes, plus the name hash of the embedded script name) and
+  `scripts/add_varcs.py` (varclient configs for the quest pack's varcstr 1293/1294) after the cache
+  build. Verified on the device 2026-10-16. The quest pack's scripts (9973/9974 and the
+  `questlist_hide_quest`/`quest_is_complete` overrides) are in again; only the dev spawn menu stays
+  out (`OPENRUNE_SKIP_CS2_PACKS`, default `spawn`). `PluginPacks` fails the build on custom ids
+  above 9999, and `scripts/check_cache.py` checks the packed cache.
 - **Mobile chatmenu:** chatbox:chatmodal is unclamped (varbit 10670 + script 113) for chatmenu only,
   and reset for chat_left/chat_right and on close, as on our server. Without it the 3rd and 4th
   options were clipped on mobile.

@@ -330,8 +330,7 @@ list becomes `spawn`, so the quest-list filter comes back.
 
 ## Next steps
 
-1. **The switch:** waiting for the user's decision through the orchestrator. The steps are in 3.4,
-   and nothing has been flipped.
+1. **The switch:** done (3.4).
 2. **CS2 varc retest: done 2026-10-16 10:48-10:57, failed.** The quest pack's clientscripts still
    crash the app; the missing varcs are not the cause. The quest pack stays skipped
    (`OPENRUNE_SKIP_CS2_PACKS` default stays `spawn,quest`), and osrs-openrune runs the clean cache
@@ -355,6 +354,30 @@ list becomes `spawn`, so the quest-list filter comes back.
      two procs only), and diff the recompiled 3238/4136 bytecode against stock.
    - `add_varcs.py` is not wired into the build: it only matters once the quest scripts load.
    - The test cache is not kept in the repo; rebuild it with the two commands above.
+   - **Offline bisect (2026-10-16, fourth server dev).** Built in a scratch copy of `src` so the
+     deployed cache stayed clean. Ruled out:
+     - new opcodes: the decoded bytecode of 9973/9974 and the recompiled 3238/4136 uses no opcode
+       stock lacks;
+     - varc range: the varcstr ops 49/50 hit ids up to 1501 in stock (int varcs up to 1568), so
+       1293/1294 are in range;
+     - script names: OpenRune embeds `<file>.cs2 [kind,name]` in all 9915 scripts it recompiles,
+       and those load fine;
+     - interface 1099: identical content (version/CRC only).
+   - **Lead:** OpenRune's packer writes the groups it *adds* into archive 12's reference table
+     with sizes (0, 0) and name hash 0. Every stock or recompiled group has real values; groups it
+     only rewrites keep stale but non-zero sizes, which the client tolerates. Every crashing cache
+     added clientscript groups (45500+, renumbered 9973-9985, quest 9973/9974); the working ones
+     added none. Interface 1099 (archive 3) also has a (0, 0) entry in the working cache, so this
+     fits only if clientscripts are loaded at sync and interfaces on demand.
+     `scripts/fix_reftable.py [CACHE] [ARCHIVE...]` fills in sizes and the name hash of the
+     embedded script name.
+   - **Fixed, verified on the device 2026-10-16 18:04.** The cache with the quest scripts,
+     `add_varcs.py` and `fix_reftable.py` synced without a crash; Play Now went in game and the
+     app kept running. Same cache build as the crashing tests, so the zero reference-table entries
+     were the cause. `openrune.sh build` now runs both scripts after the cache build, and the skip
+     default is `spawn` only, so the quest pack's scripts (and the quest-list filter) are back. The
+     `build` output was checked identical, archive by archive, to the cache tested on the device.
+   - Still to check by eye: the quest tab shows only the implemented quests.
 3. **Client side (client dev):** QH highlights on the wrong tile on OpenRune.
 4. **Housekeeping:**
    - `re/openrune` (spike) can go;

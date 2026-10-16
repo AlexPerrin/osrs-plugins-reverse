@@ -98,7 +98,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 20 | HIDELOCOPS | hidden `p1` (b & 1); verified live (loc ops vanish) |
 | 21 | UPDATE_UID192 | as desktop (24 bytes + crc32) |
 | 22 | VARP_RESET | as desktop (zeroes all varps) |
-| 24 | URL_OPEN (unverified) | recognised, no codec |
+| 24 | URL_OPEN (unverified) | one plain gjstr (FUN_0058d824 flag 0) to a Java bridge call (vtable +0xf0); encoder bound for `::url`. Live 2026-10-16: `::url https://example.com` dropped the app to the login screen ("Unexpected server response", no server error), so identity or layout is doubtful |
 | 25 | UPDATE_FRIENDLIST | as desktop (FUN_0066e448) |
 | 27 | LOGOUT_WITHREASON | as desktop (reason p1) |
 | 29 | IF_SETCOLOUR | combinedId `pCombinedIdAlt1`, colour15BitPacked `p2Alt2` |
@@ -447,6 +447,16 @@ Full NPC read order (flag tests in 0x569778): 0x2, 0x800000, 0x200000, 0x80 (spo
 0x40000 (hitmarks), 0x4000, 0x10000, 0x80000, 0x100000, 0x8000, 0x400000.
 
 Other NPC blocks are not mapped; the Android writer drops them.
+
+NPC adds near the view edge and runtime spawns (2026-10-16, device):
+- The high-resolution count can drop by one right after an add at distance 15. That is an NPC at
+  the edge stepping out of range; the client then drops the tail slot. Desktop gets the same
+  bytes, and `NpcInfoViewEdgeTest` (RSProt desktop tests) checks that an add at exactly 15 tiles
+  stays in high resolution.
+- `::npc 300 goblin` spawns on the player's own tile. The goblin is added, placed and interactive
+  at once (two "Attack Goblin" entries on a long-press right after a second spawn); it is just
+  hidden inside the player model until the player steps away. The spawn clock is irrelevant: an
+  A/B build without it behaved the same, so Android adds keep sending it.
 
 ## Local sign-in (no Jagex account)
 

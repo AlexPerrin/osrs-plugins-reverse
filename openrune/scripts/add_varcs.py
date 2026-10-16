@@ -3,9 +3,10 @@
 rev-241 cache leaves undefined, to the packed JS5 cache in place.
 
 OpenRune's quest pack declares varcstr 1293/1294 (quest_available_ids, quest_policy_complete_ids,
-content/quest/pack/.../varc.sym). Rev 241 has no varclient entries for those ids, and the Android
-client crashes when a script reads or writes a varc without one. A varclient entry carries no
-type, so an empty config (just the terminating 0) is what every plain varc in the cache has.
+content/quest/pack/.../varc.sym). Rev 241 has no varclient entries for those ids. The crash these
+scripts caused was the zero reference-table sizes (fix_reftable.py), not the varcs, but the cache
+verified on the device had both, so the build keeps adding them. A varclient entry carries no type,
+so an empty config (just the terminating 0) is what every plain varc in the cache has.
 Usage: add_varcs.py [CACHE_DIR] [ID...]   (default: src/.data/cache/LIVE, ids from the varc.sym
 files of the packs in src/content)
 """

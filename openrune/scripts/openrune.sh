@@ -89,6 +89,10 @@ build)
     else
         gradle --no-configuration-cache install   # upstream task is not config-cache safe
     fi
+    # The packer leaves new clientscript groups with zero sizes in the reference table (crashes
+    # the Android client at cache sync), and the quest scripts use varcs rev 241 does not define.
+    python3 -I scripts/add_varcs.py
+    python3 -I scripts/fix_reftable.py
     gradle generateRsa
     gradle :server:app:installDist -x test
     python3 -I scripts/check_cache.py

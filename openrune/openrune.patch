@@ -3547,7 +3547,7 @@ index 0e4a0f17f..5b494bdba 100644
  simmetrics-core = { module = "com.github.mpkorstanje:simmetrics-core", version.ref = "simmetrics" }
  spotless-gradle-plugin = { module = "com.diffplug.spotless:spotless-plugin-gradle", version.ref = "spotless" }
 diff --git a/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt b/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt
-index 9387eba2d..42caf9b5f 100644
+index 9387eba2d..81af92826 100644
 --- a/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt
 +++ b/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt
 @@ -110,6 +110,7 @@ class PluginPacks(val projectRoot: File, val all: List<PluginPack>) {
@@ -3573,13 +3573,13 @@ index 9387eba2d..42caf9b5f 100644
 +     * right after the stock maximum (9972 in rev 241). Fails the cache build otherwise.
 +     */
 +    /**
-+     * osrs-plugins-reverse: packs whose clientscripts stay out of the cache. The Android client
-+     * crashes on OpenRune's own scripts (content, not ids: tested 2026-10-16), so the spawn menu and
-+     * quest packs are left out by default
-+     * (`OPENRUNE_SKIP_CS2_PACKS`, comma-separated pack names; empty packs everything).
++     * osrs-plugins-reverse: packs whose clientscripts stay out of the cache: the dev spawn menu,
++     * which is useless on mobile (`OPENRUNE_SKIP_CS2_PACKS`, comma-separated pack names; empty packs
++     * everything). New script groups need scripts/fix_reftable.py after the build: the packer leaves
++     * their reference-table sizes at 0, which crashes the Android client during cache sync.
 +     */
 +    private fun skippedCs2Packs(): Set<String> =
-+        (System.getenv("OPENRUNE_SKIP_CS2_PACKS") ?: "spawn,quest")
++        (System.getenv("OPENRUNE_SKIP_CS2_PACKS") ?: "spawn")
 +            .split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
 +
 +    private fun checkClientScriptIds(lines: Collection<String>) {

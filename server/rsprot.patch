@@ -744,7 +744,7 @@ index 00000000..a38ed703
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..fbb256e8
+index 00000000..27a0d30f
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 @@ -0,0 +1,172 @@
@@ -820,7 +820,7 @@ index 00000000..fbb256e8
 +    HIDELOCOPS(20, 1), // verified live 2026-10-15: opcode 20 = 1 removed Open/Examine on a door, 0 restored them
 +    UPDATE_UID192(21, 28), // dispatcher case read
 +    VARP_RESET(22, 0), // dispatcher case read
-+    URL_OPEN(24, Prot.VAR_SHORT), // unverified: medium: one string to a Java bridge call
++    URL_OPEN(24, Prot.VAR_SHORT), // unverified: one gjstr to a Java bridge call, but a live ::url dropped the app to the login screen
 +    UPDATE_FRIENDLIST(25, Prot.VAR_SHORT), // dispatcher case read
 +    LOGOUT_WITHREASON(27, 1), // dispatcher case read
 +    IF_SETCOLOUR(29, 6), // dispatcher case read
@@ -922,10 +922,10 @@ index 00000000..fbb256e8
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt
 new file mode 100644
-index 00000000..dfd2c282
+index 00000000..a6250dab
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,64 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.bitbuffer.BitBuf
@@ -956,11 +956,7 @@ index 00000000..dfd2c282
 +        bitBuffer.pBits(numOfBitsUsed, deltaX and maximumDistanceTransmittableByBits)
 +        bitBuffer.pBits(numOfBitsUsed, deltaZ and maximumDistanceTransmittableByBits)
 +
-+        // Test (2026-10-16): the client keys new NPCs by (spawn clock << 32 | type << 16 | index)
-+        // (FUN_005b0854, FUN_006492b0) when sorting them into render lists, and runtime spawns,
-+        // the only adds with a non-zero clock, stay invisible on the app until the player moves.
-+        // Android adds leave the clock out unless -Drsprot.android.npcSpawnClock=true.
-+        if (SEND_SPAWN_CLOCK && details.spawnCycle != 0) {
++        if (details.spawnCycle != 0) {
 +            bitBuffer.pBits(1, 1)
 +            val cycle = details.spawnCycle
 +            val index =
@@ -988,7 +984,6 @@ index 00000000..dfd2c282
 +    }
 +
 +    private companion object {
-+        private val SEND_SPAWN_CLOCK = System.getProperty("rsprot.android.npcSpawnClock") == "true"
 +        private val spawnClockBitcodes = intArrayOf(18, 19, 20, 32)
 +        private val spawnClockMaxValues = spawnClockBitcodes.map { (1L shl it) - 1 }.toLongArray()
 +        private val typeBitcodes = intArrayOf(12, 14, 17, 24)

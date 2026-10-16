@@ -47,7 +47,9 @@ Milestones:
   and spinning wheel, minimap arrows, item counts, multi-floor route, hand-in, completion), 2026-10-16
 - [x] **Third full quest with Quest Helper: Romeo & Juliet** (multi-NPC route across Varrock,
   dialogue-option highlights, item requirements turning green, completion), 2026-10-16
-- [ ] Test server on OpenRune-Server (staged port: `openrune/`, `docs/openrune-port.md`)
+- [x] OpenRune-Server port: Android client in game; Cook's Assistant, Sheep Shearer and Romeo & Juliet
+  pass end to end with Quest Helper on it (`openrune/`, `docs/openrune-port.md`), 2026-10-16
+- [ ] Switch the default test server to OpenRune
 - [ ] Multi-client: desktop RuneLite (via RSProx) and the Android client on the same server
 - [x] **Protocol: every live Android opcode mapped** (241/241; 12 opcodes have no sender or no-op handlers in the client and are tagged dead), 2026-10-15
 - [ ] Protocol: verify the remaining `// unverified` entries live

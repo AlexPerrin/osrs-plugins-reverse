@@ -608,6 +608,14 @@ jobjectArray n_menu_entries(JNIEnv* env, jclass) {
     return menu_array(env, tap ? game::read_menu(tap) : game::read_menu());
 }
 void n_redirect_menu_tap(JNIEnv*, jclass, jint index) { client_thread::redirect_menu_tap(index); }
+// Game thread: reorders the open menu (order[i] = old top-first index shown at position i).
+jboolean n_menu_reorder(JNIEnv* env, jclass, jintArray order) {
+    if (!order || !client_thread::on_client_thread()) return JNI_FALSE;
+    jsize n = env->GetArrayLength(order);
+    std::vector<int> v(n);
+    env->GetIntArrayRegion(order, 0, n, v.data());
+    return game::menu_reorder(v) ? JNI_TRUE : JNI_FALSE;
+}
 jboolean n_menu_tapping(JNIEnv*, jclass) { return client_thread::tap_menu() != 0; }
 jobjectArray n_clicked_menu_entry(JNIEnv* env, jclass) {
     return menu_array(env, {client_thread::clicked_menu_entry()});
@@ -1017,6 +1025,7 @@ const JNINativeMethod kNatives[] = {
     {"groundItems", "()[I", reinterpret_cast<void*>(n_ground_items)},
     {"consumeMenuClick", "()V", reinterpret_cast<void*>(n_consume_menu_click)},
     {"redirectMenuTap", "(I)V", reinterpret_cast<void*>(n_redirect_menu_tap)},
+    {"menuReorder", "([I)Z", reinterpret_cast<void*>(n_menu_reorder)},
     {"menuTapping", "()Z", reinterpret_cast<void*>(n_menu_tapping)},
     {"gameState", "()I", reinterpret_cast<void*>(n_game_state)},
     {"gameCycle", "()I", reinterpret_cast<void*>(n_game_cycle)},

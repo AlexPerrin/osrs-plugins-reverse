@@ -433,13 +433,12 @@ public final class Host {
                 break;
             case MENU_OPENED: {
                 AndroidClient.MENU.clearAdded();
-                net.runelite.api.MenuEntry[] entries = AndroidClient.MENU.getMenuEntries();
                 // The game builds the whole menu at once; RuneLite posts MenuEntryAdded as each entry
-                // is inserted (bottom first), so post them now in that order, then write option/target
-                // edits (e.g. Ground Items' recoloured item names) back into the game's entries.
-                for (net.runelite.api.MenuEntry m : entries) bus.post(new net.runelite.api.events.MenuEntryAdded(m));
-                for (net.runelite.api.MenuEntry m : entries)
-                    if (m instanceof AndroidMenuEntry && ((AndroidMenuEntry) m).writeBack()) Log.i(TAG, "menu entry rewritten: " + m);
+                // is inserted (bottom first), so post them now in that order, then PostMenuSort as on
+                // the frame before the menu opened (Menu Entry Swapper's order is shown), and write
+                // option/target edits (e.g. Ground Items' recoloured item names) back into the game.
+                AndroidClient.MENU.presort(bus);
+                net.runelite.api.MenuEntry[] entries = AndroidClient.MENU.getMenuEntries();
                 net.runelite.api.events.MenuOpened e = new net.runelite.api.events.MenuOpened();
                 e.setMenuEntries(entries);
                 for (net.runelite.api.MenuEntry m : e.getMenuEntries()) Log.i(TAG, "MenuOpened " + m);

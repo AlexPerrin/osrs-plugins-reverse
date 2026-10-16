@@ -89,6 +89,9 @@ struct Build {
     // Menu close, as the close branch of 0x599f68: clear the model (MenuManager+0x140) and the
     // displayed menu (+0x540), then shown (+0x7c0) = 0.
     uintptr_t menu_clear_model, menu_clear_display;
+    // Builds the displayed menu (+0x540) from the model (+0x140): (display, model, MenuManager
+    // +0x7c8 layout), as the show branch of 0x599f68.
+    uintptr_t menu_build_display;
 };
 
 constexpr Build kBuilds[] = {
@@ -102,7 +105,7 @@ constexpr Build kBuilds[] = {
      0xaef1d0, 0x4df54c, 0x63bfe8, 0x63633c, 0x65c798, 0x6de99c, 0x65cac8,
      0x4132b0, 0xa6d6c0, 0x515854, 0x62e5ec, 0x43a9c0,
      0x5d00fc, 0x3f804c, 0x3f8470, 0x64b450,
-     0x514f48, 0x507398},
+     0x514f48, 0x507398, 0x50621c},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -1899,6 +1902,41 @@ bool menu_close() {
     reinterpret_cast<void (*)(uintptr_t)>(g_base + g_build->menu_clear_model)(m + kMgrMenu);
     reinterpret_cast<void (*)(uintptr_t)>(g_base + g_build->menu_clear_display)(m + 0x540);
     *reinterpret_cast<uintptr_t*>(m + kMgrShown) = 0;
+    return true;
+}
+
+bool menu_reorder(const std::vector<int>& order) {
+    uintptr_t m = menu_manager();
+    if (!m || !g_build->menu_build_display) return false;
+    uintptr_t display = m + 0x540, model = m + kMgrMenu;
+    uintptr_t layout = read_at<uintptr_t>(m + 0x7c8);
+    // Shown is the model itself for long-press menus (drawn from it directly), or the display
+    // built from it (0x599f68), which is rebuilt below.
+    uintptr_t shown = read_at<uintptr_t>(m + kMgrShown);
+    bool rebuild = shown == display;
+    if ((shown != display && shown != model) || (rebuild && !layout)) {
+        LOGE("menu reorder: shown %#lx, model %#lx", (unsigned long)shown, (unsigned long)model);
+        return false;
+    }
+    uintptr_t nb = read_at<uintptr_t>(model + kMenuNodes), ne = read_at<uintptr_t>(model + kMenuNodes + 8);
+    size_t n = nb && ne > nb ? (ne - nb) / kNodeSize : 0;
+    if (n < 2 || n > 512 || order.size() != n) {
+        LOGE("menu reorder: %zu nodes, %zu in the order", n, order.size());
+        return false;
+    }
+    std::vector<bool> seen(n);
+    for (size_t i = 0; i < n; i++) {
+        if (order[i] < 0 || static_cast<size_t>(order[i]) >= n || seen[order[i]]) return false;
+        seen[order[i]] = true;
+    }
+    // The game sorts a menu by ordering these {EntryList*, entry index, children*} nodes over its
+    // unsorted entry list; do the same.
+    std::vector<uint8_t> nodes(reinterpret_cast<const uint8_t*>(nb), reinterpret_cast<const uint8_t*>(ne));
+    if (rebuild) reinterpret_cast<void (*)(uintptr_t)>(g_base + g_build->menu_clear_display)(display);
+    for (size_t i = 0; i < n; i++)
+        memcpy(reinterpret_cast<void*>(nb + i * kNodeSize), nodes.data() + order[i] * kNodeSize, kNodeSize);
+    if (rebuild)
+        reinterpret_cast<void (*)(uintptr_t, uintptr_t, uintptr_t)>(g_base + g_build->menu_build_display)(display, model, layout);
     return true;
 }
 

@@ -36,6 +36,52 @@ final class AndroidMenu implements Menu {
 
     void endSession() { session = null; }
 
+    /** While a just-opened menu is sorted as on desktop's last frame before it opened. */
+    static boolean presorting;
+
+    /**
+     * Game thread, as a long-press menu opens: desktop sorts the menu each frame while it is closed
+     * (PostMenuSort, where Menu Entry Swapper reorders) and opens it in that order. Run that sort now
+     * with the menu reported closed, and if plugins reordered the game's entries, show them in that
+     * order. Text edits from MenuEntryAdded are written back first. Returns whether it reordered.
+     */
+    boolean presort(net.runelite.client.eventbus.EventBus bus) {
+        MenuEntry[] entries = beginSession();
+        boolean reordered = false;
+        try {
+            for (MenuEntry m : entries) bus.post(new net.runelite.api.events.MenuEntryAdded(m));
+            presorting = true;
+            try {
+                bus.post(new net.runelite.api.events.PostMenuSort());
+            } finally {
+                presorting = false;
+            }
+            for (MenuEntry m : entries)
+                if (m instanceof AndroidMenuEntry && ((AndroidMenuEntry) m).writeBack()) Log.i(Host.TAG, "menu entry rewritten: " + m);
+            MenuEntry[] sorted = getMenuEntries();
+            List<Integer> order = new ArrayList<>();
+            for (int i = sorted.length - 1; i >= 0; i--) {  // top first
+                MenuEntry m = sorted[i];
+                if (m instanceof AndroidMenuEntry && !((AndroidMenuEntry) m).synthetic && ((AndroidMenuEntry) m).nativeIndex >= 0)
+                    order.add(((AndroidMenuEntry) m).nativeIndex);
+            }
+            int n = 0;
+            for (MenuEntry m : entries) if (m instanceof AndroidMenuEntry && !((AndroidMenuEntry) m).synthetic) n++;
+            boolean identity = true;
+            for (int i = 0; i < order.size(); i++) identity &= order.get(i) == i;
+            // Only a permutation of all the game's entries (plugins that drop entries aren't written back).
+            if (!identity && order.size() == n && new java.util.HashSet<>(order).size() == n) {
+                int[] o = new int[n];
+                for (int i = 0; i < n; i++) o[i] = order.get(i);
+                reordered = Native.menuReorder(o);
+                Log.i(Host.TAG, "menu reorder " + java.util.Arrays.toString(o) + ": " + reordered);
+            }
+        } finally {
+            endSession();
+        }
+        return reordered;
+    }
+
     @Override public MenuEntry[] getMenuEntries() {
         if (session != null) return session.clone();
         AndroidMenuEntry[] game = AndroidMenuEntry.fromNative(Native.menuEntries());

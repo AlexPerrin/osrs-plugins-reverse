@@ -307,6 +307,10 @@ uintptr_t menu_object();  // the menu model (MenuManager +0x140), 0 if unavailab
 bool menu_open();
 // Closes the open menu as the game does when a tap lands outside it. Game thread only.
 bool menu_close();
+// Reorders the open menu: new top-level position i gets the entry at old position order[i] (0 = top).
+// Permutes the menu's top-level nodes (as the game's sort does); rebuilds the display if one is shown.
+// Game thread only.
+bool menu_reorder(const std::vector<int>& order);
 // The client-side varp table (RuneLite getVarps()).
 std::vector<int32_t> varps();
 int weight();      // kg (UPDATE_RUNWEIGHT)

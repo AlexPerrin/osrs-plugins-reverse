@@ -199,6 +199,8 @@ final class Native {
 
     /** During a MenuTap event: run this top-level node (Native.menuEntries index) instead of the default. */
     static native void redirectMenuTap(int index);
+    /** Game thread: shows the open menu reordered; order[i] = old top-first native index at position i. */
+    static native boolean menuReorder(int[] order);
 
     /** True while a MenuTap event is dispatched (menuEntries() then reads the tapped menu). */
     static native boolean menuTapping();

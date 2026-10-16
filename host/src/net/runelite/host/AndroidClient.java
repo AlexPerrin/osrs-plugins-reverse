@@ -451,7 +451,7 @@ public class AndroidClient extends ClientStub {
 
     /** The long-press menu (game::read_menu); plugin-created entries stay host-side for now. */
     static final AndroidMenu MENU = new AndroidMenu();
-    @Override public boolean isMenuOpen() { return Native.menuOpen(); }
+    @Override public boolean isMenuOpen() { return !AndroidMenu.presorting && Native.menuOpen(); }
     @Override public int getMenuX() { return MENU.getMenuX(); }
     @Override public int getMenuY() { return MENU.getMenuY(); }
     @Override public int getMenuWidth() { return MENU.getMenuWidth(); }

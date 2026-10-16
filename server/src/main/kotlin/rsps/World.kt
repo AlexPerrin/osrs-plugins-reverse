@@ -418,6 +418,7 @@ class World(
         player.message("::talk [npc] text, ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::freeze, ::drop")
         player.message("::obj id [n] [dz], ::zobj id [n], ::locadd id [shape] [rot], ::locdel [shape] [dx] [dz]")
         player.message("::quest name [start|done|reset|n], ::varp id [v], ::varbit id [v], ::events [e1] [e2], ::hit [n] [type], ::npchit [n]")
+        player.message("Protocol tests: ::hideops npc|loc|obj [1|0], ::flag [x z], ::proj id [dx], ::region [dzx] [dzz] [rot], ::minimap n, ::pmfilter n")
     }
 
     fun spawnNpc(id: Int, coord: Coord): Npc? {
@@ -795,6 +796,16 @@ class World(
                 }
                 player.hitpoints = levelForXp(player.experience[HITPOINTS])
                 sendStat(player, HITPOINTS)
+            }
+            "minimap" -> {
+                // MINIMAP_TOGGLE (Android 31): 0 normal, 1 no clicks, 2 hidden, 3 no clicks + hidden (desktop meaning).
+                val st = args.getOrNull(1)?.toIntOrNull() ?: 0
+                player.send(net.rsprot.protocol.game.outgoing.misc.client.MinimapToggle(st))
+            }
+            "pmfilter" -> {
+                // CHAT_FILTER_SETTINGS_PRIVATECHAT (Android 11): 0 on, 1 friends, 2 off; watch the Private chat tab label.
+                val st = args.getOrNull(1)?.toIntOrNull() ?: 0
+                player.send(net.rsprot.protocol.game.outgoing.misc.player.ChatFilterSettingsPrivateChat(st))
             }
             "region" -> {
                 // REBUILD_REGION_V2 (Android 41) test: ::region [dzx] [dzz] [rot] rebuilds the area around you from

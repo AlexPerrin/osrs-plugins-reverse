@@ -84,7 +84,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 
 | Opcode | Prot | Layout |
 |---|---|---|
-| 0 | SET_HEATMAP_ENABLED (unverified, see notes) | enabled `p1`; the client ignores opcode 0 |
+| 0 | OP_0 (dead) | the dispatcher switch has no case 0 (like 116/137); by size and elimination it would be desktop SET_HEATMAP_ENABLED, but nothing in the client ties it, so it stays unnamed with no codec (2026-10-16) |
 | 1 | CAM_RESET | as desktop (zeroes the camera state) |
 | 3 | HINT_ARROW | as desktop (FUN_004fd3a4 switches on the desktop types) |
 | 5 | NPC_HEADICON_SPECIFIC | index `p2Alt2`, headIconSlot `p1Alt2`, spriteGroup `p4Alt2`, spriteIndex `p2Alt1` |

@@ -758,7 +758,7 @@ index 00000000..a44d2077
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..757e6f78
+index 00000000..ba17e8d0
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 @@ -0,0 +1,172 @@
@@ -821,7 +821,7 @@ index 00000000..757e6f78
 +    NPC_INFO_LARGE_V6(145, Prot.VAR_SHORT),
 +    NPC_INFO_SMALL_V6(150, Prot.VAR_SHORT),
 +    CAM_RESET(1, 0), // dispatcher case read
-+    SET_HEATMAP_ENABLED(0, 1), // unverified: by elimination: the 10th size-1 prot (desktop has 10), and the dispatcher ignores opcode 0 (no heatmap on mobile?)
++    OP_0(0, 1), // dead: the dispatcher switch (0x541dd4) has no case for opcode 0 (like 116/137), so the client ignores it; by size it would be desktop SET_HEATMAP_ENABLED, but nothing ties the identity, so it stays unnamed and has no codec
 +    HINT_ARROW(3, 6), // dispatcher case read
 +    NPC_HEADICON_SPECIFIC(5, 9), // dispatcher case read
 +    MESSAGE_CLANCHANNEL_SYSTEM(9, Prot.VAR_BYTE), // dispatcher case read
@@ -1372,10 +1372,10 @@ index 00000000..394a511b
 +    )
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
 new file mode 100644
-index 00000000..5c493eb7
+index 00000000..95e84e85
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
-@@ -0,0 +1,1040 @@
+@@ -0,0 +1,1030 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.protocol.game.outgoing.sound.MidiSwap
@@ -1495,7 +1495,6 @@ index 00000000..5c493eb7
 +import net.rsprot.protocol.game.outgoing.misc.client.HideNpcOps
 +import net.rsprot.protocol.game.outgoing.misc.client.HideObjOps
 +import net.rsprot.protocol.game.outgoing.misc.client.HintArrow
-+import net.rsprot.protocol.game.outgoing.misc.client.SetHeatmapEnabled
 +import net.rsprot.protocol.game.outgoing.misc.client.MinimapToggle
 +import net.rsprot.protocol.game.outgoing.misc.client.ResetAnims
 +import net.rsprot.protocol.game.outgoing.misc.client.ResetInteractionMode
@@ -2296,15 +2295,6 @@ index 00000000..5c493eb7
 +    }
 +}
 +
-+/** Opcode 0: the client ignores it (no dispatcher case); kept so the message can be sent harmlessly. */
-+public class AndroidSetHeatmapEnabledEncoder : MessageEncoder<SetHeatmapEnabled> {
-+    override val prot: ServerProt = AndroidGameServerProt.SET_HEATMAP_ENABLED
-+
-+    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: SetHeatmapEnabled) {
-+        buffer.pboolean(message.enabled)
-+    }
-+}
-+
 +/** Case 65: one string (as desktop), kept for the URL-opening CS2 ops. */
 +public fun androidSiteSettingsEncoder(): MessageEncoder<net.rsprot.protocol.game.outgoing.misc.client.SiteSettings> =
 +    AndroidDelegatingEncoder(AndroidGameServerProt.SITE_SETTINGS, net.rsprot.protocol.game.outgoing.codec.misc.client.SiteSettingsEncoder())
@@ -2857,10 +2847,10 @@ index 00000000..b1436285
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..a4a8ebc3
+index 00000000..d53aee96
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,246 @@
+@@ -0,0 +1,245 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2982,7 +2972,6 @@ index 00000000..a4a8ebc3
 +            bind(AndroidHideNpcOpsEncoder())
 +            bind(AndroidHideLocOpsEncoder())
 +            bind(AndroidHideObjOpsEncoder())
-+            bind(AndroidSetHeatmapEnabledEncoder())
 +            bind(androidSiteSettingsEncoder())
 +            bind(androidIfResyncV2Encoder())
 +            bind(androidSetMapFlagV2Encoder())

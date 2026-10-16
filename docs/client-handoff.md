@@ -312,7 +312,24 @@ session; its notes are in `docs/android-protocol.md`.
     isn't the expected one. `tools/plugin-test.sh` now classifies a screenshot (Play Now vs chooser) and
     exits 2 instead of tapping when it isn't the Play Now screen. Background: blind retry taps signed the
     account out and the old fixed Play Now tap then opened Google sign-in (backed out with BACK).
-  - "Either your account is still logged in": wait ~30 s after a force-stop before logging in again.
+  - "Either your account is still logged in": wait ~30 s after a force-stop before logging in again
+    (a background `sleep 30`, screenshot to confirm the dialog, then "Try again" at 957,670).
+  - **Performance rule:** anything Perspective calls (camera, viewport, canvas size, player position,
+    tile heights) must be cached per cycle (`Host.cycleStamp`). Per-vertex JNI took the game to 0 fps
+    with NPC Indicators on ~40 goblins (taps stopped working). `setprop debug.osrsrl.stacks 1` logs the
+    game and main threads' Java stacks every 2 s (tag osrsrl-host) to find such hot spots.
+  - Later in gen 10 (f0c4531..8b5745d): ChatMessageManager.queue → game chat (Examine runs),
+    MessageNode.setValue writes Message +0xa0 (unverified: does the chatbox redraw?), plugin submenus,
+    getAccountHash (OAuthApi; XP Tracker runs), StatChanged held until the local player exists (Agility
+    NPE), user.home = files dir (Emojis cache), sprite-widget overlay clip, Combat Level and Prayer
+    run, getWidgetSpriteCache/createSpritePixels (Poison; unverified). Table: 18 runs, 23 starts.
+  - Next (gen 11): verify Poison, XP Drop hideSkillIcons, setValue redraw (Chat Notifications/Chat Filter;
+    if the chatbox doesn't redraw, find the chat rebuild trigger, e.g. RuneLite's refreshChat equivalent);
+    Woodcutting/Fishing/Mining (::item 1351 axe; the oak by the Lumbridge goblins), Interact Highlight,
+    Idle Notifier; "hover" menu entries for Item Stats (getMenuEntries while no menu is open = entry under
+    the touch point); Swing colour picker for "Pick" entries (Android colour dialog); OpenRune may send
+    some examine text as GAMEMESSAGE (Examine logs a type mismatch; reported). Stale config value
+    `boosts.notifyOnBoost=...Notification@...` from an old build reads as OFF.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

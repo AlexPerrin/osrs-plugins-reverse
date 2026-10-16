@@ -30,6 +30,8 @@ import net.rsprot.protocol.game.outgoing.interfaces.IfOpenTop
 import net.rsprot.protocol.game.outgoing.logout.Logout
 import net.rsprot.protocol.game.outgoing.map.RebuildLoginV2
 import net.rsprot.protocol.game.outgoing.map.RebuildNormalV2
+import net.rsprot.protocol.game.outgoing.map.RebuildRegionV2
+import net.rsprot.protocol.game.outgoing.map.util.RebuildRegionZone
 import net.rsprot.protocol.game.outgoing.misc.client.HideLocOps
 import net.rsprot.protocol.game.outgoing.misc.client.HideNpcOps
 import net.rsprot.protocol.game.outgoing.misc.client.HideObjOps
@@ -793,6 +795,16 @@ class World(
                 }
                 player.hitpoints = levelForXp(player.experience[HITPOINTS])
                 sendStat(player, HITPOINTS)
+            }
+            "region" -> {
+                // REBUILD_REGION_V2 (Android 41) test: ::region [dzx] [dzz] [rot] rebuilds the area around you from
+                // zones offset by (dzx, dzz) zones (8 tiles each), rotated by rot; ::home or walking away restores it.
+                val dzx = args.getOrNull(1)?.toIntOrNull() ?: 0
+                val dzz = args.getOrNull(2)?.toIntOrNull() ?: 0
+                val rot = args.getOrNull(3)?.toIntOrNull() ?: 0
+                val c = player.coord
+                player.send(RebuildRegionV2(c.zoneX, c.zoneZ, true) { x, z, level -> RebuildRegionZone(x + dzx, z + dzz, level, rot) })
+                player.message("Region rebuilt from zones offset $dzx,$dzz rot $rot")
             }
             "proj" -> {
                 // PROJANIM_SPECIFIC_V4 (Android 76) test: ::proj id [dx]. Starts high (160) at your tile, lands on the

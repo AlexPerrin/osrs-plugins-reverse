@@ -1303,13 +1303,14 @@ index 00000000..0fc21777
 +    )
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
 new file mode 100644
-index 00000000..51a37a12
+index 00000000..f9255377
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
-@@ -0,0 +1,952 @@
+@@ -0,0 +1,989 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
++import net.rsprot.buffer.bitbuffer.toBitBuf
 +import net.rsprot.compression.provider.HuffmanCodecProvider
 +import net.rsprot.crypto.cipher.StreamCipher
 +import net.rsprot.protocol.ServerProt
@@ -2259,6 +2260,42 @@ index 00000000..51a37a12
 +        buffer.p2Alt3(message.endHeight)
 +    }
 +}
++
++/**
++ * Case 41 (parser 0x6580e4): reload p1Alt3 (raw 0x7f = reload), zoneX p2Alt1, zoneZ p2Alt1, then as
++ * desktop: distinct mapsquare count p2, and per zone (4 x 13 x 13) a 1-bit present flag + 26-bit
++ * reference zone.
++ */
++public class AndroidRebuildRegionV2Encoder :
++    MessageEncoder<net.rsprot.protocol.game.outgoing.map.RebuildRegionV2> {
++    override val prot: ServerProt = AndroidGameServerProt.REBUILD_REGION_V2
++
++    override fun encode(
++        streamCipher: StreamCipher,
++        buffer: JagByteBuf,
++        message: net.rsprot.protocol.game.outgoing.map.RebuildRegionV2,
++    ) {
++        buffer.p1Alt3(if (message.reload) 1 else 0)
++        buffer.p2Alt1(message.zoneX)
++        buffer.p2Alt1(message.zoneZ)
++        val zones = message.zones
++        val mapsquares = HashSet<Int>()
++        for (zone in zones) if (zone != null) mapsquares += zone.mapsquareId
++        buffer.p2(mapsquares.size)
++        buffer.buffer.ensureWritable(((27 * zones.size) + 32) ushr 3)
++        val bitbuf = buffer.buffer.toBitBuf()
++        bitbuf.use {
++            for (zone in zones) {
++                if (zone == null) {
++                    bitbuf.pBits(1, 0)
++                    continue
++                }
++                bitbuf.pBits(1, 1)
++                bitbuf.pBits(26, zone.referenceZone.packed)
++            }
++        }
++    }
++}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt
 new file mode 100644
 index 00000000..d083e608
@@ -2700,10 +2737,10 @@ index 00000000..b1436285
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..56f5bd3f
+index 00000000..401a7cb7
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,237 @@
+@@ -0,0 +1,238 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2826,6 +2863,7 @@ index 00000000..56f5bd3f
 +            bind(androidSetMapFlagV2Encoder())
 +            bind(AndroidObjCustomiseSpecificV2Encoder())
 +            bind(AndroidProjAnimSpecificV4Encoder())
++            bind(AndroidRebuildRegionV2Encoder())
 +            bind(AndroidNpcSpotAnimSpecificEncoder())
 +            bind(AndroidIfSetPositionEncoder())
 +            bind(AndroidIfClearInvEncoder())

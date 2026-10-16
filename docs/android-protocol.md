@@ -110,7 +110,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 38 | ACCOUNT_FLAGS | as desktop (p8) |
 | 39 | UPDATE_TRADINGPOST_V2 | as desktop (FUN_006ff0cc(version 2)) |
 | 40 | UPDATE_FRIENDCHAT_CHANNEL_FULL_V2 | as desktop (FUN_005689fc) |
-| 41 | REBUILD_REGION_V2 | recognised, no codec |
+| 41 | REBUILD_REGION_V2 | see notes; encoder `AndroidRebuildRegionV2Encoder`, test `::region [dzx] [dzz] [rot]` |
 | 43 | MESSAGE_FRIENDCHANNEL | as desktop (chat type 9) |
 | 44 | OCULUS_SYNC | as desktop (p4) |
 | 45 | IF_SETPOSITION | combinedId `pCombinedIdAlt3`, y `p2Alt2`, x `p2Alt2` |
@@ -210,8 +210,10 @@ Notes:
   Android) and the opcode desktop leaves unassigned, in some order. Left unnamed.
 - 148 CAM_SKYBOX: the last size-4 prot once 143 = SET_MAP_FLAG_V2 (stores an int; -1 clears a
   world-view resource).
-- 41 REBUILD_REGION_V2: reload `p1Alt3`, zoneX `p2Alt1`, zoneZ `p2Alt1`, mapsquare count `p2`
-  (skipped), then the desktop region bits (parser 0x6580e4). Not implemented.
+- 41 REBUILD_REGION_V2 (FUN_00655510 -> parser 0x6580e4): reload `p1Alt3` (raw byte 0x7f = reload),
+  zoneX `p2Alt1`, zoneZ `p2Alt1` (order from the base-coord call FUN_006d0a94(level 0, x*8-48,
+  z*8-48)), then as desktop: distinct mapsquare count `p2`, and for 4 levels x 13 x 13 zones a 1-bit
+  present flag + 26-bit reference zone. Implemented, not tested on device.
 - 132 OBJ_CUSTOMISE_SPECIFIC_V2: id `p2`, recol count `p1`, (index `p1Alt1`, value `p2Alt3`)*,
   colour flag `p1Alt3` [+ colour `p2Alt2`], model `p2Alt3`, retex count `p1`, (index `p1Alt1`,
   value `p2`)*, coord `p4`, quantity `p4`. The colour flag is present when the raw byte is 0x7f

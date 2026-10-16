@@ -881,32 +881,118 @@ namespace game {
 // Posed model of an Npc/Player: vtable slot 0 = getModel(this, cycle) → shared_ptr<Model> (x8),
 // what the renderer calls every frame (Npc 0x475908, Player 0x45df78). Model: +0x20 vertex count,
 // +0x38/+0x50/+0x68 int* x/y/z (local units, y negative = up), +0x18 height. Game thread only.
-bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height) {
-    xyz.clear();
-    if (!actor) return false;
-    uintptr_t vt = read_at<uintptr_t>(actor);
+namespace {
+// Renderable vtable slot 0: shared_ptr<Model> getModel(this, cycle) (x8 result). Actors build a
+// posed model per call; a static loc's Model returns itself (0x71d604). Appends the vertices,
+// offset by (dx, dz), to xyz; height = the model's height.
+bool append_model(uintptr_t renderable, int dx, int dz, std::vector<int32_t>& xyz, int& height) {
+    if (!renderable) return false;
+    uintptr_t vt = read_at<uintptr_t>(renderable);
     if (!vt) return false;
     struct SharedPtr {
         uintptr_t ctrl, obj;
         ~SharedPtr() {}
     };
     auto fn = reinterpret_cast<SharedPtr (*)(uintptr_t, int)>(read_at<uintptr_t>(vt));
-    SharedPtr r = fn(actor, cycle());
+    SharedPtr r = fn(renderable, cycle());
     uintptr_t ctrl = r.ctrl, m = r.obj;
     if (!m) { release_shared(ctrl); return false; }
     int n = read_at<int32_t>(m + 0x20);
     auto xs = read_at<const int32_t*>(m + 0x38), ys = read_at<const int32_t*>(m + 0x50), zs = read_at<const int32_t*>(m + 0x68);
-    height = read_at<int32_t>(m + 0x18);
+    height = std::max(height, read_at<int32_t>(m + 0x18));
+    bool ok = false;
     if (n > 0 && n < 20000 && xs && ys && zs) {
-        xyz.resize(static_cast<size_t>(n) * 3);
+        size_t base = xyz.size();
+        xyz.resize(base + static_cast<size_t>(n) * 3);
         for (int i = 0; i < n; i++) {
-            xyz[3 * i] = xs[i];
-            xyz[3 * i + 1] = ys[i];
-            xyz[3 * i + 2] = zs[i];
+            xyz[base + 3 * i] = xs[i] + dx;
+            xyz[base + 3 * i + 1] = ys[i];
+            xyz[base + 3 * i + 2] = zs[i] + dz;
         }
+        ok = true;
     }
     release_shared(ctrl);
-    return !xyz.empty();
+    return ok;
+}
+}  // namespace
+
+bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height) {
+    xyz.clear();
+    height = 0;
+    return append_model(actor, 0, 0, xyz, height);
+}
+
+// Scene objects (static RE of the tile draw 0x6e1684 and the object constructors; positions are
+// local units, heights absolute). Renderable holders point at {ctrl, obj} pairs.
+//   GameObject: Renderable* +0x230, x +0x1dc, height +0x1d8, y +0x1e0, orientation +0x1e4, tag +0x1f0
+//   Wall (tile +0x108): A *(*(+0x410)+8), B *(*(+0x418)+8); x/height/y +0x28/+0x2c/+0x30, tag +0x38
+//   Wall decoration (+0x110): A *(*(+0x418)+8) offset +0x48/+0x4c, B *(*(+0x420)+8) offset +0x50/+0x54
+//   Ground decoration (+0x118): *(*(+0x220)+8)
+bool object_model(int plane, int sx, int sy, int layer, uint64_t tag, ObjectModel& out) {
+    out = {};
+    uintptr_t c = client();
+    uintptr_t wv = c && g_build ? read_at<uintptr_t>(c + g_build->f_world_view) : 0;
+    uintptr_t scene = wv ? read_at<uintptr_t>(wv + 0x10) : 0;
+    if (!scene) return false;
+    int planes = read_at<int32_t>(scene + 0x944), w = read_at<int32_t>(scene + 0x948), h = read_at<int32_t>(scene + 0x94c);
+    uintptr_t slots = read_at<uintptr_t>(scene + 0x968);
+    if (!slots || plane < 0 || plane >= planes || sx < 0 || sx >= w || sy < 0 || sy >= h || planes > 4 || w > 256 || h > 256) return false;
+    uintptr_t tile = read_at<uintptr_t>(slots + ((static_cast<size_t>(plane) * w + sx) * h + sy) * 0x10 + 8);
+    if (!tile) return false;
+    auto held = [](uintptr_t o, uint32_t holder) {
+        uintptr_t pair = read_at<uintptr_t>(o + holder);
+        return pair ? read_at<uintptr_t>(pair + 8) : 0;
+    };
+    auto simple = [&](uintptr_t o) {
+        out.x = read_at<int32_t>(o + 0x28);
+        out.height = read_at<int32_t>(o + 0x2c);
+        out.y = read_at<int32_t>(o + 0x30);
+    };
+    int mh = 0;
+    switch (layer) {
+        case kGameObject: {
+            int n = read_at<int32_t>(tile + 0x34);
+            uintptr_t objs = read_at<uintptr_t>(tile + 0x38);
+            if (n <= 0 || n > 16 || !objs) return false;
+            for (int i = 0; i < n; i++) {
+                uintptr_t o = read_at<uintptr_t>(objs + static_cast<size_t>(i) * 0x10 + 8);
+                if (!o || read_at<uint64_t>(o + 0x1f0) != tag) continue;
+                out.x = read_at<int32_t>(o + 0x1dc);
+                out.height = read_at<int32_t>(o + 0x1d8);
+                out.y = read_at<int32_t>(o + 0x1e0);
+                out.orientation = read_at<int32_t>(o + 0x1e4);
+                append_model(read_at<uintptr_t>(o + 0x230), 0, 0, out.xyz, mh);
+                break;
+            }
+            break;
+        }
+        case kWall: {
+            uintptr_t o = read_at<uintptr_t>(tile + 0x108);
+            if (!o || read_at<uint64_t>(o + 0x38) != tag) return false;
+            simple(o);
+            append_model(held(o, 0x410), 0, 0, out.xyz, mh);
+            append_model(held(o, 0x418), 0, 0, out.xyz, mh);
+            break;
+        }
+        case kWallDecoration: {
+            uintptr_t o = read_at<uintptr_t>(tile + 0x110);
+            if (!o || read_at<uint64_t>(o + 0x38) != tag) return false;
+            simple(o);
+            if (!append_model(held(o, 0x418), read_at<int32_t>(o + 0x48), read_at<int32_t>(o + 0x4c), out.xyz, mh))
+                append_model(held(o, 0x420), read_at<int32_t>(o + 0x50), read_at<int32_t>(o + 0x54), out.xyz, mh);
+            break;
+        }
+        case kGroundDecoration: {
+            uintptr_t o = read_at<uintptr_t>(tile + 0x118);
+            if (!o || read_at<uint64_t>(o + 0x38) != tag) return false;
+            simple(o);
+            append_model(held(o, 0x220), 0, 0, out.xyz, mh);
+            break;
+        }
+        default: return false;
+    }
+    out.model_height = mh;
+    return !out.xyz.empty();
 }
 
 bool npc_def(int id, NpcDef& out) {

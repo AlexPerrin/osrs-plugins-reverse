@@ -14,7 +14,8 @@ import net.runelite.api.coords.WorldPoint;
 /**
  * A scene object read from the game's scene (game::scene_objects). Positions are kept in world
  * coordinates so an object survives scene base changes; scene/local positions are derived from
- * the current base. Hulls and click boxes are boxes over the footprint (models aren't read).
+ * the current base. Hulls and click boxes come from the object's model (Native.objectModel),
+ * else boxes over the footprint.
  */
 abstract class AndroidTileObject implements net.runelite.api.TileObject {
     final int worldX, worldY, plane, id, sizeX, sizeY;
@@ -65,6 +66,10 @@ abstract class AndroidTileObject implements net.runelite.api.TileObject {
         return c == null ? null : net.runelite.api.Perspective.localToMinimap(c, getLocalLocation());
     }
     @Override public Shape getClickbox() {
+        if (layer() <= 3 && Hulls.modelHulls()) {
+            Shape s = Hulls.objectModel(Native.objectModel(plane, sceneX(), sceneY(), layer(), tag));
+            if (s != null) return s;
+        }
         int h = boxHeight();
         if (h <= 0) return getCanvasTilePoly();
         return Hulls.box(getX(), getY(), sizeX * 64 - 8, sizeY * 64 - 8, plane, h);

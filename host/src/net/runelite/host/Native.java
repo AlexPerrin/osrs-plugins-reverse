@@ -29,6 +29,8 @@ final class Native {
     /** {height, x0, y0, z0, ...}: an NPC's or player's posed model this frame (unrotated); client thread only. */
     static native int[] actorModel(boolean player, int index);
     /** Client varcs (0 / null when unset). */
+    /** {x, y, height, orientation, modelHeight, vx, vy, vz...} of a scene object's model this frame, or null. */
+    static native int[] objectModel(int plane, int sceneX, int sceneY, int layer, long tag);
     static native int varcInt(int id);
     static native String varcString(int id);
     /** Client-side writes through the game's setters; false off the client thread or for unknown ids. */

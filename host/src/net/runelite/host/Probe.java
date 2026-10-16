@@ -144,7 +144,14 @@ final class Probe {
                             at = String.format("canvas %d,%d screen %d,%d", (int) b.getCenterX(), (int) b.getCenterY(),
                                     (int) (b.getCenterX() * toScreen), (int) (b.getCenterY() * toScreen));
                         }
-                        Log.i(TAG, "where " + id + " " + o.getClass().getSimpleName() + " at " + o.getWorldLocation() + ": " + at);
+                        String model = "no model";
+                        if (o instanceof AndroidTileObject) {
+                            AndroidTileObject a = (AndroidTileObject) o;
+                            int[] m = Native.objectModel(a.plane, a.sceneX(), a.sceneY(), a.layer(), a.tag);
+                            if (m != null) model = "model at " + m[0] + "," + m[1] + " h " + m[2] + " orient " + m[3]
+                                    + " height " + m[4] + " verts " + (m.length - 5) / 3 + " (local " + o.getX() + "," + o.getY() + " z " + o.getZ() + ")";
+                        }
+                        Log.i(TAG, "where " + id + " " + o.getClass().getSimpleName() + " at " + o.getWorldLocation() + ": " + at + "; " + model);
                         found++;
                     }
                 }

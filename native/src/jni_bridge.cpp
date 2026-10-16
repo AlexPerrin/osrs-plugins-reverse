@@ -79,6 +79,17 @@ jintArray n_actor_model(JNIEnv* env, jclass, jboolean player, jint index) {
     env->SetIntArrayRegion(arr, 1, static_cast<jsize>(xyz.size()), xyz.data());
     return arr;
 }
+// {x, y, height, orientation, modelHeight, vx, vy, vz, ...} of a scene object's model, or null.
+jintArray n_object_model(JNIEnv* env, jclass, jint plane, jint sx, jint sy, jint layer, jlong tag) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    game::ObjectModel m;
+    if (!game::object_model(plane, sx, sy, layer, static_cast<uint64_t>(tag), m)) return nullptr;
+    jint head[5] = {m.x, m.y, m.height, m.orientation, m.model_height};
+    jintArray arr = env->NewIntArray(static_cast<jsize>(m.xyz.size() + 5));
+    env->SetIntArrayRegion(arr, 0, 5, head);
+    env->SetIntArrayRegion(arr, 5, static_cast<jsize>(m.xyz.size()), m.xyz.data());
+    return arr;
+}
 jintArray n_varps(JNIEnv* env, jclass) {
     std::vector<int32_t> v = game::varps();
     jintArray arr = env->NewIntArray(static_cast<jsize>(v.size()));
@@ -692,6 +703,7 @@ const JNINativeMethod kNatives[] = {
     {"weight", "()I", reinterpret_cast<void*>(n_weight)},
     {"runEnergy", "()I", reinterpret_cast<void*>(n_run_energy)},
     {"actorModel", "(ZI)[I", reinterpret_cast<void*>(n_actor_model)},
+    {"objectModel", "(IIIIJ)[I", reinterpret_cast<void*>(n_object_model)},
     {"varcInt", "(I)I", reinterpret_cast<void*>(n_varc_int)},
     {"varcString", "(I)Ljava/lang/String;", reinterpret_cast<void*>(n_varc_string)},
     {"setVarbit", "(II)Z", reinterpret_cast<void*>(n_set_varbit)},

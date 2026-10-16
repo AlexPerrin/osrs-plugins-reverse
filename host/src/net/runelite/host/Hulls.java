@@ -67,6 +67,28 @@ final class Hulls {
         return Jarvis.convexHull(Arrays.copyOf(xs, k), Arrays.copyOf(ys, k));
     }
 
+    /** Hull of a scene object's model ({@link Native#objectModel} layout): local position, absolute height. */
+    static Shape objectModel(int[] m) {
+        Client client = Host.client();
+        if (client == null || m == null || m.length < 8) return null;
+        int x = m[0], y = m[1], z = m[2];
+        int sin = Perspective.SINE[m[3] & 2047], cos = Perspective.COSINE[m[3] & 2047];
+        int n = (m.length - 5) / 3;
+        int[] xs = new int[n], ys = new int[n];
+        int k = 0;
+        for (int i = 0; i < n; i++) {
+            int vx = m[5 + 3 * i], vy = m[6 + 3 * i], vz = m[7 + 3 * i];
+            int rx = (vx * cos + vz * sin) >> 16, rz = (vz * cos - vx * sin) >> 16;
+            net.runelite.api.Point p = Perspective.localToCanvas(client, x + rx, y + rz, z + vy);
+            if (p == null) continue;
+            xs[k] = p.getX();
+            ys[k] = p.getY();
+            k++;
+        }
+        if (k < 3) return null;
+        return Jarvis.convexHull(Arrays.copyOf(xs, k), Arrays.copyOf(ys, k));
+    }
+
     /** Model hulls are on unless `setprop debug.osrsrl.modelhull 0`. */
     static boolean modelHulls() { return !"0".equals(Native.property("debug.osrsrl.modelhull")); }
 }

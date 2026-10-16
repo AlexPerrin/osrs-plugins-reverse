@@ -180,6 +180,14 @@ bool npc_def(int id, NpcDef& out);
 // Vertices {x, y, z}* of an Npc/Player's posed model this frame (unrotated, local units, y
 // negative = up) and its height. Game thread only.
 bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height);
+// A scene object's model vertices this frame (layer = SceneLayer, tag = the object's tag; same
+// vertex convention as actor_model, wall decoration offsets applied), with its local position,
+// absolute height and orientation. Game thread only.
+struct ObjectModel {
+    int x = 0, y = 0, height = 0, orientation = 0, model_height = 0;
+    std::vector<int32_t> xyz;
+};
+bool object_model(int plane, int sx, int sy, int layer, uint64_t tag, ObjectModel& out);
 // The live Npc*/Player* for an index at this moment (0 if not active). Game thread only.
 uintptr_t live_npc(int index);
 uintptr_t live_player(int index);

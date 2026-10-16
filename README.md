@@ -64,6 +64,9 @@ Milestones:
 - [x] Fourth plugin: Boosts Information (core RuneLite), 2026-10-16
 - [x] Fifth plugin: XP Drop (core RuneLite; needs ScriptPreFired/PostFired, posted from inline arm64 hooks
   on the game's script VM, which work under BlueStacks' ARM translation), 2026-10-16
+- [x] **Agent-drivable Android client:** OpenRune-Developer-Tools (MCP) runs inside the plugin host, so
+  agents talk to NPCs, walk dialogue, click, walk and screenshot over an adb tunnel (`osrs-devtools`
+  in `.mcp.json`; device-loopback only, token, off by default), 2026-10-16
 - [ ] More plugins (GPU/region-dependent ones excluded): Status Bars, Chat History, InfoBox-based plugins
 
 ## Layout

@@ -609,6 +609,20 @@ jobjectArray n_widget_strings(JNIEnv* env, jclass, jint id, jint index) {
         }
     return arr;
 }
+void n_widget_set_hidden(JNIEnv*, jclass, jint id, jint index, jboolean hidden) {
+    if (client_thread::on_client_thread()) game::widget_set_hidden(widget_or_child(id, index), hidden);
+}
+void n_widget_set_text(JNIEnv* env, jclass, jint id, jint index, jstring text) {
+    if (!client_thread::on_client_thread()) return;
+    std::string latin1;
+    if (text) {
+        const jchar* c = env->GetStringChars(text, nullptr);
+        jsize n = env->GetStringLength(text);
+        for (jsize i = 0; i < n; i++) latin1.push_back(c[i] < 256 ? static_cast<char>(c[i]) : '?');
+        env->ReleaseStringChars(text, c);
+    }
+    game::widget_set_text(widget_or_child(id, index), latin1);
+}
 jint n_widget_color(JNIEnv*, jclass, jint id, jint index) { return game::widget_color(widget_or_child(id, index)); }
 void n_widget_set_color(JNIEnv*, jclass, jint id, jint index, jint rgb) {
     if (client_thread::on_client_thread()) game::widget_set_color(widget_or_child(id, index), rgb);
@@ -708,6 +722,8 @@ const JNINativeMethod kNatives[] = {
     {"widgetProps", "(II)[I", reinterpret_cast<void*>(n_widget_props)},
     {"widgetStrings", "(II)[Ljava/lang/String;", reinterpret_cast<void*>(n_widget_strings)},
     {"widgetSetColor", "(III)V", reinterpret_cast<void*>(n_widget_set_color)},
+    {"widgetSetHidden", "(IIZ)V", reinterpret_cast<void*>(n_widget_set_hidden)},
+    {"widgetSetText", "(IILjava/lang/String;)V", reinterpret_cast<void*>(n_widget_set_text)},
     {"widgetDynamicText", "(II)Ljava/lang/String;", reinterpret_cast<void*>(n_widget_dynamic_text)},
     {"widgetDynamicGeometry", "(II)[I", reinterpret_cast<void*>(n_widget_dynamic_geometry)},
     {"property", "(Ljava/lang/String;)Ljava/lang/String;", reinterpret_cast<void*>(n_property)},

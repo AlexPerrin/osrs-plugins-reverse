@@ -35,6 +35,8 @@ final class Native {
     static native int[] viewport();
     /** {name, targetVerb, op1..opN} of a widget (or its CC_CREATE child), null entries for empty strings. */
     static native String[] widgetStrings(int id, int index);
+    static native void widgetSetHidden(int id, int index, boolean hidden);
+    static native void widgetSetText(int id, int index, String text);
     static native boolean playSound(int id, int loops, int delay);
     static native int varcInt(int id);
     static native String varcString(int id);

@@ -38,6 +38,8 @@ public class AndroidWidget extends WidgetBag {
     @Override public int getItemId() { int[] it = Native.widgetItem(id, childIndex()); return it != null ? it[0] : -1; }
     /** Text colour (IF_SETCOLOUR), written through to the game widget. */
     @Override public int getTextColor() { return Native.widgetColor(id, childIndex()); }
+    @Override public Widget setHidden(boolean hidden) { Native.widgetSetHidden(id, childIndex(), hidden); return this; }
+    @Override public Widget setText(String text) { Native.widgetSetText(id, childIndex(), text); return this; }
     @Override public Widget setTextColor(int rgb) { Native.widgetSetColor(id, childIndex(), rgb); return this; }
     // Script-visible properties read from the game widget (Native.widgetProps).
     private int prop(int i, int dflt) { int[] p = Native.widgetProps(id, childIndex()); return p != null ? p[i] : dflt; }

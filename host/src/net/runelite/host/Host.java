@@ -198,6 +198,10 @@ public final class Host {
                 }
                 break;
             case GAME_TICK:
+                // The desktop client doesn't tick while LOADING (it loads the map synchronously).
+                // QH's quest list update runs on GameTick and drops its one-shot flag if the state
+                // isn't LOGGED_IN; OpenRune's login sends a rebuild, so ticks arrive while LOADING.
+                if (client.getGameState() == GameState.LOADING) break;
                 if (client.getGameState() == GameState.LOGGED_IN) {
                     try {
                         worldView().androidScene().objects.refresh();

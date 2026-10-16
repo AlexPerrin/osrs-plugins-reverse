@@ -586,6 +586,32 @@ void widget_set_color(uintptr_t w, int rgb) {
     }
 }
 
+namespace {
+void widget_mark_dirty(uintptr_t w) {
+    uintptr_t c = client();
+    if (!w || !c) return;
+    if (read_at<int32_t>(w + 0xb78) == read_at<int32_t>(c + 0x4132bc)) {
+        int area = read_at<int32_t>(w + 0xb74);
+        if (area >= 0 && area < 0x400) *reinterpret_cast<volatile uint8_t*>(c + 0x4132c0 + area) = 1;
+    }
+}
+}  // namespace
+
+void widget_set_hidden(uintptr_t w, bool hidden) {
+    if (!w || read_at<uint8_t>(w + 0x78) == hidden) return;
+    *reinterpret_cast<volatile uint8_t*>(w + 0x78) = hidden;  // CC_SETHIDE 1003
+    widget_mark_dirty(w);
+}
+
+bool widget_set_text(uintptr_t w, const std::string& text) {
+    if (!w || read_at<int32_t>(w + 0x28) == 12) return false;  // type 12 keeps its text elsewhere (+0xba8)
+    GameString s(text);
+    // CC_SETTEXT 1112: string assign 0x3f1498(widget +0x158, &text)
+    reinterpret_cast<void* (*)(uintptr_t, const void*)>(g_base + 0x3f1498)(w + g_build->w_text, s.bytes);
+    widget_mark_dirty(w);
+    return true;
+}
+
 uintptr_t widget(int component) {
     uintptr_t c = client();
     if (!c || component < 0) return 0;

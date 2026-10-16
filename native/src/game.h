@@ -105,6 +105,8 @@ constexpr int kWidgetProps = 34;
 void widget_props(uintptr_t widget, int32_t out[kWidgetProps]);  // item set by IF_SETOBJECT / CC_SETOBJECT
 int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colour for text widgets
 void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty
+void widget_set_hidden(uintptr_t widget, bool hidden);  // game thread only, same
+bool widget_set_text(uintptr_t widget, const std::string& text);  // game thread only, same (latin-1)
 struct SubInterface { int component, group; };  // `group` is open inside `component`
 std::vector<SubInterface> open_sub_interfaces();
 

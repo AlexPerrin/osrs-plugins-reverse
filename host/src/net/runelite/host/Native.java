@@ -5,6 +5,11 @@ final class Native {
     private Native() {}
 
     static native int gameState();
+    /** Children created by CC_CREATE under component `id` (count; then per index). */
+    static native int widgetDynamicCount(int id);
+    static native boolean widgetDynamicHidden(int id, int index);
+    static native String widgetDynamicText(int id, int index);
+    static native int[] widgetDynamicGeometry(int id, int index);
     /** Scene objects, all planes: 5 ints each (see jni_bridge.cpp n_scene_objects). Client thread only. */
     static native int[] sceneObjects();
     /** Ground items, all planes: 3 ints each (plane << 16 | x << 8 | y, id, quantity). Client thread only. */

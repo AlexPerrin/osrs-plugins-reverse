@@ -414,6 +414,27 @@ jintArray n_widget_geometry(JNIEnv* env, jclass, jint id) {
 }
 jint n_widget_child_count(JNIEnv*, jclass, jint group) { return game::widget_child_count(group); }
 
+// Dynamic (CC_CREATE) children: index into the component's created-children array.
+jint n_widget_dynamic_count(JNIEnv*, jclass, jint id) { return game::widget_dynamic_count(game::widget(id)); }
+jboolean n_widget_dynamic_hidden(JNIEnv*, jclass, jint id, jint i) {
+    uintptr_t w = game::widget_dynamic(game::widget(id), i);
+    return !w || game::widget_hidden(w);
+}
+jstring n_widget_dynamic_text(JNIEnv* env, jclass, jint id, jint i) {
+    uintptr_t w = game::widget_dynamic(game::widget(id), i);
+    return w ? env->NewStringUTF(game::widget_text(w).c_str()) : nullptr;
+}
+// {x, y, width, height, parentId (= id)}, or null.
+jintArray n_widget_dynamic_geometry(JNIEnv* env, jclass, jint id, jint i) {
+    uintptr_t w = game::widget_dynamic(game::widget(id), i);
+    if (!w) return nullptr;
+    game::WidgetGeometry g = game::widget_geometry(w);
+    jint v[5] = {g.x, g.y, g.width, g.height, id};
+    jintArray out = env->NewIntArray(5);
+    if (out) env->SetIntArrayRegion(out, 0, 5, v);
+    return out;
+}
+
 // {int[] packed (index, local, localX, localY, worldX, worldY), String[] names}
 jobjectArray n_players(JNIEnv* env, jclass) {
     std::vector<game::PlayerInfo> players = client_thread::players();
@@ -468,6 +489,10 @@ const JNINativeMethod kNatives[] = {
     {"rootInterface", "()I", reinterpret_cast<void*>(n_root_interface)},
     {"widgetGeometry", "(I)[I", reinterpret_cast<void*>(n_widget_geometry)},
     {"widgetChildCount", "(I)I", reinterpret_cast<void*>(n_widget_child_count)},
+    {"widgetDynamicCount", "(I)I", reinterpret_cast<void*>(n_widget_dynamic_count)},
+    {"widgetDynamicHidden", "(II)Z", reinterpret_cast<void*>(n_widget_dynamic_hidden)},
+    {"widgetDynamicText", "(II)Ljava/lang/String;", reinterpret_cast<void*>(n_widget_dynamic_text)},
+    {"widgetDynamicGeometry", "(II)[I", reinterpret_cast<void*>(n_widget_dynamic_geometry)},
     {"property", "(Ljava/lang/String;)Ljava/lang/String;", reinterpret_cast<void*>(n_property)},
     {"camera", "()[I", reinterpret_cast<void*>(n_camera)},
     {"screenSize", "()[I", reinterpret_cast<void*>(n_screen_size)},

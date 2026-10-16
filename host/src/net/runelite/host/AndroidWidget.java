@@ -11,14 +11,17 @@ import net.runelite.api.widgets.Widget;
  * text, visibility, geometry (relative position, size, parent) and static children.
  */
 public class AndroidWidget extends WidgetBag {
-    private final int id;
+    final int id;
 
     AndroidWidget(int id) {
         this.id = id;
     }
 
+    /** Raw geometry {x, y, width, height, parentId} or null. */
+    int[] rawGeo() { return Native.widgetGeometry(id); }
+
     private int[] geo() {
-        int[] g = Native.widgetGeometry(id);
+        int[] g = rawGeo();
         return g != null ? g : new int[] {0, 0, 0, 0, -1};
     }
 
@@ -29,8 +32,12 @@ public class AndroidWidget extends WidgetBag {
 
     @Override
     public boolean isHidden() {
-        // Hidden if it or any ancestor is hidden, as in RuneLite.
-        int cur = id;
+        return isSelfHidden() || ancestorsHidden(getParentId());
+    }
+
+    /** Hidden if it or any ancestor is hidden, as in RuneLite. */
+    static boolean ancestorsHidden(int start) {
+        int cur = start;
         for (int depth = 0; cur != -1 && depth < 64; depth++) {
             if (Native.widgetHidden(cur)) return true;
             int[] g = Native.widgetGeometry(cur);
@@ -54,7 +61,9 @@ public class AndroidWidget extends WidgetBag {
     /** Position on the game's UI canvas, which is also the overlay canvas. */
     @Override
     public Point getCanvasLocation() {
-        int x = 0, y = 0, cur = id;
+        int[] own = rawGeo();
+        if (own == null) return new Point(0, 0);
+        int x = own[0], y = own[1], cur = own[4];
         for (int depth = 0; cur != -1 && depth < 64; depth++) {
             int[] g = Native.widgetGeometry(cur);
             if (g == null) break;
@@ -101,15 +110,57 @@ public class AndroidWidget extends WidgetBag {
 
     @Override public Widget createChild(int type) { return createChild(-1, type); }
     @Override public void deleteAllChildren() { created.clear(); }
-    @Override public Widget[] getDynamicChildren() { return created.toArray(new Widget[0]); }
-    @Override public Widget[] getChildren() { return created.isEmpty() ? null : created.toArray(new Widget[0]); }
-    @Override public Widget getChild(int index) { return index >= 0 && index < created.size() ? created.get(index) : null; }
+    /** The game's CC_CREATE children (null slots stay null), then plugin-created ones. */
+    @Override public Widget[] getDynamicChildren() {
+        Widget[] game = gameChildren();
+        if (created.isEmpty()) return game;
+        List<Widget> all = new ArrayList<>(java.util.Arrays.asList(game));
+        all.addAll(created);
+        return all.toArray(new Widget[0]);
+    }
+    @Override public Widget[] getChildren() {
+        Widget[] d = getDynamicChildren();
+        return d.length == 0 ? null : d;
+    }
+    @Override public Widget getChild(int index) {
+        Widget[] d = getDynamicChildren();
+        return index >= 0 && index < d.length ? d[index] : null;
+    }
+
+    Widget[] gameChildren() {
+        int n = Native.widgetDynamicCount(id);
+        Widget[] out = new Widget[n];
+        for (int i = 0; i < n; i++)
+            if (Native.widgetDynamicGeometry(id, i) != null) out[i] = new Dynamic(id, i);
+        return out;
+    }
+
+    /** A child created by the game's CC_CREATE under component `parent`. */
+    static final class Dynamic extends AndroidWidget {
+        final int index;
+
+        Dynamic(int parent, int index) {
+            super(parent);
+            this.index = index;
+        }
+
+        @Override int[] rawGeo() { return Native.widgetDynamicGeometry(id, index); }
+        @Override public int getIndex() { return index; }
+        @Override public String getText() { String t = Native.widgetDynamicText(id, index); return t != null ? t : ""; }
+        @Override public boolean isSelfHidden() { return Native.widgetDynamicHidden(id, index); }
+        @Override public boolean isHidden() { return isSelfHidden() || ancestorsHidden(id); }
+        @Override public Widget getParent() { return new AndroidWidget(id); }
+        @Override public Widget[] getStaticChildren() { return new Widget[0]; }
+        @Override Widget[] gameChildren() { return new Widget[0]; }
+        @Override public boolean equals(Object o) { return o instanceof Dynamic && ((Dynamic) o).id == id && ((Dynamic) o).index == index; }
+        @Override public int hashCode() { return id * 31 + index; }
+    }
     @Override public Widget[] getNestedChildren() { return new Widget[0]; }
     @Override public void revalidate() {}
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof AndroidWidget && ((AndroidWidget) o).id == id;
+        return o instanceof AndroidWidget && !(o instanceof Dynamic) && ((AndroidWidget) o).id == id;
     }
 
     @Override

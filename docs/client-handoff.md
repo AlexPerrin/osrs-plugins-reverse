@@ -71,9 +71,7 @@ session; its notes are in `docs/android-protocol.md`.
   (QH ObjectStep), item highlights on the ground, QH's arrow over the NPC after the extended-
   settings fix. Next: Sheep Shearer (object highlights, item counts), then sidebar text input,
   minimap geometry, dialogue-option highlights (widget dynamic children).
-- Device protocol addition: `/tmp/osrs-device-status` holds the latest "taking device (…)" /
-  "device free, restart ok (…)" line; check it before using adb and write it when you take or
-  free the device (the server agent polls it), besides the SendMessage notes.
+- Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout
 
@@ -131,8 +129,8 @@ Gotchas:
   signed out: "Sign in with Email / Username", close the privacy screen (X), then Play Now
   (957,563). Without LOCAL_AUTH the app wants the real Jagex login, which only the user may do.
   `repack.sh --install` uses `install -r`, so reinstalls keep the login.
-- Shared device: post "taking device" / "device free" to the server session (SendMessage)
-  before adb input or reinstalls. Server container restarts log the client out.
+- Shared device: never touch adb without the lock (see "Working with the server session").
+  Server container restarts log the client out; after one, run the login steps again.
 - Chat commands over adb: `input text` (spaces as `%s`), then `keyevent 66`. Enter only works
   while the soft keyboard is shown (`dumpsys input_method | grep mInputShown`); tap the keyboard
   button (90,220) first if it isn't. `::talk` opens a dialogue (group 231), `::obj id n` drops an item. `::tele x y plane`, `::pos`, `::npc id`, `::npcsay text` and `::npcanim id` are useful.
@@ -159,8 +157,13 @@ as long as the call happens on the game thread.
 ## Working with the server session
 
 A separate Claude session develops `server/` (it hands over to fresh agents too; find the
-current one with ListAgents). Protocol: post "taking device" / "device free" (SendMessage)
-before and after adb input or reinstalls, and ask "restart ok?" before container restarts.
+current one with ListAgents); an orchestrator (the main session) coordinates both.
+**Device lock** (`tools/device-lock.sh`): ask the orchestrator for "OK device"; it runs
+`grant client`; then run `tools/device-lock.sh take client <what>` as its own step and touch adb
+(installs, input, logcat, the memory agent) only if it prints "taking device" (otherwise DENIED).
+Grants are single-use. When done: `tools/device-lock.sh free client` and tell the orchestrator.
+`tools/device-lock.sh status` shows the holder. Never write `/tmp/osrs-device-status` directly
+and never wait on it. Container restarts go through the orchestrator only.
 File ownership: client = native/ (except net_trace.*), host/, tools/agent.py,
 tools/dex-plugin.sh, tools/plugin-test.sh, tools/ghidra_scripts/, docs/offsets.md,
 docs/plugin-host.md, docs/client-handoff.md; server = server/, tools/repack.sh,
@@ -170,49 +173,15 @@ protocol gaps plugins hit (it has implemented dialogue, ground items, bank, OP* 
 
 ## Suggested next steps
 
-First (unfinished work from the third session):
-1. Install the current build (`ninja -C re/build` is up to date; then repack), log in, long-press
-   the ground/an NPC, and check logcat for `menu: select ... on client thread` and that
-   MenuOpened/getMenuEntries return the right option/target. A ready-made memory dump script
-   idea: read Client(`0xaee748`)+0x4132b0 → MenuManager, nodes at mgr+0x280/+0x288 (0x18 each
-   {list*, index, children*}), entries at list+0x18 (0x150 each, option +0xb8, target +0x50).
-   Verify RuneLite order (getMenuEntries reverses the game's node order: assumed top-first).
-   Decode `raw` (+0x120..+0x147) per kind into MenuAction/identifier/param0/param1 (Walk here:
-   +0x138 plane?, +0x13c world x, +0x140 world y; +0x144 u16 world view | 0x101 << 16).
-   If the select hook runs on a non-game thread, queue the Java event instead.
-2. Quest Helper Cook's Assistant end-to-end test (server side is ready: Cook 4626 at 3209,3215,
-   `::item 1927/1944/1933`, `::quest cook reset`, varp 29): pick it in the sidebar
-   (`setprop debug.osrsrl.sbclick "Cook's Assistant"`), follow the steps, check that the step
-   overlay advances as varp 29 goes 0 → 1 → 2.
-
-Then, what limits Quest Helper next:
-- Menu entries (MenuEntryAdded/MenuOptionClicked). This client builds menus with std::function
-  callbacks, not the Java client's parallel arrays: `0x51a7fc` builds the world menu ("Walk here"
-  = global string `0x18d1a50`, GOT `0xa82958`), `0x51c810` appends one entry to a list at
-  `param_3 + 0x210` {callbacks vector (0xa0 each) [0..2], option strings [3..5], [6..8], arena
-  [9..0xc]}. Reading the open menu (`getMenuEntries`) is the realistic first step.
-- Scene objects (game/wall/ground objects, ground items) for QH's object/item highlights; NPC
-  highlights need NPC hulls (models) or at least tile outlines (works: Perspective + heights).
-- Widget item ids/quantities and widget writes (QH's item highlighting in the inventory/bank).
-- Minimap geometry (`getMinimapLocation`, QH's minimap arrows) and the world map.
-- Sidebar: text input (soft keyboard → JTextField + KeyListeners; QH's search box), combo popups,
-  icons, label colours.
-
-0. Quest Helper's remaining runtime gaps (see the status above): `runScript` (find the CS2
-   interpreter entry: `0x4e5960` handles CC_GET* with the VM state; the int stack is VM+0x50,
-   size VM+0xff0), menu entries (MenuEntryAdded / MenuOptionClicked: QH adds "Start Quest Helper"
-   on the quest list), and a native sidebar so its panel can be shown (ImGui list of the
-   ClientToolbar buttons; render the headless Swing tree or a quest picker).
-
-1. Tile heights (for `Perspective` with real ground height) and the zoom field (scale is only
-   right at the default zoom); then NPC hulls/convex shapes need models (harder).
-2. Widget geometry (x/y/width/height, children, item ids/quantities, actions) so widget
-   overlays and `ItemContainer`s work; IF_SETEVENTS ops; inventory via UPDATE_INV_*.
-3. Players: the PLAYER_INFO reader (`0x569a04`); the local player object holds the fine x/y
-   seen at `Client+0x8950c`.
-4. Menu entries (leads in `docs/offsets.md`); NPC animation/overhead text (the server supports `::npcanim`, `::npcsay`).
-5. Root-injector services plugins still expect: `ClientThread`, `ItemManager`,
-   `ChatMessageManager`, `InfoBoxManager`, `SpriteManager`, `Notifier`; touch input for overlays;
-   a settings UI for `ConfigManager` (values are in files/settings.properties for now).
-6. Quest Helper (the target plugin) needs about 40 API types. Run it and implement whatever
-   `UnsupportedOperationException` it hits.
+1. Verify (built in commit after e5487c9, not yet run): dialogue-option highlight (QH reads
+   chatmenu 219:1's CC_CREATE children: `Widget.getDynamicChildren()` now returns the game's
+   children, text/geometry/hidden), QH's NPC arrow after the extended-tile-settings fix (was an
+   AIOOBE index 118 in `Perspective.getCanvasTileAreaPoly`).
+2. Sheep Shearer with Quest Helper (server has it deployed): object highlights (spinning wheel,
+   `GameObject` click boxes), NPC "Shear" steps, item counts (20 balls of wool).
+3. Widget item ids/quantities (inventory items are CC_CREATE-like children of 149:0 in RuneLite;
+   find the item id/quantity fields of the game's widget) for QH's inventory highlights.
+4. Sidebar text input (QH search box), then minimap geometry (`getMinimapLocation`, QH arrows),
+   NPC animation/orientation/interacting (currently -1/0/null), player hulls.
+5. Small: the `NullPointerException ... WorldView.getPlane()/isInstance()` seen once at login
+   (QuestHelperMinimapOverlay before the world view exists; guard `Host.worldView()` users).

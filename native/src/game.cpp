@@ -320,6 +320,17 @@ int root_interface() { return g_build ? field(g_build->f_root_interface) : -1; }
 
 // Mirrors the lookup in 0x5d1ad8 without loading missing groups (that has to happen on
 // the game's own terms): groups are {?, u64 child count, slot*}, slots are {?, Widget*}.
+int widget_dynamic_count(uintptr_t w) {
+    if (!w) return 0;
+    int n = read_at<int32_t>(w + 0xb50);
+    return n < 0 || n > 4096 || !read_at<uintptr_t>(w + 0xb58) ? 0 : n;
+}
+
+uintptr_t widget_dynamic(uintptr_t w, int index) {
+    if (index < 0 || index >= widget_dynamic_count(w)) return 0;
+    return read_at<uintptr_t>(read_at<uintptr_t>(w + 0xb58) + static_cast<size_t>(index) * 0x10 + 8);
+}
+
 uintptr_t widget(int component) {
     uintptr_t c = client();
     if (!c || component < 0) return 0;

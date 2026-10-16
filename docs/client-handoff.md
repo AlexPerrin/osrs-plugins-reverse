@@ -83,6 +83,15 @@ session; its notes are in `docs/android-protocol.md`.
   OverheadTextChanged, ground-item menu entries, scene overlays clipped out of 601:50/36/111.
   A 16-tile hull offset seen once after `::tele` did not reproduce (camera and WorldView frames
   checked equal with `setprop debug.osrsrl.camlog 1`).
+- **Where gen-3 stopped (2026-10-15 23:41, last client commit before this note: dda217a)**:
+  verified live: overhead text + OverheadTextChanged (`::npcsay`), orientations read plausible
+  values (0/1024/1536), QH step `mapPoint` is set (so the minimap arrow should render; not
+  checked visually). Not yet verified: animation (`::npcanim`), interacting, the overlay clip
+  under 601:50/36/111, minimap arrow position (601:34, zoom 4), ground-item MenuAction decode.
+  Sheep Shearer: the account is at Fred's with the quest started, inventory emptied and shears
+  given (server `::empty`, `::give id n` exist now). Remaining: `::give 1737 20`, castle stairs
+  (ObjectStep highlight), Spin at the wheel 14889 (3209,3212,1), climb down, hand in to Fred.
+  Then: model-based hulls, sidebar combo boxes, player composition, NPC/Player API coverage.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

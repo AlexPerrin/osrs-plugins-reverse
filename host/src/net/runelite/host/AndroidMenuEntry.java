@@ -205,9 +205,11 @@ final class AndroidMenuEntry implements MenuEntry {
     }
     @Override public Player getPlayer() { return null; }
     @Override public Actor getActor() { return getNpc(); }
-    @Override public Menu getSubMenu() { return null; }
-    @Override public Menu createSubMenu() { return new AndroidMenu(); }
-    @Override public void deleteSubMenu() {}
+    /** Plugin-created submenu (shown in the plugin strip when this entry is tapped). */
+    AndroidMenu subMenu;
+    @Override public Menu getSubMenu() { return subMenu; }
+    @Override public Menu createSubMenu() { if (subMenu == null) subMenu = new AndroidMenu(); return subMenu; }
+    @Override public void deleteSubMenu() { subMenu = null; }
 
     @Override public String toString() {
         return "MenuEntry(" + option + " | " + target + " kind=" + kind + " type=" + type + " id=" + identifier + " p0=" + param0 + " p1=" + param1

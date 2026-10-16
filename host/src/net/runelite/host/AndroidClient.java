@@ -605,6 +605,17 @@ public class AndroidClient extends ClientStub {
     }
     @Override public synchronized void setModIcons(net.runelite.api.IndexedSprite[] icons) { modIcons = icons; }
     @Override public net.runelite.api.IndexedSprite createIndexedSprite() { return new HostIndexedSprite(); }
+
+    /**
+     * OAuthApi.getAccountHash (XP Tracker, GE, profiles): -1 when logged out, as RuneLite; otherwise a
+     * stable per-name value (the game's real account hash isn't read).
+     */
+    @Override public long getAccountHash() {
+        if (getGameState() != net.runelite.api.GameState.LOGGED_IN) return -1;
+        net.runelite.api.Player p = getLocalPlayer();
+        String n = p != null ? p.getName() : null;
+        return n == null ? -1 : (n.toLowerCase().hashCode() & 0xffffffffL);
+    }
     // No instances yet: an empty template table.
     @Override public int[][][] getInstanceTemplateChunks() { return new int[4][13][13]; }
 

@@ -46,9 +46,14 @@ final class AndroidMenu implements Menu {
 
     /** Game thread, after MenuOpened: shows the entries plugins created, under the game's menu. */
     void publishPluginEntries() {
-        shown = new ArrayList<>(added);
+        List<AndroidMenuEntry> l = new ArrayList<>(added);
         // RuneLite order puts the newest entry (index -1) at the top; show the topmost first.
-        java.util.Collections.reverse(shown);
+        java.util.Collections.reverse(l);
+        show(l);
+    }
+
+    private static void show(List<AndroidMenuEntry> entries) {
+        shown = entries;
         java.awt.Rectangle r = bounds();
         if (shown.isEmpty() || r == null) {
             Native.pluginMenu(null, 0, 0, 0, 0);
@@ -58,7 +63,8 @@ final class AndroidMenu implements Menu {
         for (int i = 0; i < labels.length; i++) {
             AndroidMenuEntry e = shown.get(i);
             labels[i] = (net.runelite.client.util.Text.removeTags(e.getOption()) + " "
-                + net.runelite.client.util.Text.removeTags(e.getTarget())).trim();
+                + net.runelite.client.util.Text.removeTags(e.getTarget())).trim()
+                + (e.subMenu != null && !e.subMenu.added.isEmpty() ? "  >" : "");
         }
         int canvasH = Host.client().getCanvasHeight();
         int y = r.y + r.height;
@@ -80,6 +86,13 @@ final class AndroidMenu implements Menu {
         List<AndroidMenuEntry> list = shown;
         if (index < 0 || index >= list.size()) return;
         AndroidMenuEntry e = list.get(index);
+        if (e.subMenu != null && !e.subMenu.added.isEmpty()) {
+            // A submenu replaces the strip's entries; the game menu stays open.
+            List<AndroidMenuEntry> sub = new ArrayList<>(e.subMenu.added);
+            java.util.Collections.reverse(sub);
+            show(sub);
+            return;
+        }
         shown = new ArrayList<>();
         Native.pluginMenu(null, 0, 0, 0, 0);
         Log.i(Host.TAG, "plugin menu entry tapped: " + e);

@@ -444,7 +444,7 @@ class World(
         player.message("::talk [npc] text, ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::freeze, ::drop")
         player.message("::obj id [n] [dz], ::zobj id [n], ::locadd id [shape] [rot], ::locdel [shape] [dx] [dz]")
         player.message("::quest name [start|done|reset|n], ::varp id [v], ::varbit id [v], ::events [e1] [e2], ::hit [n] [type], ::npchit [n]")
-        player.message("Protocol tests: ::hideops npc|loc|obj [1|0], ::flag [x z], ::proj id [dx] [mode], ::region [dzx] [dzz] [rot], ::minimap n, ::pmfilter n, ::trace, ::jingle id")
+        player.message("Protocol tests: ::hideops npc|loc|obj [1|0], ::flag [x z], ::proj id [dx] [mode], ::region [dzx] [dzz] [rot], ::minimap n, ::pmfilter n, ::chatfilter p t, ::trace, ::jingle id")
     }
 
     fun spawnNpc(id: Int, coord: Coord): Npc? {
@@ -841,6 +841,12 @@ class World(
                 // MIDI_JINGLE test: ::jingle id; when it ends the client should send SOUND_JINGLEEND (Android 46).
                 val id = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::jingle id")
                 player.send(net.rsprot.protocol.game.outgoing.sound.MidiJingle(id))
+            }
+            "chatfilter" -> {
+                // CHAT_FILTER_SETTINGS (Android 78) control for ::pmfilter: ::chatfilter public trade (0 on, 1 friends, 2 off, ...).
+                val pub = args.getOrNull(1)?.toIntOrNull() ?: 0
+                val trade = args.getOrNull(2)?.toIntOrNull() ?: 0
+                player.send(net.rsprot.protocol.game.outgoing.misc.player.ChatFilterSettings(pub, trade))
             }
             "pmfilter" -> {
                 // CHAT_FILTER_SETTINGS_PRIVATECHAT (Android 11): 0 on, 1 friends, 2 off; watch the Private chat tab label.

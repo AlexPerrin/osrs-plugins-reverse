@@ -92,6 +92,20 @@ session; its notes are in `docs/android-protocol.md`.
   given (server `::empty`, `::give id n` exist now). Remaining: `::give 1737 20`, castle stairs
   (ObjectStep highlight), Spin at the wheel 14889 (3209,3212,1), climb down, hand in to Fred.
   Then: model-based hulls, sidebar combo boxes, player composition, NPC/Player API coverage.
+- **2026-10-16 (client dev gen 4)**: **Sheep Shearer completed end to end with Quest Helper**
+  (second full quest). QH ObjectStep highlights (box + arrow + minimap arrow) on the castle stairs
+  56230/16672 and the wheel 14889, steps followed the items (wool → balls), overlay closed at the
+  hand-in. Added: `getObjectDefinition` (LocType cache `0x62e5ec`, multiloc `getImpostor`),
+  `getWidget(WidgetInfo)` (RuneLite's own `Perspective.localToMinimap` calls it; this was hiding
+  QH's minimap arrow), `getMouseCanvasPosition` (-1,-1), object minimap locations, the open menu
+  rectangle (`MenuManager+0x2a8` press point + measured layout) with overlays clipped around it
+  (verified), actor pose animations and player composition/combat level (verified via
+  `debug.osrsrl.selflog`), NPC multi-transforms and widget scroll/model/opacity getters
+  (unverified). Debug hooks: `debug.osrsrl.where <locId>` (screen position of a loc, for adb
+  taps), `widgetlog`, `selflog`. Romeo & Juliet started with QH (Romeo highlight, dialogue
+  highlight, varp 144 → 10, Juliet's house stairs); stopped upstairs at "Talk to Juliet".
+  Tips: tapping a wandering NPC often hits "Walk here"; long-press and pick the entry
+  (MenuOpened logs list entries in RuneLite order, top entry last).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

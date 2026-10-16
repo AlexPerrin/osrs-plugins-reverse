@@ -31,6 +31,13 @@ final class Native {
     /** Client varcs (0 / null when unset). */
     static native int varcInt(int id);
     static native String varcString(int id);
+    /** Client-side writes through the game's setters; false off the client thread or for unknown ids. */
+    static native boolean setVarbit(int id, int value);
+    static native boolean setVarp(int id, int value);
+    static native boolean setVarcInt(int id, int value);
+    static native boolean setVarcString(int id, String value);
+    /** {varp, lsb, msb} of a varbit definition, or null. */
+    static native int[] varbitDef(int id);
     /** The game's addChatMessage; client thread only (returns false elsewhere). */
     static native boolean addChatMessage(int type, String name, String text);
     static native int serverVarp(int id);

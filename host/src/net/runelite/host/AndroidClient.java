@@ -45,7 +45,33 @@ public class AndroidClient extends ClientStub {
     }
 
     @Override
-    public int[] getVarps() { return Native.varps(); }
+    public int[] getVarps() { return lastVarps = Native.varps(); }
+    /** The array getVarps() last returned: RuneLite hands out the live array, which plugins edit
+     *  (setVarbitValue) and then publish with queueChangedVarp. */
+    private int[] lastVarps;
+
+    @Override public void setVarbit(int varbit, int value) { Native.setVarbit(varbit, value); }
+    @Override public void setVarbitValue(int[] varps, int varbit, int value) {
+        int[] d = Native.varbitDef(varbit);
+        if (d == null || varps == null || d[0] >= varps.length) return;
+        int bits = d[2] - d[1] + 1;
+        int mask = bits >= 32 ? -1 : (1 << bits) - 1;
+        varps[d[0]] = (varps[d[0]] & ~(mask << d[1])) | ((value & mask) << d[1]);
+    }
+    @Override public void queueChangedVarp(int varp) {
+        if (lastVarps != null && varp >= 0 && varp < lastVarps.length) Native.setVarp(varp, lastVarps[varp]);
+    }
+    @Override public net.runelite.api.VarbitComposition getVarbit(int id) {
+        int[] d = Native.varbitDef(id);
+        if (d == null) return null;
+        return new net.runelite.api.VarbitComposition() {
+            @Override public int getIndex() { return d[0]; }
+            @Override public int getLeastSignificantBit() { return d[1]; }
+            @Override public int getMostSignificantBit() { return d[2]; }
+        };
+    }
+    @Override public void setVarcIntValue(int id, int value) { Native.setVarcInt(id, value); }
+    @Override public void setVarcStrValue(int id, String value) { Native.setVarcString(id, value); }
 
     @Override public int getWeight() { return Native.weight(); }
     @Override public int getEnergy() { return Native.runEnergy(); }

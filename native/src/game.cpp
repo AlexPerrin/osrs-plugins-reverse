@@ -75,6 +75,11 @@ struct Build {
     // {ctrl, LocType*}; the world menu builder 0x533a1c uses it for loc entries).
     uintptr_t get_loc_type;
     uintptr_t add_chat_message;  // addChatMessage(client, type, const string* name, const string* text) (MESSAGE_GAME)
+    // Client-side setters, from the script VM (0x4dd08c): setVarbit(id, value) (op 27), and on the
+    // varc store (Client +0x417b68) setVarcInt(store, id, int) (op 43) / setVarcString(store, id,
+    // const variant*) (op 49; 0x28-byte variant, index at +0x20, 2 = string).
+    uintptr_t set_varbit, set_varc_int, set_varc_string;
+    uintptr_t get_varbit_type;  // shared_ptr<VarbitType> getVarbitType(int id) (x8): {int varp, lsb, msb}
 };
 
 constexpr Build kBuilds[] = {
@@ -86,7 +91,8 @@ constexpr Build kBuilds[] = {
      0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x68, 0x70, 0xcb0c, 0x718, 0xcb90, 0x730, 0x1fc, 0x200, 0x0, 0x8,
      0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0x5c, 0x60, 0x64, 0x68, 0x74, 0x6, 0x3210, 0x3274, 0x32d8, 0xaab690, 0xaab658, 0xaab628,
      0xaef1d0, 0x4df54c, 0x63bfe8, 0x63633c, 0x65c798, 0x6de99c, 0x65cac8,
-     0x4132b0, 0xa6d6c0, 0x515854, 0x62e5ec, 0x43a9c0},
+     0x4132b0, 0xa6d6c0, 0x515854, 0x62e5ec, 0x43a9c0,
+     0x5d00fc, 0x3f804c, 0x3f8470, 0x64b450},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -780,6 +786,63 @@ void release_shared(uintptr_t ctrl) {
     }
 }
 }  // namespace
+
+bool set_varbit(int id, int value) {
+    VarbitDef def;  // also rejects ids without a definition (the setter would dereference null)
+    if (!g_build || !g_build->set_varbit || !varbit_def(id, def)) return false;
+    reinterpret_cast<void (*)(int, int)>(g_base + g_build->set_varbit)(id, value);
+    return true;
+}
+
+bool varbit_def(int id, VarbitDef& out) {
+    if (!g_build || !g_build->get_varbit_type || id < 0 || id > 0xffff) return false;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    SharedPtr r = reinterpret_cast<SharedPtr (*)(int)>(g_base + g_build->get_varbit_type)(id);
+    uintptr_t ctrl = r.ctrl, o = r.obj;
+    if (!o) { release_shared(ctrl); return false; }
+    out.varp = read_at<int32_t>(o);
+    out.lsb = read_at<int32_t>(o + 4);
+    out.msb = read_at<int32_t>(o + 8);
+    release_shared(ctrl);
+    return out.varp >= 0 && out.varp < varp_count() && out.lsb >= 0 && out.msb < 32 && out.lsb <= out.msb;
+}
+
+bool set_varp(int id, int value) {
+    if (!g_build || id < 0) return false;
+    uint32_t count = read_at<uint32_t>(g_base + g_build->varps + 8);
+    auto* values = read_at<int32_t*>(g_base + g_build->varps + 0x10);
+    if (!values || static_cast<uint32_t>(id) >= count) return false;
+    values[id] = value;
+    return true;
+}
+
+static uintptr_t varc_store() {
+    uintptr_t c = client();
+    return c ? read_at<uintptr_t>(c + 0x417b68) : 0;
+}
+
+bool set_varc_int(int id, int value) {
+    uintptr_t store = varc_store();
+    if (!store || !g_build->set_varc_int || id < 0 || id > 0xffff) return false;
+    reinterpret_cast<void (*)(uintptr_t, int, int)>(g_base + g_build->set_varc_int)(store, id, value);
+    return true;
+}
+
+bool set_varc_string(int id, const std::string& value) {
+    uintptr_t store = varc_store();
+    if (!store || !g_build->set_varc_string || id < 0 || id > 0xffff) return false;
+    GameString str(value);
+    alignas(8) uint8_t variant[0x28] = {};
+    memcpy(variant, str.bytes, 24);
+    uint32_t index = 2;  // string alternative; the setter copies it, `str` keeps ownership
+    memcpy(variant + 0x20, &index, 4);
+    reinterpret_cast<void (*)(uintptr_t, int, const void*)>(g_base + g_build->set_varc_string)(store, id, variant);
+    return true;
+}
+
 
 bool item_def(int id, ItemDef& out) {
     if (!g_build || !g_build->get_obj_type || id < 0 || id > 0xfffff) return false;

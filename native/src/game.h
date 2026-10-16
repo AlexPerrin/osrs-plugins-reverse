@@ -232,6 +232,13 @@ bool add_chat_message(int type, const std::string& name, const std::string& text
 // Client varcs (VarClientInt/VarClientStr); false when unset. Game thread only.
 bool varc_int(int id, int& out);
 bool varc_string(int id, std::string& out);
+// Client-side writes through the game's own script-VM setters. Game thread only.
+struct VarbitDef { int varp = -1, lsb = 0, msb = 0; };
+bool varbit_def(int id, VarbitDef& out);
+bool set_varbit(int id, int value);
+bool set_varp(int id, int value);  // client varps table only (RuneLite queueChangedVarp semantics)
+bool set_varc_int(int id, int value);
+bool set_varc_string(int id, const std::string& value);
 // Where the open menu was requested (UI-canvas units); false when no menu is shown.
 bool menu_point(int& x, int& y);
 std::vector<MenuEntry> read_menu();  // game thread only

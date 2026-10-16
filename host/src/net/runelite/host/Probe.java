@@ -23,6 +23,49 @@ final class Probe {
     private static int tick;
     private static String lastSay = "";
 
+    private static String lastSet = "";
+
+    private static void testSetter(net.runelite.api.Client c, String[] a) {
+        if (a.length < 3) return;
+        try {
+            int id = Integer.parseInt(a[1]);
+            switch (a[0]) {
+                case "varbit": {
+                    int before = c.getVarbitValue(id);
+                    c.setVarbit(id, Integer.parseInt(a[2]));
+                    net.runelite.api.VarbitComposition d = c.getVarbit(id);
+                    Log.i(TAG, "set varbit " + id + " " + before + " -> " + c.getVarbitValue(id)
+                        + (d != null ? " (varp " + d.getIndex() + " bits " + d.getLeastSignificantBit() + ".." + d.getMostSignificantBit() + ")" : ""));
+                    break;
+                }
+                case "varp": {
+                    int[] v = c.getVarps();
+                    int before = v[id];
+                    v[id] = Integer.parseInt(a[2]);
+                    c.queueChangedVarp(id);
+                    Log.i(TAG, "set varp " + id + " " + before + " -> " + c.getVarpValue(id));
+                    break;
+                }
+                case "varc": {
+                    int before = c.getVarcIntValue(id);
+                    c.setVarcIntValue(id, Integer.parseInt(a[2]));
+                    Log.i(TAG, "set varc " + id + " " + before + " -> " + c.getVarcIntValue(id));
+                    break;
+                }
+                case "varcstr": {
+                    String before = c.getVarcStrValue(id);
+                    c.setVarcStrValue(id, a[2]);
+                    Log.i(TAG, "set varcstr " + id + " '" + before + "' -> '" + c.getVarcStrValue(id) + "'");
+                    break;
+                }
+                default:
+                    Log.w(TAG, "set: unknown kind " + a[0]);
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "set " + String.join(" ", a) + " failed: " + t);
+        }
+    }
+
     static void init(List<Plugin> running) {
         plugins = running;
     }
@@ -34,6 +77,11 @@ final class Probe {
         if (!say.isEmpty() && !say.equals(lastSay) && Host.client() != null) {
             lastSay = say;
             Host.client().addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", say, null);
+        }
+        String set = Native.property("debug.osrsrl.set");  // test hook: "varbit|varp|varc|varcstr <id> <value>", once per value
+        if (!set.isEmpty() && !set.equals(lastSet) && Host.client() != null) {
+            lastSet = set;
+            testSetter(Host.client(), set.split(" ", 3));
         }
         String where = Native.property("debug.osrsrl.where");
         if (!where.isEmpty() && (tick % 5) == 0) logWhere(where);

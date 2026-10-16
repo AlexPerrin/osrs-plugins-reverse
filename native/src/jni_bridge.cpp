@@ -103,6 +103,36 @@ jboolean n_add_chat_message(JNIEnv* env, jclass, jint type, jstring name, jstrin
     return game::add_chat_message(type, str(name), str(text));
 }
 jint n_server_varp(JNIEnv*, jclass, jint id) { return game::server_varp(id); }
+// Client-side setters (game thread only; false off it or for unknown ids).
+jboolean n_set_varbit(JNIEnv*, jclass, jint id, jint value) {
+    return client_thread::on_client_thread() && game::set_varbit(id, value);
+}
+jboolean n_set_varp(JNIEnv*, jclass, jint id, jint value) {
+    return client_thread::on_client_thread() && game::set_varp(id, value);
+}
+jboolean n_set_varc_int(JNIEnv*, jclass, jint id, jint value) {
+    return client_thread::on_client_thread() && game::set_varc_int(id, value);
+}
+jboolean n_set_varc_string(JNIEnv* env, jclass, jint id, jstring value) {
+    if (!client_thread::on_client_thread()) return false;
+    std::string latin1;
+    if (value) {
+        const jchar* c = env->GetStringChars(value, nullptr);
+        jsize n = env->GetStringLength(value);
+        for (jsize i = 0; i < n; i++) latin1.push_back(c[i] < 256 ? static_cast<char>(c[i]) : '?');
+        env->ReleaseStringChars(value, c);
+    }
+    return game::set_varc_string(id, latin1);
+}
+// {varp, lsb, msb}, or null.
+jintArray n_varbit_def(JNIEnv* env, jclass, jint id) {
+    game::VarbitDef d;
+    if (!client_thread::on_client_thread() || !game::varbit_def(id, d)) return nullptr;
+    jint v[3] = {d.varp, d.lsb, d.msb};
+    jintArray arr = env->NewIntArray(3);
+    env->SetIntArrayRegion(arr, 0, 3, v);
+    return arr;
+}
 jint n_varbit(JNIEnv* env, jclass, jint id) {
     if (!client_thread::on_client_thread()) {
         env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "getVarbitValue must be called on the client thread");
@@ -664,6 +694,11 @@ const JNINativeMethod kNatives[] = {
     {"actorModel", "(ZI)[I", reinterpret_cast<void*>(n_actor_model)},
     {"varcInt", "(I)I", reinterpret_cast<void*>(n_varc_int)},
     {"varcString", "(I)Ljava/lang/String;", reinterpret_cast<void*>(n_varc_string)},
+    {"setVarbit", "(II)Z", reinterpret_cast<void*>(n_set_varbit)},
+    {"setVarp", "(II)Z", reinterpret_cast<void*>(n_set_varp)},
+    {"setVarcInt", "(II)Z", reinterpret_cast<void*>(n_set_varc_int)},
+    {"setVarcString", "(ILjava/lang/String;)Z", reinterpret_cast<void*>(n_set_varc_string)},
+    {"varbitDef", "(I)[I", reinterpret_cast<void*>(n_varbit_def)},
     {"addChatMessage", "(ILjava/lang/String;Ljava/lang/String;)Z", reinterpret_cast<void*>(n_add_chat_message)},
     {"serverVarp", "(I)I", reinterpret_cast<void*>(n_server_varp)},
     {"varbit", "(I)I", reinterpret_cast<void*>(n_varbit)},

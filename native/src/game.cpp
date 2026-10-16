@@ -1319,8 +1319,10 @@ bool set_varc_string(int id, const std::string& value) {
 bool sprite(int id, std::vector<uint32_t>& pixels, int& width, int& height) {
     uintptr_t c = client();
     if (!g_build || !c || id < 0 || id > 0xfffff) return false;
+    // Only once the game is past its loading screens (state >= 10) and the cache has its
+    // sprites archive (+0x10): a call during startup crashed the game thread.
     auto cache = read_at<uintptr_t>(c + 0x413a98);
-    if (!cache) return false;
+    if (!cache || game_state() < 10 || !read_at<uintptr_t>(cache + 0x10)) return false;
     bool ok = false;
     using Fn = const uintptr_t* (*)(uintptr_t, int, int, bool, bool, int, bool*);
     const uintptr_t* slot = reinterpret_cast<Fn>(g_base + 0x5d4074)(cache, id, 0, false, false, 0, &ok);
@@ -1339,8 +1341,10 @@ bool sprite(int id, std::vector<uint32_t>& pixels, int& width, int& height) {
 bool sprite_write(int id, const uint32_t* pixels, int width, int height) {
     uintptr_t c = client();
     if (!g_build || !c || id < 0 || id > 0xfffff) return false;
+    // Only once the game is past its loading screens (state >= 10) and the cache has its
+    // sprites archive (+0x10): a call during startup crashed the game thread.
     auto cache = read_at<uintptr_t>(c + 0x413a98);
-    if (!cache) return false;
+    if (!cache || game_state() < 10 || !read_at<uintptr_t>(cache + 0x10)) return false;
     bool ok = false;
     using Fn = const uintptr_t* (*)(uintptr_t, int, int, bool, bool, int, bool*);
     const uintptr_t* slot = reinterpret_cast<Fn>(g_base + 0x5d4074)(cache, id, 0, false, false, 0, &ok);

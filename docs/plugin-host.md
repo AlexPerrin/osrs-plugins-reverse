@@ -42,12 +42,12 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Chat History | starts | "Game: Clear history" (long-press a chat tab, plugin strip) removes the lines from the game's chat channels (verified once, 2026-10-16), but they came back when the chatbox next rebuilt (the All tab likely reads another list); the mobile game keeps chat across logout itself, so the restore isn't needed |
 | Chat Timestamps | runs | "[15:04]" (local time, plugin format) before each chat line, after the game's own UTC time (chatMessageBuilding raised once per new message, verified 2026-10-16); the newest line shows it once the chat next rebuilds |
 | Combat Level | runs | precise level in the combat tab ("Combat Lvl: 126.1", verified 2026-10-16) |
-| Cannon | starts | OpenRune's cannon is deployed, but the inventory menu shows "Cannon base (Members)" with no Set-up: the client treats world 255 as free-to-play (world flags; server gap, 2026-10-16) |
+| Cannon | runs | green "30" ball count drawn on the placed cannon after Set-up + Fire on goblins (verified 2026-10-16). Needs the world selected once in the login screen's world switcher: only that path sets the client's members flag (global `0x1221e90`, setWorld `0x432748`); otherwise items show "(Members)" with no Set-up. OpenRune repeats "Your cannon is out of ammo!", so the notifier repeats too |
 | Daily Task Indicator | runs | "You have battlestaves waiting to be collected from Zaff." on login with `::varbit 4479 1` (verified 2026-10-16) |
 | Emojis | starts | cache dir now under the app's files dir (user.home); emoji rendering in chat not possible (game chat) |
 | Examine | runs | "Price of Salmon: GE average 30 HA value 18" after Examine on an inventory item, one price line after OpenRune dropped its own (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
 | Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Color Tile > Pick opens the Android colour dialog and recolours the tile (verified 2026-10-16) |
-| Implings | starts | not checked: OpenRune's `::npc` wants `duration npcDebugName` |
+| Implings | starts | `implings.showbaby=HIGHLIGHT`; `::npc 300 ii_impling_type_1` spawned nothing on OpenRune (2026-10-16) |
 | Interact Highlight | runs | outline on the hovered NPC (long-press) and red outline on the attacked goblin (long-press + Attack, verified 2026-10-16) |
 | Inventory Tags | runs | green outline on a tagged pot; Shift + long-press an item: "Inventory tag" > Pick sets the tag (verified 2026-10-16; outlines from the game's createItemSprite) |
 | Item Charges | runs | "8" drawn on a Ring of dueling(8) in the inventory (verified 2026-10-16) |
@@ -72,6 +72,14 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Player Indicators | starts | needed protobuf-javalite + RuneLite http-api (PartyService) |
 | Special Attack Counter | starts | as Player Indicators |
 | XP Globes | runs | attack/HP globes over the chat tabs after combat |
+| Bank | starts | not checked (`::openbank` didn't open the bank in the test) |
+| Notes | starts | sidebar tab "Notes" added |
+| Slayer | starts | task InfoBox drawn (enchanted gem "?" icon from the game's sprites) with no task |
+| NPC Aggression Timer | starts | not checked |
+| Mouse Tooltips | starts | not checked (hover entries exist only for inventory, bank and equipment slots) |
+| Loot Tracker | throws | NoClassDefFoundError com.sun.net.httpserver.HttpServer |
+| Hiscore | throws | Client.getPlayerOptions not implemented |
+| Skill Calculator | throws | NPE: JSpinner.DefaultEditor.getTextField() in the headless Swing |
 
 ## Build and run
 

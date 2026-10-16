@@ -89,7 +89,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 3 | HINT_ARROW | as desktop (FUN_004fd3a4 switches on the desktop types) |
 | 5 | NPC_HEADICON_SPECIFIC | index `p2Alt2`, headIconSlot `p1Alt2`, spriteGroup `p4Alt2`, spriteIndex `p2Alt1` |
 | 9 | MESSAGE_CLANCHANNEL_SYSTEM | as desktop (chat type 43 / 46 guest) |
-| 11 | CHAT_FILTER_SETTINGS_PRIVATECHAT (unverified) | privateChatFilter `p1` (`::pmfilter 2` did not change the Private tab label on 2026-10-15) |
+| 11 | CHAT_FILTER_SETTINGS_PRIVATECHAT (unverified) | privateChatFilter `p1` (`::pmfilter 2` did not change the Private tab label on 2026-10-15; again with 2 and 1 on 2026-10-16: the label may only redraw through a chat-tab script, or 11 is something else) |
 | 12 | OBJ_CUSTOMISE_SPECIFIC_V1 | retex `p2`, retexIndex `p2`, coordGrid.packed `p4`, model `p2Alt2`, recolIndex `p2Alt1`, id `p2Alt2`, recol `p2Alt2`, quantity `p4` |
 | 13 | UPDATE_IGNORELIST | as desktop (FUN_0066ee54 on the ignore list) |
 | 15 | CAM_MODE | as desktop (oculus orb state) |
@@ -134,7 +134,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 71 | SYNTH_SOUND | as desktop (FUN_005ae508(id, loops, delay)) |
 | 73 | CAM_ROTATETO | as desktop (absolute yaw/pitch) |
 | 74 | MIDI_SONG_WITHSECONDARY | fadeInSpeed `p2Alt3`, primaryId `p2Alt1`, secondaryId `p2`, fadeInDelay `p2Alt3`, fadeOutDelay `p2`, fadeOutSpeed `p2` |
-| 76 | PROJANIM_SPECIFIC_V4 | sourceIndex `p3Alt2`, progress `p2`, startHeight `p2`, targetIndex `p3Alt3`, startTime `p2Alt3`, end `p4Alt1`, start `p4Alt3`, angle `p1`, id `p2Alt1` (0xffff = none), endTime `p2Alt2`, endHeight `p2Alt3` (byte orders read and re-checked against RSProt's Alt helpers 2026-10-16. Struct slots (case 76 and zone MAP_PROJANIM_V2 both fill a 0x3c-byte struct passed to the projectile constructor `0x577b14`, which copies it to object+0x25c and looks up the spotanim from S+0x38): S+0/4/8 start level/x/z (confirmed: the zone case puts the zone base + packed offset there), S+0xC startHeight?, S+0x10 sourceIndex, S+0x14/18/1C end coord, S+0x20 endHeight?, S+0x24 targetIndex, S+0x28 and S+0x2C cycle + value (start/end time, order unconfirmed), S+0x30 angle (u8), S+0x34 progress?, S+0x38 id. Unverified: `::proj 27/92/100` with start height 160 showed no projectile on 2026-10-15; the per-frame update was not found, so `::proj id dx mode` (height now 40) swaps the suspect pairs for a live check) |
+| 76 | PROJANIM_SPECIFIC_V4 | sourceIndex `p3Alt2`, progress `p2`, startHeight `p2`, targetIndex `p3Alt3`, startTime `p2Alt3`, end `p4Alt1`, start `p4Alt3`, angle `p1`, id `p2Alt1` (0xffff = none), endTime `p2Alt2`, endHeight `p2Alt3` (byte orders read and re-checked against RSProt's Alt helpers 2026-10-16. Struct slots (case 76 and zone MAP_PROJANIM_V2 both fill a 0x3c-byte struct passed to the projectile constructor `0x577b14`, which copies it to object+0x25c and looks up the spotanim from S+0x38): S+0/4/8 start level/x/z (confirmed: the zone case puts the zone base + packed offset there), S+0xC startHeight?, S+0x10 sourceIndex, S+0x14/18/1C end coord, S+0x20 endHeight?, S+0x24 targetIndex, S+0x28 and S+0x2C cycle + value (start/end time, order unconfirmed), S+0x30 angle (u8), S+0x34 progress?, S+0x38 id. Verified live 2026-10-16: `::proj 100 4 0` (start height 40) flew a fire-strike orb from the player to 4 tiles east; mode 2 (heights swapped) started at the feet. The 2026-10-15 failure was the start height 160 (x4 = 640 units, off camera). Times confirmed too: the orb was in flight 1.5 s after the command, so S+0x28 (30) is the start cycle and S+0x2C (300) the end) |
 | 78 | CHAT_FILTER_SETTINGS | publicChatFilter `p1Alt1`, tradeChatFilter `p1Alt3` |
 | 80 | MIDI_JINGLE | lengthInMillis `p3Alt1`, id `p2Alt3` |
 | 82 | HISCORE_REPLY | recognised, no codec |
@@ -164,7 +164,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 112 | SET_PLAYER_OP | if (priority) 1 else 0 `p1Alt1`, id `p1Alt1`, op ?: "null" `pjstr` |
 | 113 | HIDENPCOPS | hidden `p1` (b & 1); verified live (NPC ops vanish) |
 | 114 | RESET_INTERACTION_MODE | as desktop (world id p2) |
-| 115 | HIDEOBJOPS (unverified: by elimination) | hidden `p1` (b & 1) |
+| 115 | HIDEOBJOPS | hidden `p1` (b & 1); verified live 2026-10-16 (`::hideops obj 1`: a ground Pot showed only Walk here; 0 restored Take/Examine) |
 | 117 | MESSAGE_CLANCHANNEL | as desktop (chat types 41/44) |
 | 118 | OBJ_COUNT_SPECIFIC | newQuantity `p4Alt1`, id `p2Alt2`, oldQuantity `p4Alt2`, coordGrid.packed `p4Alt1` |
 | 119 | VARCLAN | as desktop (id + typed value) |

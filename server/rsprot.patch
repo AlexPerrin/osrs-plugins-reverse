@@ -744,7 +744,7 @@ index 00000000..5b630f53
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..f497bc4e
+index 00000000..4f1519cb
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 @@ -0,0 +1,170 @@
@@ -811,7 +811,7 @@ index 00000000..f497bc4e
 +    HINT_ARROW(3, 6), // dispatcher case read
 +    NPC_HEADICON_SPECIFIC(5, 9), // dispatcher case read
 +    MESSAGE_CLANCHANNEL_SYSTEM(9, Prot.VAR_BYTE), // dispatcher case read
-+    CHAT_FILTER_SETTINGS_PRIVATECHAT(11, 1), // unverified: medium: one byte stored, values > 2 -> -1
++    CHAT_FILTER_SETTINGS_PRIVATECHAT(11, 1), // unverified: medium: one byte stored, values > 2 -> -1; ::pmfilter 2 and 1 left the Private tab label at On (2026-10-15, 2026-10-16)
 +    OBJ_CUSTOMISE_SPECIFIC_V1(12, 20), // dispatcher case read
 +    UPDATE_IGNORELIST(13, Prot.VAR_SHORT), // dispatcher case read
 +    CAM_MODE(15, 1), // dispatcher case read
@@ -856,7 +856,7 @@ index 00000000..f497bc4e
 +    SYNTH_SOUND(71, 5), // dispatcher case read
 +    CAM_ROTATETO(73, 7), // dispatcher case read
 +    MIDI_SONG_WITHSECONDARY(74, 12), // dispatcher case read
-+    PROJANIM_SPECIFIC_V4(76, 27), // dispatcher case read
++    PROJANIM_SPECIFIC_V4(76, 27), // verified live 2026-10-16: ::proj 100 flew from the player to dx tiles east; start height slot confirmed (mode 2 started at the feet)
 +    CHAT_FILTER_SETTINGS(78, 2), // dispatcher case read
 +    MIDI_JINGLE(80, 5), // dispatcher case read
 +    HISCORE_REPLY(82, Prot.VAR_SHORT), // dispatcher case read
@@ -886,7 +886,7 @@ index 00000000..f497bc4e
 +    SET_PLAYER_OP(112, Prot.VAR_BYTE), // dispatcher case read
 +    HIDENPCOPS(113, 1), // verified live 2026-10-15: removed all NPC ops (only Walk here/Cancel left), 0 restored them
 +    RESET_INTERACTION_MODE(114, 2), // dispatcher case read
-+    HIDEOBJOPS(115, 1), // unverified: by elimination after 20/113 were confirmed live (same handler shape, third flag byte); not tested on a ground obj
++    HIDEOBJOPS(115, 1), // verified live 2026-10-16: ::hideops obj 1 left only Walk here on a ground Pot, 0 restored Take/Examine
 +    MESSAGE_CLANCHANNEL(117, Prot.VAR_BYTE), // dispatcher case read
 +    OBJ_COUNT_SPECIFIC(118, 14), // dispatcher case read
 +    VARCLAN(119, Prot.VAR_BYTE), // dispatcher case read

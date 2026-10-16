@@ -34,15 +34,15 @@ this repo's `rsprot.patch`) all run there.
   consumed or not, in `docker logs osrs-openrune`).
 - **URL_OPEN 24**: the third live `::url` crashed the app (with our hooks; the stock client just
   drops the session). Cause (dca5be0): the reader `0x5da16c` ISAAC-decrypts opcode 0x18's payload,
-  and our `AndroidDelegatingEncoder` dropped the desktop encoder's `encryptedPayload` flag. Fixed;
-  verify by `::url https://example.com` -> "opening a link to an external site" dialog, tap CANCEL.
+  and our `AndroidDelegatingEncoder` dropped the desktop encoder's `encryptedPayload` flag. Fixed and
+  verified live (19:42): the external-link dialog shows; CANCEL keeps the session.
 - **Device-verified in slot 2 (19:25)**: the Genie (spawn/face/name, Talk-to lamp, Dismiss), impling
   Catch in Puro-Puro, and `::trace` showing live C->S 8 (music slider) and 46 (jingle end).
 - **45 SET_HEADING**: probably sailing (minimap heading), not testable on either server.
 - **Content**: Implings (catching; Puro-Puro spawns already existed) and the Genie random event
   (`::randomevent`), see `openrune/README.md` and `docs/openrune-port.md`. Upstreamable fixes are
   listed in `docs/openrune-port.md`.
-- Remaining unverified: S->C 0, 24, 148; C->S 45, 69 (unchanged).
+- Remaining unverified: S->C 0, 148; C->S 45, 69.
 
 ## Latest state (2026-10-16 evening, fourth server dev, on OpenRune)
 

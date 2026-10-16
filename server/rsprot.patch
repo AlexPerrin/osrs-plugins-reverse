@@ -758,7 +758,7 @@ index 00000000..a44d2077
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..f6c17e6f
+index 00000000..c6ded22a
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 @@ -0,0 +1,172 @@
@@ -834,7 +834,7 @@ index 00000000..f6c17e6f
 +    HIDELOCOPS(20, 1), // verified live 2026-10-15: opcode 20 = 1 removed Open/Examine on a door, 0 restored them
 +    UPDATE_UID192(21, 28), // dispatcher case read
 +    VARP_RESET(22, 0), // dispatcher case read
-+    URL_OPEN(24, Prot.VAR_SHORT), // unverified: one gjstr to a Java bridge call, but a live ::url dropped the app to the login screen
++    URL_OPEN(24, Prot.VAR_SHORT), // verified live: ISAAC-encrypted gjstr (reader 0x5da16c decrypts opcode 0x18); ::url showed the external-link dialog
 +    UPDATE_FRIENDLIST(25, Prot.VAR_SHORT), // dispatcher case read
 +    LOGOUT_WITHREASON(27, 1), // dispatcher case read
 +    IF_SETCOLOUR(29, 6), // dispatcher case read

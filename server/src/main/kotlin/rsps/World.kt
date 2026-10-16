@@ -72,6 +72,8 @@ class Player(
     val path = ArrayDeque<Coord>()
     var running = false
     var dialogueOpen = false
+    /** What happens when the open dialogue is continued (sub = chosen option for menus). */
+    var onResume: ((Int) -> Unit)? = null
     val experience = IntArray(25).also { it[3] = 1154 }
     var hitpoints = 10
     var buildCenter = coord
@@ -81,6 +83,8 @@ class Player(
     var lastAttackTick = -1L
     /** Ticks left of the death animation, or -1 while alive. */
     var deathTicks = -1
+    /** Interface open in the journal tab's container, -1 for none. */
+    var journalPanel = -1
 
     val extendedInfo get() = infos.playerInfo.avatar.extendedInfo
 
@@ -363,6 +367,8 @@ class World(
             player.send(IfOpenSub(target ushr 16, target and 0xFFFF, interfaceId, 1))
         }
 
+        openJournalTab(player, JOURNAL_SUMMARY)
+
         for (stat in 0 until 25) {
             val level = if (stat == HITPOINTS) 10 else 1
             player.send(UpdateStatV2(stat, level, level, if (stat == HITPOINTS) 1154 else 0))
@@ -436,6 +442,23 @@ class World(
         setVarp(player, type.varp, (old and mask.inv()) or ((value shl type.lsb) and mask))
     }
 
+    private fun updateQuestPoints(player: Player) =
+        setVarp(player, VARP_QUEST_POINTS, quests.filter { questProgress(player, it) >= it.end }.sumOf { it.questPoints })
+
+    /**
+     * Journal side tab (side_journal 629): the server opens the selected panel into 629:43 -
+     * 0 character summary (712), 1 quest list (399), 2 achievement diaries (259) - and sets
+     * varbit side_journal_tab. Without it the tab is empty.
+     */
+    private fun openJournalTab(player: Player, tab: Int) {
+        val panel = JOURNAL_PANELS.getOrNull(tab) ?: return
+        if (player.journalPanel == panel) return
+        if (player.journalPanel != -1) player.send(IfCloseSub(INTERFACE_SIDE_JOURNAL, SIDE_JOURNAL_CONTAINER))
+        player.send(IfOpenSub(INTERFACE_SIDE_JOURNAL, SIDE_JOURNAL_CONTAINER, panel, 1))
+        player.journalPanel = panel
+        setVarbit(player, VARBIT_SIDE_JOURNAL_TAB, tab)
+    }
+
     private fun questProgress(player: Player, quest: QuestType) =
         if (quest.varbit) getVarbit(player, quest.varId) else player.varps[quest.varId] ?: 0
 
@@ -455,7 +478,7 @@ class World(
                 else -> state.toInt()
             }
             if (quest.varbit) setVarbit(player, quest.varId, value) else setVarp(player, quest.varId, value)
-            setVarp(player, VARP_QUEST_POINTS, quests.filter { questProgress(player, it) >= it.end }.sumOf { it.questPoints })
+            updateQuestPoints(player)
         }
         val progress = questProgress(player, quest)
         val status = when {
@@ -861,6 +884,10 @@ class World(
             interfaceId == INTERFACE_BANK && componentId == BANK_ITEMS -> withdraw(player, sub, op)
             interfaceId == INTERFACE_BANKSIDE && componentId == BANKSIDE_ITEMS -> deposit(player, sub)
             interfaceId == INTERFACE_WORN && componentId in WORN_SLOT_COMPONENTS -> unequip(player, WORN_SLOT_COMPONENTS.getValue(componentId))
+            interfaceId == INTERFACE_SIDE_JOURNAL && componentId in 2..25 -> {
+                log.info { "${player.username} journal button 629:$componentId op=$op" }
+                openJournalTab(player, (componentId - 2) / 8)
+            }
             else -> return false
         }
         return true
@@ -998,8 +1025,113 @@ class World(
 
     fun resumePause(player: Player, interfaceId: Int, componentId: Int, sub: Int) {
         log.info { "${player.username} RESUME_PAUSEBUTTON $interfaceId:$componentId sub=$sub" }
-        closeDialogue(player)
-        if (interfaceId == CHATMENU) player.message("You chose option $sub.")
+        val next = player.onResume
+        player.onResume = null
+        if (next == null) {
+            closeDialogue(player)
+            if (interfaceId == CHATMENU) player.message("You chose option $sub.")
+            return
+        }
+        // The next step opens its own dialogue over this one; close only if it does not.
+        player.dialogueOpen = false
+        next(sub)
+        if (!player.dialogueOpen) {
+            player.dialogueOpen = true
+            closeDialogue(player)
+        }
+    }
+
+    // -- Scripted dialogues: each step opens a chat and says what continuing does. --
+
+    private fun npcSay(player: Player, npc: Int, text: String, then: ((Int) -> Unit)? = null) {
+        openNpcChat(player, npc, npcTypes[npc]?.name ?: "", text)
+        player.onResume = then
+    }
+
+    private fun playerSay(player: Player, text: String, then: ((Int) -> Unit)? = null) {
+        openPlayerChat(player, text)
+        player.onResume = then
+    }
+
+    /** Options menu; [choices] are (text, action) pairs, the chosen one runs on continue. */
+    private fun choose(player: Player, vararg choices: Pair<String, () -> Unit>) {
+        openOptions(player, "Select an Option", choices.map { it.first })
+        player.onResume = { sub -> choices.getOrNull(sub - 1)?.second?.invoke() }
+    }
+
+    /** Cook's Assistant (varp 29: 0 not started, 1 started, 2 done), following the real dialogue. */
+    private fun cookDialogue(p: Player) {
+        val cook = NPC_COOK
+        when (p.varps[VARP_COOKQUEST] ?: 0) {
+            0 -> npcSay(p, cook, "What am I to do?") {
+                choose(
+                    p,
+                    "What's wrong?" to {
+                        playerSay(p, "What's wrong?") {
+                            npcSay(p, cook, "Oh dear, oh dear, oh dear, I'm in a terrible terrible mess! It's the Duke's birthday today, and I should be making him a lovely big birthday cake.") {
+                                npcSay(p, cook, "I've forgotten to buy the ingredients. I'll never get them in time now. He'll sack me! What will I do? I have four children and a goat to look after. Would you help me? Please?") {
+                                    choose(
+                                        p,
+                                        "I'm always happy to help a cook in distress." to {
+                                            playerSay(p, "Yes, I'll help you.") {
+                                                setVarp(p, VARP_COOKQUEST, 1)
+                                                npcSay(p, cook, "Oh thank you, thank you. I need milk, an egg and flour. I'd be very grateful if you can get them for me.")
+                                            }
+                                        },
+                                        "I can't right now, Maybe later." to {
+                                            playerSay(p, "No, I don't feel like it. Maybe later.") {
+                                                npcSay(p, cook, "Fine. I always knew you Adventurer types were callous beasts. Go on your merry way!")
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    "Can you make me a cake?" to {
+                        playerSay(p, "You're a cook, why don't you bake me a cake?") {
+                            npcSay(p, cook, "*sniff* Don't talk to me about cakes...")
+                        }
+                    },
+                    "You don't look very happy." to {
+                        playerSay(p, "You don't look very happy.") {
+                            npcSay(p, cook, "No, I'm not. The world is caving in around me - I am overcome by dark feelings of impending doom.")
+                        }
+                    },
+                    "Nice hat!" to {
+                        playerSay(p, "Nice hat!") {
+                            npcSay(p, cook, "Er, thank you. It's a pretty ordinary cooks hat really.")
+                        }
+                    },
+                )
+            }
+            1 -> npcSay(p, cook, "How are you getting on with finding the ingredients?") {
+                val missing = COOK_INGREDIENTS.filter { (obj, _) -> obj !in p.inventory.objs }
+                if (missing.isNotEmpty()) {
+                    playerSay(p, "I haven't got all of them yet.") {
+                        npcSay(p, cook, "I still need ${missing.joinToString(", ") { it.second }}.")
+                    }
+                } else {
+                    playerSay(p, "Here's a bucket of milk, a pot of flour and an egg.") {
+                        for ((obj, _) in COOK_INGREDIENTS) {
+                            val slot = p.inventory.objs.indexOf(obj)
+                            if (slot >= 0) {
+                                p.inventory.objs[slot] = -1
+                                p.inventory.counts[slot] = 0
+                            }
+                        }
+                        p.send(p.inventory.toMessage())
+                        setVarp(p, VARP_COOKQUEST, 2)
+                        updateQuestPoints(p)
+                        addXp(p, COOKING, 300)
+                        npcSay(p, cook, "You've brought me everything I need! I am saved! Thank you!") {
+                            p.message("Congratulations! Quest complete: Cook's Assistant.")
+                        }
+                    }
+                }
+            }
+            else -> npcSay(p, cook, "Hello friend, how is the adventuring going?")
+        }
     }
 
     fun closeDialogue(player: Player) {
@@ -1093,7 +1225,7 @@ class World(
             action = { p ->
                 when (opName?.lowercase()) {
                     "bank" -> openBank(p)
-                    "talk-to" -> openNpcChat(p, npc.id, type?.name ?: "", "Hello, ${p.username}! This is a test server.")
+                    "talk-to" -> if (npc.id == NPC_COOK) cookDialogue(p) else openNpcChat(p, npc.id, type?.name ?: "", "Hello, ${p.username}! This is a test server.")
                     else -> p.message("$opName ${type?.name ?: "npc ${npc.id}"}: nothing interesting happens.")
                 }
             },
@@ -1433,7 +1565,19 @@ class World(
         /** Hans, a man, a woman and a chicken around the castle courtyard. */
         private val DEFAULT_NPCS = listOf(
             3105 to Coord(3221, 3221), 3106 to Coord(3226, 3220), 3111 to Coord(3218, 3216), 1173 to Coord(3228, 3215),
+            4626 to Coord(3209, 3215),
         )
+        private const val NPC_COOK = 4626
+        private const val VARP_COOKQUEST = 29
+        private const val COOKING = 7
+        private val COOK_INGREDIENTS = listOf(1927 to "a bucket of milk", 1944 to "an egg", 1933 to "a pot of flour")
+        private const val INTERFACE_SIDE_JOURNAL = 629
+        /** side_journal:tab_container (gameval InterfaceID.SideJournal.TAB_CONTAINER). */
+        private const val SIDE_JOURNAL_CONTAINER = 43
+        private const val JOURNAL_SUMMARY = 0
+        /** account_summary_sidepanel, questlist, area_task (achievement diaries). */
+        private val JOURNAL_PANELS = listOf(712, 399, 259)
+        private const val VARBIT_SIDE_JOURNAL_TAB = 8168
         const val TICK_MS = 600L
         const val ATTACK_SPEED = 4
         private const val ATTACK = 0

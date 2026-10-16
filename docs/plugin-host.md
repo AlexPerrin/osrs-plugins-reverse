@@ -60,6 +60,9 @@ VarbitChanged).
 | Actor state for NPCs and players: `getAnimation/getAnimationFrame`, `getOrientation/getCurrentOrientation`, `getInteracting/isInteracting` (NPC or player), `getOverheadText/getOverheadCycle` | Actor offsets in docs/offsets.md ("Actor"), read in the per-cycle snapshots. No AnimationChanged/InteractingChanged/OverheadTextChanged events yet. Unverified on device |
 | `getMinimapLocation` (NPCs, players), `Perspective.localToMinimap`, `getCameraFocusEntity` | the minimap draw area is 601:34 (desktop minimap component ids are routed to it); zoom 4. Unverified |
 | Scene overlays (ABOVE_SCENE, UNDER_WIDGETS) are clipped out of the opaque UI panels (601:50 tab stones, 601:36 minimap, 601:111 open side panel) | `OverlayRenderer.uiExclusions`; `setprop debug.osrsrl.clipui "n,m"` adds root children |
+| `getObjectDefinition(id)` (name, actions, size, varbit/varp, impostor ids; `getImpostor()` resolves the multiloc from the current value) | the game's LocType cache (`0x62e5ec`). QH ObjectStep highlights verified 2026-10-16 (Sheep Shearer) |
+| `Menu`/`Client.getMenuX/Y/Width/Height`; overlays are clipped out of the open long-press menu | press point at MenuManager+0x2a8 plus the measured layout (docs/offsets.md) |
+| Debug hooks: `debug.osrsrl.where <loc id>` logs an object's world position and click-box centre in canvas and screen pixels (find adb tap targets); `debug.osrsrl.widgetlog 1` logs WidgetLoaded/Closed; `debug.osrsrl.probe <path>` (see Probe.java) | `Probe.java` |
 | `macroExpand(text)` | identity (CS1 macros aren't expanded) |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 

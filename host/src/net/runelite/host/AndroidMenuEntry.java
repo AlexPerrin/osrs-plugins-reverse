@@ -105,6 +105,10 @@ final class AndroidMenuEntry implements MenuEntry {
                 if ("Use".equals(option)) {
                     type = MenuAction.WIDGET_TARGET;
                     identifier = 0;
+                } else if (op == OP_EXAMINE) {
+                    // Desktop: Examine is the widget's 10th op (Inventory Tags matches identifier 10).
+                    type = MenuAction.CC_OP_LOW_PRIORITY;
+                    identifier = 10;
                 } else {
                     identifier = op + 1;
                     type = identifier > 5 ? MenuAction.CC_OP_LOW_PRIORITY : MenuAction.CC_OP;

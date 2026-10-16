@@ -47,10 +47,10 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Emojis | starts | cache dir now under the app's files dir (user.home); emoji rendering in chat not possible (game chat) |
 | Examine | runs | "Price of Strength potion(3): GE ..." after Examine on an inventory item (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
 | Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Color Tile > Pick opens the Android colour dialog and recolours the tile (verified 2026-10-16) |
-| Implings | starts | |
+| Implings | starts | not checked: OpenRune's `::npc` wants `duration npcDebugName` |
 | Interact Highlight | runs | outline on the hovered NPC (long-press) and red outline on the attacked goblin (long-press + Attack, verified 2026-10-16) |
-| Inventory Tags | starts | WidgetItemOverlay fixed (no NPE; WidgetItems from 149:0 / 12:13); tags not checked |
-| Item Charges | starts | WidgetItemOverlay fixed (no NPE) |
+| Inventory Tags | starts | Shift + long-press an item: "Inventory tag" > Pick sets the tag (inventory Examine = identifier 10, verified 2026-10-16), but the outline isn't drawn: ItemManager item images are blank |
+| Item Charges | runs | "8" drawn on a Ring of dueling(8) in the inventory (verified 2026-10-16) |
 | Item Stats | runs | "+0 (99) Hitpoints" tooltip while a finger rests on a lobster (hover entry: getMenuEntries with no menu open = the inventory slot under the touch point, verified 2026-10-16) |
 | Logout Timer | starts | |
 | NPC Indicators | runs | hull highlights + minimap dots for `npcindicators.npcToHighlight=Goblin` (after the WildcardMatcher replacement); the left button column (601:41/40) is now clipped (unverified) |
@@ -60,11 +60,11 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Random Events | starts | |
 | Regeneration Meter | runs | HP ring on the HP orb (verified with `regenmeter.showWhenNoChange`); by default it draws only below full HP or spec |
 | Run Energy | runs | orb tooltip (weight, run time, 100% in) on a tap of the run orb (touch-as-mouse + TooltipOverlay, verified 2026-10-16) |
-| Timers & Buffs | starts | |
+| Timers & Buffs | runs | stamina timer InfoBox counting down after `::varbit 25 1` + `::varbit 24 20` (verified 2026-10-16); the InfoBox has no icon (ItemManager item images are blank) |
 | Woodcutting | runs | session panel (logs cut 6, 900/hr) while chopping an oak west of Lumbridge (verified 2026-10-16, but drawn under the chatbox: TOP_LEFT overlays now stack below the chatbox, unverified) |
 | XP Tracker | runs | sidebar panel: gained XP, XP/hr, levels per skill after combat (verified 2026-10-16; some rows show twice in the flattened sidebar) |
-| Agility | starts | needs XP Tracker's public module (installed as RuneLite does); its login StatChanged NPE fixed (StatChanged is held until the local player exists) |
-| Chat Notifications | starts | highlight words (`chatnotification.highlightWordsString`) loaded but no highlight seen on game messages (2026-10-16; Chat Filter's rewrite of the same messages does show) |
+| Agility | runs | Gnome Stronghold log balance highlighted green (verified 2026-10-16; needs XP Tracker's module, installed as RuneLite does) |
+| Chat Notifications | runs | highlight words: "Spawned" shown red in game messages with `chatnotification.highlightWordsString=Spawned` (the node's RuneLite-format message is applied after ChatMessage, verified 2026-10-16); notifications not checked |
 | Fishing | runs | fishing spot tiles + fish icons by the Lumbridge river with a rod in the inventory (verified 2026-10-16); catching not checked |
 | Idle Notifier | starts | config defaults now registered; Notification config values were a ClassCastException on GameTick (fixed after the run: stored as on/off) |
 | Mining | starts | mined copper in the swamp mine; no session panel seen (needs a local-player mining AnimationChanged, 2026-10-16) |

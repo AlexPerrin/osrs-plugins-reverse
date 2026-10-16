@@ -84,7 +84,15 @@ public class AndroidPlayer extends PlayerStub {
     int animation = -1, animationFrame = -1, orientation, currentOrientation, interacting = -1, overheadCycle;
     String overheadText;
 
-    void actor(int[] p, int o, String overhead) {
+    static final int CHANGED_ANIMATION = 1, CHANGED_INTERACTING = 2, CHANGED_OVERHEAD = 4;
+
+    /** Copies the snapshot fields; returns CHANGED_* bits (for AnimationChanged etc.). */
+    int actor(int[] p, int o, String overhead) {
+        int changed = 0;
+        if (p[o] != animation) changed |= CHANGED_ANIMATION;
+        if (p[o + 4] != interacting) changed |= CHANGED_INTERACTING;
+        // A new say resets the timer (to 100), so a rising timer with text means new overhead text.
+        if (overhead != null && p[o + 5] > overheadCycle) changed |= CHANGED_OVERHEAD;
         animation = p[o];
         animationFrame = p[o + 1];
         orientation = p[o + 2];
@@ -92,6 +100,7 @@ public class AndroidPlayer extends PlayerStub {
         interacting = p[o + 4];
         overheadCycle = p[o + 5];
         overheadText = overhead;
+        return changed;
     }
 
     @Override public int getAnimation() { return animation; }

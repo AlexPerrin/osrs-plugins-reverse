@@ -6,6 +6,7 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import java.io.File;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import dalvik.system.DexClassLoader;
@@ -43,6 +44,31 @@ public final class Host {
     private static final NpcCache npcCache = new NpcCache();
     private static final PlayerCache playerCache = new PlayerCache();
     static AndroidNPC npc(int index) { return npcCache.get(index); }
+
+    /** AnimationChanged / InteractingChanged / OverheadTextChanged from the per-cycle snapshots. */
+    private static void postActorChanges(EventBus bus) {
+        if (client.getGameState() != GameState.LOGGED_IN) return;
+        List<Object[]> all = new java.util.ArrayList<>(npcCache.drainChanges());
+        all.addAll(playerCache.drainChanges());
+        boolean log = !all.isEmpty() && "1".equals(Native.property("debug.osrsrl.actorlog"));
+        for (Object[] c : all) {
+            net.runelite.api.Actor a = (net.runelite.api.Actor) c[0];
+            int bits = (Integer) c[1];
+            if (log) Log.i(TAG, "actor change " + bits + " " + a + " anim " + a.getAnimation() + " interacting " + a.getInteracting()
+                + " overhead " + a.getOverheadText() + " orient " + a.getOrientation() + "/" + a.getCurrentOrientation());
+            try {
+                if ((bits & AndroidNPC.CHANGED_ANIMATION) != 0) {
+                    net.runelite.api.events.AnimationChanged e = new net.runelite.api.events.AnimationChanged();
+                    e.setActor(a);
+                    bus.post(e);
+                }
+                if ((bits & AndroidNPC.CHANGED_INTERACTING) != 0) bus.post(new net.runelite.api.events.InteractingChanged(a, a.getInteracting()));
+                if ((bits & AndroidNPC.CHANGED_OVERHEAD) != 0) bus.post(new net.runelite.api.events.OverheadTextChanged(a, a.getOverheadText()));
+            } catch (Throwable t) {
+                Log.e(TAG, "actor event failed", t);
+            }
+        }
+    }
     static AndroidPlayer player(int index) { return playerCache.get(index); }
     /** RuneLite's interacting encoding: NPC index, or player index + 32768; -1 = none. */
     static net.runelite.api.Actor actor(int encoded) {
@@ -162,6 +188,7 @@ public final class Host {
         switch (type) {
             case CLIENT_TICK:
                 bus.post(clientTick);
+                postActorChanges(bus);
                 runQueued();
                 Sidebar.onCycle();
                 try {

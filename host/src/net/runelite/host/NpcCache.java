@@ -12,6 +12,16 @@ final class NpcCache {
     private volatile List<AndroidNPC> list = Collections.emptyList();
     private int refreshedCycle = Integer.MIN_VALUE;
 
+    /** {actor, CHANGED_* bits} since the last drain, for Host's AnimationChanged etc. */
+    final List<Object[]> changes = new ArrayList<>();
+
+    synchronized List<Object[]> drainChanges() {
+        refresh();
+        List<Object[]> out = new ArrayList<>(changes);
+        changes.clear();
+        return out;
+    }
+
     synchronized void refresh() {
         int cycle = Native.gameCycle();
         if (cycle == refreshedCycle) return;
@@ -33,7 +43,9 @@ final class NpcCache {
             npc.localY = packed[i * S + 3];
             npc.worldX = packed[i * S + 4];
             npc.worldY = packed[i * S + 5];
-            npc.actor(packed, i * S + 6, overheads[i]);
+            boolean known = byIndex.get(index) == npc;
+            int changed = npc.actor(packed, i * S + 6, overheads[i]);
+            if (known && changed != 0) changes.add(new Object[] {npc, changed});
             seen.put(index, npc);
             next.add(npc);
         }

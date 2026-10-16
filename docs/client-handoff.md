@@ -71,6 +71,18 @@ session; its notes are in `docs/android-protocol.md`.
   (QH ObjectStep), item highlights on the ground, QH's arrow over the NPC after the extended-
   settings fix. Next: Sheep Shearer (object highlights, item counts), then sidebar text input,
   minimap geometry, dialogue-option highlights (widget dynamic children).
+- **2026-10-15 (client dev gen 3; hashes are post-rewrite)**: verified on device with 5123432:
+  Fred the Farmer gets QH's highlight and (blinking) arrow; no NpcStep NPE after `::tele`;
+  Sheep Shearer starts through Fred's dialogue; shearing works; QH's ground-item highlight
+  (shears) and `Take` advance the steps. 9874572: `Widget.setTextColor` writes Widget +0x98
+  (QH dialogue-option highlight, verified). 9453adc: sidebar text input (Android dialog;
+  QH search verified) and a GenHeadless fix (PlainDocument no longer shadows
+  AbstractDocument's listener list). be4b788: top-level world view id is 0 (API TOPLEVEL),
+  minimap locations via 601:34, player hulls/defaults. 82144c4 + next: actor animation/
+  orientation/interacting/overhead text from static RE, AnimationChanged/InteractingChanged/
+  OverheadTextChanged, ground-item menu entries, scene overlays clipped out of 601:50/36/111.
+  A 16-tile hull offset seen once after `::tele` did not reproduce (camera and WorldView frames
+  checked equal with `setprop debug.osrsrl.camlog 1`).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

@@ -13,6 +13,16 @@ final class PlayerCache {
     private volatile AndroidPlayer local;
     private int refreshedCycle = Integer.MIN_VALUE;
 
+    /** {actor, CHANGED_* bits} since the last drain, for Host's AnimationChanged etc. */
+    final List<Object[]> changes = new ArrayList<>();
+
+    synchronized List<Object[]> drainChanges() {
+        refresh();
+        List<Object[]> out = new ArrayList<>(changes);
+        changes.clear();
+        return out;
+    }
+
     synchronized void refresh() {
         int cycle = Native.gameCycle();
         if (cycle == refreshedCycle) return;
@@ -35,7 +45,9 @@ final class PlayerCache {
             p.worldX = packed[i * S + 4];
             p.worldY = packed[i * S + 5];
             if (packed[i * S + 1] != 0) me = p;
-            p.actor(packed, i * S + 6, overheads[i]);
+            boolean known = byIndex.get(index) == p;
+            int changed = p.actor(packed, i * S + 6, overheads[i]);
+            if (known && changed != 0) changes.add(new Object[] {p, changed});
             seen.put(index, p);
             next.add(p);
         }

@@ -134,7 +134,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 71 | SYNTH_SOUND | as desktop (FUN_005ae508(id, loops, delay)) |
 | 73 | CAM_ROTATETO | as desktop (absolute yaw/pitch) |
 | 74 | MIDI_SONG_WITHSECONDARY | fadeInSpeed `p2Alt3`, primaryId `p2Alt1`, secondaryId `p2`, fadeInDelay `p2Alt3`, fadeOutDelay `p2`, fadeOutSpeed `p2` |
-| 76 | PROJANIM_SPECIFIC_V4 | recognised, no codec |
+| 76 | PROJANIM_SPECIFIC_V4 | sourceIndex `p3Alt2`, progress `p2`, startHeight `p2`, targetIndex `p3Alt3`, startTime `p2Alt3`, end `p4Alt1`, start `p4Alt3`, angle `p1`, id `p2Alt1` (0xffff = none), endTime `p2Alt2`, endHeight `p2Alt3` (byte orders read; roles of the 2-byte fields, the indices and the coords by the order of the struct the case fills, unverified; test `::proj id [dx]`) |
 | 78 | CHAT_FILTER_SETTINGS | publicChatFilter `p1Alt1`, tradeChatFilter `p1Alt3` |
 | 80 | MIDI_JINGLE | lengthInMillis `p3Alt1`, id `p2Alt3` |
 | 82 | HISCORE_REPLY | recognised, no codec |
@@ -179,7 +179,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 129 | CAM_MOVETO_ARC_V3 | destinationX `p2Alt3`, centerX `p2`, centerZ `p2Alt1`, destinationZ `p2Alt3`, if (ignoreTerrain) 1 else 0 `p1Alt2`, easing.id `p1Alt2`, cycles `p2Alt2`, height `p2`, if (heightRelative) 1 else 0 `p1Alt1` |
 | 130 | IF_SETMODEL_V2 | model `p4Alt1`, combinedId `pCombinedIdAlt1` |
 | 131 | CAM_LOOKAT_V3 | x `p2Alt1`, rate2 `p1`, height `p2`, z `p2Alt1`, rate `p1Alt3`, if (heightRelative) 1 else 0 `p1` |
-| 132 | OBJ_CUSTOMISE_SPECIFIC_V2 | recognised, no codec |
+| 132 | OBJ_CUSTOMISE_SPECIFIC_V2 | see notes |
 | 133 | CAM_MOVETO_CYCLES_V3 | easing.id `p1Alt3`, x `p2`, cycles `p2`, z `p2`, if (ignoreTerrain) 1 else 0 `p1`, if (heightRelative) 1 else 0 `p1`, height `p2` |
 | 134 | GROUP_VAR_INT (unverified) | as desktop (shared handler FUN_006871e0) |
 | 135 | OBJUNLOCK_RESET | as desktop (frees the obj-unlock array) |
@@ -214,7 +214,9 @@ Notes:
   (skipped), then the desktop region bits (parser 0x6580e4). Not implemented.
 - 132 OBJ_CUSTOMISE_SPECIFIC_V2: id `p2`, recol count `p1`, (index `p1Alt1`, value `p2Alt3`)*,
   colour flag `p1Alt3` [+ colour `p2Alt2`], model `p2Alt3`, retex count `p1`, (index `p1Alt1`,
-  value `p2`)*, coord `p4`, quantity `p4`. Not implemented.
+  value `p2`)*, coord `p4`, quantity `p4`. The colour flag is present when the raw byte is 0x7f
+  (p1Alt3 of 1). Recolour vs retexture: the lists go to the same vectors as case 12's recol/retex.
+  Encoder `AndroidObjCustomiseSpecificV2Encoder` (not tested on device).
 - NPC vs player lookups: FUN_00685094 resolves NPCs (5, 37, 91), FUN_00684e20 players (98).
 
 ## Zone packets

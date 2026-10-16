@@ -1303,10 +1303,10 @@ index 00000000..0fc21777
 +    )
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
 new file mode 100644
-index 00000000..9df7bd9d
+index 00000000..51a37a12
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
-@@ -0,0 +1,888 @@
+@@ -0,0 +1,952 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2195,6 +2195,70 @@ index 00000000..9df7bd9d
 +/** Case 143: coord p4 BE, -1 = no flag (as desktop). */
 +public fun androidSetMapFlagV2Encoder(): MessageEncoder<net.rsprot.protocol.game.outgoing.misc.player.SetMapFlagV2> =
 +    AndroidDelegatingEncoder(AndroidGameServerProt.SET_MAP_FLAG_V2, net.rsprot.protocol.game.outgoing.codec.misc.player.SetMapFlagV2Encoder())
++
++/**
++ * Case 132: id p2, recol count p1, (index p1Alt1, value p2Alt3)*, colour flag p1Alt3 (raw 0x7f =
++ * present) [+ colour p2Alt2], model p2Alt3, retex count p1, (index p1Alt1, value p2)*, coord p4,
++ * quantity p4. Recolour vs retexture lists: same destination vectors as case 12 (V1).
++ */
++public class AndroidObjCustomiseSpecificV2Encoder :
++    MessageEncoder<net.rsprot.protocol.game.outgoing.specific.ObjCustomiseSpecificV2> {
++    override val prot: ServerProt = AndroidGameServerProt.OBJ_CUSTOMISE_SPECIFIC_V2
++
++    override fun encode(
++        streamCipher: StreamCipher,
++        buffer: JagByteBuf,
++        message: net.rsprot.protocol.game.outgoing.specific.ObjCustomiseSpecificV2,
++    ) {
++        buffer.p2(message.id)
++        buffer.p1(message.recolours.size)
++        for ((index, value) in message.recolours) {
++            buffer.p1Alt1(index)
++            buffer.p2Alt3(value)
++        }
++        val colour = message.colour
++        buffer.p1Alt3(if (colour != null) 1 else 0)
++        if (colour != null) buffer.p2Alt2(colour)
++        buffer.p2Alt3(message.model)
++        buffer.p1(message.retextures.size)
++        for ((index, value) in message.retextures) {
++            buffer.p1Alt1(index)
++            buffer.p2(value)
++        }
++        buffer.p4(message.coordGrid.packed)
++        buffer.p4(message.quantity)
++    }
++}
++
++/**
++ * Case 76 (27 bytes): sourceIndex p3Alt2, progress p2, startHeight p2, targetIndex p3Alt3,
++ * startTime p2Alt3, end p4Alt1, start p4Alt3, angle p1, id p2Alt1 (0xffff = none), endTime p2Alt2,
++ * endHeight p2Alt3. Byte orders read from the case; field roles from the order of the struct it
++ * fills (start coord, startHeight, sourceIndex, end coord, endHeight, targetIndex, startTime,
++ * endTime, angle, progress, id), as for zone MAP_PROJANIM_V2: unverified until seen on device.
++ */
++public class AndroidProjAnimSpecificV4Encoder :
++    MessageEncoder<net.rsprot.protocol.game.outgoing.specific.ProjAnimSpecificV4> {
++    override val prot: ServerProt = AndroidGameServerProt.PROJANIM_SPECIFIC_V4
++
++    override fun encode(
++        streamCipher: StreamCipher,
++        buffer: JagByteBuf,
++        message: net.rsprot.protocol.game.outgoing.specific.ProjAnimSpecificV4,
++    ) {
++        buffer.p3Alt2(message.sourceIndex)
++        buffer.p2(message.progress)
++        buffer.p2(message.startHeight)
++        buffer.p3Alt3(message.targetIndex)
++        buffer.p2Alt3(message.startTime)
++        buffer.p4Alt1(message.end.packed)
++        buffer.p4Alt3(message.start.packed)
++        buffer.p1(message.angle)
++        buffer.p2Alt1(message.id)
++        buffer.p2Alt2(message.endTime)
++        buffer.p2Alt3(message.endHeight)
++    }
++}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt
 new file mode 100644
 index 00000000..d083e608
@@ -2636,10 +2700,10 @@ index 00000000..b1436285
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..c80ad706
+index 00000000..56f5bd3f
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,235 @@
+@@ -0,0 +1,237 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2760,6 +2824,8 @@ index 00000000..c80ad706
 +            bind(androidSiteSettingsEncoder())
 +            bind(androidIfResyncV2Encoder())
 +            bind(androidSetMapFlagV2Encoder())
++            bind(AndroidObjCustomiseSpecificV2Encoder())
++            bind(AndroidProjAnimSpecificV4Encoder())
 +            bind(AndroidNpcSpotAnimSpecificEncoder())
 +            bind(AndroidIfSetPositionEncoder())
 +            bind(AndroidIfClearInvEncoder())

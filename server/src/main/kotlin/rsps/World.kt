@@ -35,6 +35,8 @@ import net.rsprot.protocol.game.outgoing.misc.client.HideNpcOps
 import net.rsprot.protocol.game.outgoing.misc.client.HideObjOps
 import net.rsprot.protocol.game.outgoing.misc.client.ServerTickEnd
 import net.rsprot.protocol.game.outgoing.misc.player.SetMapFlagV2
+import net.rsprot.protocol.game.outgoing.specific.ProjAnimSpecificV4
+import net.rsprot.protocol.internal.game.outgoing.info.CoordGrid
 import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
 import net.rsprot.protocol.game.outgoing.misc.player.RunClientScript
 import net.rsprot.protocol.game.outgoing.misc.player.UpdateRunEnergy
@@ -791,6 +793,15 @@ class World(
                 }
                 player.hitpoints = levelForXp(player.experience[HITPOINTS])
                 sendStat(player, HITPOINTS)
+            }
+            "proj" -> {
+                // PROJANIM_SPECIFIC_V4 (Android 76) test: ::proj id [dx]. Starts high (160) at your tile, lands on the
+                // ground (0) dx tiles east after 90 cycles; a wrong height/time role shows as a rising or missing projectile.
+                val id = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::proj spotanim [dx]")
+                val dx = args.getOrNull(2)?.toIntOrNull() ?: 5
+                val c = player.coord
+                player.send(ProjAnimSpecificV4(id, 160, 0, 0, 90, 16, 0, CoordGrid(c.level, c.x, c.z), 0,
+                    CoordGrid(c.level, c.x + dx, c.z), 0))
             }
             "flag" -> {
                 // SET_MAP_FLAG_V2 (Android 143): ::flag x z shows the minimap flag there, ::flag clears it.

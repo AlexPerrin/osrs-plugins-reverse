@@ -21,7 +21,47 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
-## Latest state (2026-10-16, third server dev; new hashes after the authorship rewrite)
+## Latest state (2026-10-16 evening, fourth server dev, on OpenRune)
+
+The switch is done: the default server is OpenRune (`openrune/`, osrs-openrune on 43594, sidecar on
+8080). Protocol work stays in `server/rsprot.patch`. Metric at the end of the session: mapped
+241/253, verified 226/253, implemented 226/253.
+
+Done this session:
+- **Clan/group bodies verified** (f993c6a): the client's own parsers for 19/84/87/88 and
+  134/138/140/141 were compared field by field with RSProt's desktop encoders, and all match
+  (details in `docs/android-protocol.md`). The four clan encoders are bound.
+- **NPC "invisible spawn"** is not a protocol bug. `::npc` spawns on the player's tile, and the NPC
+  hides inside the player model. On a long-press it is already in the menu. NPC info tests:
+  `NpcInfoViewEdgeTest` (RSProt desktop tests). The spawn-clock A/B was reverted.
+- **Quest-pack CS2 crash fixed** (c391951): OpenRune's packer gave added clientscript groups zero
+  sizes in the reference table. `openrune.sh build` runs `scripts/fix_reftable.py` and
+  `add_varcs.py`, and only the spawn pack's scripts stay out. Verified on the device. The quest
+  tab filter itself was not looked at yet.
+- **Bankers** (00127f7): every Banker type gets `content.banker`, so Bank/Collect/Talk-to work
+  across the booth (was "I can't reach that!"). Not yet deployed or device-checked when written.
+- **URL_OPEN 24**: an encoder is bound (`::url`). A live `::url` dropped the app to the login screen.
+  The client reads exactly one string and calls `ApplicationContext.openBrowser`/
+  `openOverlaidBrowser`, so the drop is probably the app pausing for the browser. Still tagged.
+
+Tooling from this session (scratch, not in the repo, easy to redo):
+- CS2 decoder: trailer of 16 bytes (int/string/long locals and args), name string first;
+- headless jshell against `openrune/src/server/app/build/install/app/lib` (mount it somewhere other
+  than `/lib`), e.g. `ServerCacheManager.INSTANCE.init(241)` from `/w` = `openrune/src` to read
+  server NPC types, or `AndroidGameMessageEncoderRepository.INSTANCE.build(new
+  BlockingHuffmanCodecProvider())` to check that the encoder bindings load;
+- RSProt tests in Docker as root (server/rsprot build dirs are root-owned): `docker run --rm -e
+  GRADLE_USER_HOME=/cache -v openrune-gradle8:/cache -v $PWD/rsprot:/src -w /src gradle:8.14.3-jdk21
+  gradle --no-daemon -q :protocol:osrs-241:osrs-241-desktop:test --tests '*NpcInfo*'`, then chown
+  the volume back to 1000;
+- building a test cache without touching the deployed one: copy `openrune/src` to a scratch dir and
+  run `./gradlew :or-cache:buildCache` there (the Docker image copies `src/.data` at deploy).
+
+Remaining unverified: S→C 0 heatmap, 11 privatechat filter, 24 URL_OPEN, 120 IF_SETROTATESPEED (x/y
+order; component +0x134 = second short | first short << 16), 123 MIDI_SWAP, 148 CAM_SKYBOX; C→S
+8, 20, 28, 45, 46, 50, 57, 69, 84. GROUP_FULL caveat: the client has a third (scope-2) group var list.
+
+## Earlier state (2026-10-16, third server dev; new hashes after the authorship rewrite)
 
 Container runs ac31a14 (deployed 23:34 local); 39e7f91 after it is tags/docs only. Metric
 (`tools/progress.py --working`; revert its output files, they belong to the orchestrator): mapped

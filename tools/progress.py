@@ -45,9 +45,15 @@ def enum_entries(src):
     return re.findall(r"^\s+([A-Z][A-Z0-9_]*)\((\d+),", src, re.M)
 
 
+def unverified_entries(src):
+    """Enum entries tagged `// unverified: <reason>` (identity or layout not read from the client)."""
+    return re.findall(r"^\s+([A-Z][A-Z0-9_]*)\((\d+),.*// unverified", src, re.M)
+
+
 def protocol():
-    s2c = enum_entries(read(os.path.join(ANDROID, "AndroidGameServerProt.kt")))
-    c2s = enum_entries(read(os.path.join(ANDROID, "AndroidGameClientProt.kt")))
+    s2c_src = read(os.path.join(ANDROID, "AndroidGameServerProt.kt"))
+    c2s_src = read(os.path.join(ANDROID, "AndroidGameClientProt.kt"))
+    s2c, c2s = enum_entries(s2c_src), enum_entries(c2s_src)
     c2s_named = [n for n, _ in c2s if not re.fullmatch(r"OP_\d+", n)]
     repo = read(os.path.join(ANDROID, "AndroidRepositories.kt"))
     enc, dec = repo.split("object AndroidGameMessageDecoderRepository")[:2]
@@ -61,6 +67,7 @@ def protocol():
         c2s_impl += len(re.findall(r"Triple\(", body.group(1))) if body else 0
     return {
         "s2c_ident": len(s2c), "s2c_impl": s2c_impl,
+        "unverified": len(unverified_entries(s2c_src)) + len(unverified_entries(c2s_src)),
         "c2s_ident": len(c2s_named), "c2s_impl": c2s_impl,
         "s2c_unknown": sorted(set(range(S2C_TOTAL)) - {int(o) for _, o in s2c}),
         "c2s_unknown": [int(o) for n, o in c2s if re.fullmatch(r"OP_\d+", n)],
@@ -181,7 +188,7 @@ def write_svg(path, p, z_done, rows):
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} 470" width="{W}" height="470">',
            f'<rect x="0" y="0" width="{W}" height="470" fill="{BG}"/>',
            heading(f"Mobile packets: {pct(ident, total):.2f}% mapped ({ident}/{total}), "
-                   f"{pct(impl, total):.2f}% implemented ({impl})", 21)]
+                   f"{pct(impl, total):.2f}% implemented ({impl}); {p['unverified']} mapped entries unverified", 21)]
     out += svg_section(packets, 1, 31, W - 2, 150)
     out.append(heading(f"RuneLite API*: {pct(api_done, api_total):.2f}% ({api_done}/{api_total})", 210))
     out += svg_section(api_groups, 1, 220, W - 2, 230)
@@ -230,6 +237,8 @@ def main():
 
     head = [
         ("Mobile packets mapped", ident, total, "named opcodes, both directions, of the client's size tables"),
+        ("Mobile packets mapped, verified", ident - p["unverified"], total,
+         "mapped minus entries tagged `// unverified` (identity/layout not read from the client code)"),
         ("Mobile packets implemented", impl, total, "opcodes with an Android codec bound on the server"),
         ("Server→client mapped", p["s2c_ident"], S2C_TOTAL, "AndroidGameServerProt"),
         ("Client→server mapped", p["c2s_ident"], C2S_TOTAL, "AndroidGameClientProt (not OP_n)"),
@@ -270,7 +279,7 @@ def main():
         text = read(readme)
         badges = " ".join(
             f"![{n}](https://img.shields.io/badge/{n.replace(' ', '%20').replace('→', '%E2%86%92')}-{pct(a, b):.1f}%25-blue)"
-            for n, a, b, _ in head[:2] + head[5:])
+            for n, a, b, _ in (head[0], head[2], head[6]))
         block = (f"<!-- progress:start -->\n{badges}\n\n[![Progress map](docs/progress.svg)](docs/progress.md)\n\n"
                  + "\n".join(f"- **{n}**: {a}/{b} ({pct(a, b):.1f}%)" for n, a, b, _ in head)
                  + "\n\n\\* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the"

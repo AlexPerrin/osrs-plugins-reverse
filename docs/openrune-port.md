@@ -22,7 +22,7 @@ Staged port of our Android test server onto OpenRune-Server, approved 2026-10-16
 | 2 | Device checklist | done except Quest Helper's overlay steps and weight, which need the client dev |
 | 3.1 | Sheep Shearer, Romeo & Juliet on OpenRune's quest framework | done (14d4034); headless tests pass |
 | 3.2 | Test commands | done (`::quest` also takes ids, per-quest start stage) |
-| 3.3 | Device runs with Quest Helper | Sheep Shearer done (spinning wheel open), R&J open |
+| 3.3 | Device runs with Quest Helper | done: all three quests pass with QH (slot 3, after the client fix d67379a) |
 | 3.4 | Switch preparation | ready (1cf7727), not flipped: see "The switch" |
 
 ## Phase 1 findings
@@ -250,7 +250,7 @@ The run stopped there because QH did not follow live stage changes. The server h
 (`::quest`, `::getvarp`; `::varp 144 10` changed nothing either), but QH kept "Talk to Romeo"
 until a relog. The same thing kept the Sheep Shearer overlay open after completion. OpenRune
 sends varps like our server does (rsprot VarpSmall/VarpLarge, Android encoders bound), so this
-went to the client dev first.
+went to the client dev.
 
 Also found:
 - **Two Juliets:** OpenRune spawned the plain `juliet` (5035) and the multinpc
@@ -259,6 +259,27 @@ Also found:
 - **QH outlines** sit on another tile than the NPC model (Romeo, sheep), and for Juliet on the
   player's tile. Every other quest NPC spawns once, so this is not a duplicate. Client-side
   candidate: the coordinate base (OpenRune's build area origin, see `::mypos`).
+
+The cause was on the client side: the host's varp diff stopped at 1 << 16, and OpenRune's cache
+defines 65660 varps. Fixed in d67379a.
+
+**Slot 3 (03:13-03:26), app built from master.**
+- QH followed R&J live through every stage:
+
+| Stage | What QH showed | Result |
+|---|---|---|
+| 20 | "Bring the letter to Romeo..." (1 x Message) | Romeo takes the message |
+| 30 | "Talk to Father Lawrence in north east Varrock." | Lawrence's sermon dialogue |
+| 40 | "Bring the cadava berries to the Apothecary in south west Varrock" | Apothecary: "[2] Talk about something else." highlighted, then "Talk about Romeo & Juliet." first in the next menu; with berries he gives the potion |
+| 50 | "Bring the potion to Juliet..." (1 x Cadava potion) | one Juliet on the balcony takes the potion |
+| 60 | "Talk to Romeo in Varrock Square to finish the quest." | Romeo's crypt scene, quest complete: QH overlay closes, R&J = 100, QP 2 -> 7 |
+
+- **Spin** on the castle wheel (3209,3212,1) opens make-x 270 on mobile ("How many would you like to
+  spin?", 1 / X / All). "All" turns 5 wool into 5 balls (2.5 XP each).
+- **Middle castle staircase:** "Climb up or down the stairs?" / "Climb up the stairs." / "Climb down
+  the stairs."; down lands at 3206,3208,0.
+- **CS2 varc test:** the first try hung at "Loading config 1%", because `add_varcs.py` omitted the
+  2-byte group version trailer (fixed in 779c96b). Not retested yet; the clean cache is deployed.
 
 ### 3.4 The switch (prepared, not flipped)
 

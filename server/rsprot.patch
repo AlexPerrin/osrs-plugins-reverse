@@ -922,10 +922,10 @@ index 00000000..13fd7bb7
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt
 new file mode 100644
-index 00000000..a6250dab
+index 00000000..dfd2c282
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt
-@@ -0,0 +1,64 @@
+@@ -0,0 +1,69 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.bitbuffer.BitBuf
@@ -956,7 +956,11 @@ index 00000000..a6250dab
 +        bitBuffer.pBits(numOfBitsUsed, deltaX and maximumDistanceTransmittableByBits)
 +        bitBuffer.pBits(numOfBitsUsed, deltaZ and maximumDistanceTransmittableByBits)
 +
-+        if (details.spawnCycle != 0) {
++        // Test (2026-10-16): the client keys new NPCs by (spawn clock << 32 | type << 16 | index)
++        // (FUN_005b0854, FUN_006492b0) when sorting them into render lists, and runtime spawns,
++        // the only adds with a non-zero clock, stay invisible on the app until the player moves.
++        // Android adds leave the clock out unless -Drsprot.android.npcSpawnClock=true.
++        if (SEND_SPAWN_CLOCK && details.spawnCycle != 0) {
 +            bitBuffer.pBits(1, 1)
 +            val cycle = details.spawnCycle
 +            val index =
@@ -984,6 +988,7 @@ index 00000000..a6250dab
 +    }
 +
 +    private companion object {
++        private val SEND_SPAWN_CLOCK = System.getProperty("rsprot.android.npcSpawnClock") == "true"
 +        private val spawnClockBitcodes = intArrayOf(18, 19, 20, 32)
 +        private val spawnClockMaxValues = spawnClockBitcodes.map { (1L shl it) - 1 }.toLongArray()
 +        private val typeBitcodes = intArrayOf(12, 14, 17, 24)
@@ -4001,6 +4006,116 @@ index d4b5ff15..0b7750ae 100644
          ),
      )
  }
+diff --git a/protocol/osrs-241/osrs-241-desktop/src/test/kotlin/net/rsprot/protocol/game/outgoing/info/NpcInfoViewEdgeTest.kt b/protocol/osrs-241/osrs-241-desktop/src/test/kotlin/net/rsprot/protocol/game/outgoing/info/NpcInfoViewEdgeTest.kt
+new file mode 100644
+index 00000000..b4e15043
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-desktop/src/test/kotlin/net/rsprot/protocol/game/outgoing/info/NpcInfoViewEdgeTest.kt
+@@ -0,0 +1,104 @@
++package net.rsprot.protocol.game.outgoing.info
++
++import io.netty.buffer.ByteBuf
++import net.rsprot.protocol.common.client.OldSchoolClientType
++import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcAvatar
++import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcAvatarFactory
++import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcInfo
++import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcInfoLargeV6
++import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcInfoSmallV6
++import net.rsprot.protocol.internal.game.outgoing.info.CoordGrid
++import net.rsprot.protocol.internal.game.outgoing.info.util.ZoneIndexStorage
++import org.junit.jupiter.api.BeforeEach
++import org.junit.jupiter.api.Test
++import kotlin.test.assertEquals
++
++/**
++ * NPCs added at the edge of the view distance (15 tiles) must stay in high resolution on the next
++ * tick: the Android client showed a count one lower than its list right after such an add.
++ */
++class NpcInfoViewEdgeTest {
++    private lateinit var infoProtocols: InfoProtocols
++    private lateinit var client: NpcInfoClient
++    private lateinit var npcInfo: NpcInfo
++    private lateinit var factory: NpcAvatarFactory
++    private lateinit var infos: Infos
++    private val player = CoordGrid(0, 3207, 3207)
++
++    @BeforeEach
++    fun initialize() {
++        client = NpcInfoClient()
++        val storage = ZoneIndexStorage(ZoneIndexStorage.NPC_CAPACITY)
++        factory = generateNpcAvatarFactory(storage)
++        infoProtocols = generateInfoProtocols(factory, storage)
++        infos = infoProtocols.alloc(500, OldSchoolClientType.DESKTOP)
++        npcInfo = infos.npcInfo
++    }
++
++    private fun tick() {
++        infos.updateRootCoord(player.level, player.x, player.z)
++        infos.updateRootBuildAreaCenteredOnPlayer(player.x, player.z)
++        infoProtocols.npcInfoProtocol.update()
++        val packet = npcInfo.internalPacketResult(NpcInfo.ROOT_WORLD).getOrNull()!!
++        packet.markConsumed()
++        val buffer: ByteBuf =
++            when (packet) {
++                is NpcInfoSmallV6 -> packet.content()
++                is NpcInfoLargeV6 -> packet.content()
++                else -> error("unknown packet $packet")
++            }
++        client.decode(buffer, false, player)
++    }
++
++    private fun spawn(
++        index: Int,
++        dx: Int,
++        dz: Int,
++    ): NpcAvatar = factory.alloc(index, 3028, player.level, player.x + dx, player.z + dz)
++
++    private fun serverCount(): Int = npcInfo.getHighResolutionIndices(NpcInfo.ROOT_WORLD).size
++
++    @Test
++    fun `npc at distance 15 stays after the add`() {
++        spawn(1, 0, 15)
++        tick()
++        assertEquals(1, client.npcSlotCount)
++        repeat(3) {
++            tick()
++            assertEquals(1, client.npcSlotCount, "client list after tick ${it + 2}")
++            assertEquals(1, serverCount())
++        }
++    }
++
++    @Test
++    fun `npc spawned at runtime at distance 15 stays`() {
++        for (i in 0..<27) spawn(10 + i, i % 10 - 5, i / 10 - 1)
++        tick()
++        assertEquals(27, client.npcSlotCount)
++        spawn(19538, 0, 15)
++        tick()
++        assertEquals(28, client.npcSlotCount)
++        repeat(3) {
++            tick()
++            assertEquals(28, client.npcSlotCount, "client list after tick ${it + 3}")
++            assertEquals(28, serverCount())
++        }
++    }
++
++    @Test
++    fun `add at distance 15 with a removal in the same tick`() {
++        val gone = spawn(5, 1, 1)
++        for (i in 0..<5) spawn(10 + i, i, -2)
++        tick()
++        assertEquals(6, client.npcSlotCount)
++        factory.release(gone)
++        spawn(19538, -15, 15)
++        tick()
++        assertEquals(6, client.npcSlotCount)
++        repeat(3) {
++            tick()
++            assertEquals(6, client.npcSlotCount, "client list after tick ${it + 3}")
++            assertEquals(6, serverCount())
++        }
++    }
++}
 diff --git a/protocol/osrs-241/osrs-241-shared/src/main/kotlin/net/rsprot/protocol/common/loginprot/incoming/codec/GameLoginDecoder.kt b/protocol/osrs-241/osrs-241-shared/src/main/kotlin/net/rsprot/protocol/common/loginprot/incoming/codec/GameLoginDecoder.kt
 index 52030dc7..e6a8e59b 100644
 --- a/protocol/osrs-241/osrs-241-shared/src/main/kotlin/net/rsprot/protocol/common/loginprot/incoming/codec/GameLoginDecoder.kt

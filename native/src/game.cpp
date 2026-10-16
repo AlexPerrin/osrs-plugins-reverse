@@ -625,6 +625,75 @@ bool widget_set_text(uintptr_t w, const std::string& text) {
     return true;
 }
 
+namespace {
+// The {ctrl, Widget*} slot holding a component (group table) or a CC_CREATE child (+0xb58 array).
+uintptr_t widget_slot(int component, int index) {
+    uintptr_t c = client();
+    if (!c || component < 0) return 0;
+    auto im = read_at<uintptr_t>(c + g_build->f_interfaces);
+    if (!im) return 0;
+    uint64_t group = static_cast<uint32_t>(component) >> 16, child = component & 0xffff;
+    if (group >= read_at<uint64_t>(im + 0x6888)) return 0;
+    uintptr_t g = read_at<uintptr_t>(im + 0x6890) + group * 0x18;
+    if (child >= read_at<uint64_t>(g + 8)) return 0;
+    auto slots = read_at<uintptr_t>(g + 0x10);
+    if (!slots) return 0;
+    uintptr_t slot = slots + child * 0x10;
+    if (index < 0) return read_at<uintptr_t>(slot + 8) ? slot : 0;
+    uintptr_t w = read_at<uintptr_t>(slot + 8);
+    if (!w || index >= widget_dynamic_count(w)) return 0;
+    slot = read_at<uintptr_t>(w + 0xb58) + static_cast<size_t>(index) * 0x10;
+    return read_at<uintptr_t>(slot + 8) ? slot : 0;
+}
+}  // namespace
+
+// Writable int fields (CC_SET* handlers, docs/offsets.md): a whitelist so a bad offset can't be written.
+bool widget_set_field(int component, int index, uint32_t off, int value) {
+    static constexpr struct { uint32_t off; bool byte; } kFields[] = {
+        {0x3c}, {0x40}, {0x44}, {0x48}, {0x4c}, {0x50}, {0x54}, {0x58},  // modes, original x/y/w/h
+        {0xa8, true}, {0xb0}, {0xc8}, {0xec, true}, {0xf0}, {0xf4}, {0xf8, true}, {0xf9, true},
+        {0x150}, {0x18c}, {0x190}, {0x194, true}, {0xb98, true}, {0xb99, true}};
+    uintptr_t slot = widget_slot(component, index);
+    uintptr_t w = slot ? read_at<uintptr_t>(slot + 8) : 0;
+    if (!w) return false;
+    for (const auto& f : kFields) {
+        if (f.off != off) continue;
+        if (f.byte) *reinterpret_cast<volatile uint8_t*>(w + off) = value != 0;
+        else *reinterpret_cast<volatile int32_t*>(w + off) = value;
+        uintptr_t c = client();
+        if (read_at<int32_t>(w + 0xb78) == read_at<int32_t>(c + 0x4132bc)) {
+            int area = read_at<int32_t>(w + 0xb74);
+            if (area >= 0 && area < 0x400) *reinterpret_cast<volatile uint8_t*>(c + 0x4132c0 + area) = 1;
+        }
+        return true;
+    }
+    return false;
+}
+
+// What CC_SETPOSITION/CC_SETSIZE run after storing (0x4e06dc ops 1000/1001): 0x44a788(client, slot),
+// 0x45e304(client, slot), then for layers (type 0) 0x45ebf4(client, children, slot, 0) with the
+// children container from 0x5d38c4(im, group) (static) or the parent's +0xb48 (CC_CREATE child).
+bool widget_revalidate(int component, int index) {
+    uintptr_t c = client();
+    uintptr_t slot = widget_slot(component, index);
+    uintptr_t w = slot ? read_at<uintptr_t>(slot + 8) : 0;
+    if (!c || !w) return false;
+    reinterpret_cast<void (*)(uintptr_t, uintptr_t)>(g_base + 0x44a788)(c, slot);
+    reinterpret_cast<void (*)(uintptr_t, uintptr_t)>(g_base + 0x45e304)(c, slot);
+    uintptr_t im = reinterpret_cast<uintptr_t (*)(uintptr_t)>(g_base + 0x459be8)(c);
+    if (read_at<int32_t>(w + 0x28) == 0 && im) {
+        uintptr_t children;
+        if (read_at<int32_t>(w + 8) == -1) {
+            children = reinterpret_cast<uintptr_t (*)(uintptr_t, long)>(g_base + 0x5d38c4)(im, read_at<int16_t>(w + 6));
+        } else {
+            uintptr_t parent = reinterpret_cast<uintptr_t (*)(uintptr_t, int)>(g_base + 0x5d1ad8)(im, read_at<int32_t>(w + 0x74));
+            children = parent ? read_at<uintptr_t>(parent + 8) + 0xb48 : 0;
+        }
+        if (children) reinterpret_cast<void (*)(uintptr_t, uintptr_t, uintptr_t, int)>(g_base + 0x45ebf4)(c, children, slot, 0);
+    }
+    return true;
+}
+
 uintptr_t widget(int component) {
     uintptr_t c = client();
     if (!c || component < 0) return 0;

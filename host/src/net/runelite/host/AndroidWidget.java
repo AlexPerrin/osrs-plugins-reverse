@@ -41,6 +41,32 @@ public class AndroidWidget extends WidgetBag {
     @Override public Widget setHidden(boolean hidden) { Native.widgetSetHidden(id, childIndex(), hidden); return this; }
     @Override public Widget setText(String text) { Native.widgetSetText(id, childIndex(), text); return this; }
     @Override public Widget setTextColor(int rgb) { Native.widgetSetColor(id, childIndex(), rgb); return this; }
+    // Field setters written into the game widget (CC_SET* offsets, docs/offsets.md); revalidate()
+    // re-runs the game's layout as CC_SETPOSITION/CC_SETSIZE do.
+    private Widget set(int offset, int value) { Native.widgetSetField(id, childIndex(), offset, value); return this; }
+    @Override public Widget setXPositionMode(int v) { return set(0x3c, v); }
+    @Override public Widget setYPositionMode(int v) { return set(0x40, v); }
+    @Override public Widget setWidthMode(int v) { return set(0x44, v); }
+    @Override public Widget setHeightMode(int v) { return set(0x48, v); }
+    @Override public Widget setOriginalX(int v) { return set(0x4c, v); }
+    @Override public Widget setOriginalY(int v) { return set(0x50, v); }
+    @Override public Widget setOriginalWidth(int v) { return set(0x54, v); }
+    @Override public Widget setOriginalHeight(int v) { return set(0x58, v); }
+    @Override public Widget setFilled(boolean v) { return set(0xa8, v ? 1 : 0); }
+    @Override public Widget setOpacity(int v) { return set(0xb0, v); }
+    @Override public Widget setSpriteId(int v) { return set(0xc8, v); }
+    @Override public Widget setSpriteTiling(boolean v) { return set(0xec, v ? 1 : 0); }
+    @Override public void setBorderType(int v) { set(0xf0, v); }
+    @Override public void setFlippedVertically(boolean v) { set(0xf8, v ? 1 : 0); }
+    @Override public void setFlippedHorizontally(boolean v) { set(0xf9, v ? 1 : 0); }
+    @Override public Widget setFontId(int v) { return set(0x150, v); }
+    @Override public Widget setXTextAlignment(int v) { return set(0x18c, v); }
+    @Override public Widget setYTextAlignment(int v) { return set(0x190, v); }
+    @Override public Widget setTextShadowed(boolean v) { return set(0x194, v ? 1 : 0); }
+    @Override public void setNoClickThrough(boolean v) { set(0xb98, v ? 1 : 0); }
+    @Override public void setNoScrollThrough(boolean v) { set(0xb99, v ? 1 : 0); }
+    @Override public void revalidate() { Native.widgetRevalidate(id, childIndex()); }
+    @Override public int getIndex() { return childIndex(); }
     // Script-visible properties read from the game widget (Native.widgetProps).
     private int prop(int i, int dflt) { int[] p = Native.widgetProps(id, childIndex()); return p != null ? p[i] : dflt; }
     @Override public int getScrollX() { return prop(0, 0); }
@@ -212,7 +238,6 @@ public class AndroidWidget extends WidgetBag {
         @Override public int hashCode() { return id * 31 + index; }
     }
     @Override public Widget[] getNestedChildren() { return new Widget[0]; }
-    @Override public void revalidate() {}
 
     @Override
     public boolean equals(Object o) {

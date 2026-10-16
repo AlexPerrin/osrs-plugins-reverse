@@ -105,6 +105,11 @@ WidgetItem widget_item(uintptr_t widget);
 // scrollX, scrollY, scrollWidth, scrollHeight, modelZoom, rotationX, rotationY, rotationZ,
 // opacity, modelType, modelId, animationId.
 constexpr int kWidgetProps = 35;
+// Writes a whitelisted int/bool widget field (CC_SET* offsets) and marks the widget dirty;
+// index >= 0 addresses a CC_CREATE child. Game thread only.
+bool widget_set_field(int component, int index, uint32_t offset, int value);
+// Re-runs the game's layout for a widget after position/size changes (what CC_SETPOSITION does).
+bool widget_revalidate(int component, int index);
 void widget_props(uintptr_t widget, int32_t out[kWidgetProps]);  // item set by IF_SETOBJECT / CC_SETOBJECT
 int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colour for text widgets
 void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty

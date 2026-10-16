@@ -83,6 +83,15 @@ final class Probe {
                     Log.i(TAG, "item " + id + " param " + key + " int " + ic.getIntValue(key) + " string '" + ic.getStringValue(key) + "'");
                     break;
                 }
+                case "wmove": {  // "wmove <group:child> <dx>": setOriginalX(+dx) + revalidate()
+                    net.runelite.api.widgets.Widget w = c.getWidget(id);
+                    if (w == null) { Log.w(TAG, "wmove: no widget " + a[1]); break; }
+                    int x0 = w.getRelativeX(), ox = w.getOriginalX();
+                    w.setOriginalX(ox + Integer.parseInt(a[2]));
+                    w.revalidate();
+                    Log.i(TAG, "moved " + a[1] + " original x " + ox + " -> " + w.getOriginalX() + ", laid-out x " + x0 + " -> " + w.getRelativeX());
+                    break;
+                }
                 case "sound": {  // "sound <id> <volume>"
                     c.playSoundEffect(id, Integer.parseInt(a[2]));
                     Log.i(TAG, "playSoundEffect " + id);

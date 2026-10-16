@@ -629,6 +629,12 @@ static uintptr_t widget_or_child(jint id, jint index) {
     uintptr_t w = game::widget(id);
     return w && index >= 0 ? game::widget_dynamic(w, index) : w;
 }
+jboolean n_widget_set_field(JNIEnv*, jclass, jint id, jint index, jint offset, jint value) {
+    return client_thread::on_client_thread() && game::widget_set_field(id, index, static_cast<uint32_t>(offset), value);
+}
+jboolean n_widget_revalidate(JNIEnv*, jclass, jint id, jint index) {
+    return client_thread::on_client_thread() && game::widget_revalidate(id, index);
+}
 jintArray n_widget_props(JNIEnv* env, jclass, jint id, jint index) {
     uintptr_t w = widget_or_child(id, index);
     if (!w) return nullptr;
@@ -763,6 +769,8 @@ const JNINativeMethod kNatives[] = {
     {"widgetItem", "(II)[I", reinterpret_cast<void*>(n_widget_item)},
     {"widgetColor", "(II)I", reinterpret_cast<void*>(n_widget_color)},
     {"widgetProps", "(II)[I", reinterpret_cast<void*>(n_widget_props)},
+    {"widgetSetField", "(IIII)Z", reinterpret_cast<void*>(n_widget_set_field)},
+    {"widgetRevalidate", "(II)Z", reinterpret_cast<void*>(n_widget_revalidate)},
     {"widgetStrings", "(II)[Ljava/lang/String;", reinterpret_cast<void*>(n_widget_strings)},
     {"widgetSetColor", "(III)V", reinterpret_cast<void*>(n_widget_set_color)},
     {"widgetSetHidden", "(IIZ)V", reinterpret_cast<void*>(n_widget_set_hidden)},

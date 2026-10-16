@@ -25,6 +25,10 @@ final class Native {
     static native int[] walkDestination();
     /** Definition param (kind 0 obj, 1 npc, 2 loc): Integer, String, or null when absent. */
     static native Object typeParam(int kind, int id, int key);
+    /** Writes a whitelisted widget field (CC_SET* offset); index >= 0 = CC_CREATE child. */
+    static native boolean widgetSetField(int id, int index, int offset, int value);
+    /** Re-runs the game's layout for the widget (CC_SETPOSITION/SETSIZE follow-up). */
+    static native boolean widgetRevalidate(int id, int index);
     static native int serverTick();
     static native int varp(int id);
     static native int[] varps();

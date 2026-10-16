@@ -323,7 +323,7 @@ session; its notes are in `docs/android-protocol.md`.
     getAccountHash (OAuthApi; XP Tracker runs), StatChanged held until the local player exists (Agility
     NPE), user.home = files dir (Emojis cache), sprite-widget overlay clip, Combat Level and Prayer
     run, getWidgetSpriteCache/createSpritePixels (Poison; unverified). Table: 18 runs, 23 starts.
-  - Next (gen 11): verify Poison, XP Drop hideSkillIcons, setValue redraw (Chat Notifications/Chat Filter;
+  - Next (gen 11): verify XP Drop hideSkillIcons (Poison now no longer throws), Interact Highlight (tap-attack missed moving goblins; long-press + Attack is more reliable), setValue redraw (Chat Notifications/Chat Filter;
     if the chatbox doesn't redraw, find the chat rebuild trigger, e.g. RuneLite's refreshChat equivalent);
     Woodcutting/Fishing/Mining (::item 1351 axe; the oak by the Lumbridge goblins), Interact Highlight,
     Idle Notifier; "hover" menu entries for Item Stats (getMenuEntries while no menu is open = entry under

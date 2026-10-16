@@ -18,7 +18,7 @@ account: the server is also the local sign-in provider.
 [![Progress map](docs/progress.svg)](docs/progress.md)
 
 - **Mobile packets mapped**: 241/253 (95.3%)
-- **Live packets mapped**: 241/244 (98.8%)
+- **Live packets mapped**: 241/241 (100.0%)
 - **Mobile packets mapped, verified**: 216/253 (85.4%)
 - **Mobile packets implemented**: 222/253 (87.7%)
 - **Server→client mapped**: 148/151 (98.0%)
@@ -28,7 +28,7 @@ account: the server is also the local sign-in provider.
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-15, `9f5da48+`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-15, `e5fd5ba+`).
 <!-- progress:end -->
 
 Milestones:
@@ -44,7 +44,8 @@ Milestones:
 - [x] Test server: per-account saves (position, quest vars, items, bank, skills) that survive restarts
 - [ ] Quest Helper complete: inventory/object/ground-item highlights, minimap arrows
 - [ ] More quests end to end (server: Sheep Shearer, Romeo & Juliet ready)
-- [ ] Protocol: map the remaining opcodes (see `docs/progress.md` → Unmapped opcodes)
+- [x] **Protocol: every live Android opcode mapped** (241/241; 12 opcodes have no sender or no-op handlers in the client and are tagged dead), 2026-10-15
+- [ ] Protocol: verify the remaining `// unverified` entries live
 - [ ] More plugins (GPU/region-dependent ones excluded)
 
 ## Layout

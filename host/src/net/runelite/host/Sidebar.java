@@ -36,6 +36,9 @@ import net.runelite.client.ui.NavigationButton;
  * pairs, which are dispatched to the Swing listeners on the game thread.
  */
 final class Sidebar {
+    /** Last touch/key event seen by the touch router (uptime ms), for the idle-tick getters. */
+    static volatile long lastInputMillis = android.os.SystemClock.uptimeMillis();
+
     private static final String TAG = Host.TAG;
     private static ClientToolbar toolbar;
     private static int selected = 0;
@@ -429,6 +432,7 @@ final class Sidebar {
                 final Window w = a.getWindow();
                 final Window.Callback orig = w.getCallback();
                 InvocationHandler h = (proxy, m, args) -> {
+                    if (m.getName().startsWith("dispatch") && m.getName().endsWith("Event")) lastInputMillis = android.os.SystemClock.uptimeMillis();
                     if (m.getName().equals("dispatchTouchEvent") && args != null && args[0] instanceof MotionEvent) {
                         MotionEvent e = (MotionEvent) args[0];
                         if (Native.overlayTouch(e.getActionMasked(), e.getX(), e.getY())) return true;

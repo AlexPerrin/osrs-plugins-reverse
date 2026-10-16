@@ -239,6 +239,9 @@ struct EnumDef {
     std::vector<std::string> string_values;  // when value_type == 's'
 };
 bool enum_def(int id, EnumDef& out);
+// Definition params (opcode 249). kind: 0 obj, 1 npc, 2 loc. Game thread only.
+struct TypeParam { bool is_string = false; int int_value = 0; std::string string_value; };
+bool type_param(int kind, int id, int key, TypeParam& out);
 
 // Menus (long-press menu). Entries are what the game shows, top-level first as stored.
 struct MenuEntry {

@@ -35,6 +35,8 @@ final class AndroidItemComposition extends ItemCompositionStub {
         return c;
     }
 
+    @Override public int getIntValue(int param) { return Params.intValue(Params.OBJ, id, param); }
+    @Override public String getStringValue(int param) { return Params.stringValue(Params.OBJ, id, param); }
     @Override public int getId() { return id; }
     @Override public String getName() { return name; }
     @Override public String getMembersName() { return name; }

@@ -529,6 +529,25 @@ jobjectArray n_message(JNIEnv* env, jclass, jint id) {
     return out;
 }
 
+// Walk destination {x, y} as stored (Client +0xecdc/+0xece0; scene tiles, -1 when none).
+jintArray n_walk_destination(JNIEnv* env, jclass) {
+    game::Point p = game::walk_destination();
+    jint v[2] = {p.x, p.y};
+    jintArray arr = env->NewIntArray(2);
+    env->SetIntArrayRegion(arr, 0, 2, v);
+    return arr;
+}
+
+// A definition param: Integer, String, or null when the definition has no such param.
+jobject n_type_param(JNIEnv* env, jclass, jint kind, jint id, jint key) {
+    if (!require_client_thread(env, "typeParam")) return nullptr;
+    game::TypeParam p;
+    if (!game::type_param(kind, id, key, p)) return nullptr;
+    if (p.is_string) return latin1_string(env, p.string_value);
+    jclass integer = env->FindClass("java/lang/Integer");
+    return env->CallStaticObjectMethod(integer, env->GetStaticMethodID(integer, "valueOf", "(I)Ljava/lang/Integer;"), p.int_value);
+}
+
 jintArray n_screen_size(JNIEnv* env, jclass) {
     jint v[2];
     overlay_screen_size(&v[0], &v[1]);
@@ -755,6 +774,8 @@ const JNINativeMethod kNatives[] = {
     {"viewport", "()[I", reinterpret_cast<void*>(n_viewport)},
     {"playSound", "(III)Z", reinterpret_cast<void*>(n_play_sound)},
     {"screenSize", "()[I", reinterpret_cast<void*>(n_screen_size)},
+    {"walkDestination", "()[I", reinterpret_cast<void*>(n_walk_destination)},
+    {"typeParam", "(III)Ljava/lang/Object;", reinterpret_cast<void*>(n_type_param)},
     {"overlayBuffer", "(II)Ljava/nio/ByteBuffer;", reinterpret_cast<void*>(n_overlay_buffer)},
     {"overlayPublish", "(II)V", reinterpret_cast<void*>(n_overlay_publish)},
     {"message", "(I)[Ljava/lang/String;", reinterpret_cast<void*>(n_message)},

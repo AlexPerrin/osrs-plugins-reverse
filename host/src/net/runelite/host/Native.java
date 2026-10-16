@@ -21,6 +21,10 @@ final class Native {
     /** Ground items, all planes: 3 ints each (plane << 16 | x << 8 | y, id, quantity). Client thread only. */
     static native int[] groundItems();
     static native int gameCycle();
+    /** Walk destination {x, y} in scene tiles, -1 when there is none. */
+    static native int[] walkDestination();
+    /** Definition param (kind 0 obj, 1 npc, 2 loc): Integer, String, or null when absent. */
+    static native Object typeParam(int kind, int id, int key);
     static native int serverTick();
     static native int varp(int id);
     static native int[] varps();

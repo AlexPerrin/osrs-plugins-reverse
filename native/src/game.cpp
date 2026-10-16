@@ -1123,6 +1123,47 @@ bool npc_def(int id, NpcDef& out) {
 
 namespace game {
 
+namespace {
+// Definition params (opcode 249, decoder 0x62d550): a hash map {+0x08 buckets, +0x10 bucket count,
+// +0x18 size}, bucket = key % count; nodes (0x40) {+0x00 u64 key, +0x08 int value, +0x10 string
+// (24-byte), +0x28 long value, +0x30 is-string byte, +0x38 next}.
+bool read_param(uintptr_t map, int key, TypeParam& out) {
+    auto buckets = read_at<uintptr_t>(map + 0x08);
+    uint64_t count = read_at<uint64_t>(map + 0x10);
+    if (!buckets || !count || count > (1u << 20) || key < 0) return false;
+    for (uintptr_t n = read_at<uintptr_t>(buckets + (static_cast<uint64_t>(key) % count) * 8), i = 0; n && i < 4096;
+         n = read_at<uintptr_t>(n + 0x38), i++) {
+        if (read_at<uint64_t>(n) != static_cast<uint64_t>(key)) continue;
+        out.is_string = read_at<uint8_t>(n + 0x30) == 1;
+        out.int_value = read_at<int32_t>(n + 0x08);
+        if (out.is_string) out.string_value = read_string(n + 0x10);
+        return true;
+    }
+    return false;
+}
+}  // namespace
+
+// Params of an obj (kind 0, ObjType +0x2d8), npc (1, NpcType +0x170) or loc (2, LocType +0x160).
+bool type_param(int kind, int id, int key, TypeParam& out) {
+    if (!g_build || id < 0 || id > 0xfffff) return false;
+    if (kind == 2) {
+        if (!g_build->get_loc_type) return false;
+        auto sp = reinterpret_cast<const uintptr_t* (*)(int)>(g_base + g_build->get_loc_type)(id);
+        return sp && sp[1] && read_param(sp[1] + 0x160, key, out);
+    }
+    uintptr_t fn = kind == 0 ? g_build->get_obj_type : kind == 1 ? g_build->get_npc_type : 0;
+    if (!fn) return false;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    SharedPtr r = reinterpret_cast<SharedPtr (*)(int)>(g_base + fn)(id);
+    uintptr_t ctrl = r.ctrl, o = r.obj;
+    bool ok = o && read_param(o + (kind == 0 ? 0x2d8 : 0x170), key, out);
+    release_shared(ctrl);
+    return ok;
+}
+
 bool loc_def(int id, LocDef& out) {
     if (!g_build || !g_build->get_loc_type || id < 0 || id > 0xfffff) return false;
     auto sp = reinterpret_cast<const uintptr_t* (*)(int)>(g_base + g_build->get_loc_type)(id);

@@ -68,6 +68,12 @@ final class Probe {
                     Log.i(TAG, "set text " + a[1] + " '" + before + "' -> '" + w.getText() + "' type " + w.getType());
                     break;
                 }
+                case "iparam": {  // "iparam <item id> <param>": item param as int and string
+                    int key = Integer.parseInt(a[2]);
+                    net.runelite.api.ItemComposition ic = c.getItemDefinition(id);
+                    Log.i(TAG, "item " + id + " param " + key + " int " + ic.getIntValue(key) + " string '" + ic.getStringValue(key) + "'");
+                    break;
+                }
                 case "sound": {  // "sound <id> <volume>"
                     c.playSoundEffect(id, Integer.parseInt(a[2]));
                     Log.i(TAG, "playSoundEffect " + id);

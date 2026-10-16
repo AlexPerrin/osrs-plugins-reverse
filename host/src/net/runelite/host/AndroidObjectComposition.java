@@ -40,6 +40,8 @@ final class AndroidObjectComposition extends ObjectCompositionStub {
         return c;
     }
 
+    @Override public int getIntValue(int param) { return Params.intValue(Params.LOC, v[0], param); }
+    @Override public String getStringValue(int param) { return Params.stringValue(Params.LOC, v[0], param); }
     @Override public int getId() { return v[0]; }
     @Override public String getName() { return name; }
     @Override public String[] getActions() { return actions; }

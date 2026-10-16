@@ -151,6 +151,46 @@ public class AndroidClient extends ClientStub {
         return AndroidNPCComposition.lookup(id);
     }
 
+    /** Map regions spanned by the loaded scene (13 x 13 chunks from the scene base). */
+    @Override public int[] getMapRegions() {
+        WorldView wv = getTopLevelWorldView();
+        if (wv == null || getGameState().getState() < net.runelite.api.GameState.LOGGED_IN.getState()) return new int[0];
+        int x0 = wv.getBaseX() >> 6, x1 = (wv.getBaseX() + 96) >> 6, y0 = wv.getBaseY() >> 6, y1 = (wv.getBaseY() + 96) >> 6;
+        int[] out = new int[(x1 - x0 + 1) * (y1 - y0 + 1)];
+        int i = 0;
+        for (int x = x0; x <= x1; x++)
+            for (int y = y0; y <= y1; y++) out[i++] = x << 8 | y;
+        return out;
+    }
+
+    /** Prayers are varbits (the prayer orbs' state), as RuneLite's own client reads them. */
+    @Override public boolean isPrayerActive(net.runelite.api.Prayer p) { return getVarbitValue(p.getVarbit()) == 1; }
+
+    /** Walk destination (Client +0xecdc/+0xece0), null when not walking. */
+    @Override public net.runelite.api.coords.LocalPoint getLocalDestinationLocation() {
+        int[] d = Native.walkDestination();
+        if (d == null || d[0] < 0 || d[1] < 0 || d[0] >= 104 || d[1] >= 104) return null;
+        return net.runelite.api.coords.LocalPoint.fromScene(d[0], d[1], getTopLevelWorldView());
+    }
+
+    /** Idle time since the last touch or key event (client cycles of 20 ms), as RuneLite counts them. */
+    private static int idleCycles() { return (int) Math.min(Integer.MAX_VALUE, (android.os.SystemClock.uptimeMillis() - Sidebar.lastInputMillis) / 20); }
+    @Override public int getMouseIdleTicks() { return idleCycles(); }
+    @Override public int getKeyboardIdleTicks() { return idleCycles(); }
+    @Override public int getMouseCurrentButton() { return 0; }
+
+    /** The game canvas is the overlay canvas (UI-canvas units). */
+    @Override public java.awt.Dimension getRealDimensions() { return new java.awt.Dimension(getCanvasWidth(), getCanvasHeight()); }
+    @Override public java.awt.Dimension getStretchedDimensions() { return getRealDimensions(); }
+
+    // No drag/selection/cursor state on a touch screen (RuneLite returns null when nothing is dragged).
+    @Override public net.runelite.api.widgets.Widget getDraggedWidget() { return null; }
+    @Override public net.runelite.api.widgets.Widget getDraggedOnWidget() { return null; }
+    @Override public net.runelite.api.widgets.Widget getSelectedWidget() { return null; }
+    @Override public net.runelite.api.widgets.Widget getScriptActiveWidget() { return null; }
+    /** The game redraws its chat itself; nothing to rebuild. */
+    @Override public void refreshChat() {}
+
     /** No physical keyboard modifiers on a touch screen. */
     @Override public boolean isKeyPressed(int keycode) { return false; }
 

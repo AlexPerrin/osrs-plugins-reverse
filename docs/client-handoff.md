@@ -184,9 +184,10 @@ session; its notes are in `docs/android-protocol.md`.
   path start tile (+0x3f0/+0x418) and fine +0x268/+0x26c from the local player's tile (Client
   +0xcb7c/+0xcb80) plus the packet deltas; otherwise it queues a walk step, and +0x1fc/+0x200 is the
   per-frame drawn position along the path. So +0x1fc is the right field for a live entity, and the
-  entity we read is probably not the rendered one. **Check first:** whether the render world view
-  `Client+0xc940` still equals `Client+0xc950` on OpenRune after its login rebuild (on the old server
-  they were always equal; we read NPCs from +0xc950). Then index list vs hash map. Probe:
+  entity we read is probably not the rendered one. Ruled out: the render world view (camlog's last
+  field `render_wv_same` was 1 on OpenRune, render base 3160,3376 = ours). **Check first:** whether a
+  second, visible Romeo with another NPC id stands at the fountain (long-press him: MenuOpened logs the
+  NPC index/id), then index list (wv+0xd0) vs hash map (wv+0x98) for index 19884. Probe:
   `setprop debug.osrsrl.set 'npcmodel <id> 0'` (lists base-id matches with index, tile, model
   bounds, hull, feet). Other probes this session: `quest <QUEST> <varp>`, `iparam <item> <-1|param>`,
   `wmove <g:c> <dx>`, `whide`/`wtext`, `sound`, `debug.osrsrl.varlog 1` (logs VarbitChanged),

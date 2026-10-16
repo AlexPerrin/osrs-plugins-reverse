@@ -117,6 +117,19 @@ def api():
     return rows
 
 
+def plugins():
+    """Rows of the `## Core plugin status` table in docs/plugin-host.md: (runs, starts, total)."""
+    try:
+        doc = read(os.path.join(ROOT, "docs/plugin-host.md"))
+    except OSError:
+        return 0, 0, 0
+    if "## Core plugin status" not in doc:
+        return 0, 0, 0
+    sect = doc.split("## Core plugin status", 1)[1].split("\n## ", 1)[0]
+    st = [m.lower() for m in re.findall(r"^\|[^|\n]+\|\s*`?(runs|starts|throws|untested)`?\s*\|", sect, re.M | re.I)]
+    return st.count("runs"), st.count("starts"), len(st)
+
+
 def pct(a, b):
     return 100.0 * a / b if b else 0.0
 
@@ -268,6 +281,10 @@ def main():
         ("Zone sub-prots implemented", z_done, ZONE_TOTAL, ", ".join(z_names)),
         ("RuneLite API implemented", api_done, api_total, "abstract methods of the interfaces below"),
     ]
+    p_runs, p_starts, p_total = plugins()
+    if p_total:
+        head.append(("Plugins running on Android", p_runs, p_total,
+                     f"rows marked `runs` in docs/plugin-host.md's Core plugin status table ({p_starts} more start)"))
     md = [
         "# Progress",
         "",

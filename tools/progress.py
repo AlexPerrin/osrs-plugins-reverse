@@ -45,6 +45,11 @@ def enum_entries(src):
     return re.findall(r"^\s+([A-Z][A-Z0-9_]*)\((\d+),", src, re.M)
 
 
+def placeholder(name):
+    """OP_n and UNKNOWN_* entries only frame a packet; they don't identify it."""
+    return bool(re.fullmatch(r"OP_\d+|UNKNOWN\w*", name))
+
+
 def unverified_entries(src):
     """Enum entries tagged `// unverified: <reason>` (identity or layout not read from the client)."""
     return re.findall(r"^\s+([A-Z][A-Z0-9_]*)\((\d+),.*// unverified", src, re.M)
@@ -54,14 +59,14 @@ def protocol():
     s2c_src = read(os.path.join(ANDROID, "AndroidGameServerProt.kt"))
     c2s_src = read(os.path.join(ANDROID, "AndroidGameClientProt.kt"))
     s2c, c2s = enum_entries(s2c_src), enum_entries(c2s_src)
-    c2s_named = [n for n, _ in c2s if not re.fullmatch(r"OP_\d+", n)]
+    c2s_named = [n for n, _ in c2s if not placeholder(n)]
     repo = read(os.path.join(ANDROID, "AndroidRepositories.kt"))
     enc, dec = repo.split("object AndroidGameMessageDecoderRepository")[:2]
     s2c_impl = len(re.findall(r"^\s+bind(?:WithAlts)?\(", enc, re.M))
     # Decoders are bound in several styles (bind(...), bound(...) lists, Triple tables), so count
     # named client prots referenced anywhere outside the enum and the unknown-packet fallback:
     # by the full enum name, or via a file-local `typealias X = AndroidGameClientProt`.
-    named = {n for n, _ in c2s if not re.fullmatch(r"OP_\d+", n)}
+    named = {n for n, _ in c2s if not placeholder(n)}
     used = set()
     for f in os.listdir(ANDROID):
         if not f.endswith(".kt") or f == "AndroidGameClientProt.kt":
@@ -71,12 +76,13 @@ def protocol():
         for a in aliases:
             used |= set(re.findall(r"\b" + a + r"\.([A-Z][A-Z0-9_]*)\b", src))
     c2s_impl = len(named & used)
+    s2c = [(n, o) for n, o in s2c if not placeholder(n)]
     return {
         "s2c_ident": len(s2c), "s2c_impl": s2c_impl,
-        "unverified": len(unverified_entries(s2c_src)) + len(unverified_entries(c2s_src)),
+        "unverified": sum(1 for n, _ in unverified_entries(s2c_src) + unverified_entries(c2s_src) if not placeholder(n)),
         "c2s_ident": len(c2s_named), "c2s_impl": c2s_impl,
         "s2c_unknown": sorted(set(range(S2C_TOTAL)) - {int(o) for _, o in s2c}),
-        "c2s_unknown": [int(o) for n, o in c2s if re.fullmatch(r"OP_\d+", n)],
+        "c2s_unknown": [int(o) for n, o in c2s if placeholder(n)],
     }
 
 
@@ -250,7 +256,7 @@ def main():
          "mapped minus entries tagged `// unverified` (identity/layout not read from the client code)"),
         ("Mobile packets implemented", impl, total, "opcodes with an Android codec bound on the server"),
         ("Server→client mapped", p["s2c_ident"], S2C_TOTAL, "AndroidGameServerProt"),
-        ("Client→server mapped", p["c2s_ident"], C2S_TOTAL, "AndroidGameClientProt (not OP_n)"),
+        ("Client→server mapped", p["c2s_ident"], C2S_TOTAL, "AndroidGameClientProt (not OP_n / UNKNOWN_*)"),
         ("Zone sub-prots implemented", z_done, ZONE_TOTAL, ", ".join(z_names)),
         ("RuneLite API implemented", api_done, api_total, "abstract methods of the interfaces below"),
     ]

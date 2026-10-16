@@ -13,21 +13,21 @@ account: the server is also the local sign-in provider.
 ## Status
 
 <!-- progress:start -->
-![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-90.9%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-83.0%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-31.4%25-blue)
+![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-94.1%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-85.8%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-31.4%25-blue)
 
 [![Progress map](docs/progress.svg)](docs/progress.md)
 
-- **Mobile packets mapped**: 230/253 (90.9%)
-- **Mobile packets mapped, verified**: 204/253 (80.6%)
-- **Mobile packets implemented**: 210/253 (83.0%)
-- **Server→client mapped**: 140/151 (92.7%)
+- **Mobile packets mapped**: 238/253 (94.1%)
+- **Mobile packets mapped, verified**: 208/253 (82.2%)
+- **Mobile packets implemented**: 217/253 (85.8%)
+- **Server→client mapped**: 148/151 (98.0%)
 - **Client→server mapped**: 90/102 (88.2%)
 - **Zone sub-prots implemented**: 15/15 (100.0%)
 - **RuneLite API implemented**: 272/866 (31.4%)
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-15, `e5487c9+`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-15, `817c63e+`).
 <!-- progress:end -->
 
 Milestones:

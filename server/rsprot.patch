@@ -615,10 +615,10 @@ index 00000000..ea743851
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
-index 00000000..1cbc8805
+index 00000000..8b5e4b64
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
-@@ -0,0 +1,119 @@
+@@ -0,0 +1,123 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.protocol.ClientProt
@@ -629,113 +629,117 @@ index 00000000..1cbc8805
 + * client's own size table (liblibs.hal.system.osclient.so, .rodata 0x109538, indexed by opcode),
 + * so framing is exact even for packets whose meaning has not been identified yet; those decode
 + * to [AndroidUnknownPacket].
++ *
++ * Tags on entries added 2026-10-16: "sender read" = layout read from the client's sender (calls to
++ * the packet constructor 0x79cc90) and compared with RSProt's desktop decoder; "unverified" = weaker
++ * evidence (reason given). None of those are verified live yet.
 + */
 +public enum class AndroidGameClientProt(
 +    override val opcode: Int,
 +    override val size: Int,
 +) : ClientProt {
-+    OP_0(0, Prot.VAR_BYTE),
++    IGNORELIST_DEL(0, Prot.VAR_BYTE), // sender read
 +    OP_1(1, 11),
 +    OPNPCT(2, 11),
 +    OPLOC4(3, 8),
-+    OP_4(4, 4),
-+    OP_5(5, 11),
++    RESUME_P_COUNTDIALOG(4, 4), // sender read
++    OPPLAYERT(5, 11), // sender read
 +    OP_6(6, 6),
 +    OPLOC1(7, 8),
-+    OP_8(8, Prot.VAR_SHORT),
++    IF_SCRIPT_TRIGGER(8, Prot.VAR_SHORT), // unverified: args use zigzag varints, layout differs from desktop; no codec
 +    OPNPC5(9, 4),
-+    OP_10(10, 5),
-+    OP_11(11, 3),
++    WINDOW_STATUS(10, 5), // sender read
++    OPWORLDENTITY3(11, 3), // sender read
 +    OP_12(12, Prot.VAR_BYTE),
-+    OP_13(13, Prot.VAR_BYTE),
-+    OP_14(14, Prot.VAR_BYTE),
-+    OP_15(15, 16),
-+    OP_16(16, 4),
-+    OP_17(17, 3),
-+    OP_18(18, Prot.VAR_BYTE),
-+    OP_19(19, 10),
-+    OP_20(20, Prot.VAR_BYTE),
-+    OP_21(21, 6),
-+    OP_22(22, Prot.VAR_BYTE),
-+    OP_23(23, 0),
++    CONNECTION_TELEMETRY(13, Prot.VAR_BYTE), // sender read
++    SEND_SNAPSHOT(14, Prot.VAR_BYTE), // sender read
++    IF_BUTTONT(15, 16), // unverified: targetSub/targetObj order assumed
++    EVENT_CAMERA_POSITION(16, 4), // unverified: pitch/yaw order assumed from desktop
++    OPPLAYER2(17, 3), // sender read
++    EVENT_MOUSE_MOVE(18, Prot.VAR_BYTE), // sender read
++    SEND_PING_REPLY(19, 10), // sender read
++    AFFINEDCLANSETTINGS_SETMUTED_FROMCHANNEL(20, Prot.VAR_BYTE), // unverified: medium, not bound
++    EVENT_MOUSE_CLICK_V1(21, 6), // sender read
++    RESUME_P_STRINGDIALOG(22, Prot.VAR_BYTE), // sender read
++    EXIT_FREECAM(23, 0), // sender read
 +    OPOBJ2(24, 8),
-+    OP_25(25, 3),
-+    OP_26(26, 3),
++    OPPLAYER5(25, 3), // sender read
++    OPPLAYER6(26, 3), // sender read
 +    OP_27(27, 7),
-+    OP_28(28, Prot.VAR_BYTE),
-+    OP_29(29, 4),
-+    OP_30(30, 0),
++    AFFINEDCLANSETTINGS_ADDBANNED_FROMCHANNEL(28, Prot.VAR_BYTE), // unverified: medium: own-clan sender, not bound
++    CLICKWORLDMAP(29, 4), // sender read
++    CLOSE_MODAL(30, 0), // sender read
 +    MOVE_GAMECLICK(31, Prot.VAR_BYTE),
-+    OP_32(32, Prot.VAR_BYTE),
++    EVENT_NATIVE_MOUSE_MOVE(32, Prot.VAR_BYTE), // sender read
 +    OPNPC4(33, 4),
 +    OPOBJ4(34, 8),
-+    OP_35(35, 9),
-+    OP_36(36, 2),
-+    OP_37(37, Prot.VAR_SHORT),
++    TELEPORT(35, 9), // sender read
++    RESUME_P_OBJDIALOG(36, 2), // sender read
++    EVENT_KEYBOARD(37, Prot.VAR_SHORT), // sender read
 +    OPLOC6(38, 2),
-+    OP_39(39, Prot.VAR_BYTE),
++    MOVE_MINIMAPCLICK(39, Prot.VAR_BYTE), // sender read
 +    OPOBJ5(40, 8),
-+    OP_41(41, Prot.VAR_BYTE),
-+    OP_42(42, Prot.VAR_SHORT),
-+    OP_43(43, 16),
++    FRIENDLIST_DEL(41, Prot.VAR_BYTE), // sender read
++    BUG_REPORT(42, Prot.VAR_SHORT), // sender read
++    IF_BUTTOND(43, 16), // sender read
 +    OPNPC2(44, 4),
-+    OP_45(45, 1),
-+    OP_46(46, 4),
-+    OP_47(47, 3),
++    SET_HEADING(45, 1), // unverified: medium: sender applies a heading locally
++    SOUND_JINGLEEND(46, 4), // unverified: medium: called from audio code
++    SET_CHATFILTERSETTINGS(47, 3), // sender read
 +    RESUME_PAUSEBUTTON(48, 6),
-+    OP_49(49, 2),
-+    OP_50(50, Prot.VAR_SHORT),
-+    OP_51(51, Prot.VAR_BYTE),
-+    OP_52(52, 3),
-+    OP_53(53, 3),
-+    OP_54(54, 3),
++    OPNPC6(49, 2), // unverified: sender read, prot by NPC lookup
++    MESSAGE_PRIVATE(50, Prot.VAR_SHORT), // unverified: interpreter sender pops two strings; layout not decoded
++    FRIENDCHAT_KICK(51, Prot.VAR_BYTE), // sender read
++    OPWORLDENTITY4(52, 3), // sender read
++    OPPLAYER4(53, 3), // sender read
++    OPWORLDENTITY2(54, 3), // sender read
 +    OPLOC2(55, 8),
-+    OP_56(56, 1),
-+    OP_57(57, Prot.VAR_BYTE),
++    CLANCHANNEL_FULL_REQUEST(56, 1), // sender read
++    CLANCHANNEL_KICKUSER(57, Prot.VAR_BYTE), // unverified: medium: as desktop, not bound
 +    OPLOC3(58, 8),
-+    OP_59(59, 3),
-+    OP_60(60, Prot.VAR_BYTE),
-+    OP_61(61, Prot.VAR_BYTE),
++    OPWORLDENTITY5(59, 3), // sender read
++    FRIENDLIST_ADD(60, Prot.VAR_BYTE), // sender read
++    FRIENDCHAT_JOIN_LEAVE(61, Prot.VAR_BYTE), // sender read
 +    OP_62(62, 11),
 +    OPLOCT(63, 15),
 +    MESSAGE_PUBLIC(64, Prot.VAR_BYTE),
-+    OP_65(65, 3),
++    OPPLAYER3(65, 3), // sender read
 +    OPLOC5(66, 8),
-+    OP_67(67, 0),
-+    OP_68(68, 3),
-+    OP_69(69, 2),
-+    OP_70(70, 10),
++    MAP_BUILD_COMPLETE(67, 0), // sender read
++    OPPLAYER7(68, 3), // sender read
++    OPWORLDENTITY6(69, 2), // unverified: prot by elimination in the world-entity op cluster
++    IF_SUBOP(70, 10), // sender read
 +    OPNPC3(71, 4),
-+    OP_72(72, 1),
++    CLANSETTINGS_FULL_REQUEST(72, 1), // sender read
 +    OP_73(73, 15),
 +    OPOBJT(74, 15),
-+    OP_75(75, 4),
++    DETECT_MODIFIED_CLIENT(75, 4), // sender read
 +    OP_76(76, 11),
-+    OP_77(77, 7),
-+    OP_78(78, 3),
++    EVENT_MOUSE_CLICK_V2(77, 7), // sender read
++    OPWORLDENTITY1(78, 3), // sender read
 +    OPOBJ1(79, 8),
 +    OP_80(80, Prot.VAR_BYTE),
 +    CLIENT_CHEAT(81, Prot.VAR_BYTE),
 +    OPOBJ3(82, 8),
 +    OP_83(83, 15),
-+    OP_84(84, 22),
++    IF_CRMVIEW_OP(84, 22), // unverified: fields not matched to desktop; no codec
 +    OP_85(85, 11),
-+    OP_86(86, 8),
++    RESUME_P_LONGDIALOG(86, 8), // sender read
 +    OP_87(87, 1),
-+    OP_88(88, Prot.VAR_BYTE),
-+    OP_89(89, 2),
++    FRIENDCHAT_SETRANK(88, Prot.VAR_BYTE), // sender read
++    EVENT_MOUSE_SCROLL(89, 2), // sender read
 +    OP_90(90, 26),
-+    OP_91(91, 3),
++    OPPLAYER1(91, 3), // sender read
 +    OPNPC1(92, 4),
 +    NO_TIMEOUT(93, 0),
-+    OP_94(94, Prot.VAR_BYTE),
-+    OP_95(95, 4),
-+    OP_96(96, Prot.VAR_BYTE),
-+    OP_97(97, 0),
-+    OP_98(98, 2),
++    IGNORELIST_ADD(94, Prot.VAR_BYTE), // sender read
++    IF_BUTTON(95, 4), // sender read
++    RESUME_P_NAMEDIALOG(96, Prot.VAR_BYTE), // sender read
++    IDLE(97, 0), // sender read
++    MEMBERSHIP_PROMOTION_ELIGIBILITY(98, 2), // sender read
 +    IF_BUTTONX(99, 9),
-+    OP_100(100, 1),
-+    OP_101(101, 3),
++    RSEVEN_STATUS(100, 1), // sender read
++    OPPLAYER8(101, 3), // sender read
 +    ;
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
@@ -975,6 +979,319 @@ index 00000000..a6250dab
 +        private val typeMaxValues = typeBitcodes.map { (1 shl it) - 1 }.toIntArray()
 +    }
 +}
+diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
+new file mode 100644
+index 00000000..0fc21777
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
+@@ -0,0 +1,307 @@
++package net.rsprot.protocol.android
++
++import com.github.michaelbull.logging.InlineLogger
++import net.rsprot.buffer.JagByteBuf
++import net.rsprot.protocol.ClientProt
++import net.rsprot.protocol.internal.game.outgoing.info.CoordGrid
++import net.rsprot.protocol.message.IncomingMessage
++import net.rsprot.protocol.message.codec.MessageDecoder
++import net.rsprot.protocol.util.CombinedId
++import net.rsprot.protocol.game.incoming.buttons.If1Button
++import net.rsprot.protocol.game.incoming.buttons.IfButtonD
++import net.rsprot.protocol.game.incoming.buttons.IfButtonT
++import net.rsprot.protocol.game.incoming.buttons.IfSubOp
++import net.rsprot.protocol.game.incoming.clan.ClanChannelFullRequest
++import net.rsprot.protocol.game.incoming.clan.ClanSettingsFullRequest
++import net.rsprot.protocol.game.incoming.codec.buttons.If1ButtonDecoder
++import net.rsprot.protocol.game.incoming.codec.buttons.IfSubOpDecoder
++import net.rsprot.protocol.game.incoming.codec.clan.ClanChannelFullRequestDecoder
++import net.rsprot.protocol.game.incoming.codec.clan.ClanSettingsFullRequestDecoder
++import net.rsprot.protocol.game.incoming.codec.events.EventMouseClickV1Decoder
++import net.rsprot.protocol.game.incoming.codec.events.EventMouseMoveDecoder
++import net.rsprot.protocol.game.incoming.codec.events.EventMouseScrollDecoder
++import net.rsprot.protocol.game.incoming.codec.events.EventNativeMouseMoveDecoder
++import net.rsprot.protocol.game.incoming.codec.friendchat.FriendChatJoinLeaveDecoder
++import net.rsprot.protocol.game.incoming.codec.friendchat.FriendChatKickDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.client.DetectModifiedClientDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.client.IdleDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.client.MapBuildCompleteDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.client.MembershipPromotionEligibilityDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.client.RSevenStatusDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.client.SoundJingleEndDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.client.WindowStatusDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.user.CloseModalDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.user.ExitFreecamDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.user.SendSnapshotDecoder
++import net.rsprot.protocol.game.incoming.codec.misc.user.SetChatFilterSettingsDecoder
++import net.rsprot.protocol.game.incoming.codec.resumed.ResumePCountDialogDecoder
++import net.rsprot.protocol.game.incoming.codec.resumed.ResumePLongDialogDecoder
++import net.rsprot.protocol.game.incoming.codec.resumed.ResumePNameDialogDecoder
++import net.rsprot.protocol.game.incoming.codec.resumed.ResumePObjDialogDecoder
++import net.rsprot.protocol.game.incoming.codec.resumed.ResumePStringDialogDecoder
++import net.rsprot.protocol.game.incoming.codec.social.FriendListAddDecoder
++import net.rsprot.protocol.game.incoming.codec.social.FriendListDelDecoder
++import net.rsprot.protocol.game.incoming.codec.social.IgnoreListAddDecoder
++import net.rsprot.protocol.game.incoming.codec.social.IgnoreListDelDecoder
++import net.rsprot.protocol.game.incoming.events.EventCameraPosition
++import net.rsprot.protocol.game.incoming.events.EventKeyboard
++import net.rsprot.protocol.game.incoming.events.EventMouseClickV1
++import net.rsprot.protocol.game.incoming.events.EventMouseClickV2
++import net.rsprot.protocol.game.incoming.events.EventMouseMove
++import net.rsprot.protocol.game.incoming.events.EventMouseScroll
++import net.rsprot.protocol.game.incoming.events.EventNativeMouseMove
++import net.rsprot.protocol.game.incoming.friendchat.FriendChatJoinLeave
++import net.rsprot.protocol.game.incoming.friendchat.FriendChatKick
++import net.rsprot.protocol.game.incoming.friendchat.FriendChatSetRank
++import net.rsprot.protocol.game.incoming.misc.client.ConnectionTelemetry
++import net.rsprot.protocol.game.incoming.misc.client.DetectModifiedClient
++import net.rsprot.protocol.game.incoming.misc.client.Idle
++import net.rsprot.protocol.game.incoming.misc.client.MapBuildComplete
++import net.rsprot.protocol.game.incoming.misc.client.MembershipPromotionEligibility
++import net.rsprot.protocol.game.incoming.misc.client.RSevenStatus
++import net.rsprot.protocol.game.incoming.misc.client.SendPingReply
++import net.rsprot.protocol.game.incoming.misc.client.SoundJingleEnd
++import net.rsprot.protocol.game.incoming.misc.client.WindowStatus
++import net.rsprot.protocol.game.incoming.misc.user.BugReport
++import net.rsprot.protocol.game.incoming.misc.user.ClickWorldMap
++import net.rsprot.protocol.game.incoming.misc.user.CloseModal
++import net.rsprot.protocol.game.incoming.misc.user.ExitFreecam
++import net.rsprot.protocol.game.incoming.misc.user.MoveGameClick
++import net.rsprot.protocol.game.incoming.misc.user.SendSnapshot
++import net.rsprot.protocol.game.incoming.misc.user.SetChatFilterSettings
++import net.rsprot.protocol.game.incoming.misc.user.SetHeading
++import net.rsprot.protocol.game.incoming.misc.user.Teleport
++import net.rsprot.protocol.game.incoming.npcs.OpNpc6
++import net.rsprot.protocol.game.incoming.players.OpPlayer
++import net.rsprot.protocol.game.incoming.players.OpPlayerT
++import net.rsprot.protocol.game.incoming.resumed.ResumePCountDialog
++import net.rsprot.protocol.game.incoming.resumed.ResumePLongDialog
++import net.rsprot.protocol.game.incoming.resumed.ResumePNameDialog
++import net.rsprot.protocol.game.incoming.resumed.ResumePObjDialog
++import net.rsprot.protocol.game.incoming.resumed.ResumePStringDialog
++import net.rsprot.protocol.game.incoming.social.FriendListAdd
++import net.rsprot.protocol.game.incoming.social.FriendListDel
++import net.rsprot.protocol.game.incoming.social.IgnoreListAdd
++import net.rsprot.protocol.game.incoming.social.IgnoreListDel
++import net.rsprot.protocol.game.incoming.worldentities.OpWorldEntity
++import net.rsprot.protocol.game.incoming.worldentities.OpWorldEntity6
++
++// Client prots identified from their senders (calls to the packet constructor 0x79cc90, opcode in
++// w0; sender addresses in docs/android-protocol.md). "As desktop" ones delegate to RSProt's
++// desktop decoder; the others follow the sender's write order.
++
++private typealias P = AndroidGameClientProt
++
++/** Decoders that read exactly like desktop (field order and transforms checked against the sender). */
++internal fun androidDesktopLayoutDecoders(): List<BoundDecoder> =
++    listOf(
++        bound(AndroidDelegatingDecoder(P.WINDOW_STATUS, WindowStatusDecoder())),
++        bound(AndroidDelegatingDecoder(P.EVENT_MOUSE_MOVE, EventMouseMoveDecoder())),
++        bound(AndroidDelegatingDecoder(P.EVENT_NATIVE_MOUSE_MOVE, EventNativeMouseMoveDecoder())),
++        bound(AndroidDelegatingDecoder(P.EVENT_MOUSE_CLICK_V1, EventMouseClickV1Decoder())),
++        bound(AndroidDelegatingDecoder(P.EVENT_MOUSE_SCROLL, EventMouseScrollDecoder())),
++        bound(AndroidDelegatingDecoder(P.CLOSE_MODAL, CloseModalDecoder())),
++        bound(AndroidDelegatingDecoder(P.MAP_BUILD_COMPLETE, MapBuildCompleteDecoder())),
++        bound(AndroidDelegatingDecoder(P.IDLE, IdleDecoder())),
++        bound(AndroidDelegatingDecoder(P.EXIT_FREECAM, ExitFreecamDecoder())),
++        bound(AndroidDelegatingDecoder(P.DETECT_MODIFIED_CLIENT, DetectModifiedClientDecoder())),
++        bound(AndroidDelegatingDecoder(P.RSEVEN_STATUS, RSevenStatusDecoder())),
++        bound(AndroidDelegatingDecoder(P.MEMBERSHIP_PROMOTION_ELIGIBILITY, MembershipPromotionEligibilityDecoder())),
++        bound(AndroidDelegatingDecoder(P.FRIENDLIST_ADD, FriendListAddDecoder())),
++        bound(AndroidDelegatingDecoder(P.IGNORELIST_ADD, IgnoreListAddDecoder())),
++        bound(AndroidDelegatingDecoder(P.FRIENDLIST_DEL, FriendListDelDecoder())),
++        bound(AndroidDelegatingDecoder(P.IGNORELIST_DEL, IgnoreListDelDecoder())),
++        bound(AndroidDelegatingDecoder(P.FRIENDCHAT_JOIN_LEAVE, FriendChatJoinLeaveDecoder())),
++        bound(AndroidDelegatingDecoder(P.FRIENDCHAT_KICK, FriendChatKickDecoder())),
++        bound(AndroidDelegatingDecoder(P.SET_CHATFILTERSETTINGS, SetChatFilterSettingsDecoder())),
++        bound(AndroidDelegatingDecoder(P.SEND_SNAPSHOT, SendSnapshotDecoder())),
++        bound(AndroidDelegatingDecoder(P.CLANCHANNEL_FULL_REQUEST, ClanChannelFullRequestDecoder())),
++        bound(AndroidDelegatingDecoder(P.CLANSETTINGS_FULL_REQUEST, ClanSettingsFullRequestDecoder())),
++        bound(AndroidDelegatingDecoder(P.RESUME_P_COUNTDIALOG, ResumePCountDialogDecoder())),
++        bound(AndroidDelegatingDecoder(P.RESUME_P_OBJDIALOG, ResumePObjDialogDecoder())),
++        bound(AndroidDelegatingDecoder(P.RESUME_P_NAMEDIALOG, ResumePNameDialogDecoder())),
++        bound(AndroidDelegatingDecoder(P.RESUME_P_STRINGDIALOG, ResumePStringDialogDecoder())),
++        bound(AndroidDelegatingDecoder(P.RESUME_P_LONGDIALOG, ResumePLongDialogDecoder())),
++        bound(AndroidDelegatingDecoder(P.IF_BUTTON, If1ButtonDecoder())),
++        bound(AndroidDelegatingDecoder(P.IF_SUBOP, IfSubOpDecoder())),
++        bound(AndroidDelegatingDecoder(P.SOUND_JINGLEEND, SoundJingleEndDecoder())),
++    )
++
++/** A decoder with the message class it produces (the repository keys consumers by class). */
++public class BoundDecoder(
++    public val messageClass: Class<out IncomingMessage>,
++    public val decoder: MessageDecoder<*>,
++)
++
++private inline fun <reified T : IncomingMessage> bound(decoder: MessageDecoder<T>): BoundDecoder =
++    BoundDecoder(T::class.java, decoder)
++
++private class Dec<T : IncomingMessage>(
++    override val prot: ClientProt,
++    private val read: (JagByteBuf) -> T,
++) : MessageDecoder<T> {
++    override fun decode(buffer: JagByteBuf): T {
++        val message = read(buffer)
++        val left = buffer.readableBytes()
++        if (left > 0) {
++            // A layout mismatch would otherwise disconnect the client (unread payload is fatal).
++            logger.warn { "Android ${prot} decoder left $left bytes unread; skipped" }
++            buffer.buffer.skipBytes(left)
++        }
++        return message
++    }
++
++    private companion object {
++        private val logger = InlineLogger()
++    }
++}
++
++private inline fun <reified T : IncomingMessage> bound(
++    prot: ClientProt,
++    noinline read: (JagByteBuf) -> T,
++): BoundDecoder = BoundDecoder(T::class.java, Dec(prot, read))
++
++/** Decoders with Android-specific layouts, in the sender's write order. */
++internal fun androidCustomDecoders(): List<BoundDecoder> =
++    listOf(
++        // 13 (sender 0x51d0a4 -> 0x4fa578): 7 x g2 like desktop, minus desktop's zero checks.
++        bound(P.CONNECTION_TELEMETRY) { b ->
++            val lost = b.g2()
++            val login = b.g2()
++            b.g2()
++            val state = b.g2()
++            b.g2()
++            val count = b.g2()
++            b.g2()
++            ConnectionTelemetry(lost, login, state, count)
++        },
++        // 77: packed g2 (time << 1 | right click), y g2Alt2, x g2, code g1.
++        bound(P.EVENT_MOUSE_CLICK_V2) { b ->
++            val packed = b.g2()
++            val y = b.g2Alt2()
++            val x = b.g2()
++            val code = b.g1()
++            EventMouseClickV2(packed ushr 1, code, packed and 1 != 0, x, y)
++        },
++        // 37: per key, key g1Alt2 then delta g3Alt3 (Android writes the key first).
++        bound(P.EVENT_KEYBOARD) { b ->
++            val count = b.readableBytes() / 4
++            val keys = ByteArray(count)
++            var last = -1
++            for (i in 0..<count) {
++                keys[i] = b.g1Alt2().toByte()
++                val delta = b.g3Alt3()
++                if (i == 0) last = delta
++            }
++            EventKeyboard(last, EventKeyboard.KeySequence(keys))
++        },
++        // 16: angleX g2Alt3, angleY g2Alt3 (pitch then yaw, order as desktop).
++        bound(P.EVENT_CAMERA_POSITION) { b -> EventCameraPosition(b.g2Alt3(), b.g2Alt3()) },
++        // 19: fps g1Alt2, value1 g4Alt1, value2 g4, gcPercentTime g1.
++        bound(P.SEND_PING_REPLY) { b ->
++            val fps = b.g1Alt2()
++            val v1 = b.g4Alt1()
++            val v2 = b.g4()
++            val gc = b.g1()
++            SendPingReply(fps, gc, v1, v2)
++        },
++        // 29: packed coord g4Alt3.
++        bound(P.CLICKWORLDMAP) { b -> ClickWorldMap(CoordGrid(b.g4Alt3())) },
++        // 35: level g1Alt2, x g2Alt3, z g2Alt2, oculusSyncValue g4Alt3.
++        bound(P.TELEPORT) { b ->
++            val level = b.g1Alt2()
++            val x = b.g2Alt3()
++            val z = b.g2Alt2()
++            Teleport(b.g4Alt3(), x, z, level)
++        },
++        // 39: x g2Alt3, z g2Alt2, keyCombination g1Alt3, then the desktop minimap tail (skipped).
++        // Decoded as MoveGameClick so minimap walking uses the same path.
++        bound(P.MOVE_MINIMAPCLICK) { b ->
++            val x = b.g2Alt3()
++            val z = b.g2Alt2()
++            val key = b.g1Alt3()
++            b.buffer.skipBytes(b.readableBytes())
++            MoveGameClick(x, z, key)
++        },
++        // 88: rank g1Alt1, name.
++        bound(P.FRIENDCHAT_SETRANK) { b ->
++            val rank = b.g1Alt1()
++            FriendChatSetRank(b.gjstr(), rank)
++        },
++        // 42: instructions, type g1, description.
++        bound(P.BUG_REPORT) { b ->
++            val instructions = b.gjstr()
++            val type = b.g1()
++            BugReport(type, b.gjstr(), instructions)
++        },
++        // 15 (sender 0x627974).
++        bound(P.IF_BUTTONT) { b ->
++            val target = b.g4()
++            val selSub = b.g2()
++            val sel = b.g4()
++            val targetSub = b.g2Alt2()
++            val targetObj = b.g2Alt2()
++            val selObj = b.g2Alt1()
++            IfButtonT(CombinedId(sel), selSub, selObj, CombinedId(target), targetSub, targetObj)
++        },
++        // 43 (sender 0x628b50).
++        bound(P.IF_BUTTOND) { b ->
++            val sel = b.g4Alt2()
++            val targetSub = b.g2Alt2()
++            val targetObj = b.g2Alt2()
++            val target = b.g4Alt3()
++            val selObj = b.g2Alt3()
++            val selSub = b.g2Alt2()
++            IfButtonD(CombinedId(sel), selSub, selObj, CombinedId(target), targetSub, targetObj)
++        },
++        // 5 (sender 0x622bd4).
++        bound(P.OPPLAYERT) { b ->
++            val selObj = b.g2Alt1()
++            val sel = b.g4Alt1()
++            val index = b.g2Alt1()
++            val ctrl = b.g1Alt3() == 1
++            val selSub = b.g2Alt3()
++            OpPlayerT(index, ctrl, CombinedId(sel), selSub, selObj)
++        },
++        // 49 (sender 0x620400): NPC type id g2.
++        bound(P.OPNPC6) { b -> OpNpc6(b.g2()) },
++        // 69 (sender 0x623550): id g2Alt3.
++        bound(P.OPWORLDENTITY6) { b -> OpWorldEntity6(b.g2Alt3()) },
++        // 45 (sender 0x623960): heading g1Alt2.
++        bound(P.SET_HEADING) { b -> SetHeading(b.g1Alt2()) },
++    ) +
++        ANDROID_OPPLAYER.map { (prot, op, spec) ->
++            bound(prot) { b ->
++                val f = b.readFields(spec)
++                OpPlayer(f.getValue("index"), f.getValue("ctrl") == 1, op)
++            }
++        } +
++        ANDROID_OPWORLDENTITY.map { (prot, op, spec) ->
++            bound(prot) { b ->
++                val f = b.readFields(spec)
++                OpWorldEntity(f.getValue("index"), f.getValue("ctrl") == 1, op)
++            }
++        }
++
++/** OPPLAYER1-8 (sender 0x623e7c). */
++internal val ANDROID_OPPLAYER: List<Triple<AndroidGameClientProt, Int, String>> =
++    listOf(
++        Triple(P.OPPLAYER1, 1, "index:p2a1 ctrl:p1a1"),
++        Triple(P.OPPLAYER2, 2, "index:p2a3 ctrl:p1"),
++        Triple(P.OPPLAYER3, 3, "index:p2a1 ctrl:p1a3"),
++        Triple(P.OPPLAYER4, 4, "ctrl:p1 index:p2a3"),
++        Triple(P.OPPLAYER5, 5, "index:p2 ctrl:p1a1"),
++        Triple(P.OPPLAYER6, 6, "index:p2a3 ctrl:p1a3"),
++        Triple(P.OPPLAYER7, 7, "index:p2 ctrl:p1a2"),
++        Triple(P.OPPLAYER8, 8, "ctrl:p1a3 index:p2a2"),
++    )
++
++/** OPWORLDENTITY1-5 (sender 0x622f10). */
++internal val ANDROID_OPWORLDENTITY: List<Triple<AndroidGameClientProt, Int, String>> =
++    listOf(
++        Triple(P.OPWORLDENTITY1, 1, "index:p2a3 ctrl:p1a2"),
++        Triple(P.OPWORLDENTITY2, 2, "index:p2 ctrl:p1a2"),
++        Triple(P.OPWORLDENTITY3, 3, "ctrl:p1a2 index:p2a1"),
++        Triple(P.OPWORLDENTITY4, 4, "ctrl:p1a3 index:p2"),
++        Triple(P.OPWORLDENTITY5, 5, "ctrl:p1a3 index:p2a1"),
++    )
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
 new file mode 100644
 index 00000000..b6bebe6e
@@ -2260,10 +2577,10 @@ index 00000000..b1436285
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..514483eb
+index 00000000..455cbe4d
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,220 @@
+@@ -0,0 +1,228 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2278,6 +2595,7 @@ index 00000000..514483eb
 +import net.rsprot.protocol.internal.login.LoginCrcDecoder
 +import net.rsprot.protocol.loginprot.incoming.codec.DesktopLoginCrcDecoder
 +import net.rsprot.protocol.message.IncomingGameMessage
++import net.rsprot.protocol.message.IncomingMessage
 +import net.rsprot.protocol.message.codec.MessageDecoder
 +import net.rsprot.protocol.message.codec.incoming.MessageDecoderRepository
 +import net.rsprot.protocol.message.codec.incoming.MessageDecoderRepositoryBuilder
@@ -2428,7 +2746,8 @@ index 00000000..514483eb
 +            AndroidGameClientProt.IF_BUTTONX,
 +            AndroidGameClientProt.RESUME_PAUSEBUTTON,
 +        ) + (ANDROID_OPLOC + ANDROID_OPOBJ + ANDROID_OPNPC).map { it.first } +
-+            setOf(AndroidGameClientProt.OPLOCT, AndroidGameClientProt.OPOBJT, AndroidGameClientProt.OPNPCT)
++            setOf(AndroidGameClientProt.OPLOCT, AndroidGameClientProt.OPOBJT, AndroidGameClientProt.OPNPCT) +
++            (androidDesktopLayoutDecoders() + androidCustomDecoders()).map { it.decoder.prot as AndroidGameClientProt }
 +
 +    @ExperimentalStdlibApi
 +    public fun build(huffmanCodecProvider: HuffmanCodecProvider): MessageDecoderRepository<AndroidGameClientProt> =
@@ -2444,6 +2763,7 @@ index 00000000..514483eb
 +            bind(AndroidOpLocTDecoder())
 +            bind(AndroidOpObjTDecoder())
 +            bind(AndroidOpNpcTDecoder())
++            for (b in androidDesktopLayoutDecoders() + androidCustomDecoders()) bindBound(b)
 +            for (prot in AndroidGameClientProt.entries) {
 +                if (prot in IDENTIFIED) continue
 +                bind(AndroidUnknownPacket::class.java, AndroidUnknownPacketDecoder(prot))
@@ -2483,6 +2803,11 @@ index 00000000..514483eb
 + */
 +public object AndroidLoginCrcDecoder : LoginCrcDecoder by DesktopLoginCrcDecoder {
 +    override val clientType: OldSchoolClientType = OldSchoolClientType.ANDROID
++}
++
++@Suppress("UNCHECKED_CAST")
++private fun MessageDecoderRepositoryBuilder<AndroidGameClientProt>.bindBound(b: BoundDecoder) {
++    bind(b.messageClass as Class<IncomingMessage>, b.decoder as MessageDecoder<IncomingMessage>)
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidZone.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidZone.kt
 new file mode 100644
@@ -3356,6 +3681,19 @@ index 8fa46301..b5e4fc39 100644
                  val zoneIndexStorage =
                      ZoneIndexStorage(
                          ZoneIndexStorage.WORLDENTITY_CAPACITY,
+diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageDecoder.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageDecoder.kt
+index 08c7a6cf..12b79fd1 100644
+--- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageDecoder.kt
++++ b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageDecoder.kt
+@@ -152,7 +152,7 @@ public class GameMessageDecoder<R>(
+                 .trafficMonitor
+                 .gameChannelTrafficMonitor
+                 .incrementIncomingPackets(ctx.hostAddress(), opcode, length)
+-            val messageClass = decoders.getMessageClass(this.decoder.javaClass)
++            val messageClass = decoders.getMessageClass(this.opcode) ?: decoders.getMessageClass(this.decoder.javaClass)
+             val consumerRepository = networkService.gameMessageConsumerRepositoryProvider.provide()
+             val consumer = consumerRepository.consumers[messageClass]
+             if (consumer == null) {
 diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageDecoderRepositories.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageDecoderRepositories.kt
 index f463c584..1d84192d 100644
 --- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageDecoderRepositories.kt
@@ -3438,4 +3776,50 @@ index 52030dc7..e6a8e59b 100644
          private const val MOBILE_PASSWORD_AUTHENTICATION = 5
 +        private const val MOBILE_TOKEN_AUTHENTICATION = 7
      }
+ }
+diff --git a/protocol/src/main/kotlin/net/rsprot/protocol/message/codec/incoming/MessageDecoderRepository.kt b/protocol/src/main/kotlin/net/rsprot/protocol/message/codec/incoming/MessageDecoderRepository.kt
+index f84eb206..16acb83c 100644
+--- a/protocol/src/main/kotlin/net/rsprot/protocol/message/codec/incoming/MessageDecoderRepository.kt
++++ b/protocol/src/main/kotlin/net/rsprot/protocol/message/codec/incoming/MessageDecoderRepository.kt
+@@ -9,7 +9,14 @@ public class MessageDecoderRepository<out P : ClientProt> internal constructor(
+     private val protRepository: ProtRepository<P>,
+     private val decoders: Array<MessageDecoder<*>?>,
+     private val decoderToMessageClassMap: Map<Class<out MessageDecoder<IncomingMessage>>, Class<out IncomingMessage>>,
++    private val messageClassesByOpcode: Array<Class<out IncomingMessage>?> = emptyArray(),
+ ) {
++    /**
++     * Message class bound for [opcode]. Unlike the decoder-class lookup this stays correct when one
++     * decoder class (e.g. a delegating wrapper) is bound under several opcodes.
++     */
++    public fun getMessageClass(opcode: Int): Class<out IncomingMessage>? = messageClassesByOpcode.getOrNull(opcode)
++
+     public fun getDecoder(opcode: Int): MessageDecoder<*> =
+         decoders[opcode]
+             ?: throw IllegalArgumentException("Opcode $opcode is not registered.")
+diff --git a/protocol/src/main/kotlin/net/rsprot/protocol/message/codec/incoming/MessageDecoderRepositoryBuilder.kt b/protocol/src/main/kotlin/net/rsprot/protocol/message/codec/incoming/MessageDecoderRepositoryBuilder.kt
+index c9cafbdd..821f23f7 100644
+--- a/protocol/src/main/kotlin/net/rsprot/protocol/message/codec/incoming/MessageDecoderRepositoryBuilder.kt
++++ b/protocol/src/main/kotlin/net/rsprot/protocol/message/codec/incoming/MessageDecoderRepositoryBuilder.kt
+@@ -11,6 +11,7 @@ public class MessageDecoderRepositoryBuilder<P : ClientProt>(
+     private val decoders: Array<MessageDecoder<*>?> = arrayOfNulls(protRepository.capacity())
+     private val decoderClassToMessageClassMap:
+         MutableMap<Class<out MessageDecoder<IncomingMessage>>, Class<out IncomingMessage>> = hashMapOf()
++    private val messageClassesByOpcode: Array<Class<out IncomingMessage>?> = arrayOfNulls(protRepository.capacity())
+ 
+     public inline fun <reified T : IncomingMessage> bind(encoder: MessageDecoder<T>) {
+         bind(T::class.java, encoder)
+@@ -26,6 +27,7 @@ public class MessageDecoderRepositoryBuilder<P : ClientProt>(
+         }
+         decoders[clientProt.opcode] = decoder
+         decoderClassToMessageClassMap[decoder::class.java] = messageClass
++        messageClassesByOpcode[clientProt.opcode] = messageClass
+     }
+ 
+     public fun build(): MessageDecoderRepository<P> =
+@@ -33,5 +35,6 @@ public class MessageDecoderRepositoryBuilder<P : ClientProt>(
+             protRepository,
+             decoders.copyOf(),
+             decoderClassToMessageClassMap.toMap(),
++            messageClassesByOpcode.copyOf(),
+         )
  }

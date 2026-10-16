@@ -24,6 +24,52 @@ import net.rsprot.protocol.game.incoming.objs.OpObjT
 import net.rsprot.protocol.game.incoming.npcs.OpNpcT
 import net.rsprot.protocol.game.incoming.npcs.OpNpcV2
 import net.rsprot.protocol.game.incoming.objs.OpObjV2
+import net.rsprot.protocol.game.incoming.misc.client.WindowStatus
+import net.rsprot.protocol.game.incoming.misc.client.ConnectionTelemetry
+import net.rsprot.protocol.game.incoming.misc.client.MapBuildComplete
+import net.rsprot.protocol.game.incoming.misc.client.Idle
+import net.rsprot.protocol.game.incoming.misc.client.DetectModifiedClient
+import net.rsprot.protocol.game.incoming.misc.client.RSevenStatus
+import net.rsprot.protocol.game.incoming.misc.client.MembershipPromotionEligibility
+import net.rsprot.protocol.game.incoming.misc.client.SendPingReply
+import net.rsprot.protocol.game.incoming.events.EventMouseMove
+import net.rsprot.protocol.game.incoming.events.EventNativeMouseMove
+import net.rsprot.protocol.game.incoming.events.EventMouseClickV1
+import net.rsprot.protocol.game.incoming.events.EventMouseClickV2
+import net.rsprot.protocol.game.incoming.events.EventMouseScroll
+import net.rsprot.protocol.game.incoming.events.EventKeyboard
+import net.rsprot.protocol.game.incoming.events.EventCameraPosition
+import net.rsprot.protocol.game.incoming.misc.user.CloseModal
+import net.rsprot.protocol.game.incoming.misc.user.ExitFreecam
+import net.rsprot.protocol.game.incoming.misc.user.ClickWorldMap
+import net.rsprot.protocol.game.incoming.misc.user.Teleport
+import net.rsprot.protocol.game.incoming.misc.user.SetChatFilterSettings
+import net.rsprot.protocol.game.incoming.misc.user.SendSnapshot
+import net.rsprot.protocol.game.incoming.misc.user.BugReport
+import net.rsprot.protocol.game.incoming.misc.user.SetHeading
+import net.rsprot.protocol.game.incoming.social.FriendListAdd
+import net.rsprot.protocol.game.incoming.social.IgnoreListAdd
+import net.rsprot.protocol.game.incoming.social.FriendListDel
+import net.rsprot.protocol.game.incoming.social.IgnoreListDel
+import net.rsprot.protocol.game.incoming.friendchat.FriendChatJoinLeave
+import net.rsprot.protocol.game.incoming.friendchat.FriendChatKick
+import net.rsprot.protocol.game.incoming.friendchat.FriendChatSetRank
+import net.rsprot.protocol.game.incoming.clan.ClanChannelFullRequest
+import net.rsprot.protocol.game.incoming.clan.ClanSettingsFullRequest
+import net.rsprot.protocol.game.incoming.resumed.ResumePCountDialog
+import net.rsprot.protocol.game.incoming.resumed.ResumePObjDialog
+import net.rsprot.protocol.game.incoming.resumed.ResumePNameDialog
+import net.rsprot.protocol.game.incoming.resumed.ResumePStringDialog
+import net.rsprot.protocol.game.incoming.resumed.ResumePLongDialog
+import net.rsprot.protocol.game.incoming.buttons.If1Button
+import net.rsprot.protocol.game.incoming.buttons.IfSubOp
+import net.rsprot.protocol.game.incoming.buttons.IfButtonT
+import net.rsprot.protocol.game.incoming.buttons.IfButtonD
+import net.rsprot.protocol.game.incoming.players.OpPlayer
+import net.rsprot.protocol.game.incoming.players.OpPlayerT
+import net.rsprot.protocol.game.incoming.worldentities.OpWorldEntity
+import net.rsprot.protocol.game.incoming.worldentities.OpWorldEntity6
+import net.rsprot.protocol.game.incoming.npcs.OpNpc6
 import net.rsprot.protocol.loginprot.incoming.pow.ProofOfWorkProvider
 import net.rsprot.protocol.loginprot.incoming.pow.challenges.sha256.Sha256Challenge
 import net.rsprot.protocol.loginprot.incoming.pow.challenges.sha256.Sha256MetaData
@@ -142,6 +188,52 @@ private class NetworkFactory(
             .addListener<OpObjT> { world.useOn(this, "obj", it.id, it.x, it.z, it.selectedInterfaceId, it.selectedSub, it.selectedObj) }
             .addListener<OpNpcT> { world.useOnNpc(this, it.index, it.selectedInterfaceId, it.selectedSub, it.selectedObj) }
             .addListener<AndroidUnknownPacket> { world.unknownAndroidPacket(this, it) }
+            .addListener<WindowStatus> { world.incoming(this, it) }
+            .addListener<ConnectionTelemetry> { world.incoming(this, it) }
+            .addListener<MapBuildComplete> { world.incoming(this, it) }
+            .addListener<Idle> { world.incoming(this, it) }
+            .addListener<DetectModifiedClient> { world.incoming(this, it) }
+            .addListener<RSevenStatus> { world.incoming(this, it) }
+            .addListener<MembershipPromotionEligibility> { world.incoming(this, it) }
+            .addListener<SendPingReply> { world.incoming(this, it) }
+            .addListener<EventMouseMove> { world.incoming(this, it) }
+            .addListener<EventNativeMouseMove> { world.incoming(this, it) }
+            .addListener<EventMouseClickV1> { world.incoming(this, it) }
+            .addListener<EventMouseClickV2> { world.incoming(this, it) }
+            .addListener<EventMouseScroll> { world.incoming(this, it) }
+            .addListener<EventKeyboard> { world.incoming(this, it) }
+            .addListener<EventCameraPosition> { world.incoming(this, it) }
+            .addListener<CloseModal> { world.incoming(this, it) }
+            .addListener<ExitFreecam> { world.incoming(this, it) }
+            .addListener<ClickWorldMap> { world.incoming(this, it) }
+            .addListener<Teleport> { world.incoming(this, it) }
+            .addListener<SetChatFilterSettings> { world.incoming(this, it) }
+            .addListener<SendSnapshot> { world.incoming(this, it) }
+            .addListener<BugReport> { world.incoming(this, it) }
+            .addListener<SetHeading> { world.incoming(this, it) }
+            .addListener<FriendListAdd> { world.incoming(this, it) }
+            .addListener<IgnoreListAdd> { world.incoming(this, it) }
+            .addListener<FriendListDel> { world.incoming(this, it) }
+            .addListener<IgnoreListDel> { world.incoming(this, it) }
+            .addListener<FriendChatJoinLeave> { world.incoming(this, it) }
+            .addListener<FriendChatKick> { world.incoming(this, it) }
+            .addListener<FriendChatSetRank> { world.incoming(this, it) }
+            .addListener<ClanChannelFullRequest> { world.incoming(this, it) }
+            .addListener<ClanSettingsFullRequest> { world.incoming(this, it) }
+            .addListener<ResumePCountDialog> { world.incoming(this, it) }
+            .addListener<ResumePObjDialog> { world.incoming(this, it) }
+            .addListener<ResumePNameDialog> { world.incoming(this, it) }
+            .addListener<ResumePStringDialog> { world.incoming(this, it) }
+            .addListener<ResumePLongDialog> { world.incoming(this, it) }
+            .addListener<If1Button> { world.incoming(this, it) }
+            .addListener<IfSubOp> { world.incoming(this, it) }
+            .addListener<IfButtonT> { world.incoming(this, it) }
+            .addListener<IfButtonD> { world.incoming(this, it) }
+            .addListener<OpPlayer> { world.incoming(this, it) }
+            .addListener<OpPlayerT> { world.incoming(this, it) }
+            .addListener<OpWorldEntity> { world.incoming(this, it) }
+            .addListener<OpWorldEntity6> { world.incoming(this, it) }
+            .addListener<OpNpc6> { world.incoming(this, it) }
             .addGlobalListener { player, message: IncomingGameMessage ->
                 log.debug { "<- ${player.username}: $message" }
             }

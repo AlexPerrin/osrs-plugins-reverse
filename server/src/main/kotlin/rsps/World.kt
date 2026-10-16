@@ -14,6 +14,7 @@ import net.rsprot.protocol.game.outgoing.zone.payload.MapAnim
 import net.rsprot.protocol.game.outgoing.zone.payload.MapProjAnimV2
 import net.rsprot.protocol.game.outgoing.zone.payload.SoundArea
 import net.rsprot.protocol.message.ZoneProt
+import net.rsprot.protocol.message.IncomingGameMessage
 import net.rsprot.protocol.api.GameConnectionHandler
 import net.rsprot.protocol.api.NetworkService
 import net.rsprot.protocol.api.Session
@@ -484,10 +485,15 @@ class World(
     private fun questCommand(player: Player, args: List<String>) {
         val state = args.lastOrNull()?.takeIf { it in QUEST_STATES || it.toIntOrNull() != null }
         val query = (if (state != null) args.dropLast(1) else args).joinToString(" ").lowercase()
-        if (query.isBlank()) return player.message("::quest name [start|done|reset|value] (${quests.size} quests)")
+        if (query.isBlank()) return player.message("::quest name|index [start|done|reset|value] (${quests.size} quests)")
+        // Exact name, then index in the quest list (::quest 12), then a unique prefix
+        // (ignoring "the "), then a unique substring.
         val matches = quests.filter { query in it.name.lowercase() }
-        val quest = matches.firstOrNull { it.name.equals(query, true) } ?: matches.singleOrNull()
-            ?: return player.message(if (matches.isEmpty()) "No quest matches '$query'" else "Matches: ${matches.take(6).joinToString { it.name }}")
+        val prefix = matches.filter { it.name.lowercase().removePrefix("the ").startsWith(query) || it.name.lowercase().startsWith(query) }
+        val quest = quests.firstOrNull { it.name.equals(query, true) }
+            ?: query.toIntOrNull()?.let { quests.getOrNull(it) }
+            ?: prefix.singleOrNull() ?: matches.singleOrNull()
+            ?: return player.message(if (matches.isEmpty()) "No quest matches '$query'" else "Matches (::quest <index> ...): ${matches.take(6).joinToString { "${quests.indexOf(it)} ${it.name}" }}")
         if (state != null) {
             val value = when (state) {
                 "start" -> quest.unstarted + 1
@@ -903,6 +909,19 @@ class World(
     }
     /** ::freeze stops NPC wandering (makes NPCs easy to tap while testing). */
     private var npcsFrozen = false
+
+    private val seenIncomingClasses = HashSet<Class<*>>()
+
+    /**
+     * Client packets that are decoded but not acted on yet (newly identified Android prots): logged
+     * once per class at info (to confirm the decoder on live traffic), then at debug.
+     */
+    fun incoming(player: Player, message: IncomingGameMessage) {
+        val first = seenIncomingClasses.add(message.javaClass)
+        val quiet = message.javaClass.simpleName.startsWith("Event")
+        if (first || (config.logAndroidPackets && !quiet)) log.info { "<- ${player.username}: $message" }
+        else log.debug { "<- ${player.username}: $message" }
+    }
 
     fun unknownAndroidPacket(player: Player, packet: AndroidUnknownPacket) {
         // 93 (NO_TIMEOUT, every ~600 ms while idle) would flood the log.

@@ -299,9 +299,50 @@ is the second argument): functions with five calls are the op1-5 families (OPPLA
 `0x623e7c`, OPWORLDENTITY1-5 `0x622f10`). OPLOC vs OPOBJ was told apart by OPLOC6/OPLOCT sharing
 the loc helper `0x623b5c`. A loc/obj x/z swap would show as a wrong tile; OPLOC1 was checked live.
 
-Seen but unidentified: 18 (8 bytes after a minimenu "Walk here": `0000ffff00ee01bf`), 37 (keyboard events), 10 (5 bytes after login, looks like WINDOW_STATUS: `02 0780 0438` =
-mode 2, 1920×1080), 13, 21 (6 bytes per tap, mouse click event), 67, 98, 100. The server logs
-every unidentified packet with `LOG_ANDROID_PACKETS=true`.
+### Client→server, second pass (2026-10-16)
+
+From a scan of every call to the packet constructor 0x79cc90 (w0 = opcode; about 9 senders are
+in code Ghidra had not analysed, including the CS2 interpreter at ELF 0x4e82d0). Codecs:
+`AndroidMoreDecoders.kt`; enum entries are tagged "sender read" or "unverified: reason".
+Decoded live on 2026-10-16: 10, 13, 21, 37, 67, 98, 100 (EVENT_KEYBOARD's delta value looks
+too large, so the g3Alt3 transform is unconfirmed).
+
+| Opcode | Prot | Layout (as RSProt reads, wire order) |
+|---|---|---|
+| 0 / 41 / 60 / 94 | IGNORELIST_DEL / FRIENDLIST_DEL / FRIENDLIST_ADD / IGNORELIST_ADD | name |
+| 4 | RESUME_P_COUNTDIALOG | count `g4` |
+| 5 | OPPLAYERT | selectedObj `g2Alt1`, selectedCombinedId `g4Alt1`, index `g2Alt1`, ctrl `g1Alt3`, selectedSub `g2Alt3` (corrects the earlier OPWORLDENTITYT guess) |
+| 10 | WINDOW_STATUS | as desktop |
+| 13 | CONNECTION_TELEMETRY | 7 × `g2` as desktop (decoded without desktop's zero checks) |
+| 14 | SEND_SNAPSHOT | as desktop |
+| 15 | IF_BUTTONT | targetCombinedId `g4`, selectedSub `g2`, selectedCombinedId `g4`, targetSub `g2Alt2`, targetObj `g2Alt2`, selectedObj `g2Alt1` |
+| 16 | EVENT_CAMERA_POSITION | angleX `g2Alt3`, angleY `g2Alt3` |
+| 18 / 32 | EVENT_MOUSE_MOVE / EVENT_NATIVE_MOUSE_MOVE | as desktop |
+| 19 | SEND_PING_REPLY | fps `g1Alt2`, value1 `g4Alt1`, value2 `g4`, gcPercentTime `g1` |
+| 21 / 77 | EVENT_MOUSE_CLICK_V1 / V2 | V1 as desktop; V2 packed `g2`, y `g2Alt2`, x `g2`, code `g1` |
+| 22 / 96 / 36 / 86 | RESUME_P_STRINGDIALOG / NAMEDIALOG / OBJDIALOG / LONGDIALOG | as desktop |
+| 23 / 30 / 67 / 97 | EXIT_FREECAM / CLOSE_MODAL / MAP_BUILD_COMPLETE / IDLE | — |
+| 29 | CLICKWORLDMAP | packed coord `g4Alt3` |
+| 35 | TELEPORT | level `g1Alt2`, x `g2Alt3`, z `g2Alt2`, oculusSyncValue `g4Alt3` |
+| 37 | EVENT_KEYBOARD | per key: key `g1Alt2`, delta `g3Alt3` |
+| 39 | MOVE_MINIMAPCLICK | x `g2Alt3`, z `g2Alt2`, keyCombination `g1Alt3`, then the desktop tail (decoded as MoveGameClick) |
+| 42 | BUG_REPORT | instructions, type `g1`, description |
+| 43 | IF_BUTTOND | selectedCombinedId `g4Alt2`, targetSub `g2Alt2`, targetObj `g2Alt2`, targetCombinedId `g4Alt3`, selectedObj `g2Alt3`, selectedSub `g2Alt2` |
+| 45 | SET_HEADING (unverified) | heading `g1Alt2` |
+| 47 | SET_CHATFILTERSETTINGS | as desktop |
+| 49 / 69 | OPNPC6 / OPWORLDENTITY6 (unverified) | id `g2` / id `g2Alt3` |
+| 51 / 61 / 88 | FRIENDCHAT_KICK / FRIENDCHAT_JOIN_LEAVE / FRIENDCHAT_SETRANK | name / name / rank `g1Alt1`, name |
+| 56 / 72 | CLANCHANNEL_FULL_REQUEST / CLANSETTINGS_FULL_REQUEST | clanId `g1s` |
+| 70 | IF_SUBOP | as desktop |
+| 75 / 98 / 100 | DETECT_MODIFIED_CLIENT / MEMBERSHIP_PROMOTION_ELIGIBILITY / RSEVEN_STATUS | as desktop |
+| 89 | EVENT_MOUSE_SCROLL | rotation `g2s` |
+| 95 | IF_BUTTON | combinedId `g4` |
+| 91, 17, 65, 53, 25, 26, 68, 101 | OPPLAYER1-8 | 1: index `g2Alt1` ctrl `g1Alt1`; 2: index `g2Alt3` ctrl `g1`; 3: index `g2Alt1` ctrl `g1Alt3`; 4: ctrl `g1` index `g2Alt3`; 5: index `g2` ctrl `g1Alt1`; 6: index `g2Alt3` ctrl `g1Alt3`; 7: index `g2` ctrl `g1Alt2`; 8: ctrl `g1Alt3` index `g2Alt2` |
+| 78, 54, 11, 52, 59 | OPWORLDENTITY1-5 | 1: index `g2Alt3` ctrl `g1Alt2`; 2: index `g2` ctrl `g1Alt2`; 3: ctrl `g1Alt2` index `g2Alt1`; 4: ctrl `g1Alt3` index `g2`; 5: ctrl `g1Alt3` index `g2Alt1` |
+| 8, 20, 28, 46, 50, 57, 84 | IF_SCRIPT_TRIGGER, AFFINEDCLANSETTINGS_SETMUTED/ADDBANNED_FROMCHANNEL, SOUND_JINGLEEND, MESSAGE_PRIVATE, CLANCHANNEL_KICKUSER, IF_CRMVIEW_OP | named, unverified, mostly no codec |
+
+No sender found (so not named): 12, 87, 27, 1/62/76/85 (11 bytes: OPNPCU/OPPLAYERU/
+OPWORLDENTITYT/U), 73/83 (15 bytes: OPLOCU/OPOBJU).
 
 ## Display name
 

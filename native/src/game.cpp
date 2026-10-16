@@ -928,6 +928,23 @@ bool set_afk_timeout_minutes(int minutes) {
     return true;
 }
 
+// Members world. setWorld (0x432748), run when a world is picked from the world list or by a
+// world-switch packet, sets Client+0x2070 = flags & 1 and calls setMembersWorld (0x642f14), which
+// flushes the obj cache and sets the global members byte (0x1221e90: "(Members)" item names and
+// hidden ops when 0). The jav_config path that starts the game on its world only writes the flags
+// (Client+0x2f64), so a members world started that way stays free-to-play. Complete that step with
+// the game's own function when the flags it received disagree with its members byte.
+void sync_members_world() {
+    uintptr_t c = client();
+    if (!g_build || !c || game_state() < 10) return;
+    bool members = read_at<int32_t>(c + 0x2f64) & 1;
+    auto* cached = reinterpret_cast<uint8_t*>(c + 0x2070);
+    if (static_cast<bool>(*cached & 1) == members) return;
+    *cached = members ? 1 : 0;
+    reinterpret_cast<void (*)(bool)>(g_base + 0x642f14)(members);
+    LOGI("game: members world %d (flags %#x)", members ? 1 : 0, read_at<int32_t>(c + 0x2f64));
+}
+
 void chat_changed() {
     uintptr_t c = client();
     if (g_build && c) reinterpret_cast<void (*)(uintptr_t)>(g_base + kChatChanged)(c);

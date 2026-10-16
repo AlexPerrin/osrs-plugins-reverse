@@ -52,6 +52,14 @@ public class SpriteManager {
         getSpriteAsync(archive, file, infoBox::setImage);
     }
 
+    public void addSpriteTo(javax.swing.JButton c, int archive, int file) {
+        getSpriteAsync(archive, file, img -> javax.swing.SwingUtilities.invokeLater(() -> c.setIcon(new javax.swing.ImageIcon(img))));
+    }
+
+    public void addSpriteTo(javax.swing.JLabel c, int archive, int file) {
+        getSpriteAsync(archive, file, img -> javax.swing.SwingUtilities.invokeLater(() -> c.setIcon(new javax.swing.ImageIcon(img))));
+    }
+
     public void addSpriteOverrides(SpriteOverride[] overrides) {}
     public void removeSpriteOverrides(SpriteOverride[] overrides) {}
 }

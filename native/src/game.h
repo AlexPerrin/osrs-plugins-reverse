@@ -322,6 +322,9 @@ bool add_chat_message(int type, const std::string& name, const std::string& text
 // chat_changed makes the chatbox rebuild. Game thread only.
 bool chat_remove_message(int type, int id);
 void chat_changed();
+// Applies the members flag of the world flags the game received (setWorld's step the jav_config
+// start skips). Game thread, per cycle; no-op when they agree.
+void sync_members_world();
 // Idle logout timeout in minutes (the game's AFKTimeout setting); -1 if unknown. Game thread only.
 int afk_timeout_minutes();
 bool set_afk_timeout_minutes(int minutes);

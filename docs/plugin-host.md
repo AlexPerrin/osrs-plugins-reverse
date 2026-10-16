@@ -70,16 +70,16 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Idle Notifier | runs | "[RuneLite] You are now idle!" in the game chat after mining/fishing stops (Notifier → game chat, verified 2026-10-16) |
 | Mining | runs | "Mining" / "NOT mining" session panel below the chatbox while mining copper (after OpenRune's OSRS wording fix; TOP_LEFT placement verified 2026-10-16) |
 | Player Indicators | starts | needed protobuf-javalite + RuneLite http-api (PartyService) |
-| Special Attack Counter | starts | as Player Indicators |
+| Special Attack Counter | starts | OpenRune: "This weapon does not have a special attack." for a dragon dagger (2026-10-16) |
 | XP Globes | runs | attack/HP globes over the chat tabs after combat |
 | Bank | starts | not checked (`::openbank` didn't open the bank in the test) |
-| Notes | starts | sidebar tab "Notes" added |
+| Notes | starts | sidebar tab added, but its JTextArea shows as a checkbox "[ ]" (no text editing yet) |
 | Slayer | starts | task InfoBox drawn (enchanted gem "?" icon from the game's sprites) with no task |
 | NPC Aggression Timer | starts | not checked |
-| Mouse Tooltips | starts | not checked (hover entries exist only for inventory, bank and equipment slots) |
-| Loot Tracker | throws | NoClassDefFoundError com.sun.net.httpserver.HttpServer |
-| Hiscore | throws | Client.getPlayerOptions not implemented |
-| Skill Calculator | throws | NPE: JSpinner.DefaultEditor.getTextField() in the headless Swing |
+| Mouse Tooltips | runs | "Eat Lobster" tooltip while a finger rests on an inventory item and "Remove Dragon dagger" on the worn weapon slot (hover entries, verified 2026-10-16) |
+| Loot Tracker | runs | sidebar: "Goblin (lvl-2) 2 gp, Total count: 1" after killing a goblin (verified 2026-10-16); local only (same-name SessionManager without a runelite.net session) |
+| Hiscore | runs | sidebar lookup of "Lynx Titan" shows the levels from the public hiscores (okhttp, off the game thread; verified 2026-10-16). The player-menu "Lookup" entry is host-side only |
+| Skill Calculator | throws | SpriteManager.addSpriteTo missing in the host replacement (after the JSpinner fix) |
 
 ## Build and run
 

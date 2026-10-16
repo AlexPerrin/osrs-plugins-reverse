@@ -343,6 +343,7 @@ void after_cycle() {
     diff_players();
     diff_inventories();
     diff_skills();
+    game::sync_members_world();
     poll_messages();
     diff_interfaces();
     diff_menu();

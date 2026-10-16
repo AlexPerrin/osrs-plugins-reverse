@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 11 entry (2026-10-16) at the end of "Where things stand".
+> Latest state: see the gen 12 entry (2026-10-16) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -360,6 +360,27 @@ session; its notes are in `docs/android-protocol.md`.
     and name on OpenRune), Player Indicators / Special Attack Counter (need other players / spec weapon),
     Poison; then rank_api.py. Chat Filter's duplicate collapsing needs per-redraw callbacks (not emulated).
     OpenRune mining text was "pickaxe" (server fix requested); `::npc` takes `duration npcDebugName`.
+- **2026-10-16 (client dev gen 12)**, commits e79bdb2..:
+  - **Chat**: `chatMessageBuilding` is raised once per new message (Chat Timestamps puts its local time
+    before the line, after the game's own UTC time). `Client.addChatMessage` returns a pending node that
+    binds to the game's message when it arrives (postEvent=false honoured). `ChatLineBuffer.removeMessageNode`
+    removes the line from the game's chat channel ring (`game::chat_remove_message`) and `refreshChat` bumps
+    the chat cycle (`0x43aacc`); Chat History's "Clear history" removed the lines once but they came back on
+    a later rebuild (the All tab probably reads another list: next lead is `0x3ef964`'s second map at
+    `PTR_DAT_00b82728`).
+  - **Idle logout**: `setIdleTimeout` writes the game's AFKTimeout setting (minutes, `Client+0x2278 -> +0x154c`,
+    re-applied at login; the game saves it, so reset it to 5 after tests). Logout Timer verified.
+  - **Sprites**: `SpriteManager.getSprite` returns the game's own sprites (`0x5d4074` sprite cache, frame 0);
+    `Client.getSpriteOverrides` writes same-size overrides into the cached sprite and restores on remove
+    (Poison's green heart verified). Sprite calls are guarded until game state >= 10 (a startup call crashed
+    the game thread).
+  - **Members**: items show "(Members)" with no ops until the login screen's world switcher selects world 255
+    (`setWorld 0x432748` is the only path that sets the members byte `0x1221e90`); server fix pending.
+    Cannon verified that way.
+  - Hover entries now cover bank items (12:12), the inventory beside the bank (15:3) and worn equipment (387,
+    child 1 item; unverified). BufferedImage(ColorModel, WritableRaster, ...) / copyData / getRaster in the shim.
+  - Same-name `SessionManager` (no runelite.net login), player option arrays, headless `JSpinner.getEditor`.
+  - Table at the end of gen 12: see docs/plugin-host.md.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

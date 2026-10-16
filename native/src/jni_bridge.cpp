@@ -307,6 +307,47 @@ jobjectArray n_clicked_menu_entry(JNIEnv* env, jclass) {
     return menu_array(env, {client_thread::clicked_menu_entry()});
 }
 jboolean n_menu_open(JNIEnv*, jclass) { return game::menu_open(); }
+
+bool require_client_thread(JNIEnv* env, const char* what) {
+    if (client_thread::on_client_thread()) return true;
+    std::string msg = std::string(what) + " must be called on the client thread";
+    env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), msg.c_str());
+    return false;
+}
+
+// 5 ints per object: plane << 24 | layer << 16 | x << 8 | y, id, tag low, tag high, size_x << 8 | size_y.
+jintArray n_scene_objects(JNIEnv* env, jclass) {
+    if (!require_client_thread(env, "sceneObjects")) return nullptr;
+    auto objs = game::scene_objects();
+    std::vector<jint> packed;
+    packed.reserve(objs.size() * 5);
+    for (const auto& o : objs) {
+        packed.push_back(o.plane << 24 | o.layer << 16 | o.x << 8 | o.y);
+        packed.push_back(o.id);
+        packed.push_back(static_cast<jint>(o.tag & 0xffffffffu));
+        packed.push_back(static_cast<jint>(o.tag >> 32));
+        packed.push_back(o.size_x << 8 | o.size_y);
+    }
+    jintArray out = env->NewIntArray(static_cast<jsize>(packed.size()));
+    if (out && !packed.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(packed.size()), packed.data());
+    return out;
+}
+
+// 3 ints per item: plane << 16 | x << 8 | y, id, quantity.
+jintArray n_ground_items(JNIEnv* env, jclass) {
+    if (!require_client_thread(env, "groundItems")) return nullptr;
+    auto items = game::ground_items();
+    std::vector<jint> packed;
+    packed.reserve(items.size() * 3);
+    for (const auto& i : items) {
+        packed.push_back(i.plane << 16 | i.x << 8 | i.y);
+        packed.push_back(i.id);
+        packed.push_back(i.quantity);
+    }
+    jintArray out = env->NewIntArray(static_cast<jsize>(packed.size()));
+    if (out && !packed.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(packed.size()), packed.data());
+    return out;
+}
 void n_consume_menu_click(JNIEnv*, jclass) { client_thread::consume_menu_click(); }
 
 // {name, sender, text}, or null if the message is no longer kept.
@@ -437,6 +478,8 @@ const JNINativeMethod kNatives[] = {
     {"menuEntries", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_menu_entries)},
     {"clickedMenuEntry", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_clicked_menu_entry)},
     {"menuOpen", "()Z", reinterpret_cast<void*>(n_menu_open)},
+    {"sceneObjects", "()[I", reinterpret_cast<void*>(n_scene_objects)},
+    {"groundItems", "()[I", reinterpret_cast<void*>(n_ground_items)},
     {"consumeMenuClick", "()V", reinterpret_cast<void*>(n_consume_menu_click)},
     {"gameState", "()I", reinterpret_cast<void*>(n_game_state)},
     {"gameCycle", "()I", reinterpret_cast<void*>(n_game_cycle)},

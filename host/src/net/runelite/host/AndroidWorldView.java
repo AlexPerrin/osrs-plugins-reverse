@@ -106,6 +106,14 @@ public class AndroidWorldView extends WorldViewStub {
         heightsCycle = cycle;
     }
 
+    /** Interpolated ground height at a local point (Perspective's formula over getTileHeights). */
+    @Override
+    public int getTileHeight(int localX, int localY, int plane) {
+        net.runelite.api.Client c = Host.client();
+        if (c == null) return 0;
+        return net.runelite.api.Perspective.getTileHeight(c, new net.runelite.api.coords.LocalPoint(localX, localY, -1), plane);
+    }
+
     @Override
     public int[][][] getTileHeights() {
         refreshHeights();
@@ -132,6 +140,7 @@ public class AndroidWorldView extends WorldViewStub {
     @Override public IndexedObjectSet<? extends net.runelite.api.WorldEntity> worldEntities() { return emptySet(); }
 
     @Override public net.runelite.api.Scene getScene() { return scene; }
+    AndroidScene androidScene() { return scene; }
 
     @Override
     public IndexedObjectSet<? extends NPC> npcs() {

@@ -72,7 +72,12 @@ final class OverlayRenderer {
         bitmap.eraseColor(0);
         CanvasGraphics root = new CanvasGraphics(canvas);
         root.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        for (OverlayLayer layer : LAYERS) renderLayer(root, layer, size);
+        net.runelite.client.ui.overlay.outline.ModelOutlineRenderer.target = root;
+        try {
+            for (OverlayLayer layer : LAYERS) renderLayer(root, layer, size);
+        } finally {
+            net.runelite.client.ui.overlay.outline.ModelOutlineRenderer.target = null;
+        }
         root.dispose();
 
         ByteBuffer buf = Native.overlayBuffer(size.width, size.height);

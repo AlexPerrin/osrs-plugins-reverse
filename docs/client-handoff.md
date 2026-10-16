@@ -62,6 +62,15 @@ session; its notes are in `docs/android-protocol.md`.
   highlight. The quest start through dialogue is blocked server-side (chatmenu option hit offset,
   `::quest cook` ambiguous), reported. The server's RSA key is now baked into its image; build with
   `MODULUS=8555c56c...` (or whatever server/data/rsa.properties holds) if the repack can't log in.
+- **Cook's Assistant end to end with Quest Helper (2026-10-15)**: started through the Cook's
+  dialogue (after the server's chatmenu fix), varp 29 0 → 1 → 2; QH's steps followed the items
+  (egg → wheat → milk → "Give the Cook..."), the Cook got QH's cyan highlight, and the overlay
+  closed on "Quest complete". Same session added scene objects + ground items (all planes, spawn/
+  despawn events per tick), NPC hulls (footprint boxes) and canvas helpers, `ModelOutlineRenderer`
+  replacement, `WorldView.getTileHeight`, extended tile settings. Unverified: object highlights
+  (QH ObjectStep), item highlights on the ground, QH's arrow over the NPC after the extended-
+  settings fix. Next: Sheep Shearer (object highlights, item counts), then sidebar text input,
+  minimap geometry, dialogue-option highlights (widget dynamic children).
 - Device protocol addition: `/tmp/osrs-device-status` holds the latest "taking device (…)" /
   "device free, restart ok (…)" line; check it before using adb and write it when you take or
   free the device (the server agent polls it), besides the SendMessage notes.

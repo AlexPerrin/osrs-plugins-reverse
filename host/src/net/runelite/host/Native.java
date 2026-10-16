@@ -5,6 +5,10 @@ final class Native {
     private Native() {}
 
     static native int gameState();
+    /** Scene objects, all planes: 5 ints each (see jni_bridge.cpp n_scene_objects). Client thread only. */
+    static native int[] sceneObjects();
+    /** Ground items, all planes: 3 ints each (plane << 16 | x << 8 | y, id, quantity). Client thread only. */
+    static native int[] groundItems();
     static native int gameCycle();
     static native int serverTick();
     static native int varp(int id);

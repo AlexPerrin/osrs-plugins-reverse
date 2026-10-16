@@ -174,4 +174,19 @@ bool menu_entry_for_path(uintptr_t menu, const uint64_t* path, size_t len, MenuE
 uintptr_t menu_vtable();  // menu model vtable; slot 1 = select
 uintptr_t menu_select();  // expected value of that slot
 
+// Scene objects of the top-level scene, all planes (docs/offsets.md "Scene objects"). Game objects
+// are listed once, at their south-west tile, with their size in tiles. Game thread only.
+enum SceneLayer : uint8_t { kWall = 0, kWallDecoration = 1, kGameObject = 2, kGroundDecoration = 3 };
+struct SceneObject {
+    uint8_t layer, plane, x, y, size_x = 1, size_y = 1;
+    int32_t id;
+    uint64_t tag;  // the game's object tag: scene x bits 0-6, y bits 7-13, id bits 20-35
+};
+std::vector<SceneObject> scene_objects();
+struct GroundItem {
+    uint8_t plane, x, y;
+    int32_t id, quantity;
+};
+std::vector<GroundItem> ground_items();  // per tile in stack order (top first)
+
 }  // namespace game

@@ -39,7 +39,7 @@ public final class Host {
     private static boolean profilePosted;
     private static Client client;
 
-    static Client client() { return client; }
+    public static Client client() { return client; }
     private static final NpcCache npcCache = new NpcCache();
     private static final PlayerCache playerCache = new PlayerCache();
     private static final AndroidWorldView worldView = new AndroidWorldView(npcCache, playerCache);
@@ -105,6 +105,7 @@ public final class Host {
         if (jars != null) {
             for (File jar : jars) loadJar(plugins, jar, cacheDir);
         }
+        worldView().androidScene().objects.bus = bus;
         eventBus = bus;
         Log.i(TAG, "host ready; " + plugins.getPlugins().size() + " plugin(s) running");
     }
@@ -162,6 +163,13 @@ public final class Host {
                 }
                 break;
             case GAME_TICK:
+                if (client.getGameState() == GameState.LOGGED_IN) {
+                    try {
+                        worldView().androidScene().objects.refresh();
+                    } catch (Throwable t) {
+                        Log.e(TAG, "scene refresh failed", t);
+                    }
+                }
                 bus.post(gameTick);
                 clientThread.runTickEnd();
                 break;

@@ -770,4 +770,92 @@ bool menu_entry_for_path(uintptr_t menu, const uint64_t* path, size_t len, MenuE
 uintptr_t menu_vtable() { return g_build ? g_base + g_build->menu_vtable : 0; }
 uintptr_t menu_select() { return g_build ? g_base + g_build->menu_select : 0; }
 
+namespace {
+uintptr_t top_world_view() {
+    uintptr_t c = client();
+    return c && g_build ? read_at<uintptr_t>(c + g_build->f_world_view) : 0;
+}
+}  // namespace
+
+// Scene (WorldView +0x10): +0x944 planes, +0x948/+0x94c size, +0x968 tile slots (0x10 each,
+// Tile* at +8) indexed ((plane * sx) + x) * sy + y. Tile: +0x108 wall, +0x110 wall decoration,
+// +0x118 ground decoration (object*, tag at +0x38), +0x34 game object count, +0x38 game object
+// slots (0x10 each, object* at +8; tag +0x1f0, scene min x/max x/min y/max y +0x210..+0x21c).
+std::vector<SceneObject> scene_objects() {
+    std::vector<SceneObject> out;
+    uintptr_t wv = top_world_view();
+    uintptr_t scene = wv ? read_at<uintptr_t>(wv + 0x10) : 0;
+    if (!scene) return out;
+    int planes = read_at<int32_t>(scene + 0x944), sx = read_at<int32_t>(scene + 0x948), sy = read_at<int32_t>(scene + 0x94c);
+    uintptr_t slots = read_at<uintptr_t>(scene + 0x968);
+    if (planes < 1 || planes > 4 || sx < 1 || sx > 256 || sy < 1 || sy > 256 || !slots) return out;
+    out.reserve(4096);
+    for (int p = 0; p < planes; p++)
+        for (int x = 0; x < sx; x++)
+            for (int y = 0; y < sy; y++) {
+                uintptr_t tile = read_at<uintptr_t>(slots + ((static_cast<size_t>(p) * sx + x) * sy + y) * 0x10 + 8);
+                if (!tile) continue;
+                static constexpr struct { uint32_t off; SceneLayer layer; } kSimple[] = {
+                    {0x108, kWall}, {0x110, kWallDecoration}, {0x118, kGroundDecoration}};
+                for (const auto& l : kSimple) {
+                    uintptr_t o = read_at<uintptr_t>(tile + l.off);
+                    if (!o) continue;
+                    uint64_t tag = read_at<uint64_t>(o + 0x38);
+                    out.push_back({l.layer, static_cast<uint8_t>(p), static_cast<uint8_t>(x), static_cast<uint8_t>(y), 1, 1,
+                                   static_cast<int32_t>(tag >> 20 & 0xffff), tag});
+                }
+                int n = read_at<int32_t>(tile + 0x34);
+                uintptr_t objs = read_at<uintptr_t>(tile + 0x38);
+                if (n <= 0 || n > 16 || !objs) continue;
+                for (int i = 0; i < n; i++) {
+                    uintptr_t o = read_at<uintptr_t>(objs + static_cast<size_t>(i) * 0x10 + 8);
+                    if (!o) continue;
+                    int x0 = read_at<int32_t>(o + 0x210), x1 = read_at<int32_t>(o + 0x214);
+                    int y0 = read_at<int32_t>(o + 0x218), y1 = read_at<int32_t>(o + 0x21c);
+                    if (x0 != x || y0 != y) continue;  // listed on every tile it covers; report it once
+                    uint64_t tag = read_at<uint64_t>(o + 0x1f0);
+                    out.push_back({kGameObject, static_cast<uint8_t>(p), static_cast<uint8_t>(x), static_cast<uint8_t>(y),
+                                   static_cast<uint8_t>(std::clamp(x1 - x0 + 1, 1, 255)),
+                                   static_cast<uint8_t>(std::clamp(y1 - y0 + 1, 1, 255)),
+                                   static_cast<int32_t>(tag >> 20 & 0xffff), tag});
+                }
+            }
+    return out;
+}
+
+// Ground items: WorldView +0x140 → planes (0x18 each, +0x10 → x columns (0x18 each, +0x10 → y
+// list heads (0x18 each: libc++ std::list {prev, next, size}))). Nodes {prev, next, Obj*, ctrl};
+// Obj +0x40 id, +0x44 quantity (OBJ_ADD 0x45775c).
+std::vector<GroundItem> ground_items() {
+    std::vector<GroundItem> out;
+    uintptr_t wv = top_world_view();
+    uintptr_t scene = wv ? read_at<uintptr_t>(wv + 0x10) : 0;
+    uintptr_t planes_arr = wv ? read_at<uintptr_t>(wv + 0x140) : 0;
+    if (!scene || !planes_arr) return out;
+    int planes = read_at<int32_t>(scene + 0x944), sx = read_at<int32_t>(scene + 0x948), sy = read_at<int32_t>(scene + 0x94c);
+    if (planes < 1 || planes > 4 || sx < 1 || sx > 256 || sy < 1 || sy > 256) return out;
+    for (int p = 0; p < planes; p++) {
+        uintptr_t cols = read_at<uintptr_t>(planes_arr + static_cast<size_t>(p) * 0x18 + 0x10);
+        if (!cols) continue;
+        for (int x = 0; x < sx; x++) {
+            uintptr_t heads = read_at<uintptr_t>(cols + static_cast<size_t>(x) * 0x18 + 0x10);
+            if (!heads) continue;
+            for (int y = 0; y < sy; y++) {
+                uintptr_t head = heads + static_cast<size_t>(y) * 0x18;
+                uint64_t n = read_at<uint64_t>(head + 0x10);
+                if (!n || n > 256) continue;
+                uintptr_t node = read_at<uintptr_t>(head + 8);
+                for (uint64_t i = 0; i < n && node && node != head; i++) {
+                    uintptr_t obj = read_at<uintptr_t>(node + 0x10);
+                    if (obj)
+                        out.push_back({static_cast<uint8_t>(p), static_cast<uint8_t>(x), static_cast<uint8_t>(y),
+                                       read_at<int32_t>(obj + 0x40), read_at<int32_t>(obj + 0x44)});
+                    node = read_at<uintptr_t>(node + 8);
+                }
+            }
+        }
+    }
+    return out;
+}
+
 }  // namespace game

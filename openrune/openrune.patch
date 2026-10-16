@@ -77,6 +77,20 @@ index 0e61a1db8..bd9af7f5d 100644
  moveRestrict = "NoMove"
  wanderRange = 0
  respawnRate = 50
+diff --git a/api/account/src/main/kotlin/org/rsmod/api/account/character/main/CharacterAccountApplier.kt b/api/account/src/main/kotlin/org/rsmod/api/account/character/main/CharacterAccountApplier.kt
+index 8fa952c42..be66b07ea 100644
+--- a/api/account/src/main/kotlin/org/rsmod/api/account/character/main/CharacterAccountApplier.kt
++++ b/api/account/src/main/kotlin/org/rsmod/api/account/character/main/CharacterAccountApplier.kt
+@@ -28,7 +28,8 @@ public class CharacterAccountApplier @Inject constructor() :
+         player.trustedDevices = d.trustedDevices.toMutableList()
+         player.twoFactorAuth = d.twoFactorAuth
+         player.lastKnownDevice = d.trustedDevices.maxByOrNull { it.verifiedAt }?.deviceId
+-        player.members = c.members
++        // Test server: every account is a member, so members ops (e.g. cannon Set-up) show.
++        player.members = true
+         player.username = d.accountName
+         player.displayName = c.displayName ?: ""
+         player.previousDisplayName = c.previousDisplayName ?: ""
 diff --git a/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt b/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt
 index eddd260e2..5509c7c4a 100644
 --- a/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt
@@ -348,6 +362,64 @@ index 98c922c45..76770d5bd 100644
  
          val client = RspClient(session, infos) as Client<Any, Any>
          val cycle = RspCycle(session, infos, regionReg)
+diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandler.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandler.kt
+new file mode 100644
+index 000000000..dc9224eca
+--- /dev/null
++++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandler.kt
+@@ -0,0 +1,16 @@
++package org.rsmod.api.net.rsprot.handlers
++
++import net.rsprot.protocol.game.incoming.misc.client.Idle
++import org.rsmod.game.entity.Player
++
++/**
++ * The client sends IDLE when its AFK timer runs out; OSRS logs the player out. This goes through
++ * the logout button's path, so combat still blocks it.
++ */
++class IdleHandler : MessageHandler<Idle> {
++    override fun handle(player: Player, message: Idle) {
++        if (!player.pendingLogout && !player.loggingOut) {
++            player.manualLogout = true
++        }
++    }
++}
+diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/provider/MessageConsumerProvider.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/provider/MessageConsumerProvider.kt
+index 443b3146c..7ef2d4945 100644
+--- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/provider/MessageConsumerProvider.kt
++++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/provider/MessageConsumerProvider.kt
+@@ -18,6 +18,7 @@ import net.rsprot.protocol.game.incoming.misc.client.MapBuildComplete
+ import net.rsprot.protocol.game.incoming.misc.client.WindowStatus
+ import net.rsprot.protocol.game.incoming.misc.user.ClickWorldMap
+ import net.rsprot.protocol.game.incoming.misc.user.ClientCheat
++import net.rsprot.protocol.game.incoming.misc.client.Idle
+ import net.rsprot.protocol.game.incoming.misc.user.CloseModal
+ import net.rsprot.protocol.game.incoming.misc.user.MoveGameClick
+ import net.rsprot.protocol.game.incoming.misc.user.MoveMinimapClick
+@@ -44,6 +45,7 @@ import net.rsprot.protocol.message.codec.incoming.provider.DefaultGameMessageCon
+ import org.rsmod.api.net.rsprot.handlers.ClickWorldMapHandler
+ import org.rsmod.api.net.rsprot.handlers.ClientCheatHandler
+ import org.rsmod.api.net.rsprot.handlers.CloseModalHandler
++import org.rsmod.api.net.rsprot.handlers.IdleHandler
+ import org.rsmod.api.net.rsprot.handlers.FriendListAddHandler
+ import org.rsmod.api.net.rsprot.handlers.FriendListDeleteHandler
+ import org.rsmod.api.net.rsprot.handlers.If1ButtonHandler
+@@ -106,6 +108,7 @@ constructor(
+     private val if1Button: If1ButtonHandler,
+     private val if3Button: If3ButtonHandler,
+     private val closeModal: CloseModalHandler,
++    private val idle: IdleHandler,
+     private val resumePauseButton: ResumePauseButtonHandler,
+     private val opObj: OpObjHandler,
+     private val opObj6: OpObj6Handler,
+@@ -145,6 +148,7 @@ constructor(
+         builder.addListener(If1Button::class.java, if1Button)
+         builder.addListener(If3Button::class.java, if3Button)
+         builder.addListener(CloseModal::class.java, closeModal)
++        builder.addListener(Idle::class.java, idle)
+         builder.addListener(ResumePauseButton::class.java, resumePauseButton)
+         builder.addListener(OpObjV2::class.java, opObj)
+         builder.addListener(OpObj6::class.java, opObj6)
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/provider/RsaProvider.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/provider/RsaProvider.kt
 index 1b88691b8..bc59ef2fc 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/provider/RsaProvider.kt
@@ -390,6 +462,36 @@ index 1b88691b8..bc59ef2fc 100644
  
      private fun BufferedReader.toKeyPair(): RsaKeyPair =
          PemReader(this).use { reader ->
+diff --git a/api/net/src/test/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandlerTest.kt b/api/net/src/test/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandlerTest.kt
+new file mode 100644
+index 000000000..5d823a90b
+--- /dev/null
++++ b/api/net/src/test/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandlerTest.kt
+@@ -0,0 +1,24 @@
++package org.rsmod.api.net.rsprot.handlers
++
++import net.rsprot.protocol.game.incoming.misc.client.Idle
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.rsmod.game.entity.Player
++
++class IdleHandlerTest {
++    @Test
++    fun `idle requests the same logout as the logout button`() {
++        val player = Player()
++        IdleHandler().handle(player, Idle)
++        assertTrue(player.manualLogout)
++    }
++
++    @Test
++    fun `idle during a logout already under way does nothing`() {
++        val player = Player()
++        player.pendingLogout = true
++        IdleHandler().handle(player, Idle)
++        assertFalse(player.manualLogout)
++    }
++}
 diff --git a/api/player-output/src/main/kotlin/org/rsmod/api/player/output/Camera.kt b/api/player-output/src/main/kotlin/org/rsmod/api/player/output/Camera.kt
 index 58c9627f9..4c44bb4e9 100644
 --- a/api/player-output/src/main/kotlin/org/rsmod/api/player/output/Camera.kt

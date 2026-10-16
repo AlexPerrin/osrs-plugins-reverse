@@ -69,6 +69,9 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   (3, ammo), `ownedmcannon` (4, packed coord of the SW corner) and varbit `mcannon_decayed` (13672).
   Deviations: after a logout or 25 minutes (decay) the parts and balls go to the bank instead of
   Nulodion's reclaim; only steel cannonballs.
+- **Members and idle:** every account logs in as a member (members ops such as the cannon's
+  Set-up show; the sidecar's world flags already mark world 255 as members). The client's IDLE
+  packet (AFK timeout) logs the player out like the logout button, so combat still blocks it.
 - **Small fixes:** fishing stops when the player is no longer beside the spot (teleport); the login
   message is "Welcome to Old School RuneScape." (WELCOME), which RuneLite's Chat History waits for.
 

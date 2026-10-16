@@ -142,7 +142,11 @@ abstract class AndroidTileObject implements net.runelite.api.TileObject {
         Items(int wx, int wy, int plane) { super(wx, wy, plane, -1, 0, 1, 1); }
         @Override int layer() { return 4; }
         @Override int boxHeight() { return 0; }
-        @Override public int getHeight() { return 0; }
+        /** The pile's model height (tallest of its item models), as RuneLite's ItemLayer height. */
+        @Override public int getHeight() {
+            int[] m = Native.objectModel(plane, sceneX(), sceneY(), 4, 0);
+            return m != null && m.length > 4 ? m[4] : 0;
+        }
         @Override public Renderable getBottom() { return null; }
         @Override public Renderable getMiddle() { return null; }
         @Override public Renderable getTop() { return null; }

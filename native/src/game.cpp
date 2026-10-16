@@ -1021,6 +1021,7 @@ bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height) {
 //   Wall (tile +0x108): A *(*(+0x410)+8), B *(*(+0x418)+8); x/height/y +0x28/+0x2c/+0x30, tag +0x38
 //   Wall decoration (+0x110): A *(*(+0x418)+8) offset +0x48/+0x4c, B *(*(+0x420)+8) offset +0x50/+0x54
 //   Ground decoration (+0x118): *(*(+0x220)+8)
+//   Item pile (+0x120): *(*(+0x5e8)+8), *(*(+0x5f0)+8), *(*(+0x5e0)+8) (unverified)
 bool object_model(int plane, int sx, int sy, int layer, uint64_t tag, ObjectModel& out) {
     out = {};
     uintptr_t c = client();
@@ -1080,6 +1081,14 @@ bool object_model(int plane, int sx, int sy, int layer, uint64_t tag, ObjectMode
             if (!o || read_at<uint64_t>(o + 0x38) != tag) return false;
             simple(o);
             append_model(held(o, 0x220), 0, 0, out.xyz, mh);
+            break;
+        }
+        case kItemPile: {  // tile +0x120: three item renderables (holders +0x5e8/+0x5f0/+0x5e0); tag ignored
+            uintptr_t o = read_at<uintptr_t>(tile + 0x120);
+            if (!o) return false;
+            out.x = sx * 128 + 64;
+            out.y = sy * 128 + 64;
+            for (uint32_t holder : {0x5e8u, 0x5f0u, 0x5e0u}) append_model(held(o, holder), 0, 0, out.xyz, mh);
             break;
         }
         default: return false;

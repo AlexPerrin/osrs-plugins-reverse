@@ -280,7 +280,7 @@ uintptr_t menu_select();  // expected value of that slot
 
 // Scene objects of the top-level scene, all planes (docs/offsets.md "Scene objects"). Game objects
 // are listed once, at their south-west tile, with their size in tiles. Game thread only.
-enum SceneLayer : uint8_t { kWall = 0, kWallDecoration = 1, kGameObject = 2, kGroundDecoration = 3 };
+enum SceneLayer : uint8_t { kWall = 0, kWallDecoration = 1, kGameObject = 2, kGroundDecoration = 3, kItemPile = 4 };
 struct SceneObject {
     uint8_t layer, plane, x, y, size_x = 1, size_y = 1;
     int32_t id;

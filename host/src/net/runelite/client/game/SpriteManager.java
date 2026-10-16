@@ -60,6 +60,22 @@ public class SpriteManager {
         getSpriteAsync(archive, file, img -> javax.swing.SwingUtilities.invokeLater(() -> c.setIcon(new javax.swing.ImageIcon(img))));
     }
 
-    public void addSpriteOverrides(SpriteOverride[] overrides) {}
-    public void removeSpriteOverrides(SpriteOverride[] overrides) {}
+    /** As RuneLite: resource images into Client.getSpriteOverrides (written into the game's sprites). */
+    public void addSpriteOverrides(SpriteOverride[] add) {
+        if (add.length == 0) return;
+        Host.invoke(() -> {
+            net.runelite.api.Client client = Host.client();
+            Class<?> owner = add[0].getClass();
+            for (SpriteOverride o : add) {
+                BufferedImage image = net.runelite.client.util.ImageUtil.loadImageResource(owner, o.getFileName());
+                client.getSpriteOverrides().put(o.getSpriteId(), net.runelite.client.util.ImageUtil.getImageSpritePixels(image, client));
+            }
+        });
+    }
+
+    public void removeSpriteOverrides(SpriteOverride[] remove) {
+        Host.invoke(() -> {
+            for (SpriteOverride o : remove) Host.client().getSpriteOverrides().remove(o.getSpriteId());
+        });
+    }
 }

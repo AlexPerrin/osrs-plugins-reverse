@@ -42,12 +42,12 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Chat History | starts | "Game: Clear history" (long-press a chat tab, plugin strip) removes the lines from the game's chat channels (verified once, 2026-10-16), but they came back when the chatbox next rebuilt (the All tab likely reads another list); the mobile game keeps chat across logout itself, so the restore isn't needed |
 | Chat Timestamps | runs | "[15:04]" (local time, plugin format) before each chat line, after the game's own UTC time (chatMessageBuilding raised once per new message, verified 2026-10-16); the newest line shows it once the chat next rebuilds |
 | Combat Level | runs | precise level in the combat tab ("Combat Lvl: 126.1", verified 2026-10-16) |
-| Cannon | runs | green "30" ball count drawn on the placed cannon after Set-up + Fire on goblins (verified 2026-10-16). Needs the world selected once in the login screen's world switcher: only that path sets the client's members flag (global `0x1221e90`, setWorld `0x432748`); otherwise items show "(Members)" with no Set-up. OpenRune repeats "Your cannon is out of ammo!", so the notifier repeats too |
+| Cannon | runs | green "30" ball count drawn on the placed cannon after Set-up + Fire on goblins, one "Your cannon is out of ammo!" notification when empty (verified 2026-10-16; the Notifier no longer posts a ChatMessage, which had made the plugin re-notify on its own line). Members items need the client's members flag: a members world started from jav_config skips setWorld, so the host applies the world flags through the game's setMembersWorld `0x642f14` when they disagree (Set-up showed without the world switcher on 2026-10-16, though the host's sync didn't need to run that time) |
 | Daily Task Indicator | runs | "You have battlestaves waiting to be collected from Zaff." on login with `::varbit 4479 1` (verified 2026-10-16) |
 | Emojis | starts | cache dir now under the app's files dir (user.home); emoji rendering in chat not possible (game chat) |
 | Examine | runs | "Price of Salmon: GE average 30 HA value 18" after Examine on an inventory item, one price line after OpenRune dropped its own (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
 | Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Color Tile > Pick opens the Android colour dialog and recolours the tile (verified 2026-10-16) |
-| Implings | starts | `implings.showbaby=HIGHLIGHT`; `::npc 300 ii_impling_type_1` spawned nothing on OpenRune (2026-10-16) |
+| Implings | starts | `implings.showbaby=HIGHLIGHT`; `::npc 300 ii_impling_type_1` replies "Spawned npc (id 1635)" but no NPC reaches the client (2026-10-16) |
 | Interact Highlight | runs | outline on the hovered NPC (long-press) and red outline on the attacked goblin (long-press + Attack, verified 2026-10-16) |
 | Inventory Tags | runs | green outline on a tagged pot; Shift + long-press an item: "Inventory tag" > Pick sets the tag (verified 2026-10-16; outlines from the game's createItemSprite) |
 | Item Charges | runs | "8" drawn on a Ring of dueling(8) in the inventory (verified 2026-10-16) |
@@ -79,7 +79,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Mouse Tooltips | runs | "Eat Lobster" tooltip while a finger rests on an inventory item and "Remove Dragon dagger" on the worn weapon slot (hover entries, verified 2026-10-16) |
 | Loot Tracker | runs | sidebar: "Goblin (lvl-2) 2 gp, Total count: 1" after killing a goblin (verified 2026-10-16); local only (same-name SessionManager without a runelite.net session) |
 | Hiscore | runs | sidebar lookup of "Lynx Titan" shows the levels from the public hiscores (okhttp, off the game thread; verified 2026-10-16). The player-menu "Lookup" entry is host-side only |
-| Skill Calculator | throws | SpriteManager.addSpriteTo missing in the host replacement (after the JSpinner fix) |
+| Skill Calculator | starts | panel shows its level/experience fields; the skill picker (icon buttons) isn't shown in the flattened sidebar |
 
 ## Build and run
 

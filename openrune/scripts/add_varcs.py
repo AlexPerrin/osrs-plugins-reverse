@@ -85,8 +85,10 @@ def main():
         names = dict(zip(kids, group["knames"]))
         group["knames"] = [names.get(k, 0) for k in new_kids]
     group["kids"] = new_kids
-    group["crc"] = zlib.crc32(container)
     group["ver"] += 1
+    # The client checks the CRC over the container and the version against a 2-byte trailer.
+    group["crc"] = zlib.crc32(container)
+    container += struct.pack(">H", group["ver"] & 0xFFFF)
     if table["flags"] & 4:
         group["sizes"] = (len(body), len(body))
     if table["flags"] & 2:

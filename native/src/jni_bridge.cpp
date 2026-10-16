@@ -604,8 +604,11 @@ jobjectArray n_menu_entries(JNIEnv* env, jclass) {
         env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "getMenuEntries must be called on the client thread");
         return nullptr;
     }
-    return menu_array(env, game::read_menu());
+    uintptr_t tap = client_thread::tap_menu();
+    return menu_array(env, tap ? game::read_menu(tap) : game::read_menu());
 }
+void n_redirect_menu_tap(JNIEnv*, jclass, jint index) { client_thread::redirect_menu_tap(index); }
+jboolean n_menu_tapping(JNIEnv*, jclass) { return client_thread::tap_menu() != 0; }
 jobjectArray n_clicked_menu_entry(JNIEnv* env, jclass) {
     return menu_array(env, {client_thread::clicked_menu_entry()});
 }
@@ -1011,6 +1014,8 @@ const JNINativeMethod kNatives[] = {
     {"sceneObjects", "()[I", reinterpret_cast<void*>(n_scene_objects)},
     {"groundItems", "()[I", reinterpret_cast<void*>(n_ground_items)},
     {"consumeMenuClick", "()V", reinterpret_cast<void*>(n_consume_menu_click)},
+    {"redirectMenuTap", "(I)V", reinterpret_cast<void*>(n_redirect_menu_tap)},
+    {"menuTapping", "()Z", reinterpret_cast<void*>(n_menu_tapping)},
     {"gameState", "()I", reinterpret_cast<void*>(n_game_state)},
     {"gameCycle", "()I", reinterpret_cast<void*>(n_game_cycle)},
     {"serverTick", "()I", reinterpret_cast<void*>(n_server_tick)},

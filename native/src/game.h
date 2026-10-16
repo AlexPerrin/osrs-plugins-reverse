@@ -341,6 +341,7 @@ bool set_varc_string(int id, const std::string& value);
 // Where the open menu was requested (UI-canvas units); false when no menu is shown.
 bool menu_point(int& x, int& y);
 std::vector<MenuEntry> read_menu();  // game thread only
+std::vector<MenuEntry> read_menu(uintptr_t menu);  // a given menu model (the one a tap selects in)
 bool menu_entry_for_path(uintptr_t menu, const uint64_t* path, size_t len, MenuEntry& out);
 // Rewrites an open menu entry's option/target (null = keep); index as in read_menu().
 bool menu_set_text(size_t index, const std::string* option, const std::string* target);

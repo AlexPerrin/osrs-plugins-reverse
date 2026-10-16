@@ -898,6 +898,10 @@ bool message_set_text(int id, const std::string& text) {
 // rebuilds, as after any new message.
 namespace {
 constexpr uintptr_t kChatChannels = 0xaab5e0, kChatChanged = 0x43aacc;
+// All messages in arrival order: libc++ std::list {prev, next, size} at 0xaab610, newest first
+// (push_front in the Message constructor 0x3f0a04); node {prev, next, int id}; Message +0 = node.
+// The chatbox's All tab walks it by uid (chat_getprevuid 0x3f061c / chat_getnextuid 0x3f0694).
+constexpr uintptr_t kChatList = 0xaab610;
 uintptr_t chat_channel(int type) {
     uintptr_t map = g_base + kChatChannels;
     auto buckets = read_at<uintptr_t>(map + 8);
@@ -978,6 +982,17 @@ bool chat_remove_message(int type, int id) {
         slot(count - 1)[0] = saved[0];
         slot(count - 1)[1] = saved[1];
         *reinterpret_cast<int32_t*>(ch + 0x640) = count - 1;
+        // Unlink from the all-messages list too (else the All tab shows it again). The node is
+        // left allocated and Message +0 points at the list head: the channel add (0x3ef964)
+        // skips its own unlink/free for that value when it later reuses this ring slot.
+        uintptr_t list = g_base + kChatList;
+        uintptr_t prev = read_at<uintptr_t>(node), next = read_at<uintptr_t>(node + 8);
+        if (node != list && prev && next) {
+            *reinterpret_cast<uintptr_t*>(prev + 8) = next;
+            *reinterpret_cast<uintptr_t*>(next) = prev;
+            *reinterpret_cast<uint64_t*>(list + 0x10) = read_at<uint64_t>(list + 0x10) - 1;
+            *reinterpret_cast<uintptr_t*>(msg) = list;
+        }
         return true;
     }
     uintptr_t m0 = slot(0)[1], n0 = m0 ? read_at<uintptr_t>(m0) : 0;
@@ -1897,9 +1912,10 @@ bool menu_point(int& x, int& y) {
     return true;
 }
 
-std::vector<MenuEntry> read_menu() {
+std::vector<MenuEntry> read_menu() { return read_menu(menu_object()); }
+
+std::vector<MenuEntry> read_menu(uintptr_t menu) {
     std::vector<MenuEntry> out;
-    uintptr_t menu = menu_object();
     if (!menu) return out;
     auto b = read_at<uintptr_t>(menu + kMenuNodes), e = read_at<uintptr_t>(menu + kMenuNodes + 8);
     if (!b || e < b || (e - b) / kNodeSize > 512) return out;

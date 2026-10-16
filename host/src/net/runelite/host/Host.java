@@ -35,7 +35,7 @@ public final class Host {
     private static final int CLIENT_TICK = 0, GAME_TICK = 1, GAME_STATE_CHANGED = 2, VARBIT_CHANGED = 3,
             NPC_SPAWNED = 4, NPC_DESPAWNED = 5, CHAT_MESSAGE = 6, WIDGET_LOADED = 7, WIDGET_CLOSED = 8,
             PLAYER_SPAWNED = 9, PLAYER_DESPAWNED = 10, ITEM_CONTAINER_CHANGED = 11, STAT_CHANGED = 12,
-            MENU_OPENED = 13, MENU_OPTION_CLICKED = 14;
+            MENU_OPENED = 13, MENU_OPTION_CLICKED = 14, MENU_TAP = 15;
 
     private static final net.runelite.client.callback.ClientThread clientThread = new net.runelite.client.callback.ClientThread();
     private static volatile EventBus eventBus;
@@ -446,6 +446,31 @@ public final class Host {
                 for (net.runelite.api.MenuEntry m : entries)
                     if (m instanceof AndroidMenuEntry && ((AndroidMenuEntry) m).writeBack()) Log.i(TAG, "menu entry rewritten: " + m);
                 AndroidClient.MENU.publishPluginEntries();
+                break;
+            }
+            case MENU_TAP: {
+                // A plain tap runs the default entry (node a). As on desktop before each frame:
+                // MenuEntryAdded per entry (bottom first), then PostMenuSort with the menu closed,
+                // where Menu Entry Swapper reorders; the entry left on top is what the tap runs.
+                if (!bus.hasSubscribers(net.runelite.api.events.PostMenuSort.class)
+                        && !bus.hasSubscribers(net.runelite.api.events.MenuEntryAdded.class)) break;
+                AndroidMenu menu = AndroidClient.MENU;
+                menu.clearAdded();
+                net.runelite.api.MenuEntry[] entries = menu.beginSession();
+                try {
+                    for (net.runelite.api.MenuEntry m : entries) bus.post(new net.runelite.api.events.MenuEntryAdded(m));
+                    bus.post(new net.runelite.api.events.PostMenuSort());
+                    net.runelite.api.MenuEntry[] sorted = menu.getMenuEntries();
+                    net.runelite.api.MenuEntry top = sorted.length > 0 ? sorted[sorted.length - 1] : null;
+                    if (top instanceof AndroidMenuEntry && !((AndroidMenuEntry) top).synthetic
+                            && ((AndroidMenuEntry) top).nativeIndex >= 0 && ((AndroidMenuEntry) top).nativeIndex != a) {
+                        Log.i(TAG, "tap: " + top + " moved to the top by a plugin");
+                        Native.redirectMenuTap(((AndroidMenuEntry) top).nativeIndex);
+                    }
+                } finally {
+                    menu.endSession();
+                    menu.clearAdded();
+                }
                 break;
             }
             case MENU_OPTION_CLICKED: {

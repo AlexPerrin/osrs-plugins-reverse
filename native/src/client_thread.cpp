@@ -69,6 +69,7 @@ const char* name(EventType t) {
         case EventType::StatChanged: return "StatChanged";
         case EventType::MenuOpened: return "MenuOpened";
         case EventType::MenuOptionClicked: return "MenuOptionClicked";
+        case EventType::MenuTap: return "MenuTap";
     }
     return "?";
 }
@@ -277,9 +278,33 @@ using MenuSelectFn = uint64_t (*)(void*, const uint64_t* const*, int, int, bool)
 MenuSelectFn g_orig_select = nullptr;
 game::MenuEntry g_clicked;
 bool g_click_consumed = false;
+uintptr_t g_tap_menu = 0;
+int g_tap_redirect = -1;
 
 uint64_t hook_menu_select(void* menu, const uint64_t* const* path, int x, int y, bool flag) {
     game::MenuEntry entry;
+    // A plain tap runs the default node without opening the menu. Plugins may reorder the entries
+    // (RuneLite's PostMenuSort, Menu Entry Swapper); run the node they put on top instead.
+    uint64_t tap_index[1];
+    const uint64_t* tap_path[2];
+    if (path && path[0] && path[1] == path[0] + 1 && !game::menu_open() && on_client_thread()) {
+        g_tap_menu = reinterpret_cast<uintptr_t>(menu);
+        g_tap_redirect = -1;
+        post({EventType::MenuTap, static_cast<int>(path[0][0])});
+        g_tap_menu = 0;
+        game::MenuEntry swapped;
+        if (g_tap_redirect >= 0 && static_cast<uint64_t>(g_tap_redirect) != path[0][0]) {
+            tap_index[0] = static_cast<uint64_t>(g_tap_redirect);
+            if (game::menu_entry_for_path(reinterpret_cast<uintptr_t>(menu), tap_index, 1, swapped)) {
+                LOGI("menu: tap redirected from node %llu to %d '%s'", (unsigned long long)path[0][0], g_tap_redirect,
+                     swapped.option.c_str());
+                tap_path[0] = tap_index;
+                tap_path[1] = tap_index + 1;
+                path = tap_path;
+            }
+        }
+        g_tap_redirect = -1;
+    }
     if (path && path[0] && path[1] > path[0] &&
         game::menu_entry_for_path(reinterpret_cast<uintptr_t>(menu), path[0], path[1] - path[0], entry)) {
         g_clicked = entry;
@@ -435,6 +460,8 @@ std::vector<game::PlayerInfo> players() {
 
 const game::MenuEntry& clicked_menu_entry() { return g_clicked; }
 void consume_menu_click() { g_click_consumed = true; }
+uintptr_t tap_menu() { return g_tap_menu; }
+void redirect_menu_tap(int index) { g_tap_redirect = index; }
 
 std::vector<game::Npc> npcs() {
     std::lock_guard lock(g_npcs_mutex);

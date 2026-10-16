@@ -25,6 +25,8 @@ enum class EventType {
     StatChanged,       // a = skill index
     MenuOpened,        // the long-press menu was shown (entries: game::read_menu())
     MenuOptionClicked, // an entry was selected (clicked_menu_entry()); runs before the game acts
+    MenuTap,           // a plain tap is about to run node a (the default entry); entries: tap_menu();
+                       // a listener may call redirect_menu_tap() (Menu Entry Swapper's left-click swaps)
 };
 
 struct Event {
@@ -65,5 +67,8 @@ std::vector<game::Npc> npcs();
 // listener stops the game from running it.
 const game::MenuEntry& clicked_menu_entry();
 void consume_menu_click();
+// During MenuTap: the menu model being tapped (0 otherwise), and the top-level node to run instead.
+uintptr_t tap_menu();
+void redirect_menu_tap(int index);
 
 }  // namespace client_thread

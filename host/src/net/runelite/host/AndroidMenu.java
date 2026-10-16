@@ -22,7 +22,22 @@ final class AndroidMenu implements Menu {
         return e;
     }
 
+    /**
+     * While a tap is resolved (Host MENU_TAP) the entries are read once and plugins' reorders
+     * (setMenuEntries) persist until it ends, as desktop's menu array does within a frame.
+     */
+    private MenuEntry[] session;
+
+    MenuEntry[] beginSession() {
+        session = null;
+        session = getMenuEntries();
+        return session.clone();
+    }
+
+    void endSession() { session = null; }
+
     @Override public MenuEntry[] getMenuEntries() {
+        if (session != null) return session.clone();
         AndroidMenuEntry[] game = AndroidMenuEntry.fromNative(Native.menuEntries());
         // RuneLite order: the last element is the top (default) entry.
         List<MenuEntry> out = new ArrayList<>(added);
@@ -98,6 +113,7 @@ final class AndroidMenu implements Menu {
 
 
     @Override public void setMenuEntries(MenuEntry[] entries) {
+        if (session != null) session = entries.clone();
         added.clear();
         for (MenuEntry e : entries)
             if (e instanceof AndroidMenuEntry && ((AndroidMenuEntry) e).synthetic) added.add((AndroidMenuEntry) e);

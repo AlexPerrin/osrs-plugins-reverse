@@ -196,4 +196,10 @@ final class Native {
     static native int[] menuPoint();
     /** From a MenuOptionClicked subscriber: the game won't run the entry. */
     static native void consumeMenuClick();
+
+    /** During a MenuTap event: run this top-level node (Native.menuEntries index) instead of the default. */
+    static native void redirectMenuTap(int index);
+
+    /** True while a MenuTap event is dispatched (menuEntries() then reads the tapped menu). */
+    static native boolean menuTapping();
 }

@@ -58,6 +58,29 @@ final class OverlayRenderer {
         return new Dimension(Math.round(s[0] / scale), Math.round(s[1] / scale));
     }
 
+    // Item containers whose slots RuneLite reports as WidgetItems (WidgetItemOverlay): the
+    // inventory (149:0), bank items (12:13), equipment slots are not mapped yet.
+    private static final int[] ITEM_CONTAINERS = {149 << 16, 12 << 16 | 13};
+
+    private static List<net.runelite.api.widgets.WidgetItem> widgetItems() {
+        List<net.runelite.api.widgets.WidgetItem> out = new ArrayList<>();
+        net.runelite.api.Client client = Host.client();
+        for (int id : ITEM_CONTAINERS) {
+            net.runelite.api.widgets.Widget w = client.getWidget(id);
+            if (w == null || w.isHidden()) continue;
+            net.runelite.api.widgets.Widget[] children = w.getDynamicChildren();
+            if (children == null) continue;
+            for (net.runelite.api.widgets.Widget c : children) {
+                if (c == null || c.isSelfHidden()) continue;
+                int item = c.getItemId();
+                if (item < 0 || item == 6512) continue;
+                java.awt.Rectangle b = c.getBounds();
+                out.add(new net.runelite.api.widgets.WidgetItem(item, c.getItemQuantity(), b, c, null));
+            }
+        }
+        return out;
+    }
+
     void render() {
         // 25 Hz is plenty for overlays and halves the copy cost.
         if ((frame++ & 1) != 0) return;
@@ -73,6 +96,7 @@ final class OverlayRenderer {
             canvas = new Canvas(bitmap);
         }
         bitmap.eraseColor(0);
+        if (overlays.hasWidgetItemOverlays()) overlays.setWidgetItems(widgetItems());
         List<Rect> under = uiExclusions();
         // The game draws its long-press menu natively on top of everything; no overlay may cover it.
         java.awt.Rectangle menu = AndroidMenu.bounds();

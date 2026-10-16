@@ -24,6 +24,7 @@ public class OverlayManager {
     public synchronized boolean add(Overlay overlay) {
         if (overlays.contains(overlay)) return false;
         overlays.add(overlay);
+        if (overlay instanceof WidgetItemOverlay) ((WidgetItemOverlay) overlay).setOverlayManager(this);
         return true;
     }
 
@@ -53,6 +54,10 @@ public class OverlayManager {
 
     public Collection<WidgetItem> getWidgetItems() { return widgetItems; }
     public void setWidgetItems(Collection<WidgetItem> items) { widgetItems = items; }
+    public synchronized boolean hasWidgetItemOverlays() {
+        for (Overlay o : overlays) if (o instanceof WidgetItemOverlay) return true;
+        return false;
+    }
 
     /** Host: overlays to draw on `layer`, highest priority last (drawn on top). */
     public List<Overlay> getLayer(OverlayLayer layer) {

@@ -77,8 +77,13 @@ public class ConfigManager {
 
     public String getConfiguration(String group, String key) { return getConfiguration(group, null, key); }
     public String getConfiguration(String group, String profile, String key) {
-        return properties.getProperty(getWholeKey(group, profile, key));
+        String whole = getWholeKey(group, profile, key);
+        String v = properties.getProperty(whole);
+        return v != null ? v : defaults.get(whole);
     }
+
+    /** Config interface defaults (setDefaultConfiguration), kept in memory, not saved. */
+    private final java.util.Map<String, String> defaults = new java.util.concurrent.ConcurrentHashMap<>();
     public String getRSProfileConfiguration(String group, String key) { return getConfiguration(group, rsKey(), key); }
 
     public <T> T getConfiguration(String group, String key, Type type) { return getConfiguration(group, null, key, type); }
@@ -126,7 +131,27 @@ public class ConfigManager {
     public String getRSProfileKey() { return rsKey(); }
     private static String rsKey() { return RSPROFILE_GROUP + "." + RS_PROFILE; }
 
-    public <T extends Config> void setDefaultConfiguration(T config, boolean override) {}
+    /**
+     * As RuneLite (run for each plugin's @Provides config before startUp): the interface's default
+     * values become what getConfiguration returns for unset keys (plugins read their own config
+     * through the raw API, e.g. Idle Notifier's migration).
+     */
+    public <T extends Config> void setDefaultConfiguration(T config, boolean override) {
+        for (Class<?> iface : config.getClass().getInterfaces()) {
+            ConfigGroup group = iface.getAnnotation(ConfigGroup.class);
+            if (group == null) continue;
+            for (Method m : iface.getMethods()) {
+                ConfigItem item = m.getAnnotation(ConfigItem.class);
+                if (item == null || m.getParameterCount() != 0 || !m.isDefault()) continue;
+                try {
+                    Object v = invokeDefault(config, m, null);
+                    if (v != null) defaults.put(getWholeKey(group.value(), null, item.keyName()), objectToString(v));
+                } catch (Throwable t) {
+                    Log.w(TAG, "default for " + group.value() + "." + item.keyName() + " failed: " + t);
+                }
+            }
+        }
+    }
     public void sendConfig() {}
 
     // --- config interfaces ---

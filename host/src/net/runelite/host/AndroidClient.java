@@ -197,6 +197,34 @@ public class AndroidClient extends ClientStub {
         };
     }
 
+    /**
+     * Client.getChatLineMap: per chat type, the messages seen since the host started, newest
+     * first (as the game's buffers). removeMessageNode only forgets the node here; the game's
+     * own chat history isn't edited yet.
+     */
+    @Override public java.util.Map<Integer, net.runelite.api.ChatLineBuffer> getChatLineMap() {
+        java.util.Map<Integer, java.util.List<net.runelite.api.MessageNode>> byType = new java.util.HashMap<>();
+        synchronized (MESSAGES) {
+            for (net.runelite.api.MessageNode n : MESSAGES.values()) {
+                byType.computeIfAbsent(n.getType().getType(), k -> new java.util.ArrayList<>()).add(n);
+            }
+        }
+        java.util.Map<Integer, net.runelite.api.ChatLineBuffer> out = new java.util.HashMap<>();
+        for (java.util.Map.Entry<Integer, java.util.List<net.runelite.api.MessageNode>> e : byType.entrySet()) {
+            java.util.List<net.runelite.api.MessageNode> list = e.getValue();
+            java.util.Collections.reverse(list);
+            final net.runelite.api.MessageNode[] lines = list.toArray(new net.runelite.api.MessageNode[0]);
+            out.put(e.getKey(), new net.runelite.api.ChatLineBuffer() {
+                @Override public net.runelite.api.MessageNode[] getLines() { return lines; }
+                @Override public int getLength() { return lines.length; }
+                @Override public void removeMessageNode(net.runelite.api.MessageNode node) {
+                    synchronized (MESSAGES) { MESSAGES.values().remove(node); }
+                }
+            });
+        }
+        return out;
+    }
+
     @Override public net.runelite.api.ScriptEventBuilder createScriptEventBuilder(Object... args) {
         return new AndroidScriptEvent(this, args);
     }
@@ -277,6 +305,8 @@ public class AndroidClient extends ClientStub {
 
     /** No physical keyboard modifiers on a touch screen. */
     @Override public boolean isKeyPressed(int keycode) { return false; }
+    /** No "Use" / spell target selection is tracked yet. */
+    @Override public boolean isWidgetSelected() { return false; }
 
     /** No hover on a touch screen: (-1, -1) is what RuneLite reports with the mouse off the canvas. */
     @Override
@@ -573,7 +603,8 @@ public class AndroidClient extends ClientStub {
     }
 
     /** Android's root interface (601) has no desktop group ids; route the ones the API needs. */
-    private static final int ANDROID_ROOT = 601, ANDROID_MINIMAP_DRAW_AREA = ANDROID_ROOT << 16 | 34;
+    private static final int ANDROID_ROOT = 601, ANDROID_MINIMAP_DRAW_AREA = ANDROID_ROOT << 16 | 34,
+        ANDROID_SIDE_PANEL = ANDROID_ROOT << 16 | 111, RESIZABLE_INVENTORY_CONTAINER = 161 << 16 | 73;
 
     static int mapDesktopComponent(int id) {
         switch (id) {
@@ -581,6 +612,9 @@ public class AndroidClient extends ClientStub {
             case net.runelite.api.widgets.ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_MINIMAP_DRAW_AREA:
             case net.runelite.api.widgets.ComponentID.FIXED_VIEWPORT_MINIMAP_DRAW_AREA:
                 return Native.rootInterface() == ANDROID_ROOT ? ANDROID_MINIMAP_DRAW_AREA : id;
+            case RESIZABLE_INVENTORY_CONTAINER:
+                // The side panel (inventory, skills, ...): Status Bars draws its bars beside it.
+                return Native.rootInterface() == ANDROID_ROOT ? ANDROID_SIDE_PANEL : id;
             default:
                 return id;
         }

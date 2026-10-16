@@ -16,6 +16,57 @@ game thread ── Client vtable slot 5 (doCycle) ──> client_thread.cpp ─�
               └─ slf4j → logcat binding (tags "rl.<Class>")
 ```
 
+## Core plugin status
+
+Results of on-device runs (OpenRune, BlueStacks). `runs` = does its job on the device; `starts` =
+startUp OK and no runtime exceptions seen, but the feature wasn't checked or is incomplete;
+`throws` = fails to start; `untested`. Batch test 2026-10-16: `EXTRA="<names>" tools/plugin-test.sh`
+with jars from `tools/dex-plugin.sh --core <package> re/host/plugins-extra/<package>.jar`.
+
+| Plugin | Status | Notes |
+|---|---|---|
+| Quest Helper (hub) | runs | Cook's Assistant, Sheep Shearer, Romeo & Juliet end to end |
+| Ground Items | runs | labels, prices, menu recolouring |
+| Opponent Information | runs | name + health over the target (NPC max HP over okhttp) |
+| Boosts Information | runs | boosted stats overlay |
+| XP Drop | runs | drop colours via ScriptPreFired (script 996); `hideSkillIcons` has no effect |
+| Status Bars | runs | HP/prayer bars beside the side panel (161:73 routed to 601:111) |
+| Tile Indicators | runs | destination tile drawn while walking |
+| Attack Styles | starts | |
+| Chat Filter | starts | |
+| Chat History | starts | getChatLineMap is host-side (no removal from the game's chat) |
+| Chat Timestamps | starts | |
+| Combat Level | starts | |
+| Cannon | starts | |
+| Daily Task Indicator | starts | |
+| Emojis | starts | |
+| Examine | starts | |
+| Ground Markers | starts | |
+| Implings | starts | |
+| Interact Highlight | starts | |
+| Inventory Tags | starts | WidgetItemOverlay got no OverlayManager (NPE every frame); fixed after the run (WidgetItems from 149:0 / 12:13), retest |
+| Item Charges | starts | same WidgetItemOverlay NPE; fixed, retest |
+| Item Stats | starts | |
+| Logout Timer | starts | |
+| NPC Indicators | starts | |
+| Object Markers | starts | |
+| Poison | starts | |
+| Prayer | starts | |
+| Random Events | starts | |
+| Regeneration Meter | starts | |
+| Run Energy | starts | |
+| Timers & Buffs | starts | InfoBoxes not seen yet |
+| Woodcutting | starts | |
+| XP Tracker | starts | sidebar panel not checked |
+| Agility | throws | XpTrackerService: @PluginDependency public modules weren't installed; fixed after the run, retest |
+| Chat Notifications | throws | `@Named("runelite.title")` unbound; fixed, retest |
+| Fishing | throws | XpTrackerService (as Agility); fixed, retest |
+| Idle Notifier | throws | config defaults missing (migrateConfig NPE); `setDefaultConfiguration` implemented, retest |
+| Mining | throws | XpTrackerService (as Agility); fixed, retest |
+| Player Indicators | throws | protobuf-javalite missing (PartyService); added to host.jar, retest |
+| Special Attack Counter | throws | protobuf-javalite missing; added, retest |
+| XP Globes | throws | XpTrackerService (as Agility); fixed, retest |
+
 ## Build and run
 
 ```
@@ -91,7 +142,7 @@ VarbitChanged).
 | **Opponent Information** (core) runs: name + health bar/`3/5` over goblins (NPCManager max health over okhttp) | okhttp 3.14.9 + okio 1.17.2 in host.jar, `OkHttpClient` and `@Named("runelite.static.base")` bound in Host. Verified 2026-10-16 on OpenRune |
 | `ScriptPreFired` (proc entry with its arguments on the live int/object stacks; root scripts with `getScriptEvent().getArguments()`) and `ScriptPostFired` (proc return with results on the stacks; root script end). While one is dispatched, `getIntStack/Size` and `getObjectStack/Size` read the VM's live stacks and int stack edits are written back; `runScript` from inside one is deferred to the next cycle | inline hooks on the CS2 VM (`native/src/script_hooks.cpp`, `inline_hook.cpp`; docs/offsets.md "Script VM hooks"). Only delivered to Java while something subscribes. Verified 2026-10-16 on OpenRune: balanced gosub/return for all scripts, 30 fps with XP Drop subscribed, XP Drop recolours drops (script 996). `setprop debug.osrsrl.scripts 0` disables, `2` logs every script (very verbose) |
 | **XP Drop** (core) runs: drop colour from config (standard/prayer colours) applied inside script 996. `hideSkillIcons` has no effect (it nulls entries of `Widget.getChildren()`, which is a copy here) | verified 2026-10-16 (red drops with `xpdrop.standardColor=ffff0000`) |
-| Other core plugins tried 2026-10-16 (jars in `re/host/plugins-extra/`, not pushed by default; `EXTRA="xpdrop statusbars" tools/plugin-test.sh`): **Boosts Information** runs (strength 111 after a potion, compact overlay top-left); **Status Bars** loads (ItemStatChangesService bound) but draws nothing next to the inventory (it anchors to the desktop inventory/viewport widgets; to investigate) | `getServerVarbitValue`, `getIdleTimeout/setIdleTimeout`, `getMouseLastPressedMillis` added (unverified) |
+| Other core plugins tried 2026-10-16 (jars in `re/host/plugins-extra/`, not pushed by default; `EXTRA="xpdrop statusbars" tools/plugin-test.sh`): **Boosts Information** runs (strength 111 after a potion, compact overlay top-left); **Status Bars** runs (its viewport anchor 161:73 is routed to the side panel 601:111) | `getServerVarbitValue`, `getIdleTimeout/setIdleTimeout`, `getMouseLastPressedMillis` added (unverified) |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so

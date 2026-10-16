@@ -23,29 +23,40 @@ this repo's `rsprot.patch`) all run there.
 
 ## Latest state (2026-10-16 night, fifth server dev, on OpenRune)
 
-- **Deployed** the pending build (MIDI_SWAP encoder, decoders 8/20/28/50/57/84) at 18:54 as image
-  aec982d; sign-in and Play Now verified. Later work (implings, Genie) is built and tested but NOT
-  deployed: the next deploy is `cd openrune && docker compose --env-file switch.env up -d --build
-  --no-deps openrune` (needs "OK restart"). A throwaway container of that build booted cleanly.
-- **Devtools works for server checks**: `tools/devtools_mcp.py --call tools/call
-  '{"name":"type_chat","arguments":{"text":"::tele 2592 4320"}}'`, `list_npcs`, `get_client_state`
-  (setup in docs/plugin-host.md). OpenRune has no incoming-packet trace, so C->S packets can't be
-  watched live without `::trace` (added after the slot: logs every incoming packet,
-  consumed or not, in `docker logs osrs-openrune`).
-- **URL_OPEN 24**: the third live `::url` crashed the app (with our hooks; the stock client just
-  drops the session). Cause (dca5be0): the reader `0x5da16c` ISAAC-decrypts opcode 0x18's payload,
-  and our `AndroidDelegatingEncoder` dropped the desktop encoder's `encryptedPayload` flag. Fixed and
-  verified live (19:42): the external-link dialog shows; CANCEL keeps the session.
-- **Device-verified in slot 2 (19:25)**: the Genie (spawn/face/name, Talk-to lamp, Dismiss), impling
-  Catch in Puro-Puro, and `::trace` showing live C->S 8 (music slider) and 46 (jingle end).
-- **45 SET_HEADING**: probably sailing (minimap heading), not testable on either server.
-- **Content**: Implings (catching; Puro-Puro spawns already existed) and the Genie random event
-  (`::randomevent`), see `openrune/README.md` and `docs/openrune-port.md`. Upstreamable fixes are
-  listed in `docs/openrune-port.md`.
-- 148 CAM_SKYBOX verified statically (renderer sky slot set/clear, see android-protocol.md).
-- S->C 0 is now `OP_0 // dead:` (no dispatcher case; was named SET_HEATMAP_ENABLED by elimination only).
-- C->S 69 OPWORLDENTITY6 verified statically (menu builder 0x633a1c).
-- Remaining unverified: C->S 45 only (likely sailing's heading).
+Metric at the end: mapped 240/253, verified 239/253 (`tools/progress.py --working --no-history`).
+The only unverified opcode left is C->S 45 SET_HEADING, probably sailing's boat heading from the
+minimap, which neither server has. The 13 unmapped ones are the dead `OP_n`.
+
+- **Deployed:** osrs-openrune runs the build from dca5be0 (deployed 19:41). It has the MIDI_SWAP
+  encoder, decoders 8/20/28/50/57/84, implings, the Genie, `::trace` and the URL_OPEN fix. 72efaa4
+  (OP_0: the heatmap encoder removed) is built but not deployed; it changes nothing at runtime.
+  Deploy: `cd openrune && docker compose --env-file switch.env up -d --build --no-deps openrune`
+  ("OK restart" first). Boot-check a build without touching the live container: `docker build -t
+  osrs-openrune:bootcheck .` and run it with `--rm --tmpfs /app/.data/postgres:uid=1000`.
+- **Protocol this session:**
+  - 24 URL_OPEN: the reader `0x5da16c` ISAAC-decrypts opcode 0x18's payload. Our
+    `AndroidDelegatingEncoder` dropped the desktop encoder's `encryptedPayload` flag, so the stream
+    cipher desynced (stock client: session drop; with our hooks: crash). Fixed and verified live:
+    the external-link dialog shows, and CANCEL keeps the session.
+  - 148 CAM_SKYBOX: verified statically (renderer sky slot set `0x7d971c` / clear `0x7d97c8`).
+  - 69 OPWORLDENTITY6: verified statically (menu builder `0x633a1c`).
+  - S->C 0 is `OP_0 // dead:` (no dispatcher case).
+  - `::trace` saw C->S 8 (music slider) and 46 (jingle end) live.
+- **Device tools:** the devtools MCP works for server checks (`tools/devtools_mcp.py --call
+  tools/call '{"name":"type_chat","arguments":{"text":"::tele 2592 4320"}}'`, `list_npcs`,
+  `interact_npc`, `get_dialogue`; setup in docs/plugin-host.md). `::trace` logs every incoming
+  packet, consumed or not, as `IN op=.. len=.. Class hex` in `docker logs osrs-openrune`. Typing
+  without devtools: `server/tools/device.sh cmd "::url ..."`.
+- **Content (verified on the device):** the Genie random event (`::randomevent`: spawns beside the
+  player, faces them, calls them by name; Talk-to gives the lamp, Dismiss works) and impling
+  catching (Puro-Puro, `::tele 2592 4320`, net wielded, `::npc 300 ii_impling_type_1_maze`).
+  Puro-Puro's implings spawn by themselves. Lamp Rub is not tried on the device.
+- **Docs:** upstreamable OpenRune fixes are listed in `docs/openrune-port.md`, "Fixes worth
+  contributing upstream".
+- **Next ideas:** 45 needs sailing content; the plugin-host `starts` rows left (Slayer, NPC
+  Aggression Timer, Player Indicators, Emojis) look client-side or just unchecked; Slayer content
+  exists in OpenRune (get a task from a master); crystal implings (Prifddinas) and jar looting are
+  not done.
 
 ## Latest state (2026-10-16 evening, fourth server dev, on OpenRune)
 

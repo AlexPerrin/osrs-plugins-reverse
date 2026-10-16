@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 470" width="1000" height="470">
 <rect x="0" y="0" width="1000" height="470" fill="#0d1117"/>
-<text x="4" y="21" font-family="sans-serif" font-size="16" fill="#ffffff">Mobile packets: 95.26% mapped (241/253), 90.91% implemented (230); 9 mapped entries unverified</text>
+<text x="4" y="21" font-family="sans-serif" font-size="16" fill="#ffffff">Mobile packets: 95.26% mapped (241/253), 91.70% implemented (232); 7 mapped entries unverified</text>
 <g><title>Server→client: 148/151 mapped, 144 implemented</title>
 <rect x="2.00" y="32.00" width="23.35" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="25.35" y="32.00" width="23.35" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -156,7 +156,7 @@
 <rect x="1.00" y="31.00" width="562.31" height="150.00" fill="none" stroke="#0d1117" stroke-width="2"/>
 <text x="6.00" y="47.00" font-family="sans-serif" font-size="12" fill="#ffffff" stroke="#0d1117" stroke-width="3" paint-order="stroke">Server→client</text>
 </g>
-<g><title>Client→server: 93/102 mapped, 86 implemented</title>
+<g><title>Client→server: 93/102 mapped, 88 implemented</title>
 <rect x="564.31" y="32.00" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="587.92" y="32.00" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="611.54" y="32.00" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -243,8 +243,8 @@
 <rect x="635.15" y="137.71" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="658.76" y="137.71" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="682.38" y="137.71" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="705.99" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="729.61" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="705.99" y="137.71" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="729.61" y="137.71" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="753.22" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="776.84" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="800.45" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>

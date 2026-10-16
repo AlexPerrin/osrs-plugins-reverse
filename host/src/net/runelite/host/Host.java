@@ -278,6 +278,25 @@ public final class Host {
         }
     }
 
+    /**
+     * RuneLite's chat line builder calls runelite_callback "chatMessageBuilding" (int stack: ...,
+     * message id; object stack: ..., timestamp text) and puts the returned text before the line
+     * (Chat Timestamps). The game's scripts don't, so it is raised once per new message and a
+     * non-empty result is put before the message text.
+     */
+    private static void chatMessageBuilding(EventBus bus, AndroidMessageNode node) {
+        if (!bus.hasSubscribers(net.runelite.api.events.ScriptCallbackEvent.class)) return;
+        String text = node.getValue();
+        if (text == null || text.isEmpty()) return;  // blocked by chatFilterCheck
+        AndroidClient client = (AndroidClient) Host.client;
+        client.fakeStacks(new int[] {node.getId()}, new Object[] {""});
+        net.runelite.api.events.ScriptCallbackEvent e = new net.runelite.api.events.ScriptCallbackEvent();
+        e.setEventName("chatMessageBuilding");
+        bus.post(e);
+        Object out = client.getObjectStack()[0];
+        if (out instanceof String && !((String) out).isEmpty()) node.setValue(out + " " + text);
+    }
+
     private static final java.util.List<Integer> pendingStats = new java.util.ArrayList<>();
 
     private static void dispatch(EventBus bus, int type, int a, int b) {
@@ -354,15 +373,19 @@ public final class Host {
                 if (m == null) break;
                 ChatMessageType chatType = ChatMessageType.of(b);
                 int now = (int) (System.currentTimeMillis() / 1000);
-                AndroidMessageNode node = new AndroidMessageNode(a, chatType, m[0], m[1], m[2], now);
+                // A message a plugin added through Client.addChatMessage keeps the node it was given.
+                AndroidMessageNode node = AndroidClient.takePending(chatType, m[2]);
+                if (node != null) node.bind(a, m[2]);
+                else node = new AndroidMessageNode(a, chatType, m[0], m[1], m[2], now);
                 AndroidClient.rememberMessage(node);
-                bus.post(new ChatMessage(node, chatType, m[0], m[2], m[1], now));
+                if (node.postEvent) bus.post(new ChatMessage(node, chatType, node.getName(), node.getValue(), node.getSender(), node.getTimestamp()));
                 // RuneLite's ChatMessageManager applies a node's RuneLite-format message (colour
                 // placeholders such as <colHIGHLIGHT>, set by Chat Notifications) when the chat
                 // line is built ("chatMessageBuilding"); here once, after the ChatMessage handlers.
                 if (node.getRuneLiteFormatMessage() != null)
                     node.setValue(net.runelite.client.chat.ChatMessageManager.format(node.getRuneLiteFormatMessage()));
                 chatFilterCheck(bus, node, b);
+                chatMessageBuilding(bus, node);
                 break;
             }
             case PLAYER_SPAWNED: {

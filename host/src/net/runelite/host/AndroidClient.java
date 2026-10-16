@@ -97,8 +97,31 @@ public class AndroidClient extends ClientStub {
     public net.runelite.api.MessageNode addChatMessage(net.runelite.api.ChatMessageType type, String name, String message, String sender, boolean postEvent) {
         final int t = type != null ? type.getType() : 0;
         final String n = name != null ? name : "", m = message != null ? message : "";
+        AndroidMessageNode node = new AndroidMessageNode(net.runelite.api.ChatMessageType.of(t), n, m, sender, postEvent);
+        synchronized (PENDING) {
+            PENDING.add(node);
+        }
         if (isClientThread()) Native.addChatMessage(t, n, m);
         else Host.invoke(() -> Native.addChatMessage(t, n, m));
+        return node;
+    }
+
+    /** Nodes returned by addChatMessage whose game message hasn't been seen yet (oldest first). */
+    private static final java.util.ArrayDeque<AndroidMessageNode> PENDING = new java.util.ArrayDeque<>();
+
+    /** The pending node for a new game message of this type and text, or null; drops stale ones. */
+    static AndroidMessageNode takePending(net.runelite.api.ChatMessageType type, String text) {
+        long now = System.currentTimeMillis();
+        synchronized (PENDING) {
+            while (!PENDING.isEmpty() && now - PENDING.peekFirst().pendingSince > 10000) PENDING.pollFirst();
+            for (java.util.Iterator<AndroidMessageNode> it = PENDING.iterator(); it.hasNext(); ) {
+                AndroidMessageNode p = it.next();
+                if (p.getType() == type && java.util.Objects.equals(p.sentText, text)) {
+                    it.remove();
+                    return p;
+                }
+            }
+        }
         return null;
     }
 

@@ -7,7 +7,11 @@ import net.runelite.api.ChatMessageType;
  * message text; the other setters change only this copy.
  */
 public class AndroidMessageNode extends MessageNodeStub {
-    private final int id;
+    private int id;
+    final boolean postEvent;
+    /** For a pending node: the text given to the game (matched against its new message). */
+    final String sentText;
+    long pendingSince;
     private final ChatMessageType type;
     private String name, sender, value, runeLiteFormat;
     private int timestamp;
@@ -19,6 +23,34 @@ public class AndroidMessageNode extends MessageNodeStub {
         this.sender = sender;
         this.value = value;
         this.timestamp = timestamp;
+        this.postEvent = true;
+        this.sentText = null;
+    }
+
+    /**
+     * A node returned by Client.addChatMessage before the game's message exists (id -1); it is
+     * bound to the game's message when that arrives (Host CHAT_MESSAGE), and a value set before
+     * then is written into it.
+     */
+    AndroidMessageNode(ChatMessageType type, String name, String value, String sender, boolean postEvent) {
+        this.id = -1;
+        this.type = type;
+        this.name = name;
+        this.sender = sender;
+        this.value = value;
+        this.timestamp = (int) (System.currentTimeMillis() / 1000);
+        this.postEvent = postEvent;
+        this.sentText = value;
+        this.pendingSince = System.currentTimeMillis();
+    }
+
+    boolean pending() { return id < 0; }
+
+    /** Binds a pending node to the game's message; returns the text the game shows. */
+    void bind(int id, String gameText) {
+        this.id = id;
+        if (value != null && !value.equals(gameText)) Native.messageSetText(id, value);
+        else value = gameText;
     }
 
     @Override public int getId() { return id; }
@@ -32,8 +64,10 @@ public class AndroidMessageNode extends MessageNodeStub {
     @Override public void setValue(String value) {
         this.value = value;
         final String v = value != null ? value : "";
-        if (Native.isClientThread()) Native.messageSetText(id, v);
-        else Host.invoke(() -> Native.messageSetText(id, v));
+        if (id < 0) return;
+        final int i = id;
+        if (Native.isClientThread()) Native.messageSetText(i, v);
+        else Host.invoke(() -> Native.messageSetText(i, v));
     }
     @Override public String getRuneLiteFormatMessage() { return runeLiteFormat; }
     @Override public void setRuneLiteFormatMessage(String m) { runeLiteFormat = m; }

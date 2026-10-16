@@ -39,13 +39,13 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Tile Indicators | runs | destination tile drawn while walking |
 | Attack Styles | runs | style overlay ("Accurate") below the mobile chatbox from login (varp 43 via the ring-overflow resync, verified 2026-10-16) |
 | Chat Filter | runs | game chat censored ("You get some oak ****" with `chatfilter.filterGameChat=true`, `filteredWords=Logs`, verified 2026-10-16): chatFilterCheck is raised once per new message; the game shows the new text when the chat next rebuilds; duplicate collapsing doesn't work |
-| Chat History | starts | getChatLineMap is host-side (no removal from the game's chat) |
-| Chat Timestamps | starts | |
+| Chat History | starts | "Game: Clear history" shows in the plugin strip on a long-press of a chat tab, but getChatLineMap is host-side (nothing is removed from the game's chat); retain-on-login waits for "Welcome to Old School RuneScape", which OpenRune doesn't send ("Welcome to OpenRune."). addChatMessage now returns a node (2026-10-16) |
+| Chat Timestamps | runs | "[15:04]" (local time, plugin format) before each chat line, after the game's own UTC time (chatMessageBuilding raised once per new message, verified 2026-10-16); the newest line shows it once the chat next rebuilds |
 | Combat Level | runs | precise level in the combat tab ("Combat Lvl: 126.1", verified 2026-10-16) |
 | Cannon | starts | OpenRune doesn't set up a cannon ("Set-up" on the base does nothing, 2026-10-16) |
-| Daily Task Indicator | starts | |
+| Daily Task Indicator | runs | "You have battlestaves waiting to be collected from Zaff." on login with `::varbit 4479 1` (verified 2026-10-16) |
 | Emojis | starts | cache dir now under the app's files dir (user.home); emoji rendering in chat not possible (game chat) |
-| Examine | runs | "Price of Strength potion(3): GE ..." after Examine on an inventory item (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
+| Examine | runs | "Price of Salmon: GE average 30 HA value 18" after Examine on an inventory item, one price line after OpenRune dropped its own (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
 | Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Color Tile > Pick opens the Android colour dialog and recolours the tile (verified 2026-10-16) |
 | Implings | starts | not checked: OpenRune's `::npc` wants `duration npcDebugName` |
 | Interact Highlight | runs | outline on the hovered NPC (long-press) and red outline on the attacked goblin (long-press + Attack, verified 2026-10-16) |
@@ -65,7 +65,8 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | XP Tracker | runs | sidebar panel: gained XP, XP/hr, levels per skill after combat (verified 2026-10-16; some rows show twice in the flattened sidebar) |
 | Agility | runs | Gnome Stronghold log balance highlighted green (verified 2026-10-16; needs XP Tracker's module, installed as RuneLite does) |
 | Chat Notifications | runs | highlight words: "Spawned" shown red in game messages with `chatnotification.highlightWordsString=Spawned` (the node's RuneLite-format message is applied after ChatMessage, verified 2026-10-16); notifications not checked |
-| Fishing | runs | fishing spot tiles + fish icons by the Lumbridge river with a rod in the inventory (verified 2026-10-16); catching not checked |
+| Fishing | runs | fishing spot tiles + fish icons by the Lumbridge river; session panel "Caught fish: 14, Fish/hr: 840" while lure fishing trout/salmon (verified 2026-10-16) |
+| Cooking | runs | session panel "Cooked: 11 (660/hr), Burnt: 0" while cooking salmon on the Lumbridge range (verified 2026-10-16) |
 | Idle Notifier | runs | "[RuneLite] You are now idle!" in the game chat after mining/fishing stops (Notifier → game chat, verified 2026-10-16) |
 | Mining | runs | "Mining" / "NOT mining" session panel below the chatbox while mining copper (after OpenRune's OSRS wording fix; TOP_LEFT placement verified 2026-10-16) |
 | Player Indicators | starts | needed protobuf-javalite + RuneLite http-api (PartyService) |

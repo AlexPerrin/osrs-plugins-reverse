@@ -624,7 +624,7 @@ index 00000000..ea743851
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
-index 00000000..49a1cf04
+index 00000000..61fa46ca
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 @@ -0,0 +1,123 @@
@@ -667,7 +667,7 @@ index 00000000..49a1cf04
 +    OPPLAYER2(17, 3), // sender read
 +    EVENT_MOUSE_MOVE(18, Prot.VAR_BYTE), // sender read
 +    SEND_PING_REPLY(19, 10), // sender read
-+    AFFINEDCLANSETTINGS_SETMUTED_FROMCHANNEL(20, Prot.VAR_BYTE), // unverified: medium, not bound
++    AFFINEDCLANSETTINGS_SETMUTED_FROMCHANNEL(20, Prot.VAR_BYTE), // sender read: FUN_0053b714 writes clanId g1, memberIndex g2, muted g1, name, as desktop (the only clan-channel sender with a muted flag)
 +    EVENT_MOUSE_CLICK_V1(21, 6), // sender read
 +    RESUME_P_STRINGDIALOG(22, Prot.VAR_BYTE), // sender read
 +    EXIT_FREECAM(23, 0), // sender read
@@ -675,7 +675,7 @@ index 00000000..49a1cf04
 +    OPPLAYER5(25, 3), // sender read
 +    OPPLAYER6(26, 3), // sender read
 +    OP_27(27, 7), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16)
-+    AFFINEDCLANSETTINGS_ADDBANNED_FROMCHANNEL(28, Prot.VAR_BYTE), // unverified: medium: own-clan sender, not bound
++    AFFINEDCLANSETTINGS_ADDBANNED_FROMCHANNEL(28, Prot.VAR_BYTE), // unverified: sender FUN_0053b4b8 writes clanId g1, memberIndex g2, name (guests only), as desktop; same layout as 57 (FUN_0053b090), and which of the two is ban vs kick is not settled
 +    CLICKWORLDMAP(29, 4), // sender read
 +    CLOSE_MODAL(30, 0), // sender read
 +    MOVE_GAMECLICK(31, Prot.VAR_BYTE),
@@ -704,7 +704,7 @@ index 00000000..49a1cf04
 +    OPWORLDENTITY2(54, 3), // sender read
 +    OPLOC2(55, 8),
 +    CLANCHANNEL_FULL_REQUEST(56, 1), // sender read
-+    CLANCHANNEL_KICKUSER(57, Prot.VAR_BYTE), // unverified: medium: as desktop, not bound
++    CLANCHANNEL_KICKUSER(57, Prot.VAR_BYTE), // unverified: sender FUN_0053b090 writes clanId g1, memberIndex g2, name (guests only), as desktop; same layout as 28, order between them not settled
 +    OPLOC3(58, 8),
 +    OPWORLDENTITY5(59, 3), // sender read
 +    FRIENDLIST_ADD(60, Prot.VAR_BYTE), // sender read
@@ -1001,12 +1001,13 @@ index 00000000..a6250dab
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
 new file mode 100644
-index 00000000..2a69303f
+index 00000000..65408450
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
-@@ -0,0 +1,324 @@
+@@ -0,0 +1,327 @@
 +package net.rsprot.protocol.android
 +
++import net.rsprot.protocol.game.incoming.codec.clan.AffinedClanSettingsSetMutedFromChannelDecoder
 +import com.github.michaelbull.logging.InlineLogger
 +import net.rsprot.buffer.JagByteBuf
 +import net.rsprot.protocol.ClientProt
@@ -1103,6 +1104,8 @@ index 00000000..2a69303f
 +internal fun androidDesktopLayoutDecoders(): List<BoundDecoder> =
 +    listOf(
 +        bound(AndroidDelegatingDecoder(P.WINDOW_STATUS, WindowStatusDecoder())),
++        // 20: sender FUN_0053b714: clanId g1, memberIndex g2, muted g1, name gjstr (var-byte).
++        bound(AndroidDelegatingDecoder(P.AFFINEDCLANSETTINGS_SETMUTED_FROMCHANNEL, AffinedClanSettingsSetMutedFromChannelDecoder())),
 +        bound(AndroidDelegatingDecoder(P.EVENT_MOUSE_MOVE, EventMouseMoveDecoder())),
 +        bound(AndroidDelegatingDecoder(P.EVENT_NATIVE_MOUSE_MOVE, EventNativeMouseMoveDecoder())),
 +        bound(AndroidDelegatingDecoder(P.EVENT_MOUSE_CLICK_V1, EventMouseClickV1Decoder())),

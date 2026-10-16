@@ -113,6 +113,10 @@ Protocol notes:
 - If the previous run's session is still in the world, the login answers 5 ("already online"). The
   script retries for up to 75 s.
 
+`tools/multiclient/proxy-targets.yaml` also loads with RSProx's own parser
+(`YamlProxyTargetConfig.load`, run against the `re/rsprox` build): name, URL, modulus, revision
+241.1, port 43594 and the 1.13.2 bootstrap pin all come through.
+
 Not checked headlessly: that each client sees the other player. Seeing it means decoding
 PLAYER_INFO bit by bit; it is step 6 of the GUI walkthrough.
 

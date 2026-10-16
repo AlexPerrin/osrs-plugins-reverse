@@ -380,7 +380,24 @@ session; its notes are in `docs/android-protocol.md`.
   - Hover entries now cover bank items (12:12), the inventory beside the bank (15:3) and worn equipment (387,
     child 1 item; unverified). BufferedImage(ColorModel, WritableRaster, ...) / copyData / getRaster in the shim.
   - Same-name `SessionManager` (no runelite.net login), player option arrays, headless `JSpinner.getEditor`.
-  - Table at the end of gen 12: see docs/plugin-host.md.
+  - Members flag: `game::sync_members_world` (per cycle) calls the game's setMembersWorld when Client+0x2f64 & 1
+    and the members byte Client+0x2070 disagree (the jav_config start path skips setWorld). The Notifier posts with
+    postEvent=false (no ChatMessage), which ended Cannon's re-notify loop.
+  - Verified in gen 12: Chat Timestamps, Daily Task Indicator, Fishing/Cooking counters, Examine single price line,
+    Logout Timer, Poison heart, Cannon, Loot Tracker, Hiscore, Mouse Tooltips (inventory + equipment hover).
+    Table at the end of gen 12: 39 runs / 11 starts / 0 throws of 50.
+  - Device tips: hold-to-hover screenshots need `adb exec-out screencap` ~0.35 s into a 2.5 s `input swipe`
+    (the long-press menu opens at ~1 s); the logout panel is the door icon at (88,40) then (1490,962); the world
+    switcher is (288,994), tap world 255 twice. The memory agent crashed the game once at startup under houdini
+    (retry). OpenRune `::npc <duration> <gameval>` (e.g. `ii_impling_type_1`).
+  - Next (gen 13): Special Attack Counter (dragon dagger spec after OpenRune e09bc3d) and Bank (`::openbank` with
+    nothing open); Implings once OpenRune's spawned impling reaches the client; Notes (JTextArea shows as a
+    checkbox: make editable JTextArea kind E and fire focusLost after the prompt, but check that the headless
+    PlainDocument returns the text first or the note is wiped); Skill Calculator's icon-only skill picker
+    (sidebar H nodes need a label: use the icon's sprite/tooltip); Chat History clear (lines return on the next
+    rebuild: find the All tab's list); Poison infobox (copyData shim fix, unverified); Player Indicators via
+    multi-client; Menu Entry Swapper needs the game's default tap action reordered (only text edits are written
+    back today). host/tools/rank_api.py shows no API gap used by more than 3 core plugins.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

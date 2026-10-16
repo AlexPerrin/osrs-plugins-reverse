@@ -222,7 +222,31 @@ public class AndroidWidget extends WidgetBag {
         for (Widget[][] pair : list) {
             Widget[] now = pair[0], was = pair[1];
             for (int i = 0; i < now.length; i++)
-                if (now[i] == null && was[i] instanceof Dynamic) was[i].setHidden(true);
+                if (now[i] == null && was[i] instanceof Dynamic) {
+                    was[i].setHidden(true);
+                    synchronized (suppressed) { suppressed.put((Dynamic) was[i], Host.cycleStamp + SUPPRESS_CYCLES); }
+                }
+        }
+    }
+
+    // The game's scripts can unhide a child after the event (XP drops are shown by the script that
+    // ScriptPreFired precedes), so a nulled child is re-hidden every cycle for a while.
+    private static final int SUPPRESS_CYCLES = 150;
+    private static int rehideLogs;
+    private static final java.util.Map<Dynamic, Integer> suppressed = new java.util.HashMap<>();
+
+    /** Game thread, once per cycle. */
+    static void reapplyHidden() {
+        synchronized (suppressed) {
+            if (suppressed.isEmpty()) return;
+            for (java.util.Iterator<java.util.Map.Entry<Dynamic, Integer>> it = suppressed.entrySet().iterator(); it.hasNext(); ) {
+                java.util.Map.Entry<Dynamic, Integer> e = it.next();
+                if (e.getValue() - Host.cycleStamp < 0) { it.remove(); continue; }
+                if (!e.getKey().isSelfHidden()) {
+                    e.getKey().setHidden(true);
+                    if (rehideLogs++ < 5) android.util.Log.i(Host.TAG, "re-hid nulled child " + e.getKey().id + "[" + e.getKey().index + "]");
+                }
+            }
         }
     }
     @Override public Widget getChild(int index) {

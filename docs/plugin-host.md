@@ -34,7 +34,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Ground Items | runs | labels, prices, menu recolouring |
 | Opponent Information | runs | name + health over the target (NPC max HP over okhttp) |
 | Boosts Information | runs | boosted stats overlay and boost InfoBox (InfoBoxes render, verified 2026-10-16) |
-| XP Drop | runs | drop colours via ScriptPreFired (script 996); `hideSkillIcons` has no effect |
+| XP Drop | runs | drop colours via ScriptPreFired (script 996); `hideSkillIcons` hides the skill icons (nulled child slots are hidden in the game and re-hidden each cycle for 3 s, as the drop script unhides them; verified 2026-10-16) |
 | Status Bars | runs | HP/prayer bars beside the side panel (161:73 routed to 601:111) |
 | Tile Indicators | runs | destination tile drawn while walking |
 | Attack Styles | runs | style overlay ("Accurate") below the mobile chatbox from login (varp 43 via the ring-overflow resync, verified 2026-10-16) |
@@ -46,12 +46,12 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Daily Task Indicator | starts | |
 | Emojis | starts | cache dir now under the app's files dir (user.home); emoji rendering in chat not possible (game chat) |
 | Examine | runs | "Price of Strength potion(3): GE ..." after Examine on an inventory item (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
-| Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Submenus (colour, label) not shown |
+| Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Color Tile > Pick opens the Android colour dialog and recolours the tile (verified 2026-10-16) |
 | Implings | starts | |
-| Interact Highlight | starts | |
+| Interact Highlight | runs | outline on the hovered NPC (long-press) and red outline on the attacked goblin (long-press + Attack, verified 2026-10-16) |
 | Inventory Tags | starts | WidgetItemOverlay fixed (no NPE; WidgetItems from 149:0 / 12:13); tags not checked |
 | Item Charges | starts | WidgetItemOverlay fixed (no NPE) |
-| Item Stats | starts | |
+| Item Stats | runs | "+0 (99) Hitpoints" tooltip while a finger rests on a lobster (hover entry: getMenuEntries with no menu open = the inventory slot under the touch point, verified 2026-10-16) |
 | Logout Timer | starts | |
 | NPC Indicators | runs | hull highlights + minimap dots for `npcindicators.npcToHighlight=Goblin` (after the WildcardMatcher replacement); the left button column (601:41/40) is now clipped (unverified) |
 | Object Markers | runs | Shift + long-press an object: "Mark object"; hull drawn on the tree (verified 2026-10-16). Submenus not shown |
@@ -147,7 +147,7 @@ VarbitChanged).
 | **Opponent Information** (core) runs: name + health bar/`3/5` over goblins (NPCManager max health over okhttp) | okhttp 3.14.9 + okio 1.17.2 in host.jar, `OkHttpClient` and `@Named("runelite.static.base")` bound in Host. Verified 2026-10-16 on OpenRune |
 | `VarbitChanged` also for server-sent varps whose value didn't change (the client's 32-entry changed-varp ring; a login burst can overflow it) and one event per changed varbit with `varbitId` set (varp → varbit index built once from the varbit definitions: 19404 varbits in 23 ms on OpenRune) | verified 2026-10-16 (varp 43 on an attack style change, fps 30) |
 | `ScriptPreFired` (proc entry with its arguments on the live int/object stacks; root scripts with `getScriptEvent().getArguments()`) and `ScriptPostFired` (proc return with results on the stacks; root script end). While one is dispatched, `getIntStack/Size` and `getObjectStack/Size` read the VM's live stacks and int stack edits are written back; `runScript` from inside one is deferred to the next cycle | inline hooks on the CS2 VM (`native/src/script_hooks.cpp`, `inline_hook.cpp`; docs/offsets.md "Script VM hooks"). Only delivered to Java while something subscribes. Verified 2026-10-16 on OpenRune: balanced gosub/return for all scripts, 30 fps with XP Drop subscribed, XP Drop recolours drops (script 996). `setprop debug.osrsrl.scripts 0` disables, `2` logs every script (very verbose) |
-| **XP Drop** (core) runs: drop colour from config (standard/prayer colours) applied inside script 996. `hideSkillIcons` has no effect (it nulls entries of `Widget.getChildren()`, which is a copy here) | verified 2026-10-16 (red drops with `xpdrop.standardColor=ffff0000`) |
+| **XP Drop** (core) runs: drop colour from config (standard/prayer colours) applied inside script 996. `hideSkillIcons` works: it nulls entries of `Widget.getChildren()` (a copy here); after the event the host hides those game children and re-hides them each cycle for 150 cycles (the drop script unhides them) | verified 2026-10-16 (red drops with `xpdrop.standardColor=ffff0000`; icons gone with `xpdrop.hideSkillIcons=true`) |
 | Other core plugins tried 2026-10-16 (jars in `re/host/plugins-extra/`, not pushed by default; `EXTRA="xpdrop statusbars" tools/plugin-test.sh`): **Boosts Information** runs (strength 111 after a potion, compact overlay top-left); **Status Bars** runs (its viewport anchor 161:73 is routed to the side panel 601:111) | `getServerVarbitValue`, `getIdleTimeout/setIdleTimeout`, `getMouseLastPressedMillis` added (unverified) |
 | **Plugin menu entries** (`createMenuEntry`, top level): drawn as a strip under the game's long-press menu after `MenuOpened`; a tap runs the entry's `onClick`, posts `MenuOptionClicked` and closes the game menu. Submenus (`createSubMenu`) are not shown | `AndroidMenu.publishPluginEntries/tapped`, `overlay.cpp plugin_menu_frame`; close = the close branch of `0x599f68` (`0x514f48` model, `0x507398` display, shown = 0). Verified 2026-10-16 (Ground Markers, Object Markers) |
 | **Virtual Shift**: a "Shift" toggle under the RL button; `isKeyPressed(KC_SHIFT)` follows it (orange = held). Plain taps and long-presses are unchanged either way | `Native.shiftHeld`; verified 2026-10-16 |
@@ -160,7 +160,7 @@ VarbitChanged).
 | Scene overlays are also clipped out of small sprite widgets (type 5, area < 1/12 canvas) of the root and its overlay sub-interfaces: mobile button columns, orbs, chat tabs | `OverlayRenderer.uiExclusions` (looked right with NPC Indicators on 2026-10-16) |
 | `user.home` = the app's files dir, so `RuneLite.RUNELITE_DIR/CACHE_DIR` are writable | Host.start |
 | `ChatMessageManager.queue` → `Client.addChatMessage` (RuneLite colour placeholders mapped to the transparent-chatbox defaults; CONSOLE sent as GAMEMESSAGE); `MessageNode.setValue` rewrites the game's message text (Message +0xa0, string assign `0x3f1498`) | queue verified (Examine); setValue unverified (shown on the next chatbox redraw?) |
-| Plugin submenus (`createSubMenu`): a tapped parent replaces the strip with its entries (marked "  >") | verified 2026-10-16 (Ground Markers "Color Tile" → Pick, Reset all); "Pick" opens RuneLite's Swing colour picker, which has no Android UI |
+| Plugin submenus (`createSubMenu`): a tapped parent replaces the strip with its entries (marked "  >") | verified 2026-10-16 (Ground Markers "Color Tile" → Pick, Reset all); "Pick" opens an Android colour dialog (same-name `RuneliteColorPicker`/`ColorPickerManager`, `host/.../ColorPrompt.java`: hex field, preview, 24 swatches); OK calls onColorChange + onClose on the game thread (verified 2026-10-16: tile recoloured red) |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so
@@ -186,7 +186,14 @@ Text fields (`JTextField`, kind E) show as an input box; a tap opens an Android 
 EditText (soft keyboard), and OK sets the text on the game thread and fires the field's
 DocumentListeners and ActionListeners (Quest Helper's search filters the quest list, verified
 2026-10-15). Test hook: `setprop debug.osrsrl.sbtext "<text>"` types into the first text field
-(`-` clears it). Combo boxes open an Android picker (verified 2026-10-16: QH's Difficulty filter). Not yet: icons, label colours.
+(`-` clears it). Combo boxes open an Android picker (verified 2026-10-16: QH's Difficulty filter). Buttons with no
+ActionListeners get the mouse events instead, so ConfigPanel's colour buttons open the same Android
+colour dialog (unverified in the config panel). Not yet: icons, label colours.
+
+Hover: with no menu open, `getMenuEntries()` holds one entry for the inventory slot under the
+touch point (while the finger is down and 3 s after; first op, CC_OP, param0 = slot, param1 = 149:0,
+item id), computed once per cycle (`AndroidMenu.hoverEntry`). Item Stats' tooltip uses it
+(verified 2026-10-16). Equipment and bank slots are not mapped yet.
 
 ## Gaps, in rough order
 

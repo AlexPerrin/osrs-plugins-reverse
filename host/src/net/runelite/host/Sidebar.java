@@ -321,8 +321,10 @@ final class Sidebar {
         if (c instanceof AbstractButton) {
             AbstractButton b = (AbstractButton) c;
             if (b instanceof JToggleButton) b.setSelected(!b.isSelected());
-            for (java.awt.event.ActionListener l : b.getActionListeners()) l.actionPerformed(new java.awt.event.ActionEvent());
-            return;
+            java.awt.event.ActionListener[] al = b.getActionListeners();
+            for (java.awt.event.ActionListener l : al) l.actionPerformed(new java.awt.event.ActionEvent());
+            // Buttons driven by mouse listeners only (ConfigPanel's colour button) fall through.
+            if (al.length > 0 || b.getMouseListeners().length == 0) return;
         }
         if (c instanceof JTextComponent) {
             promptText((JTextComponent) c);
@@ -489,7 +491,7 @@ final class Sidebar {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Activity currentActivity() throws Exception {
+    static Activity currentActivity() throws Exception {
         Class<?> at = Class.forName("android.app.ActivityThread");
         Object thread = at.getMethod("currentActivityThread").invoke(null);
         Field f = at.getDeclaredField("mActivities");

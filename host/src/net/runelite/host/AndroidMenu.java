@@ -27,8 +27,50 @@ final class AndroidMenu implements Menu {
         // RuneLite order: the last element is the top (default) entry.
         List<MenuEntry> out = new ArrayList<>(added);
         for (int i = game.length - 1; i >= 0; i--) out.add(game[i]);
+        if (game.length == 0 && !Native.menuOpen()) {
+            AndroidMenuEntry h = hoverEntry();
+            if (h != null) out.add(h);
+        }
         return out.toArray(new MenuEntry[0]);
     }
+
+    // --- hover entry: on desktop, with no menu open, getMenuEntries() holds the entries for what
+    // the mouse is over (Item Stats, Interact Highlight read the top one). Here the touch point
+    // stands in for the mouse (Sidebar.hoverPoint); an inventory slot under it gives the entry its
+    // first op would have. Computed once per cycle.
+    private static int hoverStamp = -1;
+    private static AndroidMenuEntry hover;
+    static final int INVENTORY = 149 << 16;
+
+    static AndroidMenuEntry hoverEntry() {
+        if (hoverStamp == Host.cycleStamp) return hover;
+        hoverStamp = Host.cycleStamp;
+        hover = null;
+        if (Host.client() == null) return null;
+        net.runelite.api.Point m = Host.client().getMouseCanvasPosition();
+        if (m.getX() < 0) return null;
+        AndroidWidget inv = new AndroidWidget(INVENTORY);
+        if (inv.isHidden()) return null;
+        net.runelite.api.widgets.Widget[] slots = inv.getDynamicChildren();
+        for (net.runelite.api.widgets.Widget w : slots) {
+            if (w == null || w.getItemId() < 0 || w.isSelfHidden() || !w.contains(m)) continue;
+            AndroidMenuEntry e = new AndroidMenuEntry();
+            String[] actions = w.getActions();
+            String name = w.getName();
+            e.option = actions != null && actions.length > 0 && actions[0] != null ? actions[0] : "Use";
+            e.target = name != null ? name : "";
+            e.type = net.runelite.api.MenuAction.CC_OP;
+            e.identifier = 1;
+            e.param0 = w.getIndex();
+            e.param1 = INVENTORY;
+            e.itemId = w.getItemId();
+            e.raw[9] = AndroidMenuEntry.T_WIDGET << 16;
+            hover = e;
+            break;
+        }
+        return hover;
+    }
+
 
     @Override public void setMenuEntries(MenuEntry[] entries) {
         added.clear();

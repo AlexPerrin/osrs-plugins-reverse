@@ -260,6 +260,7 @@ public final class Host {
         switch (type) {
             case CLIENT_TICK:
                 cycleStamp++;
+                AndroidWidget.reapplyHidden();
                 bus.post(clientTick);
                 postActorChanges(bus);
                 if (!pendingStats.isEmpty() && localPlayer() != null) {

@@ -611,6 +611,11 @@ public class AndroidClient extends ClientStub {
     private final java.util.Map<Integer, net.runelite.api.SpritePixels> widgetSpriteOverrides = new java.util.HashMap<>();
     @Override public java.util.Map<Integer, net.runelite.api.SpritePixels> getSpriteOverrides() { return spriteOverrides; }
     @Override public java.util.Map<Integer, net.runelite.api.SpritePixels> getWidgetSpriteOverrides() { return widgetSpriteOverrides; }
+    /** Sprite overrides aren't applied to the game's sprites, so there is no cache to reset. */
+    @Override public net.runelite.api.NodeCache getWidgetSpriteCache() { return () -> {}; }
+    @Override public net.runelite.api.SpritePixels createSpritePixels(int[] pixels, int width, int height) {
+        return new HostSpritePixels(pixels, width, height);
+    }
     // Chat (mod) icons are kept host-side: plugins (ChatIconManager) append their icons to this
     // array; the game's own chat doesn't draw them. Starts with blank 13x13 slots for the game's icons.
     private net.runelite.api.IndexedSprite[] modIcons;

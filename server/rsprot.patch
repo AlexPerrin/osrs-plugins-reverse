@@ -992,10 +992,10 @@ index 00000000..a6250dab
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
 new file mode 100644
-index 00000000..beee1e80
+index 00000000..2a69303f
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
-@@ -0,0 +1,318 @@
+@@ -0,0 +1,324 @@
 +package net.rsprot.protocol.android
 +
 +import com.github.michaelbull.logging.InlineLogger
@@ -1197,7 +1197,13 @@ index 00000000..beee1e80
 +            EventKeyboard(last, EventKeyboard.KeySequence(keys))
 +        },
 +        // 16: angleX g2Alt3, angleY g2Alt3 (pitch then yaw, order as desktop).
-+        bound(P.EVENT_CAMERA_POSITION) { b -> EventCameraPosition(b.g2Alt3(), b.g2Alt3()) },
++        // 16 (sender in 0x51d0a4): yaw (client+0x894a0 / 8, also the camera angle appended to minimap clicks)
++        // g2Alt3, then pitch (client+0x8949c / 8) g2Alt3. RSProt's angleX is the pitch, angleY the yaw.
++        bound(P.EVENT_CAMERA_POSITION) { b ->
++            val yaw = b.g2Alt3()
++            val pitch = b.g2Alt3()
++            EventCameraPosition(pitch, yaw)
++        },
 +        // 19: fps g1Alt2, value1 g4Alt1, value2 g4, gcPercentTime g1.
 +        bound(P.SEND_PING_REPLY) { b ->
 +            val fps = b.g1Alt2()

@@ -305,6 +305,8 @@ public class AndroidClient extends ClientStub {
 
     /** No physical keyboard modifiers on a touch screen. */
     @Override public boolean isKeyPressed(int keycode) { return false; }
+    @Override public net.runelite.api.StructComposition getStructComposition(int id) { return new AndroidStruct(id); }
+
     /** No "Use" / spell target selection is tracked yet. */
     @Override public boolean isWidgetSelected() { return false; }
 

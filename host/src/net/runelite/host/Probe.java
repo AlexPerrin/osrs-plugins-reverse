@@ -27,6 +27,14 @@ final class Probe {
     private static String lastWdump = "";
 
     private static void dumpGroup(net.runelite.api.Client c, String arg) {
+        if (arg.equals("all")) {  // every open sub-interface group (find a mobile group by its text)
+            int[] subs = Native.subInterfaces();
+            java.util.Set<Integer> groups = new java.util.TreeSet<>();
+            for (int i = 0; i + 2 < subs.length; i += 3) groups.add(subs[i + 1]);
+            Log.i(TAG, "wdump all: groups " + groups);
+            for (int g : groups) dumpGroup(c, Integer.toString(g));
+            return;
+        }
         try {
             int group = Integer.parseInt(arg);
             for (int child = 0; child < 1024; child++) {

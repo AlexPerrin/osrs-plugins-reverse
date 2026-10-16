@@ -6,7 +6,7 @@ package net.runelite.host;
  * elsewhere the defaults are returned.
  */
 final class Params {
-    static final int OBJ = 0, NPC = 1, LOC = 2;
+    static final int OBJ = 0, NPC = 1, LOC = 2, STRUCT = 3;
 
     private Params() {}
 

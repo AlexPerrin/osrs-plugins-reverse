@@ -1533,7 +1533,8 @@ bool read_param(uintptr_t map, int key, TypeParam& out) {
 }
 }  // namespace
 
-// Params of an obj (kind 0, ObjType +0x2d8), npc (1, NpcType +0x170) or loc (2, LocType +0x160).
+// Params of an obj (kind 0, ObjType +0x2d8), npc (1, NpcType +0x170), loc (2, LocType +0x160) or
+// struct (3, StructType +0x08; getStructType 0x64a69c loads config group 34, returns via x8).
 bool type_param(int kind, int id, int key, TypeParam& out) {
     if (!g_build || id < 0 || id > 0xfffff) return false;
     if (kind == 2) {
@@ -1541,7 +1542,8 @@ bool type_param(int kind, int id, int key, TypeParam& out) {
         auto sp = reinterpret_cast<const uintptr_t* (*)(int)>(g_base + g_build->get_loc_type)(id);
         return sp && sp[1] && read_param(sp[1] + 0x160, key, out);
     }
-    uintptr_t fn = kind == 0 ? g_build->get_obj_type : kind == 1 ? g_build->get_npc_type : 0;
+    constexpr uintptr_t kGetStructType = 0x64a69c;  // build 241.4
+    uintptr_t fn = kind == 0 ? g_build->get_obj_type : kind == 1 ? g_build->get_npc_type : kind == 3 ? kGetStructType : 0;
     if (!fn) return false;
     struct SharedPtr {
         uintptr_t ctrl, obj;
@@ -1549,7 +1551,7 @@ bool type_param(int kind, int id, int key, TypeParam& out) {
     };
     SharedPtr r = reinterpret_cast<SharedPtr (*)(int)>(g_base + fn)(id);
     uintptr_t ctrl = r.ctrl, o = r.obj;
-    bool ok = o && read_param(o + (kind == 0 ? 0x2d8 : 0x170), key, out);
+    bool ok = o && read_param(o + (kind == 0 ? 0x2d8 : kind == 1 ? 0x170 : 0x08), key, out);
     release_shared(ctrl);
     return ok;
 }

@@ -879,6 +879,16 @@ int scene_plane() {
     return wv ? read_at<int32_t>(wv + g_build->wv_plane) : -1;
 }
 
+bool actor_set_overhead(uintptr_t a, const std::string* text, int cycle) {
+    if (!a) return false;
+    if (text) {
+        GameString s(*text);
+        reinterpret_cast<void* (*)(uintptr_t, const void*)>(g_base + 0x3f1498)(a + 0x2d8, s.bytes);
+    }
+    if (cycle >= 0) *reinterpret_cast<int32_t*>(a + 0x2f4) = cycle;
+    return true;
+}
+
 bool reload_scene() {
     uintptr_t c = client();
     if (!c || game_state() != 30) return false;

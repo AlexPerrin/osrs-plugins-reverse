@@ -56,6 +56,17 @@ final class Probe {
                     Log.i(TAG, "db row " + r + " col " + col + " tuple " + tup + " -> " + java.util.Arrays.toString(c.getDBTableField(r, col, tup)));
                 return;
             }
+            if (a[0].equals("ohead")) {  // "ohead <npc id> <text>": setOverheadText + setOverheadCycle(100) on the first such NPC
+                int id = Integer.parseInt(a[1]);
+                for (net.runelite.api.NPC n : c.getTopLevelWorldView().npcs()) {
+                    if (n.getId() != id) continue;
+                    n.setOverheadText(a[2]);
+                    n.setOverheadCycle(100);
+                    Log.i(TAG, "ohead " + n.getName() + " #" + n.getIndex() + " -> " + a[2]);
+                    break;
+                }
+                return;
+            }
             if (a[0].equals("reload")) {  // "reload 0 0": setGameState(LOADING)
                 c.setGameState(net.runelite.api.GameState.LOADING);
                 Log.i(TAG, "reload requested, state now " + c.getGameState());

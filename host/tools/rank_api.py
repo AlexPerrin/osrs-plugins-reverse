@@ -28,11 +28,21 @@ out=subprocess.run(['javap','-p']+files,capture_output=True,text=True).stdout
 for line in out.splitlines():
     m=re.search(r' (\w+)\(',line)
     if m: impl.add(m.group(1))
-# api default methods
+# api default methods (implemented by the API itself)
 api=R+'/runelite/runelite-api-1.13.1.jar'
+ifaces=sorted({k[0] for k in calls})
+defaults=set()
+for i in range(0,len(ifaces),200):
+    out=subprocess.run(['javap','-cp',api]+[c.replace('/','.') for c in ifaces[i:i+200]],capture_output=True,text=True).stdout
+    cur=None
+    for line in out.splitlines():
+        m=re.match(r'public (?:abstract )?(?:interface|class) ([\w.$]+)',line)
+        if m: cur=m.group(1).replace('.','/')
+        m=re.search(r' default .* (\w+)\(',line)
+        if m and cur: defaults.add((cur,m.group(1)))
 rank=[]
 for (iface,meth,desc),pl in calls.items():
-    if meth in impl: continue
+    if meth in impl or (iface,meth) in defaults: continue
     rank.append((len(pl),iface.split('/')[-1],meth,sorted(pl)))
 rank.sort(key=lambda r:-r[0])
 for r in rank[:int(sys.argv[1]) if len(sys.argv)>1 else 60]: print(r[0],r[1]+'.'+r[2],','.join(r[3])[:120])

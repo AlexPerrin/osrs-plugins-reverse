@@ -737,6 +737,13 @@ jobjectArray n_widget_strings(JNIEnv* env, jclass, jint id, jint index) {
 void n_widget_set_hidden(JNIEnv*, jclass, jint id, jint index, jboolean hidden) {
     if (client_thread::on_client_thread()) game::widget_set_hidden(widget_or_child(id, index), hidden);
 }
+jboolean n_actor_set_overhead(JNIEnv* env, jclass, jboolean player, jint index, jstring text, jint cycle) {
+    if (!client_thread::on_client_thread()) return false;
+    uintptr_t a = player ? game::live_player(index) : game::live_npc(index);
+    std::string t;
+    if (text) t = to_latin1(env, text);
+    return game::actor_set_overhead(a, text ? &t : nullptr, cycle);
+}
 void n_widget_set_text(JNIEnv* env, jclass, jint id, jint index, jstring text) {
     if (!client_thread::on_client_thread()) return;
     std::string latin1;
@@ -889,6 +896,7 @@ const JNINativeMethod kNatives[] = {
     {"dbField", "(III)[Ljava/lang/Object;", reinterpret_cast<void*>(n_db_field)},
     {"runEnergy", "()I", reinterpret_cast<void*>(n_run_energy)},
     {"actorModel", "(ZI)[I", reinterpret_cast<void*>(n_actor_model)},
+    {"actorSetOverhead", "(ZILjava/lang/String;I)Z", reinterpret_cast<void*>(n_actor_set_overhead)},
     {"objectModel", "(IIIIJ)[I", reinterpret_cast<void*>(n_object_model)},
     {"varcInt", "(I)I", reinterpret_cast<void*>(n_varc_int)},
     {"varcString", "(I)Ljava/lang/String;", reinterpret_cast<void*>(n_varc_string)},

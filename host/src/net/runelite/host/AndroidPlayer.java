@@ -153,6 +153,16 @@ public class AndroidPlayer extends PlayerStub {
     @Override public boolean isInteracting() { return interacting >= 0; }
     @Override public String getOverheadText() { return overheadCycle > 0 ? overheadText : null; }
     @Override public int getOverheadCycle() { return overheadCycle; }
+    @Override public void setOverheadText(String text) {
+        overheadText = text;
+        final int idx = index;
+        Host.invoke(() -> Native.actorSetOverhead(true, idx, text == null ? "" : text, -1));
+    }
+    @Override public void setOverheadCycle(int cycle) {
+        overheadCycle = cycle;
+        final int idx = index;
+        Host.invoke(() -> Native.actorSetOverhead(true, idx, null, cycle));
+    }
 
     // Pose animations (Actor +0x280..+0x29c, +0x4b8): read-only snapshot values.
     final int[] pose = {-1, -1, -1, -1, -1, -1, -1, -1};

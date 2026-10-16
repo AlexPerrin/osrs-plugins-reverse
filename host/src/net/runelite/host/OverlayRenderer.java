@@ -132,6 +132,27 @@ final class OverlayRenderer {
                 out.add(new Rect(b.x, b.y, b.x + b.width, b.y + b.height));
             }
         }
+        // Modal interfaces (IF_OPENSUB mode 0, e.g. the quest-complete scroll): the graphics and
+        // filled rectangles they draw, as RuneLite's widgets would paint over scene overlays.
+        int[] subs = Native.subInterfaces();
+        for (int i = 0; i + 2 < subs.length; i += 3) {
+            if (subs[i + 2] != 0) continue;
+            int group = subs[i + 1];
+            for (int child = 0; child < 1024; child++) {
+                int id = group << 16 | child;
+                if (!Native.widgetExists(id)) break;
+                AndroidWidget w = new AndroidWidget(id);
+                int t = w.getType();
+                if ((t != 5 && !(t == 3 && w.isFilled())) || w.getWidth() <= 0 || w.isHidden()) continue;
+                java.awt.Rectangle b = w.getBounds();
+                out.add(new Rect(b.x, b.y, b.x + b.width, b.y + b.height));
+            }
+        }
+        if ("1".equals(Native.property("debug.osrsrl.cliplog"))) {
+            StringBuilder sb = new StringBuilder("clip exclusions:");
+            for (Rect r : out) sb.append(' ').append(r.toShortString());
+            Log.i(Host.TAG, sb.toString());
+        }
         exclusions = out;
         return out;
     }

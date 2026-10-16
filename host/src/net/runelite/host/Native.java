@@ -115,6 +115,8 @@ final class Native {
     static native int friendListState();
     /** The game's settings-changed scene reload (state 30 -> 25); client thread only. */
     static native boolean reloadScene();
+    /** Writes an actor's overhead text (null keeps it) and timer (-1 keeps it); client thread only. */
+    static native boolean actorSetOverhead(boolean player, int index, String text, int cycle);
     /** Open sub-interfaces: {component, group, modal mode} triples. */
     static native int[] subInterfaces();
     static native boolean widgetExists(int componentId);

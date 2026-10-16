@@ -125,6 +125,13 @@ public final class Host {
                         .toInstance(configManager.getConfig(net.runelite.client.config.ChatColorConfig.class));
                 bind(java.util.concurrent.ScheduledExecutorService.class)
                         .toInstance(java.util.concurrent.Executors.newSingleThreadScheduledExecutor());
+                // HTTP for plugin services (NPCManager, HiscoreManager, ...): okhttp 3.14 (pure Java,
+                // API-compatible with the calls RuneLite's client makes).
+                bind(okhttp3.OkHttpClient.class).toInstance(new okhttp3.OkHttpClient());
+                bind(okhttp3.HttpUrl.class).annotatedWith(com.google.inject.name.Names.named("runelite.static.base"))
+                        .toInstance(okhttp3.HttpUrl.get("https://static.runelite.net"));
+                bind(okhttp3.HttpUrl.class).annotatedWith(com.google.inject.name.Names.named("runelite.api.base"))
+                        .toInstance(okhttp3.HttpUrl.get("https://api.runelite.net/runelite-1.13.1"));
                 bind(net.runelite.client.callback.Hooks.class).toInstance(new net.runelite.client.callback.Hooks());
                 bind(net.runelite.client.ui.ClientToolbar.class).toInstance(new net.runelite.client.ui.ClientToolbar());
                 bind(net.runelite.client.game.SpriteManager.class).toInstance(new net.runelite.client.game.SpriteManager());

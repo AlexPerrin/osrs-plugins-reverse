@@ -42,6 +42,9 @@ int friend_list_state();
 // setGameState(LOADING): the game's own settings-changed reload (0x429900(client): when logged in,
 // game state 30 -> 25 and the scene is rebuilt). Client thread only; false when not logged in.
 bool reload_scene();
+// Actor overhead text (+0x2d8, assigned with the game's string assign 0x3f1498) and its timer
+// (+0x2f4, ticks left). `text` null keeps the string. Game thread only.
+bool actor_set_overhead(uintptr_t actor, const std::string* text, int cycle);
 bool friend_list(bool ignores, std::vector<FriendEntry>& out);
 Point scene_base();        // world tile of scene tile (0, 0) (top-level WorldView)
 Point player_world();       // world tile (x, y) = scene base + scene tile; {-1, -1} if unavailable

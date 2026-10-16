@@ -56,6 +56,18 @@ final class Probe {
                     Log.i(TAG, "db row " + r + " col " + col + " tuple " + tup + " -> " + java.util.Arrays.toString(c.getDBTableField(r, col, tup)));
                 return;
             }
+            if (a[0].equals("reload")) {  // "reload 0 0": setGameState(LOADING)
+                c.setGameState(net.runelite.api.GameState.LOADING);
+                Log.i(TAG, "reload requested, state now " + c.getGameState());
+                return;
+            }
+            if (a[0].equals("friends")) {  // "friends 0 0": friend/ignore containers and the component table
+                Log.i(TAG, "friends state " + Native.friendListState() + " " + java.util.Arrays.toString(c.getFriendContainer().getMembers())
+                        + " ignores " + java.util.Arrays.toString(c.getIgnoreContainer().getMembers()));
+                for (net.runelite.api.WidgetNode n : c.getComponentTable())
+                    Log.i(TAG, "component " + (n.getHash() >>> 16) + ":" + (n.getHash() & 0xffff) + " -> group " + n.getId() + " mode " + n.getModalMode());
+                return;
+            }
             if (a[0].equals("quest")) {  // "quest <Quest enum name> <varp>": QUEST_STATUS_GET result and a varp
                 net.runelite.api.Quest q = net.runelite.api.Quest.valueOf(a[1]);
                 c.runScript(net.runelite.api.ScriptID.QUEST_STATUS_GET, q.getId());
@@ -220,7 +232,7 @@ final class Probe {
                     + " team " + me.getTeam() + " pose " + me.getPoseAnimation() + " idle/walk/run " + me.getIdlePoseAnimation() + "/"
                     + me.getWalkAnimation() + "/" + me.getRunAnimation() + " " + me.getPlayerComposition()
                     + " regions " + java.util.Arrays.toString(c.getMapRegions()) + " dest " + c.getLocalDestinationLocation() + " raw " + java.util.Arrays.toString(Native.walkDestination())
-                    + " idle " + c.getMouseIdleTicks() + " protect-melee " + c.isPrayerActive(net.runelite.api.Prayer.PROTECT_FROM_MELEE)
+                    + " health " + c.getLocalPlayer().getHealthRatio() + "/" + c.getLocalPlayer().getHealthScale() + " idle " + c.getMouseIdleTicks() + " protect-melee " + c.isPrayerActive(net.runelite.api.Prayer.PROTECT_FROM_MELEE)
                     + " messages " + com.google.common.collect.Iterables.size(c.getMessages()));
         for (net.runelite.api.NPC n : c.getTopLevelWorldView().npcs()) {
             net.runelite.api.NPCComposition comp = n.getComposition();

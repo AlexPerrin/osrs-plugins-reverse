@@ -446,6 +446,39 @@ public class AndroidClient extends ClientStub {
 
     // Friends chat / clans: not in a channel (RuneLite returns null then).
     @Override public net.runelite.api.FriendsChatManager getFriendsChatManager() { return null; }
+    private final AndroidNameables.Friends friends = new AndroidNameables.Friends();
+    private final AndroidNameables.Ignores ignores = new AndroidNameables.Ignores();
+    @Override public net.runelite.api.FriendContainer getFriendContainer() { return friends; }
+    /** Open sub-interfaces keyed by the component they're mounted in (RuneLite's componentTable). */
+    @Override public net.runelite.api.HashTable<net.runelite.api.WidgetNode> getComponentTable() {
+        int[] t = Native.subInterfaces();
+        final java.util.Map<Long, net.runelite.api.WidgetNode> m = new java.util.LinkedHashMap<>();
+        for (int i = 0; i + 2 < t.length; i += 3) {
+            final int comp = t[i], group = t[i + 1], mode = t[i + 2];
+            m.put((long) comp, new net.runelite.api.WidgetNode() {
+                @Override public int getId() { return group; }
+                @Override public int getModalMode() { return mode; }
+                @Override public net.runelite.api.Node getNext() { return null; }
+                @Override public net.runelite.api.Node getPrevious() { return null; }
+                @Override public long getHash() { return comp; }
+            });
+        }
+        return new net.runelite.api.HashTable<net.runelite.api.WidgetNode>() {
+            @Override public net.runelite.api.WidgetNode get(long key) { return m.get(key); }
+            @Override public java.util.Iterator<net.runelite.api.WidgetNode> iterator() { return m.values().iterator(); }
+        };
+    }
+    /** Only LOADING is honoured (plugins use it to rebuild the scene), via the game's own reload. */
+    @Override public void setGameState(GameState state) {
+        if (state != GameState.LOADING) return;
+        if (isClientThread()) Native.reloadScene();
+        else Host.invoke(Native::reloadScene);
+    }
+    @Override public net.runelite.api.NameableContainer<net.runelite.api.Ignore> getIgnoreContainer() { return ignores; }
+    @Override public boolean isFriended(String name, boolean mustBeLoggedIn) {
+        net.runelite.api.Friend f = friends.findByName(name);
+        return f != null && (!mustBeLoggedIn || f.getWorld() > 0);
+    }
     @Override public net.runelite.api.clan.ClanChannel getClanChannel() { return null; }
     @Override public net.runelite.api.clan.ClanChannel getGuestClanChannel() { return null; }
     @Override public net.runelite.api.clan.ClanSettings getClanSettings() { return null; }

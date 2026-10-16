@@ -43,7 +43,7 @@ VarbitChanged).
 | `getLocalPlayer().getWorldLocation()/getLocalLocation()`, `getPlane()` | WorldView scene base + player scene tile; plane from `Client+0xcb78` / `wv+0x18` |
 | `ChatMessage` (type, name, sender, text; `MessageNode` copy) | per-cycle poll of the game's next-message-id counter + by-id map |
 | `getWidget(group, child)`/`getWidget(id)` (text, hidden), `getTopLevelInterfaceId()`, `WidgetLoaded`/`WidgetClosed` | widget group table (loaded groups only); per-cycle diff of the root + open sub-interfaces |
-| `getWorld()` (verified: 1 old server, 255 OpenRune), `getWorldType()` from the world flags; `getDBTableField` (unverified); null friends chat/clan getters, sprite override maps | `Client+0x3174` / `+0x2f64` (CS2 map_world / worldflags); db_getfield 7502 in `0x5cd7f4` |
+| `getWorld()` (verified: 1 old server, 255 OpenRune), `getWorldType()` from the world flags; `getDBTableField` (verified 2026-10-16 on OpenRune: rows 0-5 col 0 give 123, 133, "Oh Rats!", ...); null friends chat/clan getters, sprite override maps | `Client+0x3174` / `+0x2f64` (CS2 map_world / worldflags); db_getfield 7502 in `0x4cd7f4` |
 | Camera getters (`getCameraX/Y/Z/Pitch/Yaw`, Fp variants), `getScale()` and viewport offsets/size from the game's viewport zoom (follows zoom settings; verified on both servers) | camera block `Client+0x89488`; zoom `Client+0x46d4` * height / 334, viewport `+0x46e0..+0x46ec` |
 | `javax.imageio.ImageIO`, `RescaleOp`, `AffineTransformOp`, `getScaledInstance` (for `ImageUtil`) | BitmapFactory / Bitmap |
 | Overlays: `OverlayManager`, `Overlay`, `OverlayPanel` + components, `OverlayUtil`, `FontManager` | `OverlayRenderer` draws on the game thread through `CanvasGraphics` (Graphics2D over android.graphics.Canvas) into a Bitmap at a 720-px-high logical canvas; `overlay.cpp` uploads it as a GL texture and composites it in the swap hook |
@@ -77,12 +77,16 @@ VarbitChanged).
 | `Notifier` replacement: notifications become `[RuneLite] ...` game messages | `host/src/net/runelite/client/Notifier.java` |
 | `Widget.getType()` (+0x28) | verified 2026-10-16 (text widgets 4, layers 0, rectangles 3, graphics 5); `setText`/`setHidden` verified the same day (chat tab label changed, "Public" hidden) |
 | `getIntValue/getStringValue` on item, NPC and object compositions (definition params) | `game::type_param` (docs/offsets.md "Definition params"); a missing param gives 0 / "" (ParamType defaults not read). Unverified; test hook `setprop debug.osrsrl.set 'iparam <item> <param>'` |
-| `getMapRegions`, `isPrayerActive` (prayer varbits), `getLocalDestinationLocation` (walk destination), `getMouseIdleTicks/getKeyboardIdleTicks` (since the last touch/key event at the touch router), `getRealDimensions/getStretchedDimensions` (UI canvas), `isKeyPressed` false, dragged/selected widgets null, `refreshChat` no-op | unverified |
+| `getMapRegions`, `isPrayerActive` (prayer varbits; verified, Protect from Melee), `getLocalDestinationLocation` (the map flag `*(Client+0x40e970)`; verified on OpenRune), `getMouseIdleTicks/getKeyboardIdleTicks` (since the last touch/key event at the touch router), `getRealDimensions/getStretchedDimensions` (UI canvas), `isKeyPressed` false, dragged/selected widgets null, `refreshChat` no-op | unverified |
 | Core RuneLite plugins: `tools/dex-plugin.sh --core <package> out.jar` writes a jar holding only plugin-classes.txt (the classes are already in host.jar). **Ground Items runs** (2026-10-16): labels with prices over ground items, menu recolouring | Coins are in its default hidden list, so they get no label |
 | Widget field setters written into the game (`setOriginalX/Y/Width/Height`, position/size modes, sprite, opacity, font, filled, border, flips, text alignment/shadow, no click/scroll through) and `revalidate()` through the game's layout (`0x44a788`, `0x45e304`, `0x45ebf4` as CC_SETPOSITION runs them); `getIndex()` | verified 2026-10-16 (setOriginalX + revalidate moved a chat tab label) |
 | `createScriptEventBuilder` (magic args resolved in Java, run through runScript), `getMessages` (nodes seen since start) | unverified |
 | NPC `getId()/getName()` follow the current multi-NPC transform (-1/null when it transforms to nothing) and such an NPC has no hull, as RuneLite | unverified |
 | VarbitChanged works with caches of any varp count (OpenRune: 65660) | verified 2026-10-16 on OpenRune |
+| Hitsplats: `HitsplatApplied` (new hitmark slots per snapshot), `Actor.getHealthRatio/getHealthScale` (first head bar's last update, bar type width) | Actor `+0x330` hitmark vector, `+0x388` head bar list (docs/offsets.md "Actor"). Verified 2026-10-16 on OpenRune: goblin `Hitsplat(16, 5, end)`, health 0/30 |
+| `getFriendContainer`, `getIgnoreContainer`, `isFriended` (names, previous names, world) | FriendSystem `*(Client+0x46c0)`; list state read as 2 on OpenRune, members unverified (empty lists) |
+| `getComponentTable` (open sub-interfaces: group, modal mode) | sub-interface map, node `+8` = mode; verified (601's 25 overlays, mode 1) |
+| `setGameState(LOADING)` (others ignored) | the game's settings-changed reload `0x429900`; verified: 30 → 25 → 30, session continues |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so
@@ -108,7 +112,7 @@ Text fields (`JTextField`, kind E) show as an input box; a tap opens an Android 
 EditText (soft keyboard), and OK sets the text on the game thread and fires the field's
 DocumentListeners and ActionListeners (Quest Helper's search filters the quest list, verified
 2026-10-15). Test hook: `setprop debug.osrsrl.sbtext "<text>"` types into the first text field
-(`-` clears it). Not yet: combo box popups, icons, label colours.
+(`-` clears it). Combo boxes open an Android picker (verified 2026-10-16: QH's Difficulty filter). Not yet: icons, label colours.
 
 ## Gaps, in rough order
 

@@ -344,6 +344,30 @@ static ActorState read_actor(uintptr_t a) {
     st.pose_frame = read_at<int16_t>(a + 0x4be);
     st.overhead_cycle = read_at<int32_t>(a + 0x2f4);
     if (st.overhead_cycle > 0) st.overhead_text = read_string(a + 0x2d8);
+    // Hitmarks (adder 0x472240): std::vector at +0x330/+0x338 of 12-byte {type, amount, end cycle}
+    // slots, end cycle = cycle + delay + HitmarkType duration; empty slots are -1.
+    uintptr_t hb = read_at<uintptr_t>(a + 0x330), he = read_at<uintptr_t>(a + 0x338);
+    if (hb && he > hb && he - hb <= 12 * 16) {
+        int n = static_cast<int>((he - hb) / 12);
+        for (int i = 0; i < n && i < 4; i++)
+            for (int k = 0; k < 3; k++) st.hitsplats[i * 3 + k] = read_at<int32_t>(hb + i * 12 + k * 4);
+    }
+    // Head bars (adder 0x472780): std::list at +0x388 of nodes {next, prev, ctrl, HealthBar*};
+    // HealthBar {ctrl, HealthBarType* +8, updates list +0x10}; update node obj {start cycle, health,
+    // health2, cycle offset} (0x475130), ascending by cycle; HealthBarType width (op 14) +0x28.
+    uintptr_t sentinel = a + 0x388, node = read_at<uintptr_t>(sentinel);
+    if (node && node != sentinel) {
+        uintptr_t bar = read_at<uintptr_t>(node + 0x18);
+        uintptr_t type = bar ? read_at<uintptr_t>(bar + 8) : 0;
+        uintptr_t us = bar + 0x10, last = bar ? read_at<uintptr_t>(us + 8) : 0;
+        if (type && last && last != us) {
+            uintptr_t upd = read_at<uintptr_t>(last + 0x18);
+            if (upd) {
+                st.health_ratio = read_at<int32_t>(upd + 4);
+                st.health_scale = read_at<int32_t>(type + 0x28);
+            }
+        }
+    }
     return st;
 }
 
@@ -775,7 +799,7 @@ std::vector<SubInterface> open_sub_interfaces() {
         int guard = 0;
         for (auto node = read_at<uintptr_t>(buckets + b * 8); node && node != sentinel && guard++ < 1024;
              node = read_at<uintptr_t>(node + 0x10)) {
-            out.push_back({read_at<int32_t>(node), read_at<int32_t>(node + 4)});
+            out.push_back({read_at<int32_t>(node), read_at<int32_t>(node + 4), read_at<int32_t>(node + 8)});
         }
     }
     return out;
@@ -853,6 +877,43 @@ int scene_plane() {
     if (!c) return -1;
     auto wv = read_at<uintptr_t>(c + g_build->f_world_view);
     return wv ? read_at<int32_t>(wv + g_build->wv_plane) : -1;
+}
+
+bool reload_scene() {
+    uintptr_t c = client();
+    if (!c || game_state() != 30) return false;
+    reinterpret_cast<void (*)(uintptr_t)>(g_base + 0x429900)(c);
+    return true;
+}
+
+int friend_list_state() {
+    uintptr_t c = client();
+    auto fm = c ? read_at<uintptr_t>(c + 0x46c0) : 0;
+    return fm ? read_at<int32_t>(fm + 0x150) : 0;
+}
+
+bool friend_list(bool ignores, std::vector<FriendEntry>& out) {
+    out.clear();
+    uintptr_t c = client();
+    auto fm = c ? read_at<uintptr_t>(c + 0x46c0) : 0;
+    if (!fm || read_at<int32_t>(fm + 0x150) != 2) return false;
+    uintptr_t box = fm + (ignores ? 0xb8 : 0x08);
+    int n = read_at<int32_t>(box + 0xc);
+    auto arr = read_at<uintptr_t>(box + 0x20);
+    if (n < 0 || n > 1000 || (n > 0 && !arr)) return false;
+    for (int i = 0; i < n; i++) {
+        auto e = read_at<uintptr_t>(arr + 8 * i);
+        if (!e) continue;
+        FriendEntry f;
+        f.name = read_string(e + 0x08);
+        f.prev = read_string(e + 0x38);
+        if (!ignores) {
+            f.world = read_at<int32_t>(e + 0x68);
+            f.rank = read_at<int32_t>(e + 0x88);
+        }
+        out.push_back(std::move(f));
+    }
+    return true;
 }
 
 Point walk_destination() {

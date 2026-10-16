@@ -73,8 +73,8 @@ public class AndroidPlayer extends PlayerStub {
 
     // Not read from the game yet: inert values matching an idle, unskulled, healthy player.
     @Override public int getGraphic() { return -1; }
-    @Override public int getHealthRatio() { return -1; }
-    @Override public int getHealthScale() { return -1; }
+    @Override public int getHealthRatio() { return healthRatio; }
+    @Override public int getHealthScale() { return healthScale; }
     @Override public boolean isDead() { return false; }
     @Override public int getTeam() { return team; }
     @Override public boolean isFriend() { return false; }
@@ -114,7 +114,12 @@ public class AndroidPlayer extends PlayerStub {
     int animation = -1, animationFrame = -1, orientation, currentOrientation, interacting = -1, overheadCycle;
     String overheadText;
 
-    static final int CHANGED_ANIMATION = 1, CHANGED_INTERACTING = 2, CHANGED_OVERHEAD = 4;
+    static final int CHANGED_ANIMATION = 1, CHANGED_INTERACTING = 2, CHANGED_OVERHEAD = 4, CHANGED_HITSPLAT = 8;
+    // Head bar (first bar's last update; -1 without one) and hitmark slots from the snapshot.
+    int healthRatio = -1, healthScale = -1;
+    final int[] hitsplatSlots = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+    /** Hitmarks that appeared in the last snapshot (for HitsplatApplied), or null. */
+    java.util.List<net.runelite.api.Hitsplat> newHitsplats;
 
     /** Copies the snapshot fields; returns CHANGED_* bits (for AnimationChanged etc.). */
     int actor(int[] p, int o, String overhead) {
@@ -133,6 +138,10 @@ public class AndroidPlayer extends PlayerStub {
         System.arraycopy(p, o + 6, pose, 0, 8);
         poseAnimation = p[o + 14];
         poseAnimationFrame = p[o + 15];
+        healthRatio = p[o + 16];
+        healthScale = p[o + 17];
+        newHitsplats = AndroidHitsplat.diff(p, o + 18, hitsplatSlots);
+        if (newHitsplats != null) changed |= CHANGED_HITSPLAT;
         return changed;
     }
 

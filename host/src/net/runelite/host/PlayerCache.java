@@ -40,7 +40,7 @@ final class PlayerCache {
         int[] packed = (int[]) snap[0];
         String[] names = (String[]) snap[1];
         String[] overheads = (String[]) snap[2];
-        final int S = 22;  // see Native.npcs()/players()
+        final int S = 36;  // see Native.npcs()/players()
         Map<Integer, AndroidPlayer> seen = new HashMap<>();
         List<AndroidPlayer> next = new ArrayList<>(names.length);
         AndroidPlayer me = null;

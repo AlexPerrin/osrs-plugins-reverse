@@ -39,7 +39,7 @@ final class NpcCache {
         int[] packed = (int[]) snap[0];
         String[] names = (String[]) snap[1];
         String[] overheads = (String[]) snap[2];
-        final int S = 22;  // see Native.npcs()/players()
+        final int S = 36;  // see Native.npcs()/players()
         Map<Integer, AndroidNPC> seen = new HashMap<>();
         List<AndroidNPC> next = new ArrayList<>(names.length);
         for (int i = 0; i < names.length; i++) {

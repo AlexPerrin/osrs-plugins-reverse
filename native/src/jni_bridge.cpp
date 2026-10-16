@@ -388,11 +388,12 @@ jintArray n_player_position(JNIEnv* env, jclass) {
 }
 
 // NPC/player snapshots: 6 ints of identity/position, then the actor state (see Native.java).
-constexpr int kActorStride = 22;
+constexpr int kActorStride = 36;
 void pack_actor(std::vector<jint>& v, const game::ActorState& a) {
     v.insert(v.end(), {a.animation, a.animation_frame, a.orientation, a.current_orientation, a.interacting, a.overhead_cycle});
     v.insert(v.end(), a.pose, a.pose + 8);
-    v.insert(v.end(), {a.pose_animation, a.pose_frame});
+    v.insert(v.end(), {a.pose_animation, a.pose_frame, a.health_ratio, a.health_scale});
+    v.insert(v.end(), a.hitsplats, a.hitsplats + 12);
 }
 jstring latin1_string(JNIEnv* env, const std::string& s);
 void set_overhead(JNIEnv* env, jobjectArray arr, jsize i, const game::ActorState& a) {
@@ -441,6 +442,45 @@ jstring latin1_string(JNIEnv* env, const std::string& s) {
     }
     return env->NewStringUTF(u.c_str());
 }
+
+// {String[] names, String[] previous names (null when none), int[] {world, rank} pairs}, or null
+// while the list isn't loaded.
+jobjectArray n_friends(JNIEnv* env, jclass, jboolean ignores) {
+    std::vector<game::FriendEntry> list;
+    if (!game::friend_list(ignores, list)) return nullptr;
+    jsize n = static_cast<jsize>(list.size());
+    jclass str = env->FindClass("java/lang/String");
+    jobjectArray names = env->NewObjectArray(n, str, nullptr), prevs = env->NewObjectArray(n, str, nullptr);
+    std::vector<jint> wr;
+    for (jsize i = 0; i < n; i++) {
+        jstring t = latin1_string(env, list[i].name);
+        env->SetObjectArrayElement(names, i, t);
+        env->DeleteLocalRef(t);
+        if (!list[i].prev.empty()) {
+            t = latin1_string(env, list[i].prev);
+            env->SetObjectArrayElement(prevs, i, t);
+            env->DeleteLocalRef(t);
+        }
+        wr.push_back(list[i].world);
+        wr.push_back(list[i].rank);
+    }
+    jintArray ints = env->NewIntArray(2 * n);
+    env->SetIntArrayRegion(ints, 0, 2 * n, wr.data());
+    jobjectArray out = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(out, 0, names);
+    env->SetObjectArrayElement(out, 1, prevs);
+    env->SetObjectArrayElement(out, 2, ints);
+    return out;
+}
+jint n_friend_list_state(JNIEnv*, jclass) { return game::friend_list_state(); }
+jintArray n_sub_interfaces(JNIEnv* env, jclass) {
+    std::vector<jint> v;
+    for (const auto& s : game::open_sub_interfaces()) v.insert(v.end(), {s.component, s.group, s.type});
+    jintArray arr = env->NewIntArray(static_cast<jsize>(v.size()));
+    env->SetIntArrayRegion(arr, 0, static_cast<jsize>(v.size()), v.data());
+    return arr;
+}
+jboolean n_reload_scene(JNIEnv*, jclass) { return client_thread::on_client_thread() && game::reload_scene(); }
 
 constexpr int kMenuInts = 12;  // per entry: kind, hasChildren, raw[10]
 jobjectArray menu_array(JNIEnv* env, const std::vector<game::MenuEntry>& entries) {
@@ -819,6 +859,10 @@ const JNINativeMethod kNatives[] = {
     {"playSound", "(III)Z", reinterpret_cast<void*>(n_play_sound)},
     {"screenSize", "()[I", reinterpret_cast<void*>(n_screen_size)},
     {"walkDestination", "()[I", reinterpret_cast<void*>(n_walk_destination)},
+    {"friends", "(Z)[Ljava/lang/Object;", reinterpret_cast<void*>(n_friends)},
+    {"friendListState", "()I", reinterpret_cast<void*>(n_friend_list_state)},
+    {"reloadScene", "()Z", reinterpret_cast<void*>(n_reload_scene)},
+    {"subInterfaces", "()[I", reinterpret_cast<void*>(n_sub_interfaces)},
     {"typeParam", "(III)Ljava/lang/Object;", reinterpret_cast<void*>(n_type_param)},
     {"overlayBuffer", "(II)Ljava/nio/ByteBuffer;", reinterpret_cast<void*>(n_overlay_buffer)},
     {"overlayPublish", "(II)V", reinterpret_cast<void*>(n_overlay_publish)},

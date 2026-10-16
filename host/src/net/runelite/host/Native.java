@@ -104,10 +104,19 @@ final class Native {
      * {int[] packed, String[] names, String[] overhead texts}; 22 ints per NPC: index, id, fine x, fine y,
      * world x, world y, animation, animation frame, orientation, current orientation, interacting
      * (NPC index or player index + 32768, -1 none), overhead cycle, 8 pose animations (idle, idle
-     * rotate left/right, walk, walk 180/left/right, run), pose animation, pose frame. players() is the same with
+     * rotate left/right, walk, walk 180/left/right, run), pose animation, pose frame, health ratio, health
+     * scale (-1 without a head bar), 4 hitmark slots {type, amount, end cycle} (-1 empty) = 36. players() is the same with
      * `local` (1/0) in place of id.
      */
     static native Object[] npcs();
+    /** Friends (false) or ignores (true): {String[] names, String[] previous names, int[] {world, rank} pairs}; null until loaded. */
+    static native Object[] friends(boolean ignores);
+    /** FriendSystem +0x150: 0 none, 1 FRIENDLIST_LOADED, 2 list received. */
+    static native int friendListState();
+    /** The game's settings-changed scene reload (state 30 -> 25); client thread only. */
+    static native boolean reloadScene();
+    /** Open sub-interfaces: {component, group, modal mode} triples. */
+    static native int[] subInterfaces();
     static native boolean widgetExists(int componentId);
     static native boolean widgetHidden(int componentId);
     /** Widget text, or null if the widget's group isn't loaded. */

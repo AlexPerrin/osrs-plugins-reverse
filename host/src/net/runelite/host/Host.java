@@ -64,6 +64,16 @@ public final class Host {
                 }
                 if ((bits & AndroidNPC.CHANGED_INTERACTING) != 0) bus.post(new net.runelite.api.events.InteractingChanged(a, a.getInteracting()));
                 if ((bits & AndroidNPC.CHANGED_OVERHEAD) != 0) bus.post(new net.runelite.api.events.OverheadTextChanged(a, a.getOverheadText()));
+                if ((bits & AndroidNPC.CHANGED_HITSPLAT) != 0) {
+                    java.util.List<net.runelite.api.Hitsplat> hits = a instanceof AndroidNPC ? ((AndroidNPC) a).newHitsplats : ((AndroidPlayer) a).newHitsplats;
+                    if (hits != null) for (net.runelite.api.Hitsplat h : hits) {
+                        if (log) Log.i(TAG, "HitsplatApplied " + a.getName() + " " + h + " health " + a.getHealthRatio() + "/" + a.getHealthScale());
+                        net.runelite.api.events.HitsplatApplied e = new net.runelite.api.events.HitsplatApplied();
+                        e.setActor(a);
+                        e.setHitsplat(h);
+                        bus.post(e);
+                    }
+                }
             } catch (Throwable t) {
                 Log.e(TAG, "actor event failed", t);
             }

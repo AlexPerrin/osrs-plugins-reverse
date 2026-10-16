@@ -31,6 +31,18 @@ uint32_t changed_varp_count();
 int changed_varp(uint32_t n);
 
 struct Point { int x, y; };
+
+// Friends / ignore lists: FriendSystem = *(Client +0x46c0); list state +0x150 (0 none, 1 loaded
+// (FRIENDLIST_LOADED), 2 after UPDATE_FRIENDLIST); friends container +0x08, ignores +0xb8
+// ({count +0xc, Element** +0x20}); element: name string +0x08, previous name +0x38, friend world
+// +0x68 (0 offline), rank +0x88. From static RE of the CS2 friend ops (0x4ebdb0) and parsers
+// 0x56e448/0x56ee54 (2026-10-16).
+struct FriendEntry { std::string name, prev; int world = 0, rank = -1; };
+int friend_list_state();
+// setGameState(LOADING): the game's own settings-changed reload (0x429900(client): when logged in,
+// game state 30 -> 25 and the scene is rebuilt). Client thread only; false when not logged in.
+bool reload_scene();
+bool friend_list(bool ignores, std::vector<FriendEntry>& out);
 Point scene_base();        // world tile of scene tile (0, 0) (top-level WorldView)
 Point player_world();       // world tile (x, y) = scene base + scene tile; {-1, -1} if unavailable
 Point walk_destination();
@@ -51,6 +63,10 @@ struct ActorState {
     // idle, idle rotate left/right, walk, walk 180/left/right, run.
     int pose[8] = {-1, -1, -1, -1, -1, -1, -1, -1};  // +0x280..+0x29c
     int pose_animation = -1, pose_frame = -1;      // +0x4b8 current pose sequence, +0x4be frame (s16)
+    // First head bar (+0x388 list): last update's health and the bar type's width; -1 when none.
+    int health_ratio = -1, health_scale = -1;
+    // Hitmark slots (+0x330 vector of {type, amount, end cycle}, -1 = empty), up to 4.
+    int hitsplats[12] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 };
 
 struct Npc {
@@ -115,7 +131,7 @@ int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colo
 void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty
 void widget_set_hidden(uintptr_t widget, bool hidden);  // game thread only, same
 bool widget_set_text(uintptr_t widget, const std::string& text);  // game thread only, same (latin-1)
-struct SubInterface { int component, group; };  // `group` is open inside `component`
+struct SubInterface { int component, group, type; };  // `group` is open inside `component`; type = IF_OPENSUB modal mode (node +8)
 std::vector<SubInterface> open_sub_interfaces();
 
 constexpr int kSkillCount = 25;

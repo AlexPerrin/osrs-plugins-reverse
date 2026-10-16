@@ -28,6 +28,8 @@ final class Probe {
 
     static void onGameTick() {
         if ("1".equals(Native.property("debug.osrsrl.camlog"))) logCamera();
+        String where = Native.property("debug.osrsrl.where");
+        if (!where.isEmpty() && (tick % 5) == 0) logWhere(where);
         if (plugins == null || (tick++ % 5) != 0) return;
         String path = Native.property("debug.osrsrl.probe");
         if (path.isEmpty()) return;
@@ -37,6 +39,44 @@ final class Probe {
         } catch (Throwable t) {
             Log.w(TAG, path + " failed: " + t);
         }
+    }
+
+    /**
+     * Debug hook: `setprop debug.osrsrl.where <loc id>` logs every scene object with that id: world
+     * position, plane and the centre of its click box in UI-canvas and screen pixels (for adb taps).
+     */
+    private static void logWhere(String arg) {
+        int id;
+        try { id = Integer.parseInt(arg.trim()); } catch (NumberFormatException e) { return; }
+        net.runelite.api.Client c = Host.client();
+        AndroidWorldView wv = Host.worldView();
+        if (c == null || wv == null) return;
+        net.runelite.api.Tile[][][] tiles = wv.getScene().getTiles();
+        double toScreen = 1080.0 / Math.max(1, c.getCanvasHeight());
+        int found = 0;
+        for (int p = 0; p < tiles.length; p++)
+            for (net.runelite.api.Tile[] col : tiles[p])
+                for (net.runelite.api.Tile t : col) {
+                    if (t == null) continue;
+                    List<net.runelite.api.TileObject> objs = new java.util.ArrayList<>();
+                    if (t.getWallObject() != null) objs.add(t.getWallObject());
+                    if (t.getDecorativeObject() != null) objs.add(t.getDecorativeObject());
+                    if (t.getGroundObject() != null) objs.add(t.getGroundObject());
+                    if (t.getGameObjects() != null) for (net.runelite.api.GameObject g : t.getGameObjects()) if (g != null) objs.add(g);
+                    for (net.runelite.api.TileObject o : objs) {
+                        if (o.getId() != id || !o.getWorldLocation().equals(t.getWorldLocation())) continue;
+                        java.awt.Shape box = o.getClickbox();
+                        String at = "offscreen";
+                        if (box != null) {
+                            java.awt.geom.Rectangle2D b = box.getBounds2D();
+                            at = String.format("canvas %d,%d screen %d,%d", (int) b.getCenterX(), (int) b.getCenterY(),
+                                    (int) (b.getCenterX() * toScreen), (int) (b.getCenterY() * toScreen));
+                        }
+                        Log.i(TAG, "where " + id + " " + o.getClass().getSimpleName() + " at " + o.getWorldLocation() + ": " + at);
+                        found++;
+                    }
+                }
+        if (found == 0) Log.i(TAG, "where " + id + ": not in scene");
     }
 
     private static Object eval(String path) throws Exception {

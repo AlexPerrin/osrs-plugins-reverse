@@ -267,10 +267,12 @@ public final class Host {
             case WIDGET_LOADED: {
                 net.runelite.api.events.WidgetLoaded e = new net.runelite.api.events.WidgetLoaded();
                 e.setGroupId(a);
+                if ("1".equals(Native.property("debug.osrsrl.widgetlog"))) Log.i(TAG, "WidgetLoaded " + a);
                 bus.post(e);
                 break;
             }
             case WIDGET_CLOSED:
+                if ("1".equals(Native.property("debug.osrsrl.widgetlog"))) Log.i(TAG, "WidgetClosed " + a);
                 bus.post(new net.runelite.api.events.WidgetClosed(a, 0, true));
                 break;
             case MENU_OPENED: {

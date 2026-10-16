@@ -12,6 +12,8 @@
 #   scripts/openrune.sh build     rsprot (if missing) + cache (first time: download + build; later:
 #                                 incremental rebuild) + RSA keys + installDist
 #   scripts/openrune.sh modulus   print the login RSA modulus (hex) for tools/repack.sh
+#   scripts/openrune.sh shared-key
+#                                 use our own server's login key (server/data/rsa.properties)
 set -eu
 cd "$(dirname "$0")/.."
 OR=$(pwd)
@@ -92,10 +94,21 @@ build)
     python3 -I scripts/check_cache.py
     ;;
 modulus)
-    openssl rsa -in src/.data/game.key -noout -modulus | cut -d= -f2 | tr A-F a-f
+    # The login key: our server's (shared-key) when present, else OpenRune's own game.key.
+    if [ -f src/.data/rsa.properties ]; then
+        grep '^modulus=' src/.data/rsa.properties | cut -d= -f2
+    else
+        openssl rsa -in src/.data/game.key -noout -modulus | cut -d= -f2 | tr A-F a-f
+    fi
+    ;;
+shared-key)
+    # Use our own server's login key (server/data/rsa.properties), so app builds made for it log in
+    # here too. Takes effect with the next image build; undo by deleting src/.data/rsa.properties.
+    cp ../server/data/rsa.properties src/.data/rsa.properties
+    echo "src/.data/rsa.properties: modulus $(grep '^modulus=' src/.data/rsa.properties | cut -d= -f2 | cut -c1-16)..."
     ;;
 *)
-    echo "usage: $0 init|export|rsprot|gradle <args>|build|modulus" >&2
+    echo "usage: $0 init|export|rsprot|gradle <args>|build|modulus|shared-key" >&2
     exit 2
     ;;
 esac

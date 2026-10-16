@@ -3911,6 +3911,38 @@ index 08c7a6cf..12b79fd1 100644
              val consumerRepository = networkService.gameMessageConsumerRepositoryProvider.provide()
              val consumer = consumerRepository.consumers[messageClass]
              if (consumer == null) {
+diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/handlers/OutgoingMessageSizeEstimator.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/handlers/OutgoingMessageSizeEstimator.kt
+index 30559afa..44e79e25 100644
+--- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/handlers/OutgoingMessageSizeEstimator.kt
++++ b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/handlers/OutgoingMessageSizeEstimator.kt
+@@ -24,6 +24,10 @@ public class OutgoingMessageSizeEstimator(
+     private val gameEncoder =
+         repositories
+             .gameMessageEncoderRepositories[ESTIMATOR_CLIENT_TYPE]
++    private val otherGameEncoders =
++        (0 until repositories.gameMessageEncoderRepositories.size)
++            .mapNotNull { repositories.gameMessageEncoderRepositories.getOrNull(it) }
++            .filter { it !== gameEncoder }
+     private val loginEncoder =
+         repositories
+             .loginMessageEncoderRepository
+@@ -65,7 +69,15 @@ public class OutgoingMessageSizeEstimator(
+         }
+ 
+         private fun estimateGameMessageSize(msg: OutgoingGameMessage): Int {
+-            val prot = gameEncoder.getEncoder(msg.javaClass).prot
++            // Platform-specific messages (e.g. the Android module's) are only in their own
++            // platform's repository, so fall back to the others before giving up.
++            val prot =
++                runCatching { gameEncoder.getEncoder(msg.javaClass).prot }
++                    .getOrElse { error ->
++                        otherGameEncoders.firstNotNullOfOrNull { repository ->
++                            runCatching { repository.getEncoder(msg.javaClass).prot }.getOrNull()
++                        } ?: throw error
++                    }
+             return estimateRegularProtocolMessage(msg, prot)
+         }
+ 
 diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageDecoderRepositories.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageDecoderRepositories.kt
 index f463c584..1d84192d 100644
 --- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/repositories/MessageDecoderRepositories.kt

@@ -45,7 +45,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Cannon | starts | |
 | Daily Task Indicator | starts | |
 | Emojis | starts | cache dir now under the app's files dir (user.home); emoji rendering in chat not possible (game chat) |
-| Examine | starts | |
+| Examine | runs | "Price of Strength potion(3): GE ..." after Examine on an inventory item (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
 | Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Submenus (colour, label) not shown |
 | Implings | starts | |
 | Interact Highlight | starts | |
@@ -55,14 +55,14 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Logout Timer | starts | |
 | NPC Indicators | runs | hull highlights + minimap dots for `npcindicators.npcToHighlight=Goblin` (after the WildcardMatcher replacement); the left button column (601:41/40) is now clipped (unverified) |
 | Object Markers | runs | Shift + long-press an object: "Mark object"; hull drawn on the tree (verified 2026-10-16). Submenus not shown |
-| Poison | starts | |
-| Prayer | starts | |
+| Poison | starts | `Client.getWidgetSpriteCache` unimplemented (health orb icon swap) throws in onVarbitChanged when poisoned (`::varp 102 6`) |
+| Prayer | runs | prayer orb tooltip (time remaining, prayer bonus) on a tap of the orb (verified 2026-10-16); dose indicator not checked |
 | Random Events | starts | |
 | Regeneration Meter | runs | HP ring on the HP orb (verified with `regenmeter.showWhenNoChange`); by default it draws only below full HP or spec |
 | Run Energy | runs | orb tooltip (weight, run time, 100% in) on a tap of the run orb (touch-as-mouse + TooltipOverlay, verified 2026-10-16) |
 | Timers & Buffs | starts | |
 | Woodcutting | starts | |
-| XP Tracker | starts | initialises at login after the getAccountHash fix (OAuthApi); sidebar panel not checked |
+| XP Tracker | runs | sidebar panel: gained XP, XP/hr, levels per skill after combat (verified 2026-10-16; some rows show twice in the flattened sidebar) |
 | Agility | starts | needs XP Tracker's public module (installed as RuneLite does); its login StatChanged NPE fixed (StatChanged is held until the local player exists) |
 | Chat Notifications | starts | |
 | Fishing | starts | |
@@ -159,6 +159,8 @@ VarbitChanged).
 | Per-cycle caches for camera, viewport, canvas size, player position and tile heights (`Host.cycleStamp`) | Perspective reads them per vertex: with NPC Indicators hulls on ~40 goblins the JNI reads took the game to 0 fps (taps stopped working); 30 fps after (verified 2026-10-16, all 41 plugins loaded) |
 | Scene overlays are also clipped out of small sprite widgets (type 5, area < 1/12 canvas) of the root and its overlay sub-interfaces: mobile button columns, orbs, chat tabs | `OverlayRenderer.uiExclusions` (looked right with NPC Indicators on 2026-10-16) |
 | `user.home` = the app's files dir, so `RuneLite.RUNELITE_DIR/CACHE_DIR` are writable | Host.start |
+| `ChatMessageManager.queue` → `Client.addChatMessage` (RuneLite colour placeholders mapped to the transparent-chatbox defaults; CONSOLE sent as GAMEMESSAGE); `MessageNode.setValue` rewrites the game's message text (Message +0xa0, string assign `0x3f1498`) | queue verified (Examine); setValue unverified (shown on the next chatbox redraw?) |
+| Plugin submenus (`createSubMenu`): a tapped parent replaces the strip with its entries (marked "  >") | verified 2026-10-16 (Ground Markers "Color Tile" → Pick, Reset all); "Pick" opens RuneLite's Swing colour picker, which has no Android UI |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so

@@ -1262,6 +1262,74 @@ class World(
         }
     }
 
+    /**
+     * Romeo & Juliet (varp 144): 0 talk to Romeo, 10 Juliet gives a message, 20 message to Romeo,
+     * 30 Father Lawrence, 40 Apothecary makes a cadava potion from cadava berries, 50 potion to
+     * Juliet, 60 back to Romeo, 100 done (5 QP). Abridged dialogue.
+     */
+    private fun romeoJulietDialogue(p: Player, npc: Int) {
+        val v = p.varps[VARP_ROMEOJULIET] ?: 0
+        fun set(value: Int) = setVarp(p, VARP_ROMEOJULIET, value)
+        when (npc) {
+            NPC_ROMEO -> when (v) {
+                0 -> npcSay(p, npc, "Juliet, Juliet, wherefore art thou? Kind friend, have you seen Juliet? She's disappeared and I can't find her anywhere.") {
+                    choose(
+                        p,
+                        "Yes, I have seen her actually!" to { playerSay(p, "Perhaps I could help to find her for you?") { set(10); npcSay(p, npc, "Oh would you? That would be wonderful! Please tell her I long to be with her. She lives in the house west of the square, upstairs.") } },
+                        "No, sorry. I haven't seen her." to { playerSay(p, "No, sorry. I haven't seen her.") },
+                    )
+                }
+                10 -> npcSay(p, npc, "Please find my Juliet. I'm so lonely without her.")
+                20 -> if (countObj(p, OBJ_MESSAGE) > 0) {
+                    playerSay(p, "Romeo, I have a message from Juliet.") {
+                        takeObj(p, OBJ_MESSAGE, 1); set(30)
+                        npcSay(p, npc, "She wants us to meet... but her father will never allow it. Go and see Father Lawrence at the church, he'll know what to do!")
+                    }
+                } else npcSay(p, npc, "Did Juliet give you a message for me? Please bring it to me!")
+                30 -> npcSay(p, npc, "Please speak to Father Lawrence, at the church in the north-east of Varrock.")
+                40, 50 -> npcSay(p, npc, "Have you got the potion for Juliet yet?")
+                60 -> npcSay(p, npc, "Juliet's... dead? Oh no! ...Wait, she's only sleeping? Thank you, friend, I'll go to her at once!") {
+                    set(100); updateQuestPoints(p)
+                    p.message("Congratulations! Quest complete: Romeo & Juliet.")
+                }
+                else -> npcSay(p, npc, "Thank you for all your help with Juliet.")
+            }
+            NPC_JULIET -> when (v) {
+                10 -> npcSay(p, npc, "Romeo! Is that you? Oh, a messenger from Romeo! Please take this message to him, quickly.") {
+                    if (give(p, OBJ_MESSAGE, 1)) { p.send(p.inventory.toMessage()); set(20) } else p.message("You don't have enough inventory space.")
+                }
+                20 -> npcSay(p, npc, "Please take the message to Romeo, he's in Varrock square.") {
+                    if (countObj(p, OBJ_MESSAGE) == 0 && give(p, OBJ_MESSAGE, 1)) p.send(p.inventory.toMessage())
+                }
+                50 -> if (countObj(p, OBJ_CADAVA_POTION) > 0) {
+                    playerSay(p, "I have a cadava potion from Father Lawrence's plan.") {
+                        takeObj(p, OBJ_CADAVA_POTION, 1); set(60)
+                        npcSay(p, npc, "Wonderful! I'll drink it now. Go and tell Romeo the plan!")
+                    }
+                } else npcSay(p, npc, "Have you got the potion yet?")
+                else -> npcSay(p, npc, if (v >= 60) "Please tell Romeo the plan." else "Who are you? Oh, I'm so lonely up here...")
+            }
+            NPC_LAWRENCE -> when (v) {
+                30 -> npcSay(p, npc, "Romeo sent you? I have a plan: Juliet must drink a cadava potion so she seems dead. Go to the Apothecary in the south-west of Varrock; he'll make it from cadava berries.") { set(40) }
+                else -> npcSay(p, npc, "Hello, my child. Bless you.")
+            }
+            NPC_APOTHECARY -> when (v) {
+                40 -> if (countObj(p, OBJ_CADAVA_BERRIES) > 0) {
+                    playerSay(p, "Father Lawrence sent me. I need a cadava potion.") {
+                        takeObj(p, OBJ_CADAVA_BERRIES, 1)
+                        give(p, OBJ_CADAVA_POTION, 1); p.send(p.inventory.toMessage()); set(50)
+                        npcSay(p, npc, "Here you are. Be careful with it.")
+                    }
+                } else npcSay(p, npc, "A cadava potion? I'll need some cadava berries. They grow south-east of Varrock.")
+                50 -> if (countObj(p, OBJ_CADAVA_POTION) == 0 && countObj(p, OBJ_CADAVA_BERRIES) > 0) {
+                    takeObj(p, OBJ_CADAVA_BERRIES, 1); give(p, OBJ_CADAVA_POTION, 1); p.send(p.inventory.toMessage())
+                    npcSay(p, npc, "Lost it? Here's another one.")
+                } else npcSay(p, npc, "Take the potion to Juliet.")
+                else -> npcSay(p, npc, "I am the Apothecary. I brew potions.")
+            }
+        }
+    }
+
     private fun cookDialogue(p: Player) {
         val cook = NPC_COOK
         when (p.varps[VARP_COOKQUEST] ?: 0) {
@@ -1442,7 +1510,7 @@ class World(
                 when (opName?.lowercase()) {
                     "bank" -> openBank(p)
                     "shear" -> shear(p, npc)
-                    "talk-to" -> if (npc.id == NPC_COOK) cookDialogue(p) else if (npc.id == NPC_FRED) fredDialogue(p) else openNpcChat(p, npc.id, type?.name ?: "", "Hello, ${p.username}! This is a test server.")
+                    "talk-to" -> if (npc.id == NPC_COOK) cookDialogue(p) else if (npc.id == NPC_FRED) fredDialogue(p) else if (npc.id in ROMEO_JULIET_NPCS) romeoJulietDialogue(p, npc.id) else openNpcChat(p, npc.id, type?.name ?: "", "Hello, ${p.username}! This is a test server.")
                     else -> p.message("$opName ${type?.name ?: "npc ${npc.id}"}: nothing interesting happens.")
                 }
             },
@@ -1494,6 +1562,9 @@ class World(
                     "bank" -> openBank(p)
                     "open", "close" -> toggleDoor(p, id, Coord(x, z, p.coord.level), opName.lowercase() == "open")
                     "spin" -> spin(p)
+                    "pick-from" -> if (type?.name.equals("Cadava bush", true)) {
+                        if (give(p, OBJ_CADAVA_BERRIES, 1)) { p.send(p.inventory.toMessage()); p.message("You pick some cadava berries.") }
+                    } else p.message("You find nothing of interest.")
                     // Stairs/ladders: no destination table yet, so move one level up/down in place.
                     "climb-up" -> if (p.coord.level < 3) teleport(p, Coord(p.coord.x, p.coord.z, p.coord.level + 1))
                     "climb-down" -> if (p.coord.level > 0) teleport(p, Coord(p.coord.x, p.coord.z, p.coord.level - 1))
@@ -1804,7 +1875,20 @@ class World(
             4626 to Coord(3209, 3215),
             // Sheep Shearer: Fred the Farmer in his farmhouse, sheep in the pen east of it.
             NPC_FRED to Coord(3190, 3273), 2786 to Coord(3202, 3266), 2787 to Coord(3206, 3262), 2788 to Coord(3199, 3270),
+            // Romeo & Juliet (Varrock): Romeo in the square, Juliet upstairs in her house to the west,
+            // Father Lawrence in the north-east church, the Apothecary south-west.
+            NPC_ROMEO to Coord(3211, 3424), NPC_JULIET to Coord(3158, 3425, 1), NPC_LAWRENCE to Coord(3254, 3483),
+            NPC_APOTHECARY to Coord(3195, 3403),
         )
+        private const val NPC_ROMEO = 5037
+        private val ROMEO_JULIET_NPCS = setOf(5037, 5035, 5038, 5036)
+        private const val NPC_JULIET = 5035
+        private const val NPC_LAWRENCE = 5038
+        private const val NPC_APOTHECARY = 5036
+        private const val VARP_ROMEOJULIET = 144
+        private const val OBJ_MESSAGE = 755
+        private const val OBJ_CADAVA_POTION = 756
+        private const val OBJ_CADAVA_BERRIES = 753
         private const val NPC_FRED = 732
         private const val VARP_SHEEPSHEARER = 179
         private const val CRAFTING = 12

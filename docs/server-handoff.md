@@ -195,6 +195,10 @@ Committed, NOT deployed (waiting for an explicit restart OK while the client dev
   Crafting XP, 60 coins). Fred hands out shears when the quest starts. Loc ops "Climb-up" /
   "Climb-down" move one level in place (no stair destination table yet).
   Test: `::tele 3190 3273`, Talk-to Fred, shear, climb to the castle wheel, spin, hand in.
+- Romeo & Juliet (varp 144: 0/10/20/30/40/50/60/100, abridged dialogue; stage values follow Quest
+  Helper's steps from memory, unverified against QH source): Romeo 5037 at 3211,3424, Juliet 5035
+  at 3158,3425 level 1, Father Lawrence 5038 at 3254,3483, Apothecary 5036 at 3195,3403; message
+  755, cadava berries 753 (loc op "Pick-from" on a "Cadava bush"), cadava potion 756.
 
 Open, in priority order:
 1. Quest Helper gaps from the client agent (Cook's Assistant end to end).

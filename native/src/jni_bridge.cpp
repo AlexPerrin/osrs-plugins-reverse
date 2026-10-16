@@ -151,6 +151,16 @@ jboolean n_add_chat_message(JNIEnv* env, jclass, jint type, jstring name, jstrin
     };
     return game::add_chat_message(type, str(name), str(text));
 }
+jboolean n_chat_remove(JNIEnv*, jclass, jint type, jint id) {
+    return client_thread::on_client_thread() && game::chat_remove_message(type, id);
+}
+jint n_afk_timeout(JNIEnv*, jclass) { return game::afk_timeout_minutes(); }
+jboolean n_set_afk_timeout(JNIEnv*, jclass, jint minutes) {
+    return client_thread::on_client_thread() && game::set_afk_timeout_minutes(minutes);
+}
+void n_chat_changed(JNIEnv*, jclass) {
+    if (client_thread::on_client_thread()) game::chat_changed();
+}
 jboolean n_message_set_text(JNIEnv* env, jclass, jint id, jstring text) {
     if (!client_thread::on_client_thread() || !text) return false;
     const char* c = env->GetStringUTFChars(text, nullptr);
@@ -608,6 +618,25 @@ jintArray n_item_sprite(JNIEnv* env, jclass, jint id, jint quantity, jint border
     return r;
 }
 
+jintArray n_sprite(JNIEnv* env, jclass, jint id) {
+    if (!require_client_thread(env, "sprite")) return nullptr;
+    std::vector<uint32_t> px;
+    int w = 0, h = 0;
+    if (!game::sprite(id, px, w, h)) return nullptr;
+    jintArray r = env->NewIntArray(2 + static_cast<jsize>(px.size()));
+    jint wh[2] = {w, h};
+    env->SetIntArrayRegion(r, 0, 2, wh);
+    env->SetIntArrayRegion(r, 2, static_cast<jsize>(px.size()), reinterpret_cast<const jint*>(px.data()));
+    return r;
+}
+
+jboolean n_sprite_write(JNIEnv* env, jclass, jint id, jintArray pixels, jint w, jint h) {
+    if (!client_thread::on_client_thread() || !pixels || w <= 0 || h <= 0 || env->GetArrayLength(pixels) < w * h) return false;
+    std::vector<uint32_t> px(static_cast<size_t>(w) * h);
+    env->GetIntArrayRegion(pixels, 0, w * h, reinterpret_cast<jint*>(px.data()));
+    return game::sprite_write(id, px.data(), w, h);
+}
+
 jintArray n_menu_point(JNIEnv* env, jclass) {
     int xy[2];
     if (!game::menu_point(xy[0], xy[1])) return nullptr;
@@ -970,6 +999,8 @@ const JNINativeMethod kNatives[] = {
     {"clickedMenuEntry", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_clicked_menu_entry)},
     {"menuOpen", "()Z", reinterpret_cast<void*>(n_menu_open)},
     {"itemSprite", "(IIIIIZ)[I", reinterpret_cast<void*>(n_item_sprite)},
+    {"sprite", "(I)[I", reinterpret_cast<void*>(n_sprite)},
+    {"spriteWrite", "(I[III)Z", reinterpret_cast<void*>(n_sprite_write)},
     {"menuPoint", "()[I", reinterpret_cast<void*>(n_menu_point)},
     {"sceneObjects", "()[I", reinterpret_cast<void*>(n_scene_objects)},
     {"groundItems", "()[I", reinterpret_cast<void*>(n_ground_items)},
@@ -998,6 +1029,10 @@ const JNINativeMethod kNatives[] = {
     {"varbitDef", "(I)[I", reinterpret_cast<void*>(n_varbit_def)},
     {"addChatMessage", "(ILjava/lang/String;Ljava/lang/String;)Z", reinterpret_cast<void*>(n_add_chat_message)},
     {"messageSetText", "(ILjava/lang/String;)Z", reinterpret_cast<void*>(n_message_set_text)},
+    {"chatRemove", "(II)Z", reinterpret_cast<void*>(n_chat_remove)},
+    {"chatChanged", "()V", reinterpret_cast<void*>(n_chat_changed)},
+    {"afkTimeout", "()I", reinterpret_cast<void*>(n_afk_timeout)},
+    {"setAfkTimeout", "(I)Z", reinterpret_cast<void*>(n_set_afk_timeout)},
     {"serverVarp", "(I)I", reinterpret_cast<void*>(n_server_varp)},
     {"varbit", "(I)I", reinterpret_cast<void*>(n_varbit)},
     {"playerPosition", "()[I", reinterpret_cast<void*>(n_player_position)},

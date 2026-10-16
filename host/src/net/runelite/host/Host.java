@@ -313,6 +313,7 @@ public final class Host {
                 }
                 runQueued();
                 AndroidMenu.onCycle();
+                HostSprites.onCycle(client);
                 Sidebar.onCycle();
                 try {
                     overlayRenderer.render();
@@ -342,6 +343,7 @@ public final class Host {
                 // Desktop's ConfigManager switches the RuneScape profile while logging in; plugins
                 // (Quest Helper) wait for that event before their first LOGGED_IN setup.
                 if (s == GameState.LOGIN_SCREEN) profilePosted = false;
+                if (s == GameState.LOGGED_IN) ((AndroidClient) client).applyIdleTimeout();
                 if (s == GameState.LOGGED_IN && !profilePosted) {
                     profilePosted = true;
                     bus.post(new net.runelite.client.events.RuneScapeProfileChanged(null, "default"));
@@ -569,6 +571,11 @@ public final class Host {
 
     /** RuneLite's ClientThread.invoke equivalent. */
     public static void invoke(Runnable r) {
+        clientThread.invoke(r);
+    }
+
+    /** Runs on the client thread, again each cycle until it returns true. */
+    public static void invokeUntil(java.util.function.BooleanSupplier r) {
         clientThread.invoke(r);
     }
 

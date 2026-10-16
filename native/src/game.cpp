@@ -892,6 +892,82 @@ bool message_set_text(int id, const std::string& text) {
     return false;
 }
 
+// Chat channels (global map 0xaab5e0, same layout as messages_by_id; node {int type; +0x08
+// channel*; +0x10 next}): a ring of 100 {ctrl*, Message*} pairs, +0x640 count, +0x644 newest
+// index (0x3ef964 adds). 0x43aacc(client) bumps the chat cycle (Client +0x413e6c) so the chatbox
+// rebuilds, as after any new message.
+namespace {
+constexpr uintptr_t kChatChannels = 0xaab5e0, kChatChanged = 0x43aacc;
+uintptr_t chat_channel(int type) {
+    uintptr_t map = g_base + kChatChannels;
+    auto buckets = read_at<uintptr_t>(map + 8);
+    auto nb = read_at<uint32_t>(map + 0x10);
+    if (!buckets || !nb) return 0;
+    for (auto node = read_at<uintptr_t>(buckets + (static_cast<uint32_t>(type) % nb) * 8); node;
+         node = read_at<uintptr_t>(node + 0x10))
+        if (read_at<int32_t>(node) == type) return read_at<uintptr_t>(node + 8);
+    return 0;
+}
+}  // namespace
+
+// Idle logout (0x41d0a4, IDLE = client prot 97 at 0x4216f8): the game logs out when
+// settings->AFKTimeout (minutes; Settings* at Client +0x2278, int +0x154c, 5 by default) * 60000
+// ms have passed since the last input (Client +0x413270, ms).
+int afk_timeout_minutes() {
+    uintptr_t c = client();
+    if (!g_build || !c) return -1;
+    auto settings = read_at<uintptr_t>(c + 0x2278);
+    return settings ? read_at<int32_t>(settings + 0x154c) : -1;
+}
+bool set_afk_timeout_minutes(int minutes) {
+    uintptr_t c = client();
+    if (!g_build || !c || minutes < 1 || minutes > 35000) return false;
+    auto settings = read_at<uintptr_t>(c + 0x2278);
+    if (!settings) return false;
+    *reinterpret_cast<int32_t*>(settings + 0x154c) = minutes;
+    return true;
+}
+
+void chat_changed() {
+    uintptr_t c = client();
+    if (g_build && c) reinterpret_cast<void (*)(uintptr_t)>(g_base + kChatChanged)(c);
+}
+
+// The removed pair is rotated to the oldest position and the count drops by one, so every pair
+// stays owned by the ring (the add path reuses or releases it later) and no refcount changes.
+bool chat_remove_message(int type, int id) {
+    if (!g_build) return false;
+    uintptr_t ch = chat_channel(type);
+    if (!ch) {
+        LOGI("chat: no channel for type %d", type);
+        return false;
+    }
+    int count = read_at<int32_t>(ch + 0x640), newest = read_at<int32_t>(ch + 0x644);
+    if (count <= 0 || count > 100 || newest < 0 || newest >= 100) {
+        LOGI("chat: channel %d count %d newest %d", type, count, newest);
+        return false;
+    }
+    auto slot = [&](int age) { return reinterpret_cast<uintptr_t*>(ch + ((newest - age) % 100 + 100) % 100 * 0x10); };
+    for (int k = 0; k < count; k++) {
+        uintptr_t msg = slot(k)[1];
+        if (!msg) continue;
+        uintptr_t node = read_at<uintptr_t>(msg);
+        if (!node || read_at<int32_t>(node + 0x10) != id) continue;
+        uintptr_t saved[2] = {slot(k)[0], slot(k)[1]};
+        for (int j = k; j < count - 1; j++) {
+            slot(j)[0] = slot(j + 1)[0];
+            slot(j)[1] = slot(j + 1)[1];
+        }
+        slot(count - 1)[0] = saved[0];
+        slot(count - 1)[1] = saved[1];
+        *reinterpret_cast<int32_t*>(ch + 0x640) = count - 1;
+        return true;
+    }
+    uintptr_t m0 = slot(0)[1], n0 = m0 ? read_at<uintptr_t>(m0) : 0;
+    LOGI("chat: id %d not in channel %d (count %d, newest id %d)", id, type, count, n0 ? read_at<int32_t>(n0 + 0x10) : -1);
+    return false;
+}
+
 int player_plane() { return g_build ? field(g_build->f_plane) : -1; }
 
 int scene_plane() {
@@ -1235,6 +1311,46 @@ bool set_varc_string(int id, const std::string& value) {
     return true;
 }
 
+
+// Sprite (graphic) by id through the game's sprite cache: getSprite(cache, id, outline, vflip,
+// hflip, shadow, bool* ok) at 0x5d4074 returns (x0) a pointer to the cached {ctrl, Sprite*} slot,
+// not add-ref'd; ok stays false while the sprites archive (8) isn't loaded. Cache = Client +0x413a98.
+// Frame 0 only. Pixels are ARGB with alpha 0xff (0 = transparent).
+bool sprite(int id, std::vector<uint32_t>& pixels, int& width, int& height) {
+    uintptr_t c = client();
+    if (!g_build || !c || id < 0 || id > 0xfffff) return false;
+    auto cache = read_at<uintptr_t>(c + 0x413a98);
+    if (!cache) return false;
+    bool ok = false;
+    using Fn = const uintptr_t* (*)(uintptr_t, int, int, bool, bool, int, bool*);
+    const uintptr_t* slot = reinterpret_cast<Fn>(g_base + 0x5d4074)(cache, id, 0, false, false, 0, &ok);
+    if (!ok || !slot || !slot[1]) return false;
+    uintptr_t spr = slot[1];
+    width = read_at<int32_t>(spr + 0x18);
+    height = read_at<int32_t>(spr + 0x1c);
+    auto px = read_at<uintptr_t>(spr + 0x10);
+    if (!px || width <= 0 || height <= 0 || width > 2048 || height > 2048) return false;
+    pixels.assign(reinterpret_cast<const uint32_t*>(px), reinterpret_cast<const uint32_t*>(px) + width * height);
+    return true;
+}
+
+// Overwrites the cached sprite's pixels in place (sprite overrides); same size only. The cache
+// reloads the original after an LRU eviction, so callers re-apply periodically.
+bool sprite_write(int id, const uint32_t* pixels, int width, int height) {
+    uintptr_t c = client();
+    if (!g_build || !c || id < 0 || id > 0xfffff) return false;
+    auto cache = read_at<uintptr_t>(c + 0x413a98);
+    if (!cache) return false;
+    bool ok = false;
+    using Fn = const uintptr_t* (*)(uintptr_t, int, int, bool, bool, int, bool*);
+    const uintptr_t* slot = reinterpret_cast<Fn>(g_base + 0x5d4074)(cache, id, 0, false, false, 0, &ok);
+    if (!ok || !slot || !slot[1]) return false;
+    uintptr_t spr = slot[1];
+    auto px = read_at<uintptr_t>(spr + 0x10);
+    if (!px || read_at<int32_t>(spr + 0x18) != width || read_at<int32_t>(spr + 0x1c) != height) return false;
+    memcpy(reinterpret_cast<void*>(px), pixels, static_cast<size_t>(width) * height * 4);
+    return true;
+}
 
 bool item_sprite(int id, int quantity, int border, int shadow, int text_mode, bool noted,
                  std::vector<uint32_t>& pixels, int& width, int& height) {

@@ -229,6 +229,10 @@ bool item_def(int id, ItemDef& out);
 // Item icon as the inventory draws it (createItemSprite 0x63ff9c): 36x32 ARGB pixels, 0 = transparent.
 // border 0/1/2, shadow colour (0 none), text_mode 0 none / 1 quantity, noted. Game thread only.
 // False while the model isn't loaded yet (retry later) or for an unknown id.
+// Sprite by id (frame 0) from the game's sprite cache; false while not loaded. Game thread only.
+bool sprite(int id, std::vector<uint32_t>& pixels, int& width, int& height);
+// Writes a same-size sprite's pixels into the game's cached copy (overrides). Game thread only.
+bool sprite_write(int id, const uint32_t* pixels, int width, int height);
 bool item_sprite(int id, int quantity, int border, int shadow, int text_mode, bool noted,
                  std::vector<uint32_t>& pixels, int& width, int& height);
 
@@ -314,6 +318,13 @@ bool viewport_zoom(int out[5]);
 int run_energy();  // 0..10000 (UPDATE_RUNENERGY)
 // The game's addChatMessage (what MESSAGE_GAME calls). Game thread only.
 bool add_chat_message(int type, const std::string& name, const std::string& text);
+// Removes a message from its chat channel's ring (chatbox lines), by type and message id;
+// chat_changed makes the chatbox rebuild. Game thread only.
+bool chat_remove_message(int type, int id);
+void chat_changed();
+// Idle logout timeout in minutes (the game's AFKTimeout setting); -1 if unknown. Game thread only.
+int afk_timeout_minutes();
+bool set_afk_timeout_minutes(int minutes);
 // Client varcs (VarClientInt/VarClientStr); false when unset. Game thread only.
 bool varc_int(int id, int& out);
 bool varc_string(int id, std::string& out);

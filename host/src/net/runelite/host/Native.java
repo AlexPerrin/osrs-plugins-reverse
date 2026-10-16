@@ -104,6 +104,18 @@ final class Native {
     static native boolean shiftHeld();
     /** Replaces a chat message's text in the game (game thread). */
     static native boolean messageSetText(int id, String text);
+    /** Removes a message (type, id) from the game's chat channel; client thread only. */
+    static native boolean chatRemove(int type, int id);
+    /** Makes the chatbox rebuild (the game's chat cycle bump); client thread only. */
+    static native void chatChanged();
+    /** Sprite by id, frame 0: {width, height, ARGB pixels...}, null while not loaded; client thread only. */
+    static native int[] sprite(int id);
+    /** Writes same-size ARGB pixels into the game's cached sprite; client thread only. */
+    static native boolean spriteWrite(int id, int[] pixels, int w, int h);
+    /** The game's idle logout timeout (AFKTimeout setting) in minutes, -1 if unknown. */
+    static native int afkTimeout();
+    /** Sets it (1..35000 minutes); client thread only. */
+    static native boolean setAfkTimeout(int minutes);
     /** Plugin menu entries shown under the game's menu at (x, y), width w (UI canvas); null/empty hides. */
     static native void pluginMenu(String[] labels, int x, int y, int w, int canvasHeight);
     /** Closes the open long-press menu (game thread). */

@@ -117,3 +117,11 @@ rewriting vtable slot 5 (`0xa6a008`, in .data.rel.ro) after checking that it hol
 | FriendSystem | `*(Client+0x46c0)`: state `+0x150` (0/1 loaded/2 list), friends container `+0x08`, ignores `+0xb8`; container: count `+0xc`, Element** `+0x20`; element name `+0x08`, previous `+0x38`, world `+0x68`, rank `+0x88` | static RE of CS2 ops `0x4ebdb0`, parsers `0x56e448`/`0x56ee54` |
 | Scene reload | `0x429900(client)`: when state is 30, sets 25 and rebuilds | used for setGameState(LOADING); verified |
 | Sub-interface node | `+0` component, `+4` group, `+8` modal mode | IF_OPENSUB helper `0x462640` |
+
+## Added 2026-10-16 (client dev gen 12)
+
+| What | Where | Notes |
+|---|---|---|
+| Chat channel ring | channel node `{int type; +0x08 channel*; +0x10 next}` in the `0xaab5e0` map; ring slot `i` at `+i*0x10` = `{ctrl*, Message*}`, newest at `+0x644`, count `+0x640` | `game::chat_remove_message` rotates the removed pair to the oldest slot and drops the count (no refcount changes). Unverified on device |
+| Chat changed | `0x43aacc(client)`: bumps Client `+0x413e6c` (chat cycle, from `+0x413c58`) | called by the channel add `0x3ef964` after each message; the chatbox rebuilds. Used for `refreshChat` |
+| Idle logout | `0x41d0a4` (per-cycle), IDLE packet (client prot 97) at `0x4216f8`: `remain = settings->AFKTimeout*60000 + last - now`; logout when `< 1` (sets Client `+0x3090` = 250) | Settings* = Client `+0x2278`, AFKTimeout int minutes at `+0x154c` (5; ctor `0x4621e8`), last input ms Client `+0x413270` (touch events raise it, keys set it to now `0x41edcc`). Same calculation in `0x41131c` (CS2 getter at `0x4eb674`). Packet ctor `0x69cc90` (opcode in w0). Static RE |

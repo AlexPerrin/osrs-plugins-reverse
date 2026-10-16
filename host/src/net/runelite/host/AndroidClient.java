@@ -235,8 +235,8 @@ public class AndroidClient extends ClientStub {
 
     /**
      * Client.getChatLineMap: per chat type, the messages seen since the host started, newest
-     * first (as the game's buffers). removeMessageNode only forgets the node here; the game's
-     * own chat history isn't edited yet.
+     * first (as the game's buffers). removeMessageNode also removes the line from the game's chat
+     * channel (Native.chatRemove) and makes the chatbox rebuild.
      */
     @Override public java.util.Map<Integer, net.runelite.api.ChatLineBuffer> getChatLineMap() {
         java.util.Map<Integer, java.util.List<net.runelite.api.MessageNode>> byType = new java.util.HashMap<>();
@@ -255,6 +255,10 @@ public class AndroidClient extends ClientStub {
                 @Override public int getLength() { return lines.length; }
                 @Override public void removeMessageNode(net.runelite.api.MessageNode node) {
                     synchronized (MESSAGES) { MESSAGES.values().remove(node); }
+                    final int type = node.getType().getType(), id = node.getId();
+                    if (id < 0) return;
+                    if (isClientThread()) removeFromGame(type, id);
+                    else Host.invoke(() -> removeFromGame(type, id));
                 }
             });
         }
@@ -313,8 +317,28 @@ public class AndroidClient extends ClientStub {
     }
     // The game's own AFK logout isn't driven from here; plugins only read/raise this value.
     private int idleTimeout = 15000;
-    @Override public int getIdleTimeout() { return idleTimeout; }
-    @Override public void setIdleTimeout(int ticks) { idleTimeout = ticks; }
+    private boolean idleTimeoutSet;
+    /**
+     * The game logs out after its AFKTimeout setting (whole minutes) without input; RuneLite counts
+     * in 20 ms ticks. Set values are rounded up to minutes and re-applied at each login.
+     */
+    @Override public int getIdleTimeout() {
+        int m = Native.afkTimeout();
+        return m > 0 ? m * 3000 : idleTimeout;
+    }
+    @Override public void setIdleTimeout(int ticks) {
+        idleTimeout = ticks;
+        idleTimeoutSet = true;
+        if (isClientThread()) applyIdleTimeout();
+        else Host.invoke(this::applyIdleTimeout);
+    }
+    void applyIdleTimeout() {
+        if (!idleTimeoutSet) return;
+        int minutes = (int) Math.max(1, Math.min(35000, ((long) idleTimeout * 20 + 59999) / 60000));
+        int before = Native.afkTimeout();
+        boolean ok = Native.setAfkTimeout(minutes);
+        android.util.Log.i(Host.TAG, "idle timeout: " + before + " -> " + minutes + " min (" + (ok ? "set" : "not set") + ")");
+    }
     /** Varbit over the server's copy of its varp (RuneLite's getServerVarbitValue). */
     @Override public int getServerVarbitValue(int id) {
         net.runelite.api.VarbitComposition v = getVarbit(id);
@@ -337,7 +361,17 @@ public class AndroidClient extends ClientStub {
     @Override public net.runelite.api.widgets.Widget getSelectedWidget() { return null; }
     @Override public net.runelite.api.widgets.Widget getScriptActiveWidget() { return null; }
     /** The game redraws its chat itself; nothing to rebuild. */
-    @Override public void refreshChat() {}
+    private static void removeFromGame(int type, int id) {
+        boolean removed = Native.chatRemove(type, id);
+        if (removed) Native.chatChanged();
+        android.util.Log.i(Host.TAG, "chat remove type " + type + " id " + id + (removed ? ": removed" : ": not found"));
+    }
+
+    /** The game's chat cycle bump: the chatbox rebuilds (shows rewritten or removed lines). */
+    @Override public void refreshChat() {
+        if (isClientThread()) Native.chatChanged();
+        else Host.invoke(Native::chatChanged);
+    }
 
     /**
      * No physical keyboard on a touch screen: Shift is the virtual toggle under the RL button
@@ -642,12 +676,13 @@ public class AndroidClient extends ClientStub {
     @Override public net.runelite.api.clan.ClanChannel getClanChannel(int clanId) { return null; }
     @Override public net.runelite.api.clan.ClanSettings getClanSettings(int clanId) { return null; }
 
-    // Sprite overrides are kept (plugins fill them) but the game never reads them.
-    private final java.util.Map<Integer, net.runelite.api.SpritePixels> spriteOverrides = new java.util.HashMap<>();
+    // Sprite overrides are written into the game's cached sprite of the same id and size
+    // (HostSprites.Overrides); widget sprite overrides are kept but not applied.
+    private final java.util.Map<Integer, net.runelite.api.SpritePixels> spriteOverrides = new HostSprites.Overrides();
     private final java.util.Map<Integer, net.runelite.api.SpritePixels> widgetSpriteOverrides = new java.util.HashMap<>();
     @Override public java.util.Map<Integer, net.runelite.api.SpritePixels> getSpriteOverrides() { return spriteOverrides; }
     @Override public java.util.Map<Integer, net.runelite.api.SpritePixels> getWidgetSpriteOverrides() { return widgetSpriteOverrides; }
-    /** Sprite overrides aren't applied to the game's sprites, so there is no cache to reset. */
+    /** Overrides are written into the game's sprite cache directly, so there is nothing to reset. */
     @Override public net.runelite.api.NodeCache getWidgetSpriteCache() { return () -> {}; }
     /**
      * The game's own item icon renderer (createItemSprite, docs/offsets.md): 36x32, border 0/1/2,

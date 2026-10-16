@@ -49,26 +49,51 @@ final class AndroidMenu implements Menu {
         if (Host.client() == null) return null;
         net.runelite.api.Point m = Host.client().getMouseCanvasPosition();
         if (m.getX() < 0) return null;
-        AndroidWidget inv = new AndroidWidget(INVENTORY);
-        if (inv.isHidden()) return null;
-        net.runelite.api.widgets.Widget[] slots = inv.getDynamicChildren();
-        for (net.runelite.api.widgets.Widget w : slots) {
-            if (w == null || w.getItemId() < 0 || w.isSelfHidden() || !w.contains(m)) continue;
-            AndroidMenuEntry e = new AndroidMenuEntry();
-            String[] actions = w.getActions();
-            String name = w.getName();
-            e.option = actions != null && actions.length > 0 && actions[0] != null ? actions[0] : "Use";
-            e.target = name != null ? name : "";
-            e.type = net.runelite.api.MenuAction.CC_OP;
-            e.identifier = 1;
-            e.param0 = w.getIndex();
-            e.param1 = INVENTORY;
-            e.itemId = w.getItemId();
-            e.raw[9] = AndroidMenuEntry.T_WIDGET << 16;
-            hover = e;
-            break;
+        // Item containers whose slots are dynamic children: inventory, bank items, the inventory beside the bank.
+        for (int container : ITEM_CONTAINERS) {
+            AndroidWidget c = new AndroidWidget(container);
+            if (c.isHidden()) continue;
+            net.runelite.api.widgets.Widget[] slots = c.getDynamicChildren();
+            for (net.runelite.api.widgets.Widget w : slots) {
+                if (w == null || w.getItemId() < 0 || w.isSelfHidden() || !w.contains(m)) continue;
+                hover = entry(w, w.getIndex(), container, w.getItemId());
+                return hover;
+            }
         }
-        return hover;
+        // Worn equipment: static slot components of 387 whose child 1 holds the item.
+        if (!new AndroidWidget(EQUIPMENT << 16).isHidden()) {
+            for (int i = 0; i < 40; i++) {
+                AndroidWidget w = new AndroidWidget(EQUIPMENT << 16 | i);
+                if (w.isSelfHidden() || !w.contains(m)) continue;
+                net.runelite.api.widgets.Widget item = w.getChild(1);
+                if (item == null || item.getItemId() < 0 || w.isHidden()) continue;
+                hover = entry(w, -1, w.getId(), item.getItemId());
+                return hover;
+            }
+        }
+        return null;
+    }
+
+    static final int EQUIPMENT = 387;
+    /** 149:0 inventory, 12:12 bank items, 15:3 inventory while the bank is open. */
+    static final int[] ITEM_CONTAINERS = {INVENTORY, 12 << 16 | 12, 15 << 16 | 3};
+
+    /** The entry the widget's first op would have (CC_OP, identifier 1). */
+    private static AndroidMenuEntry entry(net.runelite.api.widgets.Widget w, int param0, int param1, int itemId) {
+        AndroidMenuEntry e = new AndroidMenuEntry();
+        String[] actions = w.getActions();
+        String name = w.getName();
+        String first = null;
+        if (actions != null) for (String a : actions) if (a != null && !a.isEmpty()) { first = a; break; }
+        e.option = first != null ? first : "Use";
+        e.target = name != null ? name : "";
+        e.type = net.runelite.api.MenuAction.CC_OP;
+        e.identifier = 1;
+        e.param0 = param0;
+        e.param1 = param1;
+        e.itemId = itemId;
+        e.raw[9] = AndroidMenuEntry.T_WIDGET << 16;
+        return e;
     }
 
 

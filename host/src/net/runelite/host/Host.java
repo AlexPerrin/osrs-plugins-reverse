@@ -344,14 +344,63 @@ public final class Host {
             case VARBIT_CHANGED: {
                 if ("1".equals(Native.property("debug.osrsrl.varlog")))
                     Log.i(TAG, "VarbitChanged varp " + a + " = " + b + " state " + client.getGameState());
+                Integer prev = varpValues.put(a, b);
+                int old = prev != null ? prev : 0;
                 VarbitChanged e = new VarbitChanged();
                 e.setVarpId(a);
                 e.setVarbitId(-1);
                 e.setValue(b);
                 bus.post(e);
+                // As desktop: one more event per varbit of this varp whose value changed.
+                if (old != b) {
+                    int[] bits = varbitsOf(a);
+                    for (int i = 0; i + 2 < bits.length; i += 3) {
+                        int lsb = bits[i + 1], msb = bits[i + 2];
+                        int mask = msb - lsb >= 31 ? -1 : (1 << (msb - lsb + 1)) - 1;
+                        int ov = (old >>> lsb) & mask, nv = (b >>> lsb) & mask;
+                        if (ov == nv) continue;
+                        VarbitChanged vb = new VarbitChanged();
+                        vb.setVarpId(a);
+                        vb.setVarbitId(bits[i]);
+                        vb.setValue(nv);
+                        bus.post(vb);
+                    }
+                }
                 break;
             }
         }
+    }
+
+    // Last value seen per varp (VarbitChanged), and varp -> {varbit, lsb, msb, ...} built once from
+    // the game's varbit definitions (game thread; stops after 4096 consecutive missing ids).
+    private static final java.util.Map<Integer, Integer> varpValues = new java.util.HashMap<>();
+    private static java.util.Map<Integer, int[]> varbitIndex;
+
+    private static int[] varbitsOf(int varp) {
+        if (varbitIndex == null) {
+            java.util.Map<Integer, java.util.List<Integer>> m = new java.util.HashMap<>();
+            long t0 = System.nanoTime();
+            int missing = 0, count = 0;
+            for (int id = 0; id < 1 << 16 && missing < 4096; id++) {
+                int[] d = Native.varbitDef(id);
+                // (An undefined id may come back as an empty definition: varp 0, bits 0..0.)
+                if (d == null || (d[0] == 0 && d[1] == 0 && d[2] == 0)) { missing++; continue; }
+                missing = 0;
+                count++;
+                java.util.List<Integer> l = m.computeIfAbsent(d[0], k -> new java.util.ArrayList<>());
+                l.add(id); l.add(d[1]); l.add(d[2]);
+            }
+            varbitIndex = new java.util.HashMap<>();
+            for (java.util.Map.Entry<Integer, java.util.List<Integer>> e : m.entrySet()) {
+                int[] arr = new int[e.getValue().size()];
+                for (int i = 0; i < arr.length; i++) arr[i] = e.getValue().get(i);
+                varbitIndex.put(e.getKey(), arr);
+            }
+            Log.i(TAG, "varbit index: " + count + " varbits over " + varbitIndex.size() + " varps in "
+                + (System.nanoTime() - t0) / 1000000 + " ms");
+        }
+        int[] r = varbitIndex.get(varp);
+        return r != null ? r : new int[0];
     }
 
     static AndroidPlayer localPlayer() {

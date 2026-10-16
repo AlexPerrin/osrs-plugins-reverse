@@ -37,7 +37,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | XP Drop | runs | drop colours via ScriptPreFired (script 996); `hideSkillIcons` has no effect |
 | Status Bars | runs | HP/prayer bars beside the side panel (161:73 routed to 601:111) |
 | Tile Indicators | runs | destination tile drawn while walking |
-| Attack Styles | starts | nothing drawn with `attackstyles.alwaysShowStyle=true`; needs `getStructComposition` (weapon style structs) |
+| Attack Styles | starts | attackStyle stayed null: it updates on VarbitChanged for varp 43, which never changed (0); server-sent varps now post VarbitChanged even when unchanged, plus per-varbit events (unverified). Config group is `attackIndicator` |
 | Chat Filter | starts | |
 | Chat History | starts | getChatLineMap is host-side (no removal from the game's chat) |
 | Chat Timestamps | starts | |
@@ -53,7 +53,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Item Charges | starts | WidgetItemOverlay fixed (no NPE) |
 | Item Stats | starts | |
 | Logout Timer | starts | |
-| NPC Indicators | starts | name highlights threw NoSuchMethodError (WildcardMatcher uses Java 9 `Matcher.appendReplacement(StringBuilder)`); same-name replacement added, retest with `npcindicators.npcToHighlight=Goblin` |
+| NPC Indicators | runs | hull highlights + minimap dots for `npcindicators.npcToHighlight=Goblin` (after the WildcardMatcher replacement); hulls also draw over the left button column |
 | Object Markers | starts | |
 | Poison | starts | |
 | Prayer | starts | |
@@ -68,8 +68,8 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Fishing | starts | |
 | Idle Notifier | starts | config defaults now registered; Notification config values were a ClassCastException on GameTick (fixed after the run: stored as on/off) |
 | Mining | starts | |
-| Player Indicators | throws | PartyService's WSClient needs RuneLite's http-api (`RuneLiteAPI`); http-api 1.2.25 added to host.jar after the run, retest |
-| Special Attack Counter | throws | as Player Indicators (http-api added, retest) |
+| Player Indicators | starts | needed protobuf-javalite + RuneLite http-api (PartyService) |
+| Special Attack Counter | starts | as Player Indicators |
 | XP Globes | runs | attack/HP globes over the chat tabs after combat |
 
 ## Build and run

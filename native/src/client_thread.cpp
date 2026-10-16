@@ -98,11 +98,34 @@ void diff_varps() {
     if (n <= 0 || n > 1 << 22) return;
     std::vector<int32_t> now(n);
     for (int i = 0; i < n; i++) now[i] = game::varp(i);
+    std::vector<int> posted;
     if (g_varp_shadow.size() == now.size()) {
         if (memcmp(now.data(), g_varp_shadow.data(), n * sizeof(int32_t)) != 0)
             for (int i = 0; i < n; i++)
-                if (now[i] != g_varp_shadow[i]) post({EventType::VarbitChanged, i, now[i]});
+                if (now[i] != g_varp_shadow[i]) {
+                    post({EventType::VarbitChanged, i, now[i]});
+                    posted.push_back(i);
+                }
     }
+    // Desktop posts VarbitChanged for every varp the server sends, changed or not (plugins such as
+    // Attack Styles read their state on the login burst of VARP_SMALLs, whose values may be 0).
+    // The client's ring of server-changed varp ids (32 entries) gives those; a burst of more than
+    // 32 in one cycle loses the oldest.
+    static uint32_t last_count = 0;
+    static bool have_count = false;
+    uint32_t count = game::changed_varp_count();
+    if (have_count && count != last_count) {
+        uint32_t from = count - last_count > 32 ? count - 32 : last_count;
+        for (uint32_t k = from; k != count; k++) {
+            int id = game::changed_varp(k);
+            if (id < 0 || id >= n) continue;
+            if (std::find(posted.begin(), posted.end(), id) != posted.end()) continue;
+            post({EventType::VarbitChanged, id, now[id]});
+            posted.push_back(id);
+        }
+    }
+    last_count = count;
+    have_count = true;
     g_varp_shadow.swap(now);
 }
 

@@ -134,6 +134,20 @@ session; its notes are in `docs/android-protocol.md`.
   `host/tools/menu_pick.py talk` long-presses QH's cyan highlight and taps the matching menu row
   (wandering NPCs, no more "Walk here" misses). getEnergy reads 10000; getWeight can't be checked
   against this server (it never sends UPDATE_RUNWEIGHT).
+  Later in gen 5 (976174a..fdaa3b0): client-side setters through the script VM's own functions
+  (setVarbit, varp write-back via queueChangedVarp, setVarcInt/StrValue, getVarbit composition;
+  verified), scene-object click boxes/hulls from the real models (GameObject and wall verified,
+  decorations unverified; offsets from static RE of the tile draw, docs/offsets.md "Scene object
+  models"), playSoundEffect (unverified), live viewport reader (zoom 512 at 1920x1080; did NOT fit
+  better than the fitted scale, cause open), ~25 Widget getters from the CC_SET handlers (verified),
+  Widget setHidden/setText (unverified), and no GameTick while LOADING (fixes QH's empty quest list
+  on OpenRune, verified there; getWeight verified on OpenRune = 9 after ::give 1127).
+  Debug hooks added: `debug.osrsrl.set 'varbit|varp|varc|varcstr id v'`, `debug.osrsrl.wdump
+  <group>`, `debug.osrsrl.where` now logs model position, `camlog` logs the viewport.
+  Next: verify decoration hulls, setHidden/setText, playSoundEffect; Widget.getType (+0x28);
+  why the real zoom (512) doesn't reproduce the fitted projection (camera distance/height?);
+  menuAction (needs the menu builder's per-action std::function, or reuse of an existing entry);
+  more Widget/Client coverage (tools/progress.py lists per-interface counts).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

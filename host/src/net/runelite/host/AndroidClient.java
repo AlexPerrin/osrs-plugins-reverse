@@ -47,6 +47,9 @@ public class AndroidClient extends ClientStub {
     @Override
     public int[] getVarps() { return Native.varps(); }
 
+    @Override public int getWeight() { return Native.weight(); }
+    @Override public int getEnergy() { return Native.runEnergy(); }
+
     @Override public int getVarcIntValue(int id) { return Native.varcInt(id); }
     @Override public String getVarcStrValue(int id) { String s = Native.varcString(id); return s != null ? s : ""; }
 

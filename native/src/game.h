@@ -225,6 +225,8 @@ uintptr_t menu_object();  // the menu model (MenuManager +0x140), 0 if unavailab
 bool menu_open();
 // The client-side varp table (RuneLite getVarps()).
 std::vector<int32_t> varps();
+int weight();      // kg (UPDATE_RUNWEIGHT)
+int run_energy();  // 0..10000 (UPDATE_RUNENERGY)
 // The game's addChatMessage (what MESSAGE_GAME calls). Game thread only.
 bool add_chat_message(int type, const std::string& name, const std::string& text);
 // Client varcs (VarClientInt/VarClientStr); false when unset. Game thread only.

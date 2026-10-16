@@ -64,6 +64,8 @@ jint n_game_state(JNIEnv*, jclass) { return game::game_state(); }
 jint n_game_cycle(JNIEnv*, jclass) { return game::cycle(); }
 jint n_server_tick(JNIEnv*, jclass) { return game::server_tick(); }
 jint n_varp(JNIEnv*, jclass, jint id) { return game::varp(id); }
+jint n_weight(JNIEnv*, jclass) { return game::weight(); }
+jint n_run_energy(JNIEnv*, jclass) { return game::run_energy(); }
 // {height, x0, y0, z0, x1, ...} of an NPC's (player=false) or player's posed model; null if none.
 jintArray n_actor_model(JNIEnv* env, jclass, jboolean player, jint index) {
     if (!client_thread::on_client_thread()) return nullptr;
@@ -657,6 +659,8 @@ const JNINativeMethod kNatives[] = {
     {"serverTick", "()I", reinterpret_cast<void*>(n_server_tick)},
     {"varp", "(I)I", reinterpret_cast<void*>(n_varp)},
     {"varps", "()[I", reinterpret_cast<void*>(n_varps)},
+    {"weight", "()I", reinterpret_cast<void*>(n_weight)},
+    {"runEnergy", "()I", reinterpret_cast<void*>(n_run_energy)},
     {"actorModel", "(ZI)[I", reinterpret_cast<void*>(n_actor_model)},
     {"varcInt", "(I)I", reinterpret_cast<void*>(n_varc_int)},
     {"varcString", "(I)Ljava/lang/String;", reinterpret_cast<void*>(n_varc_string)},

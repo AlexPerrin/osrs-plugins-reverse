@@ -58,7 +58,7 @@ final class Probe {
         if (c == null) return;
         net.runelite.api.Player me = c.getLocalPlayer();
         if (me != null)
-            Log.i(TAG, "self " + me.getName() + " cb " + me.getCombatLevel() + " skull " + me.getSkullIcon() + " prayer " + me.getOverheadIcon()
+            Log.i(TAG, "self " + me.getName() + " weight " + c.getWeight() + " energy " + c.getEnergy() + " cb " + me.getCombatLevel() + " skull " + me.getSkullIcon() + " prayer " + me.getOverheadIcon()
                     + " team " + me.getTeam() + " pose " + me.getPoseAnimation() + " idle/walk/run " + me.getIdlePoseAnimation() + "/"
                     + me.getWalkAnimation() + "/" + me.getRunAnimation() + " " + me.getPlayerComposition());
         for (net.runelite.api.NPC n : c.getTopLevelWorldView().npcs()) {

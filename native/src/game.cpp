@@ -186,6 +186,11 @@ int server_tick() { return g_build ? field(g_build->f_server_tick) : -1; }
 int varp_count() { return g_build ? static_cast<int>(read_at<uint32_t>(g_base + g_build->varps + 8)) : 0; }
 int varp(int id) { return g_build ? read_varp_table(g_build->varps, id) : 0; }
 
+// UPDATE_RUNWEIGHT (dispatcher case 0x1a) stores s16 at Client+0x33a4; UPDATE_RUNENERGY (0x66)
+// stores 0..10000 at Client+0x33a0.
+int weight() { uintptr_t c = client(); return c ? read_at<int16_t>(c + 0x33a4) : 0; }
+int run_energy() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x33a0) : 0; }
+
 std::vector<int32_t> varps() {
     if (!g_build) return {};
     uint32_t count = read_at<uint32_t>(g_base + g_build->varps + 8);

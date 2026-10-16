@@ -28,7 +28,7 @@ account: the server is also the local sign-in provider.
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-16, `4d96412+`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-16, `36687d0+`).
 <!-- progress:end -->
 
 Milestones:
@@ -51,6 +51,8 @@ Milestones:
 - [ ] Multi-client: desktop RuneLite (via RSProx) and the Android client on the same server
 - [x] **Protocol: every live Android opcode mapped** (241/241; 12 opcodes have no sender or no-op handlers in the client and are tagged dead), 2026-10-15
 - [ ] Protocol: verify the remaining `// unverified` entries live
+- [x] **Second plugin: Ground Items** (core RuneLite; item labels with prices, MenuEntryAdded and
+  menu text written back into the game menu), 2026-10-16
 - [ ] More plugins (GPU/region-dependent ones excluded)
 
 ## Layout

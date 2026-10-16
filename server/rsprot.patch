@@ -624,7 +624,7 @@ index 00000000..ea743851
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
-index 00000000..1fe5b2e8
+index 00000000..a186a964
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 @@ -0,0 +1,123 @@
@@ -675,7 +675,7 @@ index 00000000..1fe5b2e8
 +    OPPLAYER5(25, 3), // sender read
 +    OPPLAYER6(26, 3), // sender read
 +    OP_27(27, 7), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16)
-+    AFFINEDCLANSETTINGS_ADDBANNED_FROMCHANNEL(28, Prot.VAR_BYTE), // unverified: sender FUN_0053b4b8 writes clanId g1, memberIndex g2, name (guests only), as desktop; same layout as 57 (FUN_0053b090), and which of the two is ban vs kick is not settled
++    AFFINEDCLANSETTINGS_ADDBANNED_FROMCHANNEL(28, Prot.VAR_BYTE), // sender read: FUN_0053b4b8 writes clanId g1, memberIndex g2, name, as desktop; its CS2 op (call 0x5ecfe8) pops clanId and memberIndex like 20's affinedclansettings op
 +    CLICKWORLDMAP(29, 4), // sender read
 +    CLOSE_MODAL(30, 0), // sender read
 +    MOVE_GAMECLICK(31, Prot.VAR_BYTE),
@@ -704,7 +704,7 @@ index 00000000..1fe5b2e8
 +    OPWORLDENTITY2(54, 3), // sender read
 +    OPLOC2(55, 8),
 +    CLANCHANNEL_FULL_REQUEST(56, 1), // sender read
-+    CLANCHANNEL_KICKUSER(57, Prot.VAR_BYTE), // unverified: sender FUN_0053b090 writes clanId g1, memberIndex g2, name (guests only), as desktop; same layout as 28, order between them not settled
++    CLANCHANNEL_KICKUSER(57, Prot.VAR_BYTE), // sender read: FUN_0053b090 writes clanId g1, memberIndex g2, name, as desktop; its CS2 op (call 0x5ed1bc) pops only memberIndex and takes clanId from the active clan channel (activeclanchannel_kickuser)
 +    OPLOC3(58, 8),
 +    OPWORLDENTITY5(59, 3), // sender read
 +    FRIENDLIST_ADD(60, Prot.VAR_BYTE), // sender read
@@ -1001,12 +1001,14 @@ index 00000000..a6250dab
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
 new file mode 100644
-index 00000000..2de0c432
+index 00000000..394a511b
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
-@@ -0,0 +1,354 @@
+@@ -0,0 +1,360 @@
 +package net.rsprot.protocol.android
 +
++import net.rsprot.protocol.game.incoming.codec.clan.AffinedClanSettingsAddBannedFromChannelDecoder
++import net.rsprot.protocol.game.incoming.codec.clan.ClanChannelKickUserDecoder
 +import net.rsprot.protocol.game.incoming.buttons.IfScriptTrigger
 +import net.rsprot.protocol.game.incoming.misc.user.IfCrmViewOp
 +import net.rsprot.protocol.game.incoming.codec.clan.AffinedClanSettingsSetMutedFromChannelDecoder
@@ -1108,6 +1110,10 @@ index 00000000..2de0c432
 +        bound(AndroidDelegatingDecoder(P.WINDOW_STATUS, WindowStatusDecoder())),
 +        // 20: sender FUN_0053b714: clanId g1, memberIndex g2, muted g1, name gjstr (var-byte).
 +        bound(AndroidDelegatingDecoder(P.AFFINEDCLANSETTINGS_SETMUTED_FROMCHANNEL, AffinedClanSettingsSetMutedFromChannelDecoder())),
++        // 28: sender FUN_0053b4b8 from a CS2 op popping clanId + memberIndex (explicit clan, like 20).
++        bound(AndroidDelegatingDecoder(P.AFFINEDCLANSETTINGS_ADDBANNED_FROMCHANNEL, AffinedClanSettingsAddBannedFromChannelDecoder())),
++        // 57: sender FUN_0053b090 from a CS2 op popping only memberIndex; clanId from the active channel.
++        bound(AndroidDelegatingDecoder(P.CLANCHANNEL_KICKUSER, ClanChannelKickUserDecoder())),
 +        bound(AndroidDelegatingDecoder(P.EVENT_MOUSE_MOVE, EventMouseMoveDecoder())),
 +        bound(AndroidDelegatingDecoder(P.EVENT_NATIVE_MOUSE_MOVE, EventNativeMouseMoveDecoder())),
 +        bound(AndroidDelegatingDecoder(P.EVENT_MOUSE_CLICK_V1, EventMouseClickV1Decoder())),

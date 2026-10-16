@@ -1,5 +1,7 @@
 # Client work: handoff notes
 
+> Latest state: see the gen 8 entry (2026-10-16) at the end of "Where things stand".
+
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
 session; its notes are in `docs/android-protocol.md`.
@@ -232,6 +234,34 @@ session; its notes are in `docs/android-protocol.md`.
   old server, then drive `getCameraFp*`, pitch/yaw and `getScale` from `Native.viewTransforms()`
   (44e3f49) and make the UBO hooks always on (scan only the found offset after the first hit). If no
   upload carries it, look for the CPU copy (search memory for the projection floats with tools/agent.py).
+- **2026-10-16 (client dev gen 8)**, commits 35aa2a1..4c5846b, all on OpenRune (the default server):
+  - Regression pass OK: Cook's Assistant end to end with QH (twice), Ground Items labels, isPrayerActive,
+    sidebar combo boxes (QH Difficulty picker). The quest-start Yes/No tap works with and without QH's
+    highlight after the server's chatmenu unclamp fix (153c8ce).
+  - **Bug class to watch:** gen 7's getDBTableField called Ghidra addresses (ELF + 0x100000) and crashed the
+    game; fixed (ELF `0x64f824/0x5eb2c4/0x5ec320/0x4cd7f4`), verified. Re/decomp file names are Ghidra
+    addresses; always subtract 0x100000 before `g_base +`.
+  - Verified: walk destination = map flag `*(Client+0x40e970)` (not `+0xecdc`), HitsplatApplied +
+    getHealthRatio/Scale (actor `+0x330` hitmarks, `+0x388` head bars), getComponentTable,
+    setGameState(LOADING) (game's reload `0x429900`), Actor.setOverheadText/Cycle, overlay clipping (an int
+    overflow had kept the exclusion list empty forever; now panels + modal interfaces are clipped).
+  - Plugins: **Opponent Information runs** (third plugin; needed okhttp 3.14.9/okio in host.jar and an
+    OkHttpClient + `runelite.static.base` binding; NPCManager fetches max HP from static.runelite.net).
+    **Boosts Information runs.** XP Drop starts but needs ScriptPreFired; Status Bars needed
+    ItemStatChangesService (bound now, unverified). Extra jars live in `re/host/plugins-extra/` so
+    `tools/plugin-test.sh` keeps the default set (QH, Ground Items, Opponent Info).
+  - Friend/ignore containers (FriendSystem `*(Client+0x46c0)`, docs/offsets.md): list state reads 2,
+    members unverified (no friends on the account; adding one needs the friends tab + keyboard).
+  - `host/tools/rank_api.py [N]` ranks unimplemented API by core-plugin usage (skips API defaults).
+    Top now: ClanChannel/FriendsChat members (managers are null), GE search setters, setDraggedOnWidget,
+    getChatLineMap/ChatLineBuffer (Chat History, default-on), world hopper (createWorld/changeWorld),
+    queueChangedSkill, setWidgetSelected, getCanvas, getSelectedSceneTile. `Client.getAccountHash` is called
+    by the client jar but missing from runelite-api 1.13.1 (version skew; ignore).
+  - QH note: its quest list refreshes on login; after `::quest cook reset` mid-session a finished quest may
+    stay hidden until relog (QH behaviour, not ours).
+  - Next: ScriptPreFired/ScriptPostFired (hook the script VM entry; unlocks XP Drop and many others), verify
+    Status Bars, friends with a real friend, chat line buffers, InfoBox overlay (InfoBoxManager has no
+    renderer; Boosts used its own overlay).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

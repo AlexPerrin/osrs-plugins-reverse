@@ -646,7 +646,13 @@ public class GenHeadless {
             return (x.getReturnType() == void.class ? "super." : "return super.") + n + "(" + (ps.length == 1 ? "a0" : "") + ");";
         if (p != null && props.containsKey(p)) {
             Class<?> t = props.get(p);
-            if (n.startsWith("set")) return "__" + p + " = a0; __" + p + "Set = true;";
+            if (n.startsWith("set")) {
+                // Overloads whose parameter doesn't fit the property's type (JList.setListData(Vector)
+                // next to setListData(Object[])) store nothing rather than not compiling.
+                Class<?> a = ps[0];
+                boolean fits = a == t || (!a.isPrimitive() && !t.isPrimitive() && t.isAssignableFrom(a));
+                return fits ? "__" + p + " = a0; __" + p + "Set = true;" : null;
+            }
             if (!x.getReturnType().isAssignableFrom(t) && !(t.isPrimitive() && x.getReturnType() == t)) return null;
             String dflt = returnValue(x.getReturnType());
             // Swing components start visible and enabled (only top-level windows start hidden).

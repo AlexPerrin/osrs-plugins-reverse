@@ -1,22 +1,31 @@
 #!/usr/bin/env python3
 # Rank RuneLite API interface methods called by core plugins that the host doesn't implement.
 # usage: python3 host/tools/rank_api.py [N]   (needs re/runelite/client-1.13.1.jar and re/host/classes from host/build.sh)
+#        python3 host/tools/rank_api.py N --jars a.jar b.jar   (Plugin Hub class jars, e.g. re/hub-build/*.jar;
+#        a jar's plugin name is its file name)
 # Counts, per API method, the core plugins (client jar) that call it and the host doesn't implement
 # (matched by method name against non-stub host classes, so overloads count as implemented).
 import subprocess, re, zipfile, collections, os, sys
 R='/home/alex/osrs-plugins-reverse/re'
 jar=R+'/runelite/client-1.13.1.jar'
-z=zipfile.ZipFile(jar)
-cls=[n[:-6] for n in z.namelist() if n.startswith('net/runelite/client/plugins/') and n.endswith('.class')]
 calls=collections.defaultdict(set)  # (iface,method,desc) -> plugins
-for i in range(0,len(cls),300):
-    out=subprocess.run(['javap','-c','-p','-cp',jar]+[c.replace('/','.') for c in cls[i:i+300]],capture_output=True,text=True).stdout
-    cur=None
-    for line in out.splitlines():
-        m=re.match(r'(?:.* )?class (net\.runelite\.client\.plugins\.([a-z0-9]+)\S*)',line)
-        if m and not line.startswith(' '): cur=m.group(2)
-        m=re.search(r'invokeinterface +#\d+, +\d+ +// InterfaceMethod (net/runelite/api/[\w/$]+)\.(\w+):(\S+)',line)
-        if m and cur: calls[(m.group(1),m.group(2),m.group(3))].add(cur)
+def scan(jar, prefix, fixed=None):
+    z=zipfile.ZipFile(jar)
+    cls=[n[:-6] for n in z.namelist() if n.startswith(prefix) and n.endswith('.class')]
+    for i in range(0,len(cls),300):
+        out=subprocess.run(['javap','-c','-p','-cp',jar]+[c.replace('/','.') for c in cls[i:i+300]],capture_output=True,text=True).stdout
+        cur=fixed
+        for line in out.splitlines():
+            m=re.match(r'(?:.* )?class (net\.runelite\.client\.plugins\.([a-z0-9]+)\S*)',line)
+            if m and not line.startswith(' ') and not fixed: cur=m.group(2)
+            m=re.search(r'invokeinterface +#\d+, +\d+ +// InterfaceMethod (net/runelite/api/[\w/$]+)\.(\w+):(\S+)',line)
+            if m and cur: calls[(m.group(1),m.group(2),m.group(3))].add(cur)
+if '--jars' in sys.argv:
+    i=sys.argv.index('--jars')
+    for j in sys.argv[i+1:]: scan(j,'',os.path.basename(j)[:-4])
+    del sys.argv[i:]
+else:
+    scan(jar,'net/runelite/client/plugins/')
 # implemented: methods declared (non-abstract) in host classes (not *Stub)
 impl=set()
 hc=R+'/host/classes'

@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.time.Duration;
 
 /**
  * Java 9+ library methods that Android 9 (API 28) lacks and d8 doesn't backport. tools/dex-plugin.sh
@@ -37,5 +38,19 @@ public final class JdkCompat {
     public static String implementationVersion(Package p) {
         String v = p.getImplementationVersion();
         return "0.0".equals(v) ? null : v;
+    }
+
+    // java.time.Duration (Java 9, API 31).
+    public static long toSeconds(Duration d) { return d.getSeconds(); }
+    public static long toDaysPart(Duration d) { return d.getSeconds() / 86400; }
+    public static int toHoursPart(Duration d) { return (int) (d.toHours() % 24); }
+    public static int toMinutesPart(Duration d) { return (int) (d.toMinutes() % 60); }
+    public static int toSecondsPart(Duration d) { return (int) (d.getSeconds() % 60); }
+    public static int toMillisPart(Duration d) { return d.getNano() / 1_000_000; }
+
+    public static long dividedBy(Duration d, Duration divisor) {
+        return java.math.BigDecimal.valueOf(d.getSeconds()).movePointRight(9).add(java.math.BigDecimal.valueOf(d.getNano()))
+            .divideToIntegralValue(java.math.BigDecimal.valueOf(divisor.getSeconds()).movePointRight(9)
+                .add(java.math.BigDecimal.valueOf(divisor.getNano()))).longValueExact();
     }
 }

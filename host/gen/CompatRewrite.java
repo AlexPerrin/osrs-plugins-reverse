@@ -13,7 +13,14 @@ public class CompatRewrite {
     static final Map<String, String> TABLE = Map.of(
         "java/io/InputStream.readAllBytes()[B", "readAllBytes",
         "java/io/InputStream.transferTo(Ljava/io/OutputStream;)J", "transferTo",
-        "java/lang/Package.getImplementationVersion()Ljava/lang/String;", "implementationVersion");
+        "java/lang/Package.getImplementationVersion()Ljava/lang/String;", "implementationVersion",
+        "java/time/Duration.toSeconds()J", "toSeconds",
+        "java/time/Duration.toDaysPart()J", "toDaysPart",
+        "java/time/Duration.toHoursPart()I", "toHoursPart",
+        "java/time/Duration.toMinutesPart()I", "toMinutesPart",
+        "java/time/Duration.toSecondsPart()I", "toSecondsPart",
+        "java/time/Duration.toMillisPart()I", "toMillisPart",
+        "java/time/Duration.dividedBy(Ljava/time/Duration;)J", "dividedBy");
     static final String COMPAT = "net/runelite/host/compat/JdkCompat";
     static int rewritten;
 

@@ -1,6 +1,7 @@
 // libosrsrl.so: loaded by the patched com.jagex.android.b.a() right after the game library.
 #include <EGL/egl.h>
 #include <jni.h>
+#include <sys/system_properties.h>
 
 #include "agent.h"
 #include "client_thread.h"
@@ -33,6 +34,12 @@ EGLBoolean hook_eglSwapBuffers(EGLDisplay display, EGLSurface surface) {
 
 extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void*) {
     LOGI("libosrsrl loaded; game lib base %p", reinterpret_cast<void*>(module_base(kGameLib)));
+    // `setprop debug.osrsrl.off 1`: install nothing (A/B tests against the stock game code).
+    char off[PROP_VALUE_MAX] = {};
+    if (__system_property_get("debug.osrsrl.off", off) > 0 && off[0] == '1') {
+        LOGI("debug.osrsrl.off=1: no hooks, no host");
+        return JNI_VERSION_1_6;
+    }
     g_orig_swap = reinterpret_cast<SwapFn>(got_hook(kGameLib, "eglSwapBuffers", reinterpret_cast<void*>(hook_eglSwapBuffers)));
     if (!g_orig_swap) {
         LOGE("eglSwapBuffers hook failed; overlay disabled");

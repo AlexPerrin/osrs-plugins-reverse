@@ -55,10 +55,11 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   (`.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml`).
 
 - **RuneLite-visible messages:** item examines go out as `ObjExamine` (27) game messages, not via
-  the `examine_item` clientscript's `mes` (type 0), so the Examine plugin matches them; mobile
-  clients also get that script's price line, built server-side. Skilling texts match what RuneLite's
-  plugins parse: "You swing your pick at the rock.", "You catch some shrimps.", and cooking's
-  success/burn lines as SPAM.
+  the `examine_item` clientscript's `mes` (type 0), so the Examine plugin matches them (it adds the
+  price line itself). Skilling texts match what RuneLite's plugins parse: "You swing your pick at
+  the rock.", "You catch some shrimps.", and cooking/smelting lines as SPAM.
+- **Fishing spots:** the Lumbridge river Lure/Bait spot (`0_50_50_freshfish`, npc 1527) and the
+  `0_50_49_saltfish` Net/Bait spot had no content group, so their ops did nothing.
 
 ## Build
 

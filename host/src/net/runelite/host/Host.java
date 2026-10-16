@@ -251,6 +251,7 @@ public final class Host {
                 ChatMessageType chatType = ChatMessageType.of(b);
                 int now = (int) (System.currentTimeMillis() / 1000);
                 AndroidMessageNode node = new AndroidMessageNode(a, chatType, m[0], m[1], m[2], now);
+                AndroidClient.rememberMessage(node);
                 bus.post(new ChatMessage(node, chatType, m[0], m[2], m[1], now));
                 break;
             }

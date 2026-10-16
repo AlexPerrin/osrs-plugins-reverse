@@ -134,6 +134,33 @@ public class AndroidClient extends ClientStub {
         objectStackSize = objs.length;
     }
 
+    /**
+     * Client.getMessages: the messages seen since the host started (the same nodes ChatMessage
+     * carried), newest 1000 kept, keyed by message id.
+     */
+    private static final java.util.LinkedHashMap<Long, net.runelite.api.MessageNode> MESSAGES =
+        new java.util.LinkedHashMap<Long, net.runelite.api.MessageNode>() {
+            @Override protected boolean removeEldestEntry(java.util.Map.Entry<Long, net.runelite.api.MessageNode> e) { return size() > 1000; }
+        };
+
+    static void rememberMessage(net.runelite.api.MessageNode node) {
+        synchronized (MESSAGES) { MESSAGES.put((long) node.getId(), node); }
+    }
+
+    @Override public net.runelite.api.IterableHashTable<net.runelite.api.MessageNode> getMessages() {
+        return new net.runelite.api.IterableHashTable<net.runelite.api.MessageNode>() {
+            @Override public net.runelite.api.MessageNode get(long id) { synchronized (MESSAGES) { return MESSAGES.get(id); } }
+            @Override public void put(net.runelite.api.MessageNode n, long id) { synchronized (MESSAGES) { MESSAGES.put(id, n); } }
+            @Override public java.util.Iterator<net.runelite.api.MessageNode> iterator() {
+                synchronized (MESSAGES) { return new java.util.ArrayList<>(MESSAGES.values()).iterator(); }
+            }
+        };
+    }
+
+    @Override public net.runelite.api.ScriptEventBuilder createScriptEventBuilder(Object... args) {
+        return new AndroidScriptEvent(this, args);
+    }
+
     @Override public int[] getIntStack() { return intStack; }
     @Override public int getIntStackSize() { return intStackSize; }
     @Override public void setIntStackSize(int size) { intStackSize = size; }

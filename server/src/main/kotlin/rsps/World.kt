@@ -1877,7 +1877,7 @@ class World(
             NPC_FRED to Coord(3190, 3273), 2786 to Coord(3202, 3266), 2787 to Coord(3206, 3262), 2788 to Coord(3199, 3270),
             // Romeo & Juliet (Varrock): Romeo in the square, Juliet upstairs in her house to the west,
             // Father Lawrence in the north-east church, the Apothecary south-west.
-            NPC_ROMEO to Coord(3211, 3424), NPC_JULIET to Coord(3158, 3425, 1), NPC_LAWRENCE to Coord(3254, 3483),
+            NPC_ROMEO to Coord(3211, 3422), NPC_JULIET to Coord(3158, 3427, 1), NPC_LAWRENCE to Coord(3254, 3483),
             NPC_APOTHECARY to Coord(3195, 3403),
         )
         private const val NPC_ROMEO = 5037

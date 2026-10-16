@@ -71,6 +71,16 @@ public class AndroidWidget extends WidgetBag {
     @Override public int getYTextAlignment() { return prop(21, 0); }
     @Override public int getLineHeight() { return prop(22, 0); }
     @Override public int getFontId() { return prop(23, -1); }
+    @Override public int getOriginalX() { return prop(24, 0); }
+    @Override public int getOriginalY() { return prop(25, 0); }
+    @Override public int getXPositionMode() { return prop(26, 0); }
+    @Override public int getYPositionMode() { return prop(27, 0); }
+    @Override public int getOriginalWidth() { return prop(28, 0); }
+    @Override public int getOriginalHeight() { return prop(29, 0); }
+    @Override public int getWidthMode() { return prop(30, 0); }
+    @Override public int getHeightMode() { return prop(31, 0); }
+    @Override public boolean getNoClickThrough() { return prop(32, 0) != 0; }
+    @Override public boolean getNoScrollThrough() { return prop(33, 0) != 0; }
     @Override public int getItemQuantity() { int[] it = Native.widgetItem(id, childIndex()); return it != null && it[0] != -1 ? it[1] : 0; }
 
     @Override

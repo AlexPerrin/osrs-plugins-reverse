@@ -101,7 +101,7 @@ struct WidgetItem { int id = -1, quantity = 0; };
 WidgetItem widget_item(uintptr_t widget);
 // scrollX, scrollY, scrollWidth, scrollHeight, modelZoom, rotationX, rotationY, rotationZ,
 // opacity, modelType, modelId, animationId.
-constexpr int kWidgetProps = 24;
+constexpr int kWidgetProps = 34;
 void widget_props(uintptr_t widget, int32_t out[kWidgetProps]);  // item set by IF_SETOBJECT / CC_SETOBJECT
 int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colour for text widgets
 void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty

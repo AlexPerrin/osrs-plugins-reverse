@@ -37,7 +37,8 @@ final class Probe {
                     + " tiling " + w.getSpriteTiling() + " border " + w.getBorderType() + " flip " + w.isFlippedHorizontally() + "/" + w.isFlippedVertically()
                     + " filled " + w.isFilled() + " font " + w.getFontId() + " align " + w.getXTextAlignment() + "/" + w.getYTextAlignment()
                     + " lineh " + w.getLineHeight() + " shadow " + w.getTextShadowed() + " colour " + Integer.toHexString(w.getTextColor())
-                    + " item " + w.getItemId());
+                    + " item " + w.getItemId() + " orig " + w.getOriginalX() + "," + w.getOriginalY() + " " + w.getOriginalWidth() + "x" + w.getOriginalHeight()
+                    + " modes " + w.getXPositionMode() + w.getYPositionMode() + w.getWidthMode() + w.getHeightMode() + " geo " + w.getRelativeX() + "," + w.getRelativeY() + " " + w.getWidth() + "x" + w.getHeight());
             }
         } catch (Throwable t) {
             Log.w(TAG, "wdump " + arg + " failed: " + t);

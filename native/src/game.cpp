@@ -555,7 +555,10 @@ void widget_props(uintptr_t w, int32_t out[kWidgetProps]) {
     static constexpr struct { uint32_t off; bool byte; } kFields[kWidgetProps] = {
         {0x84}, {0x88}, {0x8c}, {0x90}, {0x128}, {0x11c}, {0x120}, {0x124}, {0xb0}, {0xfc}, {0x100}, {0x10c},
         {0xc8}, {0xec, true}, {0xf0}, {0xf4}, {0xf8, true}, {0xf9, true}, {0xa8, true}, {0x194, true},
-        {0x18c}, {0x190}, {0x188}, {0x150}};
+        {0x18c}, {0x190}, {0x188}, {0x150},
+        // CC_SETPOSITION (1000): original x/y +0x4c/+0x50, x/y modes +0x3c/+0x40; CC_SETSIZE (1001):
+        // original width/height +0x54/+0x58, modes +0x44/+0x48; 1005/1006 no click/scroll through.
+        {0x4c}, {0x50}, {0x3c}, {0x40}, {0x54}, {0x58}, {0x44}, {0x48}, {0xb98, true}, {0xb99, true}};
     for (int i = 0; i < kWidgetProps; i++)
         out[i] = !w ? 0 : kFields[i].byte ? read_at<uint8_t>(w + kFields[i].off) : read_at<int32_t>(w + kFields[i].off);
 }

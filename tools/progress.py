@@ -58,13 +58,19 @@ def protocol():
     repo = read(os.path.join(ANDROID, "AndroidRepositories.kt"))
     enc, dec = repo.split("object AndroidGameMessageDecoderRepository")[:2]
     s2c_impl = len(re.findall(r"^\s+bind(?:WithAlts)?\(", enc, re.M))
-    # Decoders: single binds plus the OPLOC/OPOBJ/OPNPC tables (one decoder per row).
-    dec_build = dec.split("fun build")[1].split("for (prot in")[0]
-    c2s_impl = len(re.findall(r"^\s+bind\(", dec_build, re.M))
-    for table in re.findall(r"in (ANDROID_OP\w+)\)", dec_build):
-        defs = "".join(read(os.path.join(ANDROID, f)) for f in os.listdir(ANDROID) if f.endswith(".kt"))
-        body = re.search(table + r"[^=]*=\s*listOf\((.*?)\n\s*\)", defs, re.S)
-        c2s_impl += len(re.findall(r"Triple\(", body.group(1))) if body else 0
+    # Decoders are bound in several styles (bind(...), bound(...) lists, Triple tables), so count
+    # named client prots referenced anywhere outside the enum and the unknown-packet fallback:
+    # by the full enum name, or via a file-local `typealias X = AndroidGameClientProt`.
+    named = {n for n, _ in c2s if not re.fullmatch(r"OP_\d+", n)}
+    used = set()
+    for f in os.listdir(ANDROID):
+        if not f.endswith(".kt") or f == "AndroidGameClientProt.kt":
+            continue
+        src = read(os.path.join(ANDROID, f))
+        aliases = ["AndroidGameClientProt"] + re.findall(r"typealias (\w+) = AndroidGameClientProt\b", src)
+        for a in aliases:
+            used |= set(re.findall(r"\b" + a + r"\.([A-Z][A-Z0-9_]*)\b", src))
+    c2s_impl = len(named & used)
     return {
         "s2c_ident": len(s2c), "s2c_impl": s2c_impl,
         "unverified": len(unverified_entries(s2c_src)) + len(unverified_entries(c2s_src)),
@@ -87,8 +93,11 @@ def api():
                   [os.path.join(rl, j) for j in sorted(os.listdir(rl)) if j.endswith(".jar")] +
                   [os.path.join(SDK, "platforms/android-37.0/android.jar")])
     args = [a for pair in API_PAIRS for a in pair]
-    out = subprocess.run(["java", "-cp", cp, os.path.join(ROOT, "tools/progress/ApiCoverage.java")] + args,
-                         capture_output=True, text=True, check=True).stdout
+    res = subprocess.run(["java", "-cp", cp, os.path.join(ROOT, "tools/progress/ApiCoverage.java")] + args,
+                         capture_output=True, text=True)
+    if res.returncode:  # e.g. host/build.sh is rewriting re/host/classes right now
+        sys.exit("ApiCoverage failed (rerun after host/build.sh finishes):\n" + res.stderr[-2000:])
+    out = res.stdout
     rows = []
     for line in out.splitlines():
         iface, impl, done, total, *_ = line.split()

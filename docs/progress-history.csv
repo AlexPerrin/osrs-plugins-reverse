@@ -1,2 +1,2 @@
 date,commit,packets_mapped,packets_implemented,s2c_mapped,c2s_mapped,zone_impl,api_impl,api_total,packets_total
-2026-10-15,682464b+,165,151,140,25,15,261,866,253
+2026-10-15,e5487c9+,230,210,140,90,15,272,866,253

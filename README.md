@@ -13,21 +13,21 @@ account: the server is also the local sign-in provider.
 ## Status
 
 <!-- progress:start -->
-![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-65.2%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-59.7%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-30.1%25-blue)
+![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-90.9%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-83.0%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-31.4%25-blue)
 
 [![Progress map](docs/progress.svg)](docs/progress.md)
 
-- **Mobile packets mapped**: 165/253 (65.2%)
-- **Mobile packets mapped, verified**: 151/253 (59.7%)
-- **Mobile packets implemented**: 151/253 (59.7%)
+- **Mobile packets mapped**: 230/253 (90.9%)
+- **Mobile packets mapped, verified**: 204/253 (80.6%)
+- **Mobile packets implemented**: 210/253 (83.0%)
 - **Server→client mapped**: 140/151 (92.7%)
-- **Client→server mapped**: 25/102 (24.5%)
+- **Client→server mapped**: 90/102 (88.2%)
 - **Zone sub-prots implemented**: 15/15 (100.0%)
-- **RuneLite API implemented**: 261/866 (30.1%)
+- **RuneLite API implemented**: 272/866 (31.4%)
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-15, `682464b+`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-15, `e5487c9+`).
 <!-- progress:end -->
 
 Milestones:
@@ -36,7 +36,11 @@ Milestones:
 - [x] Plugin host on ART: events, varps/varbits, players/NPCs, widgets, overlays via Graphics2D shim
 - [x] Server: collision + pathfinding, melee combat, journal tab, Cook's Assistant end to end
 - [x] Quest Helper (real Plugin Hub jar) runs: native sidebar, quest list, step overlay
-- [ ] Quest Helper complete: menu entries, object/item highlights, minimap arrows, text input
+- [x] Menu entries: MenuOpened / MenuOptionClicked with decoded params, verified on device
+- [x] **First full quest with Quest Helper on Android: Cook's Assistant** (dialogue start, step overlay
+  follows the items, NPC highlight, hand-in, completion), 2026-10-15
+- [ ] Quest Helper complete: object/item highlights, minimap arrows, sidebar text input
+- [ ] More quests end to end (server: Sheep Shearer, Romeo & Juliet ready)
 - [ ] Protocol: map the remaining opcodes (see `docs/progress.md` → Unmapped opcodes)
 - [ ] More plugins (GPU/region-dependent ones excluded)
 

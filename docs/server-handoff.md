@@ -5,7 +5,42 @@ work. The client side (injected library + RuneLite plugin host) is developed in 
 another session; see `docs/client-handoff.md`. Protocol findings live in
 `docs/android-protocol.md`.
 
-## Where things stand (container runs e9b03e2, deployed 2026-10-15 21:39 local)
+## Latest state (2026-10-16, third server dev; new hashes after the authorship rewrite)
+
+Container runs 7ee343a (deployed 23:18 local); later commits are offline-only (cd901ea adds
+`::trace` / `::jingle`, needs a deploy). Metric (`tools/progress.py --working`): mapped 241/253,
+live opcodes 241/241, verified 216/253.
+
+- **Persistence** (7ee343a, verified live: survives relog and `docker compose restart`):
+  `Saves.kt` writes one JSON file per account (Gson) with position, HP, XP, varps, inventory,
+  worn and bank to `SAVE_DIR` = named volume `rsps-saves:/saves`. Loaded at login (starter kit only
+  for new accounts), saved on removal, every 50 ticks and on JVM shutdown. Inspect with
+  `docker exec osrs-rsps-test cat /saves/tester.json`; delete it for a fresh character.
+- **Loc reach** (7ee343a): solid locs (footprint flagged LOC) need a side tile with no wall in
+  between (`Collision.reachesRect`); walls/doors keep "any adjacent tile".
+- **Stairs** (b2f7660): no destination table; Climb-up/down (and "Climb" with an up/down choice,
+  "Top-floor", "Bottom-floor") move one level and land on the nearest open tile that has a floor
+  surface (`Collision.nearestOpen`, SURFACE flag from terrain underlay/overlay). Verified live:
+  Lumbridge castle stair 56230 lands at 3205,3209 level 1. Sheep Shearer route (headless):
+  stairs from 3205,3209 -> Open door 1543 at 3207,3214 -> Spin the wheel 14889 at 3209,3212 from
+  3209,3213. Spin itself not yet tried on the device.
+- **Gates** (d928009): opening one half of a double gate (e.g. Fred's pen 12986/12987 at
+  3186,3268-3269) opens the other half too.
+- **Protocol**: verified live 76 PROJANIM_SPECIFIC_V4 (start height 160 was off camera; use
+  `::proj 100 4 0`) and 115 HIDEOBJOPS. C->S 6 OPOBJ6, 80 HISCORE_REQUEST, 90
+  UPDATE_PLAYER_MODEL_V2 named; sender-less C->S 1/12/27/62/73/76/83/85/87 and ignored S->C
+  110/116/137 tagged `// dead:` (orchestrator ruling: dead opcodes stay OP_n; name only with
+  per-opcode evidence). 11 CHAT_FILTER_SETTINGS_PRIVATECHAT still shows no effect.
+- **RE helpers**: decompile with `analyzeHeadless re/ghidra osclient -process osclient.so
+  -noanalysis -readOnly -scriptPath tools/ghidra_scripts -postScript Decompile.java 0x<addr>`
+  (Ghidra image base 0x100000 = file VA + 0x100000). Every C->S sender: scan the text segment
+  for `bl 0x79cc90` with capstone (`~/tools/venv`), opcode = `mov w0, #imm` before it.
+- Headless map checks: jshell in `eclipse-temurin:21` with `build/install/*/lib/*.jar`, mount
+  `data/cache` at `/data/cache`, redirect stdin from /dev/null (else it hangs).
+- On hold until the orchestrator relays the RSMod evaluation verdict: generic stairs table, new
+  quests. Keep server work small; protocol verification carries over to any engine.
+
+## Earlier state (container ran e9b03e2, deployed 2026-10-15 21:39 local)
 
 - A rev-241 test server runs in Docker (`osrs-rsps-test`): JS5 cache (OpenRS2 cache 2735),
   `jav_config.ws` / `slr.ws`, login, a small game world, reconnect (60 s grace), and a local

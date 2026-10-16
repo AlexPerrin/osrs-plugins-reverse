@@ -15,23 +15,23 @@ account: the server is also the local sign-in provider.
 ## Status
 
 <!-- progress:start -->
-![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-95.3%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-87.7%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-55.9%25-blue) ![Plugins running on Android](https://img.shields.io/badge/Plugins%20running%20on%20Android-88.2%25-blue)
+![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-95.3%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-90.1%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-56.2%25-blue) ![Plugins running on Android](https://img.shields.io/badge/Plugins%20running%20on%20Android-88.2%25-blue)
 
 [![Progress map](docs/progress.svg)](docs/progress.md)
 
 - **Mobile packets mapped**: 241/253 (95.3%)
 - **Live packets mapped**: 241/241 (100.0%)
-- **Mobile packets mapped, verified**: 218/253 (86.2%)
-- **Mobile packets implemented**: 222/253 (87.7%)
+- **Mobile packets mapped, verified**: 229/253 (90.5%)
+- **Mobile packets implemented**: 228/253 (90.1%)
 - **Server→client mapped**: 148/151 (98.0%)
 - **Client→server mapped**: 93/102 (91.2%)
 - **Zone sub-prots implemented**: 15/15 (100.0%)
-- **RuneLite API implemented**: 484/866 (55.9%)
+- **RuneLite API implemented**: 487/866 (56.2%)
 - **Plugins running on Android**: 45/51 (88.2%)
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-16, `f843e68`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-16, `dce24e5+`).
 <!-- progress:end -->
 
 Milestones:

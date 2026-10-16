@@ -129,5 +129,14 @@ public class EventBus {
         for (List<Subscriber> list : next.values()) list.sort(Comparator.comparingDouble((Subscriber s) -> -s.priority));
         next.values().removeIf(List::isEmpty);
         subscribers = next;
+        Runnable l = subscribersChanged;
+        if (l != null) l.run();
+    }
+
+    /** Host hook: run after every (un)registration (the host turns native event sources on/off). */
+    public volatile Runnable subscribersChanged;
+
+    public boolean hasSubscribers(Class<?> eventClass) {
+        return subscribers.containsKey(eventClass);
     }
 }

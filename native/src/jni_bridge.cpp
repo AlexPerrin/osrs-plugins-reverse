@@ -16,6 +16,7 @@
 #include "game.h"
 #include "log.h"
 #include "overlay.h"
+#include "script_hooks.h"
 
 extern "C" const char osrsrl_host_jar[];
 extern "C" const char osrsrl_host_jar_end[];
@@ -25,6 +26,7 @@ namespace {
 JavaVM* g_vm = nullptr;
 jclass g_host = nullptr;  // global ref
 jmethodID g_on_event = nullptr;
+jmethodID g_on_script = nullptr;
 std::atomic<const char*> g_status{"starting"};
 
 bool check(JNIEnv* env, const char* what) {
@@ -378,6 +380,59 @@ jobjectArray n_enum_def(JNIEnv* env, jclass, jint id) {
     return res;
 }
 jboolean n_is_client_thread(JNIEnv*, jclass) { return client_thread::on_client_thread(); }
+
+void n_set_script_events(JNIEnv*, jclass, jboolean on) { script_hooks::set_enabled(on); }
+
+jobjectArray n_script_stacks(JNIEnv* env, jclass) {
+    game::ScriptResult r;
+    if (!client_thread::on_client_thread() || !game::script_stacks(r)) return nullptr;
+    jclass string = env->FindClass("java/lang/String");
+    jintArray ints = env->NewIntArray(static_cast<jsize>(r.ints.size()));
+    if (!r.ints.empty()) env->SetIntArrayRegion(ints, 0, static_cast<jsize>(r.ints.size()), r.ints.data());
+    jobjectArray objs = env->NewObjectArray(static_cast<jsize>(r.objects.size()), string, nullptr);
+    for (size_t i = 0; i < r.objects.size(); i++) {
+        if (!r.object_is_string[i]) continue;
+        jstring js = env->NewStringUTF(r.objects[i].c_str());
+        env->SetObjectArrayElement(objs, static_cast<jsize>(i), js);
+        env->DeleteLocalRef(js);
+    }
+    jobjectArray res = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(res, 0, ints);
+    env->SetObjectArrayElement(res, 1, objs);
+    return res;
+}
+
+jboolean n_set_script_int_stack(JNIEnv* env, jclass, jintArray values, jint size) {
+    if (!client_thread::on_client_thread() || !values || size < 0 || size > env->GetArrayLength(values)) return false;
+    std::vector<int32_t> v(size);
+    if (size) env->GetIntArrayRegion(values, 0, size, v.data());
+    return game::set_script_int_stack(v.data(), size);
+}
+
+jobjectArray n_script_event_args(JNIEnv* env, jclass) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    uintptr_t ev = script_hooks::current_event();
+    if (!ev) return nullptr;
+    auto args = game::script_event_args(ev);
+    jclass integer = env->FindClass("java/lang/Integer");
+    jmethodID value_of = env->GetStaticMethodID(integer, "valueOf", "(I)Ljava/lang/Integer;");
+    jobjectArray res = env->NewObjectArray(static_cast<jsize>(args.size()), env->FindClass("java/lang/Object"), nullptr);
+    for (size_t i = 0; i < args.size(); i++) {
+        jobject o = args[i].is_string ? static_cast<jobject>(env->NewStringUTF(args[i].s.c_str()))
+                                      : env->CallStaticObjectMethod(integer, value_of, args[i].i);
+        env->SetObjectArrayElement(res, static_cast<jsize>(i), o);
+        env->DeleteLocalRef(o);
+    }
+    return res;
+}
+
+jlongArray n_script_stats(JNIEnv* env, jclass) {
+    auto st = script_hooks::stats();
+    jlong v[5] = {(jlong)st.roots, (jlong)st.gosubs, (jlong)st.returns, (jlong)st.delivered, script_hooks::installed()};
+    jlongArray a = env->NewLongArray(5);
+    env->SetLongArrayRegion(a, 0, 5, v);
+    return a;
+}
 jintArray n_player_position(JNIEnv* env, jclass) {
     if (game::game_state() != 30) return nullptr;
     game::Point w = game::player_world(), s = game::player_local_tile(), l = game::player_fine();
@@ -920,6 +975,11 @@ const JNINativeMethod kNatives[] = {
     {"enumDef", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_enum_def)},
     {"runScript", "([Ljava/lang/Object;)[Ljava/lang/Object;", reinterpret_cast<void*>(n_run_script)},
     {"isClientThread", "()Z", reinterpret_cast<void*>(n_is_client_thread)},
+    {"setScriptEvents", "(Z)V", reinterpret_cast<void*>(n_set_script_events)},
+    {"scriptStacks", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_stacks)},
+    {"setScriptIntStack", "([II)Z", reinterpret_cast<void*>(n_set_script_int_stack)},
+    {"scriptEventArgs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_event_args)},
+    {"scriptStats", "()[J", reinterpret_cast<void*>(n_script_stats)},
 };
 
 JNIEnv* game_thread_env() {
@@ -970,7 +1030,8 @@ bool start_host(JNIEnv* env) {
     }
     jmethodID start = env->GetStaticMethodID(host, "start", "(Ljava/lang/String;Ljava/lang/String;)V");
     g_on_event = env->GetStaticMethodID(host, "onEvent", "(III)V");
-    if (!check(env, "Host methods") || !start || !g_on_event) return false;
+    g_on_script = env->GetStaticMethodID(host, "onScript", "(II)V");
+    if (!check(env, "Host methods") || !start || !g_on_event || !g_on_script) return false;
     env->CallStaticVoidMethod(host, start, env->NewStringUTF(plugins.c_str()), env->NewStringUTF(dir.c_str()));
     if (!check(env, "Host.start")) return false;
     g_host = static_cast<jclass>(env->NewGlobalRef(host));
@@ -996,6 +1057,12 @@ void host_thread() {
         if (!env) return;
         env->CallStaticVoidMethod(g_host, g_on_event, static_cast<jint>(e.type), e.a, e.b);
         check(env, "Host.onEvent");
+    });
+    script_hooks::set_listener([](int phase, int id) {
+        JNIEnv* env = game_thread_env();
+        if (!env) return;
+        env->CallStaticVoidMethod(g_host, g_on_script, phase, id);
+        check(env, "Host.onScript");
     });
     g_status = "ready";
     LOGI("jni: plugin host ready");

@@ -1025,6 +1025,52 @@ bool run_script(const std::vector<ScriptArg>& args, ScriptResult& out, std::stri
     return true;
 }
 
+bool script_stacks(ScriptResult& out) {
+    if (!g_build || !g_build->script_vm) return false;
+    uintptr_t vm = g_base + g_build->script_vm;
+    int n = read_at<int32_t>(vm + 0xff0);
+    if (n < 0 || n > 1000) n = 0;
+    out.ints.resize(n);
+    if (n) memcpy(out.ints.data(), reinterpret_cast<const void*>(vm + 0x50), n * 4u);
+    int m = read_at<int32_t>(vm + 0xac38);
+    if (m < 0 || m > 1000) m = 0;
+    out.objects.clear();
+    out.object_is_string.clear();
+    for (int i = 0; i < m; i++) {
+        uintptr_t v = vm + 0xff8 + static_cast<uintptr_t>(i) * 0x28;
+        bool str = read_at<uint32_t>(v + 0x20) == 2;
+        out.object_is_string.push_back(str);
+        out.objects.push_back(str ? read_string(v) : std::string());
+    }
+    return true;
+}
+
+bool set_script_int_stack(const int32_t* values, int size) {
+    if (!g_build || !g_build->script_vm || size < 0 || size > 1000) return false;
+    uintptr_t vm = g_base + g_build->script_vm;
+    if (size) memcpy(reinterpret_cast<void*>(vm + 0x50), values, size * 4u);
+    *reinterpret_cast<int32_t*>(vm + 0xff0) = size;
+    return true;
+}
+
+std::vector<ScriptArg> script_event_args(uintptr_t ev) {
+    std::vector<ScriptArg> out;
+    if (!ev) return out;
+    int argc = read_at<int32_t>(ev + 0x08);
+    uintptr_t argv = read_at<uintptr_t>(ev + 0x10);
+    if (argc <= 0 || argc > 64 || !argv) return out;
+    for (int i = 0; i < argc; i++) {
+        uintptr_t v = argv + static_cast<uintptr_t>(i) * 0x28;
+        ScriptArg a;
+        uint32_t type = read_at<uint32_t>(v + 0x20);
+        if (type == 1) a.i = read_at<int32_t>(v);
+        else if (type == 2) { a.is_string = true; a.s = read_string(v); }
+        else a.i = -1;
+        out.push_back(std::move(a));
+    }
+    return out;
+}
+
 }  // namespace game
 
 namespace game {

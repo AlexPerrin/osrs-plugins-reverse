@@ -123,8 +123,48 @@ public class AndroidClient extends ClientStub {
     private final Object[] objectStack = new Object[1000];
     private int intStackSize, objectStackSize;
 
+    // While a ScriptPreFired/PostFired is dispatched, the getters read the VM's live stacks
+    // (loaded on first use) and changes to the int stack are written back afterwards.
+    private boolean liveStacks, stacksLoaded;
+    private int[] loadedInts;
+
+    void beginScriptEvent() {
+        liveStacks = true;
+        stacksLoaded = false;
+    }
+
+    void endScriptEvent() {
+        if (stacksLoaded && loadedInts != null
+            && (intStackSize != loadedInts.length || !java.util.Arrays.equals(java.util.Arrays.copyOf(intStack, intStackSize), loadedInts))) {
+            Native.setScriptIntStack(intStack, Math.max(0, Math.min(intStackSize, intStack.length)));
+        }
+        liveStacks = false;
+        stacksLoaded = false;
+        loadedInts = null;
+    }
+
+    private void loadStacks() {
+        if (!liveStacks || stacksLoaded) return;
+        stacksLoaded = true;
+        Object[] r = Native.scriptStacks();
+        if (r == null) return;
+        int[] ints = (int[]) r[0];
+        Object[] objs = (Object[]) r[1];
+        System.arraycopy(ints, 0, intStack, 0, ints.length);
+        System.arraycopy(objs, 0, objectStack, 0, objs.length);
+        intStackSize = ints.length;
+        objectStackSize = objs.length;
+        loadedInts = ints;
+    }
+
     @Override
     public void runScript(Object... args) {
+        if (liveStacks) {
+            // The VM is mid-script; run it after the current one instead of corrupting its state.
+            android.util.Log.w("osrsrl-host", "runScript(" + (args.length > 0 ? args[0] : "") + ") from a script event; deferred");
+            Host.invoke(() -> runScript(args));
+            return;
+        }
         Object[] r = Native.runScript(args);
         int[] ints = (int[]) r[0];
         Object[] objs = (Object[]) r[1];
@@ -161,12 +201,12 @@ public class AndroidClient extends ClientStub {
         return new AndroidScriptEvent(this, args);
     }
 
-    @Override public int[] getIntStack() { return intStack; }
-    @Override public int getIntStackSize() { return intStackSize; }
-    @Override public void setIntStackSize(int size) { intStackSize = size; }
-    @Override public Object[] getObjectStack() { return objectStack; }
-    @Override public int getObjectStackSize() { return objectStackSize; }
-    @Override public void setObjectStackSize(int size) { objectStackSize = size; }
+    @Override public int[] getIntStack() { loadStacks(); return intStack; }
+    @Override public int getIntStackSize() { loadStacks(); return intStackSize; }
+    @Override public void setIntStackSize(int size) { loadStacks(); intStackSize = size; }
+    @Override public Object[] getObjectStack() { loadStacks(); return objectStack; }
+    @Override public int getObjectStackSize() { loadStacks(); return objectStackSize; }
+    @Override public void setObjectStackSize(int size) { loadStacks(); objectStackSize = size; }
 
     @Override
     public net.runelite.api.ItemComposition getItemDefinition(int id) {

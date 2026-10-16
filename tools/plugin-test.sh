@@ -2,6 +2,7 @@
 # Client/plugin-host test loop on BlueStacks (Windows adb from WSL):
 #   tools/plugin-test.sh [N]   push re/host/plugins/*.jar (not *-desktop.jar), restart the game,
 #                              tap Play Now, wait until logged in, print the first N host log lines
+#   EXTRA="xpdrop statusbars"  also push re/host/plugins-extra/<name>.jar
 # Assumes a LOCAL_AUTH build is installed and signed in (docs/client-handoff.md).
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -16,6 +17,9 @@ $ADB $S shell mkdir -p $P
 $ADB $S shell "rm -f $P/*.jar"
 for j in "$ROOT"/re/host/plugins/*.jar; do
     [[ $j == *-desktop.jar ]] || $ADB $S push "$(wslpath -w "$j")" $P/ >/dev/null
+done
+for n in ${EXTRA:-}; do
+    $ADB $S push "$(wslpath -w "$ROOT/re/host/plugins-extra/$n.jar")" $P/ >/dev/null
 done
 $ADB $S shell am force-stop $PKG
 $ADB $S logcat -c

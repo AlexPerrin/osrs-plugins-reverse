@@ -71,6 +71,16 @@ final class Native {
     /** {worldX, worldY, sceneX, sceneY, localX, localY, playerPlane, scenePlane}, or null when not logged in. */
     static native int[] playerPosition();
     static native boolean isClientThread();
+    /** Turns the script VM callbacks (Host.onScript) on or off. */
+    static native void setScriptEvents(boolean on);
+    /** The VM's live stacks (game thread): {int[] intStack (size entries), String[] objectStack}. */
+    static native Object[] scriptStacks();
+    /** Writes the first `size` ints back to the VM's int stack and sets its size (game thread). */
+    static native boolean setScriptIntStack(int[] values, int size);
+    /** Arguments of the root script being started (inside Host.onScript phase 2), or null. */
+    static native Object[] scriptEventArgs();
+    /** {root scripts, gosubs, returns, events delivered, hooks installed (0/1)}. */
+    static native long[] scriptStats();
     /**
      * Runs a client script in the game's VM (args[0] = script id; Integer/String args). Game
      * thread only. Returns {int[] intStack, String[] objectStack} as left by the script.

@@ -11,10 +11,13 @@ add_library(osrsrl SHARED
     src/game.cpp
     src/gl_trace.cpp
     src/got_hook.cpp
+    src/inline_hook.cpp
     src/host_blob.S
     src/jni_bridge.cpp
     src/net_trace.cpp
     src/overlay.cpp
+    src/script_hooks.cpp
+    src/script_stubs.S
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_tables.cpp

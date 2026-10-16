@@ -13,6 +13,8 @@ import dalvik.system.DexClassLoader;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.events.ScriptPreFired;
+import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ChatMessage;
@@ -167,6 +169,8 @@ public final class Host {
         worldView().androidScene().objects.bus = bus;
         Probe.init(plugins.getPlugins());
         eventBus = bus;
+        bus.subscribersChanged = Host::updateScriptEvents;
+        updateScriptEvents();
         Log.i(TAG, "host ready; " + plugins.getPlugins().size() + " plugin(s) running");
     }
 
@@ -360,6 +364,47 @@ public final class Host {
 
     static AndroidWorldView worldView() {
         return worldView;
+    }
+
+    // --- ScriptPreFired / ScriptPostFired (native/src/script_hooks.cpp) ---
+
+    private static boolean scriptEventsOn;
+
+    static void updateScriptEvents() {
+        EventBus bus = eventBus;
+        boolean on = bus != null && (bus.hasSubscribers(ScriptPreFired.class) || bus.hasSubscribers(ScriptPostFired.class));
+        if (on == scriptEventsOn) return;
+        scriptEventsOn = on;
+        Native.setScriptEvents(on);
+        Log.i(TAG, "script events " + (on ? "on" : "off"));
+    }
+
+    /**
+     * From the script VM hooks, on the game thread, while the script runs. phase 0 = a proc is
+     * entered (GOSUB; its arguments are on the stacks), 1 = a script returned (results on the
+     * stacks), 2 = a root script starts (its ScriptEvent's arguments are available).
+     */
+    public static void onScript(int phase, int id) {
+        EventBus bus = eventBus;
+        if (bus == null) return;
+        AndroidClient ac = (AndroidClient) client;
+        ac.beginScriptEvent();
+        try {
+            if (phase == 1) {
+                bus.post(new ScriptPostFired(id));
+            } else {
+                ScriptPreFired e = new ScriptPreFired(id);
+                if (phase == 2) {
+                    Object[] args = Native.scriptEventArgs();
+                    if (args != null) e.setScriptEvent(new AndroidScriptEvent(client, args));
+                }
+                bus.post(e);
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "script event " + id + " failed", t);
+        } finally {
+            ac.endScriptEvent();
+        }
     }
 
     /** RuneLite's ClientThread.invoke equivalent. */

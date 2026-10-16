@@ -197,6 +197,13 @@ struct ScriptResult {
     std::vector<bool> object_is_string;
 };
 bool run_script(const std::vector<ScriptArg>& args, ScriptResult& out, std::string& error);
+// The VM's live stacks, for ScriptPreFired/PostFired listeners (game thread). The int stack is
+// copied whole (size entries); set_script_int_stack writes values back and sets the size.
+bool script_stacks(ScriptResult& out);
+bool set_script_int_stack(const int32_t* values, int size);
+// A ScriptEvent's arguments (+0x08 argc, +0x10 0x28-byte variants); non-int/string args come
+// back as an empty string with is_string = false and i = -1.
+std::vector<ScriptArg> script_event_args(uintptr_t ev);
 
 // One tuple of a DB row's column, through the script VM's db_getfield (7502): values in column-type
 // order, each an int (kind 0), long (1) or string (2). False if the row/column doesn't exist.

@@ -61,13 +61,13 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Regeneration Meter | runs | HP ring on the HP orb (verified with `regenmeter.showWhenNoChange`); by default it draws only below full HP or spec |
 | Run Energy | runs | orb tooltip (weight, run time, 100% in) on a tap of the run orb (touch-as-mouse + TooltipOverlay, verified 2026-10-16) |
 | Timers & Buffs | runs | stamina timer InfoBox counting down after `::varbit 25 1` + `::varbit 24 20` (verified 2026-10-16); the InfoBox has no icon (ItemManager item images are blank) |
-| Woodcutting | runs | session panel (logs cut 6, 900/hr) while chopping an oak west of Lumbridge (verified 2026-10-16, but drawn under the chatbox: TOP_LEFT overlays now stack below the chatbox, unverified) |
+| Woodcutting | runs | session panel (logs cut 6, 900/hr) while chopping an oak west of Lumbridge (verified 2026-10-16; TOP_LEFT overlays now stack below the chatbox) |
 | XP Tracker | runs | sidebar panel: gained XP, XP/hr, levels per skill after combat (verified 2026-10-16; some rows show twice in the flattened sidebar) |
 | Agility | runs | Gnome Stronghold log balance highlighted green (verified 2026-10-16; needs XP Tracker's module, installed as RuneLite does) |
 | Chat Notifications | runs | highlight words: "Spawned" shown red in game messages with `chatnotification.highlightWordsString=Spawned` (the node's RuneLite-format message is applied after ChatMessage, verified 2026-10-16); notifications not checked |
 | Fishing | runs | fishing spot tiles + fish icons by the Lumbridge river with a rod in the inventory (verified 2026-10-16); catching not checked |
-| Idle Notifier | starts | config defaults now registered; Notification config values were a ClassCastException on GameTick (fixed after the run: stored as on/off) |
-| Mining | starts | mined copper in the swamp mine; no session panel seen (needs a local-player mining AnimationChanged, 2026-10-16) |
+| Idle Notifier | runs | "[RuneLite] You are now idle!" in the game chat after mining/fishing stops (Notifier → game chat, verified 2026-10-16) |
+| Mining | runs | "Mining" / "NOT mining" session panel below the chatbox while mining copper (after OpenRune's OSRS wording fix; TOP_LEFT placement verified 2026-10-16) |
 | Player Indicators | starts | needed protobuf-javalite + RuneLite http-api (PartyService) |
 | Special Attack Counter | starts | as Player Indicators |
 | XP Globes | runs | attack/HP globes over the chat tabs after combat |

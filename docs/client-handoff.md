@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 10 entry (2026-10-16) at the end of "Where things stand".
+> Latest state: see the gen 11 entry (2026-10-16) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -330,6 +330,28 @@ session; its notes are in `docs/android-protocol.md`.
     the touch point); Swing colour picker for "Pick" entries (Android colour dialog); OpenRune may send
     some examine text as GAMEMESSAGE (Examine logs a type mismatch; reported). Stale config value
     `boosts.notifyOnBoost=...Notification@...` from an old build reads as OFF.
+- **2026-10-16 (client dev gen 11)**, commits bf46c0a..:
+  - **Hover entry**: with no menu open, `getMenuEntries()` returns one entry for the inventory slot under
+    the touch point (`AndroidMenu.hoverEntry`, per cycle) -> Item Stats tooltips. Hold a finger on the item
+    (`input swipe x y x y 2500`) and screenshot within ~0.5 s, before the long-press menu opens.
+  - **Colour picker**: same-name `RuneliteColorPicker`/`ColorPickerManager` (`host/src/net/runelite/client/
+    ui/components/colorpicker/`) open `ColorPrompt` (Android dialog: hex, preview, 24 swatches). Works for
+    menu "Pick" entries (Ground Markers, Inventory Tags); ConfigPanel colour buttons get mouse events now
+    (sidebar buttons without ActionListeners), unverified there.
+  - XP Drop `hideSkillIcons`: nulled child slots are re-hidden every cycle for 150 cycles (the drop script
+    unhides them). Chat: the node's RuneLite-format message is applied after ChatMessage (Chat
+    Notifications' `<colHIGHLIGHT>`), and `chatFilterCheck` is raised once per new message with host-made
+    stacks (`AndroidClient.fakeStacks`); the chatbox shows rewritten text when it next rebuilds.
+  - Widget Examine = identifier 10 / CC_OP_LOW_PRIORITY (Inventory Tags). TOP_LEFT overlays stack below the
+    chatbox (unverified; Woodcutting's panel was under the chatbox before).
+  - Verified: Item Stats, Interact Highlight, Chat Filter, Chat Notifications, Woodcutting, Fishing, Item
+    Charges, Timers & Buffs, Agility, XP Drop icons, colour dialog. Table: 27 runs.
+  - Config keys: `chatnotification.*` (no s). Append test keys with one `echo` per line (printf `\n` through
+    adb shell is unreliable); the host rewrites settings.properties on any setConfiguration.
+  - Gaps found: ItemManager images are blank (Inventory Tags outline, InfoBox icons such as the stamina
+    timer). The game's obj icon renderer is behind the debug command `exportobjsprite` (handler 0x5948f8 ELF,
+    calls 0x4868bc(objId, w, h, dir) -> 0x641970(out, ObjType, w, h, 1, w/50+1, 1), retried until ready).
+    OpenRune mining text was "pickaxe" (server fix requested); `::npc` takes `duration npcDebugName`.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

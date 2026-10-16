@@ -115,7 +115,8 @@ final class OverlayRenderer {
     /** UI-canvas rectangles scene overlays must not cover; refreshed every 25 cycles. */
     private List<Rect> uiExclusions() {
         int cycle = Native.gameCycle();
-        if (cycle - exclusionsCycle < 25 && cycle >= exclusionsCycle) return exclusions;
+        // (exclusionsCycle starts at MIN_VALUE: cycle - MIN_VALUE overflows, so test it first.)
+        if (exclusionsCycle != Integer.MIN_VALUE && cycle >= exclusionsCycle && cycle - exclusionsCycle < 25) return exclusions;
         exclusionsCycle = cycle;
         List<Rect> out = new ArrayList<>();
         int root = Native.rootInterface();
@@ -132,8 +133,8 @@ final class OverlayRenderer {
                 out.add(new Rect(b.x, b.y, b.x + b.width, b.y + b.height));
             }
         }
-        // Modal interfaces (IF_OPENSUB mode 0, e.g. the quest-complete scroll): the graphics and
-        // filled rectangles they draw, as RuneLite's widgets would paint over scene overlays.
+        // Modal interfaces (IF_OPENSUB mode 0, e.g. the quest-complete scroll): their root layer and
+        // the graphics and filled rectangles they draw, as RuneLite's widgets would paint over scene overlays.
         int[] subs = Native.subInterfaces();
         for (int i = 0; i + 2 < subs.length; i += 3) {
             if (subs[i + 2] != 0) continue;
@@ -143,7 +144,9 @@ final class OverlayRenderer {
                 if (!Native.widgetExists(id)) break;
                 AndroidWidget w = new AndroidWidget(id);
                 int t = w.getType();
-                if ((t != 5 && !(t == 3 && w.isFilled())) || w.getWidth() <= 0 || w.isHidden()) continue;
+                // The root layer (child 0) carries the panel's own extent (the quest scroll's
+                // background is CC_CREATE content inside 153:0's 512x334); then graphics and fills.
+                if ((child != 0 && t != 5 && !(t == 3 && w.isFilled())) || w.getWidth() <= 0 || w.isHidden()) continue;
                 java.awt.Rectangle b = w.getBounds();
                 out.add(new Rect(b.x, b.y, b.x + b.width, b.y + b.height));
             }

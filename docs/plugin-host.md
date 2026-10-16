@@ -60,7 +60,7 @@ VarbitChanged).
 | `Widget.setTextColor/getTextColor` (components and CC_CREATE children), written to the game widget | Widget `+0x98` plus the IF_SETCOLOUR dirty flag; QH's dialogue-option highlight (verified 2026-10-15). Other widget setters (text, hidden, ...) stay Java-side only |
 | Actor state for NPCs and players: `getAnimation/getAnimationFrame`, `getOrientation/getCurrentOrientation`, `getInteracting/isInteracting` (NPC or player), `getOverheadText/getOverheadCycle` | Actor offsets in docs/offsets.md ("Actor"), read in the per-cycle snapshots. No AnimationChanged/InteractingChanged/OverheadTextChanged events yet. Unverified on device |
 | `getMinimapLocation` (NPCs, players), `Perspective.localToMinimap`, `getCameraFocusEntity` | the minimap draw area is 601:34 (desktop minimap component ids are routed to it); zoom 4. Unverified |
-| Scene overlays (ABOVE_SCENE, UNDER_WIDGETS) are clipped out of the opaque UI panels (601:50 tab stones, 601:36 minimap, 601:111 open side panel) | `OverlayRenderer.uiExclusions`; `setprop debug.osrsrl.clipui "n,m"` adds root children |
+| Scene overlays (ABOVE_SCENE, UNDER_WIDGETS) are clipped out of the opaque UI panels (601:50 tab stones, 601:36 minimap, 601:111 open side panel) and out of modal interfaces (IF_OPENSUB mode 0: root layer, graphics, fills; e.g. the quest-complete scroll) | `OverlayRenderer.uiExclusions`; `setprop debug.osrsrl.clipui "n,m"` adds root children, `cliplog 1` logs the rectangles. Verified 2026-10-16 (side panel, quest scroll; an int overflow had disabled the clip until then) |
 | `getObjectDefinition(id)` (name, actions, size, varbit/varp, impostor ids; `getImpostor()` resolves the multiloc from the current value) | the game's LocType cache (`0x62e5ec`). QH ObjectStep highlights verified 2026-10-16 (Sheep Shearer) |
 | `Menu`/`Client.getMenuX/Y/Width/Height`; overlays are clipped out of the open long-press menu | press point at MenuManager+0x2a8 plus the measured layout (docs/offsets.md) |
 | Debug hooks: `debug.osrsrl.where <loc id>` logs an object's world position and click-box centre in canvas and screen pixels (find adb tap targets); `debug.osrsrl.widgetlog 1` logs WidgetLoaded/Closed; `debug.osrsrl.probe <path>` (see Probe.java) | `Probe.java` |
@@ -87,6 +87,8 @@ VarbitChanged).
 | `getFriendContainer`, `getIgnoreContainer`, `isFriended` (names, previous names, world) | FriendSystem `*(Client+0x46c0)`; list state read as 2 on OpenRune, members unverified (empty lists) |
 | `getComponentTable` (open sub-interfaces: group, modal mode) | sub-interface map, node `+8` = mode; verified (601's 25 overlays, mode 1) |
 | `setGameState(LOADING)` (others ignored) | the game's settings-changed reload `0x429900`; verified: 30 → 25 → 30, session continues |
+| `Actor.setOverheadText/setOverheadCycle` written into the game (string assign on `+0x2d8`, timer `+0x2f4`) | verified 2026-10-16 (`setprop debug.osrsrl.set 'ohead <npc id> <text>'`) |
+| **Opponent Information** (core) runs: name + health bar/`3/5` over goblins (NPCManager max health over okhttp) | okhttp 3.14.9 + okio 1.17.2 in host.jar, `OkHttpClient` and `@Named("runelite.static.base")` bound in Host. Verified 2026-10-16 on OpenRune |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so

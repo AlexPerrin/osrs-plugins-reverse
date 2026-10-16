@@ -55,7 +55,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Logout Timer | starts | |
 | NPC Indicators | runs | hull highlights + minimap dots for `npcindicators.npcToHighlight=Goblin` (after the WildcardMatcher replacement); the left button column (601:41/40) is now clipped (unverified) |
 | Object Markers | runs | Shift + long-press an object: "Mark object"; hull drawn on the tree (verified 2026-10-16). Submenus not shown |
-| Poison | starts | `Client.getWidgetSpriteCache` unimplemented (health orb icon swap) throws in onVarbitChanged when poisoned (`::varp 102 6`) |
+| Poison | starts | no longer throws when poisoned (getWidgetSpriteCache/createSpritePixels, 2026-10-16); its heart icon override isn't applied to the game's sprite and no infobox was seen with defaults |
 | Prayer | runs | prayer orb tooltip (time remaining, prayer bonus) on a tap of the orb (verified 2026-10-16); dose indicator not checked |
 | Random Events | starts | |
 | Regeneration Meter | runs | HP ring on the HP orb (verified with `regenmeter.showWhenNoChange`); by default it draws only below full HP or spec |

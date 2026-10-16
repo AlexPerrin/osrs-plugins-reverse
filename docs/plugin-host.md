@@ -250,6 +250,22 @@ in the host so agents can drive device tests. Off by default and never in the de
 - Token: cached per device in `~/.cache/osrs-devtools/` (0600); after a game restart or a cleared
   logcat the bridge makes one unauthenticated request, and the server logs the token again (at most
   once a second).
+- Procedure for an agent using osrs-devtools end to end:
+  1. Device: ask the orchestrator for "OK device", then `tools/device-lock.sh take <who> <what>` must print
+     "taking device". The sign-in safety rule applies; devtools input is refused unless LOGGED_IN.
+  2. Build once if needed: `host/plugins/devtools/build.sh` (makes `re/host/plugins-extra/devtools.jar`).
+  3. Push and enable: `$ADB -s 127.0.0.1:5555 push re/host/plugins-extra/devtools.jar
+     /sdcard/Android/data/com.jagex.oldscape.android/files/plugins/`, then
+     `$ADB -s 127.0.0.1:5555 shell setprop debug.osrsrl.devtools 1`.
+  4. Restart the game and log in: `EXTRA="devtools" tools/plugin-test.sh` (push, restart, Play Now). If it
+     reports "still logged in", wait ~30 s, screenshot, tap Try again (957,668), and tap Play Now only on the
+     signed-in Tester screen. Wait until `get_client_state` says LOGGED_IN.
+  5. Call tools through the osrs-devtools MCP server, or
+     `tools/devtools_mcp.py --call tools/call '{"name":"get_client_state","arguments":{}}'`. Useful: list_npcs,
+     then interact_npc {npcIndex, option}, then get_dialogue / continue_dialogue / select_option; type_chat for
+     `::` commands; walk_to; screenshot.
+  6. Clean up: `$ADB shell setprop debug.osrsrl.devtools ""`, restart with the default plugins
+     (`tools/plugin-test.sh` without EXTRA removes the jar), log in, `tools/device-lock.sh free <who>`.
 
 ## Gaps, in rough order
 

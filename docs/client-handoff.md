@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 13 entry (2026-10-16) at the end of "Where things stand".
+> Latest state: see the gen 14 entry (2026-10-16) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -434,6 +434,51 @@ session; its notes are in `docs/android-protocol.md`.
     {12,14,17,24}, ext 1, direction 3, jump 1; matches the server encoder. The spawn clock is only an identity key.
   - Next (gen 14): Special Attack Counter hitsplat match; Bank title value; Poison infobox (`poison.showInfoboxes`);
     Implings once spawns show; MES on the long-press menu order; then widely used Plugin Hub plugins (add rows).
+- **2026-10-16 (client dev gen 14)**, commits f843e68..bd077c0:
+  - **Event order as on desktop** (f843e68): a cycle's events (varps, NPC/hitsplat changes, spawns) now come
+    before that tick's GameTick, then ClientTick (native `after_cycle`; Host drains actor changes before
+    GameTick). Special Attack Counter matches the hitsplat to `getTickCount()` and now counts (DWH on an imp:
+    30% drain and count InfoBoxes). Rechecked: QH step change, XP Drop/Tracker, 30 fps.
+  - **Live inventories on the game thread**: `Native.inventory` reads the game's map directly when called on
+    the game thread (scripts like the bank's 505 run in the cycle inventory 95 arrives). Bank title shows the
+    value ("The Bank of Gielinor (35.9K)").
+  - **MES long-press order** (d25b10d): the game sorts a menu by ordering its node vector {EntryList*, entry
+    index, children*} over an unsorted entry list; `game::menu_reorder` permutes those nodes after the host
+    runs desktop's pre-open PostMenuSort (`AndroidMenu.presort`, isMenuOpen() false meanwhile). Long-press
+    menus are drawn from the model itself (MenuManager +0x7c0 == +0x140); other shows rebuild the display
+    with `0x50621c`. Verified: banker menu "Bank" first, each row runs what it shows; MES off unchanged.
+  - **NPC_INFO probe** (f7fbed1, `setprop debug.osrsrl.npcprobe 1`, decode with `host/tools/npc_info_decode.py`).
+    Findings: the runtime `::npc` goblin is added correctly (it spawns on the player's tile, hidden inside the
+    player model; not a client bug). Server bug routed: its high-res count is sometimes one lower than the
+    client's list right after an add at distance 15, so the client silently drops the last slot and the server
+    re-adds it next tick. +0x1fc/+0x200 is only written once an NPC moves; NPCs that haven't moved since the
+    add now report the add position +0x268/+0x26c (game.cpp read_npcs), so stationary/nameless NPCs (type
+    6709 etc.) appear in the host's list as on desktop.
+  - **OpenRune-Developer-Tools (MCP) in the host** (72967bd, 4830915, 11fe587, bd077c0): see docs/plugin-host.md
+    "Developer tools (MCP)" (build, enable, security, 6-step procedure). Host pieces: loopback-only,
+    token-authenticated `com.sun.net.httpserver` (off unless `debug.osrsrl.devtools=1`); ASM call-site rewrites
+    in dex-plugin.sh (`host/gen/CompatRewrite.java` -> `net.runelite.host.compat.JdkCompat`: readAllBytes,
+    transferTo, Package.getImplementationVersion's ART "0.0"); converted jars keep MANIFEST.MF; the plugin's
+    self-updater is stubbed out of our build (`host/gen/StubMethods.java`) and the host deletes any jar it
+    could have left; `DevInput` (AWT events -> Instrumentation touches/keys, LOGGED_IN only; virtual mouse),
+    `DevMenu` (menuAction: `pick_at` 0x72b758 asks the next frame to ray-pick a point, then the long-press build
+    0x58fa84 runs unshown, the entry goes through the game's select via `select_menu_node`, the model is
+    discarded; hover menus the same way), `HostDrawManager` (one-shot glReadPixels in the swap hook,
+    frame_capture.cpp). `.mcp.json` entry "osrs-devtools" -> tools/devtools-mcp.sh (stdio <-> HTTP over
+    `adb shell -T nc`; Windows adb turns LF into CRLF, undone; token cached in ~/.cache/osrs-devtools).
+    Verified: tools/list, get_client_state, type_chat, list_npcs, interact_npc + get_dialogue +
+    continue_dialogue, click, walk_to, screenshot.
+  - **URL_OPEN** (static): case 24 -> platform vtable +0xf0 -> bridge 0x98a214 (http/https/market only) ->
+    Java `ApplicationContext.openBrowser`, which shows Jagex's "You are opening a link to an external site"
+    dialog; OK starts ACTION_VIEW. Why the session drops right after is unverified (focus loss?).
+  - Table: 45 runs / 6 starts / 0 throws of 51 (Special Attack Counter, Bank now run).
+  - Next (gen 15): Plugin Hub rows (popular plugins without GPU/desktop-only APIs: Inventory Setups, clue
+    helpers, ...; build/convert like devtools, `api_gaps.py` + the new CompatRewrite table for Java 9+ calls);
+    devtools rough edges: interact_npc found no point for an NPC near the left canvas edge once (hull points
+    clipped?), interact_object/item_action/widget_action/select_option/enter_input not tried yet, the
+    `menu: select ... x 0 y 0` of unshown menus (MenuManager +0x2a8 isn't set by our builds; harmless so
+    far); Poison infobox (verify); Implings (spawns are fine; the impling spawns on the player's tile);
+    recheck the server's NPC count fix with the npcprobe.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

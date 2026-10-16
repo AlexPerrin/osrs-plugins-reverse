@@ -94,7 +94,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 13 | UPDATE_IGNORELIST | as desktop (FUN_0066ee54 on the ignore list) |
 | 15 | CAM_MODE | as desktop (oculus orb state) |
 | 18 | UPDATE_INV_STOPTRANSMIT | as desktop (inventory p2Alt2, clears it) |
-| 19 | CLANCHANNEL_FULL (unverified) | recognised, no codec |
+| 19 | CLANCHANNEL_FULL | as desktop: signed clanType p1 (payload of 1 byte = leave), body FUN_0056e768 -> 0x6f8a3c (flags, version, p8 hash, p8 updateNum, name, kick/talk rank, members) |
 | 20 | HIDELOCOPS | hidden `p1` (b & 1); verified live (loc ops vanish) |
 | 21 | UPDATE_UID192 | as desktop (24 bytes + crc32) |
 | 22 | VARP_RESET | as desktop (zeroes all varps) |
@@ -139,11 +139,11 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 80 | MIDI_JINGLE | lengthInMillis `p3Alt1`, id `p2Alt3` |
 | 82 | HISCORE_REPLY | recognised, no codec |
 | 83 | IF_SETPLAYERMODEL_OBJ | combinedId `pCombinedId`, obj `p4Alt3` |
-| 84 | CLANSETTINGS_FULL (unverified) | recognised, no codec |
+| 84 | CLANSETTINGS_FULL | as desktop (version 6 layout), body FUN_0056e7e8 -> 0x6fb06c |
 | 85 | SET_INTERACTION_MODE | as desktop (world id + two modes) |
 | 86 | MIDI_SONG_STOP | fadeOutSpeed `p2`, fadeOutDelay `p2` |
-| 87 | CLANSETTINGS_DELTA (unverified) | recognised, no codec |
-| 88 | CLANCHANNEL_DELTA (unverified) | recognised, no codec |
+| 87 | CLANSETTINGS_DELTA | as desktop: p8 owner, p4 updateNum, p1 sub-ops 1-15 until 0 (FUN_0056ea04 -> 0x6fe6f0) |
+| 88 | CLANCHANNEL_DELTA | as desktop: p8 hash, p8 updateNum, p1 sub-ops 1-5 until 0 (FUN_0056e910 -> 0x6fab28) |
 | 89 | CAM_TARGET_V3 | as desktop (type, world entity, target) |
 | 91 | NPC_ANIM_SPECIFIC | index `p2`, id `p2`, delay `p1Alt2` |
 | 92 | SEND_PING | as desktop (client answers with opcode 19) |
@@ -181,13 +181,13 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 131 | CAM_LOOKAT_V3 | x `p2Alt1`, rate2 `p1`, height `p2`, z `p2Alt1`, rate `p1Alt3`, if (heightRelative) 1 else 0 `p1` |
 | 132 | OBJ_CUSTOMISE_SPECIFIC_V2 | see notes |
 | 133 | CAM_MOVETO_CYCLES_V3 | easing.id `p1Alt3`, x `p2`, cycles `p2`, z `p2`, if (ignoreTerrain) 1 else 0 `p1`, if (heightRelative) 1 else 0 `p1`, height `p2` |
-| 134 | GROUP_VAR_INT (unverified) | as desktop (shared handler FUN_006871e0) |
+| 134 | GROUP_VAR_INT | as desktop (shared handler FUN_006871e0; value width from the packed var type, 0 = p4) |
 | 135 | OBJUNLOCK_RESET | as desktop (frees the obj-unlock array) |
 | 136 | CAM_MOVETO_V3 | if (heightRelative) 1 else 0 `p1Alt1`, height `p2Alt1`, x `p2Alt1`, rate `p1Alt2`, z `p2Alt2`, rate2 `p1` |
-| 138 | GROUP_VAR (unverified) | as desktop (shared handler FUN_006871e0) |
+| 138 | GROUP_VAR | as desktop (shared handler FUN_006871e0, loops to the end of the payload) |
 | 139 | OBJUNLOCK_UPDATE | as desktop (obj-unlock long array) |
-| 140 | GROUP_FULL (unverified) | as desktop (smart id / p8 header) |
-| 141 | GROUP_VAR_LONG (unverified) | as desktop (shared handler FUN_006871e0) |
+| 140 | GROUP_FULL | as desktop (FUN_006863e8 -> 0x68647c: index, smart1or2null id, p8 uid, vars by config type) |
+| 141 | GROUP_VAR_LONG | as desktop (shared handler FUN_006871e0; packed type 1 = p8) |
 | 142 | CAM_ROTATETO_COORDINATE_V3 | height `p2Alt1`, if (trackTarget) 1 else 0 `p1`, easing.id `p1Alt3`, cycles `p2Alt1`, if (heightRelative) 1 else 0 `p1Alt1`, z `p2Alt3`, x `p2Alt1` |
 | 143 | SET_MAP_FLAG_V2 | coord `p4` (as desktop), -1 clears the flag; verified live (`::flag x z` shows the minimap flag) |
 | 144 | CAM_LOOKAT_CYCLES | z `p2Alt1`, x `p2Alt1`, easing.id `p1Alt3`, height `p2Alt2`, if (heightRelative) 1 else 0 `p1`, cycles `p2Alt2` |
@@ -221,6 +221,24 @@ Notes:
   (p1Alt3 of 1). Recolour vs retexture: the lists go to the same vectors as case 12's recol/retex.
   Encoder `AndroidObjCustomiseSpecificV2Encoder` (not tested on device).
 - NPC vs player lookups: FUN_00685094 resolves NPCs (5, 37, 91), FUN_00684e20 players (98).
+
+### Clan and group bodies (static, 2026-10-16)
+
+The client's parsers were decompiled (Ghidra, `re/decomp/`) and compared field by field with
+RSProt's desktop encoders. All eight match, with every value plain big-endian (p2/p4/p8 through the
+FUN_00b40c20 swap) and strings plain gjstr, so the Android module reuses the desktop encoders.
+- **Which is which:** 19 and 88 share the clan-channel slots (`+0x4660/+0x4670`), and 88 compares a
+  long updateNum. 84 and 87 share the clan-settings slots (`+0x4610/+0x4620`), and 87 compares an
+  int updateNum.
+- **Delta sub-ops:** settings 1-15 and channel 1-5 have the same codes and widths as desktop. The
+  hash read peeks the first wire byte (0xFF means no hash), while RSProt tests the low byte of the
+  hash. This is harmless for real name hashes, and desktop does the same.
+- **Groups:** 134/138/141 share FUN_006871e0, a loop of p1 index, p4 packed var, then a value
+  whose width the packed type sets (0 = p4, 1 = p8, 2 = string). So size 9 is INT, size 13 is LONG,
+  and the var-short one is the multi-update GROUP_VAR.
+- **GROUP_FULL caveat:** the client's group config has a third var list, scope 2, read after the
+  member vars. RSProt models only two lists, so a cache group with scope-2 vars would need them
+  appended.
 
 ## Zone packets
 

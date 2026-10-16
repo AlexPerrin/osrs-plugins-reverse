@@ -744,7 +744,7 @@ index 00000000..a38ed703
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..13fd7bb7
+index 00000000..fbb256e8
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 @@ -0,0 +1,172 @@
@@ -816,7 +816,7 @@ index 00000000..13fd7bb7
 +    UPDATE_IGNORELIST(13, Prot.VAR_SHORT), // dispatcher case read
 +    CAM_MODE(15, 1), // dispatcher case read
 +    UPDATE_INV_STOPTRANSMIT(18, 2), // dispatcher case read
-+    CLANCHANNEL_FULL(19, Prot.VAR_SHORT), // unverified: body parser not compared with desktop
++    CLANCHANNEL_FULL(19, Prot.VAR_SHORT), // body FUN_0056e768 -> 0x6f8a3c matches desktop; slots shared with 88 (channel)
 +    HIDELOCOPS(20, 1), // verified live 2026-10-15: opcode 20 = 1 removed Open/Examine on a door, 0 restored them
 +    UPDATE_UID192(21, 28), // dispatcher case read
 +    VARP_RESET(22, 0), // dispatcher case read
@@ -861,11 +861,11 @@ index 00000000..13fd7bb7
 +    MIDI_JINGLE(80, 5), // dispatcher case read
 +    HISCORE_REPLY(82, Prot.VAR_SHORT), // dispatcher case read
 +    IF_SETPLAYERMODEL_OBJ(83, 8), // dispatcher case read
-+    CLANSETTINGS_FULL(84, Prot.VAR_SHORT), // unverified: body parser not compared
++    CLANSETTINGS_FULL(84, Prot.VAR_SHORT), // body FUN_0056e7e8 -> 0x6fb06c matches desktop (version 6); slots shared with 87 (settings)
 +    SET_INTERACTION_MODE(85, 4), // dispatcher case read
 +    MIDI_SONG_STOP(86, 4), // dispatcher case read
-+    CLANSETTINGS_DELTA(87, Prot.VAR_SHORT), // unverified: body parser not compared
-+    CLANCHANNEL_DELTA(88, Prot.VAR_SHORT), // unverified: body parser not compared
++    CLANSETTINGS_DELTA(87, Prot.VAR_SHORT), // FUN_0056ea04 -> 0x6fe6f0: p8 owner, p4 updateNum (int compare), sub-ops 1-15 as desktop
++    CLANCHANNEL_DELTA(88, Prot.VAR_SHORT), // FUN_0056e910 -> 0x6fab28: p8 hash, p8 updateNum (long compare), sub-ops 1-5 as desktop
 +    CAM_TARGET_V3(89, 5), // dispatcher case read
 +    NPC_ANIM_SPECIFIC(91, 5), // dispatcher case read
 +    SEND_PING(92, 8), // dispatcher case read
@@ -904,14 +904,14 @@ index 00000000..13fd7bb7
 +    CAM_LOOKAT_V3(131, 9), // dispatcher case read
 +    OBJ_CUSTOMISE_SPECIFIC_V2(132, Prot.VAR_SHORT), // dispatcher case read
 +    CAM_MOVETO_CYCLES_V3(133, 11), // dispatcher case read
-+    GROUP_VAR_INT(134, 9), // unverified: shared handler; INT/VAR/LONG assigned by size
++    GROUP_VAR_INT(134, 9), // shared handler FUN_006871e0: p1 index, p4 packed var, value width from the packed type (0 = p4); size 9 = 1+4+4
 +    OBJUNLOCK_RESET(135, 0), // dispatcher case read
 +    CAM_MOVETO_V3(136, 9), // dispatcher case read
 +    OP_137(137, Prot.VAR_SHORT), // dead: the dispatcher jumps straight to its exit path (jump table 0x1040f6), so the client ignores it; REFLECTION_CHECKER or the opcode desktop leaves unassigned
-+    GROUP_VAR(138, Prot.VAR_SHORT), // unverified: shared handler; INT/VAR/LONG assigned by size
++    GROUP_VAR(138, Prot.VAR_SHORT), // shared handler FUN_006871e0 loops to the end of the payload: the multi-update var-short form
 +    OBJUNLOCK_UPDATE(139, Prot.VAR_SHORT), // dispatcher case read
-+    GROUP_FULL(140, Prot.VAR_SHORT), // unverified: payload not traced
-+    GROUP_VAR_LONG(141, 13), // unverified: shared handler; INT/VAR/LONG assigned by size
++    GROUP_FULL(140, Prot.VAR_SHORT), // FUN_006863e8 -> 0x68647c: index, smart1or2null id, p8 uid, vars by config type (pVarInt2s/p8/pjstr) as desktop; a cache group with scope-2 vars would need them appended (none sent)
++    GROUP_VAR_LONG(141, 13), // shared handler FUN_006871e0, packed type 1 = p8; size 13 = 1+4+8
 +    CAM_ROTATETO_COORDINATE_V3(142, 11), // dispatcher case read
 +    SET_MAP_FLAG_V2(143, 4), // verified live 2026-10-15 (::flag showed the minimap flag); dispatcher case read: coord BE p4, -1 clears the flag (coord unpack FUN_006d09cc + world view lookup)
 +    CAM_LOOKAT_CYCLES(144, 10), // dispatcher case read
@@ -1327,12 +1327,20 @@ index 00000000..2a69303f
 +    )
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
 new file mode 100644
-index 00000000..0a6fec8c
+index 00000000..c768b2b5
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
-@@ -0,0 +1,989 @@
+@@ -0,0 +1,1013 @@
 +package net.rsprot.protocol.android
 +
++import net.rsprot.protocol.game.outgoing.clan.ClanChannelDelta
++import net.rsprot.protocol.game.outgoing.clan.ClanChannelFull
++import net.rsprot.protocol.game.outgoing.clan.ClanSettingsDelta
++import net.rsprot.protocol.game.outgoing.clan.ClanSettingsFull
++import net.rsprot.protocol.game.outgoing.codec.clan.ClanChannelDeltaEncoder
++import net.rsprot.protocol.game.outgoing.codec.clan.ClanChannelFullEncoder
++import net.rsprot.protocol.game.outgoing.codec.clan.ClanSettingsDeltaEncoder
++import net.rsprot.protocol.game.outgoing.codec.clan.ClanSettingsFullEncoder
 +import net.rsprot.buffer.JagByteBuf
 +import net.rsprot.buffer.bitbuffer.toBitBuf
 +import net.rsprot.compression.provider.HuffmanCodecProvider
@@ -1660,6 +1668,22 @@ index 00000000..0a6fec8c
 +/** Case 135: as desktop (frees the obj-unlock array). */
 +public fun androidObjUnlockResetEncoder(): MessageEncoder<ObjUnlockReset> =
 +    AndroidDelegatingEncoder(AndroidGameServerProt.OBJUNLOCK_RESET, ObjUnlockResetEncoder())
++
++/** Case 19: as desktop (body FUN_0056e768 -> 0x6f8a3c, compared field by field). */
++public fun androidClanChannelFullEncoder(): MessageEncoder<ClanChannelFull> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CLANCHANNEL_FULL, ClanChannelFullEncoder())
++
++/** Case 84: as desktop (body FUN_0056e7e8 -> 0x6fb06c, version 6 layout). */
++public fun androidClanSettingsFullEncoder(): MessageEncoder<ClanSettingsFull> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CLANSETTINGS_FULL, ClanSettingsFullEncoder())
++
++/** Case 87: as desktop (FUN_0056ea04 -> 0x6fe6f0, sub-ops 1-15). */
++public fun androidClanSettingsDeltaEncoder(): MessageEncoder<ClanSettingsDelta> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CLANSETTINGS_DELTA, ClanSettingsDeltaEncoder())
++
++/** Case 88: as desktop (FUN_0056e910 -> 0x6fab28, sub-ops 1-5). */
++public fun androidClanChannelDeltaEncoder(): MessageEncoder<ClanChannelDelta> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.CLANCHANNEL_DELTA, ClanChannelDeltaEncoder())
 +
 +/** Case 138: as desktop (shared handler FUN_006871e0). */
 +public fun androidGroupVarEncoder(): MessageEncoder<GroupVar> =
@@ -2761,10 +2785,10 @@ index 00000000..b1436285
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..401a7cb7
+index 00000000..d6d00375
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,238 @@
+@@ -0,0 +1,242 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2865,6 +2889,10 @@ index 00000000..401a7cb7
 +            bind(androidResetInteractionModeEncoder())
 +            bind(androidMessageClanChannelEncoder(huffmanCodecProvider))
 +            bind(androidVarClanEncoder())
++            bind(androidClanChannelFullEncoder())
++            bind(androidClanSettingsFullEncoder())
++            bind(androidClanSettingsDeltaEncoder())
++            bind(androidClanChannelDeltaEncoder())
 +            bind(androidVarClanDisableEncoder())
 +            bind(androidCamUnlockEncoder())
 +            bind(androidGroupVarIntEncoder())

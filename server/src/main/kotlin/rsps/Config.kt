@@ -28,6 +28,8 @@ class Config(
     /** Serve the sign-in locally instead of Jagex (needs a client built with LOCAL_AUTH=1). */
     val localAuth: Boolean,
     val localDisplayName: String,
+    /** Per-account save files (see [Saves]); a named Docker volume in docker-compose.yml. */
+    val saveDir: Path,
     val rsa: RsaKeyPair,
 ) {
     companion object {
@@ -56,6 +58,7 @@ class Config(
                 logAndroidPackets = env("LOG_ANDROID_PACKETS", "false").toBoolean(),
                 localAuth = env("LOCAL_AUTH", "false").toBoolean(),
                 localDisplayName = env("LOCAL_DISPLAY_NAME", "Tester"),
+                saveDir = Path(env("SAVE_DIR", dataDir.resolve("saves").toString())),
                 rsa = env("RSA_FILE", "").takeIf { it.isNotEmpty() }?.let { loadRsa(Path(it)) }
                     ?: loadOrCreateRsa(dataDir.resolve("rsa.properties")),
             )

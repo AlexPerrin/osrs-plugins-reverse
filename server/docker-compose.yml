@@ -9,6 +9,7 @@ services:
       - "8080:8080"     # jav_config.ws / slr.ws / rsa
     volumes:
       - ./data:/data    # cache/, rsa.properties
+      - rsps-saves:/saves   # per-account saves (named volume: survives rebuilds; a bind mount can come up empty)
     environment:
       # Address the *client* uses to reach this server. BlueStacks/Android emulators reach the
       # host at 10.0.2.2; use the LAN IP for a physical phone.
@@ -25,3 +26,7 @@ services:
       # LOCAL_AUTH=1 tools/repack.sh. Display name of the single local character:
       LOCAL_AUTH: "true"
       LOCAL_DISPLAY_NAME: "Tester"
+      SAVE_DIR: "/saves"
+
+volumes:
+  rsps-saves:

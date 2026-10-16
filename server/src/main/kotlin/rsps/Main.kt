@@ -122,6 +122,8 @@ fun main() {
     Http(config) { world.online }.start()
     service.start()
     log.info { "Game/JS5 listening on :${config.gamePort}, world host ${config.worldHost}" }
+    // docker stop sends SIGTERM: save everyone (the game thread may be mid-tick; a save is one atomic file write).
+    Runtime.getRuntime().addShutdownHook(Thread { world.saveAll() })
     world.run()
 }
 

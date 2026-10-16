@@ -13,6 +13,7 @@ dependencies {
     }
     implementation("com.michael-bull.kotlin-inline-logger:kotlin-inline-logger:1.0.6")
     implementation("org.apache.commons:commons-compress:1.27.1")
+    implementation("com.google.code.gson:gson:2.11.0")
     implementation("org.apache.logging.log4j:log4j-core:2.25.0")
     implementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.25.0")
 }

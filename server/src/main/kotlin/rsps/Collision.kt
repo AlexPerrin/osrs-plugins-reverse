@@ -126,6 +126,24 @@ class Collision(private val cache: Cache, private val locTypes: Map<Int, EntityT
     }
 
     /**
+     * Whether a player at (px, pz) can interact with a solid loc covering x..x+sx-1, z..z+sz-1: on a
+     * tile along one of its sides (not a corner) with no wall in between, or inside it. Stops ops
+     * through walls, e.g. the Lumbridge castle stairs from outside their tower.
+     */
+    fun reachesRect(px: Int, pz: Int, level: Int, x: Int, z: Int, sx: Int, sz: Int): Boolean {
+        val inX = px in x until x + sx
+        val inZ = pz in z until z + sz
+        return when {
+            inX && inZ -> true
+            inX && pz == z - 1 -> flags(px, z, level) and S == 0
+            inX && pz == z + sz -> flags(px, z + sz - 1, level) and N == 0
+            inZ && px == x - 1 -> flags(x, pz, level) and W == 0
+            inZ && px == x + sx -> flags(x + sx - 1, pz, level) and E == 0
+            else -> false
+        }
+    }
+
+    /**
      * Breadth-first search in a 128x128 window around [start] until [goal] holds. If no tile
      * satisfies it, walks to the reachable tile closest to [target] (as OSRS does). Returns the
      * tiles to walk, excluding the start.

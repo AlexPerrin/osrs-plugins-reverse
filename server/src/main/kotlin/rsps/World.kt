@@ -203,6 +203,20 @@ class World(
     private val collision: Collision,
 ) : GameConnectionHandler<Player> {
     private val log = InlineLogger()
+    private val saves = Saves(config.saveDir)
+
+    /** Writes every player's save (autosave, shutdown). */
+    fun saveAll() {
+        for (player in players) player?.let(::savePlayer)
+    }
+
+    private fun savePlayer(player: Player) {
+        try {
+            saves.save(player)
+        } catch (e: Exception) {
+            log.warn(e) { "Could not save ${player.username}" }
+        }
+    }
     lateinit var service: NetworkService<Player>
 
     private val players = arrayOfNulls<Player>(MAX_PLAYERS)
@@ -278,6 +292,7 @@ class World(
         for (npc in npcs) npcCombat(npc)
         if (!npcsFrozen) for (npc in npcs) if (npc.alive && npc.target == null) wander(npc)
         // Ground objs vanish when the client's despawn timer runs out; forget them here too.
+        if (tick % AUTOSAVE_TICKS == 0L) saveAll()
         if (tick % 100 == 0L) groundObjs.filter { tick - it.spawnTick >= OBJ_DESPAWN_TICKS }.forEach(::removeGroundObj)
         service.infoProtocols.update()
         for (player in players) player?.let(::flush)
@@ -323,10 +338,12 @@ class World(
             }
             // Token (Jagex-account / local) logins carry no username; the local character name is used.
             val name = block.username.ifBlank { if (config.localAuth) config.localDisplayName else "Player$index" }
-            val player = Player(index, name, session, block.seed, infos, toplevel, config.spawn, android)
+            val save = runCatching { saves.load(name) }.onFailure { log.warn(it) { "Could not load the save of $name" } }.getOrNull()
+            val player = Player(index, name, session, block.seed, infos, toplevel, save?.coord ?: config.spawn, android)
+            save?.let { saves.apply(it, player) }
             players[index] = player
             watchDisconnect(player, session)
-            onLogin(player)
+            onLogin(player, restored = save != null)
             log.info { "${player.username} logged in as #$index (toplevel ${player.toplevel}); online=$online" }
         }
     }
@@ -362,7 +379,7 @@ class World(
         }
     }
 
-    private fun onLogin(player: Player) {
+    private fun onLogin(player: Player, restored: Boolean) {
         val c = player.coord
         player.infos.updateRootCoord(c.level, c.x, c.z)
         player.infos.updateRootBuildAreaCenteredOnPlayer(c.x, c.z)
@@ -381,13 +398,16 @@ class World(
             player.send(IfOpenSub(target ushr 16, target and 0xFFFF, interfaceId, 1))
         }
 
+        // Saved varps first (quest progress etc.); the fixed ones below override them.
+        for ((id, value) in player.varps.toList()) setVarp(player, id, value)
         updateQuestPoints(player)
-        openJournalTab(player, JOURNAL_SUMMARY)
 
         for (stat in 0 until 25) {
-            val level = if (stat == HITPOINTS) 10 else 1
-            player.send(UpdateStatV2(stat, level, level, if (stat == HITPOINTS) 1154 else 0))
+            val level = levelForXp(player.experience[stat])
+            val current = if (stat == HITPOINTS) player.hitpoints else level
+            player.send(UpdateStatV2(stat, current, level, player.experience[stat]))
         }
+        openJournalTab(player, JOURNAL_SUMMARY)
         player.send(UpdateRunEnergy(10000))
         // varbit has_displayname_transmitter (varp 1737 bit 31): without it the chatbox script
         // refuses input with "You must set a name before you can chat".
@@ -395,7 +415,7 @@ class World(
         // NPC "Attack" option: 1 = always right-click. The client hides Attack with the unset value 0.
         setVarp(player, VARP_NPC_ATTACK_OPTION, 1)
 
-        for ((obj, count) in STARTER_KIT) give(player, obj, count)
+        if (!restored) for ((obj, count) in STARTER_KIT) give(player, obj, count)
         player.send(player.inventory.toMessage())
         player.send(player.worn.toMessage())
         // Enable item ops 1-10 on the 28 inventory slots (interface 149, component 0), plus "Use"
@@ -407,10 +427,14 @@ class World(
 
         player.extendedInfo.apply {
             setName(player.username)
-            setCombatLevel(3)
+            setCombatLevel(combatLevel(player))
             DEFAULT_KITS.forEachIndexed { slot, kit -> setIdentKit(slot, kit) }
             for (slot in 0 until 5) setColour(slot, 0)
             setBaseAnimationSet(808, 823, 819, 820, 821, 822, 824)
+        }
+        for (wearpos in 0 until 12) {
+            val obj = player.worn.objs[wearpos]
+            if (obj != -1) setWorn(player, wearpos, obj, player.worn.counts[wearpos])
         }
         // MESSAGE_GAME holds at most 255 bytes, so the command list is split over several lines.
         player.message("Welcome to the test server (rev ${Config.REVISION}).")
@@ -493,15 +517,18 @@ class World(
      * 3954(712:2, 712:3, level) stores it and redraws via 3310 (args from 712:0's onload, 3174).
      * Without it the panel shows -1.
      */
-    fun sendSummaryCombatLevel(player: Player) {
-        if (player.journalPanel != 712) return
+    private fun combatLevel(player: Player): Int {
         val l = IntArray(7) { levelForXp(player.experience[it]) }
         val base = 0.25 * (l[1] + l[3] + l[5] / 2)
         val melee = 0.325 * (l[0] + l[2])
         val range = 0.325 * (l[4] * 3 / 2)
         val mage = 0.325 * (l[6] * 3 / 2)
-        val level = (base + maxOf(melee, range, mage)).toInt()
-        player.send(RunClientScript(3954, listOf((712 shl 16) or 2, (712 shl 16) or 3, level)))
+        return (base + maxOf(melee, range, mage)).toInt()
+    }
+
+    fun sendSummaryCombatLevel(player: Player) {
+        if (player.journalPanel != 712) return
+        player.send(RunClientScript(3954, listOf((712 shl 16) or 2, (712 shl 16) or 3, combatLevel(player))))
     }
 
     private fun questProgress(player: Player, quest: QuestType) =
@@ -618,6 +645,7 @@ class World(
     }
 
     private fun remove(player: Player) {
+        savePlayer(player)
         players[player.index] = null
         service.infoProtocols.dealloc(player.infos)
         log.info { "${player.username} disconnected; online=$online" }
@@ -1624,7 +1652,12 @@ class World(
         startInteraction(
             player,
             Coord(x, z, player.coord.level),
-            reached = { it.coord.x in x - 1..x + sx && it.coord.z in z - 1..z + sz },
+            // Solid locs (stairs, wheels, booths): a side tile with no wall between. Walls (doors): any adjacent tile.
+            reached = if (collision.flags(x, z, player.coord.level) and Collision.LOC != 0) {
+                { collision.reachesRect(it.coord.x, it.coord.z, it.coord.level, x, z, sx, sz) }
+            } else {
+                { it.coord.x in x - 1..x + sx && it.coord.z in z - 1..z + sz }
+            },
             action = { p ->
                 when (opName?.lowercase()) {
                     "bank" -> openBank(p)
@@ -1955,6 +1988,8 @@ class World(
         const val MAX_PLAYERS = 2048
         private val QUIET_OPCODES = setOf(93)
         const val MAX_NPCS = 1000
+        /** Every 30 s, so a crash or `docker kill` loses little. */
+        private const val AUTOSAVE_TICKS = 50L
 
         /** Hans, a man, a woman and a chicken around the castle courtyard. */
         private val DEFAULT_NPCS = listOf(

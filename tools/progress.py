@@ -117,15 +117,15 @@ def api():
     return rows
 
 
-def plugins():
-    """Rows of the `## Core plugin status` table in docs/plugin-host.md: (runs, starts, total)."""
+def plugins(section="Core plugin status"):
+    """Rows of the `## <section>` table in docs/plugin-host.md: (runs, starts, total)."""
     try:
         doc = read(os.path.join(ROOT, "docs/plugin-host.md"))
     except OSError:
         return 0, 0, 0
-    if "## Core plugin status" not in doc:
+    if "## " + section not in doc:
         return 0, 0, 0
-    sect = doc.split("## Core plugin status", 1)[1].split("\n## ", 1)[0]
+    sect = doc.split("## " + section, 1)[1].split("\n## ", 1)[0]
     st = [m.lower() for m in re.findall(r"^\|[^|\n]+\|\s*`?(runs|starts|throws|untested)`?\s*\|", sect, re.M | re.I)]
     return st.count("runs"), st.count("starts"), len(st)
 
@@ -285,6 +285,10 @@ def main():
     if p_total:
         head.append(("Plugins running on Android", p_runs, p_total,
                      f"rows marked `runs` in docs/plugin-host.md's Core plugin status table ({p_starts} more start)"))
+    h_runs, h_starts, h_total = plugins("Plugin Hub status")
+    if h_total:
+        head.append(("Plugin Hub plugins running", h_runs, h_total,
+                     f"rows marked `runs` in docs/plugin-host.md's Plugin Hub status table ({h_starts} more start)"))
     md = [
         "# Progress",
         "",

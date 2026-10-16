@@ -324,6 +324,19 @@ index 95ca2cd98..aca61f4f4 100644
  private fun Player.ifSetPauseText(component: String, text: String) {
      if (text.isNotBlank()) {
          ifSetEvents(component, -1..-1, IfEvent.PauseButton)
+diff --git a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
+index d64463d3d..a8ea51729 100644
+--- a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
++++ b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
+@@ -19,6 +19,8 @@ private enum class StraightStairs(val loc: String, val dx: Int, val dz: Int, val
+     Down("loc.stairstop", 1, -2, -1),
+     NarrowWoodenUp("loc.narrowstairs_wooden_bottom", 0, -1, 1),
+     NarrowWoodenDown("loc.narrowstairs_wooden_top", 0, 3, -1),
++    VarrockTallUp("loc.fai_varrock_stairs_taller", 1, 3, 1),
++    VarrockTallDown("loc.fai_varrock_stairs_top", 1, -2, -1),
+ }
+ 
+ class StraightStaircaseScript : PluginScript() {
 diff --git a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/GameframeLoader.kt b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/GameframeLoader.kt
 index 523f4c3e8..5ea021697 100644
 --- a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/GameframeLoader.kt
@@ -572,6 +585,65 @@ index 83435d83b..6d8e37a98 100644
  
  [gamevals.inv]
  spawn_results = 1100
+diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml
+index 0a6cb3169..d4e0954bf 100644
+--- a/content/quest/pack/src/main/resources/gamevals.toml
++++ b/content/quest/pack/src/main/resources/gamevals.toml
+@@ -73,6 +73,7 @@ misthalin_puzzle_state = 63702
+ cooks_assistant_ingredients = 63705
+ gertrudes_cat_state = 63711
+ daddyshome_state = 64064
++sheep_shearer_state = 63740
+ 
+ [gamevals.varbit]
+ restless_ghost_progress = 63702
+@@ -88,6 +89,9 @@ gertrudes_cat_kitten_crate = 63712
+ gertrudes_cat_met_fluffs = 63713
+ gertrudes_cat_told_sardines = 63714
+ daddyshome_crate_opened = 64064
++sheep_shearer_progress = 63740
++sheep_shearer_saw_thing = 63741
++romeo_juliet_progress = 63742
+ 
+ [gamevals.models]
+ misthalin_gem_diamond = 32333
+diff --git a/content/quest/pack/src/main/resources/pack/configs/romeo_juliet_vars.toml b/content/quest/pack/src/main/resources/pack/configs/romeo_juliet_vars.toml
+new file mode 100644
+index 000000000..a00621346
+--- /dev/null
++++ b/content/quest/pack/src/main/resources/pack/configs/romeo_juliet_vars.toml
+@@ -0,0 +1,6 @@
++[[varbit]]
++isServerOnly = true
++id = "varbit.romeo_juliet_progress"
++varp = "varp.rjquest"
++startBit = 0
++endBit = 6
+diff --git a/content/quest/pack/src/main/resources/pack/configs/sheep_shearer_vars.toml b/content/quest/pack/src/main/resources/pack/configs/sheep_shearer_vars.toml
+new file mode 100644
+index 000000000..5cb9667bc
+--- /dev/null
++++ b/content/quest/pack/src/main/resources/pack/configs/sheep_shearer_vars.toml
+@@ -0,0 +1,19 @@
++[[varbit]]
++isServerOnly = true
++id = "varbit.sheep_shearer_progress"
++varp = "varp.sheep"
++startBit = 0
++endBit = 4
++
++[[varp]]
++isServerOnly = true
++id = "varp.sheep_shearer_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varbit]]
++isServerOnly = true
++id = "varbit.sheep_shearer_saw_thing"
++varp = "varp.sheep_shearer_state"
++startBit = 0
++endBit = 0
 diff --git a/content/quest/pack/src/main/resources/pack/cs2/symbols/clientscript.sym b/content/quest/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
 index 39d0d5701..7f910453c 100644
 --- a/content/quest/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
@@ -581,11 +653,979 @@ index 39d0d5701..7f910453c 100644
 -45553	[clientscript,quest_policy_complete_set]
 +9973	[clientscript,quest_available_set]
 +9974	[clientscript,quest_policy_complete_set]
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/lumbridge/SheepShearer.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/lumbridge/SheepShearer.kt
+new file mode 100644
+index 000000000..7e6ad371d
+--- /dev/null
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/lumbridge/SheepShearer.kt
+@@ -0,0 +1,287 @@
++package org.rsmod.content.quest.area.lumbridge
++
++import jakarta.inject.Inject
++import org.rsmod.api.player.dialogue.Dialogue
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.vars.boolVarBit
++import org.rsmod.api.repo.obj.ObjRepository
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.api.script.onOpNpc3
++import org.rsmod.content.quest.manager.ItemRewardDisplay
++import org.rsmod.content.quest.manager.QuestScript
++import org.rsmod.content.quest.manager.rewards
++import org.rsmod.content.quest.manager.startQuestPrompt
++import org.rsmod.game.entity.Player
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Sheep Shearer (osrs-plugins-reverse). Progress is varp 179 (`varp.sheep`), as in OSRS and as
++ * Quest Helper reads it: 0 not started, 1 started, 1 + the balls of wool handed in so far, 21
++ * complete. Shearing (`Sheep`), spinning (the crafting skill's skillmulti on the castle wheel) and
++ * the castle stairs are generic content; this script is Fred, The Thing and the hand-in.
++ */
++class SheepShearer @Inject constructor(private val objRepo: ObjRepository) :
++    QuestScript(
++        "quest_sheepshearer",
++        "varp.sheep",
++        rewards {
++            xp("stat.crafting", 150.0)
++            item("obj.coins", 60, label = "60 Coins")
++        },
++        ItemRewardDisplay("obj.ball_of_wool", zoom = 200),
++        questVarbit = "varbit.sheep_shearer_progress",
++    ) {
++
++    private var Player.sawTheThing by boolVarBit("varbit.sheep_shearer_saw_thing")
++
++    override fun ScriptContext.init() {
++        check(quest.maxSteps == COMPLETE_STAGE) {
++            "Sheep Shearer end state is ${quest.maxSteps} in the cache dbrow, " +
++                "but the last ball of wool completes at $COMPLETE_STAGE."
++        }
++
++        onOpNpc1("npc.fred_the_farmer") { startDialogue(it.npc) { fredDialogue() } }
++        onOpNpc1("npc.sheep_shearer_the_thing") { shearTheThing() }
++        onOpNpc3("npc.sheep_shearer_the_thing") { mes("Baa!") }
++    }
++
++    override fun subTitle(): String =
++        "talking to <col=800000>Fred the Farmer</col> at his farm, " +
++            "<col=800000>north-west of Lumbridge</col>."
++
++    override fun questLog(player: ProtectedAccess) =
++        questJournal(player) {
++            description("I have spoken to <red>Fred the Farmer</red>.")
++            objective("I need to collect <red>${remaining(player.player)}</red> more <red>balls of wool</red>.") {
++                hasItem("ball_of_wool", "I have some <red>balls of wool</red> to give to Fred.")
++                    .preserveObjective(strikeObjective = false)
++            }
++        }
++
++    override fun completedLog(player: ProtectedAccess): String =
++        completionJournal(player) {
++            line("I brought Fred the Farmer 20 balls of wool, which I sheared from his sheep and spun on a spinning wheel.")
++            line("He paid me for my trouble.")
++        }
++
++    private fun stage(player: Player): Int = quest.getQuestStage(player)
++
++    private fun delivered(player: Player): Int =
++        (stage(player) - STARTED_STAGE).coerceIn(0, BALLS_NEEDED)
++
++    private fun remaining(player: Player): Int = BALLS_NEEDED - delivered(player)
++
++    private fun ballsOfWool(player: Player): Int = player.inv.count(BALL_OF_WOOL)
++
++    private fun ballsText(n: Int): String = if (n == 1) "1 ball" else "$n balls"
++
++    private suspend fun ProtectedAccess.shearTheThing() {
++        if (SHEARS !in inv) {
++            mes("You need a pair of shears to shear the sheep.")
++            return
++        }
++        anim("seq.human_shearing")
++        mes("The... whatever it is... manages to get away from you!")
++        if (quest.isQuestInProgress(player)) player.sawTheThing = true
++    }
++
++    private suspend fun Dialogue.fredDialogue() {
++        when {
++            quest.isQuestCompleted(player) -> afterQuest()
++            quest.isQuestInProgress(player) -> duringQuest()
++            else -> beforeQuest()
++        }
++    }
++
++    private suspend fun Dialogue.beforeQuest() {
++        chatNpc(angry, "What are you doing on my land? You're not the one who keeps leaving all my gates open and letting out all my sheep, are you?")
++        when (choice3("I'm looking for a quest.", 1, "I'm looking for something to kill.", 2, "I'm lost.", 3)) {
++            1 -> offerQuest()
++            2 -> lookingToKill()
++            3 -> lost()
++        }
++    }
++
++    private suspend fun Dialogue.lookingToKill() {
++        chatPlayer(neutral, "I'm looking for something to kill.")
++        chatNpc(angry, "What, on my land? Leave my livestock alone you scoundrel!")
++    }
++
++    private suspend fun Dialogue.lost() {
++        chatPlayer(confused, "I'm lost.")
++        chatNpc(neutral, "How can you be lost? Just follow the road east and south. You'll end up in Lumbridge fairly quickly.")
++    }
++
++    private suspend fun Dialogue.offerQuest() {
++        chatPlayer(neutral, "I'm looking for a quest.")
++        chatNpc(neutral, "You're after a quest, you say? Actually, I could do with a bit of help.")
++        chatNpc(neutral, "My sheep are getting mighty woolly. I'd be much obliged if you could shear them. And while you're at it, spin the wool for me too.")
++        chatNpc(neutral, "Yes, that's it. Bring me 20 balls of wool. And I'm sure I could sort out some sort of payment. Of course, there's the small matter of The Thing.")
++        chatPlayer(quiz, "What do you mean, The Thing?")
++        chatNpc(worried, "Well now, no one has ever seen The Thing. That's why we call it The Thing, 'cos we don't know what it is.")
++        chatNpc(worried, "Some say it's a black hearted shapeshifter, hungering for the souls of hard working decent folk like me. Others say it's just a sheep.")
++        chatNpc(angry, "Well I don't have all day to stand around and gossip. Are you going to shear my sheep or what!")
++        if (!startQuestPrompt(quest)) {
++            chatPlayer(neutral, "No, I'll give it a miss.")
++            chatNpc(neutral, "Suit yourself.")
++            return
++        }
++        chatPlayer(happy, "Yes, okay. I can do that.")
++        quest.advanceQuestStage(access)
++        if (ballsOfWool(player) >= BALLS_NEEDED) {
++            chatPlayer(happy, "In fact Fred, funnily enough, I actually have 20 balls of wool already on me.")
++            chatNpc(angry, "Have you been shearing my sheep without permission!?")
++            chatPlayer(shifty, "No! Well, maybe... They just looked a little wooly! Surely you like a shave once in a while, too?")
++            chatNpc(angry, "It's rude to shave another person without permission - don't be coming at me with them shears!")
++            chatPlayer(sad, "I'm sorry, I'll ask permission next time.")
++            chatNpc(neutral, "I guess no real 'arm was done. Hand the balls over and we can put this whole thing behind us.")
++            handIn()
++            return
++        }
++        chatNpc(quiz, "Good! Now one more thing, do you actually know how to shear a sheep?")
++        chatPlayer(confused, "Err. No, I don't know actually.")
++        howToShear()
++        spinningHelp()
++    }
++
++    private suspend fun Dialogue.howToShear() {
++        if (SHEARS in player.inv) {
++            chatNpc(happy, "Well, you're half way there already! You have a set of shears in your inventory. Just use those on a Sheep to shear it.")
++            chatPlayer(quiz, "That's all I have to do?")
++            chatNpc(neutral, "Well once you've collected some wool you'll need to spin it into balls.")
++            return
++        }
++        chatNpc(neutral, "Well, first things first, you need a pair of shears. I've got some here you can use.")
++        access.invAddOrDrop(objRepo, SHEARS)
++        objbox(SHEARS, "Fred gives you a set of sharp shears.")
++        chatNpc(neutral, "You just need to go and use them on the sheep out in my field.")
++        chatPlayer(happy, "Sounds easy!")
++        chatNpc(laugh, "That's what they all say!")
++        chatNpc(neutral, "Some of the sheep don't like it too much... Persistence is the key.")
++        chatNpc(neutral, "Once you've collected some wool you can spin it into balls.")
++    }
++
++    private suspend fun Dialogue.spinningHelp(askFirst: Boolean = true) {
++        if (askFirst) {
++            chatNpc(quiz, "Do you know how to spin wool?")
++            chatPlayer(sad, "I don't know how to spin wool, sorry.")
++            chatNpc(happy, "Don't worry, it's quite simple!")
++        }
++        chatNpc(neutral, "The nearest Spinning Wheel can be found on the first floor of Lumbridge Castle.")
++        chatNpc(neutral, "To get to Lumbridge Castle just follow the road east.")
++        mesbox("This icon denotes a Spinning Wheel on the world map.")
++        chatPlayer(happy, "Thank you!")
++    }
++
++    private suspend fun Dialogue.duringQuest() {
++        chatNpc(angry, "What are you doing on my land?")
++        if (player.sawTheThing) {
++            when (choice2("I need to talk to you about shearing these sheep!", 1, "Fred! Fred! I've seen The Thing!", 2)) {
++                1 -> shearingTalk()
++                2 -> sawTheThingTalk()
++            }
++            return
++        }
++        shearingTalk()
++    }
++
++    private suspend fun Dialogue.shearingTalk() {
++        chatPlayer(neutral, "I need to talk to you about shearing these sheep!")
++        chatNpc(quiz, "Oh. How are you doing getting those balls of wool?")
++        if (ballsOfWool(player) > 0) {
++            chatPlayer(happy, "I have some.")
++            chatNpc(neutral, "Give 'em here then.")
++            handIn()
++            return
++        }
++        chatPlayer(quiz, "How many more do I need to give you?")
++        chatNpc(neutral, "You need to collect ${remaining(player)} more ${if (remaining(player) == 1) "ball" else "balls"} of wool.")
++        if (player.inv.count(WOOL) > 0) {
++            chatPlayer(neutral, "I've got some wool. I've not managed to make it into a ball though.")
++            chatNpc(neutral, "Well go find a spinning wheel then. You can find one on the first floor of Lumbridge Castle, just walk east on the road outside my house and you'll find Lumbridge.")
++            return
++        }
++        chatPlayer(sad, "I haven't got any at the moment.")
++        chatNpc(neutral, "Ah well at least you haven't been eaten. You know what you're doing, right?")
++        when (choice3("How do I shear sheep, again?", 1, "Remind me how to spin wool.", 2, "Yeah, I think so.", 3)) {
++            1 -> {
++                chatPlayer(quiz, "How do I shear sheep, again?")
++                howToShear()
++                chatNpc(quiz, "Do you know how to spin wool?")
++                when (choice2("Yes, I know how to spin wool.", 1, "I don't know how to spin wool, sorry.", 2)) {
++                    1 -> {
++                        chatPlayer(happy, "Yes, I know how to spin wool.")
++                        chatNpc(happy, "Great!")
++                    }
++                    2 -> {
++                        chatPlayer(sad, "I don't know how to spin wool, sorry.")
++                        chatNpc(happy, "Don't worry, it's quite simple!")
++                        spinningHelp(askFirst = false)
++                    }
++                }
++            }
++            2 -> {
++                chatPlayer(quiz, "Remind me how to spin wool.")
++                spinningHelp(askFirst = false)
++            }
++            3 -> {
++                chatPlayer(happy, "Yeah, I think so.")
++                chatNpc(neutral, "You can get to it, then!")
++            }
++        }
++    }
++
++    /** Takes up to the remaining balls of wool; the last one completes the quest. */
++    private suspend fun Dialogue.handIn() {
++        val given = minOf(ballsOfWool(player), remaining(player))
++        if (given <= 0) return
++        access.invDel(access.inv, BALL_OF_WOOL, given)
++        val stage = stage(player) + given
++        mesbox("You give Fred ${ballsText(given)} of wool.")
++        if (stage >= COMPLETE_STAGE) {
++            chatPlayer(happy, "That's the last of them.")
++            chatNpc(happy, "I guess I'd better pay you then.")
++            player.sawTheThing = false
++            quest.setQuestStage(access, COMPLETE_STAGE)
++            return
++        }
++        quest.setQuestStage(access, stage)
++        chatPlayer(neutral, "That's all I've got so far.")
++        chatNpc(neutral, "I need ${remaining(player)} more before I can pay you.")
++        chatPlayer(neutral, "Ok I'll work on it.")
++    }
++
++    private suspend fun Dialogue.sawTheThingTalk() {
++        chatPlayer(shocked, "Fred! Fred! I've seen The Thing!")
++        chatNpc(shocked, "You ... you actually saw it?")
++        chatNpc(shocked, "Run for the hills! ${player.displayName} grab as many chickens as you can! We have to ...")
++        chatPlayer(angry, "Fred!")
++        chatNpc(shocked, "... flee! Oh, woe is me! The shapeshifter is coming! We're all ...")
++        chatPlayer(angry, "FRED!")
++        chatNpc(confused, "... doomed. What!")
++        chatPlayer(neutral, "It's not a shapeshifter or any other kind of monster!")
++        chatNpc(quiz, "Well then what is it?")
++        chatPlayer(neutral, "Well ... it's just two Penguins; Penguins disguised as a sheep.")
++        chatNpc(confused, "...")
++        chatNpc(confused, "Have you been out in the sun too long?")
++    }
++
++    private suspend fun Dialogue.afterQuest() {
++        chatNpc(angry, "What are you doing on my land?")
++        when (choice3("I'm looking for something to kill.", 1, "I'm lost.", 2, "Fred! Fred! I've seen The Thing!", 3)) {
++            1 -> lookingToKill()
++            2 -> lost()
++            3 -> sawTheThingTalk()
++        }
++    }
++
++    private companion object {
++        const val STARTED_STAGE = 1
++        const val BALLS_NEEDED = 20
++        const val COMPLETE_STAGE = STARTED_STAGE + BALLS_NEEDED
++
++        const val SHEARS = "obj.shears"
++        const val WOOL = "obj.wool"
++        const val BALL_OF_WOOL = "obj.ball_of_wool"
++    }
++}
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJuliet.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJuliet.kt
+new file mode 100644
+index 000000000..c3a81b04d
+--- /dev/null
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJuliet.kt
+@@ -0,0 +1,659 @@
++package org.rsmod.content.quest.area.varrock.romeoandjuliet
++
++import jakarta.inject.Inject
++import org.rsmod.api.player.dialogue.Dialogue
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.repo.obj.ObjRepository
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.content.quest.manager.ItemRewardDisplay
++import org.rsmod.content.quest.manager.QuestScript
++import org.rsmod.content.quest.manager.rewards
++import org.rsmod.content.quest.manager.startQuestPrompt
++import org.rsmod.game.entity.Player
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Romeo & Juliet (osrs-plugins-reverse). Progress is varp 144 (`varp.rjquest`) with the OSRS
++ * stages Quest Helper reads: 0 talk to Romeo, 10 find Juliet, 20 take her message to Romeo, 30 see
++ * Father Lawrence, 40 see the Apothecary, 50 bring him cadava berries and the potion to Juliet,
++ * 60 tell Romeo, 100 complete.
++ */
++class RomeoAndJuliet @Inject constructor(private val objRepo: ObjRepository) :
++    QuestScript(
++        "quest_romeoandjuliet",
++        "varp.rjquest",
++        rewards {},
++        ItemRewardDisplay(CADAVA_POTION, zoom = 200),
++        questVarbit = "varbit.romeo_juliet_progress",
++    ) {
++
++    override fun ScriptContext.init() {
++        check(quest.maxSteps == COMPLETE) {
++            "Romeo & Juliet end state is ${quest.maxSteps} in the cache dbrow, but Romeo completes at $COMPLETE."
++        }
++
++        quest.debugStartStage = STARTED
++        onOpNpc1("npc.romeo") { startDialogue(it.npc) { romeo() } }
++        onOpNpc1("npc.juliet") { startDialogue(it.npc) { juliet() } }
++        onOpNpc1("npc.juliet_multi_visible") { startDialogue(it.npc) { juliet() } }
++        onOpNpc1("npc.father_lawrence") { startDialogue(it.npc) { fatherLawrence() } }
++        onOpNpc1("npc.apothecary") { startDialogue(it.npc) { apothecary() } }
++        onOpNpc1("npc.draul_leptoc") { startDialogue(it.npc) { draulLeptoc() } }
++        onOpNpc1("npc.phillipa") { startDialogue(it.npc) { phillipa() } }
++    }
++
++    override fun subTitle(): String =
++        "talking to <col=800000>Romeo</col> in <col=800000>Varrock Square</col>."
++
++    override fun questLog(player: ProtectedAccess) =
++        questJournal(player) {
++            val stage = stage(player.player)
++            description("<red>Romeo</red> asked me to find his love <red>Juliet</red> and tell her that he longs to be with her.")
++            objective("Juliet lives in the house west of <red>Varrock Square</red>.") {
++                stageAtLeast(TALKED_TO_JULIET, "I found Juliet and she gave me a <red>message</red> for Romeo.").strike()
++            }
++            if (stage >= TALKED_TO_JULIET) {
++                objective("I need to take Juliet's <red>message</red> to Romeo.") {
++                    stageAtLeast(MESSAGE_DELIVERED, "Her father opposes their marriage; Romeo told me to see <red>Father Lawrence</red>.").strike()
++                }
++            }
++            if (stage >= MESSAGE_DELIVERED) {
++                objective("I need to talk to <red>Father Lawrence</red> at the church in north-east Varrock.") {
++                    stageAtLeast(TALKED_TO_LAWRENCE, "He suggested a <red>Cadava potion</red> to make Juliet appear dead.").strike()
++                }
++            }
++            if (stage >= TALKED_TO_LAWRENCE) {
++                objective("The <red>Apothecary</red> in south-west Varrock can make the potion from <red>Cadava berries</red>.") {
++                    hasItem("cadava", "I have the <red>Cadava potion</red>; I need to take it to Juliet.")
++                    stageAtLeast(POTION_GIVEN, "Juliet drank the potion; I need to tell <red>Romeo</red>.").strike()
++                }
++            }
++        }
++
++    override fun completedLog(player: ProtectedAccess): String =
++        completionJournal(player) {
++            line("I passed messages between Romeo and Juliet, and Father Lawrence came up with a plan.")
++            line("The Apothecary made a Cadava potion that made Juliet appear dead, so she could be taken to the crypt.")
++            line("Romeo went to collect her from the crypt... and met her cousin Phillipa instead.")
++        }
++
++    private fun stage(player: Player): Int = quest.getQuestStage(player)
++
++    private fun Dialogue.setStage(stage: Int) {
++        quest.setQuestStage(access, stage)
++    }
++
++    private fun Dialogue.has(obj: String): Boolean = player.inv.count(obj) > 0
++
++    private suspend fun Dialogue.romeo() {
++        when (stage(player)) {
++            NOT_STARTED -> romeoStart()
++            STARTED -> romeoAgain()
++            TALKED_TO_JULIET -> romeoMessage()
++            MESSAGE_DELIVERED -> {
++                chatPlayer(happy, "Hey again Romeo!")
++                romeoLawrenceOptions()
++            }
++            TALKED_TO_LAWRENCE -> romeoAfterLawrence()
++            TALKED_TO_APOTHECARY -> romeoPotion()
++            POTION_GIVEN -> romeoFinish()
++            else -> chatNpc(happy, "Thank you for all your help, my friend. I have never been happier!")
++        }
++    }
++
++    private suspend fun Dialogue.romeoStart() {
++        chatNpc(sad, "Juliet, Juliet, wherefore art thou Juliet? Have you seen my Juliet?")
++        when (
++            choice3(
++                "Yes, I have seen her actually!", 1,
++                "No sorry, I haven't seen her.", 2,
++                "Perhaps I could help to find her for you?", 3,
++            )
++        ) {
++            1 -> {
++                chatPlayer(happy, "Yes, I have seen her actually!")
++                chatPlayer(neutral, "At least, I think it was her... Blonde? A bit stressed?")
++                chatNpc(happy, "Golly...yes, yes...you make her sound very interesting!")
++                chatNpc(happy, "And I'll bet she's a bit of a fox!")
++                chatPlayer(neutral, "Well, I guess she could be considered attractive...")
++                chatNpc(laugh, "I'll bet she is!  Wooooooooo!")
++                chatNpc(confused, "Sorry, all that jubilation has made me forget what we were talking about.")
++                chatPlayer(neutral, "You were asking me about Juliet? You seemed to know her?")
++                chatNpc(happy, "Oh yes, Juliet!")
++                chatNpc(happy, "The fox...could you tell her that she is the love of my long and that I life to be with her?")
++            }
++            2 -> {
++                chatPlayer(neutral, "No sorry, I haven't seen her.")
++                chatNpc(sad, "Oh...well, that's a shame...I was rather hoping you had.")
++                chatPlayer(quiz, "Why?  Is she a fugitive?  Does she owe you some money or something?")
++                chatNpc(confused, "Hmmm, she might do?  Perhaps she does?  How do you know?")
++                chatPlayer(angry, "I don't know? I was asking 'YOU' how 'YOU' know Juliet!")
++                chatNpc(happy, "Ahh, yes Juliet, she's my one true love.  Well, one of my one true loves! If you see her, could you tell her that she is the love of my long and that I life to be with her?")
++            }
++            3 -> {
++                chatPlayer(happy, "Perhaps I can help find her for you? What does she look like?")
++                chatNpc(happy, "Oh would you? That would be great! She has this sort of hair...")
++                chatPlayer(neutral, "Hair...check..")
++                chatNpc(happy, "...and she these...great lips...")
++                chatPlayer(neutral, "Lips...right.")
++                chatNpc(happy, "Oh and she has these lovely shoulders as well..")
++                chatPlayer(neutral, "Shoulders...right, so she has hair, lips and shoulders...that should cut it down a bit.")
++                chatNpc(happy, "Oh yes, Juliet is very different...please tell her that she is the love of my long and that I life to be with her?")
++            }
++        }
++        chatPlayer(quiz, "What? Surely you mean that she is the love of your life and that you long to be with her?")
++        chatNpc(happy, "Oh yeah...what you said...tell her that, it sounds much better!  Oh you're so good at this!")
++        if (!startQuestPrompt(quest)) {
++            chatPlayer(neutral, "Sorry Romeo, I've got better things to do right now. Maybe later?")
++            chatNpc(sad, "Oh, okay, well, I guess my Juliet and I can spend some time apart.  And as the old saying goes, 'Absinthe makes the heart glow longer'.")
++            chatPlayer(quiz, "Don't you mean that, 'Absence makes the...")
++            chatPlayer(neutral, "Actually forget it...")
++            chatNpc(happy, "Okay!")
++            return
++        }
++        chatPlayer(happy, "Yes, okay. I'll let her know.")
++        setStage(STARTED)
++        chatNpc(happy, "Oh great! And tell her that I want to kiss her a give.")
++        chatPlayer(laugh, "You mean you want to give her a kiss!")
++        chatNpc(happy, "Oh you're good...you are good!")
++        chatNpc(happy, "I see I've picked a true professional...!")
++        romeoJulietOptions()
++    }
++
++    private suspend fun Dialogue.romeoAgain() {
++        chatPlayer(happy, "Hello again, remember me?")
++        chatNpc(confused, "Of course, yes....how are.. you....ermmm...")
++        chatPlayer(quiz, "You haven't got a clue who I am do you?")
++        chatNpc(happy, "Not a clue my friend, but you seem to have a friendly face...a little blood stained, and perhaps in need of a wash, but friendly none the less.")
++        chatPlayer(neutral, "You asked me to look for Juliet for you!")
++        chatNpc(happy, "Ah yes, Juliet...my sweet darling...what news?")
++        chatPlayer(neutral, "Nothing so far, but I need to ask a few questions?")
++        romeoJulietOptions()
++    }
++
++    private suspend fun Dialogue.romeoJulietOptions() {
++        when (
++            choice3(
++                "Where can I find Juliet?", 1,
++                "Is there anything else you can tell me about Juliet?", 2,
++                "Ok, thanks.", 3,
++            )
++        ) {
++            1 -> {
++                chatPlayer(quiz, "Where can I find Juliet?")
++                chatNpc(quiz, "Why do you ask?")
++                chatPlayer(neutral, "So that I can try and find her for you!")
++                chatNpc(happy, "Ah yes....quite right. Hmmm, let me think now.")
++                chatNpc(neutral, "She may still be locked away at her Father's house on the sest vide of Warrock.")
++                chatNpc(happy, "Oh, I remember how she loved it when I would sing up to her balcony! She would reward me with her own personal items...")
++                chatPlayer(quiz, "What, she just gave you her stuff?")
++                chatNpc(happy, "Well, not exactly give...more like 'throw with considerable force'...she's always a kidder that Juliet!")
++            }
++            2 -> {
++                chatPlayer(quiz, "Is there anything else you can tell me about Juliet?")
++                chatNpc(happy, "Oh, there is so much to tell...she is my true love, we intend to spend together forever...I can tell you so much about her..")
++                chatPlayer(happy, "Great!")
++                chatNpc(confused, "Ermmm.....")
++                chatNpc(confused, "So much can I tell you...")
++                chatPlayer(neutral, "Yes..")
++                chatNpc(confused, "So much to tell...why, where do I start!")
++                chatPlayer(neutral, "Yes..yes!  Please go on...don't let me interrupt...")
++                chatNpc(confused, "Ermmm.....")
++                chatNpc(confused, "...")
++                chatPlayer(quiz, "You can't remember can you?")
++                chatNpc(sad, "Not a thing sorry....")
++            }
++            3 -> chatPlayer(neutral, "Ok, thanks.")
++        }
++    }
++
++    private suspend fun Dialogue.romeoMessage() {
++        if (!has(MESSAGE)) {
++            chatPlayer(happy, "Romeo...great news...I've been in touch with Juliet!")
++            chatNpc(happy, "Oh great! That is great news! Well done...well done... what a total success!")
++            chatPlayer(neutral, "Yes, and she gave me a message to give you...")
++            chatNpc(happy, "Ohhh great! A message....wow!")
++            chatPlayer(happy, "Yes!")
++            chatNpc(happy, "A message...oh, I can't wait to read what my dear Juliet has to say....")
++            chatPlayer(happy, "I know...it's exciting isn't it...?")
++            chatNpc(happy, "Yes...yes...")
++            chatNpc(neutral, "...")
++            chatNpc(quiz, "You've lost the message haven't you?")
++            chatPlayer(sad, "Yep, haven't got a clue where it is.")
++            return
++        }
++        chatPlayer(happy, "Romeo...great news...I've been in touch with Juliet! She's written a message for you...")
++        access.invDel(access.inv, MESSAGE)
++        setStage(MESSAGE_DELIVERED)
++        objbox(MESSAGE, "You hand over Juliet's message to Romeo.")
++        chatNpc(happy, "Oh, a message! A message! I've never had a message before...")
++        chatPlayer(quiz, "Really?")
++        chatNpc(neutral, "No, no, not one!")
++        chatNpc(neutral, "Oh, well, except for the occasional court summons.")
++        chatNpc(happy, "But they're not really 'nice' messages. Not like this one! I'm sure that this message will be lovely.")
++        chatPlayer(neutral, "Well are you going to open it or not?")
++        chatNpc(happy, "Oh yes, yes, of course!  'Dearest Romeo, I am very pleased that you sent ${player.displayName} to look for me and to tell me that you still hold affliction...', Affliction! She thinks I'm diseased?")
++        chatPlayer(neutral, "'Affection?'")
++        chatNpc(happy, "Ahh yes...'still hold affection for me. I still feel great affection for you, but unfortunately my Father opposes our marriage.'")
++        chatPlayer(worried, "Oh dear...that doesn't sound too good.")
++        chatNpc(confused, "What? '...great affection for you. Father opposes our..")
++        chatNpc(worried, "'...marriage and will...")
++        chatNpc(shocked, "...will kill you if he sees you again!'")
++        chatPlayer(worried, "I have to be honest, it's not getting any better...")
++        chatNpc(neutral, "'Our only hope is that Father Lawrence, our long time confidant, can help us in some way.'")
++        mesbox("Romeo folds the message away.")
++        chatNpc(sad, "Well, that's it then...we haven't got a chance...")
++        chatPlayer(quiz, "What about Father Lawrence?")
++        chatNpc(sad, "...our love is over...the great romance, the life of my love...")
++        chatPlayer(neutral, "...or you could speak to Father Lawrence!")
++        chatNpc(sad, "Oh, my aching, breaking, heart...how useless the situation is now...we have no one to turn to...")
++        chatPlayer(angry, "FATHER LAWRENCE!")
++        chatNpc(confused, "Father Lawrence?")
++        chatNpc(happy, "Oh yes, Father Lawrence...he's our long time confidant, he might have a solution! Yes, yes, you have to go and talk to Lather Fawrence for us and ask him if he's got any suggestions for our predicament?")
++        romeoWhereIsLawrence()
++        romeoLawrenceOptions()
++    }
++
++    private suspend fun Dialogue.romeoWhereIsLawrence() {
++        chatPlayer(quiz, "Where can I find Father Lawrence?")
++        chatNpc(happy, "Lather Fawrence! Oh he's...")
++        chatNpc(neutral, "You know he's not my 'real' Father don't you?")
++        chatPlayer(neutral, "I think I suspected that he wasn't.")
++        chatNpc(neutral, "Well anyway...he tells these song, loring bermons...and keeps these here Carrockian vitizens snoring in his church to the East North.")
++    }
++
++    private suspend fun Dialogue.romeoLawrenceOptions() {
++        when (
++            choice4(
++                "How are you?", 1,
++                "Where can I find Father Lawrence?", 2,
++                "Have you heard anything from Juliet?", 3,
++                "Ok, thanks.", 4,
++            )
++        ) {
++            1 -> {
++                chatPlayer(quiz, "How are you?")
++                chatNpc(sad, "Not so good my friend...I miss Judi..., Junie..., Joopie...")
++                chatPlayer(neutral, "Juliet?")
++                chatNpc(sad, "Juliet! I miss Juliet, terribly!")
++                chatPlayer(neutral, "Hmmm, so I see!")
++            }
++            2 -> romeoWhereIsLawrence()
++            3 -> {
++                chatPlayer(quiz, "Have you heard anything from Juliet?")
++                chatNpc(sad, "Sadly not my friend! And what's worse, her Father has threatened to kill me if he sees me. I mean, that seems a bit harsh!")
++                chatPlayer(neutral, "Well, I shouldn't worry too much...you can always run away if you see him...")
++                chatNpc(worried, "I just wish I could remember what he looks like! I live in fear of every man I see!")
++            }
++            4 -> chatPlayer(neutral, "Ok, thanks.")
++        }
++    }
++
++    private suspend fun Dialogue.romeoAfterLawrence() {
++        chatPlayer(happy, "Hello again Romeo!")
++        chatNpc(happy, "Ooh did you manage to survive one of Lather Fawrences sermons? I bet not, you were ages! I bet you snoozed on the welcome mat just as soon as you heard his voice!")
++        chatPlayer(angry, "Did not!")
++        chatNpc(quiz, "Oh, come on, come on, what did he say?")
++        when (
++            choice3(
++                "He wants me to go to the Apothecary!", 1,
++                "He seems keen for you to marry Juliet.", 2,
++                "Ok, thanks.", 3,
++            )
++        ) {
++            1 -> {
++                chatPlayer(neutral, "He wants me to go to the Apothecary!")
++                chatNpc(quiz, "The Apothecary?")
++                chatNpc(quiz, "Oh...is he the one who mixes up all them magical potion- ey things?")
++                chatPlayer(neutral, "Yeah, I think so...but the word potion-ey doesn't exist.")
++                chatNpc(happy, "Well, you just used it...so I guess it does exist!")
++                chatPlayer(quiz, "It doesn't matter...do you know where the Apothecary is?")
++                chatNpc(quiz, "Why should I tell you?")
++                chatPlayer(angry, "Because I'm doing you a favour!")
++                chatNpc(happy, "Right, yes...of course! Well, I think the potion-ey place is Wouth Sest of here and near a sword shop.")
++            }
++            2 -> {
++                chatPlayer(neutral, "He seems very keen for you to marry Juliet.")
++                chatNpc(happy, "Me too! I can't wait! Do you think it will be soon?")
++                chatPlayer(neutral, "I don't know, but I'll do what I can. It just seems a bit odd that Father Lawrence is so keen for you to marry?")
++                chatNpc(neutral, "I can't imagine why he's so keen? Though, he was our messenger before you. Of course, he had a lot more hair back then...and I think we may have gone to school together...")
++                chatPlayer(quiz, "What, since you were kids?")
++                chatNpc(laugh, "Yeah! Thinking about it now, we called him 'Diddy Dorrence' back then!")
++                chatPlayer(neutral, "So, maybe, he just wants a bit of peace? And when you two are married, he won't have to traipse around delivering your messages anymore?")
++                chatNpc(sad, "Yes, the years haven't been good to him.")
++            }
++            3 -> chatPlayer(neutral, "Ok, thanks.")
++        }
++    }
++
++    private suspend fun Dialogue.romeoPotion() {
++        if (!has(CADAVA_POTION)) {
++            chatPlayer(happy, "Hi Romeo!")
++            chatNpc(quiz, "Oh hello, have you seen Lather Fawrence?")
++            chatPlayer(neutral, "Yes, he's given me details of a potion which should help resolve this situation. The Apothecary is helping me prepare it.")
++            chatNpc(worried, "Ooooh, it all sounds horribly complicated?")
++            chatNpc(happy, "All I can say is I'll be glad when Juliet's finally in that crypt!")
++            chatPlayer(neutral, "Spoken like a true lover!")
++            return
++        }
++        mesbox("Romeo spots the Cadava potion.")
++        chatNpc(happy, "Ooohh, that's the potion is it? Rather you than me!")
++        chatPlayer(angry, "I'm not drinking it! It's for Juliet!")
++        chatNpc(shifty, "Well, I mean...it's probably delicious...and not dangerous at all. And you quite often see harmless drinks in a glowing sort of pink colour.")
++        chatPlayer(quiz, "Hmm, I'm not convinced...maybe you ought to try some before I give it to Juliet?")
++        chatNpc(shocked, "Urgh! No way!  Not in a million years!")
++        chatPlayer(quiz, "Ok...but you know what to do when I've given this to Juliet?")
++        chatNpc(happy, "Oh, yeah...sure Lather Fawrence explained all that to me...")
++    }
++
++    private suspend fun Dialogue.romeoFinish() {
++        chatPlayer(happy, "Romeo, it's all set. Juliet has drunk the potion and has been taken down into the Crypt...now you just need to pop along and collect her.")
++        chatNpc(happy, "Ah right, the potion! Great...")
++        chatNpc(confused, "What potion would that be then?")
++        chatPlayer(neutral, "The Cadava potion...you know, the one which will make her appear dead! She's in the crypt, pop along and claim your true love.")
++        chatNpc(worried, "But I'm scared...will you come with me?")
++        chatPlayer(neutral, "Oh, ok...come on! I think I saw the entrance when I visited there last...")
++        chatNpc(worried, "This is pretty scary...")
++        chatPlayer(neutral, "Oh, be quiet...")
++        chatPlayer(neutral, "We're here. Look, Juliet is over there!")
++        chatPlayer(neutral, "You go over to her...and I'll go and wait over here...")
++        chatNpc(worried, "Ohhh, ok then...")
++        chatNpc(neutral, "Hey...Juliet...")
++        chatNpc(quiz, "Juliet....?")
++        chatNpc(sad, "Oh dear...you seem to be dead.")
++        chatNpcSpecific("Phillipa", "npc.phillipa", happy, "Hi Romeo...I'm Phillipa!")
++        chatNpc(happy, "Wow! You're a fox!")
++        chatNpcSpecific("Phillipa", "npc.phillipa", happy, "It's a shame about Juliet...but perhaps we can meet up later?")
++        chatNpc(confused, "Who's Juliet?")
++        quest.completeQuest(access)
++    }
++
++    private suspend fun Dialogue.juliet() {
++        when (stage(player)) {
++            NOT_STARTED -> mesbox("She seems to be lost in thought.")
++            STARTED -> {
++                chatPlayer(happy, "Juliet, I come from Romeo.  He begs me to tell you that he cares still.")
++                chatNpc(happy, "Oh how my heart soars to hear this news! Please take this message to him with great haste.")
++                chatPlayer(neutral, "Well, I hope it's good news...he was quite upset when I left him.")
++                chatNpc(sad, "He's quite often upset...the poor sensitive soul. But I don't think he's going to take this news very well, however, all is not lost.")
++                chatNpc(neutral, "Everything is explained in the letter, would you be so kind and deliver it to him please?")
++                chatPlayer(happy, "Certainly, I'll do so straight away.")
++                chatNpc(happy, "Many thanks! Oh, I'm so very grateful. You may be our only hope.")
++                access.invAddOrDrop(objRepo, MESSAGE)
++                setStage(TALKED_TO_JULIET)
++                objbox(MESSAGE, "Juliet gives you a message.")
++            }
++            TALKED_TO_JULIET -> {
++                chatPlayer(happy, "Hello Juliet!")
++                chatNpc(quiz, "Hello there...have you delivered the message to Romeo yet? What news do you have from my loved one?")
++                if (has(MESSAGE)) {
++                    chatPlayer(sad, "Oh, sorry, I've not had chance to deliver it yet!")
++                    chatNpc(sad, "Oh, that's a shame. I've been waiting so patiently to hear some word from him.")
++                    return
++                }
++                chatPlayer(shifty, "Hmmm, that's the thing about messages...they're so easy to misplace...")
++                chatNpc(angry, "How could you lose that message? It was incredibly important...and it took me an age to write! I used joined up writing and everything!")
++                chatNpc(neutral, "Please, take this new message to him, and please don't lose it.")
++                access.invAddOrDrop(objRepo, MESSAGE)
++                objbox(MESSAGE, "Juliet gives you another message.")
++            }
++            MESSAGE_DELIVERED -> {
++                chatPlayer(neutral, "Hi Juliet, I have passed your message on to Romeo..he's scared half out of his wits at the news that your father wants to kill him.")
++                chatNpc(sad, "Yes, unfortunately my father is quite the hunter, you may have seen some the animal head trophies on the wall. And it would be so awful to see Romeo's head up there with them!")
++                chatPlayer(neutral, "I know what you mean...")
++                chatPlayer(laugh, "...his hair colour will clash terribly with the rest of the decoration.")
++                chatNpc(angry, "That's not what I was suggesting at all...")
++                chatPlayer(laugh, "I know, I know...I was just kidding.")
++                chatPlayer(neutral, "Anyway, don't worry because I'm on the case. I'm going to get some help from Father Lawrence.")
++                chatNpc(happy, "Oh yes, I'm sure that Father Lawrence will come up with a solution. I hope you find him soon.")
++            }
++            TALKED_TO_LAWRENCE -> {
++                chatPlayer(happy, "Hi Juliet, I've found Father Lawrence and he has a cunning plan. But for it to work, I need to seek the Apothecary!")
++                chatNpc(happy, "Oh good! I knew Father Lawrence would come up with something. However, I don't know where the apothecary is...I hope you find him soon. My father's temper gets no better.")
++            }
++            TALKED_TO_APOTHECARY -> julietPotion()
++            else -> mesbox("She seems to be lost in thought.")
++        }
++    }
++
++    private suspend fun Dialogue.julietPotion() {
++        if (!has(CADAVA_POTION)) {
++            chatPlayer(happy, "Hi Juliet!")
++            chatNpc(quiz, "Hi ${player.displayName}, how close am I to being with my true love Romeo?")
++            chatPlayer(neutral, "Sorry, I still have to get a special potion for you.")
++            chatNpc(neutral, "Oh, I hope it isn't a love potion because you would be wasting your time. My love for Romeo grows stronger every minute...")
++            chatPlayer(neutral, "That must be because you're not with him...")
++            chatNpc(sad, "Oh no! I long to be close to my true love Romeo!")
++            chatPlayer(neutral, "Well, ok then...I'll set about getting this potion as quickly as I can!")
++            chatNpc(happy, "Fair luck to you, the end is close.")
++            return
++        }
++        chatPlayer(happy, "Hi Juliet! I have an interesting proposition for you...suggested by Father Lawrence. It may be the only way you'll be able to escape from this house and be with Romeo.")
++        chatNpc(quiz, "Go on....")
++        chatPlayer(neutral, "I have a Cadava potion here, suggested by Father Lawrence. If you drink it, it will make you appear dead!")
++        chatNpc(quiz, "Yes...")
++        chatPlayer(neutral, "And when you appear dead...your still and lifeless corpse will be removed to the crypt!")
++        chatNpc(worried, "Oooooh, a cold dark creepy crypt...")
++        chatNpc(shifty, "...sounds just peachy!")
++        chatPlayer(happy, "Then...Romeo can steal into the crypt and rescue you just as you wake up!")
++        chatNpc(confused, "...and this is the great idea for getting me out of here?")
++        chatPlayer(shifty, "To be fair, I can't take all the credit...in fact...it was all Father Lawrence's suggestion...")
++        chatNpc(neutral, "Ok...if this is the best we can do...hand over the potion!")
++        access.invDel(access.inv, CADAVA_POTION)
++        setStage(POTION_GIVEN)
++        objbox(CADAVA_POTION, "You pass the suspicious potion to Juliet.")
++        chatNpc(happy, "Wonderful! I just hope Romeo can remember to get me from the crypt.")
++        chatNpc(neutral, "Please go to Romeo and make sure he understands. Although I love his gormless, lovelorn soppy ways, he can be a bit dense sometimes and I don't want to wake up in that crypt on my own.")
++    }
++
++    private suspend fun Dialogue.fatherLawrence() {
++        when (stage(player)) {
++            MESSAGE_DELIVERED -> {
++                chatNpc(neutral, "''...and let Saradomin light the way for you... '' Urgh!")
++                chatNpc(angry, "Can't you see that I'm in the middle of a Sermon?!")
++                chatPlayer(neutral, "But Romeo sent me!")
++                chatNpc(angry, "But I'm busy delivering a sermon to my congregation!")
++                chatPlayer(laugh, "Yes, well, it certainly seems like you have a captive audience!")
++                chatNpc(neutral, "Ok, ok...what do you want so I can get rid of you and continue with my sermon?")
++                chatPlayer(neutral, "Romeo sent me. He says you may be able to help.")
++                chatNpc(neutral, "Ah Romeo, yes. A fine lad, but a little bit confused.")
++                chatPlayer(neutral, "Yes, very confused....Anyway, Romeo wishes to be married to Juliet! She must be rescued from her father's control!")
++                chatNpc(happy, "I agree, and I think I have an idea! A potion to make her appear dead...")
++                chatPlayer(worried, "Dead! Sounds a bit creepy to me...but please, continue.")
++                chatNpc(neutral, "The potion will only make Juliet 'appear' dead...then she'll be taken to the crypt...")
++                chatPlayer(worried, "Crypt! Again...very creepy! You must have some strange hobbies.")
++                chatNpc(neutral, "Then Romeo can collect her from the crypt! Go to the Apothecary, tell him I sent you and that you'll need a 'Cadava' potion.")
++                setStage(TALKED_TO_LAWRENCE)
++                chatPlayer(happy, "Apart from the strong overtones of death, this is turning out to be a real love story.")
++            }
++            TALKED_TO_LAWRENCE ->
++                chatNpc(neutral, "Ah, have you found the Apothecary yet? Remember, Cadava potion, for Juliet.")
++            TALKED_TO_APOTHECARY -> {
++                chatNpc(quiz, "Did you find the Apothecary?")
++                if (has(CADAVA_POTION)) {
++                    chatPlayer(happy, "I've got the cadava potion.")
++                    chatNpc(happy, "Good! Good work! Ok, take it to Juliet, she's expecting you. I'll talk to Romeo and make sure he knows what to do.")
++                    return
++                }
++                chatPlayer(neutral, "Yes I did. He's told me I must find some Cadava berries.")
++                chatNpc(neutral, "Well, good luck with that...they're quite tricky to find.")
++                chatPlayer(quiz, "Any clues where I can start to look?")
++                chatNpc(neutral, "I heard some kids saying they saw some the other day. They were visiting the mining place to the south east of Varrock.")
++                chatPlayer(neutral, "Ok, that's as good a place to start looking as any.")
++            }
++            else -> chatNpc(happy, "Top of the morning to you.")
++        }
++    }
++
++    private suspend fun Dialogue.apothecary() {
++        chatNpc(neutral, "I am the Apothecary. I brew potions. Do you need anything specific?")
++        when (choice2("Can you make potions for me?", 1, "Talk about something else.", 2)) {
++            1 -> {
++                chatPlayer(quiz, "Can you make potions for me?")
++                chatNpc(neutral, "I'm afraid I'm too busy to brew anything for you right now.")
++            }
++            2 -> apothecaryOtherTopics()
++        }
++    }
++
++    private suspend fun Dialogue.apothecaryOtherTopics() {
++        val questTopic = stage(player) >= TALKED_TO_LAWRENCE
++        val options = buildList {
++            if (questTopic) add("Talk about Romeo & Juliet." to 1)
++            add("Do you know a potion to make hair fall out?" to 2)
++            add("Have you got any good potions to give away?" to 3)
++            add("No thanks." to 4)
++        }
++        val choice =
++            if (options.size == 4) {
++                choice4(options[0].first, options[0].second, options[1].first, options[1].second,
++                    options[2].first, options[2].second, options[3].first, options[3].second)
++            } else {
++                choice3(options[0].first, options[0].second, options[1].first, options[1].second,
++                    options[2].first, options[2].second)
++            }
++        when (choice) {
++            1 -> apothecaryRomeoAndJuliet()
++            2 -> {
++                chatPlayer(quiz, "Do you know a potion to make hair fall out?")
++                chatNpc(neutral, "I do indeed. I gave it to my mother. That's why I now live alone.")
++            }
++            3 -> {
++                chatPlayer(quiz, "Have you got any good potions to give away?")
++                chatNpc(neutral, "Sorry, charity is not my strong point.")
++            }
++            4 -> chatPlayer(neutral, "No thanks.")
++        }
++    }
++
++    private suspend fun Dialogue.apothecaryRomeoAndJuliet() {
++        when (stage(player)) {
++            TALKED_TO_LAWRENCE -> {
++                chatPlayer(neutral, "Apothecary, Father Lawrence sent me. I need a Cadava potion to help Romeo and Juliet.")
++                chatNpc(neutral, "Cadava potion. It's pretty nasty. And hard to make.")
++                chatNpc(neutral, "Wing of rat, tail of frog. Ear of snake and horn of dog.")
++                chatNpc(neutral, "I have all that, but I need some Cadava berries.")
++                chatNpc(neutral, "You will have to find them while I get the rest ready. Bring them here when you have them. But be careful. They are nasty.")
++                setStage(TALKED_TO_APOTHECARY)
++                if (has(CADAVA_BERRIES)) {
++                    chatPlayer(happy, "Conveniently, I have some here.")
++                    makePotion()
++                    return
++                }
++                berryQuestions()
++            }
++            TALKED_TO_APOTHECARY -> when {
++                has(CADAVA_BERRIES) && !has(CADAVA_POTION) -> {
++                    chatNpc(happy, "Well done. You have the berries.")
++                    makePotion()
++                }
++                has(CADAVA_POTION) -> {
++                    chatPlayer(happy, "Thank you for the Cadava potion.")
++                    chatNpc(happy, "You're welcome. I hope it helps that young couple find happiness.")
++                }
++                else -> chatNpc(neutral, "Keep searching for those Cadavaberries. They're needed for the potion.")
++            }
++            else -> {
++                chatPlayer(happy, "I gave Juliet the Cadava potion.")
++                chatNpc(happy, "Good, good. I hope it helps that young couple find happiness.")
++            }
++        }
++    }
++
++    private suspend fun Dialogue.makePotion() {
++        access.invDel(access.inv, CADAVA_BERRIES)
++        mesbox("You hand over the berries, which the Apothecary shakes up in a vial of strange liquid.")
++        chatNpc(happy, "Phew! Here is what you need.")
++        access.invAddOrDrop(objRepo, CADAVA_POTION)
++        objbox(CADAVA_POTION, "The Apothecary gives you a Cadava potion.")
++    }
++
++    private suspend fun Dialogue.berryQuestions() {
++        when (
++            choice4(
++                "What do these berries look like?", 1,
++                "Where can I get these berries?", 2,
++                "How are these berries dangerous?", 3,
++                "Ok, thanks.", 4,
++            )
++        ) {
++            1 -> {
++                chatPlayer(quiz, "What do these berries look like?")
++                chatNpc(neutral, "They're a nice bright pink colour, with green leaves, stalks are a pale brown colour...you can't miss them. They look pretty tasty, but I wouldn't advise eating them.")
++                berryQuestions()
++            }
++            2 -> {
++                chatPlayer(quiz, "Where can I get these berries?")
++                chatNpc(neutral, "I think I saw some recently in the local vicinity. Oh yes, that's right! There was a little bit of commotion when some kids visited the south eastern Varrock mining pit. The trip was disrupted because some kids")
++                chatNpc(neutral, "had found some cadavaberry bushes and they started picking them. They wrapped that trip up pretty quickly!")
++                berryQuestions()
++            }
++            3 -> {
++                chatPlayer(quiz, "How are these berries dangerous?")
++                chatNpc(neutral, "Hmm, they're generally okay, but if handled improperly they can be a bit nasty. And I certainly wouldn't advise drinking the potion!")
++                berryQuestions()
++            }
++            4 -> chatPlayer(neutral, "Ok, thanks.")
++        }
++    }
++
++    private suspend fun Dialogue.draulLeptoc() {
++        when (stage(player)) {
++            TALKED_TO_JULIET -> {
++                chatNpc(angry, "What are you doing in my house? Up to no good I shouldn't wonder!")
++                chatPlayer(happy, "Just a small chore for Juliet, you do have a lovely daughter in her sir.")
++                chatNpc(happy, "Oh...why, thank you...I've always tried to my best...")
++                chatNpc(angry, "...Hang on! Enough of that smiley talk. I have a daughter and I know what she's like. Don't even think of carrying on anything behind my back, I have the eyes of a hawk, nothing gets past me!")
++            }
++            MESSAGE_DELIVERED ->
++                chatNpc(angry, "Do you live here? If so, how's about a couple of hundred gold towards the rent eh? Pay your share I say...you don't want to be like that freeloading Romeo!")
++            TALKED_TO_LAWRENCE, TALKED_TO_APOTHECARY -> {
++                chatNpc(angry, "Hey , what are you doing here?")
++                chatPlayer(shifty, "Nothing much sir...I promise...I'm just an innocent friend of Juliet's...doing her a few favours...as a friend.")
++                chatNpc(angry, "Well, just make sure there's no funny business going on that's all I can say.")
++            }
++            POTION_GIVEN, COMPLETE ->
++                chatNpc(sad, "My poor Juliet....she's dead...dead! I shouldn't have been so hard on her...she was my lovely daughter. Booo hoooo hooooo!")
++            else -> {
++                chatNpc(angry, "What are you doing here? Snooping around...")
++                chatPlayer(neutral, "Oh...just looking around...")
++                chatNpc(angry, "Just looking around! This is MY house!  You might have at least 'ASKED' to view my considerably well appointed abode...but no, you've just burst in with all the elegance of a Troll at a tea party.")
++                chatPlayer(neutral, "I can see that you're busy ranting so I'll just nip off and investigate a bit.")
++            }
++        }
++    }
++
++    private suspend fun Dialogue.phillipa() {
++        when (stage(player)) {
++            in TALKED_TO_JULIET until POTION_GIVEN -> {
++                chatNpc(happy, "Oh, hello. Juliet has told me what you're doing for her and Romeo, and I have to say I'm very grateful to you. Juliet deserves a bit of happiness in her life.")
++                chatPlayer(happy, "Oh, thanks. I like to do my cupid bit.")
++            }
++            POTION_GIVEN -> {
++                chatNpc(happy, "Oh, hello again! How was I - do you think I was convincing?")
++                chatPlayer(happy, "Oh, yes, totally!")
++                chatNpc(happy, "Ohhh good! I do hope Juliet will be pleased as well! That dashing young Romeo must be beside himself with excitement! Have you told him the good news yet?")
++                chatPlayer(neutral, "Not yet, but soon!")
++            }
++            else -> {
++                chatPlayer(happy, "Hello.")
++                chatNpc(happy, "Hi, I'm Phillipa, Juliet's cousin. I like to keep an eye on her, make sure that dashing young Romeo doesn't just steal her away under our plain old noses!")
++            }
++        }
++    }
++
++    private companion object {
++        const val NOT_STARTED = 0
++        const val STARTED = 10
++        const val TALKED_TO_JULIET = 20
++        const val MESSAGE_DELIVERED = 30
++        const val TALKED_TO_LAWRENCE = 40
++        const val TALKED_TO_APOTHECARY = 50
++        const val POTION_GIVEN = 60
++        const val COMPLETE = 100
++
++        const val MESSAGE = "obj.julietmessage"
++        const val CADAVA_BERRIES = "obj.cadavaberries"
++        const val CADAVA_POTION = "obj.cadava"
++    }
++}
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/Quest.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/Quest.kt
-index 009be2ce1..7387b4c9a 100644
+index 009be2ce1..2eca486ce 100644
 --- a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/Quest.kt
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/Quest.kt
-@@ -123,6 +123,18 @@ data class Quest(
+@@ -59,6 +59,9 @@ data class Quest(
+ 
+     private val attributeRegistry = mutableMapOf<String, QuestAttribute<*>>()
+ 
++    /** osrs-plugins-reverse: the stage `::quest name start` sets. */
++    var debugStartStage: Int = 1
++
+     companion object {
+         private val logger = InlineLogger()
+         private val questsByKey = mutableMapOf<String, Quest>()
+@@ -123,6 +126,18 @@ data class Quest(
          stages[key] = clampedStage
      }
  
@@ -606,10 +1646,10 @@ index 009be2ce1..7387b4c9a 100644
  
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestTestCommand.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestTestCommand.kt
 new file mode 100644
-index 000000000..9d80c6dee
+index 000000000..ee5dcb6e5
 --- /dev/null
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestTestCommand.kt
-@@ -0,0 +1,70 @@
+@@ -0,0 +1,73 @@
 +package org.rsmod.content.quest.manager
 +
 +import dev.or2.central.account.Rights
@@ -620,16 +1660,17 @@ index 000000000..9d80c6dee
 +import org.rsmod.plugin.scripts.ScriptContext
 +
 +/**
-+ * osrs-plugins-reverse: `::quest name [start|done|reset|n]` shows or sets a quest's stage for device
-+ * tests (as on our own test server). The name matches a quest's display name or key: exact, then a
-+ * unique prefix, then a unique substring. Setting a stage grants no rewards.
++ * osrs-plugins-reverse: `::quest name|id [start|done|reset|n]` shows or sets a quest's stage for
++ * device tests (as on our own test server). The name matches a quest's display name or key: exact,
++ * then a unique prefix, then a unique substring; a number matches the quest id or its dbrow.
++ * Setting a stage grants no rewards.
 + */
 +class QuestTestCommand : PluginScript() {
 +    override fun ScriptContext.startup() {
 +        onCommand("quest") {
 +            requiredRights = Rights.ADMINISTRATOR
-+            desc = "Show or set a quest stage: ::quest name [start|done|reset|n]"
-+            invalidArgs = "Use as ::quest name [start|done|reset|n]"
++            desc = "Show or set a quest stage: ::quest name|id [start|done|reset|n]"
++            invalidArgs = "Use as ::quest name|id [start|done|reset|n]"
 +            cheat { quest(this) }
 +        }
 +    }
@@ -637,17 +1678,19 @@ index 000000000..9d80c6dee
 +    private fun quest(cheat: Cheat) =
 +        with(cheat) {
 +            val last = args.lastOrNull()
-+            val state = last?.takeIf { it in STATES || it.toIntOrNull() != null }
++            val state = last?.takeIf { (it in STATES || it.toIntOrNull() != null) && args.size > 1 }
 +            val query = (if (state != null) args.dropLast(1) else args).joinToString(" ").lowercase()
 +            if (query.isBlank()) {
-+                player.mes("Use as ::quest name [start|done|reset|n] (${Quest.all().size} quests)")
++                player.mes("Use as ::quest name|id [start|done|reset|n] (${Quest.all().size} quests)")
 +                return
 +            }
 +            val quests = Quest.all().sortedBy { it.displayName }
 +            fun names(q: Quest) = listOf(q.displayName.lowercase(), q.key.lowercase())
 +            val matches = quests.filter { q -> names(q).any { query in it } }
++            val id = query.toIntOrNull()
 +            val quest =
-+                quests.firstOrNull { q -> query in names(q) }
++                (if (id != null) quests.firstOrNull { it.id == id || it.rowID == id } else null)
++                    ?: quests.firstOrNull { q -> query in names(q) }
 +                    ?: matches.filter { q -> names(q).any { it.removePrefix("the ").startsWith(query) } }
 +                        .singleOrNull()
 +                    ?: matches.singleOrNull()
@@ -661,7 +1704,7 @@ index 000000000..9d80c6dee
 +            if (state != null) {
 +                val stage =
 +                    when (state) {
-+                        "start" -> 1
++                        "start" -> quest.debugStartStage
 +                        "done" -> quest.maxSteps
 +                        "reset" -> 0
 +                        else -> state.toInt()
@@ -691,6 +1734,341 @@ index 8f3ee7093..bd809341a 100644
  
  [gamevals.timer]
  quest_scroll_close = 402
+diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/QuestTalkFixture.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/QuestTalkFixture.kt
+new file mode 100644
+index 000000000..10f4a7e98
+--- /dev/null
++++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/QuestTalkFixture.kt
+@@ -0,0 +1,164 @@
++package org.rsmod.content.quest.area
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import kotlin.coroutines.Continuation
++import kotlin.coroutines.EmptyCoroutineContext
++import kotlin.coroutines.startCoroutine
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Assertions.fail
++import org.rsmod.annotations.InternalApi
++import org.rsmod.api.inv.storage.PlayerItemStorage
++import org.rsmod.api.invtx.InvTransactionsScript
++import org.rsmod.api.player.dialogue.align.TextAlignment
++import org.rsmod.api.player.events.interact.NpcEvents
++import org.rsmod.api.player.input.ResumePauseButtonInput
++import org.rsmod.api.player.interact.NpcInteractions
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.protect.ProtectedAccessContextFactory
++import org.rsmod.api.player.protect.clearPendingAction
++import org.rsmod.api.registry.obj.ObjRegistry
++import org.rsmod.api.registry.zone.ZoneUpdateMap
++import org.rsmod.api.repo.obj.ObjRepository
++import org.rsmod.coroutine.GameCoroutine
++import org.rsmod.events.EventBus
++import org.rsmod.game.MapClock
++import org.rsmod.game.cheat.CheatCommandMap
++import org.rsmod.game.client.Client
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.entity.Player
++import org.rsmod.game.inv.InvObj
++import org.rsmod.game.inv.InvVirtualStorageHolder
++import org.rsmod.game.inv.Inventory
++import org.rsmod.game.queue.EngineQueueCache
++import org.rsmod.map.CoordGrid
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/** Runs quest NPC conversations headless: talk to an NPC, pick chatmenu options by number. */
++class QuestTalkFixture(coords: CoordGrid, script: (ObjRepository) -> PluginScript) {
++    val events = EventBus()
++    private val client = RecordingClient()
++    private val coroutine = GameCoroutine("quest-talk-test")
++    private var result: Result<Unit>? = null
++    private val context = ProtectedAccessContextFactory.empty().copy(
++        getEventBus = { events }, getAlignment = { TextAlignment() },
++        getNpcInteractions = { NpcInteractions(events) },
++    )
++    val objRepo = ObjRepository(MapClock(100), ObjRegistry(ZoneUpdateMap()))
++
++    @OptIn(InternalApi::class)
++    val player = Player().apply {
++        this.client = this@QuestTalkFixture.client
++        uuid = 791L
++        slotId = 1
++        assignUid()
++        this.coords = coords
++        currentMapClock = 100
++        processedMapClock = 100
++        inv = Inventory(checkNotNull(ServerCacheManager.getInventory("inv.inv".asRSCM())), arrayOfNulls(28))
++        worn = Inventory(checkNotNull(ServerCacheManager.getInventory("inv.worn".asRSCM())), arrayOfNulls(14))
++    }
++
++    val script: PluginScript = script(objRepo)
++
++    init {
++        with(this.script) { ScriptContext(events, CheatCommandMap(), EngineQueueCache()).startup() }
++    }
++
++    private fun access() = ProtectedAccess(player, coroutine, context)
++
++    fun give(obj: String, count: Int = 1) {
++        val slot = (0 until player.inv.size).first { player.inv[it] == null }
++        player.inv[slot] = InvObj(obj, count)
++    }
++
++    fun count(obj: String): Int = player.inv.count(obj)
++
++    /** Talks to [npc] and walks the whole conversation, answering chatmenus with [options]. */
++    fun talk(npc: String, vararg options: Int) {
++        while (player.isDelayed) {
++            player.currentMapClock++
++            player.processedMapClock = player.currentMapClock
++        }
++        player.clearPendingAction(events)
++        client.messages.clear()
++        result = null
++        player.activeCoroutine = coroutine
++        val target = Npc(npc, player.coords.translateZ(1))
++        val block: suspend () -> Unit = { assertTrue(events.publish(access(), NpcEvents.Op1(target))) }
++        block.startCoroutine(object : Continuation<Unit> {
++            override val context = EmptyCoroutineContext
++            override fun resumeWith(result: Result<Unit>) { this@QuestTalkFixture.result = result }
++        })
++        result?.getOrThrow()
++        val selections = options.iterator()
++        repeat(400) {
++            if (coroutine.isIdle) {
++                if (selections.hasNext()) fail<Unit>("Unused options after: ${output()}")
++                return
++            }
++            advance(selections)
++        }
++        fail<Unit>("Interaction did not finish: ${output()}")
++    }
++
++    private fun advance(options: Iterator<Int>) {
++        if (coroutine.isAwaiting(ResumePauseButtonInput::class)) {
++            val parent = listOf("chat_left", "chat_right", "messagebox", "objectbox", "chatmenu")
++                .firstOrNull { player.ui.containsModal("interface.$it") }
++                ?: error("Unknown dialogue: ${output()}")
++            val input = if (parent == "chatmenu") {
++                if (!options.hasNext()) fail<Unit>("No option left for a chatmenu: ${output()}")
++                ResumePauseButtonInput("component.chatmenu:options", options.next())
++            } else if (parent == "objectbox") {
++                ResumePauseButtonInput("component.objectbox:universe", 0)
++            } else ResumePauseButtonInput("component.$parent:continue", -1)
++            coroutine.resumeWith(input)
++        } else {
++            player.currentMapClock++
++            player.processedMapClock = player.currentMapClock
++            coroutine.advance()
++        }
++        result?.getOrThrow()
++    }
++
++    fun output() = client.messages.joinToString("\n")
++
++    private class RecordingClient : Client<Any, Any> {
++        val messages = mutableListOf<Any>()
++        override fun write(message: Any) { messages += message }
++        override fun close() {}
++        override fun read(player: Player) {}
++        override fun flush() {}
++        override fun flushHighPriority() {}
++        override fun unregister(service: Any, player: Player) {}
++    }
++
++    companion object {
++        private val restored = mutableListOf<() -> Unit>()
++
++        @OptIn(InternalApi::class)
++        fun setUpCache() {
++            ServerCacheManager.init(241).close()
++            for ((owner, name) in listOf(
++                "org.rsmod.api.invtx.InvTransactionsScriptKt" to "cachedInventoryTransactions",
++                "org.rsmod.api.invtx.VirtualInvTransactionsKt" to "cachedPlayerItemStorage",
++            )) {
++                val field = Class.forName(owner).getDeclaredField(name).apply { isAccessible = true }
++                val old = field.get(null)
++                restored += { field.set(null, old) }
++            }
++            val oldStorage = InvVirtualStorageHolder.instance
++            restored += { InvVirtualStorageHolder.instance = oldStorage }
++            with(InvTransactionsScript(PlayerItemStorage(emptySet()))) {
++                ScriptContext(EventBus(), CheatCommandMap(), EngineQueueCache()).startup()
++            }
++        }
++
++        fun restore() {
++            restored.asReversed().forEach { it() }
++            restored.clear()
++        }
++    }
++}
+diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/lumbridge/SheepShearerInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/lumbridge/SheepShearerInteractionTest.kt
+new file mode 100644
+index 000000000..972f10283
+--- /dev/null
++++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/lumbridge/SheepShearerInteractionTest.kt
+@@ -0,0 +1,72 @@
++package org.rsmod.content.quest.area.lumbridge
++
++import org.junit.jupiter.api.AfterAll
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.BeforeAll
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.junit.jupiter.api.parallel.ResourceLock
++import org.rsmod.content.quest.area.QuestTalkFixture
++import org.rsmod.map.CoordGrid
++
++@Execution(ExecutionMode.SAME_THREAD)
++@ResourceLock("ServerCacheManager")
++class SheepShearerInteractionTest {
++    private fun fixture() = QuestTalkFixture(CoordGrid(3190, 3272, 0)) { SheepShearer(it) }
++
++    private val QuestTalkFixture.quest get() = (script as SheepShearer).quest
++
++    @Test fun `accepting starts the quest at 1 on varp 179 and hands over shears`() {
++        val f = fixture()
++        f.talk("npc.fred_the_farmer", 1, 1)
++        assertEquals(1, f.player.vars["varp.sheep"])
++        assertEquals(1, f.count("obj.shears"))
++    }
++
++    @Test fun `declining leaves the quest unstarted`() {
++        val f = fixture()
++        f.talk("npc.fred_the_farmer", 1, 2)
++        assertEquals(0, f.player.vars["varp.sheep"])
++        assertEquals(0, f.count("obj.shears"))
++    }
++
++    @Test fun `partial hand-ins add the balls to the stage and the last ball completes`() {
++        val f = fixture()
++        f.talk("npc.fred_the_farmer", 1, 1)
++        f.give("obj.ball_of_wool", 1)
++        f.give("obj.ball_of_wool", 1)
++        f.give("obj.ball_of_wool", 1)
++        f.give("obj.ball_of_wool", 1)
++        f.give("obj.ball_of_wool", 1)
++        f.talk("npc.fred_the_farmer")
++        assertEquals(6, f.player.vars["varp.sheep"])
++        assertEquals(0, f.count("obj.ball_of_wool"))
++
++        repeat(20) { f.give("obj.ball_of_wool") }
++        f.talk("npc.fred_the_farmer")
++        assertEquals(21, f.player.vars["varp.sheep"])
++        assertEquals(5, f.count("obj.ball_of_wool"))
++        assertEquals(60, f.count("obj.coins"))
++        assertEquals(1, f.player.vars["varp.qp"])
++        assertEquals(150, f.player.statMap.getXP("stat.crafting"))
++
++        f.talk("npc.fred_the_farmer", 2)
++        assertEquals(60, f.count("obj.coins"))
++        assertEquals(5, f.count("obj.ball_of_wool"))
++    }
++
++    @Test fun `twenty balls at the start complete the quest at once`() {
++        val f = fixture()
++        repeat(20) { f.give("obj.ball_of_wool") }
++        f.talk("npc.fred_the_farmer", 1, 1)
++        assertEquals(21, f.player.vars["varp.sheep"])
++        assertEquals(0, f.count("obj.ball_of_wool"))
++        assertEquals(60, f.count("obj.coins"))
++    }
++
++    companion object {
++        @JvmStatic @BeforeAll fun cache() = QuestTalkFixture.setUpCache()
++        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
++    }
++}
+diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJulietInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJulietInteractionTest.kt
+new file mode 100644
+index 000000000..75669a427
+--- /dev/null
++++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJulietInteractionTest.kt
+@@ -0,0 +1,81 @@
++package org.rsmod.content.quest.area.varrock.romeoandjuliet
++
++import org.junit.jupiter.api.AfterAll
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.BeforeAll
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.junit.jupiter.api.parallel.ResourceLock
++import org.rsmod.content.quest.area.QuestTalkFixture
++import org.rsmod.map.CoordGrid
++
++@Execution(ExecutionMode.SAME_THREAD)
++@ResourceLock("ServerCacheManager")
++class RomeoAndJulietInteractionTest {
++    private fun fixture() = QuestTalkFixture(CoordGrid(3211, 3421, 0)) { RomeoAndJuliet(it) }
++
++    private fun QuestTalkFixture.stage() = player.vars["varp.rjquest"]
++
++    @Test fun `the quest walks through the OSRS stages on varp 144`() {
++        val f = fixture()
++        f.talk("npc.romeo", 1, 1, 3)
++        assertEquals(10, f.stage())
++
++        f.talk("npc.juliet")
++        assertEquals(20, f.stage())
++        assertEquals(1, f.count("obj.julietmessage"))
++
++        f.talk("npc.romeo", 4)
++        assertEquals(30, f.stage())
++        assertEquals(0, f.count("obj.julietmessage"))
++
++        f.talk("npc.father_lawrence")
++        assertEquals(40, f.stage())
++
++        f.talk("npc.apothecary", 2, 1, 4)
++        assertEquals(50, f.stage())
++        assertEquals(0, f.count("obj.cadava"))
++
++        f.give("obj.cadavaberries")
++        f.talk("npc.apothecary", 2, 1)
++        assertEquals(50, f.stage())
++        assertEquals(0, f.count("obj.cadavaberries"))
++        assertEquals(1, f.count("obj.cadava"))
++
++        f.talk("npc.juliet_multi_visible")
++        assertEquals(60, f.stage())
++        assertEquals(0, f.count("obj.cadava"))
++
++        f.talk("npc.romeo")
++        assertEquals(100, f.stage())
++        assertEquals(5, f.player.vars["varp.qp"])
++    }
++
++    @Test fun `a lost message is replaced and the apothecary hides the quest topic early`() {
++        val f = fixture()
++        f.talk("npc.romeo", 3, 1, 3)
++        f.talk("npc.juliet")
++        f.player.inv.indices.forEach { if (f.player.inv[it]?.id != null) f.player.inv[it] = null }
++        f.talk("npc.juliet")
++        assertEquals(1, f.count("obj.julietmessage"))
++        assertEquals(20, f.stage())
++
++        f.talk("npc.apothecary", 2, 3)
++        assertEquals(20, f.stage())
++    }
++
++    @Test fun `berries in hand on the first apothecary visit make the potion at once`() {
++        val f = fixture()
++        f.player.vars.let { org.rsmod.api.player.vars.VarPlayerIntMapSetter.set(f.player, "varbit.romeo_juliet_progress", 40) }
++        f.give("obj.cadavaberries")
++        f.talk("npc.apothecary", 2, 1)
++        assertEquals(50, f.stage())
++        assertEquals(1, f.count("obj.cadava"))
++    }
++
++    companion object {
++        @JvmStatic @BeforeAll fun cache() = QuestTalkFixture.setUpCache()
++        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
++    }
++}
 diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/manager/QuestPolicySyncScriptTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/manager/QuestPolicySyncScriptTest.kt
 index 39f1247cd..30566f2dc 100644
 --- a/content/quest/src/test/kotlin/org/rsmod/content/quest/manager/QuestPolicySyncScriptTest.kt

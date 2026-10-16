@@ -184,7 +184,8 @@ Verified on device 2026-10-16 21:24 (deployed):
   `::options One Two Three Four`: all four rows visible, taps give sub 1/2/3/4, chat history back
   after closing.
 
-Committed, NOT deployed (waiting for an explicit restart OK while the client dev runs the Cook test):
+Committed, NOT deployed (last commit e9b03e2; ask the orchestrator for an explicit "OK restart" +
+"OK device", then deploy and test all of these in one session):
 - 0a7b20e journal summary combat level (script 3954 sets varc 52 COMBAT_LEVEL; was -1).
 - 25582e5 facing: player face = Android flag 0x40 (desktop payload, flag p1Alt3); NPC face = flag
   0x40 with a raw flag byte. Player faces NPC on attack/auto-retaliate/any NPC op; NPC faces its

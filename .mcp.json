@@ -4,6 +4,11 @@
       "type": "stdio",
       "command": "tools/osrs-mcp/run.sh",
       "args": []
+    },
+    "osrs-devtools": {
+      "type": "stdio",
+      "command": "tools/devtools-mcp.sh",
+      "args": []
     }
   }
 }

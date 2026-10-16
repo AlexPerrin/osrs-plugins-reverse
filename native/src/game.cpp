@@ -399,6 +399,12 @@ std::vector<Npc> read_npcs() {
         if (def) n.name = read_string(def + g_build->def_name);
         n.fine_x = read_at<int32_t>(npc + g_build->npc_fine_x);
         n.fine_y = read_at<int32_t>(npc + g_build->npc_fine_y);
+        if (n.fine_x == 0 && n.fine_y == 0) {
+            // Not moved since NPC_INFO added it: +0x1fc/+0x200 are only written by movement, so use
+            // the position the add set (+0x268/+0x26c; a runtime ::npc spawn stood still unreported).
+            n.fine_x = read_at<int32_t>(npc + 0x268);
+            n.fine_y = read_at<int32_t>(npc + 0x26c);
+        }
         n.world_x = base_x + (n.fine_x >> 7);
         n.world_y = base_y + (n.fine_y >> 7);
         n.actor = read_actor(npc);

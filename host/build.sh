@@ -40,7 +40,7 @@ done
 # 1b. Headless java.awt/javax.swing for everything the client and the plugin jars in re/hub
 #     reference but the hand-written shim lacks (plugins build Swing panels in startUp).
 #     Regenerated only when an input changes.
-HUB_JARS=$(ls "$ROOT"/re/hub/*.jar 2>/dev/null || true)
+HUB_JARS=$(ls "$ROOT"/re/hub/*.jar "$ROOT"/re/devtools-build/devtools.jar 2>/dev/null || true)
 STAMP=$( (cat "$RL/client-1.13.1.jar" $HUB_JARS "$ROOT/host/gen/GenHeadless.java" "$ROOT/host/tools/awt_refs.py"; find "$ROOT/host/awt" -name '*.java' | sort) | md5sum | cut -d' ' -f1)
 if [[ ! -f $OUT/headless/.stamp || $(cat "$OUT/headless/.stamp") != "$STAMP" ]]; then
     python3 "$ROOT/host/tools/awt_refs.py" "$OUT/swing-refs.txt" "$OUT/swing-classes.txt" "$RL/client-1.13.1.jar" "$API" $HUB_JARS

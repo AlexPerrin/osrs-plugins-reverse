@@ -27,4 +27,10 @@ public abstract class InputEvent extends ComponentEvent {
     @Override public void consume() { super.consume(); }
     @Override public boolean isConsumed() { return super.isConsumed(); }
     public static String getModifiersExText(int modifiers) { return ""; }
+
+    /** As the JDK: the extended modifier mask of mouse button 1..3. */
+    public static int getMaskForButton(int button) {
+        if (button < 1 || button > 3) throw new IllegalArgumentException("button doesn't exist " + button);
+        return button == 1 ? BUTTON1_DOWN_MASK : button == 2 ? BUTTON2_DOWN_MASK : BUTTON3_DOWN_MASK;
+    }
 }

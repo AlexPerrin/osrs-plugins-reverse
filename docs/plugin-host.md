@@ -205,6 +205,30 @@ touch point (while the finger is down and 3 s after; first op, CC_OP, param0 = s
 item id), computed once per cycle (`AndroidMenu.hoverEntry`). Item Stats' tooltip uses it
 (verified 2026-10-16). Equipment and bank slots are not mapped yet.
 
+## Developer tools (MCP)
+
+OpenRune-Developer-Tools (BSD-2, a sideloaded RuneLite plugin with an MCP server of 47 tools) runs
+in the host so agents can drive device tests. Off by default and never in the default plugin set.
+- Build: `host/plugins/devtools/build.sh` (clones into git-ignored `re/devtools`, pinned; compiles
+  against our 1.13.1 jars; versioned `-local`, so its self-updater stays off).
+- Enable: `adb push re/host/plugins-extra/devtools.jar .../files/plugins/`,
+  `adb shell setprop debug.osrsrl.devtools 1`, restart the game.
+- Use: `tools/devtools-mcp.sh` is an MCP stdio server that forwards each JSON-RPC line to the device
+  through `adb shell -T nc 127.0.0.1 7780` (Windows adb from WSL; its LF to CRLF translation is
+  undone). One-off: `tools/devtools_mcp.py --call tools/list`.
+- Security: the host's `com.sun.net.httpserver` (not on Android) always binds 127.0.0.1, refuses to
+  start unless `debug.osrsrl.devtools=1`, and requires `Authorization: Bearer <token>` on every request.
+  The random per-process token is only written to logcat ("httpserver token ... port ..."), which the
+  bridge reads through adb.
+- Host pieces it needed: the httpserver subset, `Client.get3dZoom`, `InputEvent.getMaskForButton`,
+  and call-site rewrites in `tools/dex-plugin.sh` (`host/gen/CompatRewrite.java`, ASM) that send
+  Java 9+ calls Android 9 lacks to `net.runelite.host.compat.JdkCompat`: `InputStream.readAllBytes/
+  transferTo`, and `Package.getImplementationVersion`, where ART's "0.0" for dex-loaded classes
+  becomes null as on desktop. Converted jars keep `META-INF/MANIFEST.MF`.
+- Verified 2026-10-16: `tools/list` (47 tools) and `get_client_state` over the tunnel. Not yet done:
+  `click`/keys (synthesized touches), `screenshot` (frame capture for DrawManager), and hover-based
+  interactions (`interact_npc` etc. hover, then `client.menuAction`).
+
 ## Gaps, in rough order
 
 - Projection (camera, `Perspective`) so DYNAMIC overlays can follow the scene; NPC

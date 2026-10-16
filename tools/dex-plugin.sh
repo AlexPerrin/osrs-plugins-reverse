@@ -34,6 +34,13 @@ OUT=$(realpath -m "$2")
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
+# Java 9+ calls Android 9 lacks (InputStream.readAllBytes, ...) -> net.runelite.host.compat.JdkCompat.
+ASM=$ROOT/re/tools/asm-9.7.jar
+[[ -f $ASM ]] || curl -sfL -o "$ASM" https://repo1.maven.org/maven2/org/ow2/asm/asm/9.7/asm-9.7.jar
+java -cp "$ASM" "$ROOT/host/gen/CompatRewrite.java" "$IN" "$WORK/rewritten.jar"
+IN_CLASSES=$IN
+IN=$WORK/rewritten.jar
+
 CLASSPATH_ARGS=()
 for j in "$RL"/runelite-api-1.13.1.jar "$RL"/client-1.13.1.jar "$RL"/guice-4.1.0-no_aop.jar "$RL"/guava-23.2-jre.jar \
          "$RL"/javax.inject-1.jar "$RL"/slf4j-api-1.7.25.jar "$RL"/commons-text-1.2.jar "$RL"/commons-lang3-3.7.jar "$RL"/gson-2.8.5.jar; do
@@ -44,7 +51,7 @@ java -cp "$SDK/build-tools/36.0.0/lib/d8.jar" com.android.tools.r8.D8 --release 
     | grep -v -E "^Warning|Missing class|referenced from" | head -20 || true
 
 mkdir "$WORK/classes"
-(cd "$WORK/classes" && unzip -q "$IN" '*.class')
+(cd "$WORK/classes" && unzip -q "$IN_CLASSES" '*.class')
 (cd "$WORK/classes" && grep -rl --include='*.class' 'Lnet/runelite/client/plugins/PluginDescriptor;' . || true) \
     | sed -e 's|^\./||' -e 's|\.class$||' -e 's|/|.|g' > "$WORK/plugin-classes.txt"
 echo "plugin classes: $(tr '\n' ' ' < "$WORK/plugin-classes.txt")"
@@ -52,6 +59,8 @@ cp "$WORK/dex.zip" "$OUT"
 (cd "$WORK" && zip -q "$OUT" plugin-classes.txt)
 # Resources (json, images, ...) stay loadable through the plugin's class loader.
 mkdir "$WORK/res"
-(cd "$WORK/res" && unzip -q "$IN" -x '*.class' 'META-INF/*' 2>/dev/null || true)
+(cd "$WORK/res" && unzip -q "$IN_CLASSES" -x '*.class' 'META-INF/*' 2>/dev/null || true)
+# The manifest too (plugins read their Implementation-Version), not signatures.
+(cd "$WORK/res" && unzip -q "$IN_CLASSES" META-INF/MANIFEST.MF 2>/dev/null || true)
 if [[ -n $(ls -A "$WORK/res") ]]; then (cd "$WORK/res" && zip -qr "$OUT" .); fi
 ls -la "$OUT"

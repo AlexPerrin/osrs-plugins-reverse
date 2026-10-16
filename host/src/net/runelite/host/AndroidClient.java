@@ -578,6 +578,8 @@ public class AndroidClient extends ClientStub {
     }
     @Override public boolean isGpu() { return false; }
     @Override public boolean isResized() { return true; }
+    /** RuneLite's 3D zoom is the viewport zoom (same value as getScale). */
+    @Override public int get3dZoom() { return getScale(); }
     @Override public int getViewportXOffset() { int[] z = gameViewport(); return z != null ? z[1] : 0; }
     @Override public int getViewportYOffset() { int[] z = gameViewport(); return z != null ? z[2] : 0; }
     @Override public int getViewportWidth() { int[] z = gameViewport(); return z != null ? z[3] : OverlayRenderer.canvasSize().width; }

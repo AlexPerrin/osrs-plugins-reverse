@@ -56,6 +56,27 @@ final class Probe {
                         + " varp " + a[2] + " = " + c.getVarpValue(Integer.parseInt(a[2])));
                 return;
             }
+            if (a[0].equals("npcmodel")) {  // "npcmodel <npc id> 0": model bounds and hull of each NPC with that id
+                int want = Integer.parseInt(a[1]);
+                for (net.runelite.api.NPC n : c.getTopLevelWorldView().npcs()) {
+                    if (n.getId() != want) continue;
+                    int[] m = Native.actorModel(false, n.getIndex());
+                    String b = "no model";
+                    if (m != null) {
+                        int[] lo = {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE}, hi = {Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE};
+                        for (int i = 1; i + 2 < m.length; i += 3)
+                            for (int k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], m[i + k]); hi[k] = Math.max(hi[k], m[i + k]); }
+                        b = "height " + m[0] + " verts " + (m.length - 1) / 3 + " x " + lo[0] + ".." + hi[0] + " y " + lo[1] + ".." + hi[1] + " z " + lo[2] + ".." + hi[2];
+                    }
+                    java.awt.Shape h = n.getConvexHull();
+                    net.runelite.api.NPCComposition comp = n.getComposition();
+                    Log.i(TAG, "npcmodel " + want + " index " + n.getIndex() + " name " + n.getName() + " world " + n.getWorldLocation()
+                            + " local " + n.getLocalLocation() + " orient " + n.getCurrentOrientation() + " size " + (comp != null ? comp.getSize() : -1)
+                            + " scale " + (comp != null ? comp.getWidthScale() + "/" + comp.getHeightScale() : "?") + "; " + b
+                            + "; hull " + (h != null ? h.getBounds() : null) + " feet " + net.runelite.api.Perspective.localToCanvas(c, n.getLocalLocation(), c.getTopLevelWorldView().getPlane()));
+                }
+                return;
+            }
             int colon = a[1].indexOf(':');
             int id = colon < 0 ? Integer.parseInt(a[1])
                 : Integer.parseInt(a[1].substring(0, colon)) << 16 | Integer.parseInt(a[1].substring(colon + 1));

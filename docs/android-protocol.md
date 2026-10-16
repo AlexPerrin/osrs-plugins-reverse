@@ -89,7 +89,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 3 | HINT_ARROW | as desktop (FUN_004fd3a4 switches on the desktop types) |
 | 5 | NPC_HEADICON_SPECIFIC | index `p2Alt2`, headIconSlot `p1Alt2`, spriteGroup `p4Alt2`, spriteIndex `p2Alt1` |
 | 9 | MESSAGE_CLANCHANNEL_SYSTEM | as desktop (chat type 43 / 46 guest) |
-| 11 | CHAT_FILTER_SETTINGS_PRIVATECHAT (unverified) | privateChatFilter `p1` (`::pmfilter 2` did not change the Private tab label on 2026-10-15; again with 2 and 1 on 2026-10-16: the label may only redraw through a chat-tab script, or 11 is something else) |
+| 11 | CHAT_FILTER_SETTINGS_PRIVATECHAT | privateChatFilter `p1` (> 2 stored as -1) into client+0x33c4. The CS2 chat_setfilter op (0x5be1a0) pops public/private/trade into +0x33c0/+0x33c4/+0x33c8 (private clamped to 0-2) and sends them as C->S 47 in that order, so +0x33c4 is the private filter. The tab label does not redraw by itself (live 2026-10-15/16) |
 | 12 | OBJ_CUSTOMISE_SPECIFIC_V1 | retex `p2`, retexIndex `p2`, coordGrid.packed `p4`, model `p2Alt2`, recolIndex `p2Alt1`, id `p2Alt2`, recol `p2Alt2`, quantity `p4` |
 | 13 | UPDATE_IGNORELIST | as desktop (FUN_0066ee54 on the ignore list) |
 | 15 | CAM_MODE | as desktop (oculus orb state) |
@@ -168,9 +168,9 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 117 | MESSAGE_CLANCHANNEL | as desktop (chat types 41/44) |
 | 118 | OBJ_COUNT_SPECIFIC | newQuantity `p4Alt1`, id `p2Alt2`, oldQuantity `p4Alt2`, coordGrid.packed `p4Alt1` |
 | 119 | VARCLAN | as desktop (id + typed value) |
-| 120 | IF_SETROTATESPEED (unverified) | combinedId `pCombinedIdAlt3`, xSpeed `p2`, ySpeed `p2` |
+| 120 | IF_SETROTATESPEED | combinedId `pCombinedIdAlt3`, xSpeed `p2`, ySpeed `p2`: component +0x134 = x << 16 \| y, and the interface tick (FUN_005600a4) adds cycles * x to +0x11c and cycles * y to +0x120, the angleX/angleY of IF_SETANGLE (106) |
 | 121 | IF_RESYNC_V2 | as desktop (toplevel `p2`, count `p2`, (combinedId `p4`, id `p2`, type `p1`)*, then (combinedId `p4`, start `p2`, end `p2`, events1 `p4`, events2 `p4`)* to the end) |
-| 123 | MIDI_SWAP (unverified) | recognised, no codec |
+| 123 | MIDI_SWAP | fadeInDelay `p2`, fadeInSpeed `p2Alt3`, fadeOutSpeed `p2Alt1`, fadeOutDelay `p2Alt3` -> FUN_007907c8(outDelay, outSpeed, inDelay, inSpeed). The four globals are the ones MIDI_SONG_STOP (86) and the song player FUN_0078e970 use; globals 1 and 3 feed wait tasks (delays), global 2 a fade task (speed) |
 | 124 | VARCLAN_DISABLE | as desktop (clears the varclan store) |
 | 125 | IF_SETSCROLLPOS | combinedId `pCombinedIdAlt3`, scrollPos `p2` |
 | 126 | IF_MOVESUB | destinationCombinedId `pCombinedId`, sourceCombinedId `pCombinedId` |

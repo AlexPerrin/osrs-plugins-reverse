@@ -744,7 +744,7 @@ index 00000000..a38ed703
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..27a0d30f
+index 00000000..f6c17e6f
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 @@ -0,0 +1,172 @@
@@ -811,7 +811,7 @@ index 00000000..27a0d30f
 +    HINT_ARROW(3, 6), // dispatcher case read
 +    NPC_HEADICON_SPECIFIC(5, 9), // dispatcher case read
 +    MESSAGE_CLANCHANNEL_SYSTEM(9, Prot.VAR_BYTE), // dispatcher case read
-+    CHAT_FILTER_SETTINGS_PRIVATECHAT(11, 1), // unverified: medium: stores the byte at client+0x33c4, between CHAT_FILTER_SETTINGS (78) public +0x33c0 and trade +0x33c8; no tab label change, but 78 (::chatfilter 2 2) does not change the labels either (they need a script redraw)
++    CHAT_FILTER_SETTINGS_PRIVATECHAT(11, 1), // dispatcher case read: byte (>2 -> -1) to client+0x33c4, the private field the CS2 chat_setfilter op (0x5be1a0) sets between public +0x33c0 and trade +0x33c8 and sends as the middle byte of C->S 47
 +    OBJ_CUSTOMISE_SPECIFIC_V1(12, 20), // dispatcher case read
 +    UPDATE_IGNORELIST(13, Prot.VAR_SHORT), // dispatcher case read
 +    CAM_MODE(15, 1), // dispatcher case read
@@ -891,9 +891,9 @@ index 00000000..27a0d30f
 +    MESSAGE_CLANCHANNEL(117, Prot.VAR_BYTE), // dispatcher case read
 +    OBJ_COUNT_SPECIFIC(118, 14), // dispatcher case read
 +    VARCLAN(119, Prot.VAR_BYTE), // dispatcher case read
-+    IF_SETROTATESPEED(120, 8), // unverified: prot by size elimination; x/y order guessed
++    IF_SETROTATESPEED(120, 8), // dispatcher case read: speed halves added per cycle to angleX/angleY (+0x11c/+0x120, FUN_005600a4)
 +    IF_RESYNC_V2(121, Prot.VAR_SHORT), // dispatcher case read: toplevel p2, count p2, (combinedId p4, id p2, type p1)*, then (combinedId p4, start p2, end p2, events1 p4, events2 p4)* to the end, all BE as desktop
-+    MIDI_SWAP(123, 8), // unverified: field names unknown
++    MIDI_SWAP(123, 8), // dispatcher case read; fields from the music player's globals (FUN_007907c8/FUN_0078e970)
 +    VARCLAN_DISABLE(124, 0), // dispatcher case read
 +    IF_SETSCROLLPOS(125, 6), // dispatcher case read
 +    IF_MOVESUB(126, 8), // dispatcher case read
@@ -1322,12 +1322,13 @@ index 00000000..2a69303f
 +    )
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
 new file mode 100644
-index 00000000..db61478b
+index 00000000..5c493eb7
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
-@@ -0,0 +1,1019 @@
+@@ -0,0 +1,1040 @@
 +package net.rsprot.protocol.android
 +
++import net.rsprot.protocol.game.outgoing.sound.MidiSwap
 +import net.rsprot.protocol.game.outgoing.codec.misc.client.UrlOpenEncoder
 +import net.rsprot.protocol.game.outgoing.misc.client.UrlOpen
 +import net.rsprot.protocol.game.outgoing.clan.ClanChannelDelta
@@ -2031,7 +2032,10 @@ index 00000000..db61478b
 +    }
 +}
 +
-+/** Case 120: [combinedId p4Alt3][xSpeed p2][ySpeed p2]; widget field = first << 16 | second (by size elimination). */
++/**
++ * Case 120: [combinedId p4Alt3][xSpeed p2][ySpeed p2] -> component +0x134 = x << 16 | y. The interface tick
++ * (FUN_005600a4) adds cycles * x to +0x11c and cycles * y to +0x120, the angleX/angleY that IF_SETANGLE sets.
++ */
 +public class AndroidIfSetRotateSpeedEncoder : MessageEncoder<IfSetRotateSpeed> {
 +    override val prot: ServerProt = AndroidGameServerProt.IF_SETROTATESPEED
 +
@@ -2179,6 +2183,23 @@ index 00000000..db61478b
 +    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: AmbientSoundStart) {
 +        buffer.p2Alt2(message.id)
 +        buffer.p1(if (message.fade) 1 else 0)
++    }
++}
++
++/**
++ * Case 123: [fadeInDelay p2][fadeInSpeed p2Alt3][fadeOutSpeed LE][fadeOutDelay p2Alt3] ->
++ * FUN_007907c8(outDelay, outSpeed, inDelay, inSpeed). Its globals 0xb842f0/0xb84300 feed wait tasks
++ * (delays) and 0xb842f8 a fade task (speed) in the music player (FUN_0078e970); MIDI_SONG_STOP (86)
++ * fills the same first two through FUN_00790000.
++ */
++public class AndroidMidiSwapEncoder : MessageEncoder<MidiSwap> {
++    override val prot: ServerProt = AndroidGameServerProt.MIDI_SWAP
++
++    override fun encode(streamCipher: StreamCipher, buffer: JagByteBuf, message: MidiSwap) {
++        buffer.p2(message.fadeInDelay)
++        buffer.p2Alt3(message.fadeInSpeed)
++        buffer.p2Alt1(message.fadeOutSpeed)
++        buffer.p2Alt3(message.fadeOutDelay)
 +    }
 +}
 +
@@ -2786,10 +2807,10 @@ index 00000000..b1436285
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..f6d1f022
+index 00000000..3124c09d
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,243 @@
+@@ -0,0 +1,244 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2955,6 +2976,7 @@ index 00000000..f6d1f022
 +            bind(AndroidCamLookAtCyclesEncoder())
 +            bind(AndroidAmbientSoundStartEncoder())
 +            bind(AndroidCamSkyboxEncoder())
++            bind(AndroidMidiSwapEncoder())
 +            bind(AndroidAmbientSoundStopEncoder())
 +            bind(AndroidIfSetHideEncoder())
 +            bind(AndroidIfSetPlayerHeadEncoder())

@@ -31,7 +31,7 @@ account: the server is also the local sign-in provider.
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-16, `71bf2a7`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-16, `9c36f1e`).
 <!-- progress:end -->
 
 Milestones:

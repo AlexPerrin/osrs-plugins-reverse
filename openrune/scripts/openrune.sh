@@ -33,6 +33,7 @@ own() { docker run --rm -v "$1":/v alpine:3.20 chown 1000:1000 /v; }
 gradle() {
     own openrune-gradle
     docker run --rm --name openrune-gradle-$$ -u 1000:1000 -e HOME=/gradle/home \
+        ${OPENRUNE_SKIP_CS2_PACKS+-e OPENRUNE_SKIP_CS2_PACKS="$OPENRUNE_SKIP_CS2_PACKS"} \
         -e GRADLE_USER_HOME=/gradle -v openrune-gradle:/gradle -v "$OR/src":/w -w /w \
         eclipse-temurin:21 ./gradlew --no-daemon --console=plain "$@"
 }

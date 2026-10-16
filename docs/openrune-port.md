@@ -14,12 +14,12 @@ Staged port of our Android test server onto OpenRune-Server, approved 2026-10-16
 | Phase | What | State |
 |---|---|---|
 | 0 | `openrune/` tracked: pin, patch, `openrune.sh init/export/rsprot/build`, Docker image + compose, README | done |
-| 1.1 | Custom clientscripts out of the crashing id range | done (renumbered, build check) |
-| 1.2 | Mobile chatmenu unclamp (varbit 10670 + script 113) | done, untested on device |
-| 1.3 | Test commands (`::freeze`, `::quest`, `::npcsay`, `::options`, `::give`, `::empty`, numeric `::varp`/`::varbit`) | done, untested on device |
+| 1.1 | Custom clientscripts the app crashes on | done: left out of the cache (it is their content, not their ids) |
+| 1.2 | Mobile chatmenu unclamp (varbit 10670 + script 113) | done, verified on device |
+| 1.3 | Test commands (`::freeze`, `::quest`, `::npcsay`, `::options`, `::give`, `::empty`, numeric `::varp`/`::varbit`) | done; `::options`, `::freeze`, `::quest` verified on device |
 | 1.4 | Door content gaps (castle) | kitchen + dining-room double doors tagged; front doors need nothing |
 | 1.5 | Docker deploy beside osrs-rsps-test; app build option in `repack.sh` | done |
-| 2 | Device checklist | not started (needs device slots) |
+| 2 | Device checklist | slot 1 done (crash check, sign-in, chatmenu, commands); rest open |
 | 3 | Sheep Shearer, Romeo & Juliet; make OpenRune the default | waiting for the go-ahead |
 
 ## Phase 1 findings
@@ -46,9 +46,29 @@ Two checks keep it that way:
 Pitfall: an incremental `buildCache` on an existing cache never deletes groups. A cache from before
 the renumbering keeps 45500+ beside 9973+. After renumbering, the cache was rebuilt from scratch.
 
-Open question for the device: the spike showed that the 13 high-id scripts crash the app, but not
-whether it is their ids or their content. With dense ids the app should accept them; if it still
-crashes, the fallback is to leave the spawn-menu pack out of the cache.
+**Device result (2026-10-16, slot 1): it is the content, not the ids.**
+
+| Cache served | Result |
+|---|---|
+| all 13 renumbered to 9973-9985 | crash (SIGSEGV, fault addr 0, thread osrsrl-game, about 2 s after start) |
+| spawn pack left out; the 2 quest scripts at 9973-9974 (dense, 9975 groups) | crash |
+| spawn and quest packs left out (stock 9973 groups + the overrides) | **ok**, signed in and played |
+
+So the cache build now leaves out the clientscripts of both packs (`OPENRUNE_SKIP_CS2_PACKS`, default
+`spawn,quest`).
+
+What is lost:
+- the dev spawn menu, which is useless on mobile;
+- the quest pack's script overrides: the quest tab's "implemented quests only" filter and its
+  `[proc,questlist_hide_quest]`/`[proc,quest_is_complete]` overrides.
+
+The server still runs `quest_available_set` at login. The app ignores the missing script: no crash,
+verified.
+
+Why the new scripts crash is open. The recompiled stock scripts and the 37 overrides are fine, so
+it is something in scripts written for OpenRune, perhaps an instruction or a script feature that the
+Android build handles differently. It is worth a look by the client dev (crash in the game thread
+right after the JS5 sync), and it matters again if we ever want custom clientscripts.
 
 ### 1.2 Chatmenu on mobile
 
@@ -106,7 +126,8 @@ The castle's map locs, decoded from the rev-241 map at Lumbridge (50,50), level 
 ### Verified without the device (2026-10-16)
 
 - From-scratch build: `init`, then `build` (OpenRS2 download, cache pack, installDist). The packed
-  LIVE cache has 9986 clientscript groups, max id 9985 (`check_cache.py`).
+  LIVE cache has 9973 clientscript groups, max id 9972 (`check_cache.py`; the custom scripts are
+  left out, see 1.1).
 - `docker compose up -d --build`: `osrs-openrune` boots in about 9 s ("Supported client types:
   Desktop, Android", world 255, embedded PostgreSQL on the named volume
   `osrs-openrune_openrune-pgdata`), and `osrs-openrune-http` serves jav_config on 8081.
@@ -121,6 +142,21 @@ The castle's map locs, decoded from the rev-241 map at Lumbridge (50,50), level 
 
 ## Phase 2: device checklist
 
-Not started. The first check of the first slot: the app syncs the cache with the renumbered scripts
-and does not crash. If it crashes, leave the 11 spawn-menu scripts out of the cache, keep the 2
-quest-list scripts, and test those separately.
+App build for OpenRune: `OPENRUNE=1 LOCAL_AUTH=1 tools/repack.sh --install` (8081 jav_config,
+port patched to 40255, OpenRune's modulus).
+
+| Check | Result |
+|---|---|
+| App syncs the OpenRune cache without crashing | ok once the custom scripts are left out (see 1.1) |
+| Sign-in (LOCAL_AUTH, "Tester") and Play Now on world 255 | ok, in game at the Lumbridge courtyard, mobile gameframe |
+| Chatmenu with 4 options (`::options One Two Three Four`) | ok: all 4 rows visible, tapping "four" gives "Picked option 4: four", chat history comes back after closing |
+| `::freeze` | ok ("NPC wandering off.") |
+| `::quest cook` | ok ("Cook's Assistant: varbit.cooks_assistant_progress = 0 (not_started, end 2)") |
+| Door (tagged: poordoor at 3226,3214; kitchen 3207,3217) | open |
+| NPC dialogue (Cook) and Cook's Assistant end to end | open |
+| Bank, combat | open |
+| Saves across relog | open (verified in the spike) |
+| Weight (UPDATE_RUNWEIGHT) | open on device. OpenRune sends it on inventory/worn changes (`PlayerInvUpdateProcessor`) and our RSProt has the Android encoder; the client dev can read getWeight via the plugin host, e.g. after `::item 1127` and wearing it |
+| Plugin host + Quest Helper (Cook's Assistant overlay) | open |
+
+Slot 1: 01:29-01:43. The normal build (8080) was reinstalled at the end and Play Now signed in.

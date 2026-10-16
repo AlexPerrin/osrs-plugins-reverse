@@ -1,5 +1,5 @@
 diff --git a/.data/gamevals/clientscript.rscm b/.data/gamevals/clientscript.rscm
-index bd539bb13..a78dd2b77 100644
+index bd539bb13..2fc22e88f 100644
 --- a/.data/gamevals/clientscript.rscm
 +++ b/.data/gamevals/clientscript.rscm
 @@ -7917,4 +7917,4 @@
@@ -7,7 +7,7 @@ index bd539bb13..a78dd2b77 100644
  [clientscript,script7919]=7919
  [clientscript,script7920]=7920
 -quest_policy_complete_set=45553
-+quest_policy_complete_set=9985
++quest_policy_complete_set=9974
 diff --git a/.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml b/.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml
 new file mode 100644
 index 000000000..be7534f2b
@@ -527,7 +527,7 @@ index 000000000..03233f5b5
 +    }
 +}
 diff --git a/content/other/spawn/pack/src/main/resources/pack/cs2/symbols/clientscript.sym b/content/other/spawn/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
-index d71a51d5f..00b05bf8b 100644
+index d71a51d5f..2df561e5d 100644
 --- a/content/other/spawn/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
 +++ b/content/other/spawn/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
 @@ -1,11 +1,11 @@
@@ -542,19 +542,19 @@ index d71a51d5f..00b05bf8b 100644
 -45524	[clientscript,spawn_menu_labels]
 -45527	[proc,spawn_menu_fit]
 -45530	[clientscript,spawn_menu_search_stop]
-+9973	[clientscript,spawn_menu_init]
-+9974	[clientscript,spawn_menu_draw]
-+9975	[proc,spawn_menu_search_idle]
-+9976	[clientscript,spawn_menu_search_op]
-+9977	[clientscript,spawn_menu_search_key]
-+9978	[clientscript,spawn_menu_card_op]
-+9979	[clientscript,spawn_menu_buttons]
-+9980	[clientscript,spawn_menu_search_tick]
-+9981	[clientscript,spawn_menu_labels]
-+9982	[proc,spawn_menu_fit]
-+9983	[clientscript,spawn_menu_search_stop]
++9975	[clientscript,spawn_menu_init]
++9976	[clientscript,spawn_menu_draw]
++9977	[proc,spawn_menu_search_idle]
++9978	[clientscript,spawn_menu_search_op]
++9979	[clientscript,spawn_menu_search_key]
++9980	[clientscript,spawn_menu_card_op]
++9981	[clientscript,spawn_menu_buttons]
++9982	[clientscript,spawn_menu_search_tick]
++9983	[clientscript,spawn_menu_labels]
++9984	[proc,spawn_menu_fit]
++9985	[clientscript,spawn_menu_search_stop]
 diff --git a/content/other/spawn/src/main/resources/gamevals.toml b/content/other/spawn/src/main/resources/gamevals.toml
-index 83435d83b..514c4067e 100644
+index 83435d83b..6d8e37a98 100644
 --- a/content/other/spawn/src/main/resources/gamevals.toml
 +++ b/content/other/spawn/src/main/resources/gamevals.toml
 @@ -2,10 +2,10 @@
@@ -565,22 +565,22 @@ index 83435d83b..514c4067e 100644
 -spawn_menu_buttons = 45518
 -spawn_menu_labels = 45524
 -spawn_menu_search_stop = 45530
-+spawn_menu_init = 9973
-+spawn_menu_buttons = 9979
-+spawn_menu_labels = 9981
-+spawn_menu_search_stop = 9983
++spawn_menu_init = 9975
++spawn_menu_buttons = 9981
++spawn_menu_labels = 9983
++spawn_menu_search_stop = 9985
  
  [gamevals.inv]
  spawn_results = 1100
 diff --git a/content/quest/pack/src/main/resources/pack/cs2/symbols/clientscript.sym b/content/quest/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
-index 39d0d5701..f103b86b6 100644
+index 39d0d5701..7f910453c 100644
 --- a/content/quest/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
 +++ b/content/quest/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
 @@ -1,2 +1,2 @@
 -45550	[clientscript,quest_available_set]
 -45553	[clientscript,quest_policy_complete_set]
-+9984	[clientscript,quest_available_set]
-+9985	[clientscript,quest_policy_complete_set]
++9973	[clientscript,quest_available_set]
++9974	[clientscript,quest_policy_complete_set]
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/Quest.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/Quest.kt
 index 009be2ce1..7387b4c9a 100644
 --- a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/Quest.kt
@@ -681,18 +681,18 @@ index 000000000..9d80c6dee
 +    }
 +}
 diff --git a/content/quest/src/main/resources/gamevals.toml b/content/quest/src/main/resources/gamevals.toml
-index 8f3ee7093..78a39aa52 100644
+index 8f3ee7093..bd809341a 100644
 --- a/content/quest/src/main/resources/gamevals.toml
 +++ b/content/quest/src/main/resources/gamevals.toml
 @@ -1,5 +1,5 @@
  [gamevals.clientscript]
 -quest_available_set = 45550
-+quest_available_set = 9984
++quest_available_set = 9973
  
  [gamevals.timer]
  quest_scroll_close = 402
 diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/manager/QuestPolicySyncScriptTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/manager/QuestPolicySyncScriptTest.kt
-index 39f1247cd..f03899932 100644
+index 39f1247cd..30566f2dc 100644
 --- a/content/quest/src/test/kotlin/org/rsmod/content/quest/manager/QuestPolicySyncScriptTest.kt
 +++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/manager/QuestPolicySyncScriptTest.kt
 @@ -25,7 +25,7 @@ class QuestPolicySyncScriptTest {
@@ -700,7 +700,7 @@ index 39f1247cd..f03899932 100644
          GameValProvider.load()
          val id = "clientscript.quest_policy_complete_set".asRSCM(RSCMType.CLIENTSCRIPT)
 -        assertEquals(45553, id)
-+        assertEquals(9985, id)
++        assertEquals(9974, id)
      }
  
      @Test
@@ -752,10 +752,18 @@ index 0e4a0f17f..5b494bdba 100644
  simmetrics-core = { module = "com.github.mpkorstanje:simmetrics-core", version.ref = "simmetrics" }
  spotless-gradle-plugin = { module = "com.diffplug.spotless:spotless-plugin-gradle", version.ref = "spotless" }
 diff --git a/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt b/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt
-index 9387eba2d..77b8c4784 100644
+index 9387eba2d..42caf9b5f 100644
 --- a/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt
 +++ b/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt
-@@ -118,12 +118,34 @@ class PluginPacks(val projectRoot: File, val all: List<PluginPack>) {
+@@ -110,6 +110,7 @@ class PluginPacks(val projectRoot: File, val all: List<PluginPack>) {
+         }
+ 
+         for (pack in active) {
++            if (nameOf(pack) in skippedCs2Packs()) continue
+             val dir = pack.cs2Directory() ?: continue
+             File(dir, "script").takeIf { it.isDirectory }?.let(sources::add)
+             dir.listFiles()?.filter { it.isCs2() }?.forEach(sources::add)
+@@ -118,12 +119,44 @@ class PluginPacks(val projectRoot: File, val all: List<PluginPack>) {
              }
          }
  
@@ -769,6 +777,16 @@ index 9387eba2d..77b8c4784 100644
 +     * stock range (it sizes its script table from the archive), so custom scripts must take the ids
 +     * right after the stock maximum (9972 in rev 241). Fails the cache build otherwise.
 +     */
++    /**
++     * osrs-plugins-reverse: packs whose clientscripts stay out of the cache. The Android client
++     * crashes on OpenRune's own scripts (content, not ids: tested 2026-10-16), so the spawn menu and
++     * quest packs are left out by default
++     * (`OPENRUNE_SKIP_CS2_PACKS`, comma-separated pack names; empty packs everything).
++     */
++    private fun skippedCs2Packs(): Set<String> =
++        (System.getenv("OPENRUNE_SKIP_CS2_PACKS") ?: "spawn,quest")
++            .split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
++
 +    private fun checkClientScriptIds(lines: Collection<String>) {
 +        val limit = System.getenv("OPENRUNE_MAX_CLIENTSCRIPT_ID")?.toIntOrNull() ?: MAX_CLIENTSCRIPT_ID
 +        val bad = lines.mapNotNull { line ->

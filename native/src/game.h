@@ -68,6 +68,8 @@ int widget_dynamic_count(uintptr_t widget);
 uintptr_t widget_dynamic(uintptr_t widget, int index);  // 0 if empty or out of range
 struct WidgetItem { int id = -1, quantity = 0; };
 WidgetItem widget_item(uintptr_t widget);  // item set by IF_SETOBJECT / CC_SETOBJECT
+int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colour for text widgets
+void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty
 struct SubInterface { int component, group; };  // `group` is open inside `component`
 std::vector<SubInterface> open_sub_interfaces();
 

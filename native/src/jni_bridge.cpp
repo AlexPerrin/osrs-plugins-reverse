@@ -425,6 +425,15 @@ jintArray n_widget_item(JNIEnv* env, jclass, jint id, jint index) {
     return arr;
 }
 
+static uintptr_t widget_or_child(jint id, jint index) {
+    uintptr_t w = game::widget(id);
+    return w && index >= 0 ? game::widget_dynamic(w, index) : w;
+}
+jint n_widget_color(JNIEnv*, jclass, jint id, jint index) { return game::widget_color(widget_or_child(id, index)); }
+void n_widget_set_color(JNIEnv*, jclass, jint id, jint index, jint rgb) {
+    if (client_thread::on_client_thread()) game::widget_set_color(widget_or_child(id, index), rgb);
+}
+
 // Dynamic (CC_CREATE) children: index into the component's created-children array.
 jint n_widget_dynamic_count(JNIEnv*, jclass, jint id) { return game::widget_dynamic_count(game::widget(id)); }
 jboolean n_widget_dynamic_hidden(JNIEnv*, jclass, jint id, jint i) {
@@ -503,6 +512,8 @@ const JNINativeMethod kNatives[] = {
     {"widgetDynamicCount", "(I)I", reinterpret_cast<void*>(n_widget_dynamic_count)},
     {"widgetDynamicHidden", "(II)Z", reinterpret_cast<void*>(n_widget_dynamic_hidden)},
     {"widgetItem", "(II)[I", reinterpret_cast<void*>(n_widget_item)},
+    {"widgetColor", "(II)I", reinterpret_cast<void*>(n_widget_color)},
+    {"widgetSetColor", "(III)V", reinterpret_cast<void*>(n_widget_set_color)},
     {"widgetDynamicText", "(II)Ljava/lang/String;", reinterpret_cast<void*>(n_widget_dynamic_text)},
     {"widgetDynamicGeometry", "(II)[I", reinterpret_cast<void*>(n_widget_dynamic_geometry)},
     {"property", "(Ljava/lang/String;)Ljava/lang/String;", reinterpret_cast<void*>(n_property)},

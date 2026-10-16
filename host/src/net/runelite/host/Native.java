@@ -12,6 +12,10 @@ final class Native {
     static native int[] widgetDynamicGeometry(int id, int index);
     /** {itemId, quantity} of component id (index < 0) or its CC_CREATE child; null if absent. */
     static native int[] widgetItem(int id, int index);
+    /** Widget +0x98 (0xRRGGBB); index -1 = the component itself. */
+    static native int widgetColor(int id, int index);
+    /** Writes the colour and marks the widget dirty (client thread only; ignored elsewhere). */
+    static native void widgetSetColor(int id, int index, int rgb);
     /** Scene objects, all planes: 5 ints each (see jni_bridge.cpp n_scene_objects). Client thread only. */
     static native int[] sceneObjects();
     /** Ground items, all planes: 3 ints each (plane << 16 | x << 8 | y, id, quantity). Client thread only. */

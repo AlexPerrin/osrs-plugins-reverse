@@ -338,6 +338,24 @@ WidgetItem widget_item(uintptr_t w) {
     return {read_at<int32_t>(w + 0xb38), read_at<int32_t>(w + 0xb3c)};
 }
 
+// IF_SETCOLOUR (dispatcher case 0x1d) stores 0xRRGGBB at Widget +0x98, then, if the widget's
+// redraw cycle (+0xb78) is the current one (Client +0x4132bc), flags its root area dirty:
+// Client +0x4132c0 + Widget[+0xb74] = 1.
+int widget_color(uintptr_t w) { return w ? read_at<int32_t>(w + 0x98) & 0xffffff : 0; }
+
+void widget_set_color(uintptr_t w, int rgb) {
+    uintptr_t c = client();
+    if (!w || !c) return;
+    rgb &= 0xffffff;
+    auto* colour = reinterpret_cast<volatile int32_t*>(w + 0x98);
+    if (*colour == rgb) return;
+    *colour = rgb;
+    if (read_at<int32_t>(w + 0xb78) == read_at<int32_t>(c + 0x4132bc)) {
+        int area = read_at<int32_t>(w + 0xb74);
+        if (area >= 0 && area < 0x400) *reinterpret_cast<volatile uint8_t*>(c + 0x4132c0 + area) = 1;
+    }
+}
+
 uintptr_t widget(int component) {
     uintptr_t c = client();
     if (!c || component < 0) return 0;

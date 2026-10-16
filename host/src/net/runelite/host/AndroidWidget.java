@@ -36,6 +36,9 @@ public class AndroidWidget extends WidgetBag {
 
     /** Item set by IF_SETOBJECT / CC_SETOBJECT (inventory slots, bank items): -1 if none. */
     @Override public int getItemId() { int[] it = Native.widgetItem(id, childIndex()); return it != null ? it[0] : -1; }
+    /** Text colour (IF_SETCOLOUR), written through to the game widget. */
+    @Override public int getTextColor() { return Native.widgetColor(id, childIndex()); }
+    @Override public Widget setTextColor(int rgb) { Native.widgetSetColor(id, childIndex(), rgb); return this; }
     @Override public int getItemQuantity() { int[] it = Native.widgetItem(id, childIndex()); return it != null && it[0] != -1 ? it[1] : 0; }
 
     @Override

@@ -47,7 +47,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Emojis | starts | cache dir now under the app's files dir (user.home); emoji rendering in chat not possible (game chat) |
 | Examine | runs | "Price of Salmon: GE average 30 HA value 18" after Examine on an inventory item, one price line after OpenRune dropped its own (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
 | Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Color Tile > Pick opens the Android colour dialog and recolours the tile (verified 2026-10-16) |
-| Implings | starts | `implings.showbaby=HIGHLIGHT`; OpenRune's `::npc` spawns (implings and goblins alike) reply "Spawned npc" but never reach the client (server gap, confirmed 2026-10-16) |
+| Implings | runs | Puro-Puro (`::tele 2592 4320`): a gourmet impling outlined and named with `implings.showgourmet=HIGHLIGHT`, and caught with a butterfly net (verified 2026-10-16; the name label sits too high) |
 | Interact Highlight | runs | outline on the hovered NPC (long-press) and red outline on the attacked goblin (long-press + Attack, verified 2026-10-16) |
 | Inventory Tags | runs | green outline on a tagged pot; Shift + long-press an item: "Inventory tag" > Pick sets the tag (verified 2026-10-16; outlines from the game's createItemSprite) |
 | Item Charges | runs | "8" drawn on a Ring of dueling(8) in the inventory (verified 2026-10-16) |

@@ -61,6 +61,17 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
 - **Fishing spots:** the Lumbridge river Lure/Bait spot (`0_50_50_freshfish`, npc 1527) and the
   `0_50_49_saltfish` Net/Bait spot had no content group, so their ops did nothing.
 
+- **Dwarf multicannon** (`content/other/dwarf-multicannon`): set-up from the base (4 stages,
+  "You add the furnace."), Fire/Load X/use cannonballs (30 max), Empty, Pick-up, a cannon rotating
+  through 8 octants that fires at attackable NPCs within 8 tiles (projectile, ranged accuracy roll,
+  0-30 damage, 2 Ranged xp per damage), one cannon per player, no set-up at the Grand Exchange. It
+  sets the varps RuneLite's Cannon plugin reads: `dropcannon` (2, stage, 4 = built), `rockthrower`
+  (3, ammo), `ownedmcannon` (4, packed coord of the SW corner) and varbit `mcannon_decayed` (13672).
+  Deviations: after a logout or 25 minutes (decay) the parts and balls go to the bank instead of
+  Nulodion's reclaim; only steel cannonballs.
+- **Small fixes:** fishing stops when the player is no longer beside the spot (teleport); the login
+  message is "Welcome to Old School RuneScape." (WELCOME), which RuneLite's Chat History waits for.
+
 ## Build
 
 ```

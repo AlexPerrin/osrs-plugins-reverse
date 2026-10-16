@@ -17,6 +17,8 @@ void overlay_publish(int width, int height);
 void sidebar_set_model(const char* model);
 std::vector<int> sidebar_poll_events();
 bool sidebar_open();
+// Pixels (ARGB) for sidebar icon nodes (kind I) with this id; uploaded as a texture on first draw.
+void sidebar_set_icon(int id, int w, int h, const std::vector<uint32_t>& argb);
 // The virtual Shift toggle under the RL button.
 bool virtual_shift();
 // Plugin-created menu entries drawn as a strip at (x, y), width w, in UI-canvas units (canvas_h

@@ -447,6 +447,9 @@ public class GenHeadless {
                   .append(in).append("public static final java.util.concurrent.ConcurrentLinkedQueue<Runnable> __queue = new java.util.concurrent.ConcurrentLinkedQueue<Runnable>();\n")
                   .append(in).append("public static volatile Thread __edt;\n");
             if (c == java.awt.Component.class) sb.append(in).append("java.awt.Container __parent;\n");
+            if (c == javax.swing.text.AbstractDocument.class)
+                sb.append(in).append("/** Host: the document's text (JTextComponent.get/setText read and write it, as in Swing). */\n")
+                  .append(in).append("public final java.lang.StringBuilder __content = new java.lang.StringBuilder();\n");
             if (c == javax.swing.JComboBox.class)
                 sb.append(in).append("/** Host: the items (the sidebar lists them in a picker). */\n")
                   .append(in).append("public final java.util.List __items = new java.util.ArrayList();\n");
@@ -506,6 +509,7 @@ public class GenHeadless {
             else if (ps[i] == javax.swing.Icon.class && generatedHas(c, "setIcon", javax.swing.Icon.class)) b.append(" setIcon(").append(a).append(");");
             else if (c == javax.swing.JScrollPane.class && ps[i] == java.awt.Component.class && generatedHas(c, "setViewportView", java.awt.Component.class)) b.append(" setViewportView(").append(a).append(");");
             else if (javax.swing.AbstractButton.class.isAssignableFrom(c) && ps[i] == boolean.class && generatedHas(c, "setSelected", boolean.class)) b.append(" setSelected(").append(a).append(");");
+            else if (c == javax.swing.ImageIcon.class && ps[i] == java.awt.Image.class && generatedHas(c, "setImage", java.awt.Image.class)) b.append(" setImage(").append(a).append(");");
             else if (javax.swing.JComboBox.class.isAssignableFrom(c) && ps[i] == Object[].class && generatedHas(c, "addItem", Object.class)) b.append(" if (").append(a).append(" != null) for (Object o : ").append(a).append(") addItem(o);");
         }
         return b.toString();
@@ -577,6 +581,34 @@ public class GenHeadless {
         // Skill Calculator casts the editor to DefaultEditor for its text field.
         if (c == javax.swing.JSpinner.class && n.equals("getEditor") && ps.length == 0 && props.containsKey("Editor"))
             return "if (!__EditorSet) { __Editor = new javax.swing.JSpinner.DefaultEditor(); __EditorSet = true; } return (javax.swing.JComponent) __Editor;";
+        // Documents hold their text: Notes saves Document.getText(0, getLength()) on focus loss.
+        if (javax.swing.text.AbstractDocument.class.isAssignableFrom(c) && generate.contains(javax.swing.text.AbstractDocument.class)) {
+            boolean base = c == javax.swing.text.AbstractDocument.class;
+            if (n.equals("getLength") && ps.length == 0) return base ? "return __content.length();" : "return super.getLength();";
+            if (n.equals("getText") && ps.length == 2 && ps[0] == int.class)
+                return base ? "int s = Math.max(0, Math.min(a0, __content.length())); return __content.substring(s, Math.max(s, Math.min(s + a1, __content.length())));" : "return super.getText(a0, a1);";
+            if (n.equals("insertString") && ps.length == 3)
+                return base ? "if (a1 != null) __content.insert(Math.max(0, Math.min(a0, __content.length())), a1);" : "super.insertString(a0, a1, a2);";
+            if (n.equals("remove") && ps.length == 2 && ps[0] == int.class)
+                return base ? "int s = Math.max(0, Math.min(a0, __content.length())); __content.delete(s, Math.min(s + Math.max(0, a1), __content.length()));" : "super.remove(a0, a1);";
+        }
+        if (javax.swing.text.JTextComponent.class.isAssignableFrom(c) && generate.contains(javax.swing.text.AbstractDocument.class)
+                && x.getDeclaringClass() == c) {
+            boolean base = c == javax.swing.text.JTextComponent.class;
+            String doc = "javax.swing.text.Document d = getDocument(); ";
+            if (n.equals("getText") && ps.length == 0)
+                return base ? doc + "if (d instanceof javax.swing.text.AbstractDocument) return ((javax.swing.text.AbstractDocument) d).__content.toString(); return __TextSet ? __Text : \"\";" : "return super.getText();";
+            if (n.equals("setText") && ps.length == 1)
+                return base ? "__Text = a0; __TextSet = true; " + doc + "if (d instanceof javax.swing.text.AbstractDocument) { java.lang.StringBuilder b = ((javax.swing.text.AbstractDocument) d).__content; b.setLength(0); if (a0 != null) b.append(a0); }" : "super.setText(a0);";
+            if (n.equals("getText") && ps.length == 2 && ps[0] == int.class) return base ? doc + "return d.getText(a0, a1);" : "return super.getText(a0, a1);";
+            // Swing text components start editable (QH's JGenerator turns it off for its labels).
+            if (base && n.equals("isEditable") && ps.length == 0) return "return __EditableSet ? __Editable : true;";
+        }
+        // The sidebar draws icon-only tabs (Skill Calculator) from ImageIcon.getImage().
+        if (c == javax.swing.ImageIcon.class && props.containsKey("Image") && ps.length == 0) {
+            if (n.equals("getIconWidth")) return "return __Image != null ? __Image.getWidth(null) : 0;";
+            if (n.equals("getIconHeight")) return "return __Image != null ? __Image.getHeight(null) : 0;";
+        }
         if (c == java.awt.event.ItemEvent.class) {
             if (n.equals("getItem") && ps.length == 0) return "return __item;";
             if (n.equals("getStateChange") && ps.length == 0) return "return __state;";

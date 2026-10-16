@@ -356,6 +356,12 @@ jintArray n_sidebar_poll_events(JNIEnv* env, jclass) {
     return arr;
 }
 jboolean n_sidebar_open(JNIEnv*, jclass) { return sidebar_open(); }
+void n_sidebar_icon(JNIEnv* env, jclass, jint id, jint w, jint h, jintArray argb) {
+    if (!argb || w <= 0 || h <= 0 || env->GetArrayLength(argb) < w * h) return;
+    std::vector<uint32_t> px(static_cast<size_t>(w) * h);
+    env->GetIntArrayRegion(argb, 0, w * h, reinterpret_cast<jint*>(px.data()));
+    sidebar_set_icon(id, w, h, px);
+}
 jboolean n_shift_held(JNIEnv*, jclass) { return virtual_shift(); }
 void n_plugin_menu(JNIEnv* env, jclass, jobjectArray labels, jint x, jint y, jint w, jint canvas_h) {
     std::vector<std::string> out;
@@ -1042,6 +1048,7 @@ const JNINativeMethod kNatives[] = {
     {"sidebarSetModel", "(Ljava/lang/String;)V", reinterpret_cast<void*>(n_sidebar_set_model)},
     {"sidebarPollEvents", "()[I", reinterpret_cast<void*>(n_sidebar_poll_events)},
     {"sidebarOpen", "()Z", reinterpret_cast<void*>(n_sidebar_open)},
+    {"sidebarIcon", "(III[I)V", reinterpret_cast<void*>(n_sidebar_icon)},
     {"shiftHeld", "()Z", reinterpret_cast<void*>(n_shift_held)},
     {"pluginMenu", "([Ljava/lang/String;IIII)V", reinterpret_cast<void*>(n_plugin_menu)},
     {"menuClose", "()Z", reinterpret_cast<void*>(n_menu_close)},

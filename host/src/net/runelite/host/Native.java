@@ -100,6 +100,9 @@ final class Native {
     /** Taps since the last call as (kind, index) pairs, or null. */
     static native int[] sidebarPollEvents();
     static native boolean sidebarOpen();
+
+    /** Sidebar icon pixels (ARGB, row-major) for model nodes of kind I with this id. */
+    static native void sidebarIcon(int id, int width, int height, int[] argb);
     /** The virtual Shift toggle under the RL button. */
     static native boolean shiftHeld();
     /** Replaces a chat message's text in the game (game thread). */

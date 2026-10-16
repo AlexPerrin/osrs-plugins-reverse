@@ -31,7 +31,8 @@ import net.runelite.client.ui.NavigationButton;
  * shown by the native overlay (overlay.cpp) as an ImGui window.
  *
  * The panel's component tree is flattened into lines "kind\tdepth\tcolor\ttext" (kinds: L label, E text field,
- * B button, C checkbox (text prefixed with 0/1), T text field, X combo box, H clickable panel)
+ * B button, C checkbox (text prefixed with 0/1), T read-only text, A editable text area, X combo box,
+ * H clickable panel, I icon-only clickable "<icon id>:<selected>")
  * after a header line "S\tselected\ttooltip...". The overlay sends back taps as (kind, index)
  * pairs, which are dispatched to the Swing listeners on the game thread.
  */
@@ -173,14 +174,26 @@ final class Sidebar {
                 Activity a = currentActivity();
                 if (a == null) return;
                 final android.widget.EditText edit = new android.widget.EditText(a);
-                edit.setSingleLine(true);
+                final boolean area = !(field instanceof javax.swing.JTextField);
+                if (area) {
+                    edit.setSingleLine(false);
+                    edit.setMinLines(4);
+                    edit.setMaxLines(12);
+                    edit.setGravity(android.view.Gravity.TOP | android.view.Gravity.START);
+                } else {
+                    edit.setSingleLine(true);
+                }
                 edit.setText(field.getText());
                 edit.setSelection(edit.getText().length());
                 android.app.AlertDialog d = new android.app.AlertDialog.Builder(a)
                     .setView(edit)
                     .setPositiveButton("OK", (dlg, w) -> {
                         String text = edit.getText().toString();
-                        javax.swing.SwingUtilities.invokeLater(() -> setFieldText(field, text, true));
+                        javax.swing.SwingUtilities.invokeLater(() -> {
+                            setFieldText(field, text, true);
+                            // Text areas save on focus loss (Notes); the prompt closing is that moment.
+                            if (area) focusLost(field);
+                        });
                     })
                     .setNegativeButton("Cancel", null)
                     .create();
@@ -191,6 +204,16 @@ final class Sidebar {
                 Log.e(TAG, "text prompt failed", t);
             }
         });
+    }
+
+    private static void focusLost(Component c) {
+        for (java.awt.event.FocusListener l : c.getFocusListeners()) {
+            try {
+                l.focusLost(new java.awt.event.FocusEvent());
+            } catch (Throwable t) {
+                Log.e(TAG, "FocusListener threw", t);
+            }
+        }
     }
 
     /** Combo box: a tap opens an Android list of its items; the pick is applied on the game thread. */
@@ -359,6 +382,7 @@ final class Sidebar {
         if (c instanceof JLabel) {
             String t = clean(((JLabel) c).getText());
             if (!t.isEmpty()) add(sb, 'L', depth, c, t);
+            else if (c.getMouseListeners().length > 0) addIcon(sb, depth, c, ((JLabel) c).getIcon());  // icon tab (Skill Calculator)
             return;
         }
         if (c instanceof JCheckBox) {
@@ -366,11 +390,16 @@ final class Sidebar {
             return;
         }
         if (c instanceof AbstractButton) {
+            if (text(c).equals(">") && addIcon(sb, depth, c, ((AbstractButton) c).getIcon())) return;
             add(sb, 'B', depth, c, text(c));
             return;
         }
         if (c instanceof javax.swing.JTextField) {  // editable: tap opens a text prompt
             add(sb, 'E', depth, c, clean(((JTextComponent) c).getText()));
+            return;
+        }
+        if (c instanceof JTextComponent && ((JTextComponent) c).isEditable()) {  // editable text area (Notes): multi-line prompt
+            add(sb, 'A', depth, c, clean(((JTextComponent) c).getText()));
             return;
         }
         if (c instanceof JTextComponent) {
@@ -409,6 +438,37 @@ final class Sidebar {
             for (Component child : ((Container) c).getComponents()) labelText(child, out, found);
         }
         return out;
+    }
+
+    // Icons sent to the overlay (id per image; pixels are pushed once).
+    private static final Map<java.awt.Image, Integer> iconIds = new java.util.WeakHashMap<>();
+    private static int nextIconId = 1;
+
+    /**
+     * Icon-only clickable (kind I): text is "<icon id>:<selected 0/1>". Pixels go to the overlay
+     * the first time an image is seen. Returns false when the icon has no image.
+     */
+    private static boolean addIcon(StringBuilder sb, int depth, Component c, javax.swing.Icon icon) {
+        if (!(icon instanceof javax.swing.ImageIcon)) return false;
+        java.awt.Image img = ((javax.swing.ImageIcon) icon).getImage();
+        if (!(img instanceof java.awt.image.BufferedImage)) return false;
+        Integer id = iconIds.get(img);
+        if (id == null) {
+            java.awt.image.BufferedImage b = (java.awt.image.BufferedImage) img;
+            int w = b.getWidth(), h = b.getHeight();
+            if (w <= 0 || h <= 0 || w > 256 || h > 256) return false;
+            id = nextIconId++;
+            iconIds.put(img, id);
+            Native.sidebarIcon(id, w, h, b.getRGB(0, 0, w, h, null, 0, w));
+        }
+        boolean sel = false;
+        try {
+            Method m = c.getClass().getMethod("isSelected");  // MaterialTab, toggle buttons
+            sel = Boolean.TRUE.equals(m.invoke(c));
+        } catch (Throwable ignored) {
+        }
+        add(sb, 'I', depth, c, id + ":" + (sel ? 1 : 0));
+        return true;
     }
 
     private static void add(StringBuilder sb, char kind, int depth, Component c, String text) {

@@ -71,6 +71,43 @@ std::vector<std::string> g_pm_labels;
 float g_pm_x = 0, g_pm_y = 0, g_pm_w = 0, g_pm_canvas_h = 0;
 std::atomic<float> g_pm_rect[4];
 
+// Sidebar icons: RGBA pixels by id (guarded by g_sb_mutex), and GL textures per EGL context
+// (render thread only).
+struct SidebarIcon { int w, h; std::vector<uint8_t> rgba; };
+std::unordered_map<int, SidebarIcon> g_sb_icons;
+std::unordered_map<EGLContext, std::unordered_map<int, GLuint>> g_sb_icon_tex;
+
+// Texture for an icon id in the current context (0 if unknown). Render thread, g_sb_mutex not held.
+GLuint sidebar_icon_texture(int id, int* w, int* h) {
+    SidebarIcon icon;
+    {
+        std::lock_guard lock(g_sb_mutex);
+        auto it = g_sb_icons.find(id);
+        if (it == g_sb_icons.end()) return 0;
+        *w = it->second.w;
+        *h = it->second.h;
+        auto& texs = g_sb_icon_tex[eglGetCurrentContext()];
+        auto t = texs.find(id);
+        if (t != texs.end()) return t->second;
+        icon = it->second;
+    }
+    GLint prev = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev);
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, icon.w, icon.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, icon.rgba.data());
+    glBindTexture(GL_TEXTURE_2D, prev);
+    std::lock_guard lock(g_sb_mutex);
+    g_sb_icon_tex[eglGetCurrentContext()][id] = tex;
+    return tex;
+}
+
 // Render-thread copy of the model.
 int g_sb_selected = 0;
 std::vector<std::string> g_sb_tabs;
@@ -209,6 +246,36 @@ void sidebar_frame(int w, int h) {
                 ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
                 clicked = ImGui::Button(label.c_str(), ImVec2(-1, 0));
                 ImGui::PopStyleColor();
+                break;
+            }
+            case 'A': {  // editable text area (Notes): tap opens a multi-line Android prompt
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+                ImGui::BeginChild(("##area" + std::to_string(i)).c_str(), ImVec2(-1, 0),
+                                  ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY, ImGuiWindowFlags_NoScrollbar);
+                if (n.text.empty()) ImGui::TextDisabled("(tap to write)");
+                else ImGui::TextWrapped("%s", n.text.c_str());
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
+                clicked = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsMouseReleased(0);
+                break;
+            }
+            case 'I': {  // icon-only tab/button: "<icon id>:<selected>"
+                int iw = 0, ih = 0;
+                GLuint tex = sidebar_icon_texture(atoi(n.text.c_str()), &iw, &ih);
+                bool sel = n.text.size() >= 2 && n.text.back() == '1';
+                float side = ImGui::GetFrameHeight() * 1.6f;
+                if (prev_kind == 'I' && n.depth == prev_depth &&
+                    ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + side + 2 * ImGui::GetStyle().FramePadding.x <
+                        ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
+                    ImGui::SameLine();
+                if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+                if (tex) {
+                    float sc = side / std::max(iw, ih);
+                    clicked = ImGui::ImageButton(id.c_str(), static_cast<ImTextureID>(tex), ImVec2(iw * sc, ih * sc));
+                } else {
+                    clicked = ImGui::Button(("?" + id).c_str(), ImVec2(side, side));
+                }
+                if (sel) ImGui::PopStyleColor();
                 break;
             }
             case 'X': {  // combo box: tap opens an Android list (Sidebar.promptChoice)
@@ -392,6 +459,20 @@ std::vector<int> sidebar_poll_events() {
 }
 
 bool sidebar_open() { return g_sb_open; }
+
+void sidebar_set_icon(int id, int w, int h, const std::vector<uint32_t>& argb) {
+    SidebarIcon icon{w, h, std::vector<uint8_t>(argb.size() * 4)};
+    for (size_t i = 0; i < argb.size(); i++) {
+        uint32_t c = argb[i];
+        icon.rgba[i * 4 + 0] = (c >> 16) & 0xff;
+        icon.rgba[i * 4 + 1] = (c >> 8) & 0xff;
+        icon.rgba[i * 4 + 2] = c & 0xff;
+        icon.rgba[i * 4 + 3] = (c >> 24) & 0xff;
+    }
+    std::lock_guard lock(g_sb_mutex);
+    g_sb_icons[id] = std::move(icon);
+    for (auto& [ctx, texs] : g_sb_icon_tex) texs.erase(id);  // ids are not reused, but stay safe (leaks a texture)
+}
 bool virtual_shift() { return g_shift; }
 
 void plugin_menu_set(const std::vector<std::string>& labels, float x, float y, float w, float canvas_h) {

@@ -319,18 +319,43 @@ public class AndroidClient extends ClientStub {
      */
     static volatile int scaleOverride = -1;
 
-    @Override public int getCameraX() { return Native.camera()[0]; }
-    @Override public int getCameraY() { return Native.camera()[1]; }
-    @Override public int getCameraZ() { return Native.camera()[2]; }
+    @Override public int getCameraX() { return Math.round(getCameraFpX()); }
+    @Override public int getCameraY() { return Math.round(getCameraFpY()); }
+    @Override public int getCameraZ() { return Math.round(getCameraFpZ()); }
+
+    /**
+     * Experimental (`setprop debug.osrsrl.eyeback D`): moves the reported camera back by D units
+     * along the view axis. Perspective's depth then gains D while the lateral terms stay, which tests
+     * whether the game's eye sits behind its camera position (the fitted scale only matches at one depth).
+     */
+    private float eyeBack;
+    private long eyeCheckedAt;
+    private float eyeBack() {
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - eyeCheckedAt > 1000) {
+            eyeCheckedAt = now;
+            try { String v = Native.property("debug.osrsrl.eyeback"); eyeBack = v.isEmpty() ? 0 : Float.parseFloat(v); }
+            catch (NumberFormatException ignored) {}
+        }
+        return eyeBack;
+    }
+    private float eyeOffset(int axis) {
+        float d = eyeBack();
+        if (d == 0) return 0;
+        int[] cam = Native.camera();
+        double pitch = cam[3] * Math.PI * 2 / 16384, yaw = cam[4] * Math.PI * 2 / 16384;
+        double[] f = {-Math.sin(yaw) * Math.cos(pitch), Math.cos(yaw) * Math.cos(pitch), Math.sin(pitch)};
+        return (float) (-d * f[axis]);
+    }
     @Override public int getCameraPitch() { return Native.camera()[3]; }
     @Override public int getCameraYaw() { return Native.camera()[4]; }
     // Targets (+0x8949c/+0x894a0) aren't read separately; the camera settles on them within frames.
     @Override public int getCameraYawTarget() { return getCameraYaw(); }
     @Override public int getCameraPitchTarget() { return getCameraPitch(); }
     @Override public net.runelite.api.CameraFocusableEntity getCameraFocusEntity() { return getLocalPlayer(); }
-    @Override public float getCameraFpX() { return getCameraX(); }
-    @Override public float getCameraFpY() { return getCameraY(); }
-    @Override public float getCameraFpZ() { return getCameraZ(); }
+    @Override public float getCameraFpX() { return Native.camera()[0] + eyeOffset(0); }
+    @Override public float getCameraFpY() { return Native.camera()[1] + eyeOffset(1); }
+    @Override public float getCameraFpZ() { return Native.camera()[2] + eyeOffset(2); }
     @Override public float getCameraFpPitch() { return (float) (getCameraPitch() * Math.PI * 2 / 16384); }
     @Override public float getCameraFpYaw() { return (float) (getCameraYaw() * Math.PI * 2 / 16384); }
     private long scaleCheckedAt;

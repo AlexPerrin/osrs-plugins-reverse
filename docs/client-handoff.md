@@ -106,6 +106,22 @@ session; its notes are in `docs/android-protocol.md`.
   highlight, varp 144 → 10, Juliet's house stairs); stopped upstairs at "Talk to Juliet".
   Tips: tapping a wandering NPC often hits "Walk here"; long-press and pick the entry
   (MenuOpened logs list entries in RuneLite order, top entry last).
+  Later in gen 4: sidebar combo boxes (Android picker + ItemListener events; GenHeadless JComboBox
+  keeps items; unverified), `addChatMessage` through the game's `0x43a9c0` (verified),
+  `getVarps`, varcs (`Client+0x417b68`; unverified), **model-based actor hulls** (entity vtable
+  slot 0 `getModel` → posed Model vertices, rotated + projected in `Hulls.model`; verified on
+  Juliet/Romeo; `setprop debug.osrsrl.modelhull 0` = boxes), despawn events kept for departed
+  NPCs/players (fixes a stale NPC blocking QH's NpcStep after a teleport; unverified).
+  **022f070 must be on the device before teleporting**: 4d60e14 crashed on `::tele` (getModel on a
+  freed entity); 022f070 resolves the live entity at call time (unverified).
+  R&J state: varp 144 = 20 (Juliet gave the message, "1 x Message"); next: give it to Romeo
+  (Varrock Square), Father Lawrence (3254,3483), cadava berries (bush Pick-from, or `::give 753`),
+  Apothecary (3195,3405, dialogue "Talk about Romeo & Juliet."), potion to Juliet (upstairs,
+  long-press her; a door blocks the direct path), back to Romeo. QH quirk (not ours): in Juliet's
+  room at stage 20 QH shows the stage-60 text (copy-paste in QH's helper).
+  Next after R&J: object model hulls/click boxes (GameObject `+0x230` Renderable*, slot 0; AABB
+  `0x71ae98`), the real viewport zoom (`renderer+0x630c60`) instead of the fitted scale,
+  `getWeight`, `menuAction`, setters (setVarbit/setVarcIntValue), widget sprite ids.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

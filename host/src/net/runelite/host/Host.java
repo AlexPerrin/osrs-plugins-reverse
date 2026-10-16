@@ -333,6 +333,7 @@ public final class Host {
                         Log.e(TAG, "scene refresh failed", t);
                     }
                 }
+                postActorChanges(bus);  // hitsplats of this tick before its GameTick, as on desktop
                 bus.post(gameTick);
                 clientThread.runTickEnd();
                 Probe.onGameTick();

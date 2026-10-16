@@ -17,6 +17,7 @@ final class PlayerCache {
     final List<Object[]> changes = new ArrayList<>();
 
     synchronized List<Object[]> drainChanges() {
+        refreshedCycle = Integer.MIN_VALUE;  // a handler earlier in the cycle may have read the old snapshot
         refresh();
         List<Object[]> out = new ArrayList<>(changes);
         changes.clear();

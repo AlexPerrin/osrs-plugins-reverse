@@ -944,7 +944,9 @@ jobjectArray n_players(JNIEnv* env, jclass) {
 
 // {id0, id1, ...} of an inventory's items followed by quantities (2 * slots ints), or null.
 jintArray n_inventory(JNIEnv* env, jclass, jint id) {
-    for (const auto& inv : client_thread::inventories()) {
+    // On the game thread read the live map: scripts that run while the packets are handled (the
+    // bank's 505 on the cycle inventory 95 arrives) would otherwise see last cycle's snapshot.
+    for (const auto& inv : client_thread::on_client_thread() ? game::read_inventories() : client_thread::inventories()) {
         if (inv.id != id) continue;
         jsize n = static_cast<jsize>(inv.ids.size());
         jintArray arr = env->NewIntArray(2 * n);

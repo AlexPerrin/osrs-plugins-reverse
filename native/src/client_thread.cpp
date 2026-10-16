@@ -350,18 +350,11 @@ void install_menu_hook() {
 
 void after_cycle() {
     g_cycles++;
-    post({EventType::ClientTick});
 
     int state = game::game_state();
     if (state != g_last_state) {
         post({EventType::GameStateChanged, state, g_last_state});
         g_last_state = state;
-    }
-    int tick = game::server_tick();
-    if (tick != g_last_tick) {
-        // The counter is reset on login; only an increase is a game tick.
-        if (g_last_tick >= 0 && tick > g_last_tick) post({EventType::GameTick, tick});
-        g_last_tick = tick;
     }
     diff_varps();
     diff_npcs();
@@ -373,6 +366,16 @@ void after_cycle() {
     diff_interfaces();
     diff_menu();
     game::drawlog_cycle();
+    // As on desktop, the events of a tick's packets (varps, hitsplats, spawns) come before that
+    // tick's GameTick, then ClientTick. Special Attack Counter matches a hitsplat to the tick
+    // count and timed out when GameTick came first.
+    int tick = game::server_tick();
+    if (tick != g_last_tick) {
+        // The counter is reset on login; only an increase is a game tick.
+        if (g_last_tick >= 0 && tick > g_last_tick) post({EventType::GameTick, tick});
+        g_last_tick = tick;
+    }
+    post({EventType::ClientTick});
 
     std::vector<std::function<void()>> tasks;
     {

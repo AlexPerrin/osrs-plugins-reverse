@@ -70,9 +70,9 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Idle Notifier | runs | "[RuneLite] You are now idle!" in the game chat after mining/fishing stops (Notifier → game chat, verified 2026-10-16) |
 | Mining | runs | "Mining" / "NOT mining" session panel below the chatbox while mining copper (after OpenRune's OSRS wording fix; TOP_LEFT placement verified 2026-10-16) |
 | Player Indicators | starts | needed protobuf-javalite + RuneLite http-api (PartyService) |
-| Special Attack Counter | starts | detects the dragon warhammer spec on OpenRune ("Special attack used ... weapon: DRAGON_WARHAMMER", energy 100 -> 50, 2026-10-16) but then logs "Timeout waiting for hitsplat": the goblin's hitsplat isn't matched (HitsplatApplied type/isMine or timing still to check), so no counter InfoBox |
+| Special Attack Counter | runs | dragon warhammer spec on an imp: "30%" defence-drain and hit-count InfoBoxes (verified 2026-10-16). Needed the desktop event order: a tick's varp/hitsplat events now come before its GameTick (the plugin matches the hitsplat to `getTickCount()` and timed out when GameTick came first) |
 | XP Globes | runs | attack/HP globes over the chat tabs after combat |
-| Bank | starts | `::openbank` opens the bank (2026-10-16); the bank value in the title isn't shown: the mobile bank scripts don't call runelite_callback `setBankTitle` |
+| Bank | runs | `::openbank`: the title shows the bank value, "The Bank of Gielinor (35.9K)" (verified 2026-10-16). Script 505 runs in the cycle inventory 95 arrives, so `getItemContainer` now reads the live inventory map on the game thread (it read last cycle's snapshot) |
 | Notes | runs | tap the note in the sidebar: multi-line Android prompt; OK saves it (`notes.notesData=Buy feathers`, verified 2026-10-16). Headless documents hold their text, and the prompt raises focusLost, where Notes saves |
 | Slayer | starts | task InfoBox drawn (enchanted gem "?" icon from the game's sprites) with no task |
 | NPC Aggression Timer | starts | not checked |

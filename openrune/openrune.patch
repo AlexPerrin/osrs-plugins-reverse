@@ -1756,13 +1756,14 @@ index a8bc2108d..9cf4c201c 100644
  
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
 new file mode 100644
-index 000000000..f79a312bf
+index 000000000..772e8a470
 --- /dev/null
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
-@@ -0,0 +1,94 @@
+@@ -0,0 +1,102 @@
 +package org.rsmod.content.other.commands
 +
 +import jakarta.inject.Inject
++import net.rsprot.protocol.api.IncomingPacketTrace
 +import net.rsprot.protocol.game.outgoing.misc.client.UrlOpen
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccessLauncher
@@ -1793,6 +1794,7 @@ index 000000000..f79a312bf
 +        }
 +        onCommand("options", "Open a chatmenu with 2-5 options (::options One Two Three)", ::options)
 +        onCommand("url", "Send URL_OPEN (::url https://example.com)", ::url)
++        onCommand("trace", "Log every incoming game packet (docker logs) on/off", ::trace)
 +    }
 +
 +    private fun freeze(cheat: Cheat) =
@@ -1842,6 +1844,12 @@ index 000000000..f79a312bf
 +            val target = args.firstOrNull() ?: "https://example.com"
 +            player.client.write(UrlOpen(target))
 +            player.mes("URL_OPEN sent: $target")
++        }
++
++    private fun trace(cheat: Cheat) =
++        with(cheat) {
++            IncomingPacketTrace.enabled = !IncomingPacketTrace.enabled
++            player.mes("Incoming packet trace ${if (IncomingPacketTrace.enabled) "on" else "off"}.")
 +        }
 +
 +    private fun nearbyNpcs(player: Player): List<Npc> =

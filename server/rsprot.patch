@@ -4002,16 +4002,56 @@ index 8fa46301..b5e4fc39 100644
                  val zoneIndexStorage =
                      ZoneIndexStorage(
                          ZoneIndexStorage.WORLDENTITY_CAPACITY,
+diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/IncomingPacketTrace.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/IncomingPacketTrace.kt
+new file mode 100644
+index 00000000..f6dffc11
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/IncomingPacketTrace.kt
+@@ -0,0 +1,13 @@
++package net.rsprot.protocol.api
++
++/**
++ * osrs-plugins-reverse: when [enabled], every incoming game packet is logged at INFO with its
++ * opcode, length, message class and first payload bytes, before the consumer check, so packets the
++ * server has no listener for show up too. For live protocol verification (`::trace`).
++ */
++public object IncomingPacketTrace {
++    @Volatile
++    public var enabled: Boolean = false
++
++    public const val MAX_BYTES: Int = 48
++}
 diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageDecoder.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageDecoder.kt
-index 08c7a6cf..12b79fd1 100644
+index 08c7a6cf..13ad7201 100644
 --- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageDecoder.kt
 +++ b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageDecoder.kt
-@@ -152,7 +152,7 @@ public class GameMessageDecoder<R>(
+@@ -2,6 +2,7 @@ package net.rsprot.protocol.api.game
+ 
+ import com.github.michaelbull.logging.InlineLogger
+ import io.netty.buffer.ByteBuf
++import io.netty.buffer.ByteBufUtil
+ import io.netty.channel.ChannelHandlerContext
+ import io.netty.handler.codec.ByteToMessageDecoder
+ import io.netty.handler.codec.DecoderException
+@@ -11,6 +12,7 @@ import net.rsprot.buffer.extensions.toJagByteBuf
+ import net.rsprot.crypto.cipher.StreamCipher
+ import net.rsprot.protocol.ClientProt
+ import net.rsprot.protocol.Prot
++import net.rsprot.protocol.api.IncomingPacketTrace
+ import net.rsprot.protocol.api.NetworkService
+ import net.rsprot.protocol.api.Session
+ import net.rsprot.protocol.api.decoder.DecoderState
+@@ -152,7 +154,12 @@ public class GameMessageDecoder<R>(
                  .trafficMonitor
                  .gameChannelTrafficMonitor
                  .incrementIncomingPackets(ctx.hostAddress(), opcode, length)
 -            val messageClass = decoders.getMessageClass(this.decoder.javaClass)
 +            val messageClass = decoders.getMessageClass(this.opcode) ?: decoders.getMessageClass(this.decoder.javaClass)
++            if (IncomingPacketTrace.enabled) {
++                val shown = minOf(length, IncomingPacketTrace.MAX_BYTES)
++                val bytes = ByteBufUtil.hexDump(input, input.readerIndex(), shown)
++                logger.info { "IN op=$opcode len=$length ${messageClass.simpleName} $bytes" }
++            }
              val consumerRepository = networkService.gameMessageConsumerRepositoryProvider.provide()
              val consumer = consumerRepository.consumers[messageClass]
              if (consumer == null) {

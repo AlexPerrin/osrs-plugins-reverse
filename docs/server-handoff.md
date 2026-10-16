@@ -30,7 +30,8 @@ this repo's `rsprot.patch`) all run there.
 - **Devtools works for server checks**: `tools/devtools_mcp.py --call tools/call
   '{"name":"type_chat","arguments":{"text":"::tele 2592 4320"}}'`, `list_npcs`, `get_client_state`
   (setup in docs/plugin-host.md). OpenRune has no incoming-packet trace, so C->S packets can't be
-  watched live (a `::trace`-style logger would be the next tool to add).
+  watched live without `::trace` (added after the slot: logs every incoming packet,
+  consumed or not, in `docker logs osrs-openrune`).
 - **URL_OPEN 24**: the third live `::url https://example.com` crashed the app (SIGSEGV in
   osrsrl-game, libhoudini backtrace), no dialog. Passed to the client dev; don't resend until they
   report.

@@ -41,7 +41,8 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   and reset for chat_left/chat_right and on close, as on our server. Without it the 3rd and 4th
   options were clipped on mobile.
 - **Test commands:** `::freeze` (NPC wandering on/off), `::npcsay text`, `::options a b c [d] [e]`
-  (a 2-5 option chatmenu), `::quest name [start|done|reset|n]`, `::give` and `::empty` (aliases of
+  (a 2-5 option chatmenu), `::trace` (log every incoming game packet, consumed or not, as `IN op=..
+  len=.. Class hexbytes` in `docker logs osrs-openrune`; RSProt's `IncomingPacketTrace`), `::quest name [start|done|reset|n]`, `::give` and `::empty` (aliases of
   `::item` and `::invclear`), and numeric ids for `::varp`/`::varbit`/`::getvarp`/`::getvarbit`.
   OpenRune already has `::tele x z [level]`, `::item id|name [count]`, `::npcanim id` (nearest NPC),
   `::mypos`, `::openbank`, `::master` and more.

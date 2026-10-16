@@ -104,6 +104,10 @@ void diff_varps() {
 
 void diff_npcs() {
     std::vector<game::Npc> now = game::read_npcs();
+    // A just-added Npc has no position until its first movement update (fine 0,0, which is never a
+    // real position: actors stand on tile centres). RuneLite posts NpcSpawned after placement, and
+    // QH's NpcStep rejects an NPC outside its roam range at spawn time, so hold it back until then.
+    std::erase_if(now, [](const game::Npc& n) { return n.fine_x == 0 && n.fine_y == 0; });
     std::vector<game::Npc> old;
     {
         std::lock_guard lock(g_npcs_mutex);
@@ -193,6 +197,7 @@ void diff_inventories() {
 
 void diff_players() {
     std::vector<game::PlayerInfo> now = game::read_players();
+    std::erase_if(now, [](const game::PlayerInfo& p) { return p.fine_x == 0 && p.fine_y == 0; });  // see diff_npcs
     std::vector<game::PlayerInfo> old;
     {
         std::lock_guard lock(g_players_mutex);

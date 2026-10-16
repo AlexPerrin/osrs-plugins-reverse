@@ -224,7 +224,14 @@ public final class Host {
                 break;
             }
             case NPC_SPAWNED: {
-                AndroidNPC npc = npcCache.get(a);
+                AndroidNPC npc = npcCache.getFresh(a);
+                if (npc == null) Log.w(TAG, "NpcSpawned " + a + " (id " + b + "): not in the NPC snapshot");
+                if (npc != null && "1".equals(Native.property("debug.osrsrl.actorlog"))) {
+                    net.runelite.api.coords.LocalPoint lp = npc.getLocalLocation();
+                    Log.i(TAG, "NpcSpawned " + npc.getName() + " id " + npc.getId() + " idx " + a + " local " + lp
+                        + " world " + npc.getWorldLocation() + " fromLocalInstance " + net.runelite.api.coords.WorldPoint.fromLocalInstance(client, lp)
+                        + " base " + worldView.getBaseX() + "," + worldView.getBaseY() + " state " + client.getGameState());
+                }
                 if (npc != null) bus.post(new NpcSpawned(npc));
                 break;
             }
@@ -244,7 +251,7 @@ public final class Host {
                 break;
             }
             case PLAYER_SPAWNED: {
-                AndroidPlayer p = playerCache.get(a);
+                AndroidPlayer p = playerCache.getFresh(a);
                 if (p != null) bus.post(new net.runelite.api.events.PlayerSpawned(p));
                 break;
             }

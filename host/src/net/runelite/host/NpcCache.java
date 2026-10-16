@@ -22,6 +22,15 @@ final class NpcCache {
         return out;
     }
 
+    /** For spawn events: the snapshot may have been read earlier in this cycle, before the
+     *  native diff that posted the event, so re-read it when the index isn't there. */
+    synchronized AndroidNPC getFresh(int index) {
+        AndroidNPC o = get(index);
+        if (o != null) return o;
+        refreshedCycle = Integer.MIN_VALUE;
+        return get(index);
+    }
+
     synchronized void refresh() {
         int cycle = Native.gameCycle();
         if (cycle == refreshedCycle) return;

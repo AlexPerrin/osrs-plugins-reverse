@@ -8,6 +8,13 @@
 #   LOCAL_AUTH=1 SERVER=... tools/repack.sh
 #                              -> also lets the app sign in against the server's local OpenID
 #                                 provider (server LOCAL_AUTH=true) instead of a Jagex account
+#   GAME_PORT=40255 SERVER=... tools/repack.sh
+#                              -> also patches the game port the client connects to (it ignores
+#                                 jav_config for that; tools/openrune/patch_port.py)
+#   OPENRUNE=1 LOCAL_AUTH=1 tools/repack.sh
+#                              -> the build for OpenRune (openrune/): SERVER=10.0.2.2:8081 (its
+#                                 jav_config sidecar), GAME_PORT=40255 and the modulus of
+#                                 openrune/src/.data/game.key, unless set explicitly
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -19,6 +26,12 @@ KEYSTORE=$RE/debug.keystore
 KS_PASS=android
 
 [[ -f $HOOK_SO ]] || { echo "build native/ first (missing $HOOK_SO)"; exit 1; }
+
+if [[ -n ${OPENRUNE:-} ]]; then
+    SERVER=${SERVER:-10.0.2.2:8081}
+    GAME_PORT=${GAME_PORT:-40255}
+    MODULUS=${MODULUS:-$("$ROOT/openrune/scripts/openrune.sh" modulus)}
+fi
 mkdir -p "$OUT"
 
 # 1. Decode classes only (-r keeps resources.arsc untouched; fewer rebuild failures). LOCAL_AUTH
@@ -57,6 +70,10 @@ if [[ -n ${SERVER:-} ]]; then
     unzip -p "$ROOT/split_config.arm64_v8a.apk" lib/arm64-v8a/liblibs.hal.system.osclient.so > "$GAME_SO.orig"
     python3 -I "$ROOT/tools/patch_server.py" "$GAME_SO.orig" "$GAME_SO" --server "$SERVER" --modulus "$MODULUS"
     rm "$GAME_SO.orig"
+    if [[ -n ${GAME_PORT:-} ]]; then
+        python3 -I "$ROOT/tools/openrune/patch_port.py" "$GAME_SO" "$GAME_SO.port" "$GAME_PORT"
+        mv "$GAME_SO.port" "$GAME_SO"
+    fi
 fi
 
 # 4. Add the hook library (and patched game library) to the ABI split, dropping the old signature.

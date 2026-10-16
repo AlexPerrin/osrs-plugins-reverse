@@ -1,0 +1,9 @@
+# Only the build outputs the runtime image needs (see Dockerfile).
+*
+!docker/
+!src/server/app/build/install/
+!src/game.yml
+!src/.data/
+src/.data/postgres/
+src/.data/cache/incremental_*/
+src/.data/client.key

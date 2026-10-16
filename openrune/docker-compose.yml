@@ -1,0 +1,42 @@
+name: osrs-openrune
+# OpenRune-Server for the Android app, next to (not instead of) our own test server
+# osrs-rsps-test (43594/8080), which this file never touches. Build first: scripts/openrune.sh build
+services:
+  openrune:
+    build: .
+    image: osrs-openrune:241
+    container_name: osrs-openrune
+    restart: unless-stopped
+    ports:
+      # login + JS5 + game. The OpenRune app build has its game port patched to 40255
+      # (tools/openrune/patch_port.py); a real switch would use 43594.
+      - "40255:43594"
+    volumes:
+      - openrune-pgdata:/app/.data/postgres   # accounts + saves (embedded PostgreSQL)
+    environment:
+      JAVA_OPTS: "-Xmx2g"
+
+  # jav_config.ws / slr.ws / LOCAL_AUTH sign-in for the app, from our own server image in a separate
+  # container: only its HTTP port is published, its game port stays internal and unused.
+  # WORLD_ID 255 is OpenRune's world (game.yml). Needs osrs-rsps-test:241 built (server/).
+  http:
+    image: osrs-rsps-test:241
+    container_name: osrs-openrune-http
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - ../server/data:/data:ro
+    environment:
+      WORLD_HOST: "10.0.2.2"
+      HTTP_PUBLIC_PORT: "8081"
+      WORLD_ID: "255"
+      SAVE_DIR: "/tmp/saves"
+      JAV_CONFIG_TEMPLATE: "/app/protocol/jav_config.ws.template"
+      LOCAL_AUTH: "true"
+      LOCAL_DISPLAY_NAME: "Tester"
+      PROOF_OF_WORK: "false"
+      VALIDATE_CRCS: "false"
+
+volumes:
+  openrune-pgdata:

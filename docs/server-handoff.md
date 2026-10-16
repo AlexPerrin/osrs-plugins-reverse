@@ -21,6 +21,25 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-16 night, fifth server dev, on OpenRune)
+
+- **Deployed** the pending build (MIDI_SWAP encoder, decoders 8/20/28/50/57/84) at 18:54 as image
+  aec982d; sign-in and Play Now verified. Later work (implings, Genie) is built and tested but NOT
+  deployed: the next deploy is `cd openrune && docker compose --env-file switch.env up -d --build
+  --no-deps openrune` (needs "OK restart"). A throwaway container of that build booted cleanly.
+- **Devtools works for server checks**: `tools/devtools_mcp.py --call tools/call
+  '{"name":"type_chat","arguments":{"text":"::tele 2592 4320"}}'`, `list_npcs`, `get_client_state`
+  (setup in docs/plugin-host.md). OpenRune has no incoming-packet trace, so C->S packets can't be
+  watched live (a `::trace`-style logger would be the next tool to add).
+- **URL_OPEN 24**: the third live `::url https://example.com` crashed the app (SIGSEGV in
+  osrsrl-game, libhoudini backtrace), no dialog. Passed to the client dev; don't resend until they
+  report.
+- **45 SET_HEADING**: probably sailing (minimap heading), not testable on either server.
+- **Content**: Implings (catching; Puro-Puro spawns already existed) and the Genie random event
+  (`::randomevent`), see `openrune/README.md` and `docs/openrune-port.md`. Upstreamable fixes are
+  listed in `docs/openrune-port.md`.
+- Remaining unverified: S->C 0, 24, 148; C->S 45, 69 (unchanged).
+
 ## Latest state (2026-10-16 evening, fourth server dev, on OpenRune)
 
 The switch is done: the default server is OpenRune (`openrune/`, osrs-openrune on 43594, sidecar on

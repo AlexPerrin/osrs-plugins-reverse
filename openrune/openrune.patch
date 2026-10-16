@@ -708,6 +708,281 @@ index ef0006d83..cfef1fa6d 100644
  moveRestrict = "NoMove"
  wanderRange = 0
  respawnDir = "East"
+diff --git a/content/events/random-events/build.gradle.kts b/content/events/random-events/build.gradle.kts
+new file mode 100644
+index 000000000..0c66fd8e6
+--- /dev/null
++++ b/content/events/random-events/build.gradle.kts
+@@ -0,0 +1,15 @@
++plugins {
++    id("base-conventions")
++    id("integration-test-suite")
++}
++
++dependencies {
++    implementation(projects.api.pluginCommons)
++    implementation(projects.content.quest)
++}
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.pluginCommons)
++    }
++}
+diff --git a/content/events/random-events/src/integration/kotlin/org/rsmod/content/events/randomevents/GenieRandomEventTest.kt b/content/events/random-events/src/integration/kotlin/org/rsmod/content/events/randomevents/GenieRandomEventTest.kt
+new file mode 100644
+index 000000000..a85f073b0
+--- /dev/null
++++ b/content/events/random-events/src/integration/kotlin/org/rsmod/content/events/randomevents/GenieRandomEventTest.kt
+@@ -0,0 +1,40 @@
++package org.rsmod.content.events.randomevents
++
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.content.events.randomevents.GenieRandomEvent.Companion.CALL_INTERVAL
++import org.rsmod.content.events.randomevents.GenieRandomEvent.Companion.LIFETIME_TICKS
++import org.rsmod.map.CoordGrid
++
++@Execution(ExecutionMode.SAME_THREAD)
++class GenieRandomEventTest {
++    @Test
++    fun GameTestState.`the genie spawns beside its owner and faces them`() =
++        runInjectedGameTest(GenieRandomEvent::class, null, GenieRandomEvent::class) { script ->
++            val center = CoordGrid(0, 50, 50, 20, 20)
++            allocZoneCollision(center)
++            player.teleport(center)
++            val genie = script.spawn(player)
++            assertEquals(1, genie.coords.chebyshevDistance(player.coords))
++            assertTrue(genie.faceEntity.isPlayer)
++            assertEquals(player.slotId, genie.faceEntity.playerSlot)
++            assertEquals(genie, script.genieOf(player))
++        }
++
++    @Test
++    fun GameTestState.`an ignored genie leaves after a minute`() =
++        runInjectedGameTest(GenieRandomEvent::class, null, GenieRandomEvent::class) { script ->
++            val center = CoordGrid(0, 50, 50, 20, 20)
++            allocZoneCollision(center)
++            player.teleport(center)
++            val genie = script.spawn(player)
++            advance(ticks = LIFETIME_TICKS + CALL_INTERVAL)
++            assertEquals(null, script.genieOf(player))
++            assertFalse(genie.isSlotAssigned)
++        }
++}
+diff --git a/content/events/random-events/src/main/kotlin/org/rsmod/content/events/randomevents/GenieRandomEvent.kt b/content/events/random-events/src/main/kotlin/org/rsmod/content/events/randomevents/GenieRandomEvent.kt
+new file mode 100644
+index 000000000..7cdc4199e
+--- /dev/null
++++ b/content/events/random-events/src/main/kotlin/org/rsmod/content/events/randomevents/GenieRandomEvent.kt
+@@ -0,0 +1,193 @@
++package org.rsmod.content.events.randomevents
++
++import dev.openrune.types.NpcMode
++import jakarta.inject.Inject
++import jakarta.inject.Singleton
++import org.rsmod.api.config.Constants
++import org.rsmod.api.npc.owner.assignSpawnOwner
++import org.rsmod.api.player.output.mes
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.random.GameRandom
++import org.rsmod.api.repo.npc.NpcRepository
++import org.rsmod.api.script.onCommand
++import org.rsmod.api.script.onOpHeld1
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.api.script.onOpNpc5
++import org.rsmod.api.script.onPlayerLogin
++import org.rsmod.api.script.onPlayerLogout
++import org.rsmod.api.script.onPlayerSoftTimer
++import org.rsmod.content.quest.manager.chooseLampSkill
++import org.rsmod.game.MapClock
++import org.rsmod.game.cheat.Cheat
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.entity.Player
++import org.rsmod.map.CoordGrid
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++import org.rsmod.routefinder.collision.CollisionFlagMap
++import org.rsmod.routefinder.flag.CollisionFlag
++
++/**
++ * The Genie random event (OSRS Wiki: Random events, Genie, Transcript:Genie). Every 1-2 hours of
++ * play a Genie appears beside the player, faces them and calls them by name; Talk-to gives a lamp
++ * (10 x the chosen skill's level in XP), Dismiss sends him away, and he leaves after a minute when
++ * ignored. RuneLite's Random Events plugin keys on exactly this: a random-event NPC whose
++ * interaction target is the local player.
++ */
++@Singleton
++class GenieRandomEvent
++@Inject
++constructor(
++    private val npcRepo: NpcRepository,
++    private val collision: CollisionFlagMap,
++    private val mapClock: MapClock,
++    private val random: GameRandom,
++) : PluginScript() {
++    private val genies = HashMap<Player, Genie>()
++
++    override fun ScriptContext.startup() {
++        onPlayerLogin { player.softTimer(SCHEDULE_TIMER, nextEventDelay()) }
++        onPlayerLogout { genies.remove(player)?.let { leave(it.npc) } }
++        onPlayerSoftTimer(SCHEDULE_TIMER) {
++            player.softTimer(SCHEDULE_TIMER, nextEventDelay())
++            if (player !in genies) spawn(player)
++        }
++        onPlayerSoftTimer(GENIE_TIMER) { tick(player) }
++        onOpNpc1(GENIE) { talk(it.npc) }
++        onOpNpc5(GENIE) { dismiss(it.npc) }
++        onOpHeld1(LAMP) { rub() }
++        onCommand("randomevent") {
++            desc = "Spawn the Genie random event beside you"
++            cheat(::summon)
++        }
++    }
++
++    private fun summon(cheat: Cheat) {
++        val player = cheat.player
++        if (player in genies) {
++            player.mes("Your Genie is already here.")
++            return
++        }
++        spawn(player)
++    }
++
++    fun spawn(player: Player): Npc {
++        val npc = Npc(GENIE, besideTile(player.coords))
++        npc.mode = NpcMode.None
++        npcRepo.add(npc, Int.MAX_VALUE)
++        npc.respawns = false
++        npc.assignSpawnOwner(player, mapClock.cycle)
++        npc.facePlayer(player)
++        npc.say("Greetings, ${title(player)} ${player.displayName}!")
++        player.softTimer(GENIE_TIMER, CALL_INTERVAL)
++        genies[player] = Genie(npc, mapClock.cycle + LIFETIME_TICKS)
++        return npc
++    }
++
++    fun genieOf(player: Player): Npc? = genies[player]?.npc
++
++    private fun tick(owner: Player) {
++        val genie = genies[owner]
++        if (genie == null || !genie.npc.isSlotAssigned) {
++            genies.remove(owner)
++            return
++        }
++        val npc = genie.npc
++        if (mapClock.cycle >= genie.leaveCycle) {
++            npc.say("Maybe later.")
++            genies.remove(owner)
++            leave(npc)
++            return
++        }
++        val besideOwner =
++            npc.coords.level == owner.coords.level && npc.coords.chebyshevDistance(owner.coords) <= 1
++        if (!besideOwner) {
++            npc.teleport(collision, besideTile(owner.coords))
++        }
++        npc.facePlayer(owner)
++        val name = "${title(owner)} ${owner.displayName}"
++        npc.say(random.pick("Hello, $name?", "Ehem... $name?", "I'm waiting for you, $name!"))
++        owner.softTimer(GENIE_TIMER, CALL_INTERVAL)
++    }
++
++    private suspend fun ProtectedAccess.talk(npc: Npc) {
++        val owner = genies.entries.firstOrNull { it.value.npc === npc }?.key
++        if (owner !== player) {
++            startDialogue(npc) {
++                chatNpc(
++                    neutral,
++                    "Sorry, I'm trying to talk to someone else, but they seem to be ignoring me.",
++                )
++            }
++            return
++        }
++        genies.remove(player)
++        startDialogue(npc) {
++            chatNpc(
++                happy,
++                "Ah, so you are there, ${title(player)} ${player.displayName}. I'm so glad you " +
++                    "summoned me. Please take this lamp and make your wish.",
++            )
++        }
++        leave(npc)
++        if (inv.isFull()) {
++            mes("You don't have enough inventory space for the lamp.")
++            return
++        }
++        invAdd(inv, LAMP)
++    }
++
++    private fun ProtectedAccess.dismiss(npc: Npc) {
++        val owner = genies.entries.firstOrNull { it.value.npc === npc }?.key
++        if (owner !== player) {
++            mes("He isn't interested in you.")
++            return
++        }
++        genies.remove(player)
++        leave(npc)
++    }
++
++    private suspend fun ProtectedAccess.rub() {
++        val stat = chooseLampSkill("Choose the stat you wish to be advanced!") ?: return
++        val xp = statBase(stat) * LAMP_XP_PER_LEVEL
++        if (invDel(inv, LAMP).failure) return
++        statAdvance(stat, xp.toDouble())
++        mes("Your wish has been granted!")
++    }
++
++    private fun leave(npc: Npc) {
++        if (npc.isSlotAssigned) npcRepo.del(npc, Int.MAX_VALUE)
++    }
++
++    private fun besideTile(centre: CoordGrid): CoordGrid {
++        for ((x, z) in ADJACENT_OFFSETS) {
++            val candidate = centre.translate(x, z)
++            if (collision[candidate.x, candidate.z, candidate.level] and BLOCKED_FLAGS == 0) {
++                return candidate
++            }
++        }
++        return centre
++    }
++
++    private fun title(player: Player): String =
++        if (player.appearance.bodyType == Constants.bodytype_a) "Master" else "Mistress"
++
++    private fun nextEventDelay(): Int = random.of(MIN_EVENT_DELAY, MAX_EVENT_DELAY)
++
++    private data class Genie(val npc: Npc, val leaveCycle: Int)
++
++    companion object {
++        const val GENIE = "npc.macro_geni"
++        const val LAMP = "obj.macro_genilamp"
++        const val SCHEDULE_TIMER = "timer.random_event"
++        const val GENIE_TIMER = "timer.random_event_genie"
++        const val LIFETIME_TICKS = 100
++        const val CALL_INTERVAL = 20
++        const val LAMP_XP_PER_LEVEL = 10
++        const val MIN_EVENT_DELAY = 6_000
++        const val MAX_EVENT_DELAY = 12_000
++        const val BLOCKED_FLAGS = CollisionFlag.BLOCK_WALK or CollisionFlag.BLOCK_PLAYERS
++        val ADJACENT_OFFSETS =
++            listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1, -1 to -1, 1 to -1, -1 to 1, 1 to 1)
++    }
++}
+diff --git a/content/events/random-events/src/main/resources/gamevals.toml b/content/events/random-events/src/main/resources/gamevals.toml
+new file mode 100644
+index 000000000..962cd9ab3
+--- /dev/null
++++ b/content/events/random-events/src/main/resources/gamevals.toml
+@@ -0,0 +1,3 @@
++[gamevals.timer]
++random_event = 450
++random_event_genie = 451
 diff --git a/content/events/shooting-stars/src/main/kotlin/org/rsmod/content/skills/shootingstars/scripts/StarMiningScript.kt b/content/events/shooting-stars/src/main/kotlin/org/rsmod/content/skills/shootingstars/scripts/StarMiningScript.kt
 index 91f0017b9..be27eaed8 100644
 --- a/content/events/shooting-stars/src/main/kotlin/org/rsmod/content/skills/shootingstars/scripts/StarMiningScript.kt
@@ -4052,6 +4327,435 @@ index 09ea6418a..a0f013676 100644
          if (infernalHarpoon) {
              cookInfernalCatch(item, product.count)
          }
+diff --git a/content/skills/hunter/build.gradle.kts b/content/skills/hunter/build.gradle.kts
+new file mode 100644
+index 000000000..6eb9d5aea
+--- /dev/null
++++ b/content/skills/hunter/build.gradle.kts
+@@ -0,0 +1,14 @@
++plugins {
++    id("base-conventions")
++    id("integration-test-suite")
++}
++
++dependencies {
++    implementation(projects.api.pluginCommons)
++}
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.pluginCommons)
++    }
++}
+diff --git a/content/skills/hunter/pack/build.gradle.kts b/content/skills/hunter/pack/build.gradle.kts
+new file mode 100644
+index 000000000..92f804a7e
+--- /dev/null
++++ b/content/skills/hunter/pack/build.gradle.kts
+@@ -0,0 +1,3 @@
++plugins {
++    id("base-conventions")
++}
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
+new file mode 100644
+index 000000000..f3397313a
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
+@@ -0,0 +1,8 @@
++package org.rsmod.content.skills.hunter.pack
++
++import dev.openrune.definition.dbtables.DBTable
++import dev.openrune.pack.PluginPack
++
++class HunterPluginPack : PluginPack() {
++    override fun dbTables(): List<DBTable> = listOf(ImplingTypesTable.implingTypes())
++}
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/ImplingTypesTable.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/ImplingTypesTable.kt
+new file mode 100644
+index 000000000..ad4b48ccf
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/ImplingTypesTable.kt
+@@ -0,0 +1,140 @@
++package org.rsmod.content.skills.hunter.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++
++/**
++ * Implings, from the OSRS Wiki's Impling table: Hunter level (net), XP in Puro-Puro and in
++ * Gielinor, the jar a catch goes into, and the respawn of Puro-Puro's fixed spawns (50 ticks for
++ * earth and essence, 7 for the rest).
++ */
++object ImplingTypesTable {
++    const val NPC = 0
++    const val NPC_PURO_PURO = 1
++    const val JAR = 2
++    const val LEVEL = 3
++    const val XP_PURO_PURO = 4
++    const val XP_GIELINOR = 5
++    const val RESPAWN_TICKS = 6
++
++    fun implingTypes() =
++        dbTable("dbtable.impling_types", serverOnly = true) {
++            column("npc", NPC, VarType.NPC)
++            column("npc_puro_puro", NPC_PURO_PURO, VarType.NPC)
++            column("jar", JAR, VarType.OBJ)
++            column("level", LEVEL, VarType.INT)
++            column("xp_puro_puro", XP_PURO_PURO, VarType.INT)
++            column("xp_gielinor", XP_GIELINOR, VarType.INT)
++            column("respawn_ticks", RESPAWN_TICKS, VarType.INT)
++
++            row("dbrow.impling_type_baby") {
++                columnRSCM(NPC, "npc.ii_impling_type_1")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_1_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_1")
++                column(LEVEL, 17)
++                column(XP_PURO_PURO, 18)
++                column(XP_GIELINOR, 20)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_young") {
++                columnRSCM(NPC, "npc.ii_impling_type_2")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_2_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_2")
++                column(LEVEL, 22)
++                column(XP_PURO_PURO, 20)
++                column(XP_GIELINOR, 22)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_gourmet") {
++                columnRSCM(NPC, "npc.ii_impling_type_3")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_3_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_3")
++                column(LEVEL, 28)
++                column(XP_PURO_PURO, 22)
++                column(XP_GIELINOR, 24)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_earth") {
++                columnRSCM(NPC, "npc.ii_impling_type_4")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_4_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_4")
++                column(LEVEL, 36)
++                column(XP_PURO_PURO, 25)
++                column(XP_GIELINOR, 27)
++                column(RESPAWN_TICKS, 50)
++            }
++
++            row("dbrow.impling_type_essence") {
++                columnRSCM(NPC, "npc.ii_impling_type_5")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_5_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_5")
++                column(LEVEL, 42)
++                column(XP_PURO_PURO, 27)
++                column(XP_GIELINOR, 29)
++                column(RESPAWN_TICKS, 50)
++            }
++
++            row("dbrow.impling_type_eclectic") {
++                columnRSCM(NPC, "npc.ii_impling_type_6")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_6_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_6")
++                column(LEVEL, 50)
++                column(XP_PURO_PURO, 30)
++                column(XP_GIELINOR, 32)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_nature") {
++                columnRSCM(NPC, "npc.ii_impling_type_7")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_7_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_7")
++                column(LEVEL, 58)
++                column(XP_PURO_PURO, 34)
++                column(XP_GIELINOR, 36)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_magpie") {
++                columnRSCM(NPC, "npc.ii_impling_type_8")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_8_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_8")
++                column(LEVEL, 65)
++                column(XP_PURO_PURO, 44)
++                column(XP_GIELINOR, 216)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_ninja") {
++                columnRSCM(NPC, "npc.ii_impling_type_9")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_9_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_9")
++                column(LEVEL, 74)
++                column(XP_PURO_PURO, 50)
++                column(XP_GIELINOR, 240)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_dragon") {
++                columnRSCM(NPC, "npc.ii_impling_type_10")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_10_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_10")
++                column(LEVEL, 83)
++                column(XP_PURO_PURO, 65)
++                column(XP_GIELINOR, 300)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_lucky") {
++                columnRSCM(NPC, "npc.ii_impling_type_11")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_11_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_11")
++                column(LEVEL, 89)
++                column(XP_PURO_PURO, 80)
++                column(XP_GIELINOR, 380)
++                column(RESPAWN_TICKS, 7)
++            }
++        }
++}
+diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingScriptTest.kt
+new file mode 100644
+index 000000000..d2c61d6fe
+--- /dev/null
++++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingScriptTest.kt
+@@ -0,0 +1,109 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.util.UncheckedType
++import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.player.righthand
++import org.rsmod.api.table.ImplingTypesRow
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.api.testing.scope.GameTestScope
++import org.rsmod.content.skills.hunter.ImplingScript.Companion.HUNTER
++import org.rsmod.content.skills.hunter.ImplingScript.Companion.IMPLING_JAR
++import org.rsmod.content.skills.hunter.ImplingScript.Companion.MAGIC_NET
++import org.rsmod.content.skills.hunter.ImplingScript.Companion.NET
++import org.rsmod.content.skills.hunter.ImplingScript.Companion.catchChance
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.inv.InvObj
++import org.rsmod.map.CoordGrid
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class ImplingScriptTest {
++    @Test
++    fun `catch chance runs from 12 to 98 percent, plus 8 with a magic net`() {
++        assertEquals(12, catchChance(1, bonus = false))
++        assertEquals(98, catchChance(99, bonus = false))
++        assertEquals(55, catchChance(50, bonus = false))
++        assertEquals(106, catchChance(99, bonus = true))
++    }
++
++    @Test
++    fun GameTestState.`a catch swaps one jar for the impling jar and gives hunter xp`() =
++        runInjectedGameTest(ImplingScript::class, null, ImplingScript::class) { script ->
++            val baby = row("dbrow.impling_type_baby")
++            val impling = prepare(baby, net = MAGIC_NET, jars = 2, level = 99)
++            val xpBefore = player.statMap.getXP(HUNTER)
++            with(script) { player.withProtectedAccess { catch(impling, baby, puroPuro = true) } }
++            val sent = client.mapOf(MessageGame::message).toMutableList()
++            repeat(4) {
++                advance(ticks = 1)
++                sent += client.mapOf(MessageGame::message)
++            }
++            assertEquals(1, player.inv.count(IMPLING_JAR))
++            assertEquals(1, player.inv.count(baby.jar.internalName))
++            assertTrue(player.statMap.getXP(HUNTER) > xpBefore)
++            assertFalse(impling.isSlotAssigned && impling.isVisible)
++            val expected = "You manage to catch the impling and squeeze it into a jar."
++            assertTrue(expected in sent, sent.toString())
++        }
++
++    @Test
++    fun GameTestState.`no jar, nothing moves`() =
++        runInjectedGameTest(ImplingScript::class, null, ImplingScript::class) { script ->
++            val baby = row("dbrow.impling_type_baby")
++            val impling = prepare(baby, net = NET, jars = 0, level = 99)
++            with(script) { player.withProtectedAccess { catch(impling, baby, puroPuro = false) } }
++            val sent = client.mapOf(MessageGame::message).toMutableList()
++            repeat(4) {
++                advance(ticks = 1)
++                sent += client.mapOf(MessageGame::message)
++            }
++            val expected = "You need an empty impling jar to keep the impling in."
++            assertTrue(expected in sent, sent.toString())
++            assertEquals(0, player.inv.count(baby.jar.internalName))
++            assertTrue(impling.isSlotAssigned && impling.isVisible)
++        }
++
++    @Test
++    fun GameTestState.`barehanded needs ten more levels`() =
++        runInjectedGameTest(ImplingScript::class, null, ImplingScript::class) { script ->
++            val dragon = row("dbrow.impling_type_dragon")
++            val impling = prepare(dragon, net = null, jars = 1, level = dragon.level + 9)
++            with(script) { player.withProtectedAccess { catch(impling, dragon, puroPuro = false) } }
++            val sent = client.mapOf(MessageGame::message).toMutableList()
++            repeat(4) {
++                advance(ticks = 1)
++                sent += client.mapOf(MessageGame::message)
++            }
++            val expected =
++                "You need a Hunter level of ${dragon.level + 10} to catch this impling barehanded."
++            assertTrue(expected in sent, sent.toString())
++            assertEquals(1, player.inv.count(IMPLING_JAR))
++        }
++
++    private fun row(name: String) = ImplingTypesRow.getRow(name)
++
++    private fun GameTestScope.prepare(
++        impling: ImplingTypesRow,
++        net: String?,
++        jars: Int,
++        level: Int,
++    ): Npc {
++        val center = CoordGrid(0, 50, 50, 20, 20)
++        allocZoneCollision(center)
++        player.teleport(center)
++        player.clearInv()
++        player.righthand = net?.let { InvObj(it.asRSCM(RSCMType.OBJ), 1) }
++        repeat(jars) { player.inv[it] = InvObj(IMPLING_JAR.asRSCM(RSCMType.OBJ), 1) }
++        player.setBaseLevel(HUNTER, level)
++        player.setCurrentLevel(HUNTER, level)
++        return spawnNpc(center.translate(1, 0), impling.npc)
++    }
++}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingScript.kt
+new file mode 100644
+index 000000000..65eb29ae9
+--- /dev/null
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingScript.kt
+@@ -0,0 +1,98 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import jakarta.inject.Inject
++import org.rsmod.api.player.output.ChatType
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.righthand
++import org.rsmod.api.repo.npc.NpcRepository
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.api.table.ImplingTypesRow
++import org.rsmod.game.entity.Npc
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Catching implings in Puro-Puro and Gielinor (OSRS Wiki, Impling): a wielded butterfly net, or
++ * 10 extra Hunter levels barehanded. A jar is required everywhere: looting an impling caught
++ * without one, which OSRS allows outside Puro-Puro, is not implemented. Misses repeat while the
++ * impling stays.
++ */
++class ImplingScript @Inject constructor(private val npcRepo: NpcRepository) : PluginScript() {
++    override fun ScriptContext.startup() {
++        for (impling in ImplingTypesRow.all()) {
++            onOpNpc1(impling.npc) { catch(it.npc, impling, puroPuro = false) }
++            onOpNpc1(impling.npcPuroPuro) { catch(it.npc, impling, puroPuro = true) }
++        }
++    }
++
++    suspend fun ProtectedAccess.catch(
++        npc: Npc,
++        impling: ImplingTypesRow,
++        puroPuro: Boolean,
++    ) {
++        val net = wieldedNet()
++        val required = if (net == null) impling.level + BAREHANDED_EXTRA_LEVELS else impling.level
++        if (stat(HUNTER) < required) {
++            val barehanded = if (net == null) " barehanded" else ""
++            mes("You need a Hunter level of $required to catch this impling$barehanded.")
++            return
++        }
++        if (IMPLING_JAR !in inv) {
++            mes("You need an empty impling jar to keep the impling in.")
++            return
++        }
++        val chance = catchChance(stat(HUNTER), bonus = net != NET)
++        repeat(MAX_ATTEMPTS) {
++            if (!npc.isCatchable()) return
++            faceEntitySquare(npc)
++            anim(CATCH_SEQ)
++            delay(ATTEMPT_TICKS)
++            if (!npc.isCatchable()) return
++            if (random.of(100) >= chance) return@repeat
++            val slot = (0 until inv.size).firstOrNull { inv[it]?.id == jarId } ?: return
++            if (invDel(inv, IMPLING_JAR, slot = slot).failure) return
++            invAdd(inv, impling.jar.internalName, slot = slot)
++            val xp = if (puroPuro) impling.xpPuroPuro else impling.xpGielinor
++            statAdvance(HUNTER, xp.toDouble())
++            removeCaught(npc, impling)
++            mes("You manage to catch the impling and squeeze it into a jar.", ChatType.Spam)
++            return
++        }
++    }
++
++    private fun Npc.isCatchable(): Boolean = isSlotAssigned && isVisible
++
++    private fun ProtectedAccess.wieldedNet(): String? {
++        val held = player.righthand ?: return null
++        return listOf(NET, MAGIC_NET).firstOrNull { it.asRSCM(RSCMType.OBJ) == held.id }
++    }
++
++    private fun removeCaught(npc: Npc, impling: ImplingTypesRow) {
++        if (npc.respawns) {
++            npcRepo.despawn(npc, impling.respawnTicks)
++        } else {
++            npcRepo.del(npc, Int.MAX_VALUE)
++        }
++    }
++
++    private val jarId: Int by lazy { IMPLING_JAR.asRSCM(RSCMType.OBJ) }
++
++    companion object {
++        const val HUNTER = "stat.hunter"
++        const val NET = "obj.hunting_butterfly_net"
++        const val MAGIC_NET = "obj.ii_magic_butterfly_net"
++        const val IMPLING_JAR = "obj.ii_impling_jar"
++        const val CATCH_SEQ = "seq.hunting_impling_catch"
++        const val BAREHANDED_EXTRA_LEVELS = 10
++        const val ATTEMPT_TICKS = 2
++        const val MAX_ATTEMPTS = 20
++
++        /** Mod Ash: 12% at level 1 to 98% at 99, linear; +8 barehanded or with a magic net. */
++        fun catchChance(level: Int, bonus: Boolean): Int {
++            val base = 12 + (98 - 12) * (level.coerceIn(1, 99) - 1) / 98
++            return base + if (bonus) 8 else 0
++        }
++    }
++}
+diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
+new file mode 100644
+index 000000000..77a8628d3
+--- /dev/null
++++ b/content/skills/hunter/src/main/resources/gamevals.toml
+@@ -0,0 +1,15 @@
++[gamevals.dbtable]
++impling_types = 60000
++
++[gamevals.dbrow]
++impling_type_baby = 60124
++impling_type_young = 60125
++impling_type_gourmet = 60126
++impling_type_earth = 60127
++impling_type_essence = 60128
++impling_type_eclectic = 60129
++impling_type_nature = 60130
++impling_type_magpie = 60131
++impling_type_ninja = 60132
++impling_type_dragon = 60133
++impling_type_lucky = 60134
 diff --git a/content/skills/mining/src/main/kotlin/org/rsmod/content/skills/mining/scripts/Mining.kt b/content/skills/mining/src/main/kotlin/org/rsmod/content/skills/mining/scripts/Mining.kt
 index d5436b90c..7996755f3 100644
 --- a/content/skills/mining/src/main/kotlin/org/rsmod/content/skills/mining/scripts/Mining.kt

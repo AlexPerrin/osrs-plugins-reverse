@@ -74,6 +74,16 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
 - **Members and idle:** every account logs in as a member (members ops such as the cannon's
   Set-up show; the sidecar's world flags already mark world 255 as members). The client's IDLE
   packet (AFK timeout) logs the player out like the logout button, so combat still blocks it.
+- **Implings** (`content/skills/hunter`): Catch on every impling, in Puro-Puro (the map's 51
+  fixed spawns, `::tele 2592 4320`) and in Gielinor. A wielded butterfly net or magic net, or 10
+  extra Hunter levels barehanded; an empty impling jar is required (the jar-less loot of Gielinor
+  catches is not done). Chance 12-98% by level, +8 with a magic net or barehanded; XP, jar and
+  respawn per type from the new server-only dbtable `impling_types` (OSRS Wiki values). Wording of
+  the catch message is a best guess.
+- **Random events** (`content/events/random-events`): the Genie, every 1-2 hours of play or with
+  `::randomevent`. He appears beside the player, faces them, calls them by name every 12 s,
+  follows, and leaves after a minute; Talk-to gives the lamp (Rub: xpreward, 10 x level), Dismiss
+  sends him off. That is what RuneLite's Random Events plugin keys on.
 - **Small fixes:** fishing stops when the player is no longer beside the spot (teleport); the login
   message is "Welcome to Old School RuneScape." (WELCOME), which RuneLite's Chat History waits for.
 
@@ -90,7 +100,10 @@ groups from the packed cache: after removing or renumbering cache content, delet
 `src/.data/cache` and build again.
 
 To change OpenRune: edit `src/`, build, test, then `openrune/scripts/openrune.sh export` and commit
-`openrune.patch`. After a change to `server/rsprot.patch`, run `openrune/scripts/openrune.sh rsprot`.
+`openrune.patch`. After adding a module, run one Gradle command with `--no-configuration-cache`
+(e.g. `openrune.sh gradle --no-configuration-cache :or-cache:buildCache`): a reused configuration
+cache does not see new projects. Integration tests: `openrune.sh gradle --no-configuration-cache
+:content:skills:hunter:integration`. After a change to `server/rsprot.patch`, run `openrune/scripts/openrune.sh rsprot`.
 
 ## Run
 

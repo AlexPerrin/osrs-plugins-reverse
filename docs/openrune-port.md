@@ -386,3 +386,50 @@ list becomes `spawn`, so the quest-list filter comes back.
    - `re/tsps` (read-only content reference, BSD-2) can stay or go;
    - the `AndroidUpdateZonePartialEnclosed` size-estimate errors go away with the next RSProt
      build (1cf7727, already in the deployed image).
+
+## Fixes worth contributing upstream
+
+Most of `openrune.patch` is ours alone: Android support, the token login, the shared login key,
+the mobile gameframe, the test commands, the members/idle choices. These parts are generic
+OpenRune bugs or gaps that any OpenRune server hits. They are listed so the user can send them
+upstream later; nobody has contacted upstream.
+
+| Fix | Where (in `src/`) | Why it is generic |
+|---|---|---|
+| Serialize DB transactions | `api/db/.../jdbc/GameDatabase.kt` (`transactionLock`) | The game thread (logins) and the account saver share one JDBC connection. Interleaved transactions commit each other's work and lose `SET LOCAL search_path` ("schema 'main' does not exist" on a save) |
+| Reference-table sizes for added groups | our workaround: `openrune/scripts/fix_reftable.py`; upstream fix belongs in the `or-cache` packer | The packer writes groups it *adds* (custom clientscripts) to archive 12's reference table with sizes (0, 0) and name hash 0. Clients that check sizes crash at cache sync (the Android client does; device-verified) |
+| Varclient configs for custom varcs | our workaround: `openrune/scripts/add_varcs.py` | The quest pack's clientscripts use varcstr 1293/1294, which rev 241's varclient config does not define |
+| Bankers across the booth | `content/generic/generic-npcs/pack/.../bankers.toml`, `al_kharid_npcs.toml` (`contentGroup = "content.banker"`) | Banker types without the content group answer Bank/Collect/Talk-to with "I can't reach that!" across the booth |
+| Fishing spot content groups | `.data/raw-cache/server/npcs.toml` | The Lumbridge river Lure/Bait spot and `0_50_49_saltfish` had no content group, so their ops did nothing |
+| Fishing stops when the spot is out of reach | `content/skills/fishing/.../Fishing.kt` | Fishing went on after a teleport |
+| RFD castle doors | `.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml` | The kitchen and dining-room doors in the map are the Recipe for Disaster variants, which had no door tag |
+| One Juliet | `.data/raw-cache/map/npcs/varrock.toml` | The plain `juliet` spawned beside the multinpc `juliet_multi_visible` |
+| Juliet's house stairs | `content/generic/generic-locs/.../StraightStaircaseScript.kt` | `fai_varrock_stairs_taller`/`_top` had no handler |
+| Item examine as `ObjExamine` | `api/player-output/.../GameMessage.kt` (+ test) | Examine texts went out through the `examine_item` script as type 0, which RuneLite's Examine plugin does not match |
+| OSRS message wording | mining, fishing, cooking, smelting scripts; `LoginScript` ("Welcome to Old School RuneScape.") | Small text differences from OSRS that client plugins parse |
+| Clientscript id guard | `or-cache/.../PluginPacks.kt`, `openrune/scripts/check_cache.py` | Fails the build on custom clientscript ids above 9999 |
+| Quest scripts: Sheep Shearer, Romeo & Juliet | `content/quest/...` (+ `QuestTalkFixture` tests) | New content on OpenRune's quest framework |
+| Dwarf multicannon, dragon dagger/warhammer specs | `content/other/dwarf-multicannon`, `content/other/special-attacks` | New content with tests |
+| Implings, Genie random event | `content/skills/hunter`, `content/events/random-events` | New content with tests (2026-10-16, fifth server dev) |
+
+Before sending any of it: drop the `osrs-plugins-reverse:` comments, run upstream's ktlint
+(Spotless), and split per topic.
+
+## Fifth server dev (2026-10-16 evening)
+
+- **Deployed** the build held since 18:43 (RSProt with the MIDI_SWAP encoder and decoders for
+  8/20/28/50/57/84) at 18:54. Sign-in and Play Now work.
+- **Implings** (`content/skills/hunter`). Puro-Puro already had its 51 fixed impling spawns from the
+  map (`::tele 2592 4320`; seen on the device through devtools `list_npcs`: a Gourmet impling with
+  "Catch"). What was missing is catching. Data: server-only dbtable `impling_types` (60000, rows
+  60124-60134) in `content/skills/hunter/pack`: npc, Puro-Puro npc, jar, level, XP for Puro-Puro and
+  Gielinor, respawn ticks. Crystal implings (Prifddinas, 17 per-spawn npc ids) are not covered.
+  Integration tests: `ImplingScriptTest` (4). Not yet on the device.
+- **Random events** (`content/events/random-events`): the Genie (`npc.macro_geni`), see the
+  README. Timers 450/451. Integration tests: `GenieRandomEventTest` (2). The script must be a
+  `@Singleton`: the test harness (and possibly the loader) otherwise makes a second instance with
+  its own state. Not yet on the device.
+- Gotcha: a reused Gradle configuration cache does not see new modules (`buildCache` reported
+  success without packing the new dbtable). Run once with `--no-configuration-cache`.
+- Every `buildCache` changes archive 3's reference table (interface versions), even with no
+  interface change. Harmless so far (the client re-syncs that archive).

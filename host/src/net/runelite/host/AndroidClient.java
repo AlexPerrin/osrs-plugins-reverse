@@ -128,6 +128,19 @@ public class AndroidClient extends ClientStub {
     private boolean liveStacks, stacksLoaded;
     private int[] loadedInts;
 
+    /**
+     * Host-made stacks for a callback the game's scripts don't have (RuneLite injects
+     * runelite_callback ops into its own copies of the chat scripts): the getters return these
+     * until the next script event.
+     */
+    void fakeStacks(int[] ints, Object[] objs) {
+        liveStacks = false;
+        System.arraycopy(ints, 0, intStack, 0, ints.length);
+        System.arraycopy(objs, 0, objectStack, 0, objs.length);
+        intStackSize = ints.length;
+        objectStackSize = objs.length;
+    }
+
     void beginScriptEvent() {
         liveStacks = true;
         stacksLoaded = false;

@@ -254,6 +254,30 @@ public final class Host {
         }
     }
 
+    /**
+     * RuneLite's chat scripts call runelite_callback "chatFilterCheck" for each line they build
+     * (int stack: ..., keep flag, type, message id; object stack: ..., text); the game's scripts
+     * here don't, so it is raised once when the message arrives. A rewritten text is written
+     * into the game's message; a blocked one (keep flag 0) is blanked. Duplicate collapsing,
+     * which relies on the per-redraw calls, doesn't happen.
+     */
+    private static void chatFilterCheck(EventBus bus, AndroidMessageNode node, int type) {
+        if (!bus.hasSubscribers(net.runelite.api.events.ScriptCallbackEvent.class)) return;
+        String text = node.getValue() != null ? node.getValue() : "";
+        AndroidClient client = (AndroidClient) Host.client;
+        client.fakeStacks(new int[] {1, type, node.getId()}, new Object[] {text});
+        net.runelite.api.events.ScriptCallbackEvent e = new net.runelite.api.events.ScriptCallbackEvent();
+        e.setEventName("chatFilterCheck");
+        bus.post(e);
+        int[] ints = client.getIntStack();
+        Object out = client.getObjectStack()[0];
+        if (ints[0] == 0) {
+            node.setValue("");
+        } else if (out instanceof String && !out.equals(text)) {
+            node.setValue((String) out);
+        }
+    }
+
     private static final java.util.List<Integer> pendingStats = new java.util.ArrayList<>();
 
     private static void dispatch(EventBus bus, int type, int a, int b) {
@@ -333,6 +357,7 @@ public final class Host {
                 AndroidMessageNode node = new AndroidMessageNode(a, chatType, m[0], m[1], m[2], now);
                 AndroidClient.rememberMessage(node);
                 bus.post(new ChatMessage(node, chatType, m[0], m[2], m[1], now));
+                chatFilterCheck(bus, node, b);
                 break;
             }
             case PLAYER_SPAWNED: {

@@ -363,8 +363,23 @@ too large, so the g3Alt3 transform is unconfirmed).
 | 78, 54, 11, 52, 59 | OPWORLDENTITY1-5 | 1: index `g2Alt3` ctrl `g1Alt2`; 2: index `g2` ctrl `g1Alt2`; 3: ctrl `g1Alt2` index `g2Alt1`; 4: ctrl `g1Alt3` index `g2`; 5: ctrl `g1Alt3` index `g2Alt1` |
 | 8, 20, 28, 46, 50, 57, 84 | IF_SCRIPT_TRIGGER, AFFINEDCLANSETTINGS_SETMUTED/ADDBANNED_FROMCHANNEL, SOUND_JINGLEEND, MESSAGE_PRIVATE, CLANCHANNEL_KICKUSER, IF_CRMVIEW_OP | named, unverified, mostly no codec |
 
-No sender found (so not named): 12, 87, 27, 1/62/76/85 (11 bytes: OPNPCU/OPPLAYERU/
-OPWORLDENTITYT/U), 73/83 (15 bytes: OPLOCU/OPOBJU).
+Third pass (2026-10-16): a raw scan of every `bl` to the packet constructor `0x79cc90` over the
+whole text segment (capstone, not limited to Ghidra-analysed functions; the opcode is the `w0`
+immediate, `wzr` = 0) found a sender for every opcode except 1, 12, 27, 62, 73, 76, 83, 85 and
+87 (96 is built through a register). Those are tagged `// dead:` in the enum and stay `OP_n`: the
+desktop rev-241 U prots are deprecated ("all usages go through ...T now"), and the unmapped
+desktop prots are OPNPCU/OPPLAYERU/OPWORLDENTITYU/OPWORLDENTITYT (11 bytes: 1/62/76/85),
+OPLOCU/OPOBJU (15 bytes: 73/83), REFLECTION_CHECK_REPLY, EVENT_APPLET_FOCUS (size 1, probably 87),
+but nothing ties a specific opcode to a specific name. Named in this pass:
+
+| Opcode | Prot | Layout |
+|---|---|---|
+| 6 | OPOBJ6 | id `g2Alt1`, z `g2Alt3`, x `g2Alt1` (sender `0x6211ac`; same struct offsets as the OPOBJ1-5 sender: +4 x, +8 z, +0xc id) |
+| 80 | HISCORE_REQUEST | requestId `g1`, type `g1`, name `jstr`, as desktop (sender `0x64d850` writes the var-byte length itself, a per-request counter, the type, the name, and sets a pending flag) |
+| 90 | UPDATE_PLAYER_MODEL_V2 | 26 bytes (sender `0x562a9c` = CS2 player-designer ops 300-326; payload writer `0x6e2248` starts with gender, then idkits as `p2` (value - 256, 0xffff = none)); no codec, RSProt 241 has none |
+
+The earlier note that opcode 5 (`0x622bd4`) is "probably OPWORLDENTITYT" is wrong: its sender looks
+up the target in the player container (client+0xc878) like OPPLAYER1-8 (`0x623e7c`), so 5 = OPPLAYERT.
 
 ## Display name
 

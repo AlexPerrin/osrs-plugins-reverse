@@ -615,7 +615,7 @@ index 00000000..ea743851
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
-index 00000000..5b630f53
+index 00000000..65c8c74f
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 @@ -0,0 +1,123 @@
@@ -639,18 +639,18 @@ index 00000000..5b630f53
 +    override val size: Int,
 +) : ClientProt {
 +    IGNORELIST_DEL(0, Prot.VAR_BYTE), // sender read
-+    OP_1(1, 11),
++    OP_1(1, 11), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16); deprecated U prot (OPNPCU/OPPLAYERU/OPWORLDENTITYU) or OPWORLDENTITYT, size group 11
 +    OPNPCT(2, 11),
 +    OPLOC4(3, 8),
 +    RESUME_P_COUNTDIALOG(4, 4), // sender read
 +    OPPLAYERT(5, 11), // sender read
-+    OP_6(6, 6),
++    OPOBJ6(6, 6), // sender read (0x6211ac): id, z, x as the OPOBJ1-5 sender's struct; examine on a ground obj
 +    OPLOC1(7, 8),
 +    IF_SCRIPT_TRIGGER(8, Prot.VAR_SHORT), // unverified: args use zigzag varints, layout differs from desktop; no codec
 +    OPNPC5(9, 4),
 +    WINDOW_STATUS(10, 5), // sender read
 +    OPWORLDENTITY3(11, 3), // sender read
-+    OP_12(12, Prot.VAR_BYTE),
++    OP_12(12, Prot.VAR_BYTE), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16)
 +    CONNECTION_TELEMETRY(13, Prot.VAR_BYTE), // sender read
 +    SEND_SNAPSHOT(14, Prot.VAR_BYTE), // sender read
 +    IF_BUTTONT(15, 16), // unverified: targetSub/targetObj order assumed
@@ -665,7 +665,7 @@ index 00000000..5b630f53
 +    OPOBJ2(24, 8),
 +    OPPLAYER5(25, 3), // sender read
 +    OPPLAYER6(26, 3), // sender read
-+    OP_27(27, 7),
++    OP_27(27, 7), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16)
 +    AFFINEDCLANSETTINGS_ADDBANNED_FROMCHANNEL(28, Prot.VAR_BYTE), // unverified: medium: own-clan sender, not bound
 +    CLICKWORLDMAP(29, 4), // sender read
 +    CLOSE_MODAL(30, 0), // sender read
@@ -700,7 +700,7 @@ index 00000000..5b630f53
 +    OPWORLDENTITY5(59, 3), // sender read
 +    FRIENDLIST_ADD(60, Prot.VAR_BYTE), // sender read
 +    FRIENDCHAT_JOIN_LEAVE(61, Prot.VAR_BYTE), // sender read
-+    OP_62(62, 11),
++    OP_62(62, 11), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16); deprecated U prot (OPNPCU/OPPLAYERU/OPWORLDENTITYU) or OPWORLDENTITYT, size group 11
 +    OPLOCT(63, 15),
 +    MESSAGE_PUBLIC(64, Prot.VAR_BYTE),
 +    OPPLAYER3(65, 3), // sender read
@@ -711,24 +711,24 @@ index 00000000..5b630f53
 +    IF_SUBOP(70, 10), // sender read
 +    OPNPC3(71, 4),
 +    CLANSETTINGS_FULL_REQUEST(72, 1), // sender read
-+    OP_73(73, 15),
++    OP_73(73, 15), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16); deprecated U prot (OPLOCU/OPOBJU), size group 15
 +    OPOBJT(74, 15),
 +    DETECT_MODIFIED_CLIENT(75, 4), // sender read
-+    OP_76(76, 11),
++    OP_76(76, 11), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16); deprecated U prot (OPNPCU/OPPLAYERU/OPWORLDENTITYU) or OPWORLDENTITYT, size group 11
 +    EVENT_MOUSE_CLICK_V2(77, 7), // sender read
 +    OPWORLDENTITY1(78, 3), // sender read
 +    OPOBJ1(79, 8),
-+    OP_80(80, Prot.VAR_BYTE),
++    HISCORE_REQUEST(80, Prot.VAR_BYTE), // sender read (0x64d850): requestId, type, name as desktop; the only unmapped desktop var-byte prot with a sender
 +    CLIENT_CHEAT(81, Prot.VAR_BYTE),
 +    OPOBJ3(82, 8),
-+    OP_83(83, 15),
++    OP_83(83, 15), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16); deprecated U prot (OPLOCU/OPOBJU), size group 15
 +    IF_CRMVIEW_OP(84, 22), // unverified: fields not matched to desktop; no codec
-+    OP_85(85, 11),
++    OP_85(85, 11), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16); deprecated U prot (OPNPCU/OPPLAYERU/OPWORLDENTITYU) or OPWORLDENTITYT, size group 11
 +    RESUME_P_LONGDIALOG(86, 8), // sender read
-+    OP_87(87, 1),
++    OP_87(87, 1), // dead: no sender in the client (raw scan of all 0x79cc90 call sites, 2026-10-16)
 +    FRIENDCHAT_SETRANK(88, Prot.VAR_BYTE), // sender read
 +    EVENT_MOUSE_SCROLL(89, 2), // sender read
-+    OP_90(90, 26),
++    UPDATE_PLAYER_MODEL_V2(90, 26), // sender read (0x562a9c, CS2 player-designer ops 300-326; payload writer 0x6e2248: gender then idkits p2 - 256 or 0xffff ...); same size as desktop; no codec (RSProt 241 has none)
 +    OPPLAYER1(91, 3), // sender read
 +    OPNPC1(92, 4),
 +    NO_TIMEOUT(93, 0),
@@ -990,10 +990,10 @@ index 00000000..a6250dab
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
 new file mode 100644
-index 00000000..0fc21777
+index 00000000..beee1e80
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreDecoders.kt
-@@ -0,0 +1,307 @@
+@@ -0,0 +1,318 @@
 +package net.rsprot.protocol.android
 +
 +import com.github.michaelbull.logging.InlineLogger
@@ -1120,6 +1120,9 @@ index 00000000..0fc21777
 +        bound(AndroidDelegatingDecoder(P.RESUME_P_LONGDIALOG, ResumePLongDialogDecoder())),
 +        bound(AndroidDelegatingDecoder(P.IF_BUTTON, If1ButtonDecoder())),
 +        bound(AndroidDelegatingDecoder(P.IF_SUBOP, IfSubOpDecoder())),
++        // 80 (sender 0x64d850): requestId g1, type g1, name jstr, as desktop (the sender writes the var-byte
++        // length itself, then a per-request counter, the type and the name; it sets a pending flag).
++        bound(AndroidDelegatingDecoder(P.HISCORE_REQUEST, net.rsprot.protocol.game.incoming.codec.misc.user.HiscoreRequestDecoder())),
 +        bound(AndroidDelegatingDecoder(P.SOUND_JINGLEEND, SoundJingleEndDecoder())),
 +    )
 +
@@ -1261,6 +1264,14 @@ index 00000000..0fc21777
 +        },
 +        // 49 (sender 0x620400): NPC type id g2.
 +        bound(P.OPNPC6) { b -> OpNpc6(b.g2()) },
++        // 6 (sender 0x6211ac, same struct as the OPOBJ1-5 sender 0x62073c: +4 x, +8 z, +0xc id):
++        // id g2Alt1, z g2Alt3, x g2Alt1.
++        bound(P.OPOBJ6) { b ->
++            val id = b.g2Alt1()
++            val z = b.g2Alt3()
++            val x = b.g2Alt1()
++            net.rsprot.protocol.game.incoming.objs.OpObj6(id, x, z)
++        },
 +        // 69 (sender 0x623550): id g2Alt3.
 +        bound(P.OPWORLDENTITY6) { b -> OpWorldEntity6(b.g2Alt3()) },
 +        // 45 (sender 0x623960): heading g1Alt2.

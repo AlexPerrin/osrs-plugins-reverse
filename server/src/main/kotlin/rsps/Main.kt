@@ -70,6 +70,8 @@ import net.rsprot.protocol.game.incoming.players.OpPlayerT
 import net.rsprot.protocol.game.incoming.worldentities.OpWorldEntity
 import net.rsprot.protocol.game.incoming.worldentities.OpWorldEntity6
 import net.rsprot.protocol.game.incoming.npcs.OpNpc6
+import net.rsprot.protocol.game.incoming.objs.OpObj6
+import net.rsprot.protocol.game.incoming.misc.user.HiscoreRequest
 import net.rsprot.protocol.loginprot.incoming.pow.ProofOfWorkProvider
 import net.rsprot.protocol.loginprot.incoming.pow.challenges.sha256.Sha256Challenge
 import net.rsprot.protocol.loginprot.incoming.pow.challenges.sha256.Sha256MetaData
@@ -236,6 +238,8 @@ private class NetworkFactory(
             .addListener<OpWorldEntity> { world.incoming(this, it) }
             .addListener<OpWorldEntity6> { world.incoming(this, it) }
             .addListener<OpNpc6> { world.incoming(this, it) }
+            .addListener<OpObj6> { world.incoming(this, it) }
+            .addListener<HiscoreRequest> { world.incoming(this, it) }
             .addGlobalListener { player, message: IncomingGameMessage ->
                 log.debug { "<- ${player.username}: $message" }
             }

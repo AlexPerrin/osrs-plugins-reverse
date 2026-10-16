@@ -1,0 +1,293 @@
+diff --git a/api/game-process/build.gradle.kts b/api/game-process/build.gradle.kts
+index d151c8e7d..c43ae9c21 100644
+--- a/api/game-process/build.gradle.kts
++++ b/api/game-process/build.gradle.kts
+@@ -13,6 +13,7 @@ dependencies {
+     implementation(libs.fastutil)
+     implementation(libs.guice)
+     implementation(libs.rsprot.api)
++    implementation(libs.rsprot.android)
+     implementation(projects.api.account)
+     implementation(projects.api.attr)
+     implementation(projects.api.config)
+diff --git a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerZoneUpdateProcessor.kt b/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerZoneUpdateProcessor.kt
+index b6b20f311..c62dc1115 100644
+--- a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerZoneUpdateProcessor.kt
++++ b/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerZoneUpdateProcessor.kt
+@@ -4,6 +4,8 @@ import it.unimi.dsi.fastutil.ints.IntArrayList
+ import it.unimi.dsi.fastutil.ints.IntList
+ import jakarta.inject.Inject
+ import java.util.ArrayList
++import net.rsprot.protocol.android.AndroidUpdateZonePartialEnclosed
++import net.rsprot.protocol.android.AndroidZoneProts
+ import net.rsprot.protocol.common.client.OldSchoolClientType
+ import net.rsprot.protocol.game.outgoing.zone.header.UpdateZoneFullFollows
+ import net.rsprot.protocol.game.outgoing.zone.header.UpdateZonePartialEnclosed
+@@ -169,6 +171,10 @@ constructor(
+         if (updates.isEmpty()) {
+             return
+         }
++        if (mobileClient) {
++            sendAndroidEnclosed(buildArea, zoneBase, updates)
++            return
++        }
+         val buffer = enclosedBuffers.computeBufferForClient(OldSchoolClientType.DESKTOP, updates)
+         val deltaX = zoneBase.x - buildArea.x
+         val deltaZ = zoneBase.z - buildArea.z
+@@ -181,6 +187,17 @@ constructor(
+         zone: ZoneKey,
+         zoneBase: CoordGrid,
+     ) {
++        if (mobileClient) {
++            val zoneUpdates = updates[zone] ?: return
++            val shared =
++                ZoneUpdateTransformer.collectEnclosedProtList(zoneUpdates).filterNot {
++                    it is ZoneUpdateTransformer.PartialFollowsZoneProt
++                }
++            if (shared.isNotEmpty()) {
++                sendAndroidEnclosed(buildArea, zoneBase, shared)
++            }
++            return
++        }
+         val enclosed = enclosedBuffers[zone] ?: return
+         val buffer = enclosed[OldSchoolClientType.DESKTOP] ?: return
+         val deltaX = zoneBase.x - buildArea.x
+@@ -189,6 +206,21 @@ constructor(
+         client.write(prot)
+     }
+ 
++    /** Spike: Android has its own zone-prot indices inside UPDATE_ZONE_PARTIAL_ENCLOSED. */
++    private fun Player.sendAndroidEnclosed(
++        buildArea: CoordGrid,
++        zoneBase: CoordGrid,
++        updates: List<ZoneProt>,
++    ) {
++        val payload = AndroidZoneProts.encode(updates)
++        if (payload.isEmpty()) {
++            return
++        }
++        val deltaX = zoneBase.x - buildArea.x
++        val deltaZ = zoneBase.z - buildArea.z
++        client.write(AndroidUpdateZonePartialEnclosed(deltaX, deltaZ, zoneBase.level, payload))
++    }
++
+     private fun Iterable<ZoneProt>.toPlayerSpecificEnclosed(observerId: Long?): List<ZoneProt> {
+         val enclosed = ArrayList<ZoneProt>()
+         for (update in this) {
+diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
+index 5fafd3b35..e4d983716 100644
+--- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
++++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
+@@ -85,7 +85,7 @@ private constructor(
+     ) {
+         val password = auth.password.asCharArray()
+         try {
+-            passLogin(responseHandler, block, auth, password)
++            passLogin(responseHandler, block, auth.otpAuthentication, block.username, password)
+         } finally {
+             // `password` char array is already cleared during `computePasswordHash`, but that is
+             // an implementation detail in the password hashing interface; we ensure to clear it
+@@ -98,7 +98,8 @@ private constructor(
+     private fun passLogin(
+         responseHandler: GameLoginResponseHandler<Player>,
+         block: LoginBlock<AuthenticationType>,
+-        auth: AuthenticationType.PasswordAuthentication,
++        otpAuthentication: OtpAuthenticationType,
++        username: String,
+         password: CharArray,
+     ) {
+         // This may be filtered earlier at the protocol layer (e.g., rsprot), but we defensively
+@@ -118,8 +119,7 @@ private constructor(
+             responseHandler.writeFailedResponse(LoginResponse.LoginServerOffline)
+             return
+         }
+-        val loadAuth = auth.otpAuthentication.toAccountLoadAuth()
+-        val username = block.username
++        val loadAuth = otpAuthentication.toAccountLoadAuth()
+ 
+         val responseHook =
+             AccountLoadResponseHook(
+@@ -188,14 +188,21 @@ private constructor(
+         }
+     }
+ 
+-    // TODO: Token authentication handling.
++    // Spike: Android token logins (auth type 7, LOCAL_AUTH builds) carry no username; map them to
++    // one fixed local account through the password path. Not for production use.
+     private fun tokenLogin(
+         responseHandler: GameLoginResponseHandler<Player>,
+         block: LoginBlock<AuthenticationType>,
+-        @Suppress("unused") auth: AuthenticationType.TokenAuthentication,
++        auth: AuthenticationType.TokenAuthentication,
+     ) {
+-        logger.warn { "Unhandled login authentication for: $block" }
+-        responseHandler.writeFailedResponse(LoginResponse.InvalidLoginPacket)
++        val username = System.getenv("SPIKE_TOKEN_USERNAME") ?: "tester"
++        val password = (System.getenv("SPIKE_TOKEN_PASSWORD") ?: "android-local").toCharArray()
++        logger.info { "Token login (${block.header.clientType}) mapped to local account '$username'" }
++        try {
++            passLogin(responseHandler, block, auth.otpAuthentication, username, password)
++        } finally {
++            password.fill('\u0000')
++        }
+     }
+ 
+     private fun OtpAuthenticationType.toAccountLoadAuth(): AccountLoadAuth =
+diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkFactory.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkFactory.kt
+index 0c3cdf4e5..7b7681c96 100644
+--- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkFactory.kt
++++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkFactory.kt
+@@ -42,7 +42,7 @@ constructor(
+     override val ports: List<Int> = listOf(config.gamePort)
+ 
+     override val supportedClientTypes: List<OldSchoolClientType> =
+-        listOf(OldSchoolClientType.DESKTOP)
++        listOf(OldSchoolClientType.DESKTOP, OldSchoolClientType.ANDROID)
+ 
+     override fun getExceptionHandlers(): ExceptionHandlers<Player> {
+         return ExceptionHandlersProvider.provide()
+diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt
+index 98c922c45..76770d5bd 100644
+--- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt
++++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt
+@@ -140,7 +140,11 @@ constructor(
+     private fun SessionStart.startSession() {
+         val slot = player.slotId
+ 
+-        val infos = service.infoProtocols.alloc(slot, OldSchoolClientType.DESKTOP)
++        val clientType =
++            session.loginBlock.header.clientType.toOldSchoolClientType()
++                ?: OldSchoolClientType.DESKTOP
++        player.mobileClient = clientType == OldSchoolClientType.ANDROID
++        val infos = service.infoProtocols.alloc(slot, clientType)
+ 
+         val client = RspClient(session, infos) as Client<Any, Any>
+         val cycle = RspCycle(session, infos, regionReg)
+diff --git a/api/player-output/src/main/kotlin/org/rsmod/api/player/output/Camera.kt b/api/player-output/src/main/kotlin/org/rsmod/api/player/output/Camera.kt
+index 58c9627f9..4c44bb4e9 100644
+--- a/api/player-output/src/main/kotlin/org/rsmod/api/player/output/Camera.kt
++++ b/api/player-output/src/main/kotlin/org/rsmod/api/player/output/Camera.kt
+@@ -1,8 +1,6 @@
+ package org.rsmod.api.player.output
+ 
+-import net.rsprot.protocol.game.outgoing.camera.CamLookAtV2
+ import net.rsprot.protocol.game.outgoing.camera.CamLookAtV3
+-import net.rsprot.protocol.game.outgoing.camera.CamMoveToV2
+ import net.rsprot.protocol.game.outgoing.camera.CamMoveToV3
+ import net.rsprot.protocol.game.outgoing.camera.CamReset
+ import net.rsprot.protocol.game.outgoing.camera.CamShake
+@@ -37,11 +35,11 @@ public object Camera {
+     }
+ 
+     public fun camLookAt(player: Player, dest: CoordGrid, height: Int, rate: Int, rate2: Int) {
+-        player.client.write(CamLookAtV2(dest.x, dest.z, height, rate, rate2))
++        player.client.write(CamLookAtV3(dest.x, dest.z, height, rate, rate2, heightRelative = false))
+     }
+ 
+     public fun camMoveTo(player: Player, dest: CoordGrid, height: Int, rate: Int, rate2: Int) {
+-        player.client.write(CamMoveToV2(dest.x, dest.z, height, rate, rate2))
++        player.client.write(CamMoveToV3(dest.x, dest.z, height, rate, rate2, heightRelative = false))
+     }
+ 
+     /**
+diff --git a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/GameframeLoader.kt b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/GameframeLoader.kt
+index 523f4c3e8..5ea021697 100644
+--- a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/GameframeLoader.kt
++++ b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/GameframeLoader.kt
+@@ -30,9 +30,31 @@ internal class GameframeLoader {
+             mapped[gameframe.topLevel.asRSCM(RSCMType.INTERFACE)] = gameframe
+         }
+ 
++        // Spike: the mobile toplevel (toplevel_osm, 601) is not a dbtable row; build it from the
++        // cache's mobile pane-redirect enum (1745), the same way the other rows use their enums.
++        val mobile =
++            Gameframe(
++                topLevel = MOBILE_TOPLEVEL,
++                overlays = overlays,
++                mappings =
++                    // Raw ints: enum 1745 has placeholder values (600:65535) that the component
++                    // codec rejects; those targets do not exist on the mobile toplevel.
++                    enum("enum.mobile_pane_redirect", IntCodec, IntCodec)
++                        .filter { (it.value and 0xFFFF) != 0xFFFF }
++                        .associate { Component(it.key) to Component(it.value) },
++                clientMode = 1,
++                resizable = true,
++                isDefault = false,
++                stoneArrangement = false,
++            )
++        mapped[MOBILE_TOPLEVEL.asRSCM(RSCMType.INTERFACE)] = mobile
+         return mapped
+     }
+ 
++    companion object {
++        const val MOBILE_TOPLEVEL: String = "interface.toplevel_osm"
++    }
++
+     private fun loadGameframe(row: GameframeRow): Gameframe {
+         val topLevel = RSCM.getReverseMapping(RSCMType.INTERFACE, row.toplevel)
+         val clientMode = row.clientMode
+diff --git a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
+index 7af3c1d93..953380a8a 100644
+--- a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
++++ b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
+@@ -64,6 +64,13 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+     }
+ 
+     private fun Player.openLoginGameframe() {
++        if (mobileClient) {
++            val mobile = gameframes.values.first { it.topLevel == GameframeLoader.MOBILE_TOPLEVEL }
++            gameframeTopLevel = mobile.topLevel.asRSCM(RSCMType.INTERFACE)
++            ifOpenTop(mobile.topLevel)
++            openGameframe(mobile, eventBus)
++            return
++        }
+         val gameframe = gameframes[gameframeTopLevel]
+         if (gameframe != null && gameframe.resizable == ui.frameResizable) {
+             ifOpenTop(gameframe.topLevel)
+diff --git a/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt b/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt
+index afd1731d5..3cc50543a 100644
+--- a/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt
++++ b/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt
+@@ -181,6 +181,8 @@ public class Player(
+     public var userHash: Long by Delegates.notNull()
+ 
+     public var username: String = ""
++    /** Spike: true when the session is the Android (ENHANCED_ANDROID) client type. */
++    public var mobileClient: Boolean = false
+     public var displayName: String by avatar::name
+     public var members: Boolean = false
+     public var gamemode: Int = 0
+diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
+index 0e4a0f17f..5b494bdba 100644
+--- a/gradle/libs.versions.toml
++++ b/gradle/libs.versions.toml
+@@ -21,7 +21,7 @@ netty = "4.2.2.Final"
+ okhttp = "5.0.0-alpha.16"
+ otp-kotlin = "2.4.1"
+ openrs2 = "0.1.0-SNAPSHOT"
+-rsprot = "1.0.0-ALPHA-20261001"
++rsprot = "1.0.0-ALPHA-20261001.99"
+ simmetrics = "4.1.1"
+ shadow = "8.3.7"
+ spotless = "7.0.4"
+@@ -62,6 +62,7 @@ otp-kotlin = { module = "dev.turingcomplete:kotlin-onetimepassword", version.ref
+ openrs2-buffer = { module = "org.openrs2:openrs2-buffer", version.ref = "openrs2" }
+ openrs2-cache = { module = "org.openrs2:openrs2-cache", version.ref = "openrs2" }
+ rsprot-api = { module = "net.rsprot:osrs-241-api", version.ref = "rsprot" }
++rsprot-android = { module = "net.rsprot:osrs-241-android", version.ref = "rsprot" }
+ rsprot-shared = { module = "net.rsprot:osrs-241-shared", version.ref = "rsprot" }
+ simmetrics-core = { module = "com.github.mpkorstanje:simmetrics-core", version.ref = "simmetrics" }
+ spotless-gradle-plugin = { module = "com.diffplug.spotless:spotless-plugin-gradle", version.ref = "spotless" }
+diff --git a/settings.gradle.kts b/settings.gradle.kts
+index 95a72708a..4581bab8a 100644
+--- a/settings.gradle.kts
++++ b/settings.gradle.kts
+@@ -18,6 +18,8 @@ if (centralServerBuild.isPresent) {
+ dependencyResolutionManagement {
+     includeBuild("build-logic")
+     repositories {
++        // spike: our patched RSProt (Android module) published by tools/openrune/rsprot-publish.sh
++        maven { url = uri(".spike/m2") }
+         gradlePluginPortal()
+         mavenCentral()
+         mavenLocal()

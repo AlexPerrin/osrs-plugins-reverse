@@ -34,6 +34,8 @@ final class Native {
     static native boolean sidebarOpen();
     /** Game thread: {planes, sizeX, sizeY, heights[planes][sx+1][sy+1]..., settings[planes][sx][sy]...}, or null. */
     static native int[] sceneHeights();
+    /** Game thread: {int[] {keyType, valueType, defaultInt}, String defaultString, int[] keys, int[] intValues, String[] stringValues}, or null. */
+    static native Object[] enumDef(int id);
     /** UI thread: offers a touch to the overlay; true if the overlay takes it (the game won't see it). */
     static native boolean overlayTouch(int action, float x, float y);
     /**

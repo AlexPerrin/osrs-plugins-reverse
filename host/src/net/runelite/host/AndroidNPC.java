@@ -33,4 +33,7 @@ public class AndroidNPC extends NPCStub {
     public String toString() {
         return "NPC[" + index + " " + name + " (" + id + ") at " + worldX + "," + worldY + "]";
     }
+
+    /** Minimap geometry isn't mapped yet: treated as off the minimap. */
+    @Override public net.runelite.api.Point getMinimapLocation() { return null; }
 }

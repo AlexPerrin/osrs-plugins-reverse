@@ -35,4 +35,7 @@ public class AndroidPlayer extends PlayerStub {
     public String toString() {
         return "Player[" + index + " " + name + " at " + worldX + "," + worldY + "]";
     }
+
+    /** Minimap geometry isn't mapped yet: treated as off the minimap. */
+    @Override public net.runelite.api.Point getMinimapLocation() { return null; }
 }

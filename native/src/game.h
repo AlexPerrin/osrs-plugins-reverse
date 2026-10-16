@@ -150,4 +150,13 @@ struct SceneHeights {
 };
 bool scene_heights(SceneHeights& out);  // game thread only
 
+// Enums (cache config type), from the game's cache. Game thread only.
+struct EnumDef {
+    int key_type = 0, value_type = 0, default_int = 0;
+    std::string default_string;
+    std::vector<int32_t> keys, int_values;
+    std::vector<std::string> string_values;  // when value_type == 's'
+};
+bool enum_def(int id, EnumDef& out);
+
 }  // namespace game

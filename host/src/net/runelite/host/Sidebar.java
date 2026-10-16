@@ -75,6 +75,7 @@ final class Sidebar {
         if (!Native.sidebarOpen() && !dirty && cycles % 100 != 0) return;
         try {
             String model = build();
+            autoClick();
             if (!model.equals(lastModel)) {
                 lastModel = model;
                 Native.sidebarSetModel(model);
@@ -87,6 +88,28 @@ final class Sidebar {
             }
         } catch (Throwable t) {
             Log.e(TAG, "sidebar model failed", t);
+        }
+    }
+
+    private static String autoClickDone;
+
+    /**
+     * Test hook: `setprop debug.osrsrl.sbclick "<text>"` taps the first button whose text, or
+     * whose preceding label's text, equals <text> (once per value; e.g. a quest name in Quest Helper).
+     */
+    private static void autoClick() {
+        String want = Native.property("debug.osrsrl.sbclick");
+        if (want.isEmpty() || want.equals(autoClickDone)) return;
+        for (int i = 0; i < nodes.size(); i++) {
+            Component c = nodes.get(i);
+            if (!(c instanceof AbstractButton)) continue;
+            boolean match = want.equals(text(c)) || (i > 0 && nodes.get(i - 1) instanceof JLabel && want.equals(text(nodes.get(i - 1))));
+            if (match) {
+                autoClickDone = want;
+                Log.i(TAG, "sidebar auto-click '" + want + "'");
+                handle(2, i);
+                return;
+            }
         }
     }
 

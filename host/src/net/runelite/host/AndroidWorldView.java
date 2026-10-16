@@ -118,6 +118,21 @@ public class AndroidWorldView extends WorldViewStub {
         return tileSettings != null ? tileSettings : new byte[4][104][104];
     }
 
+    private final AndroidScene scene = new AndroidScene(this);
+
+    /** No world entities (boats) yet. */
+    private static <T> IndexedObjectSet<T> emptySet() {
+        return new IndexedObjectSet<T>() {
+            @Override public T byIndex(int index) { return null; }
+            @Override public Iterator<T> iterator() { return java.util.Collections.<T>emptyList().iterator(); }
+        };
+    }
+
+    @Override public IndexedObjectSet<? extends net.runelite.api.WorldView> worldViews() { return emptySet(); }
+    @Override public IndexedObjectSet<? extends net.runelite.api.WorldEntity> worldEntities() { return emptySet(); }
+
+    @Override public net.runelite.api.Scene getScene() { return scene; }
+
     @Override
     public IndexedObjectSet<? extends NPC> npcs() {
         return new IndexedObjectSet<NPC>() {

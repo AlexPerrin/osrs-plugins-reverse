@@ -198,6 +198,33 @@ jintArray n_scene_heights(JNIEnv* env, jclass) {
     env->SetIntArrayRegion(arr, 0, static_cast<jsize>(v.size()), v.data());
     return arr;
 }
+// Object[] {int[] {keyType, valueType, defaultInt}, String defaultString, int[] keys, int[] intValues, String[] stringValues}.
+jobjectArray n_enum_def(JNIEnv* env, jclass, jint id) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    game::EnumDef d;
+    if (!game::enum_def(id, d)) return nullptr;
+    jclass string = env->FindClass("java/lang/String");
+    jint head[3] = {d.key_type, d.value_type, d.default_int};
+    jintArray h = env->NewIntArray(3);
+    env->SetIntArrayRegion(h, 0, 3, head);
+    jintArray keys = env->NewIntArray(static_cast<jsize>(d.keys.size()));
+    if (!d.keys.empty()) env->SetIntArrayRegion(keys, 0, static_cast<jsize>(d.keys.size()), d.keys.data());
+    jintArray ints = env->NewIntArray(static_cast<jsize>(d.int_values.size()));
+    if (!d.int_values.empty()) env->SetIntArrayRegion(ints, 0, static_cast<jsize>(d.int_values.size()), d.int_values.data());
+    jobjectArray strs = env->NewObjectArray(static_cast<jsize>(d.string_values.size()), string, nullptr);
+    for (size_t i = 0; i < d.string_values.size(); i++) {
+        jstring js = env->NewStringUTF(d.string_values[i].c_str());
+        env->SetObjectArrayElement(strs, static_cast<jsize>(i), js);
+        env->DeleteLocalRef(js);
+    }
+    jobjectArray res = env->NewObjectArray(5, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(res, 0, h);
+    env->SetObjectArrayElement(res, 1, env->NewStringUTF(d.default_string.c_str()));
+    env->SetObjectArrayElement(res, 2, keys);
+    env->SetObjectArrayElement(res, 3, ints);
+    env->SetObjectArrayElement(res, 4, strs);
+    return res;
+}
 jboolean n_is_client_thread(JNIEnv*, jclass) { return client_thread::on_client_thread(); }
 jintArray n_player_position(JNIEnv* env, jclass) {
     if (game::game_state() != 30) return nullptr;
@@ -368,6 +395,7 @@ const JNINativeMethod kNatives[] = {
     {"sidebarOpen", "()Z", reinterpret_cast<void*>(n_sidebar_open)},
     {"overlayTouch", "(IFF)Z", reinterpret_cast<void*>(n_overlay_touch)},
     {"sceneHeights", "()[I", reinterpret_cast<void*>(n_scene_heights)},
+    {"enumDef", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_enum_def)},
     {"runScript", "([Ljava/lang/Object;)[Ljava/lang/Object;", reinterpret_cast<void*>(n_run_script)},
     {"isClientThread", "()Z", reinterpret_cast<void*>(n_is_client_thread)},
 };

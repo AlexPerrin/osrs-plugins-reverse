@@ -106,6 +106,33 @@ public class AndroidClient extends ClientStub {
     @Override public boolean isRuneLiteObjectRegistered(net.runelite.api.RuneLiteObjectController o) { return false; }
 
     @Override public net.runelite.api.Animation loadAnimation(int id) { return null; }
+
+    // Hint arrows: not read from the game (HINT_ARROW packet); plugin-set arrows are remembered only.
+    private Object hintArrow;
+    @Override public boolean hasHintArrow() { return hintArrow != null; }
+    @Override public int getHintArrowType() { return hintArrow instanceof net.runelite.api.NPC ? 1 : hintArrow instanceof Player ? 10 : hintArrow != null ? 2 : 0; }
+    @Override public void clearHintArrow() { hintArrow = null; }
+    @Override public void setHintArrow(net.runelite.api.coords.WorldPoint p) { hintArrow = p; }
+    @Override public void setHintArrow(net.runelite.api.coords.LocalPoint p) { hintArrow = p; }
+    @Override public void setHintArrow(Player p) { hintArrow = p; }
+    @Override public void setHintArrow(net.runelite.api.NPC n) { hintArrow = n; }
+    @Override public net.runelite.api.coords.WorldPoint getHintArrowPoint() { return hintArrow instanceof net.runelite.api.coords.WorldPoint ? (net.runelite.api.coords.WorldPoint) hintArrow : null; }
+    @Override public Player getHintArrowPlayer() { return hintArrow instanceof Player ? (Player) hintArrow : null; }
+    @Override public net.runelite.api.NPC getHintArrowNpc() { return hintArrow instanceof net.runelite.api.NPC ? (net.runelite.api.NPC) hintArrow : null; }
+
+    @Override
+    public net.runelite.api.EnumComposition getEnum(int id) {
+        return AndroidEnum.lookup(id);
+    }
+    /** The world map isn't mapped: an inert map whose data contains no positions. */
+    private final WorldMapBag worldMap = new WorldMapBag() {
+        private final WorldMapDataBag data = new WorldMapDataBag();
+        @Override public net.runelite.api.worldmap.WorldMapData getWorldMapData() { return data; }
+    };
+    @Override public net.runelite.api.worldmap.WorldMap getWorldMap() { return worldMap; }
+    /** Minimap zoom isn't read from the game; RuneLite's default. */
+    @Override public double getMinimapZoom() { return 4.0; }
+
     /** Menus aren't mapped yet; the game's own menu is never reported as open. */
     @Override public boolean isMenuOpen() { return false; }
 

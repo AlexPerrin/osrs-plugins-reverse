@@ -50,11 +50,33 @@ VarbitChanged).
 | `runScript(Object...)` (Integer/String args), `getIntStack()`/`getIntStackSize()`, `getObjectStack()`/`getObjectStackSize()` | the game's own `runScriptEvent` (`0x4df54c`) on the game thread with a ScriptEvent we build; stacks are copied when the script returns (`Quest.getState` works) |
 | `getItemDefinition(id)` (name, price, stackable, members, notes, placeholders, inventory actions, weight), `ItemManager.getItemComposition/canonicalize` | the game's obj definition cache (`0x63bfe8`); cached per id (LRU 2048). `isTradeable` uses an unverified flag |
 | `getNpcDefinition(id)`, `NPC.getComposition()/getTransformedComposition()/getCombatLevel()` (name, size, combat level, actions, minimap/interactable) | the game's NpcType cache (`0x63633c`); multi-NPC transforms not resolved |
+| `getEnum(id)` (keys, int/string values, defaults) | the game's EnumType cache (`0x65cac8`) |
+| `WorldView.getScene()`: `getTiles()` (locations only), tile heights/settings, base | `AndroidScene`; tiles carry no objects or ground items yet |
+| Sidebar: ClientToolbar buttons + the selected plugin panel, usable by touch | `Sidebar.java` (model + tap dispatch + touch router) and `overlay.cpp` (ImGui window); see "Sidebar" below |
+| Inert stand-ins so plugin code runs: models/`RuneLiteObject`s (`ModelDataBag`, `ModelBag`), world map (`WorldMapBag`), hint arrows (remembered only), sprites (blank 16×16), `isMenuOpen()` false, `getMinimapZoom()` 4, `getMinimapLocation()` null, `findWorldViewFromWorldPoint` = top level | nothing is drawn for them |
 | `macroExpand(text)` | identity (CS1 macros aren't expanded) |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so
 plugin logs show what to implement next.
+
+## Sidebar
+
+An "RL" button at the left edge of the screen opens an ImGui window (overlay.cpp) with one tab
+per `NavigationButton` and the selected panel's Swing tree, flattened by `Sidebar.java` every 10
+cycles into lines `kind\tdepth\tcolor\ttext` (L label, B button, C checkbox, T text component,
+X combo box, H panel with mouse listeners). Taps come back as (kind, index) and are dispatched
+on the game thread: buttons fire their ActionListeners (toggles flip first), H panels get
+pressed/released/clicked MouseEvents. Drag scrolls. Touches are routed by a `Window.Callback`
+proxy on the game Activity: a touch that starts inside the sidebar (or the RL button) goes to
+ImGui and is hidden from the game. The headless Swing honours what panels need for this:
+constructor text/icon/layout, CardLayout.show, visibility, and `SwingUtilities.invokeLater`
+(queued, run on the game thread, which acts as the EDT).
+
+Test hooks: `setprop debug.osrsrl.sbclick "<text>"` taps the first button with that text or
+following a label with that text (e.g. `"Demon Slayer"` starts that quest in Quest Helper);
+`setprop debug.osrsrl.sbdump 1` writes the model to `files/sidebar-model.txt` on change.
+Not yet: text input (no soft keyboard), combo box popups, icons, label colours.
 
 ## Gaps, in rough order
 

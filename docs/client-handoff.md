@@ -36,6 +36,14 @@ session; its notes are in `docs/android-protocol.md`.
   panel's headless Swing tree (labels, buttons, checkboxes, clickable panels); taps go to the
   Swing listeners on the game thread. Touches reach ImGui through a `Window.Callback` proxy
   installed on the game Activity (`Sidebar.java`); touches outside the sidebar go to the game.
+  **Quest Helper is usable**: quest list and full quest details in the sidebar, starting a quest
+  (button next to its name, then an assist level) shows QH's step overlay in game ("Demon Slayer:
+  Talk to Aris..."), no runtime exceptions left in that flow. Also `getEnum`, `WorldView.getScene`
+  (tiles without objects), RuneScapeProfileChanged on login (QH waits for it before loading its
+  quest list), inert models/world map/hint arrows.
+- Device protocol addition: `/tmp/osrs-device-status` holds the latest "taking device (…)" /
+  "device free, restart ok (…)" line; check it before using adb and write it when you take or
+  free the device (the server agent polls it), besides the SendMessage notes.
 
 ## Layout
 
@@ -131,6 +139,19 @@ protocol gaps plugins hit (it has implemented dialogue, ground items, bank, OP* 
 `server/tools/device.sh cmd '::talk'` types chat commands reliably.
 
 ## Suggested next steps
+
+Quest Helper now runs end to end; what limits it next:
+- Menu entries (MenuEntryAdded/MenuOptionClicked). This client builds menus with std::function
+  callbacks, not the Java client's parallel arrays: `0x51a7fc` builds the world menu ("Walk here"
+  = global string `0x18d1a50`, GOT `0xa82958`), `0x51c810` appends one entry to a list at
+  `param_3 + 0x210` {callbacks vector (0xa0 each) [0..2], option strings [3..5], [6..8], arena
+  [9..0xc]}. Reading the open menu (`getMenuEntries`) is the realistic first step.
+- Scene objects (game/wall/ground objects, ground items) for QH's object/item highlights; NPC
+  highlights need NPC hulls (models) or at least tile outlines (works: Perspective + heights).
+- Widget item ids/quantities and widget writes (QH's item highlighting in the inventory/bank).
+- Minimap geometry (`getMinimapLocation`, QH's minimap arrows) and the world map.
+- Sidebar: text input (soft keyboard → JTextField + KeyListeners; QH's search box), combo popups,
+  icons, label colours.
 
 0. Quest Helper's remaining runtime gaps (see the status above): `runScript` (find the CS2
    interpreter entry: `0x4e5960` handles CC_GET* with the VM state; the int stack is VM+0x50,

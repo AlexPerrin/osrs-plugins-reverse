@@ -66,6 +66,7 @@ struct Build {
     // Scene (WorldView +0x10): +0x944 planes, +0x948/+0x94c size x/y, +0x3d0 int heights
     // [planes][sx+1][sy+1]; tileSettings(scene, plane, x, y) (bit 2 = bridge).
     uintptr_t tile_settings;
+    uintptr_t get_enum_type;  // shared_ptr<EnumType> getEnumType(int id) (ENUM ops 3400-3411)
 };
 
 constexpr Build kBuilds[] = {
@@ -76,7 +77,7 @@ constexpr Build kBuilds[] = {
      0xecdc, 0xece0, 0xcb78, 0xcb7c, 0xcb80, 0x8950c, 0x89514, 0x5d0040,
      0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x68, 0x70, 0xcb0c, 0x718, 0xcb90, 0x730, 0x1fc, 0x200, 0x0, 0x8,
      0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0x5c, 0x60, 0x64, 0x68, 0x74, 0x6, 0x3210, 0x3274, 0x32d8, 0xaab690, 0xaab658, 0xaab628,
-     0xaef1d0, 0x4df54c, 0x63bfe8, 0x63633c, 0x65c798, 0x6de99c},
+     0xaef1d0, 0x4df54c, 0x63bfe8, 0x63633c, 0x65c798, 0x6de99c, 0x65cac8},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -640,6 +641,42 @@ bool scene_heights(SceneHeights& out) {
     for (int p = 0; p < planes; p++)
         for (int x = 0; x < sx; x++)
             for (int y = 0; y < sy; y++) out.settings[(static_cast<size_t>(p) * sx + x) * sy + y] = static_cast<uint8_t>(settings(scene, p, x, y));
+    return true;
+}
+
+}  // namespace game
+
+namespace game {
+
+bool enum_def(int id, EnumDef& out) {
+    if (!g_build || !g_build->get_enum_type || id < 0 || id > 0xfffff) return false;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    SharedPtr r = reinterpret_cast<SharedPtr (*)(int)>(g_base + g_build->get_enum_type)(id);
+    uintptr_t ctrl = r.ctrl, e = r.obj;
+    if (!e) { release_shared(ctrl); return false; }
+    // EnumType: +0 u16 key type, +2 u16 value type ('s' strings, 0xcf longs), +8 default string,
+    // +0x20 default int, +0x30 count, +0x48 int keys, +0x60 int values, +0x90 strings (24 bytes).
+    out.key_type = read_at<uint16_t>(e);
+    out.value_type = read_at<uint16_t>(e + 2);
+    out.default_string = read_string(e + 8);
+    out.default_int = read_at<int32_t>(e + 0x20);
+    int n = read_at<int32_t>(e + 0x30);
+    if (n < 0 || n > 100000) n = 0;
+    auto keys = read_at<const int32_t*>(e + 0x48);
+    auto ints = read_at<const int32_t*>(e + 0x60);
+    auto strs = read_at<uintptr_t>(e + 0x90);
+    out.keys.clear();
+    out.int_values.clear();
+    out.string_values.clear();
+    for (int i = 0; i < n; i++) {
+        out.keys.push_back(keys ? keys[i] : 0);
+        if (out.value_type == 's') out.string_values.push_back(strs ? read_string(strs + i * 0x18) : std::string());
+        else out.int_values.push_back(ints ? ints[i] : 0);
+    }
+    release_shared(ctrl);
     return true;
 }
 

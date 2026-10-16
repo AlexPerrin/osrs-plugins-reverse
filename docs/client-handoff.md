@@ -165,6 +165,30 @@ session; its notes are in `docs/android-protocol.md`.
   plugins (javap, Client/Player/... calls minus host overrides and API defaults) gave the order used
   this session; the remaining top items are getWorld, createScriptEventBuilder, getFriendsChatManager,
   getDBTableField, getClanChannel, getMessages, sidebar combo boxes and NPC multi-transforms (still unverified).
+- **Gen 6, later (2026-10-16 02:30-03:15)**: verified on device: definition params (bronze axe
+  param 14 = 5), getMapRegions, idle ticks, getMessages, widget setters + revalidate (setOriginalX
+  relaid the "All" chat tab), ItemLayer.getHeight (Ground Items labels above the items). Added
+  createScriptEventBuilder, widget field setters (position/size/modes/sprite/opacity/font/flags),
+  NPC getId/getName = current multi-NPC transform (-1/null when hidden) and no hull for a hidden one.
+  **OpenRune fixes:** OpenRune's cache has 65660 varps; the varp diff's 1 << 16 bound skipped every
+  VarbitChanged there, so QH never advanced (d67379a, verified: live `::varp 144` moves QH's R&J
+  steps). Quest status script 4029 is fine there (Sheep Shearer FINISHED at varp 179 = 21).
+  **Open (priority 1 for the next client dev): QH highlights on the wrong tile on OpenRune.**
+  Romeo (id 5037, NPC index 19884; OpenRune's NPC indices are large, the old server's tiny) reads fine
+  x/y 6976,6080 = 3214,3423 from Npc +0x1fc/+0x200 while the game draws him ~5 tiles north at the
+  fountain; QH's arrow/outline follow our coordinates. Model, base (WorldView +0x24/+0x28 matches
+  ::mypos) and projection are fine. Leads: a stale entity (index list wv+0xd0 vs hash map
+  wv+0x98), +0x1fc/+0x200 not being the drawn position for these NPCs (compare +0x268/+0x26c and the
+  path arrays live with tools/agent.py), or a second, visible Romeo with another id. Probe:
+  `setprop debug.osrsrl.set 'npcmodel <id> 0'` (lists base-id matches with index, tile, model
+  bounds, hull, feet). Other probes this session: `quest <QUEST> <varp>`, `iparam <item> <-1|param>`,
+  `wmove <g:c> <dx>`, `whide`/`wtext`, `sound`, `debug.osrsrl.varlog 1` (logs VarbitChanged),
+  `debug.osrsrl.eyeback D` (experimental projection eye offset, off by default).
+  Pitfall: `debug.osrsrl.set` values persist across app restarts and re-run once per process (a
+  leftover `wmove` hid the "All" tab after restarts); clear the props before freeing the device.
+  Still unverified: sidebar combo boxes, NPC multi-transforms in game, createScriptEventBuilder,
+  ground item timers/ownership, playSoundEffect audio. getWorld: the world id is jav_config
+  param 12 (1 old server, 255 OpenRune); where the client stores it is not found yet.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

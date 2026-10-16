@@ -78,6 +78,10 @@ VarbitChanged).
 | `getIntValue/getStringValue` on item, NPC and object compositions (definition params) | `game::type_param` (docs/offsets.md "Definition params"); a missing param gives 0 / "" (ParamType defaults not read). Unverified; test hook `setprop debug.osrsrl.set 'iparam <item> <param>'` |
 | `getMapRegions`, `isPrayerActive` (prayer varbits), `getLocalDestinationLocation` (walk destination), `getMouseIdleTicks/getKeyboardIdleTicks` (since the last touch/key event at the touch router), `getRealDimensions/getStretchedDimensions` (UI canvas), `isKeyPressed` false, dragged/selected widgets null, `refreshChat` no-op | unverified |
 | Core RuneLite plugins: `tools/dex-plugin.sh --core <package> out.jar` writes a jar holding only plugin-classes.txt (the classes are already in host.jar). **Ground Items runs** (2026-10-16): labels with prices over ground items, menu recolouring | Coins are in its default hidden list, so they get no label |
+| Widget field setters written into the game (`setOriginalX/Y/Width/Height`, position/size modes, sprite, opacity, font, filled, border, flips, text alignment/shadow, no click/scroll through) and `revalidate()` through the game's layout (`0x44a788`, `0x45e304`, `0x45ebf4` as CC_SETPOSITION runs them); `getIndex()` | verified 2026-10-16 (setOriginalX + revalidate moved a chat tab label) |
+| `createScriptEventBuilder` (magic args resolved in Java, run through runScript), `getMessages` (nodes seen since start) | unverified |
+| NPC `getId()/getName()` follow the current multi-NPC transform (-1/null when it transforms to nothing) and such an NPC has no hull, as RuneLite | unverified |
+| VarbitChanged works with caches of any varp count (OpenRune: 65660) | verified 2026-10-16 on OpenRune |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so

@@ -102,6 +102,8 @@ final class Native {
     static native boolean sidebarOpen();
     /** The virtual Shift toggle under the RL button. */
     static native boolean shiftHeld();
+    /** Replaces a chat message's text in the game (game thread). */
+    static native boolean messageSetText(int id, String text);
     /** Plugin menu entries shown under the game's menu at (x, y), width w (UI canvas); null/empty hides. */
     static native void pluginMenu(String[] labels, int x, int y, int w, int canvasHeight);
     /** Closes the open long-press menu (game thread). */

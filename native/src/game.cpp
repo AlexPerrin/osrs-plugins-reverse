@@ -874,6 +874,24 @@ bool read_message(int id, ChatLine& out) {
     return false;
 }
 
+bool message_set_text(int id, const std::string& text) {
+    if (!g_build) return false;
+    uintptr_t map = g_base + g_build->messages_by_id;
+    auto buckets = read_at<uintptr_t>(map + 8);
+    auto nb = read_at<uint32_t>(map + 0x10);
+    if (!buckets || !nb) return false;
+    for (auto node = read_at<uintptr_t>(buckets + (static_cast<uint32_t>(id) % nb) * 8); node;
+         node = read_at<uintptr_t>(node + 0x18)) {
+        if (read_at<int32_t>(node) != id) continue;
+        auto msg = read_at<uintptr_t>(node + 0x10);
+        if (!msg) return false;
+        GameString s(text);
+        reinterpret_cast<void* (*)(uintptr_t, const void*)>(g_base + 0x3f1498)(msg + 0xa0, s.bytes);
+        return true;
+    }
+    return false;
+}
+
 int player_plane() { return g_build ? field(g_build->f_plane) : -1; }
 
 int scene_plane() {

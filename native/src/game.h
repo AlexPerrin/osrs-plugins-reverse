@@ -162,6 +162,8 @@ struct ChatLine {
 int next_message_id();
 // Looks up a chat message by id (the game keeps the last 100 per type). Game thread only.
 bool read_message(int id, ChatLine& out);
+// Replaces a message's text (string assign 0x3f1498 on Message +0xa0). Game thread only.
+bool message_set_text(int id, const std::string& text);
 
 struct PlayerInfo {
     int index = -1;

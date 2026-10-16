@@ -151,6 +151,13 @@ jboolean n_add_chat_message(JNIEnv* env, jclass, jint type, jstring name, jstrin
     };
     return game::add_chat_message(type, str(name), str(text));
 }
+jboolean n_message_set_text(JNIEnv* env, jclass, jint id, jstring text) {
+    if (!client_thread::on_client_thread() || !text) return false;
+    const char* c = env->GetStringUTFChars(text, nullptr);
+    std::string t(c ? c : "");
+    if (c) env->ReleaseStringUTFChars(text, c);
+    return game::message_set_text(id, t);
+}
 jint n_server_varp(JNIEnv*, jclass, jint id) { return game::server_varp(id); }
 // Client-side setters (game thread only; false off it or for unknown ids).
 jboolean n_set_varbit(JNIEnv*, jclass, jint id, jint value) {
@@ -975,6 +982,7 @@ const JNINativeMethod kNatives[] = {
     {"setVarcString", "(ILjava/lang/String;)Z", reinterpret_cast<void*>(n_set_varc_string)},
     {"varbitDef", "(I)[I", reinterpret_cast<void*>(n_varbit_def)},
     {"addChatMessage", "(ILjava/lang/String;Ljava/lang/String;)Z", reinterpret_cast<void*>(n_add_chat_message)},
+    {"messageSetText", "(ILjava/lang/String;)Z", reinterpret_cast<void*>(n_message_set_text)},
     {"serverVarp", "(I)I", reinterpret_cast<void*>(n_server_varp)},
     {"varbit", "(I)I", reinterpret_cast<void*>(n_varbit)},
     {"playerPosition", "()[I", reinterpret_cast<void*>(n_player_position)},

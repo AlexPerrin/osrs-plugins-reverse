@@ -19,18 +19,21 @@ final class NpcCache {
         Object[] snap = Native.npcs();
         int[] packed = (int[]) snap[0];
         String[] names = (String[]) snap[1];
+        String[] overheads = (String[]) snap[2];
+        final int S = 12;  // see Native.npcs()/players()
         Map<Integer, AndroidNPC> seen = new HashMap<>();
         List<AndroidNPC> next = new ArrayList<>(names.length);
         for (int i = 0; i < names.length; i++) {
-            int index = packed[i * 6];
+            int index = packed[i * S];
             AndroidNPC npc = byIndex.get(index);
-            if (npc == null || npc.id != packed[i * 6 + 1]) npc = new AndroidNPC(index);
-            npc.id = packed[i * 6 + 1];
+            if (npc == null || npc.id != packed[i * S + 1]) npc = new AndroidNPC(index);
+            npc.id = packed[i * S + 1];
             npc.name = names[i];
-            npc.localX = packed[i * 6 + 2];
-            npc.localY = packed[i * 6 + 3];
-            npc.worldX = packed[i * 6 + 4];
-            npc.worldY = packed[i * 6 + 5];
+            npc.localX = packed[i * S + 2];
+            npc.localY = packed[i * S + 3];
+            npc.worldX = packed[i * S + 4];
+            npc.worldY = packed[i * S + 5];
+            npc.actor(packed, i * S + 6, overheads[i]);
             seen.put(index, npc);
             next.add(npc);
         }

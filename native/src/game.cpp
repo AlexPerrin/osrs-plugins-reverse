@@ -220,6 +220,25 @@ uintptr_t npc_lookup(uintptr_t wv, int index) {
 }
 }  // namespace
 
+static ActorState read_actor(uintptr_t a) {
+    ActorState st;
+    if (!a) return st;
+    st.animation = read_at<int32_t>(a + 0x4d8);
+    st.animation_frame = read_at<int16_t>(a + 0x4de);
+    st.orientation = read_at<int32_t>(a + 0x3e0) & 0x7ff;
+    st.current_orientation = read_at<int32_t>(a + 0x270) & 0x7ff;
+    // Face command: kind +0x3a5 (0 = entity), entity type +0x3a7 (1 NPC, 2 player, 3 world
+    // entity), target index +0x3a8 (-1 none).
+    int kind = read_at<uint8_t>(a + 0x3a5), type = read_at<uint8_t>(a + 0x3a7), index = read_at<int32_t>(a + 0x3a8);
+    if (kind == 0 && index >= 0 && index < 32768) {
+        if (type == 1) st.interacting = index;
+        else if (type == 2) st.interacting = index + 32768;
+    }
+    st.overhead_cycle = read_at<int32_t>(a + 0x2f4);
+    if (st.overhead_cycle > 0) st.overhead_text = read_string(a + 0x2d8);
+    return st;
+}
+
 std::vector<Npc> read_npcs() {
     std::vector<Npc> out;
     uintptr_t c = client();
@@ -243,6 +262,7 @@ std::vector<Npc> read_npcs() {
         n.fine_y = read_at<int32_t>(npc + g_build->npc_fine_y);
         n.world_x = base_x + (n.fine_x >> 7);
         n.world_y = base_y + (n.fine_y >> 7);
+        n.actor = read_actor(npc);
         out.push_back(std::move(n));
     }
     return out;
@@ -290,6 +310,7 @@ std::vector<PlayerInfo> read_players() {
             info.fine_y = read_at<int32_t>(p + g_build->npc_fine_y);
             info.world_x = base_x + (info.fine_x >> 7);
             info.world_y = base_y + (info.fine_y >> 7);
+            info.actor = read_actor(p);
             out.push_back(std::move(info));
         }
     }

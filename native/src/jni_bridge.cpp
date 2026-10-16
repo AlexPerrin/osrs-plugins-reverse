@@ -235,24 +235,41 @@ jintArray n_player_position(JNIEnv* env, jclass) {
     return arr;
 }
 
+// NPC/player snapshots: 6 ints of identity/position, then the actor state (see Native.java).
+constexpr int kActorStride = 12;
+void pack_actor(std::vector<jint>& v, const game::ActorState& a) {
+    v.insert(v.end(), {a.animation, a.animation_frame, a.orientation, a.current_orientation, a.interacting, a.overhead_cycle});
+}
+jstring latin1_string(JNIEnv* env, const std::string& s);
+void set_overhead(JNIEnv* env, jobjectArray arr, jsize i, const game::ActorState& a) {
+    if (a.overhead_text.empty()) return;
+    jstring t = latin1_string(env, a.overhead_text);
+    env->SetObjectArrayElement(arr, i, t);
+    env->DeleteLocalRef(t);
+}
+
 jobjectArray n_npcs(JNIEnv* env, jclass) {
     std::vector<game::Npc> npcs = client_thread::npcs();
     jsize n = static_cast<jsize>(npcs.size());
     std::vector<jint> packed;
-    packed.reserve(n * 6);
+    packed.reserve(n * kActorStride);
     jobjectArray names = env->NewObjectArray(n, env->FindClass("java/lang/String"), nullptr);
+    jobjectArray overheads = env->NewObjectArray(n, env->FindClass("java/lang/String"), nullptr);
     for (jsize i = 0; i < n; i++) {
         const game::Npc& npc = npcs[i];
         packed.insert(packed.end(), {npc.index, npc.id, npc.fine_x, npc.fine_y, npc.world_x, npc.world_y});
+        pack_actor(packed, npc.actor);
         jstring name = env->NewStringUTF(npc.name.c_str());
         env->SetObjectArrayElement(names, i, name);
         env->DeleteLocalRef(name);
+        set_overhead(env, overheads, i, npc.actor);
     }
-    jintArray ints = env->NewIntArray(n * 6);
-    env->SetIntArrayRegion(ints, 0, n * 6, packed.data());
-    jobjectArray out = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    jintArray ints = env->NewIntArray(n * kActorStride);
+    env->SetIntArrayRegion(ints, 0, n * kActorStride, packed.data());
+    jobjectArray out = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
     env->SetObjectArrayElement(out, 0, ints);
     env->SetObjectArrayElement(out, 1, names);
+    env->SetObjectArrayElement(out, 2, overheads);
     return out;
 }
 
@@ -462,18 +479,22 @@ jobjectArray n_players(JNIEnv* env, jclass) {
     jsize n = static_cast<jsize>(players.size());
     std::vector<jint> packed;
     jobjectArray names = env->NewObjectArray(n, env->FindClass("java/lang/String"), nullptr);
+    jobjectArray overheads = env->NewObjectArray(n, env->FindClass("java/lang/String"), nullptr);
     for (jsize i = 0; i < n; i++) {
         const game::PlayerInfo& p = players[i];
         packed.insert(packed.end(), {p.index, p.local ? 1 : 0, p.fine_x, p.fine_y, p.world_x, p.world_y});
+        pack_actor(packed, p.actor);
         jstring name = env->NewStringUTF(p.name.c_str());
         env->SetObjectArrayElement(names, i, name);
         env->DeleteLocalRef(name);
+        set_overhead(env, overheads, i, p.actor);
     }
-    jintArray ints = env->NewIntArray(n * 6);
-    env->SetIntArrayRegion(ints, 0, n * 6, packed.data());
-    jobjectArray out = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    jintArray ints = env->NewIntArray(n * kActorStride);
+    env->SetIntArrayRegion(ints, 0, n * kActorStride, packed.data());
+    jobjectArray out = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
     env->SetObjectArrayElement(out, 0, ints);
     env->SetObjectArrayElement(out, 1, names);
+    env->SetObjectArrayElement(out, 2, overheads);
     return out;
 }
 

@@ -39,6 +39,16 @@ int scene_plane();          // WorldView plane (what RuneLite's WorldView.getPla
 Point player_local_tile();  // tile within the loaded scene
 Point player_fine();        // scene position in 1/128 tile units (RuneLite LocalPoint)
 
+// Actor fields shared by Npc and Player (Actor ctor 0x474a2c; offsets from static RE of NPC_INFO
+// 0x469778 / face tick 0x435240, docs/offsets.md "Actor").
+struct ActorState {
+    int animation = -1, animation_frame = -1;  // +0x4d8 sequence id, +0x4de frame (s16)
+    int orientation = 0, current_orientation = 0;  // +0x3e0 target, +0x270 current (0..2047)
+    int interacting = -1;  // RuneLite encoding: NPC index, or player index + 32768; -1 none
+    int overhead_cycle = 0;  // +0x2f4 ticks left for the overhead text
+    std::string overhead_text;  // +0x2d8
+};
+
 struct Npc {
     int index = -1;  // server NPC index
     int id = -1;     // NpcType id
@@ -46,6 +56,7 @@ struct Npc {
     int fine_x = 0, fine_y = 0;    // scene position, 1/128 tile
     int world_x = 0, world_y = 0;  // world tile
     uintptr_t address = 0;         // Npc object; changes when the index is reused
+    ActorState actor;
 };
 // RuneLite conventions: x/y horizontal (local units), z height (negative is up).
 struct Camera {
@@ -107,6 +118,7 @@ struct PlayerInfo {
     std::string name;
     int fine_x = 0, fine_y = 0, world_x = 0, world_y = 0;
     uintptr_t address = 0;
+    ActorState actor;
 };
 // Walks the top-level WorldView's player table. Game thread only.
 std::vector<PlayerInfo> read_players();

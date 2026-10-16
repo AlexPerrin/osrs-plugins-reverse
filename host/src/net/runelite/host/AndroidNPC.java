@@ -34,8 +34,6 @@ public class AndroidNPC extends NPCStub {
         return "NPC[" + index + " " + name + " (" + id + ") at " + worldX + "," + worldY + "]";
     }
 
-    /** Interaction targets (face-entity) aren't read yet: not interacting. */
-    @Override public net.runelite.api.Actor getInteracting() { return null; }
 
     /** Approximate model height until NPC models are read (most humanoids are ~200 units tall). */
     @Override public int getLogicalHeight() {
@@ -80,17 +78,10 @@ public class AndroidNPC extends NPCStub {
         int size = comp != null ? Math.max(1, comp.getSize()) : 1;
         return new net.runelite.api.coords.WorldArea(getWorldLocation(), size, size);
     }
-    /** Animations/orientation aren't read yet. */
-    @Override public int getAnimation() { return -1; }
-    @Override public int getAnimationFrame() { return 0; }
     @Override public int getPoseAnimation() { return -1; }
     @Override public int getGraphic() { return -1; }
-    @Override public int getOrientation() { return 0; }
-    @Override public int getCurrentOrientation() { return 0; }
-    @Override public boolean isInteracting() { return getInteracting() != null; }
     @Override public int getHealthRatio() { return -1; }
     @Override public int getHealthScale() { return -1; }
-    @Override public String getOverheadText() { return null; }
     @Override public boolean isDead() { return false; }
     @Override public int getFootprintSize() {
         net.runelite.api.NPCComposition c = getComposition();
@@ -104,4 +95,28 @@ public class AndroidNPC extends NPCStub {
         return c == null || lp == null ? null : net.runelite.api.Perspective.localToMinimap(c, lp);
     }
     @Override public LocalPoint getCameraFocus() { return getLocalLocation(); }
+
+    // Actor state from the last snapshot (Native.npcs()/players(): animation, frame, orientation,
+    // current orientation, interacting, overhead cycle).
+    int animation = -1, animationFrame = -1, orientation, currentOrientation, interacting = -1, overheadCycle;
+    String overheadText;
+
+    void actor(int[] p, int o, String overhead) {
+        animation = p[o];
+        animationFrame = p[o + 1];
+        orientation = p[o + 2];
+        currentOrientation = p[o + 3];
+        interacting = p[o + 4];
+        overheadCycle = p[o + 5];
+        overheadText = overhead;
+    }
+
+    @Override public int getAnimation() { return animation; }
+    @Override public int getAnimationFrame() { return animationFrame; }
+    @Override public int getOrientation() { return orientation; }
+    @Override public int getCurrentOrientation() { return currentOrientation; }
+    @Override public net.runelite.api.Actor getInteracting() { return Host.actor(interacting); }
+    @Override public boolean isInteracting() { return interacting >= 0; }
+    @Override public String getOverheadText() { return overheadCycle > 0 ? overheadText : null; }
+    @Override public int getOverheadCycle() { return overheadCycle; }
 }

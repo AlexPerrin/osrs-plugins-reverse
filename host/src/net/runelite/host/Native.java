@@ -57,6 +57,12 @@ final class Native {
      * NPCs as of the last client cycle: {int[] packed, String[] names}, where packed holds
      * {index, id, localX, localY, worldX, worldY} per NPC.
      */
+    /**
+     * {int[] packed, String[] names, String[] overhead texts}; 12 ints per NPC: index, id, fine x, fine y,
+     * world x, world y, animation, animation frame, orientation, current orientation, interacting
+     * (NPC index or player index + 32768, -1 none), overhead cycle. players() is the same with
+     * `local` (1/0) in place of id.
+     */
     static native Object[] npcs();
     static native boolean widgetExists(int componentId);
     static native boolean widgetHidden(int componentId);

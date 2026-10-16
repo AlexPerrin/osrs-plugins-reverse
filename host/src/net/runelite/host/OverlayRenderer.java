@@ -2,13 +2,16 @@ package net.runelite.host;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Rect;
 import android.util.Log;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -70,21 +73,63 @@ final class OverlayRenderer {
             canvas = new Canvas(bitmap);
         }
         bitmap.eraseColor(0);
-        CanvasGraphics root = new CanvasGraphics(canvas);
-        root.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        net.runelite.client.ui.overlay.outline.ModelOutlineRenderer.target = root;
+        List<Rect> under = uiExclusions();
         try {
-            for (OverlayLayer layer : LAYERS) renderLayer(root, layer, size);
+            for (OverlayLayer layer : LAYERS) {
+                // Scene layers go under the game's opaque UI panels, as RuneLite draws them before
+                // widgets. The layer's root Graphics is created inside the clip: CanvasGraphics
+                // restores the canvas to its own save count, which would otherwise drop the clip.
+                boolean scene = layer == OverlayLayer.UNDER_WIDGETS || layer == OverlayLayer.ABOVE_SCENE;
+                int save = canvas.save();
+                if (scene) for (Rect r : under) canvas.clipOutRect(r);
+                CanvasGraphics root = new CanvasGraphics(canvas);
+                root.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                net.runelite.client.ui.overlay.outline.ModelOutlineRenderer.target = root;
+                try {
+                    renderLayer(root, layer, size);
+                } finally {
+                    root.dispose();
+                    canvas.restoreToCount(save);
+                }
+            }
         } finally {
             net.runelite.client.ui.overlay.outline.ModelOutlineRenderer.target = null;
         }
-        root.dispose();
 
         ByteBuffer buf = Native.overlayBuffer(size.width, size.height);
         if (buf == null) return;
         bitmap.copyPixelsToBuffer(buf);
         Native.overlayPublish(size.width, size.height);
         published = true;
+    }
+
+    /** Android root (601) children that are opaque panels: side tab stones, minimap block, side panel. */
+    private static final int[] OPAQUE_ROOT_CHILDREN = {50, 36, 111};  // + open side panel (inventory etc.)
+    private int exclusionsCycle = Integer.MIN_VALUE;
+    private List<Rect> exclusions = new ArrayList<>();
+
+    /** UI-canvas rectangles scene overlays must not cover; refreshed every 25 cycles. */
+    private List<Rect> uiExclusions() {
+        int cycle = Native.gameCycle();
+        if (cycle - exclusionsCycle < 25 && cycle >= exclusionsCycle) return exclusions;
+        exclusionsCycle = cycle;
+        List<Rect> out = new ArrayList<>();
+        int root = Native.rootInterface();
+        if (root == 601) {
+            List<Integer> ids = new ArrayList<>();
+            for (int i : OPAQUE_ROOT_CHILDREN) ids.add(i);
+            for (String t : Native.property("debug.osrsrl.clipui").split(",")) {  // experiments
+                try { ids.add(Integer.parseInt(t.trim())); } catch (NumberFormatException ignored) { }
+            }
+            for (int child : ids) {
+                AndroidWidget w = new AndroidWidget(root << 16 | child);
+                if (w.rawGeo() == null || w.isHidden() || w.getWidth() <= 0) continue;
+                java.awt.Rectangle b = w.getBounds();
+                out.add(new Rect(b.x, b.y, b.x + b.width, b.y + b.height));
+            }
+        }
+        exclusions = out;
+        return out;
     }
 
     private void renderLayer(CanvasGraphics root, OverlayLayer layer, Dimension size) {

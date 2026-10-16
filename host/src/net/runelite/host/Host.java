@@ -42,6 +42,13 @@ public final class Host {
     public static Client client() { return client; }
     private static final NpcCache npcCache = new NpcCache();
     private static final PlayerCache playerCache = new PlayerCache();
+    static AndroidNPC npc(int index) { return npcCache.get(index); }
+    static AndroidPlayer player(int index) { return playerCache.get(index); }
+    /** RuneLite's interacting encoding: NPC index, or player index + 32768; -1 = none. */
+    static net.runelite.api.Actor actor(int encoded) {
+        if (encoded < 0) return null;
+        return encoded < 32768 ? npcCache.get(encoded) : playerCache.get(encoded - 32768);
+    }
     private static final AndroidWorldView worldView = new AndroidWorldView(npcCache, playerCache);
     private static final ClientTick clientTick = new ClientTick();
     private static final net.runelite.client.ui.overlay.OverlayManager overlayManager =

@@ -20,19 +20,22 @@ final class PlayerCache {
         Object[] snap = Native.players();
         int[] packed = (int[]) snap[0];
         String[] names = (String[]) snap[1];
+        String[] overheads = (String[]) snap[2];
+        final int S = 12;  // see Native.npcs()/players()
         Map<Integer, AndroidPlayer> seen = new HashMap<>();
         List<AndroidPlayer> next = new ArrayList<>(names.length);
         AndroidPlayer me = null;
         for (int i = 0; i < names.length; i++) {
-            int index = packed[i * 6];
+            int index = packed[i * S];
             AndroidPlayer p = byIndex.get(index);
             if (p == null) p = new AndroidPlayer(index);
             p.name = names[i];
-            p.localX = packed[i * 6 + 2];
-            p.localY = packed[i * 6 + 3];
-            p.worldX = packed[i * 6 + 4];
-            p.worldY = packed[i * 6 + 5];
-            if (packed[i * 6 + 1] != 0) me = p;
+            p.localX = packed[i * S + 2];
+            p.localY = packed[i * S + 3];
+            p.worldX = packed[i * S + 4];
+            p.worldY = packed[i * S + 5];
+            if (packed[i * S + 1] != 0) me = p;
+            p.actor(packed, i * S + 6, overheads[i]);
             seen.put(index, p);
             next.add(p);
         }

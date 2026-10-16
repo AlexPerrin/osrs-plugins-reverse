@@ -52,7 +52,7 @@ final class AndroidMenuEntry implements MenuEntry {
     // [2] id (NPC/loc/obj type id, or widget component id), [3] NPC index / widget child slot,
     // [5] op (1-based for world entries, 0-based widget op; 0x7ffffffe = Examine, 0x7fffffff none),
     // [6] plane, [7]/[8] world x/y, [9] = u16 world view | target type << 16 | ? << 24.
-    static final int T_CANCEL = 0, T_WALK = 1, T_NPC = 2, T_LOC = 3, T_WIDGET = 7;
+    static final int T_CANCEL = 0, T_WALK = 1, T_NPC = 2, T_LOC = 3, T_OBJ = 4, T_WIDGET = 7;
     static final int OP_EXAMINE = 0x7ffffffe;
 
     int targetType() { return raw[9] >>> 16 & 0xff; }
@@ -62,7 +62,7 @@ final class AndroidMenuEntry implements MenuEntry {
 
     /** Maps the game's entry onto RuneLite's MenuAction/identifier/params. */
     void decode() {
-        worldViewId = -1;  // only the top-level world view (id 0 in the game) is mapped
+        worldViewId = net.runelite.api.WorldView.TOPLEVEL;  // only the top-level world view is mapped
         int op = op();
         switch (targetType()) {
             case T_CANCEL:
@@ -82,6 +82,11 @@ final class AndroidMenuEntry implements MenuEntry {
                 sceneParams();
                 type = op == OP_EXAMINE ? MenuAction.EXAMINE_OBJECT : locOp(op);
                 break;
+            case T_OBJ:  // ground item: [2] obj id, [3] quantity, op 3 = Take (seen on device 2026-10-15)
+                identifier = raw[2];
+                sceneParams();
+                type = op == OP_EXAMINE ? MenuAction.EXAMINE_ITEM_GROUND : groundOp(op);
+                break;
             case T_WIDGET:
                 param0 = raw[3];
                 param1 = raw[2];
@@ -94,7 +99,7 @@ final class AndroidMenuEntry implements MenuEntry {
                 }
                 break;
             default:
-                // Ground items and players: type bytes not seen yet.
+                // Players: type byte not seen yet.
                 identifier = raw[2];
                 sceneParams();
                 type = MenuAction.UNKNOWN;
@@ -104,7 +109,7 @@ final class AndroidMenuEntry implements MenuEntry {
 
     private void sceneParams() {
         net.runelite.api.WorldView v = Host.client() != null ? Host.client().getTopLevelWorldView() : null;
-        if (v == null) return;
+        if (v == null || worldX() == -1) return;  // plain "Walk here" taps carry no tile
         param0 = worldX() - v.getBaseX();
         param1 = worldY() - v.getBaseY();
     }
@@ -116,6 +121,17 @@ final class AndroidMenuEntry implements MenuEntry {
             case 3: return MenuAction.NPC_THIRD_OPTION;
             case 4: return MenuAction.NPC_FOURTH_OPTION;
             case 5: return MenuAction.NPC_FIFTH_OPTION;
+            default: return MenuAction.UNKNOWN;
+        }
+    }
+
+    private static MenuAction groundOp(int op) {
+        switch (op) {
+            case 1: return MenuAction.GROUND_ITEM_FIRST_OPTION;
+            case 2: return MenuAction.GROUND_ITEM_SECOND_OPTION;
+            case 3: return MenuAction.GROUND_ITEM_THIRD_OPTION;
+            case 4: return MenuAction.GROUND_ITEM_FOURTH_OPTION;
+            case 5: return MenuAction.GROUND_ITEM_FIFTH_OPTION;
             default: return MenuAction.UNKNOWN;
         }
     }

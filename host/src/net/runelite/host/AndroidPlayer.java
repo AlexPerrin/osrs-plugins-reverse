@@ -67,17 +67,10 @@ public class AndroidPlayer extends PlayerStub {
     @Override public net.runelite.api.coords.WorldArea getWorldArea() { return new net.runelite.api.coords.WorldArea(getWorldLocation(), 1, 1); }
 
     // Not read from the game yet: inert values matching an idle, unskulled, healthy player.
-    @Override public int getAnimation() { return -1; }
-    @Override public int getAnimationFrame() { return 0; }
     @Override public int getPoseAnimation() { return -1; }
     @Override public int getGraphic() { return -1; }
-    @Override public int getOrientation() { return 0; }
-    @Override public int getCurrentOrientation() { return 0; }
-    @Override public net.runelite.api.Actor getInteracting() { return null; }
-    @Override public boolean isInteracting() { return false; }
     @Override public int getHealthRatio() { return -1; }
     @Override public int getHealthScale() { return -1; }
-    @Override public String getOverheadText() { return null; }
     @Override public boolean isDead() { return false; }
     @Override public int getTeam() { return 0; }
     @Override public boolean isFriend() { return false; }
@@ -85,4 +78,28 @@ public class AndroidPlayer extends PlayerStub {
     @Override public boolean isClanMember() { return false; }
     @Override public int getSkullIcon() { return -1; }
     @Override public net.runelite.api.HeadIcon getOverheadIcon() { return null; }
+
+    // Actor state from the last snapshot (Native.npcs()/players(): animation, frame, orientation,
+    // current orientation, interacting, overhead cycle).
+    int animation = -1, animationFrame = -1, orientation, currentOrientation, interacting = -1, overheadCycle;
+    String overheadText;
+
+    void actor(int[] p, int o, String overhead) {
+        animation = p[o];
+        animationFrame = p[o + 1];
+        orientation = p[o + 2];
+        currentOrientation = p[o + 3];
+        interacting = p[o + 4];
+        overheadCycle = p[o + 5];
+        overheadText = overhead;
+    }
+
+    @Override public int getAnimation() { return animation; }
+    @Override public int getAnimationFrame() { return animationFrame; }
+    @Override public int getOrientation() { return orientation; }
+    @Override public int getCurrentOrientation() { return currentOrientation; }
+    @Override public net.runelite.api.Actor getInteracting() { return Host.actor(interacting); }
+    @Override public boolean isInteracting() { return interacting >= 0; }
+    @Override public String getOverheadText() { return overheadCycle > 0 ? overheadText : null; }
+    @Override public int getOverheadCycle() { return overheadCycle; }
 }

@@ -58,3 +58,5 @@ commit (it needs `server/rsprot` from `server/scripts/rsprot.sh init` and `host/
 This is for research and interoperability. It distributes no Jagex code or assets. APKs, the game
 cache and decompiled output stay out of git. Use the official servers only with the unmodified
 app.
+
+🦉

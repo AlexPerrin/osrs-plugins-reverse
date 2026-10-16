@@ -5,7 +5,7 @@ work. The client side (injected library + RuneLite plugin host) is developed in 
 another session; see `docs/client-handoff.md`. Protocol findings live in
 `docs/android-protocol.md`.
 
-## Where things stand (2026-10-15, evening)
+## Where things stand (2026-10-16, early; container runs 5c5aa00)
 
 - A rev-241 test server runs in Docker (`osrs-rsps-test`): JS5 cache (OpenRS2 cache 2735),
   `jav_config.ws` / `slr.ws`, login, a small game world, reconnect (60 s grace), and a local
@@ -17,6 +17,8 @@ another session; see `docs/client-handoff.md`. Protocol findings live in
   - Equipment tab with unequip.
   - Four wandering courtyard NPCs (Hans, man, woman, chicken) with say, animation and transform.
   - SERVER_TICK_END every tick, which drives GameTick in the plugin host.
+  - Collision + pathfinding, melee combat with NPC death/respawn, journal tab (quest list), and
+    Cook's Assistant end to end (see Next steps).
   - OPNPC/OPLOC/OPOBJ 1-5 decoded (layouts from the client's senders). The player walks next
     to the target (straight line), then: Talk-to opens an NPC chat, Bank opens the bank, Open on
     a door removes it (zone LOC_DEL), Take picks up an owned ground obj; other ops print the
@@ -86,8 +88,8 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
 
 ## Open work
 
-- **Dialogue works** (`::talk`, continue closes it); chat lines from before the dialogue stay
-  hidden afterwards (new lines show). Cosmetic.
+- **Dialogue works** (`::talk`, continue closes it); closing also runs script 216 (chat_build) so
+  the chat history comes back.
 - **Ground items** (`::obj`, `::zobj`, drop, Take) are shared zone OBJ_ADD/OBJ_DEL, resent after
   every rebuild. (OBJ_ADD_SPECIFIC, no longer used, needs timeUntilDespawn > 0.)
 - `server/tools/device.sh login|cmd|shot`: BlueStacks helpers (login after restart, chat commands
@@ -100,7 +102,8 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
   `::hit [n] [type]`, `::npchit [n]`, `::events [e1] [e2]` (resend inventory IF_SETEVENTS).
 - Commands: `::xp skill n`, `::talk [npc] text`, `::obj id [n] [dz]` (OBJ_ADD_SPECIFIC on your tile),
   `::zobj id [n]` (zone OBJ_ADD), `::locadd id [shape] [rot]`, `::locdel [shape] [dx] [dz]`,
-  `::openbank`, `::ptalk text`, `::options a b c`, `::freeze` (toggle NPC wandering, makes NPCs tappable); in-game name = `LOCAL_DISPLAY_NAME`.
+  `::openbank`, `::ptalk text`, `::options a b c`, `::freeze` (toggle NPC wandering, makes NPCs tappable),
+  `::walk x z`, `::combat [lvl]`, `::heal`; in-game name = `LOCAL_DISPLAY_NAME`.
 - Tapping on the device: a plain tap often walks; long-press (`input swipe x y x y 1000`) opens the
   minimenu. The default camera is far out and NPC overlay labels are offset from the models.
 - Component ids: RuneLite's `runelite-api-1.13.1.jar` in `re/runelite` has gameval `InterfaceID`
@@ -117,40 +120,58 @@ screenshot before tapping blind: on another screen the same spot is "Sign out".
   0x40000 and headbars 0x1000000; player hits 0x40000, headbars 0x20000 (see android-protocol.md).
 - The OutgoingMessageSizeEstimator error "Encoder not registered for AndroidUpdateZonePartialEnclosed"
   is harmless (the estimator only knows the desktop repository); the packet is still sent.
-- Collision/pathfinding from map data (see Next steps 2).
 
 ## Next steps (priority order, driven by Quest Helper on the client side)
 
-Done and verified on device (2026-10-15, late): shared ground objs survive a rebuild (tele 82
-tiles away and back), coins stack (175 in one slot), use item on loc/NPC/obj (OPLOCT/OPNPCT/OPOBJT
-field orders correct; the inventory needs events1 target bits 11-16 for "Use"), quest vars
-(`::quest`; the client agent's runScript read 4029 = FINISHED / IN_PROGRESS), player hitsplats
-and headbars (`::hit`).
+Deployed and verified on device (2026-10-16, ~00:20 UTC, commit 5c5aa00): collision and
+pathfinding (a closed door blocks, an opened one lets you through, routes go around walls; Talk-to
+the Cook from the hallway walks round through the kitchen's south door), melee combat, chat
+history redrawn after dialogues, the journal tab, and the full Cook's Assistant flow.
 
-0. **Deploy state:** the container runs 3b565e0 (doors, NPC hits). Collision (5ffe15e) is built but
-   not deployed: ask the client agent "restart ok?", redeploy, then check on device that walking
-   routes around the courtyard walls/fountain, that a closed door blocks and an opened one lets you
-   through, and that NPCs no longer wander into walls.
-1. Done and verified too: real doors (Open/Close round trip on Lumbridge door 1535 at 3226,3223
-   rot 2 <-> 1536 at 3227,3223 rot 3; `Maps.loadDoors`, map archive 5 group `mx << 8 | mz`, file 1,
-   no XTEA) and NPC hitsplats/headbars (`::npchit`). One map square fails to decode (logged).
-2. Collision + pathfinding (`Collision.kt`, committed 5ffe15e, checked headless with jshell, not yet
-   on device): flags per map square loaded lazily from archive 5 (file 0 terrain: u16 opcodes,
-   settings bit 1 = blocked, bit 2 on level 1 = bridge; file 1 locs: walls by shape/rot, shapes
-   9-11 solid by size, 22 if interactType 1); loc `interactType` from config opcodes 17/27. BFS in a
-   128x128 window (closest reachable tile within 10 when the target is unreachable). Used by
-   MOVE_GAMECLICK, all OP* interactions (goal = the interaction's `reached` test), NPC wandering;
-   doors update collision. The Collision keeps its own open `Cache` (game thread only).
-   Headless check: `jshell --class-path <build/install/*/lib/*.jar>` with `new rsps.Collision(...)`.
-   Not handled: multi-level bridges beyond the level shift, NPC size > 1, other players.
-3. Combat basics (attack NPCs with hitsplats, NPC death/respawn) if Quest Helper work needs it.
-4. Cosmetic: chat history hidden after a dialogue; options menu shows only 2 of 3 rows.
+Done, for reference:
+- **Collision** (`Collision.kt`): flags per map square loaded lazily from archive 5 (file 0 terrain,
+  settings bit 1 = blocked, bit 2 on level 1 = bridge; file 1 locs: walls by shape/rot, shapes 9-11
+  solid by size, 22 if interactType 1). BFS in a 128x128 window (closest reachable tile within 10
+  when unreachable). Used by MOVE_GAMECLICK, all OP* interactions, NPC wandering and chasing; doors
+  update it. Headless check: jshell in `eclipse-temurin:21` with `build/install/*/lib/*.jar` on the
+  class path (`new rsps.Collision(cache, locTypes)`, `findPath`, `flags`). `::walk x z` paths there
+  and prints the step count. Not handled: bridges beyond the level shift, NPC size > 1, players.
+- **Combat** (World.kt "Combat" section): OPNPC "Attack" -> melee every 4 ticks when orthogonally
+  adjacent (no wall between); OSRS hit chance, max hit from strength (+5 with a weapon), attack/HP
+  XP; NPC block/attack/death anims (human 422/424/836, chicken 5387/5388/5389); NPC stats from
+  config opcodes 74-79; NPC retaliates and chases within 8 tiles of spawn; auto-retaliate when idle;
+  NPC death -> hidden (`setInaccessible`) + drops (bones; chicken: raw chicken, feathers) -> respawn
+  after 25 ticks; player death -> home, full HP. Varp 1306 = 1 at login (without it the client hides
+  "Attack" on NPCs). `::combat [lvl]`, `::heal`. Not done: facing (rev-241 unified "face" block is
+  not mapped on Android), equipment bonuses, ranged/magic, combat styles interface.
+- **Journal tab**: `side_journal` (629) is empty unless the server opens a panel into 629:43
+  (summary 712 at login; the subtab buttons 629:2-25 arrive as IF_BUTTON and open 712 / 399
+  questlist / 259 area_task) and sets varbit 8168. Quest list colours follow the quest varps.
+  "Completed: 0/0" and the quest point total (x/0) show 0 totals: probably a varc/varp the
+  server should set (unverified).
+- **Dialogue engine**: `npcSay` / `playerSay` / `choose` with continuation lambdas (`Player.onResume`);
+  `resumePause` runs the next step or closes. `cookDialogue` follows the real Cook's Assistant
+  (varp 29: 0/1/2; ingredients 1927/1944/1933; quest points + 300 cooking XP). Cook 4626 spawns at
+  3209,3215. Add more quests the same way.
+
+Open, in priority order:
+1. Whatever the client agent reports as a Quest Helper gap (it is testing Cook's Assistant end to end).
+2. Options menu shows only 2 of 3+ rows: on mobile the chatbox is clipped at ~y=260 px (the third row
+   is drawn but cut off; 5 options show A, B, C partly). Script 58 has a mobile branch (gosub 1972 =
+   varbit 6352 osm_simulate / mobile check) with different y positions; maybe a varbit/varc picks the
+   compact layout. Sending 2379 first did not change it.
+3. Journal totals (see above); more quests (Sheep Shearer, Romeo & Juliet...) with the dialogue engine.
+4. Facing for combat (map the Android "face" extended-info block for players and NPCs).
 
 Scratch Python helpers (cache reader, CS2 disassembler, quest/map decoders) were used for the
 static work; equivalents live in `Quests.kt` / `Maps.kt`.
 
 ## Coordination
 
+- Device status is ALSO kept in `/tmp/osrs-device-status` (both agents write "taking device (...)" /
+  "device free, restart ok (...)" there). A server subagent's SendMessage replies go to its parent
+  session, so poll that file. Deploy = `docker compose up -d` in its own command (the auto-mode
+  classifier refused a combined status-write + restart command).
 - The device is shared with the client session (Claude session named `osrs-plugins-reverse-62`; the client agent runs inside it;
   find it with ListAgents): post "taking device" / "device free" via SendMessage, and ask before
   restarting the container (it logs the client out). It answers widget/memory questions well.

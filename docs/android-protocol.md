@@ -254,4 +254,8 @@ rev 239, whose symbols this server's ids come from. Component ids can shift betw
 Sequence: RUNCLIENTSCRIPT 2379 (reset background), IF_OPENSUB, IF_SETNPCHEAD, IF_SETANIM,
 IF_SETTEXT name/text/continue, IF_SETEVENTS (pause button). Tapping continue sends client opcode
 48 RESUME_PAUSEBUTTON (component int LE, sub LE); the server closes with IF_CLOSESUB.
-Known gap: the chat history stays hidden after closing (2379's effect is not undone).
+After IF_CLOSESUB the server runs scripts 2158 and 216 (chat_build); without 216 the chat history stays hidden.
+
+The journal side tab (629) is filled by the server: IF_OPENSUB of 712 (summary), 399 (quest list)
+or 259 (diaries) into 629:43, plus varbit 8168; its subtab buttons arrive as IF_BUTTON 629:2-25.
+NPC "Attack" is hidden unless varp 1306 (attack option setting) is non-zero.

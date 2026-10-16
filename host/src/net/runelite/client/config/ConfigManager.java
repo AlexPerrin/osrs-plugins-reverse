@@ -231,6 +231,10 @@ public class ConfigManager {
         if (c == double.class || c == Double.class) return Double.parseDouble(s);
         if (c == float.class || c == Float.class) return Float.parseFloat(s);
         if (c == boolean.class || c == Boolean.class) return Boolean.parseBoolean(s);
+        if (c == Notification.class) {
+            boolean on = s.equals("true") || s.equals("ON") || s.replace(" ", "").contains("\"enabled\":true");
+            return on ? Notification.ON : Notification.OFF;
+        }
         if (c == Color.class) return new Color((int) Long.parseLong(s.startsWith("#") ? s.substring(1) : s, 16), true);
         if (c == Duration.class) return Duration.ofMillis(Long.parseLong(s));
         if (c == Instant.class) return Instant.parse(s);
@@ -241,6 +245,8 @@ public class ConfigManager {
     static String objectToString(Object o) {
         if (o == null) return null;
         if (o instanceof Color) return String.format("%08x", ((Color) o).getRGB());
+        // Only on/off is kept (desktop stores the whole object as JSON; sounds/tray don't apply here).
+        if (o instanceof Notification) return ((Notification) o).isEnabled() ? "true" : "false";
         if (o instanceof Enum) return ((Enum<?>) o).name();
         if (o instanceof Duration) return Long.toString(((Duration) o).toMillis());
         if (o instanceof Set) {

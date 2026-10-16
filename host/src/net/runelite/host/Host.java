@@ -133,6 +133,8 @@ public final class Host {
                 bind(okhttp3.OkHttpClient.class).toInstance(new okhttp3.OkHttpClient());
                 bind(okhttp3.HttpUrl.class).annotatedWith(com.google.inject.name.Names.named("runelite.static.base"))
                         .toInstance(okhttp3.HttpUrl.get("https://static.runelite.net"));
+                bind(okhttp3.HttpUrl.class).annotatedWith(com.google.inject.name.Names.named("runelite.ws"))
+                        .toInstance(okhttp3.HttpUrl.get("https://api.runelite.net/ws"));
                 bind(okhttp3.HttpUrl.class).annotatedWith(com.google.inject.name.Names.named("runelite.api.base"))
                         .toInstance(okhttp3.HttpUrl.get("https://api.runelite.net/runelite-1.13.1"));
                 // ItemStatChangesService/XpTrackerService come from their plugins' getPublicModule()

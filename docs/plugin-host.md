@@ -28,7 +28,7 @@ with jars from `tools/dex-plugin.sh --core <package> re/host/plugins-extra/<pack
 | Quest Helper (hub) | runs | Cook's Assistant, Sheep Shearer, Romeo & Juliet end to end |
 | Ground Items | runs | labels, prices, menu recolouring |
 | Opponent Information | runs | name + health over the target (NPC max HP over okhttp) |
-| Boosts Information | runs | boosted stats overlay |
+| Boosts Information | runs | boosted stats overlay and boost InfoBox (InfoBoxes render, verified 2026-10-16) |
 | XP Drop | runs | drop colours via ScriptPreFired (script 996); `hideSkillIcons` has no effect |
 | Status Bars | runs | HP/prayer bars beside the side panel (161:73 routed to 601:111) |
 | Tile Indicators | runs | destination tile drawn while walking |
@@ -44,8 +44,8 @@ with jars from `tools/dex-plugin.sh --core <package> re/host/plugins-extra/<pack
 | Ground Markers | starts | |
 | Implings | starts | |
 | Interact Highlight | starts | |
-| Inventory Tags | starts | WidgetItemOverlay got no OverlayManager (NPE every frame); fixed after the run (WidgetItems from 149:0 / 12:13), retest |
-| Item Charges | starts | same WidgetItemOverlay NPE; fixed, retest |
+| Inventory Tags | starts | WidgetItemOverlay fixed (no NPE; WidgetItems from 149:0 / 12:13); tags not checked |
+| Item Charges | starts | WidgetItemOverlay fixed (no NPE) |
 | Item Stats | starts | |
 | Logout Timer | starts | |
 | NPC Indicators | starts | |
@@ -55,17 +55,17 @@ with jars from `tools/dex-plugin.sh --core <package> re/host/plugins-extra/<pack
 | Random Events | starts | |
 | Regeneration Meter | starts | |
 | Run Energy | starts | |
-| Timers & Buffs | starts | InfoBoxes not seen yet |
+| Timers & Buffs | starts | |
 | Woodcutting | starts | |
 | XP Tracker | starts | sidebar panel not checked |
-| Agility | throws | XpTrackerService: @PluginDependency public modules weren't installed; fixed after the run, retest |
-| Chat Notifications | throws | `@Named("runelite.title")` unbound; fixed, retest |
-| Fishing | throws | XpTrackerService (as Agility); fixed, retest |
-| Idle Notifier | throws | config defaults missing (migrateConfig NPE); `setDefaultConfiguration` implemented, retest |
-| Mining | throws | XpTrackerService (as Agility); fixed, retest |
-| Player Indicators | throws | protobuf-javalite missing (PartyService); added to host.jar, retest |
-| Special Attack Counter | throws | protobuf-javalite missing; added, retest |
-| XP Globes | throws | XpTrackerService (as Agility); fixed, retest |
+| Agility | starts | needs XP Tracker's public module (installed as RuneLite does) |
+| Chat Notifications | starts | |
+| Fishing | starts | |
+| Idle Notifier | starts | config defaults now registered; Notification config values were a ClassCastException on GameTick (fixed after the run: stored as on/off) |
+| Mining | starts | |
+| Player Indicators | throws | protobuf-javalite added; then `@Named("runelite.ws")` unbound (bound after the run, retest) |
+| Special Attack Counter | throws | as Player Indicators (runelite.ws bound after the run, retest) |
+| XP Globes | runs | attack/HP globes over the chat tabs after combat |
 
 ## Build and run
 

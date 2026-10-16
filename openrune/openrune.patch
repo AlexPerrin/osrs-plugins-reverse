@@ -8,6 +8,21 @@ index bd539bb13..2fc22e88f 100644
  [clientscript,script7920]=7920
 -quest_policy_complete_set=45553
 +quest_policy_complete_set=9974
+diff --git a/.data/raw-cache/map/npcs/varrock.toml b/.data/raw-cache/map/npcs/varrock.toml
+index 6de0b2dbf..890b668af 100644
+--- a/.data/raw-cache/map/npcs/varrock.toml
++++ b/.data/raw-cache/map/npcs/varrock.toml
+@@ -258,10 +258,6 @@ coords = "0_50_54_46_2"
+ npc = "npc.imp"
+ coords = "0_50_54_61_58"
+ 
+-[[spawn]]
+-npc = "npc.juliet"
+-coords = "1_49_53_23_34"
+-
+ [[spawn]]
+ npc = "npc.juliet_multi_visible"
+ coords = "1_49_53_22_33"
 diff --git a/.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml b/.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml
 new file mode 100644
 index 000000000..be7534f2b

@@ -332,18 +332,29 @@ list becomes `spawn`, so the quest-list filter comes back.
 
 1. **The switch:** waiting for the user's decision through the orchestrator. The steps are in 3.4,
    and nothing has been flipped.
-2. **CS2 varc retest** (one short slot with an osrs-openrune rebuild). `src/.data/cache` holds the
-   clean cache, the one deployed. To test:
-   ```
-   cp -r src/.data/cache/LIVE src/.data/cache/SERVER <backup dir>/
-   OPENRUNE_SKIP_CS2_PACKS=spawn scripts/openrune.sh gradle :or-cache:buildCache
-   python3 -I scripts/add_varcs.py && python3 -I scripts/check_cache.py   # expect 9975 groups
-   docker compose up -d --build openrune
-   ```
-   Then launch the OpenRune app build and watch for "Loading config" and a SIGSEGV.
-   - If it signs in: run `add_varcs.py` at the end of `openrune.sh build`, make `spawn` the default
-     `OPENRUNE_SKIP_CS2_PACKS`, and check that the quest list only shows implemented quests.
-   - If not: restore the backup and rebuild the image.
+2. **CS2 varc retest: done 2026-10-16 10:48-10:57, failed.** The quest pack's clientscripts still
+   crash the app; the missing varcs are not the cause. The quest pack stays skipped
+   (`OPENRUNE_SKIP_CS2_PACKS` default stays `spawn,quest`), and osrs-openrune runs the clean cache
+   again.
+   - Test cache: `OPENRUNE_SKIP_CS2_PACKS=spawn gradle :or-cache:buildCache` + `add_varcs.py`
+     (779c96b, with the version trailer). Offline it checked out: 9975 clientscripts (new 9973/9974,
+     changed stock procs 3238 and 4136, interface 3/1099 changed), 2/19 at ver 64066 with 1569 files
+     (1293/1294 empty, the other 1567 byte-identical), every group CRC and 2-byte version trailer in
+     archives 2 and 12 matching the reference tables, and a JS5 probe of a throwaway container
+     served all changed groups with matching CRCs.
+   - Device (OpenRune app build): SIGSEGV about 4 s after launch, during cache sync, before the
+     login screen. Same signature as before:
+     `Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x0 in tid ... (osrsrl-game)`,
+     "Cause: null pointer dereference", backtrace only in libhoudini.so (ARM translation).
+   - Control: the clean cache plus `add_varcs.py` only (2/19 with 1293/1294, no quest scripts)
+     synced without a crash, and Play Now signed in. So the empty varclient entries are harmless,
+     and the crash comes from the quest pack's scripts: the two new ones (9973
+     quest_available_set, 9974 quest_policy_complete_set) and/or the recompiled overrides of
+     `[proc,questlist_hide_quest]` and `[proc,quest_is_complete]` (groups 3238/4136), or interface
+     1099. Next lead for whoever picks it up: bisect these five groups (e.g. a hybrid cache with the
+     two procs only), and diff the recompiled 3238/4136 bytecode against stock.
+   - `add_varcs.py` is not wired into the build: it only matters once the quest scripts load.
+   - The test cache is not kept in the repo; rebuild it with the two commands above.
 3. **Client side (client dev):** QH highlights on the wrong tile on OpenRune.
 4. **Housekeeping:**
    - `re/openrune` (spike) can go;

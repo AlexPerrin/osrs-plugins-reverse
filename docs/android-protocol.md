@@ -123,8 +123,10 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 56 | CAM_ROTATEBY | as desktop (relative yaw/pitch) |
 | 57 | MIDI_SONG_V2 | fadeInDelay `p2Alt2`, id `p2`, fadeInSpeed `p2Alt3`, fadeOutSpeed `p2Alt1`, fadeOutDelay `p2` |
 | 58 | UPDATE_TRADINGPOST_V1 | as desktop (FUN_006ff0cc(version 1)) |
+| 60 | PACKET_GROUP_START | length `p2` (BE); handled in the reader 0x5da16c, which groups the following packets; no codec |
 | 61 | UPDATE_REBOOT_TIMER_V2 | [gameCycles p2][message string]; "\u0018" cancels |
 | 63 | IF_SETPLAYERMODEL_BASECOLOUR | index `p1Alt1`, colour `p1Alt2`, combinedId `pCombinedIdAlt2` |
+| 65 | SITE_SETTINGS | settings `pjstr` (as desktop); stored in the client and passed to the URL builder FUN_0070332c by the CS2 URL ops |
 | 66 | UPDATE_STOCKMARKET_SLOT_V2 | as desktop (FUN_00700428) |
 | 67 | VARCLAN_ENABLE | as desktop (creates the varclan store) |
 | 69 | FRIENDLIST_LOADED | as desktop (friend manager state) |
@@ -157,6 +159,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 106 | IF_SETANGLE | zoom `p2Alt2`, angleX `p2Alt2`, angleY `p2Alt3`, combinedId `pCombinedId` |
 | 107 | TRIGGER_ONDIALOGABORT | as desktop (root interface event 0x17) |
 | 108 | CAM_TARGET_V4 | [index p4][type -b] |
+| 110 | UNKNOWN_STRING (unverified) | one string, read and discarded; by elimination; no codec |
 | 111 | MAP_ANIM_SPECIFIC | delay `p2Alt3`, height `p1Alt3`, coordInBuildAreaPacked `p3Alt3`, id `p2Alt3` |
 | 112 | SET_PLAYER_OP | if (priority) 1 else 0 `p1Alt1`, id `p1Alt1`, op ?: "null" `pjstr` |
 | 113 | HIDELOCOPS (unverified, see notes) | hidden `p1` (b & 1) |
@@ -166,6 +169,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 118 | OBJ_COUNT_SPECIFIC | newQuantity `p4Alt1`, id `p2Alt2`, oldQuantity `p4Alt2`, coordGrid.packed `p4Alt1` |
 | 119 | VARCLAN | as desktop (id + typed value) |
 | 120 | IF_SETROTATESPEED (unverified) | combinedId `pCombinedIdAlt3`, xSpeed `p2`, ySpeed `p2` |
+| 121 | IF_RESYNC_V2 | as desktop (toplevel `p2`, count `p2`, (combinedId `p4`, id `p2`, type `p1`)*, then (combinedId `p4`, start `p2`, end `p2`, events1 `p4`, events2 `p4`)* to the end) |
 | 123 | MIDI_SWAP (unverified) | recognised, no codec |
 | 124 | VARCLAN_DISABLE | as desktop (clears the varclan store) |
 | 125 | IF_SETSCROLLPOS | combinedId `pCombinedIdAlt3`, scrollPos `p2` |
@@ -185,6 +189,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 140 | GROUP_FULL (unverified) | as desktop (smart id / p8 header) |
 | 141 | GROUP_VAR_LONG (unverified) | as desktop (shared handler FUN_006871e0) |
 | 142 | CAM_ROTATETO_COORDINATE_V3 | height `p2Alt1`, if (trackTarget) 1 else 0 `p1`, easing.id `p1Alt3`, cycles `p2Alt1`, if (heightRelative) 1 else 0 `p1Alt1`, z `p2Alt3`, x `p2Alt1` |
+| 143 | SET_MAP_FLAG_V2 | coord `p4` (as desktop), -1 clears the flag; test with `::flag x z` / `::flag` |
 | 144 | CAM_LOOKAT_CYCLES | z `p2Alt1`, x `p2Alt1`, easing.id `p1Alt3`, height `p2Alt2`, if (heightRelative) 1 else 0 `p1`, cycles `p2Alt2` |
 | 146 | WORLDENTITY_INFO_V7 | recognised, no codec |
 | 147 | AMBIENTSOUND_START | id `p2Alt2`, if (fade) 1 else 0 `p1` |
@@ -201,8 +206,10 @@ Notes:
   a CS2 op at 0x5c2b10 writes +2), and opcode 0 is ignored by the dispatcher, so 0 is taken as the
   heatmap flag. Provisional names: 20 HIDENPCOPS, 113 HIDELOCOPS, 115 HIDEOBJOPS; test live with
   `::hideops npc|loc|obj [1|0]` and rename by which minimenu ops disappear.
-- Not identified: 65 and 110 (one string each: SITE_SETTINGS /
-  UNKNOWN_STRING), 143 (p4, picks the camera's world view; maybe SET_MAP_FLAG_V2 or a newer prot).
+- 116 and 137 (var-short) are ignored by the dispatcher: REFLECTION_CHECKER (no Java reflection on
+  Android) and the opcode desktop leaves unassigned, in some order. Left unnamed.
+- 148 CAM_SKYBOX: the last size-4 prot once 143 = SET_MAP_FLAG_V2 (stores an int; -1 clears a
+  world-view resource).
 - 41 REBUILD_REGION_V2: reload `p1Alt3`, zoneX `p2Alt1`, zoneZ `p2Alt1`, mapsquare count `p2`
   (skipped), then the desktop region bits (parser 0x6580e4). Not implemented.
 - 132 OBJ_CUSTOMISE_SPECIFIC_V2: id `p2`, recol count `p1`, (index `p1Alt1`, value `p2Alt3`)*,

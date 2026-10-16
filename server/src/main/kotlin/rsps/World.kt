@@ -34,6 +34,7 @@ import net.rsprot.protocol.game.outgoing.misc.client.HideLocOps
 import net.rsprot.protocol.game.outgoing.misc.client.HideNpcOps
 import net.rsprot.protocol.game.outgoing.misc.client.HideObjOps
 import net.rsprot.protocol.game.outgoing.misc.client.ServerTickEnd
+import net.rsprot.protocol.game.outgoing.misc.player.SetMapFlagV2
 import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
 import net.rsprot.protocol.game.outgoing.misc.player.RunClientScript
 import net.rsprot.protocol.game.outgoing.misc.player.UpdateRunEnergy
@@ -790,6 +791,12 @@ class World(
                 }
                 player.hitpoints = levelForXp(player.experience[HITPOINTS])
                 sendStat(player, HITPOINTS)
+            }
+            "flag" -> {
+                // SET_MAP_FLAG_V2 (Android 143): ::flag x z shows the minimap flag there, ::flag clears it.
+                val x = args.getOrNull(1)?.toIntOrNull()
+                val z = args.getOrNull(2)?.toIntOrNull()
+                player.send(if (x != null && z != null) SetMapFlagV2(x, z) else SetMapFlagV2())
             }
             "hideops" -> {
                 // Android opcodes 20 (npc) / 113 (loc) / 115 (obj) as provisionally named; see which ops vanish.

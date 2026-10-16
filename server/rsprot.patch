@@ -744,10 +744,10 @@ index 00000000..8b5e4b64
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
 new file mode 100644
-index 00000000..43649481
+index 00000000..78152d29
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameServerProt.kt
-@@ -0,0 +1,165 @@
+@@ -0,0 +1,170 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.protocol.Prot
@@ -845,8 +845,10 @@ index 00000000..43649481
 +    CAM_ROTATEBY(56, 7), // dispatcher case read
 +    MIDI_SONG_V2(57, 10), // dispatcher case read
 +    UPDATE_TRADINGPOST_V1(58, Prot.VAR_SHORT), // dispatcher case read
++    PACKET_GROUP_START(60, 2), // reader 0x5da16c: opcode 60 reads a BE p2 length and groups the following packets (no codec)
 +    UPDATE_REBOOT_TIMER_V2(61, Prot.VAR_BYTE), // dispatcher case read
 +    IF_SETPLAYERMODEL_BASECOLOUR(63, 6), // dispatcher case read
++    SITE_SETTINGS(65, Prot.VAR_BYTE), // dispatcher case read: string kept in the client (param_1[0x63e]) and passed to the URL builder FUN_0070332c by the CS2 URL ops
 +    UPDATE_STOCKMARKET_SLOT_V2(66, 34), // dispatcher case read
 +    VARCLAN_ENABLE(67, 0), // dispatcher case read
 +    FRIENDLIST_LOADED(69, 0), // dispatcher case read
@@ -879,6 +881,7 @@ index 00000000..43649481
 +    IF_SETANGLE(106, 10), // dispatcher case read
 +    TRIGGER_ONDIALOGABORT(107, 0), // dispatcher case read
 +    CAM_TARGET_V4(108, 5), // dispatcher case read
++    UNKNOWN_STRING(110, Prot.VAR_BYTE), // unverified: by elimination (last var-byte string prot); the client reads one string and discards it (no codec)
 +    MAP_ANIM_SPECIFIC(111, 8), // dispatcher case read
 +    SET_PLAYER_OP(112, Prot.VAR_BYTE), // dispatcher case read
 +    HIDELOCOPS(113, 1), // unverified: one of HIDENPCOPS/HIDELOCOPS/HIDEOBJOPS (cases 20/113/115 store b&1 in bytes +4/+3/+5 of one settings struct at FUN_0068fa48); assignment pending a live test (::hideops)
@@ -888,6 +891,7 @@ index 00000000..43649481
 +    OBJ_COUNT_SPECIFIC(118, 14), // dispatcher case read
 +    VARCLAN(119, Prot.VAR_BYTE), // dispatcher case read
 +    IF_SETROTATESPEED(120, 8), // unverified: prot by size elimination; x/y order guessed
++    IF_RESYNC_V2(121, Prot.VAR_SHORT), // dispatcher case read: toplevel p2, count p2, (combinedId p4, id p2, type p1)*, then (combinedId p4, start p2, end p2, events1 p4, events2 p4)* to the end, all BE as desktop
 +    MIDI_SWAP(123, 8), // unverified: field names unknown
 +    VARCLAN_DISABLE(124, 0), // dispatcher case read
 +    IF_SETSCROLLPOS(125, 6), // dispatcher case read
@@ -907,10 +911,11 @@ index 00000000..43649481
 +    GROUP_FULL(140, Prot.VAR_SHORT), // unverified: payload not traced
 +    GROUP_VAR_LONG(141, 13), // unverified: shared handler; INT/VAR/LONG assigned by size
 +    CAM_ROTATETO_COORDINATE_V3(142, 11), // dispatcher case read
++    SET_MAP_FLAG_V2(143, 4), // dispatcher case read: coord BE p4, -1 clears the flag (coord unpack FUN_006d09cc + world view lookup)
 +    CAM_LOOKAT_CYCLES(144, 10), // dispatcher case read
 +    WORLDENTITY_INFO_V7(146, Prot.VAR_SHORT), // dispatcher case read
 +    AMBIENTSOUND_START(147, 3), // dispatcher case read
-+    CAM_SKYBOX(148, 4), // unverified: prot by size elimination (vs SET_MAP_FLAG_V2)
++    CAM_SKYBOX(148, 4), // unverified: last size-4 prot once 143 = SET_MAP_FLAG_V2; stores an int, -1 clears a world-view resource
 +    AMBIENTSOUND_STOP(149, 1), // dispatcher case read
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidLowResolutionChangeEncoder.kt
@@ -1298,10 +1303,10 @@ index 00000000..0fc21777
 +    )
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
 new file mode 100644
-index 00000000..99bd00fd
+index 00000000..9df7bd9d
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
-@@ -0,0 +1,876 @@
+@@ -0,0 +1,888 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2178,6 +2183,18 @@ index 00000000..99bd00fd
 +        buffer.pboolean(message.enabled)
 +    }
 +}
++
++/** Case 65: one string (as desktop), kept for the URL-opening CS2 ops. */
++public fun androidSiteSettingsEncoder(): MessageEncoder<net.rsprot.protocol.game.outgoing.misc.client.SiteSettings> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.SITE_SETTINGS, net.rsprot.protocol.game.outgoing.codec.misc.client.SiteSettingsEncoder())
++
++/** Case 121: as desktop (all fields BE). */
++public fun androidIfResyncV2Encoder(): MessageEncoder<net.rsprot.protocol.game.outgoing.interfaces.IfResyncV2> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.IF_RESYNC_V2, net.rsprot.protocol.game.outgoing.codec.interfaces.IfResyncV2Encoder())
++
++/** Case 143: coord p4 BE, -1 = no flag (as desktop). */
++public fun androidSetMapFlagV2Encoder(): MessageEncoder<net.rsprot.protocol.game.outgoing.misc.player.SetMapFlagV2> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.SET_MAP_FLAG_V2, net.rsprot.protocol.game.outgoing.codec.misc.player.SetMapFlagV2Encoder())
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidPlayerAppearanceEncoder.kt
 new file mode 100644
 index 00000000..d083e608
@@ -2619,10 +2636,10 @@ index 00000000..b1436285
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..95b45a29
+index 00000000..c80ad706
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,232 @@
+@@ -0,0 +1,235 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2740,6 +2757,9 @@ index 00000000..95b45a29
 +            bind(AndroidHideLocOpsEncoder())
 +            bind(AndroidHideObjOpsEncoder())
 +            bind(AndroidSetHeatmapEnabledEncoder())
++            bind(androidSiteSettingsEncoder())
++            bind(androidIfResyncV2Encoder())
++            bind(androidSetMapFlagV2Encoder())
 +            bind(AndroidNpcSpotAnimSpecificEncoder())
 +            bind(AndroidIfSetPositionEncoder())
 +            bind(AndroidIfClearInvEncoder())

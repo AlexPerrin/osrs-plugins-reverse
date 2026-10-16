@@ -48,6 +48,14 @@ final class Probe {
     private static void testSetter(net.runelite.api.Client c, String[] a) {
         if (a.length < 3) return;
         try {
+            if (a[0].equals("quest")) {  // "quest <Quest enum name> <varp>": QUEST_STATUS_GET result and a varp
+                net.runelite.api.Quest q = net.runelite.api.Quest.valueOf(a[1]);
+                c.runScript(net.runelite.api.ScriptID.QUEST_STATUS_GET, q.getId());
+                int raw = c.getIntStack()[0];
+                Log.i(TAG, "quest " + q + " id " + q.getId() + " script 4029 -> " + raw + " getState " + q.getState(c)
+                        + " varp " + a[2] + " = " + c.getVarpValue(Integer.parseInt(a[2])));
+                return;
+            }
             int colon = a[1].indexOf(':');
             int id = colon < 0 ? Integer.parseInt(a[1])
                 : Integer.parseInt(a[1].substring(0, colon)) << 16 | Integer.parseInt(a[1].substring(colon + 1));

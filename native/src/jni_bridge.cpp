@@ -355,6 +355,13 @@ jobjectArray n_clicked_menu_entry(JNIEnv* env, jclass) {
     return menu_array(env, {client_thread::clicked_menu_entry()});
 }
 jboolean n_menu_open(JNIEnv*, jclass) { return game::menu_open(); }
+jintArray n_menu_point(JNIEnv* env, jclass) {
+    int xy[2];
+    if (!game::menu_point(xy[0], xy[1])) return nullptr;
+    jintArray r = env->NewIntArray(2);
+    env->SetIntArrayRegion(r, 0, 2, xy);
+    return r;
+}
 
 bool require_client_thread(JNIEnv* env, const char* what) {
     if (client_thread::on_client_thread()) return true;
@@ -579,6 +586,7 @@ const JNINativeMethod kNatives[] = {
     {"menuEntries", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_menu_entries)},
     {"clickedMenuEntry", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_clicked_menu_entry)},
     {"menuOpen", "()Z", reinterpret_cast<void*>(n_menu_open)},
+    {"menuPoint", "()[I", reinterpret_cast<void*>(n_menu_point)},
     {"sceneObjects", "()[I", reinterpret_cast<void*>(n_scene_objects)},
     {"groundItems", "()[I", reinterpret_cast<void*>(n_ground_items)},
     {"consumeMenuClick", "()V", reinterpret_cast<void*>(n_consume_menu_click)},

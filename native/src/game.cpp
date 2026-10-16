@@ -826,6 +826,16 @@ bool menu_open() {
     return m && read_at<uintptr_t>(m + kMgrShown) != 0;
 }
 
+bool menu_point(int& x, int& y) {
+    uintptr_t m = menu_manager();
+    if (!m || !read_at<uintptr_t>(m + kMgrShown)) return false;
+    // Long-press point in UI-canvas units (menu model +0x168); the menu is drawn centred on x
+    // with its top at y. Found by diffing MenuManager with menus open at two points (2026-10-16).
+    x = read_at<int32_t>(m + 0x2a8);
+    y = read_at<int32_t>(m + 0x2ac);
+    return true;
+}
+
 std::vector<MenuEntry> read_menu() {
     std::vector<MenuEntry> out;
     uintptr_t menu = menu_object();

@@ -152,6 +152,12 @@ public class AndroidClient extends ClientStub {
     /** The long-press menu (game::read_menu); plugin-created entries stay host-side for now. */
     static final AndroidMenu MENU = new AndroidMenu();
     @Override public boolean isMenuOpen() { return Native.menuOpen(); }
+    @Override public int getMenuX() { return MENU.getMenuX(); }
+    @Override public int getMenuY() { return MENU.getMenuY(); }
+    @Override public int getMenuWidth() { return MENU.getMenuWidth(); }
+    @Override public int getMenuHeight() { return MENU.getMenuHeight(); }
+    @Override public boolean isMenuScrollable() { return false; }
+    @Override public int getMenuScroll() { return 0; }
     @Override public net.runelite.api.Menu getMenu() { return MENU; }
     @Override public net.runelite.api.MenuEntry[] getMenuEntries() { return MENU.getMenuEntries(); }
     @Override public void setMenuEntries(net.runelite.api.MenuEntry[] e) { MENU.setMenuEntries(e); }

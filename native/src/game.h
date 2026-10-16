@@ -201,6 +201,8 @@ struct MenuEntry {
 };
 uintptr_t menu_object();  // the menu model (MenuManager +0x140), 0 if unavailable
 bool menu_open();
+// Where the open menu was requested (UI-canvas units); false when no menu is shown.
+bool menu_point(int& x, int& y);
 std::vector<MenuEntry> read_menu();  // game thread only
 bool menu_entry_for_path(uintptr_t menu, const uint64_t* path, size_t len, MenuEntry& out);
 uintptr_t menu_vtable();  // menu model vtable; slot 1 = select

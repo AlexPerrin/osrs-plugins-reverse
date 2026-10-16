@@ -74,6 +74,9 @@ final class OverlayRenderer {
         }
         bitmap.eraseColor(0);
         List<Rect> under = uiExclusions();
+        // The game draws its long-press menu natively on top of everything; no overlay may cover it.
+        java.awt.Rectangle menu = AndroidMenu.bounds();
+        Rect menuRect = menu == null ? null : new Rect(menu.x, menu.y, menu.x + menu.width, menu.y + menu.height);
         try {
             for (OverlayLayer layer : LAYERS) {
                 // Scene layers go under the game's opaque UI panels, as RuneLite draws them before
@@ -82,6 +85,7 @@ final class OverlayRenderer {
                 boolean scene = layer == OverlayLayer.UNDER_WIDGETS || layer == OverlayLayer.ABOVE_SCENE;
                 int save = canvas.save();
                 if (scene) for (Rect r : under) canvas.clipOutRect(r);
+                if (menuRect != null) canvas.clipOutRect(menuRect);
                 CanvasGraphics root = new CanvasGraphics(canvas);
                 root.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
                 net.runelite.client.ui.overlay.outline.ModelOutlineRenderer.target = root;

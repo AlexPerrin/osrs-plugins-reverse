@@ -97,6 +97,8 @@ final class Native {
     /** The entry being selected (valid while MenuOptionClicked is dispatched), same format. */
     static native Object[] clickedMenuEntry();
     static native boolean menuOpen();
+    /** {x, y} where the open menu was requested (UI-canvas units), null when closed. */
+    static native int[] menuPoint();
     /** From a MenuOptionClicked subscriber: the game won't run the entry. */
     static native void consumeMenuClick();
 }

@@ -38,8 +38,34 @@ final class AndroidMenu implements Menu {
 
     void clearAdded() { added.clear(); }
 
-    @Override public int getMenuX() { return 0; }
-    @Override public int getMenuY() { return 0; }
-    @Override public int getMenuWidth() { return 0; }
-    @Override public int getMenuHeight() { return 0; }
+    @Override public int getMenuX() { java.awt.Rectangle r = bounds(); return r != null ? r.x : 0; }
+    @Override public int getMenuY() { java.awt.Rectangle r = bounds(); return r != null ? r.y : 0; }
+    @Override public int getMenuWidth() { java.awt.Rectangle r = bounds(); return r != null ? r.width : 0; }
+    @Override public int getMenuHeight() { java.awt.Rectangle r = bounds(); return r != null ? r.height : 0; }
+
+    // Android menu layout in UI-canvas units (894x503 on a 1920x1080 screen), measured from
+    // screenshots: centred on the long-press point, top at it, a 29-unit "Choose Option" header and
+    // 25 units per entry (Cancel included), at least 129 wide; ~6.9 units per character of
+    // "option target" plus padding when wider (estimate).
+    private static final int MIN_WIDTH = 129, HEADER = 29, ROW = 25;
+
+    /** The open menu's rectangle on the UI canvas, or null when no menu is shown. */
+    static java.awt.Rectangle bounds() {
+        int[] p = Native.menuPoint();
+        if (p == null) return null;
+        AndroidMenuEntry[] entries = AndroidMenuEntry.fromNative(Native.menuEntries());
+        int longest = 0;
+        for (AndroidMenuEntry e : entries) {
+            String t = (e.getOption() + " " + e.getTarget()).replaceAll("<[^>]*>", "").trim();
+            longest = Math.max(longest, t.length());
+        }
+        int w = Math.max(MIN_WIDTH, (int) Math.ceil(longest * 6.9) + 10);
+        int h = HEADER + ROW * entries.length;
+        int x = p[0] - w / 2, y = p[1];
+        java.awt.Dimension c = new java.awt.Dimension(Host.client() != null ? Host.client().getCanvasWidth() : 894,
+                Host.client() != null ? Host.client().getCanvasHeight() : 503);
+        x = Math.max(0, Math.min(x, c.width - w));
+        y = Math.max(0, Math.min(y, c.height - h));
+        return new java.awt.Rectangle(x, y, w, h);
+    }
 }

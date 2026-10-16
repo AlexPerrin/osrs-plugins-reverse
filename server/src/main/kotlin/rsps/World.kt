@@ -98,6 +98,8 @@ class Player(
     var deathTicks = -1
     /** Interface open in the journal tab's container, -1 for none. */
     var journalPanel = -1
+    /** `::trace`: log every incoming message from this player, Event* ones included. */
+    var trace = false
 
     val extendedInfo get() = infos.playerInfo.avatar.extendedInfo
 
@@ -442,7 +444,7 @@ class World(
         player.message("::talk [npc] text, ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::freeze, ::drop")
         player.message("::obj id [n] [dz], ::zobj id [n], ::locadd id [shape] [rot], ::locdel [shape] [dx] [dz]")
         player.message("::quest name [start|done|reset|n], ::varp id [v], ::varbit id [v], ::events [e1] [e2], ::hit [n] [type], ::npchit [n]")
-        player.message("Protocol tests: ::hideops npc|loc|obj [1|0], ::flag [x z], ::proj id [dx] [mode], ::region [dzx] [dzz] [rot], ::minimap n, ::pmfilter n")
+        player.message("Protocol tests: ::hideops npc|loc|obj [1|0], ::flag [x z], ::proj id [dx] [mode], ::region [dzx] [dzz] [rot], ::minimap n, ::pmfilter n, ::trace, ::jingle id")
     }
 
     fun spawnNpc(id: Int, coord: Coord): Npc? {
@@ -830,6 +832,16 @@ class World(
                 val st = args.getOrNull(1)?.toIntOrNull() ?: 0
                 player.send(net.rsprot.protocol.game.outgoing.misc.client.MinimapToggle(st))
             }
+            "trace" -> {
+                // Logs every incoming message (camera, keyboard and mouse events too) for protocol checks.
+                player.trace = !player.trace
+                player.message("trace ${if (player.trace) "on" else "off"}")
+            }
+            "jingle" -> {
+                // MIDI_JINGLE test: ::jingle id; when it ends the client should send SOUND_JINGLEEND (Android 46).
+                val id = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::jingle id")
+                player.send(net.rsprot.protocol.game.outgoing.sound.MidiJingle(id))
+            }
             "pmfilter" -> {
                 // CHAT_FILTER_SETTINGS_PRIVATECHAT (Android 11): 0 on, 1 friends, 2 off; watch the Private chat tab label.
                 val st = args.getOrNull(1)?.toIntOrNull() ?: 0
@@ -1028,7 +1040,7 @@ class World(
     fun incoming(player: Player, message: IncomingGameMessage) {
         val first = seenIncomingClasses.add(message.javaClass)
         val quiet = message.javaClass.simpleName.startsWith("Event")
-        if (first || (config.logAndroidPackets && !quiet)) log.info { "<- ${player.username}: $message" }
+        if (first || player.trace || (config.logAndroidPackets && !quiet)) log.info { "<- ${player.username}: $message" }
         else log.debug { "<- ${player.username}: $message" }
     }
 

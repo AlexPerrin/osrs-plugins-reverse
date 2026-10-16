@@ -37,7 +37,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | XP Drop | runs | drop colours via ScriptPreFired (script 996); `hideSkillIcons` has no effect |
 | Status Bars | runs | HP/prayer bars beside the side panel (161:73 routed to 601:111) |
 | Tile Indicators | runs | destination tile drawn while walking |
-| Attack Styles | starts | style computed on device (Kick → AGGRESSIVE via getStructComposition, verified); its overlay (ABOVE_CHATBOX_RIGHT) was hidden under the tab stones, now stacked below the mobile chatbox (unverified). The login value of varp 43 can be missed (the client's 32-entry changed-varp ring overflows in the login burst) |
+| Attack Styles | runs | style overlay ("Accurate") below the mobile chatbox from login (varp 43 via the ring-overflow resync, verified 2026-10-16) |
 | Chat Filter | starts | |
 | Chat History | starts | getChatLineMap is host-side (no removal from the game's chat) |
 | Chat Timestamps | starts | |
@@ -46,20 +46,20 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Daily Task Indicator | starts | |
 | Emojis | starts | |
 | Examine | starts | |
-| Ground Markers | starts | |
+| Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Submenus (colour, label) not shown |
 | Implings | starts | |
 | Interact Highlight | starts | |
 | Inventory Tags | starts | WidgetItemOverlay fixed (no NPE; WidgetItems from 149:0 / 12:13); tags not checked |
 | Item Charges | starts | WidgetItemOverlay fixed (no NPE) |
 | Item Stats | starts | |
 | Logout Timer | starts | |
-| NPC Indicators | runs | hull highlights + minimap dots for `npcindicators.npcToHighlight=Goblin` (after the WildcardMatcher replacement); hulls also draw over the left button column |
-| Object Markers | starts | |
+| NPC Indicators | runs | hull highlights + minimap dots for `npcindicators.npcToHighlight=Goblin` (after the WildcardMatcher replacement); the left button column (601:41/40) is now clipped (unverified) |
+| Object Markers | runs | Shift + long-press an object: "Mark object"; hull drawn on the tree (verified 2026-10-16). Submenus not shown |
 | Poison | starts | |
 | Prayer | starts | |
 | Random Events | starts | |
-| Regeneration Meter | starts | |
-| Run Energy | starts | |
+| Regeneration Meter | runs | HP ring on the HP orb (verified with `regenmeter.showWhenNoChange`); by default it draws only below full HP or spec |
+| Run Energy | runs | orb tooltip (weight, run time, 100% in) on a tap of the run orb (touch-as-mouse + TooltipOverlay, verified 2026-10-16) |
 | Timers & Buffs | starts | |
 | Woodcutting | starts | |
 | XP Tracker | starts | sidebar panel not checked |
@@ -149,6 +149,13 @@ VarbitChanged).
 | `ScriptPreFired` (proc entry with its arguments on the live int/object stacks; root scripts with `getScriptEvent().getArguments()`) and `ScriptPostFired` (proc return with results on the stacks; root script end). While one is dispatched, `getIntStack/Size` and `getObjectStack/Size` read the VM's live stacks and int stack edits are written back; `runScript` from inside one is deferred to the next cycle | inline hooks on the CS2 VM (`native/src/script_hooks.cpp`, `inline_hook.cpp`; docs/offsets.md "Script VM hooks"). Only delivered to Java while something subscribes. Verified 2026-10-16 on OpenRune: balanced gosub/return for all scripts, 30 fps with XP Drop subscribed, XP Drop recolours drops (script 996). `setprop debug.osrsrl.scripts 0` disables, `2` logs every script (very verbose) |
 | **XP Drop** (core) runs: drop colour from config (standard/prayer colours) applied inside script 996. `hideSkillIcons` has no effect (it nulls entries of `Widget.getChildren()`, which is a copy here) | verified 2026-10-16 (red drops with `xpdrop.standardColor=ffff0000`) |
 | Other core plugins tried 2026-10-16 (jars in `re/host/plugins-extra/`, not pushed by default; `EXTRA="xpdrop statusbars" tools/plugin-test.sh`): **Boosts Information** runs (strength 111 after a potion, compact overlay top-left); **Status Bars** runs (its viewport anchor 161:73 is routed to the side panel 601:111) | `getServerVarbitValue`, `getIdleTimeout/setIdleTimeout`, `getMouseLastPressedMillis` added (unverified) |
+| **Plugin menu entries** (`createMenuEntry`, top level): drawn as a strip under the game's long-press menu after `MenuOpened`; a tap runs the entry's `onClick`, posts `MenuOptionClicked` and closes the game menu. Submenus (`createSubMenu`) are not shown | `AndroidMenu.publishPluginEntries/tapped`, `overlay.cpp plugin_menu_frame`; close = the close branch of `0x599f68` (`0x514f48` model, `0x507398` display, shown = 0). Verified 2026-10-16 (Ground Markers, Object Markers) |
+| **Virtual Shift**: a "Shift" toggle under the RL button; `isKeyPressed(KC_SHIFT)` follows it (orange = held). Plain taps and long-presses are unchanged either way | `Native.shiftHeld`; verified 2026-10-16 |
+| `WorldView.getSelectedSceneTile()`: the tile of the open menu's "Walk here" entry, else the tile under the long-press point | verified (Ground Markers) |
+| `getMouseCanvasPosition()` = the touch point while a finger is down and for 3 s after it lifts (else -1,-1); RuneLite's `TooltipOverlay` is registered, tooltips draw last | `Sidebar.hoverPoint`; verified (Run Energy orb tooltip) |
+| VarbitChanged after a changed-varp ring overflow (login burst): every varp below 8192 plus every non-zero one is posted once | `diff_varps`; verified (Attack Styles at login; ~8k events, no visible hitch) |
+| `getModIcons/setModIcons/createIndexedSprite` host-side (32 blank slots; the game's chat doesn't draw plugin icons) | fixes ChatIconManager.loadRankIcons NPE; unverified |
+| `Widget.getChildren()` slot nulling hides that game child after the event (XP Drop `hideSkillIcons`) | `AndroidWidget.applyChildEdits`; unverified |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so

@@ -198,9 +198,13 @@ void sidebar_frame(int w, int h) {
                 ImGui::PopStyleColor();
                 break;
             }
-            case 'X':
-                ImGui::TextDisabled("%s v", n.text.c_str());
+            case 'X': {  // combo box: tap opens an Android list (Sidebar.promptChoice)
+                std::string label = n.text + "  v" + id;
+                ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+                clicked = ImGui::Button(label.c_str(), ImVec2(-1, 0));
+                ImGui::PopStyleColor();
                 break;
+            }
         }
         if (clicked && tapped) {
             events.push_back(2);

@@ -158,6 +158,54 @@ final class Sidebar {
         });
     }
 
+    /** Combo box: a tap opens an Android list of its items; the pick is applied on the game thread. */
+    private static void promptChoice(JComboBox box) {
+        final java.util.List<Object> items = new java.util.ArrayList<Object>(box.__items);
+        if (items.isEmpty()) return;
+        final String[] labels = new String[items.size()];
+        for (int i = 0; i < labels.length; i++) labels[i] = clean(String.valueOf(items.get(i)));
+        final int current = items.indexOf(box.getSelectedItem());
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                Activity a = currentActivity();
+                if (a == null) return;
+                new android.app.AlertDialog.Builder(a)
+                    .setSingleChoiceItems(labels, current, (dlg, which) -> {
+                        dlg.dismiss();
+                        javax.swing.SwingUtilities.invokeLater(() -> select(box, items.get(which)));
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+            } catch (Throwable t) {
+                Log.e(TAG, "choice prompt failed", t);
+            }
+        });
+    }
+
+    /** Selects a combo box item and fires ItemListeners as Swing does (DESELECTED, then SELECTED). Game thread only. */
+    static void select(JComboBox box, Object item) {
+        Object old = box.getSelectedItem();
+        if (item == old) return;
+        box.setSelectedItem(item);
+        Log.i(TAG, "combo box '" + old + "' -> '" + item + "'");
+        for (java.awt.event.ItemListener l : box.getItemListeners()) {
+            try {
+                if (old != null) {
+                    java.awt.event.ItemEvent e = new java.awt.event.ItemEvent();
+                    e.__item = old;
+                    e.__state = 2;  // ItemEvent.DESELECTED
+                    l.itemStateChanged(e);
+                }
+                java.awt.event.ItemEvent e = new java.awt.event.ItemEvent();
+                e.__item = item;
+                e.__state = 1;  // ItemEvent.SELECTED
+                l.itemStateChanged(e);
+            } catch (Throwable t) {
+                Log.e(TAG, "ItemListener threw", t);
+            }
+        }
+    }
+
     /**
      * Sets a text field's text and tells its listeners, as typing would: DocumentListeners
      * (removeUpdate then insertUpdate) and, when `enter`, ActionListeners. Game thread only.
@@ -239,6 +287,10 @@ final class Sidebar {
         }
         if (c instanceof JTextComponent) {
             promptText((JTextComponent) c);
+            return;
+        }
+        if (c instanceof JComboBox) {
+            promptChoice((JComboBox) c);
             return;
         }
         long now = System.currentTimeMillis();

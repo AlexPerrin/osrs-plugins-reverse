@@ -447,6 +447,13 @@ public class GenHeadless {
                   .append(in).append("public static final java.util.concurrent.ConcurrentLinkedQueue<Runnable> __queue = new java.util.concurrent.ConcurrentLinkedQueue<Runnable>();\n")
                   .append(in).append("public static volatile Thread __edt;\n");
             if (c == java.awt.Component.class) sb.append(in).append("java.awt.Container __parent;\n");
+            if (c == javax.swing.JComboBox.class)
+                sb.append(in).append("/** Host: the items (the sidebar lists them in a picker). */\n")
+                  .append(in).append("public final java.util.List __items = new java.util.ArrayList();\n");
+            if (c == java.awt.event.ItemEvent.class)
+                sb.append(in).append("/** Host: set by the sidebar when it fires item events. */\n")
+                  .append(in).append("public java.lang.Object __item;\n")
+                  .append(in).append("public int __state;\n");
         }
         for (Member m : ms) {
             if (!(m instanceof Method)) continue;
@@ -559,6 +566,17 @@ public class GenHeadless {
             if (n.equals("show") && ps.length == 2) return "__current.put(a0, a1);";
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[0] == String.class) return "__cards.put(a0, a1);";
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[1] == Object.class) return "if (a1 instanceof String) __cards.put(a1, a0);";
+        }
+        if (c == javax.swing.JComboBox.class) {
+            if (n.equals("addItem") && ps.length == 1) return "__items.add(a0); if (getSelectedItem() == null) setSelectedItem(a0);";
+            if (n.equals("removeAllItems") && ps.length == 0) return "__items.clear();";
+            if (n.equals("getItemCount") && ps.length == 0) return "return __items.size();";
+            if (n.equals("getItemAt") && ps.length == 1) return "return a0 >= 0 && a0 < __items.size() ? __items.get(a0) : null;";
+            if (n.equals("getSelectedIndex") && ps.length == 0) return "return __items.indexOf(getSelectedItem());";
+        }
+        if (c == java.awt.event.ItemEvent.class) {
+            if (n.equals("getItem") && ps.length == 0) return "return __item;";
+            if (n.equals("getStateChange") && ps.length == 0) return "return __state;";
         }
         if (c == java.awt.Container.class) {
             if (n.equals("add") && ps.length >= 1 && ps[0] == java.awt.Component.class) {

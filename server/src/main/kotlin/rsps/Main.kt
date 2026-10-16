@@ -59,15 +59,17 @@ fun main() {
     }
     val varbitTypes = cache.files(2, 14).mapNotNull { (id, data) -> VarbitType.decode(data)?.let { id to it } }.toMap()
     val quests = Quests.load(cache)
+    val questTotals = Quests.totals(cache)
     log.info {
-        "Varbits: ${varbitTypes.size}, quests: ${quests.size} " +
+        "Varbits: ${varbitTypes.size}, quests: ${quests.size} (totals: ${questTotals.quests} quests, " +
+            "${questTotals.miniquests} miniquests, ${questTotals.questPoints} qp) " +
             "(${quests.firstOrNull { it.name == "Cook's Assistant" }?.let { "${it.name} -> varp ${it.varId}, end ${it.end}" }})"
     }
     val (doors, doorLoad) = measureTimedValue { Maps.loadDoors(cache, locTypes) }
     log.info { "Map doors: ${doors.size} openable wall locs, loaded in $doorLoad (3226,3223 -> ${doors[Maps.key(3226, 3223, 0)]})" }
     cache.close()
 
-    val world = World(config, gameframes, js5.crcs, objTypes, npcTypes, locTypes, varbitTypes, quests, doors, Collision(Cache(config.cacheDir), locTypes))
+    val world = World(config, gameframes, js5.crcs, objTypes, npcTypes, locTypes, varbitTypes, quests, questTotals, doors, Collision(Cache(config.cacheDir), locTypes))
     val service = NetworkFactory(config, world, js5, DefaultHuffmanCodecProvider(huffman)).build()
     world.service = service
 

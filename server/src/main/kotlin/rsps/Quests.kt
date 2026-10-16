@@ -36,13 +36,21 @@ class QuestType(
     val unstarted: Int,
     val end: Int,
     val questPoints: Int,
-)
+    val kind: Kind = Kind.QUEST,
+) {
+    enum class Kind { QUEST, MINIQUEST, SUBQUEST }
+}
+
+/** Journal totals: quest count (without subquests), miniquest count, quest points available. */
+class QuestTotals(val quests: Int, val miniquests: Int, val questPoints: Int)
 
 object Quests {
     /** clientscript returning a quest's progress var, keyed by the quest's dbrow. */
     private const val SCRIPT_PROGRESS = 4024
     private const val DBTABLE_QUEST = 0
     private const val COL_DISPLAYNAME = 2
+    private const val COL_TYPE = 4
+    private const val COL_PARENT = 21
     private const val COL_QUESTPOINTS = 17
     private const val COL_UNSTARTEDSTATE = 18
     private const val COL_ENDSTATE = 19
@@ -71,8 +79,31 @@ object Quests {
                 unstarted = cols[COL_UNSTARTEDSTATE]?.firstOrNull() as? Int ?: 0,
                 end = cols[COL_ENDSTATE]?.firstOrNull() as? Int ?: 1,
                 questPoints = cols[COL_QUESTPOINTS]?.firstOrNull() as? Int ?: 0,
+                kind = kindOf(cols),
             )
         }.sortedBy { it.name }
+    }
+
+    private fun kindOf(cols: Map<Int, List<Any>>) = when {
+        cols.containsKey(COL_PARENT) -> QuestType.Kind.SUBQUEST
+        cols[COL_TYPE]?.firstOrNull() == 1 -> QuestType.Kind.MINIQUEST
+        else -> QuestType.Kind.QUEST
+    }
+
+    /**
+     * Totals over every row of the quest dbtable (also quests without a progress var here). The
+     * journal summary shows them from varbits quests_total_count / qp_max, which the server sets.
+     */
+    fun totals(cache: Cache): QuestTotals {
+        val kinds = cache.files(2, 38).values.mapNotNull { data ->
+            val (tableId, cols) = runCatching { decodeDbRow(data) }.getOrNull() ?: return@mapNotNull null
+            if (tableId != DBTABLE_QUEST) null else kindOf(cols) to (cols[COL_QUESTPOINTS]?.firstOrNull() as? Int ?: 0)
+        }
+        return QuestTotals(
+            quests = kinds.count { it.first == QuestType.Kind.QUEST },
+            miniquests = kinds.count { it.first == QuestType.Kind.MINIQUEST },
+            questPoints = kinds.sumOf { it.second },
+        )
     }
 
     /** Clientscript bytecode: (opcode, operand) per instruction, and the switch tables. */
@@ -117,7 +148,9 @@ object Quests {
                         if (col == 255) break
                         val types = IntArray(buf.get().toInt() and 0xFF) { buf.get().toInt() and 0xFF }
                         val values = ArrayList<Any>()
-                        repeat(buf.get().toInt() and 0xFF) {
+                        val first = buf.get().toInt() and 0xFF
+                        val count = if (first < 0x80) first else ((first and 0x7F) shl 8) or (buf.get().toInt() and 0xFF)
+                        repeat(count) {
                             for (type in types) {
                                 when (type) {
                                     TYPE_STRING -> {

@@ -184,6 +184,7 @@ class World(
     private val locTypes: Map<Int, EntityType>,
     private val varbitTypes: Map<Int, VarbitType>,
     private val quests: List<QuestType>,
+    private val questTotals: QuestTotals,
     /** Openable wall locs (doors, gates) from the map, by [Maps.key]. */
     private val mapDoors: Map<Long, MapLoc>,
     private val collision: Collision,
@@ -367,6 +368,7 @@ class World(
             player.send(IfOpenSub(target ushr 16, target and 0xFFFF, interfaceId, 1))
         }
 
+        updateQuestPoints(player)
         openJournalTab(player, JOURNAL_SUMMARY)
 
         for (stat in 0 until 25) {
@@ -442,8 +444,20 @@ class World(
         setVarp(player, type.varp, (old and mask.inv()) or ((value shl type.lsb) and mask))
     }
 
-    private fun updateQuestPoints(player: Player) =
-        setVarp(player, VARP_QUEST_POINTS, quests.filter { questProgress(player, it) >= it.end }.sumOf { it.questPoints })
+    /**
+     * Quest points (varp 101) and the journal summary counters: quests_completed_count /
+     * quests_total_count ("Quests Completed: x/y"), qp_max ("Quest Points: x/y"),
+     * subquests_completed_count and miniquests_completed_count.
+     */
+    private fun updateQuestPoints(player: Player) {
+        val done = quests.filter { questProgress(player, it) >= it.end }
+        setVarp(player, VARP_QUEST_POINTS, done.sumOf { it.questPoints })
+        setVarbit(player, VARBIT_QP_MAX, questTotals.questPoints)
+        setVarbit(player, VARBIT_QUESTS_TOTAL, questTotals.quests)
+        setVarbit(player, VARBIT_QUESTS_COMPLETED, done.count { it.kind == QuestType.Kind.QUEST })
+        setVarbit(player, VARBIT_SUBQUESTS_COMPLETED, done.count { it.kind == QuestType.Kind.SUBQUEST })
+        setVarbit(player, VARBIT_MINIQUESTS_COMPLETED, done.count { it.kind == QuestType.Kind.MINIQUEST })
+    }
 
     /**
      * Journal side tab (side_journal 629): the server opens the selected panel into 629:43 -
@@ -1657,6 +1671,11 @@ class World(
         private const val VARP_DISPLAYNAME = 1737
         private const val VARP_NPC_ATTACK_OPTION = 1306
         private const val VARP_QUEST_POINTS = 101
+        private const val VARBIT_QP_MAX = 1782
+        private const val VARBIT_QUESTS_COMPLETED = 6347
+        private const val VARBIT_QUESTS_TOTAL = 11877
+        private const val VARBIT_SUBQUESTS_COMPLETED = 13987
+        private const val VARBIT_MINIQUESTS_COMPLETED = 14162
         /** Headbar config 0 (30 pixels wide); fill is in the bar's width units. */
         private const val HEADBAR_WIDTH = 30
         private val QUEST_STATES = setOf("start", "done", "reset")

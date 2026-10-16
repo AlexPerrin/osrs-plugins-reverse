@@ -154,6 +154,28 @@ Done, for reference:
   (varp 29: 0/1/2; ingredients 1927/1944/1933; quest points + 300 cooking XP). Cook 4626 spawns at
   3209,3215. Add more quests the same way.
 
+In progress (2026-10-16, server agent; NOT yet compiled or deployed, Docker Desktop was down
+and was being started):
+- **Journal totals** (uncommitted -> committed untested): varbits from RuneLite gameval names,
+  read by summary script 3310: qp_max 1782 (varp 904 bits 0-9), quests_completed_count 6347
+  (varp 904 bits 20-28), quests_total_count 11877 (varp 2920 bits 0-8), subquests_completed_count
+  13987, miniquests_completed_count 14162. `Quests.totals` counts the quest dbtable (table 0,
+  dbrows in 2/38): column 4 = 1 miniquest, column 21 = parent quest (RFD subquests). Cache 2735:
+  187 quests, 10 subquests, 19 miniquests, 347 QP. `updateQuestPoints` now sets all of them and
+  runs at login before the journal panel opens. Dbrow value counts are smart (1 or 2 bytes); the
+  Kotlin decoder was fixed. Next: `./gradlew-docker installDist`, deploy, check the summary panel.
+- **Options menu clipping, root cause found**: 219:1 is 479x122 at y=12, but chatbox:chatmodal
+  162:568 is only 479x96 (centred), so rows below ~84 are clipped. Script 2581 (mobile only,
+  gosub 1972) resizes 162:34 (chatbox container) to 519 x (165 + 20 [+30]) via if_setsize (2001)
+  and 2000; script 908 toggles 162:568 / 162:567 / 162:561 / 162:57 visibility. Next: find what
+  sizes 162:568 on desktop vs mobile (scripts 80, 113, 922, 925, 1701, 2068, 2251, 3179, 7616
+  reference 162:568), or open 219 into a taller component; compare with how 231 fits (content
+  within 110).
+- Scratch tools (Python cache reader, CS2 disassembler with switch tables, if3 geometry decoder,
+  dbrow decoder) were in the session scratchpad; they are small to rewrite (see Quests.kt for the
+  CS2 / dbrow formats). RuneLite gameval VarbitID/VarPlayerID/VarClientID (javap -constants on
+  re/runelite/runelite-api-1.13.1.jar) give var names and were the quickest way to find vars.
+
 Open, in priority order:
 1. Whatever the client agent reports as a Quest Helper gap (it is testing Cook's Assistant end to end).
 2. Options menu shows only 2 of 3+ rows: on mobile the chatbox is clipped at ~y=260 px (the third row

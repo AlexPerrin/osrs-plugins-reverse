@@ -5,7 +5,7 @@ work. The client side (injected library + RuneLite plugin host) is developed in 
 another session; see `docs/client-handoff.md`. Protocol findings live in
 `docs/android-protocol.md`.
 
-## Where things stand (2026-10-16 evening; container runs the chatmenu fix after 47f6549)
+## Where things stand (container runs e9b03e2, deployed 2026-10-15 21:39 local)
 
 - A rev-241 test server runs in Docker (`osrs-rsps-test`): JS5 cache (OpenRS2 cache 2735),
   `jav_config.ws` / `slr.ws`, login, a small game world, reconnect (60 s grace), and a local
@@ -184,8 +184,16 @@ Verified on device 2026-10-16 21:24 (deployed):
   `::options One Two Three Four`: all four rows visible, taps give sub 1/2/3/4, chat history back
   after closing.
 
-Committed, NOT deployed (last commit e9b03e2; ask the orchestrator for an explicit "OK restart" +
-"OK device", then deploy and test all of these in one session):
+Deployed 2026-10-15 21:39 local (e9b03e2) and tested on device the same session:
+- Verified: journal Combat Level 3; facing (player and Woman turn to each other on Attack, player
+  faces Romeo on Talk-to); Sheep Shearer start dialogue + Shear gives wool; Romeo start dialogue
+  sets varp 144 = 10.
+- Not yet tested on device: spinning at the castle wheel, Fred hand-in/completion, R&J stages
+  after 10. Sheep stay woolly after shearing (no transform to the sheared NPC yet). From Fred's
+  house the pen sheep are "I can't reach that!" (pen gate closed; collision is right, there is
+  no gate handling yet). Test setup without the dialogue: `::quest 149 start`, `::item 1735`.
+
+Details of what was deployed:
 - 0a7b20e journal summary combat level (script 3954 sets varc 52 COMBAT_LEVEL; was -1).
 - 25582e5 facing: player face = Android flag 0x40 (desktop payload, flag p1Alt3); NPC face = flag
   0x40 with a raw flag byte. Player faces NPC on attack/auto-retaliate/any NPC op; NPC faces its
@@ -203,13 +211,12 @@ Committed, NOT deployed (last commit e9b03e2; ask the orchestrator for an explic
 
 Open, in priority order:
 1. Quest Helper gaps from the client agent (Cook's Assistant end to end).
-2. More quests on the dialogue engine (Sheep Shearer, Romeo & Juliet).
+2. Finish testing Sheep Shearer (wheel, hand-in) and Romeo & Juliet stages; sheared-sheep
+   transform; gates (pen gate); stairs destination table; more quests on the dialogue engine.
 3. Remaining S→C unknowns: 20/113/115 (HIDE*OPS / heatmap flags), 65/110 (one string), 143 (p4),
    codecs for REBUILD_REGION_V2 (41), OBJ_CUSTOMISE_SPECIFIC_V2 (132), PROJANIM_SPECIFIC_V4 (76),
    clan bodies (19, 84, 87, 88). C→S: 12, 87, 27, the 11-byte (1/62/76/85) and 15-byte (73/83)
    U/T groups need live captures; EVENT_KEYBOARD delta transform.
-4. Facing for combat (map the Android "face" extended-info block for players and NPCs).
-5. Combat level shows -1 in the journal summary (some var not set).
 
 Scratch helpers (Python cache reader with reference tables, CS2 disassembler with opcode names,
 if3 geometry decoder, script reference scanner) were in the session scratchpad; small to rewrite.
@@ -218,19 +225,21 @@ names vars quickly (e.g. 10670 CHATMODAL_UNCLAMP).
 
 ## Coordination
 
-- Device and restarts (2026-10-16 rule): NO container restart or adb action without an explicit
-  per-action "OK restart" / "OK device" from the orchestrator; read the status file in its own
-  step right before acting (never batch the read with the write/restart).
-- Device status is ALSO kept in `/tmp/osrs-device-status` (both agents write "taking device (...)" /
-  "device free, restart ok (...)" there). A server subagent's SendMessage replies go to its parent
-  session, so poll that file. Deploy = `docker compose up -d` in its own command (the auto-mode
-  classifier refused a combined status-write + restart command).
-- The device is shared with the client session (Claude session named `osrs-plugins-reverse-62`; the client agent runs inside it;
-  find it with ListAgents): post "taking device" / "device free" via SendMessage, and ask before
-  restarting the container (it logs the client out). It answers widget/memory questions well.
+- Device and restarts (2026-10-15 lock procedure): ask the orchestrator ("main") for "OK device" /
+  "OK restart"; it runs `tools/device-lock.sh grant server`. Then run
+  `tools/device-lock.sh take server <what>` in its OWN step and act only if it prints
+  "taking device". A container restart counts as device use (hold the lock while restarting).
+  When done: `tools/device-lock.sh free server`, then report. Never write /tmp/osrs-device-status
+  yourself (the script overwrites it). Grants are single-use; hold the device 15 min at most.
+- Deploy = `docker compose up -d --build` in its own command.
+- After a container restart or a client reinstall, `server/tools/device.sh login`; if the app
+  is not running, start it with `adb shell monkey -p com.jagex.oldscape.android -c
+  android.intent.category.LAUNCHER 1`.
+- A server subagent's SendMessage goes to "main" (the orchestrator), which relays to the client dev.
 - Bookkeeping: keep this file and android-protocol.md current, `scripts/rsprot.sh export`, and
-  commit server-owned paths at each working checkpoint. When your context nears compaction, write
-  state here, commit, and hand off to a fresh server agent.
-- Commit only server-owned paths (`server/`, `tools/patch_server.py`, `tools/patch_local_auth.py`,
-  `docs/android-protocol.md`, `docs/server-handoff.md`, `tools/repack.sh` server options), with
-  `git -c user.name=alex -c user.email=44126061+AlexPerrin@users.noreply.github.com commit` (no global git identity).
+  commit server-owned paths at each working checkpoint with explicit pathspecs
+  (`git commit -m "Server: ..." -- <paths>`; the repo-local config sets the author). When your
+  context nears compaction, write state here, commit, and hand off.
+- Server-owned paths: `server/`, `tools/patch_server.py`, `tools/patch_local_auth.py`,
+  `tools/repack.sh` (server options), `native/src/net_trace.*`, `docs/android-protocol.md`,
+  `docs/server-handoff.md`. README.md, docs/progress* and tools/progress* belong to the orchestrator.

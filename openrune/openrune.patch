@@ -769,7 +769,7 @@ index 7af3c1d93..953380a8a 100644
          if (gameframe != null && gameframe.resizable == ui.frameResizable) {
              ifOpenTop(gameframe.topLevel)
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
-index a8bc2108d..4cfb0b75a 100644
+index a8bc2108d..6e634b010 100644
 --- a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
 @@ -154,9 +154,14 @@ constructor(
@@ -789,7 +789,42 @@ index a8bc2108d..4cfb0b75a 100644
          onCommand("varp", "Set varp value", ::setVarp) {
              invalidArgs = "Use as ::varp debugNameOrId value (ex: option_run 1)"
          }
-@@ -692,7 +697,7 @@ constructor(
+@@ -610,18 +615,29 @@ constructor(
+ 
+     private fun npcAdd(cheat: Cheat) =
+         with(cheat) {
+-            val typeId = "npc.${args[1]}".asRSCM()
+-
++            val duration = args.getOrNull(0)?.toIntOrNull()
++            val nameArg = if (duration != null) args.getOrNull(1) else args.getOrNull(0)
++            if (nameArg == null) {
++                player.mes("Use as ::npc duration npcDebugNameOrId (ex: 100 prison_pete)")
++                return
++            }
++            val typeId =
++                nameArg.toIntOrNull()
++                    ?: RSCM.getRSCMOrNull("npc.$nameArg", RSCMType.NPC)
++                    ?: run {
++                        player.mes("No npc called `$nameArg`.")
++                        return
++                    }
+             val type = ServerCacheManager.getNpc(typeId)
+             if (type == null) {
+                 player.mes("That npc does not exist: $typeId")
+                 return
+             }
+-            val duration = args[0].toInt()
++            val cycles = duration ?: 500
+             val npc = Npc(type, player.coords)
+             npc.mode = NpcMode.None
+-            npcRepo.add(npc, duration)
+-            player.mes("Spawned npc `${args[1]}` (duration: $duration cycles)")
++            npcRepo.add(npc, cycles)
++            player.mes("Spawned npc `$nameArg` (id $typeId, duration: $cycles cycles)")
+         }
+ 
+     private fun npcGrid(cheat: Cheat) =
+@@ -692,7 +708,7 @@ constructor(
  
      private fun setVarp(cheat: Cheat) =
          with(cheat) {
@@ -798,7 +833,7 @@ index a8bc2108d..4cfb0b75a 100644
  
              val type = ServerCacheManager.getVarp(typeId)
              if (type == null) {
-@@ -707,7 +712,7 @@ constructor(
+@@ -707,7 +723,7 @@ constructor(
  
      private fun setVarBit(cheat: Cheat) =
          with(cheat) {
@@ -807,7 +842,7 @@ index a8bc2108d..4cfb0b75a 100644
  
              val type = ServerCacheManager.getVarbit(typeId)
              if (type == null) {
-@@ -721,7 +726,7 @@ constructor(
+@@ -721,7 +737,7 @@ constructor(
  
      private fun getVarp(cheat: Cheat) =
          with(cheat) {
@@ -816,7 +851,7 @@ index a8bc2108d..4cfb0b75a 100644
  
              val type = ServerCacheManager.getVarp(typeId)
              if (type == null) {
-@@ -733,7 +738,7 @@ constructor(
+@@ -733,7 +749,7 @@ constructor(
  
      private fun getVarBit(cheat: Cheat) =
          with(cheat) {
@@ -932,10 +967,10 @@ index 000000000..b06bfb0f0
 +}
 diff --git a/content/other/dwarf-multicannon/src/integration/kotlin/org/rsmod/content/other/multicannon/DwarfMulticannonTest.kt b/content/other/dwarf-multicannon/src/integration/kotlin/org/rsmod/content/other/multicannon/DwarfMulticannonTest.kt
 new file mode 100644
-index 000000000..6903676b6
+index 000000000..fb659d80f
 --- /dev/null
 +++ b/content/other/dwarf-multicannon/src/integration/kotlin/org/rsmod/content/other/multicannon/DwarfMulticannonTest.kt
-@@ -0,0 +1,195 @@
+@@ -0,0 +1,196 @@
 +package org.rsmod.content.other.multicannon
 +
 +import dev.openrune.ServerCacheManager
@@ -1019,13 +1054,14 @@ index 000000000..6903676b6
 +            assertEquals(20, player.inv.count(CANNONBALL))
 +            assertEquals(MAX_AMMO, player.cannonAmmo)
 +
-+            advance(ticks = 8)
++            assertTrue(advanceCollecting(8).none { it == "Your cannon is out of ammo!" })
 +            assertTrue(player.cannonAmmo < MAX_AMMO) { "ammo=${player.cannonAmmo}" }
 +            assertTrue(target.hitpoints <= 10_000)
 +
 +            val sent = advanceCollecting(8 * MAX_AMMO)
 +            assertEquals(0, player.cannonAmmo)
-+            assertTrue("Your cannon is out of ammo!" in sent) { "$sent" }
++            assertEquals(1, sent.count { it == "Your cannon is out of ammo!" }) { "$sent" }
++            assertTrue(advanceCollecting(20).none { it == "Your cannon is out of ammo!" })
 +            assertFalse(checkNotNull(script.cannonOf(player)).firing)
 +        }
 +

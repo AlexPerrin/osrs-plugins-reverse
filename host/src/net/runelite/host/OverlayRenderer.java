@@ -276,6 +276,14 @@ final class OverlayRenderer {
                         : new Point(size.width / 2, size.height / 2);
                     break;
                 }
+                case TOP_LEFT: {
+                    // The mobile chatbox and the left button column fill the desktop top-left
+                    // corner: stack these down from the chatbox's bottom-left corner instead.
+                    Rectangle chat = chatBounds();
+                    c = chat != null ? new Point(chat.x + BORDER, chat.y + chat.height + BORDER)
+                        : new Point(LEFT_COLUMN + BORDER, BORDER);
+                    break;
+                }
                 default: c = new Point(BORDER, BORDER); break;
             }
             cursor.put(pos, c);
@@ -291,6 +299,9 @@ final class OverlayRenderer {
             default: return new Point(c.x, c.y);
         }
     }
+
+    /** Width of the mobile UI's left button column in UI-canvas units (measured on screenshots). */
+    private static final int LEFT_COLUMN = 75;
 
     /** The chatbox (162:0) in UI-canvas coordinates, or null when it isn't open. */
     private static Rectangle chatBounds() {

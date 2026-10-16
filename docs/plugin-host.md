@@ -38,7 +38,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Status Bars | runs | HP/prayer bars beside the side panel (161:73 routed to 601:111) |
 | Tile Indicators | runs | destination tile drawn while walking |
 | Attack Styles | runs | style overlay ("Accurate") below the mobile chatbox from login (varp 43 via the ring-overflow resync, verified 2026-10-16) |
-| Chat Filter | starts | |
+| Chat Filter | runs | game chat censored ("You get some oak ****" with `chatfilter.filterGameChat=true`, `filteredWords=Logs`, verified 2026-10-16): chatFilterCheck is raised once per new message; the game shows the new text when the chat next rebuilds; duplicate collapsing doesn't work |
 | Chat History | starts | getChatLineMap is host-side (no removal from the game's chat) |
 | Chat Timestamps | starts | |
 | Combat Level | runs | precise level in the combat tab ("Combat Lvl: 126.1", verified 2026-10-16) |
@@ -61,13 +61,13 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Regeneration Meter | runs | HP ring on the HP orb (verified with `regenmeter.showWhenNoChange`); by default it draws only below full HP or spec |
 | Run Energy | runs | orb tooltip (weight, run time, 100% in) on a tap of the run orb (touch-as-mouse + TooltipOverlay, verified 2026-10-16) |
 | Timers & Buffs | starts | |
-| Woodcutting | starts | |
+| Woodcutting | runs | session panel (logs cut 6, 900/hr) while chopping an oak west of Lumbridge (verified 2026-10-16, but drawn under the chatbox: TOP_LEFT overlays now stack below the chatbox, unverified) |
 | XP Tracker | runs | sidebar panel: gained XP, XP/hr, levels per skill after combat (verified 2026-10-16; some rows show twice in the flattened sidebar) |
 | Agility | starts | needs XP Tracker's public module (installed as RuneLite does); its login StatChanged NPE fixed (StatChanged is held until the local player exists) |
-| Chat Notifications | starts | |
-| Fishing | starts | |
+| Chat Notifications | starts | highlight words (`chatnotification.highlightWordsString`) loaded but no highlight seen on game messages (2026-10-16; Chat Filter's rewrite of the same messages does show) |
+| Fishing | runs | fishing spot tiles + fish icons by the Lumbridge river with a rod in the inventory (verified 2026-10-16); catching not checked |
 | Idle Notifier | starts | config defaults now registered; Notification config values were a ClassCastException on GameTick (fixed after the run: stored as on/off) |
-| Mining | starts | |
+| Mining | starts | mined copper in the swamp mine; no session panel seen (needs a local-player mining AnimationChanged, 2026-10-16) |
 | Player Indicators | starts | needed protobuf-javalite + RuneLite http-api (PartyService) |
 | Special Attack Counter | starts | as Player Indicators |
 | XP Globes | runs | attack/HP globes over the chat tabs after combat |

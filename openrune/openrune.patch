@@ -399,7 +399,7 @@ index 58c9627f9..4c44bb4e9 100644
  
      /**
 diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
-index 95ca2cd98..aca61f4f4 100644
+index 95ca2cd98..28129d308 100644
 --- a/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
 +++ b/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
 @@ -359,6 +359,10 @@ private fun Player.closeModal(interf: UserInterface, target: Component, eventBus
@@ -424,7 +424,7 @@ index 95ca2cd98..aca61f4f4 100644
      }
  }
  
-@@ -661,11 +669,40 @@ internal fun Player.ifChatNpcSpecific(
+@@ -661,11 +669,44 @@ internal fun Player.ifChatNpcSpecific(
  private fun chatLogText(text: String): String = text.replace("<br>", " ").take(200)
  
  internal fun Player.ifOpenChat(interf: String, widthAndHeightMode: Int, eventBus: EventBus) {
@@ -446,9 +446,13 @@ index 95ca2cd98..aca61f4f4 100644
 + * [proc,chat_onsetupchange] (113) size the modal to fill its parent, but the varbit alone does not
 + * re-run the layout, so 113 runs here. Only chatmenu is unclamped, as on our test server; chat_left
 + * and chat_right keep the stock size, and closing the modal resets it.
++ *
++ * An unclamp always re-runs 113, even when the varbit already holds the value: the varbit can be
++ * stale against the client's layout (it survives relogs, and SkillingMenu sets it for skillmulti
++ * without running 113), and a skipped layout left the quest-start Yes/No chatmenu clamped.
 + */
 +private fun Player.setMobileChatModalUnclamp(value: Int) {
-+    if (chatModalUnclamp == value) {
++    if (chatModalUnclamp == value && value == 0) {
 +        return
 +    }
 +    chatModalUnclamp = value

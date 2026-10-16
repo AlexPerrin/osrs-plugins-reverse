@@ -97,12 +97,32 @@ public final class Host {
 
     private Host() {}
 
+    /**
+     * The host only loads plugins from `pluginDir`. OpenRune-Developer-Tools' self-updater (now
+     * stubbed out of our build) could once download a release jar into
+     * `<user.home>/<client>/sideloaded-plugins` and stage it in java.io.tmpdir; remove any such file.
+     */
+    private static void removeDownloadedPluginJars() {
+        java.util.List<File> found = new java.util.ArrayList<>();
+        for (String dir : new String[] {".runelite", ".rsprox", ".fluxious"}) {
+            File d = new File(System.getProperty("user.home"), dir + "/sideloaded-plugins");
+            found.add(new File(d, "OpenRune-Developer-Tools.jar"));
+            found.add(new File(d, "OpenRune-Developer-Tools.jar.new"));
+        }
+        File[] tmp = new File(System.getProperty("java.io.tmpdir", "/nonexistent")).listFiles(
+                (d, n) -> n.startsWith("openrune-devtools") && n.endsWith(".jar"));
+        if (tmp != null) found.addAll(java.util.Arrays.asList(tmp));
+        for (File f : found)
+            if (f.exists()) Log.w(TAG, "removed downloaded plugin jar " + f + ": " + f.delete());
+    }
+
     /** Called once on a background thread. `pluginDir` holds plugin jars (classes.dex inside). */
     public static void start(String pluginDir, String cacheDir) {
         Log.i(TAG, "host starting; plugins from " + pluginDir);
         // RuneLite.RUNELITE_DIR/CACHE_DIR come from user.home (empty on Android, so plugins wrote to
         // relative paths that fail: Emojis' cache). Use the app's files dir, before RuneLite loads.
         System.setProperty("user.home", new File(pluginDir).getParentFile().getPath());
+        removeDownloadedPluginJars();
         client = new AndroidClient(worldView);
         EventBus bus = new EventBus();
         final HostPluginManager[] pluginManager = new HostPluginManager[1];

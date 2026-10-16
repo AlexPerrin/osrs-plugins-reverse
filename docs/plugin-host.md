@@ -209,8 +209,15 @@ item id), computed once per cycle (`AndroidMenu.hoverEntry`). Item Stats' toolti
 
 OpenRune-Developer-Tools (BSD-2, a sideloaded RuneLite plugin with an MCP server of 47 tools) runs
 in the host so agents can drive device tests. Off by default and never in the default plugin set.
-- Build: `host/plugins/devtools/build.sh` (clones into git-ignored `re/devtools`, pinned; compiles
-  against our 1.13.1 jars; versioned `-local`, so its self-updater stays off).
+- Build: `host/plugins/devtools/build.sh` builds it from source (clones into git-ignored
+  `re/devtools`, pinned; compiles against our 1.13.1 jars) with updates disabled: its self-updater
+  (which would fetch a release jar from GitHub into `sideloaded-plugins`) is stubbed out with ASM
+  (`host/gen/StubMethods.java`), whatever its version check decides. The host only loads plugins
+  from `files/plugins/`, and at startup deletes any jar that updater could have left (one early test
+  run downloaded one before the stub; it was never loaded).
+- Shared device: driving `osrs-devtools` (the `.mcp.json` entry) drives the shared BlueStacks, so
+  callers must hold `tools/device-lock.sh` first, and the sign-in safety rule applies to anything it
+  clicks (signed out: only "Sign in with Email / Username"; never Google/Jagex account screens).
 - Enable: `adb push re/host/plugins-extra/devtools.jar .../files/plugins/`,
   `adb shell setprop debug.osrsrl.devtools 1`, restart the game.
 - Use: `tools/devtools-mcp.sh` is an MCP stdio server that forwards each JSON-RPC line to the device

@@ -47,6 +47,10 @@ struct ActorState {
     int interacting = -1;  // RuneLite encoding: NPC index, or player index + 32768; -1 none
     int overhead_cycle = 0;  // +0x2f4 ticks left for the overhead text
     std::string overhead_text;  // +0x2d8
+    // Pose animations copied from NpcType +0x58..+0x74 by NPC_INFO (players: from the appearance):
+    // idle, idle rotate left/right, walk, walk 180/left/right, run.
+    int pose[8] = {-1, -1, -1, -1, -1, -1, -1, -1};  // +0x280..+0x29c
+    int pose_animation = -1, pose_frame = -1;      // +0x4b8 current pose sequence, +0x4be frame (s16)
 };
 
 struct Npc {
@@ -80,7 +84,11 @@ std::string widget_text(uintptr_t widget);
 int widget_dynamic_count(uintptr_t widget);
 uintptr_t widget_dynamic(uintptr_t widget, int index);  // 0 if empty or out of range
 struct WidgetItem { int id = -1, quantity = 0; };
-WidgetItem widget_item(uintptr_t widget);  // item set by IF_SETOBJECT / CC_SETOBJECT
+WidgetItem widget_item(uintptr_t widget);
+// scrollX, scrollY, scrollWidth, scrollHeight, modelZoom, rotationX, rotationY, rotationZ,
+// opacity, modelType, modelId, animationId.
+constexpr int kWidgetProps = 12;
+void widget_props(uintptr_t widget, int32_t out[kWidgetProps]);  // item set by IF_SETOBJECT / CC_SETOBJECT
 int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colour for text widgets
 void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty
 struct SubInterface { int component, group; };  // `group` is open inside `component`
@@ -119,6 +127,12 @@ struct PlayerInfo {
     int fine_x = 0, fine_y = 0, world_x = 0, world_y = 0;
     uintptr_t address = 0;
     ActorState actor;
+    // Appearance (PLAYER_INFO mask 0x10, decoder 0x4762d4). Equipment uses RuneLite's encoding
+    // (0 empty, kit + 0x100, item + 0x800); has_appearance is false before the first block.
+    bool has_appearance = false;
+    int equipment[12] = {}, kits[12] = {}, colors[5] = {};
+    int gender = 0, npc_id = -1;
+    int combat_level = 0, skull = -1, prayer = -1, team = 0;
 };
 // Walks the top-level WorldView's player table. Game thread only.
 std::vector<PlayerInfo> read_players();
@@ -159,6 +173,8 @@ struct NpcDef {
     int size = 1, combat_level = 0;
     bool minimap_visible = true, interactable = true;
     std::string actions[5];  // current text (varp/varbit-conditional ops resolved by the game)
+    int varbit = -1, varp = -1;
+    std::vector<int32_t> transforms;  // multi-NPC ids, last = default (-1 = none); empty if none
 };
 bool npc_def(int id, NpcDef& out);
 

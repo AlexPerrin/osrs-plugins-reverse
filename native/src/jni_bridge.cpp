@@ -147,7 +147,7 @@ jobjectArray n_item_def(JNIEnv* env, jclass, jint id) {
     env->SetObjectArrayElement(res, 1, strs);
     return res;
 }
-// Object[] {int[] {id, size, combatLevel, minimapVisible, interactable}, String[] {name, 5 actions}}.
+// Object[] {int[] {id, size, combatLevel, minimapVisible, interactable, varbit, varp}, String[] {name, 5 actions}, int[] transforms or null}.
 jobjectArray n_npc_def(JNIEnv* env, jclass, jint id) {
     if (!client_thread::on_client_thread()) {
         env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "getNpcDefinition must be called on the client thread");
@@ -155,9 +155,9 @@ jobjectArray n_npc_def(JNIEnv* env, jclass, jint id) {
     }
     game::NpcDef d;
     if (!game::npc_def(id, d)) return nullptr;
-    jint v[5] = {d.id, d.size, d.combat_level, d.minimap_visible, d.interactable};
-    jintArray ints = env->NewIntArray(5);
-    env->SetIntArrayRegion(ints, 0, 5, v);
+    jint v[7] = {d.id, d.size, d.combat_level, d.minimap_visible, d.interactable, d.varbit, d.varp};
+    jintArray ints = env->NewIntArray(7);
+    env->SetIntArrayRegion(ints, 0, 7, v);
     jclass string = env->FindClass("java/lang/String");
     jobjectArray strs = env->NewObjectArray(6, string, nullptr);
     for (int i = 0; i < 6; i++) {
@@ -167,9 +167,15 @@ jobjectArray n_npc_def(JNIEnv* env, jclass, jint id) {
         env->SetObjectArrayElement(strs, i, js);
         env->DeleteLocalRef(js);
     }
-    jobjectArray res = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    jintArray tr = nullptr;
+    if (!d.transforms.empty()) {
+        tr = env->NewIntArray(static_cast<jsize>(d.transforms.size()));
+        env->SetIntArrayRegion(tr, 0, static_cast<jsize>(d.transforms.size()), d.transforms.data());
+    }
+    jobjectArray res = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
     env->SetObjectArrayElement(res, 0, ints);
     env->SetObjectArrayElement(res, 1, strs);
+    env->SetObjectArrayElement(res, 2, tr);
     return res;
 }
 // Object[] {int[] {id, sizeX, sizeY, varbit, varp}, String[] {name, 5 actions}, int[] transforms or null}.
@@ -267,9 +273,11 @@ jintArray n_player_position(JNIEnv* env, jclass) {
 }
 
 // NPC/player snapshots: 6 ints of identity/position, then the actor state (see Native.java).
-constexpr int kActorStride = 12;
+constexpr int kActorStride = 22;
 void pack_actor(std::vector<jint>& v, const game::ActorState& a) {
     v.insert(v.end(), {a.animation, a.animation_frame, a.orientation, a.current_orientation, a.interacting, a.overhead_cycle});
+    v.insert(v.end(), a.pose, a.pose + 8);
+    v.insert(v.end(), {a.pose_animation, a.pose_frame});
 }
 jstring latin1_string(JNIEnv* env, const std::string& s);
 void set_overhead(JNIEnv* env, jobjectArray arr, jsize i, const game::ActorState& a) {
@@ -485,6 +493,15 @@ static uintptr_t widget_or_child(jint id, jint index) {
     uintptr_t w = game::widget(id);
     return w && index >= 0 ? game::widget_dynamic(w, index) : w;
 }
+jintArray n_widget_props(JNIEnv* env, jclass, jint id, jint index) {
+    uintptr_t w = widget_or_child(id, index);
+    if (!w) return nullptr;
+    int32_t v[game::kWidgetProps];
+    game::widget_props(w, v);
+    jintArray arr = env->NewIntArray(game::kWidgetProps);
+    env->SetIntArrayRegion(arr, 0, game::kWidgetProps, v);
+    return arr;
+}
 jint n_widget_color(JNIEnv*, jclass, jint id, jint index) { return game::widget_color(widget_or_child(id, index)); }
 void n_widget_set_color(JNIEnv*, jclass, jint id, jint index, jint rgb) {
     if (client_thread::on_client_thread()) game::widget_set_color(widget_or_child(id, index), rgb);
@@ -515,7 +532,7 @@ jintArray n_widget_dynamic_geometry(JNIEnv* env, jclass, jint id, jint i) {
 jobjectArray n_players(JNIEnv* env, jclass) {
     std::vector<game::PlayerInfo> players = client_thread::players();
     jsize n = static_cast<jsize>(players.size());
-    std::vector<jint> packed;
+    std::vector<jint> packed, app;  // app: kAppearanceStride ints per player (see Native.players())
     jobjectArray names = env->NewObjectArray(n, env->FindClass("java/lang/String"), nullptr);
     jobjectArray overheads = env->NewObjectArray(n, env->FindClass("java/lang/String"), nullptr);
     for (jsize i = 0; i < n; i++) {
@@ -526,13 +543,21 @@ jobjectArray n_players(JNIEnv* env, jclass) {
         env->SetObjectArrayElement(names, i, name);
         env->DeleteLocalRef(name);
         set_overhead(env, overheads, i, p.actor);
+        app.push_back(p.has_appearance ? 1 : 0);
+        app.insert(app.end(), p.equipment, p.equipment + 12);
+        app.insert(app.end(), p.kits, p.kits + 12);
+        app.insert(app.end(), p.colors, p.colors + 5);
+        app.insert(app.end(), {p.gender, p.npc_id, p.combat_level, p.skull, p.prayer, p.team});
     }
     jintArray ints = env->NewIntArray(n * kActorStride);
     env->SetIntArrayRegion(ints, 0, n * kActorStride, packed.data());
-    jobjectArray out = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
+    jintArray apps = env->NewIntArray(static_cast<jsize>(app.size()));
+    env->SetIntArrayRegion(apps, 0, static_cast<jsize>(app.size()), app.data());
+    jobjectArray out = env->NewObjectArray(4, env->FindClass("java/lang/Object"), nullptr);
     env->SetObjectArrayElement(out, 0, ints);
     env->SetObjectArrayElement(out, 1, names);
     env->SetObjectArrayElement(out, 2, overheads);
+    env->SetObjectArrayElement(out, 3, apps);
     return out;
 }
 
@@ -573,6 +598,7 @@ const JNINativeMethod kNatives[] = {
     {"widgetDynamicHidden", "(II)Z", reinterpret_cast<void*>(n_widget_dynamic_hidden)},
     {"widgetItem", "(II)[I", reinterpret_cast<void*>(n_widget_item)},
     {"widgetColor", "(II)I", reinterpret_cast<void*>(n_widget_color)},
+    {"widgetProps", "(II)[I", reinterpret_cast<void*>(n_widget_props)},
     {"widgetSetColor", "(III)V", reinterpret_cast<void*>(n_widget_set_color)},
     {"widgetDynamicText", "(II)Ljava/lang/String;", reinterpret_cast<void*>(n_widget_dynamic_text)},
     {"widgetDynamicGeometry", "(II)[I", reinterpret_cast<void*>(n_widget_dynamic_geometry)},

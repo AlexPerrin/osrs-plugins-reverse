@@ -19,7 +19,10 @@ public class AndroidNPC extends NPCStub {
     @Override public int getId() { return id; }
     @Override public String getName() { return name; }
     @Override public net.runelite.api.NPCComposition getComposition() { return AndroidNPCComposition.lookup(id); }
-    @Override public net.runelite.api.NPCComposition getTransformedComposition() { return AndroidNPCComposition.lookup(id); }
+    @Override public net.runelite.api.NPCComposition getTransformedComposition() {
+        net.runelite.api.NPCComposition c = getComposition();
+        return c == null ? null : c.transform();
+    }
     @Override public int getCombatLevel() {
         net.runelite.api.NPCComposition c = getComposition();
         return c != null ? c.getCombatLevel() : 0;
@@ -78,7 +81,6 @@ public class AndroidNPC extends NPCStub {
         int size = comp != null ? Math.max(1, comp.getSize()) : 1;
         return new net.runelite.api.coords.WorldArea(getWorldLocation(), size, size);
     }
-    @Override public int getPoseAnimation() { return -1; }
     @Override public int getGraphic() { return -1; }
     @Override public int getHealthRatio() { return -1; }
     @Override public int getHealthScale() { return -1; }
@@ -117,6 +119,9 @@ public class AndroidNPC extends NPCStub {
         interacting = p[o + 4];
         overheadCycle = p[o + 5];
         overheadText = overhead;
+        System.arraycopy(p, o + 6, pose, 0, 8);
+        poseAnimation = p[o + 14];
+        poseAnimationFrame = p[o + 15];
         return changed;
     }
 
@@ -128,4 +133,18 @@ public class AndroidNPC extends NPCStub {
     @Override public boolean isInteracting() { return interacting >= 0; }
     @Override public String getOverheadText() { return overheadCycle > 0 ? overheadText : null; }
     @Override public int getOverheadCycle() { return overheadCycle; }
+
+    // Pose animations (Actor +0x280..+0x29c, +0x4b8): read-only snapshot values.
+    final int[] pose = {-1, -1, -1, -1, -1, -1, -1, -1};
+    int poseAnimation = -1, poseAnimationFrame = -1;
+    @Override public int getIdlePoseAnimation() { return pose[0]; }
+    @Override public int getIdleRotateLeft() { return pose[1]; }
+    @Override public int getIdleRotateRight() { return pose[2]; }
+    @Override public int getWalkAnimation() { return pose[3]; }
+    @Override public int getWalkRotate180() { return pose[4]; }
+    @Override public int getWalkRotateLeft() { return pose[5]; }
+    @Override public int getWalkRotateRight() { return pose[6]; }
+    @Override public int getRunAnimation() { return pose[7]; }
+    @Override public int getPoseAnimation() { return poseAnimation; }
+    @Override public int getPoseAnimationFrame() { return poseAnimationFrame; }
 }

@@ -39,6 +39,20 @@ public class AndroidWidget extends WidgetBag {
     /** Text colour (IF_SETCOLOUR), written through to the game widget. */
     @Override public int getTextColor() { return Native.widgetColor(id, childIndex()); }
     @Override public Widget setTextColor(int rgb) { Native.widgetSetColor(id, childIndex(), rgb); return this; }
+    // Script-visible properties read from the game widget (Native.widgetProps).
+    private int prop(int i, int dflt) { int[] p = Native.widgetProps(id, childIndex()); return p != null ? p[i] : dflt; }
+    @Override public int getScrollX() { return prop(0, 0); }
+    @Override public int getScrollY() { return prop(1, 0); }
+    @Override public int getScrollWidth() { return prop(2, 0); }
+    @Override public int getScrollHeight() { return prop(3, 0); }
+    @Override public int getModelZoom() { return prop(4, 0); }
+    @Override public int getRotationX() { return prop(5, 0); }
+    @Override public int getRotationY() { return prop(6, 0); }
+    @Override public int getRotationZ() { return prop(7, 0); }
+    @Override public int getOpacity() { return prop(8, 0); }
+    @Override public int getModelType() { return prop(9, 0); }
+    @Override public int getModelId() { return prop(10, -1); }
+    @Override public int getAnimationId() { return prop(11, -1); }
     @Override public int getItemQuantity() { int[] it = Native.widgetItem(id, childIndex()); return it != null && it[0] != -1 ? it[1] : 0; }
 
     @Override

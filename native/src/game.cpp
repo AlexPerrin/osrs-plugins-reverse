@@ -237,6 +237,9 @@ static ActorState read_actor(uintptr_t a) {
         if (type == 1) st.interacting = index;
         else if (type == 2) st.interacting = index + 32768;
     }
+    for (int i = 0; i < 8; i++) st.pose[i] = read_at<int32_t>(a + 0x280 + 4 * i);
+    st.pose_animation = read_at<int32_t>(a + 0x4b8);
+    st.pose_frame = read_at<int16_t>(a + 0x4be);
     st.overhead_cycle = read_at<int32_t>(a + 0x2f4);
     if (st.overhead_cycle > 0) st.overhead_text = read_string(a + 0x2d8);
     return st;
@@ -279,6 +282,24 @@ Point scene_base() {
     return {read_at<int32_t>(wv + g_build->wv_base_x), read_at<int32_t>(wv + g_build->wv_base_y)};
 }
 
+// Player +0x728 = Appearance* (shared_ptr {ctrl +0x720, obj}); Player-level fields at +0x730..+0x790.
+static void read_appearance(uintptr_t p, PlayerInfo& info) {
+    info.combat_level = read_at<int32_t>(p + 0x780);
+    info.skull = read_at<int32_t>(p + 0x730);
+    info.prayer = read_at<int32_t>(p + 0x734);
+    info.team = read_at<int32_t>(p + 0x790);
+    uintptr_t app = read_at<uintptr_t>(p + 0x728);
+    if (!app) return;
+    info.has_appearance = true;
+    for (int i = 0; i < 12; i++) {
+        info.equipment[i] = read_at<int32_t>(app + 4 * i);
+        info.kits[i] = read_at<int32_t>(app + 0x30 + 4 * i);
+    }
+    for (int i = 0; i < 5; i++) info.colors[i] = read_at<int32_t>(app + 0x60 + 4 * i);
+    info.npc_id = read_at<int32_t>(app + 0x74);
+    info.gender = read_at<int32_t>(app + 0xa8);
+}
+
 std::vector<PlayerInfo> read_players() {
     std::vector<PlayerInfo> out;
     uintptr_t c = client();
@@ -314,6 +335,7 @@ std::vector<PlayerInfo> read_players() {
             info.world_x = base_x + (info.fine_x >> 7);
             info.world_y = base_y + (info.fine_y >> 7);
             info.actor = read_actor(p);
+            read_appearance(p, info);
             out.push_back(std::move(info));
         }
     }
@@ -368,6 +390,15 @@ uintptr_t widget_dynamic(uintptr_t w, int index) {
 
 // IF_SETOBJECT (if3 widgets) and CC_SETOBJECT (op 1200) store {item id (-1 none), quantity}
 // at Widget +0xb38 (one 8-byte store in the script VM, 0x5e06dc).
+// Script-visible widget properties, from the CC_GET* handlers (0x4e5b20, opcodes 1600-1614) and
+// the IF_SET* packet handlers: scroll x/y (+0x84/+0x88), scroll width/height (+0x8c/+0x90),
+// model zoom (+0x128), model angle x/y/z (+0x11c/+0x120/+0x124), opacity (+0xb0), model type/id
+// (+0xfc/+0x100), sequence (+0x10c).
+void widget_props(uintptr_t w, int32_t out[kWidgetProps]) {
+    static constexpr uint32_t kOffsets[kWidgetProps] = {0x84, 0x88, 0x8c, 0x90, 0x128, 0x11c, 0x120, 0x124, 0xb0, 0xfc, 0x100, 0x10c};
+    for (int i = 0; i < kWidgetProps; i++) out[i] = w ? read_at<int32_t>(w + kOffsets[i]) : 0;
+}
+
 WidgetItem widget_item(uintptr_t w) {
     if (!w) return {};
     return {read_at<int32_t>(w + 0xb38), read_at<int32_t>(w + 0xb3c)};
@@ -683,6 +714,13 @@ bool npc_def(int id, NpcDef& out) {
     out.combat_level = read_at<int32_t>(o + 0x11c);
     out.minimap_visible = read_at<uint8_t>(o + 0x118) != 0;
     out.interactable = read_at<uint8_t>(o + 0x158) != 0;
+    // Multi-NPC (ops 106/118): same layout as LocType's multiloc.
+    out.varbit = read_at<int32_t>(o + 0x150);
+    out.varp = read_at<int32_t>(o + 0x154);
+    auto tn = read_at<uint64_t>(o + 0x140);
+    auto tp = read_at<const int32_t*>(o + 0x148);
+    out.transforms.clear();
+    if (tn > 0 && tn < 4096 && tp) out.transforms.assign(tp, tp + tn);
     auto op_text = reinterpret_cast<uintptr_t (*)(uintptr_t, int)>(g_base + g_build->op_text);
     for (int i = 0; i < 5; i++) {
         uintptr_t str = op_text(o + 0x100, i);

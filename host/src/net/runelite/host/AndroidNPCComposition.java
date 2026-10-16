@@ -14,8 +14,11 @@ final class AndroidNPCComposition extends NPCCompositionStub {
     private final String name;
     private final String[] actions = new String[5];
 
-    private AndroidNPCComposition(int[] v, String[] s) {
+    private final int[] transforms;
+
+    private AndroidNPCComposition(int[] v, String[] s, int[] transforms) {
         this.v = v;
+        this.transforms = transforms;
         this.name = s[0];
         System.arraycopy(s, 1, actions, 0, 5);
     }
@@ -29,7 +32,7 @@ final class AndroidNPCComposition extends NPCCompositionStub {
         if (!Native.isClientThread()) return null;
         Object[] r = Native.npcDef(id);
         if (r == null) return null;
-        AndroidNPCComposition c = new AndroidNPCComposition((int[]) r[0], (String[]) r[1]);
+        AndroidNPCComposition c = new AndroidNPCComposition((int[]) r[0], (String[]) r[1], r.length > 2 ? (int[]) r[2] : null);
         synchronized (cache) {
             if (cache.size() > 4096) cache.clear();
             cache.put(id, c);
@@ -45,8 +48,20 @@ final class AndroidNPCComposition extends NPCCompositionStub {
     @Override public boolean isMinimapVisible() { return v[3] != 0; }
     @Override public boolean isInteractible() { return v[4] != 0; }
     @Override public String[] getActions() { return actions; }
-    @Override public net.runelite.api.NPCComposition transform() { return this; }
-    @Override public int[] getConfigs() { return null; }
+    @Override public int[] getConfigs() { return transforms; }
+
+    /** RuneLite semantics: the multi-NPC for the current varbit/varp value (null = hidden). */
+    @Override public net.runelite.api.NPCComposition transform() {
+        if (transforms == null || transforms.length == 0) return this;
+        net.runelite.api.Client client = Host.client();
+        int i = -1;
+        if (client != null) {
+            if (v[5] != -1) i = client.getVarbitValue(v[5]);
+            else if (v[6] != -1) i = client.getVarpValue(v[6]);
+        }
+        int id = i >= 0 && i < transforms.length - 1 ? transforms[i] : transforms[transforms.length - 1];
+        return id == -1 ? null : lookup(id);
+    }
     @Override public boolean isFollower() { return false; }
     @Override public int[] getModels() { return new int[0]; }
     @Override public int[] getChatheadModels() { return new int[0]; }

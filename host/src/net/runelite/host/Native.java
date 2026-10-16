@@ -59,9 +59,10 @@ final class Native {
      * {index, id, localX, localY, worldX, worldY} per NPC.
      */
     /**
-     * {int[] packed, String[] names, String[] overhead texts}; 12 ints per NPC: index, id, fine x, fine y,
+     * {int[] packed, String[] names, String[] overhead texts}; 22 ints per NPC: index, id, fine x, fine y,
      * world x, world y, animation, animation frame, orientation, current orientation, interacting
-     * (NPC index or player index + 32768, -1 none), overhead cycle. players() is the same with
+     * (NPC index or player index + 32768, -1 none), overhead cycle, 8 pose animations (idle, idle
+     * rotate left/right, walk, walk 180/left/right, run), pose animation, pose frame. players() is the same with
      * `local` (1/0) in place of id.
      */
     static native Object[] npcs();
@@ -97,6 +98,10 @@ final class Native {
     /** The entry being selected (valid while MenuOptionClicked is dispatched), same format. */
     static native Object[] clickedMenuEntry();
     static native boolean menuOpen();
+    /** Widget properties (component, or its CC_CREATE child when index >= 0): scrollX, scrollY,
+     *  scrollWidth, scrollHeight, modelZoom, rotationX, rotationY, rotationZ, opacity, modelType,
+     *  modelId, animationId; null if absent. */
+    static native int[] widgetProps(int id, int index);
     /** {x, y} where the open menu was requested (UI-canvas units), null when closed. */
     static native int[] menuPoint();
     /** From a MenuOptionClicked subscriber: the game won't run the entry. */

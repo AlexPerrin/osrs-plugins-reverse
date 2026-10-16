@@ -56,7 +56,8 @@ Milestones:
   as the stopped fallback `osrs-rsps-test`), 2026-10-16
 - [ ] Multi-client: desktop RuneLite (via RSProx) and the Android client on the same server
 - [x] **Protocol: every live Android opcode mapped** (241/241; 12 opcodes have no sender or no-op handlers in the client and are tagged dead), 2026-10-15
-- [ ] Protocol: verify the remaining `// unverified` entries live
+- [x] **Protocol verified:** 239 of the 240 live Android opcodes verified against the client's own
+  readers/senders or live traffic; the last (SET_HEADING) needs sailing content, 2026-10-16
 - [x] **Second plugin: Ground Items** (core RuneLite; item labels with prices, MenuEntryAdded and
   menu text written back into the game menu), 2026-10-16
 - [x] **Third plugin: Opponent Information** (core RuneLite; opponent name and health bar from hitsplats

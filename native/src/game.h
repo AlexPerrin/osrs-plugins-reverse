@@ -217,6 +217,13 @@ struct MenuEntry {
 };
 uintptr_t menu_object();  // the menu model (MenuManager +0x140), 0 if unavailable
 bool menu_open();
+// The client-side varp table (RuneLite getVarps()).
+std::vector<int32_t> varps();
+// The game's addChatMessage (what MESSAGE_GAME calls). Game thread only.
+bool add_chat_message(int type, const std::string& name, const std::string& text);
+// Client varcs (VarClientInt/VarClientStr); false when unset. Game thread only.
+bool varc_int(int id, int& out);
+bool varc_string(int id, std::string& out);
 // Where the open menu was requested (UI-canvas units); false when no menu is shown.
 bool menu_point(int& x, int& y);
 std::vector<MenuEntry> read_menu();  // game thread only

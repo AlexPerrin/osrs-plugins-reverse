@@ -23,6 +23,12 @@ final class Native {
     static native int gameCycle();
     static native int serverTick();
     static native int varp(int id);
+    static native int[] varps();
+    /** Client varcs (0 / null when unset). */
+    static native int varcInt(int id);
+    static native String varcString(int id);
+    /** The game's addChatMessage; client thread only (returns false elsewhere). */
+    static native boolean addChatMessage(int type, String name, String text);
     static native int serverVarp(int id);
     /** Game thread only (throws IllegalStateException elsewhere). */
     static native int varbit(int id);

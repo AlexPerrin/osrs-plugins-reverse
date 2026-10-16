@@ -45,6 +45,31 @@ public class AndroidClient extends ClientStub {
     }
 
     @Override
+    public int[] getVarps() { return Native.varps(); }
+
+    @Override public int getVarcIntValue(int id) { return Native.varcInt(id); }
+    @Override public String getVarcStrValue(int id) { String s = Native.varcString(id); return s != null ? s : ""; }
+
+    /**
+     * Through the game's own addChatMessage, so the line shows in the chatbox (and comes back as
+     * a ChatMessage event). Off the client thread it is queued to it. Latin-1 text; the game's
+     * tags (<col=...>) work as on desktop.
+     */
+    @Override
+    public net.runelite.api.MessageNode addChatMessage(net.runelite.api.ChatMessageType type, String name, String message, String sender) {
+        return addChatMessage(type, name, message, sender, true);
+    }
+
+    @Override
+    public net.runelite.api.MessageNode addChatMessage(net.runelite.api.ChatMessageType type, String name, String message, String sender, boolean postEvent) {
+        final int t = type != null ? type.getType() : 0;
+        final String n = name != null ? name : "", m = message != null ? message : "";
+        if (isClientThread()) Native.addChatMessage(t, n, m);
+        else Host.invoke(() -> Native.addChatMessage(t, n, m));
+        return null;
+    }
+
+    @Override
     public int getVarpValue(int id) {
         return Native.varp(id);
     }

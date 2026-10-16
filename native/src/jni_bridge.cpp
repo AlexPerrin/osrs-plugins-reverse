@@ -64,6 +64,29 @@ jint n_game_state(JNIEnv*, jclass) { return game::game_state(); }
 jint n_game_cycle(JNIEnv*, jclass) { return game::cycle(); }
 jint n_server_tick(JNIEnv*, jclass) { return game::server_tick(); }
 jint n_varp(JNIEnv*, jclass, jint id) { return game::varp(id); }
+jintArray n_varps(JNIEnv* env, jclass) {
+    std::vector<int32_t> v = game::varps();
+    jintArray arr = env->NewIntArray(static_cast<jsize>(v.size()));
+    env->SetIntArrayRegion(arr, 0, static_cast<jsize>(v.size()), v.data());
+    return arr;
+}
+jint n_varc_int(JNIEnv*, jclass, jint id) { int v = 0; return game::varc_int(id, v) ? v : 0; }
+jstring latin1_string(JNIEnv* env, const std::string& s);
+jstring n_varc_string(JNIEnv* env, jclass, jint id) {
+    std::string s;
+    return game::varc_string(id, s) ? latin1_string(env, s) : nullptr;
+}
+jboolean n_add_chat_message(JNIEnv* env, jclass, jint type, jstring name, jstring text) {
+    if (!client_thread::on_client_thread()) return false;
+    auto str = [env](jstring s) {
+        if (!s) return std::string();
+        const char* c = env->GetStringUTFChars(s, nullptr);
+        std::string r(c ? c : "");
+        if (c) env->ReleaseStringUTFChars(s, c);
+        return r;
+    };
+    return game::add_chat_message(type, str(name), str(text));
+}
 jint n_server_varp(JNIEnv*, jclass, jint id) { return game::server_varp(id); }
 jint n_varbit(JNIEnv* env, jclass, jint id) {
     if (!client_thread::on_client_thread()) {
@@ -620,6 +643,10 @@ const JNINativeMethod kNatives[] = {
     {"gameCycle", "()I", reinterpret_cast<void*>(n_game_cycle)},
     {"serverTick", "()I", reinterpret_cast<void*>(n_server_tick)},
     {"varp", "(I)I", reinterpret_cast<void*>(n_varp)},
+    {"varps", "()[I", reinterpret_cast<void*>(n_varps)},
+    {"varcInt", "(I)I", reinterpret_cast<void*>(n_varc_int)},
+    {"varcString", "(I)Ljava/lang/String;", reinterpret_cast<void*>(n_varc_string)},
+    {"addChatMessage", "(ILjava/lang/String;Ljava/lang/String;)Z", reinterpret_cast<void*>(n_add_chat_message)},
     {"serverVarp", "(I)I", reinterpret_cast<void*>(n_server_varp)},
     {"varbit", "(I)I", reinterpret_cast<void*>(n_varbit)},
     {"playerPosition", "()[I", reinterpret_cast<void*>(n_player_position)},

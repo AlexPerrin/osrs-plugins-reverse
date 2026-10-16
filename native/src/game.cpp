@@ -74,6 +74,7 @@ struct Build {
     // const shared_ptr<LocType>* getLocType(int id): cache lookup/load (pointer to the cached
     // {ctrl, LocType*}; the world menu builder 0x533a1c uses it for loc entries).
     uintptr_t get_loc_type;
+    uintptr_t add_chat_message;  // addChatMessage(client, type, const string* name, const string* text) (MESSAGE_GAME)
 };
 
 constexpr Build kBuilds[] = {
@@ -85,7 +86,7 @@ constexpr Build kBuilds[] = {
      0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x68, 0x70, 0xcb0c, 0x718, 0xcb90, 0x730, 0x1fc, 0x200, 0x0, 0x8,
      0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0x5c, 0x60, 0x64, 0x68, 0x74, 0x6, 0x3210, 0x3274, 0x32d8, 0xaab690, 0xaab658, 0xaab628,
      0xaef1d0, 0x4df54c, 0x63bfe8, 0x63633c, 0x65c798, 0x6de99c, 0x65cac8,
-     0x4132b0, 0xa6d6c0, 0x515854, 0x62e5ec},
+     0x4132b0, 0xa6d6c0, 0x515854, 0x62e5ec, 0x43a9c0},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -184,6 +185,46 @@ int server_tick() { return g_build ? field(g_build->f_server_tick) : -1; }
 
 int varp_count() { return g_build ? static_cast<int>(read_at<uint32_t>(g_base + g_build->varps + 8)) : 0; }
 int varp(int id) { return g_build ? read_varp_table(g_build->varps, id) : 0; }
+
+std::vector<int32_t> varps() {
+    if (!g_build) return {};
+    uint32_t count = read_at<uint32_t>(g_base + g_build->varps + 8);
+    auto* values = read_at<const int32_t*>(g_base + g_build->varps + 0x10);
+    if (!values || count > 1 << 16) return {};
+    return std::vector<int32_t>(values, values + count);
+}
+
+namespace {
+// The game's 24-byte string: inline (byte 23 = 23 - length) up to 22 chars, else
+// {char*, size, capacity | 0x80 << 56} (heap, owned here). See read_string.
+struct GameString {
+    alignas(8) uint8_t bytes[24] = {};
+    char* heap = nullptr;
+    explicit GameString(const std::string& s) {
+        if (s.size() <= 22) {
+            memcpy(bytes, s.data(), s.size());
+            bytes[23] = static_cast<uint8_t>(23 - s.size());
+        } else {
+            heap = static_cast<char*>(malloc(s.size() + 1));
+            memcpy(heap, s.data(), s.size());
+            heap[s.size()] = 0;
+            uint64_t words[3] = {reinterpret_cast<uint64_t>(heap), s.size(), s.size() | (0x80ull << 56)};
+            memcpy(bytes, words, 24);
+        }
+    }
+    ~GameString() { free(heap); }
+    GameString(const GameString&) = delete;
+    GameString& operator=(const GameString&) = delete;
+};
+}  // namespace
+
+bool add_chat_message(int type, const std::string& name, const std::string& text) {
+    uintptr_t c = client();
+    if (!g_build || !g_build->add_chat_message || !c) return false;
+    GameString n(name), t(text);
+    reinterpret_cast<void (*)(uintptr_t, int, const void*, const void*)>(g_base + g_build->add_chat_message)(c, type, n.bytes, t.bytes);
+    return true;
+}
 int server_varp(int id) { return g_build ? read_varp_table(g_build->server_varps, id) : 0; }
 
 int varbit(int id) {
@@ -222,6 +263,40 @@ uintptr_t npc_lookup(uintptr_t wv, int index) {
     return 0;
 }
 }  // namespace
+
+// Client varcs (Client +0x417b68 → store): sorted vector at +0x48/+0x50 of 0x30-byte entries
+// {int id; variant at +8 (int, or 24-byte string); u32 type at +0x28: 1 int, 2 string, 4 object}
+// (getVarcInt 0x3f82ac, getVarcString 0x3f8588; opcodes 42/49 in 0x4dd08c).
+static uintptr_t varc_entry(int id, int type) {
+    uintptr_t c = client();
+    if (!c) return 0;
+    uintptr_t store = read_at<uintptr_t>(c + 0x417b68);
+    if (!store) return 0;
+    uintptr_t b = read_at<uintptr_t>(store + 0x48), e = read_at<uintptr_t>(store + 0x50);
+    if (!b || e < b || (e - b) / 0x30 > 100000) return 0;
+    size_t lo = 0, hi = (e - b) / 0x30;
+    while (lo < hi) {
+        size_t mid = (lo + hi) / 2;
+        if (read_at<int32_t>(b + mid * 0x30) < id) lo = mid + 1; else hi = mid;
+    }
+    uintptr_t ent = b + lo * 0x30;
+    if (ent >= e || read_at<int32_t>(ent) != id || read_at<int32_t>(ent + 0x28) != type) return 0;
+    return ent;
+}
+
+bool varc_int(int id, int& out) {
+    uintptr_t ent = varc_entry(id, 1);
+    if (!ent) return false;
+    out = read_at<int32_t>(ent + 8);
+    return true;
+}
+
+bool varc_string(int id, std::string& out) {
+    uintptr_t ent = varc_entry(id, 2);
+    if (!ent) return false;
+    out = read_string(ent + 8);
+    return true;
+}
 
 static ActorState read_actor(uintptr_t a) {
     ActorState st;

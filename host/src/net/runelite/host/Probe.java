@@ -21,6 +21,7 @@ final class Probe {
     private static final String TAG = "osrsrl-probe";
     private static List<Plugin> plugins;
     private static int tick;
+    private static String lastSay = "";
 
     static void init(List<Plugin> running) {
         plugins = running;
@@ -29,6 +30,11 @@ final class Probe {
     static void onGameTick() {
         if ("1".equals(Native.property("debug.osrsrl.camlog"))) logCamera();
         if ("1".equals(Native.property("debug.osrsrl.selflog")) && (tick % 5) == 0) logSelf();
+        String say = Native.property("debug.osrsrl.say");  // test hook: Client.addChatMessage (GAMEMESSAGE), once per value
+        if (!say.isEmpty() && !say.equals(lastSay) && Host.client() != null) {
+            lastSay = say;
+            Host.client().addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", say, null);
+        }
         String where = Native.property("debug.osrsrl.where");
         if (!where.isEmpty() && (tick % 5) == 0) logWhere(where);
         if (plugins == null || (tick++ % 5) != 0) return;

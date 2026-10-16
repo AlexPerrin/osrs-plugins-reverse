@@ -179,7 +179,14 @@ session; its notes are in `docs/android-protocol.md`.
   fountain; QH's arrow/outline follow our coordinates. Model, base (WorldView +0x24/+0x28 matches
   ::mypos) and projection are fine. Leads: a stale entity (index list wv+0xd0 vs hash map
   wv+0x98), +0x1fc/+0x200 not being the drawn position for these NPCs (compare +0x268/+0x26c and the
-  path arrays live with tools/agent.py), or a second, visible Romeo with another id. Probe:
+  path arrays live with tools/agent.py), or a second, visible Romeo with another id. Static RE of
+  NPC_INFO (`0x469778`, decomp `re/decomp/00569778.c` ~l.560-590): on add/teleport the game sets the
+  path start tile (+0x3f0/+0x418) and fine +0x268/+0x26c from the local player's tile (Client
+  +0xcb7c/+0xcb80) plus the packet deltas; otherwise it queues a walk step, and +0x1fc/+0x200 is the
+  per-frame drawn position along the path. So +0x1fc is the right field for a live entity, and the
+  entity we read is probably not the rendered one. **Check first:** whether the render world view
+  `Client+0xc940` still equals `Client+0xc950` on OpenRune after its login rebuild (on the old server
+  they were always equal; we read NPCs from +0xc950). Then index list vs hash map. Probe:
   `setprop debug.osrsrl.set 'npcmodel <id> 0'` (lists base-id matches with index, tile, model
   bounds, hull, feet). Other probes this session: `quest <QUEST> <varp>`, `iparam <item> <-1|param>`,
   `wmove <g:c> <dx>`, `whide`/`wtext`, `sound`, `debug.osrsrl.varlog 1` (logs VarbitChanged),

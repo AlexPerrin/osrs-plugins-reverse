@@ -418,7 +418,7 @@ class World(
         player.message("::talk [npc] text, ::npc id, ::npcsay text, ::npcanim id, ::npcform id, ::freeze, ::drop")
         player.message("::obj id [n] [dz], ::zobj id [n], ::locadd id [shape] [rot], ::locdel [shape] [dx] [dz]")
         player.message("::quest name [start|done|reset|n], ::varp id [v], ::varbit id [v], ::events [e1] [e2], ::hit [n] [type], ::npchit [n]")
-        player.message("Protocol tests: ::hideops npc|loc|obj [1|0], ::flag [x z], ::proj id [dx], ::region [dzx] [dzz] [rot], ::minimap n, ::pmfilter n")
+        player.message("Protocol tests: ::hideops npc|loc|obj [1|0], ::flag [x z], ::proj id [dx] [mode], ::region [dzx] [dzz] [rot], ::minimap n, ::pmfilter n")
     }
 
     fun spawnNpc(id: Int, coord: Coord): Npc? {
@@ -818,13 +818,20 @@ class World(
                 player.message("Region rebuilt from zones offset $dzx,$dzz rot $rot")
             }
             "proj" -> {
-                // PROJANIM_SPECIFIC_V4 (Android 76) test: ::proj id [dx]. Starts high (160) at your tile, lands on the
-                // ground (0) dx tiles east after 90 cycles; a wrong height/time role shows as a rising or missing projectile.
-                val id = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::proj spotanim [dx]")
+                // PROJANIM_SPECIFIC_V4 (Android 76) test: ::proj id [dx] [mode]. Nominal: starts high (160) at your tile,
+                // lands low (0) dx tiles east, flying from cycle +30 to +300 (about 6 s). mode bits swap the values given
+                // to suspect fields: 1 = start/end time, 2 = start/end height, 4 = progress/startHeight.
+                val id = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::proj spotanim [dx] [mode]")
                 val dx = args.getOrNull(2)?.toIntOrNull() ?: 5
+                val mode = args.getOrNull(3)?.toIntOrNull() ?: 0
+                var t1 = 30; var t2 = 300; var h1 = 160; var h2 = 0; var prog = 0
+                if (mode and 1 != 0) { t1 = 300; t2 = 30 }
+                if (mode and 2 != 0) { h1 = 0; h2 = 160 }
+                if (mode and 4 != 0) { prog = h1; h1 = 0 }
                 val c = player.coord
-                player.send(ProjAnimSpecificV4(id, 160, 0, 0, 90, 16, 0, CoordGrid(c.level, c.x, c.z), 0,
+                player.send(ProjAnimSpecificV4(id, h1, h2, t1, t2, 16, prog, CoordGrid(c.level, c.x, c.z), 0,
                     CoordGrid(c.level, c.x + dx, c.z), 0))
+                player.message("proj $id mode $mode: times $t1/$t2 heights $h1/$h2 progress $prog")
             }
             "flag" -> {
                 // SET_MAP_FLAG_V2 (Android 143): ::flag x z shows the minimap flag there, ::flag clears it.

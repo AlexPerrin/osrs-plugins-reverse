@@ -54,6 +54,12 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   Disaster variants in the map, which had no door tag
   (`.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml`).
 
+- **RuneLite-visible messages:** item examines go out as `ObjExamine` (27) game messages, not via
+  the `examine_item` clientscript's `mes` (type 0), so the Examine plugin matches them; mobile
+  clients also get that script's price line, built server-side. Skilling texts match what RuneLite's
+  plugins parse: "You swing your pick at the rock.", "You catch some shrimps.", and cooking's
+  success/burn lines as SPAM.
+
 ## Build
 
 ```

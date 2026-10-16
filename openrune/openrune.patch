@@ -398,6 +398,182 @@ index 58c9627f9..4c44bb4e9 100644
      }
  
      /**
+diff --git a/api/player-output/src/main/kotlin/org/rsmod/api/player/output/GameMessage.kt b/api/player-output/src/main/kotlin/org/rsmod/api/player/output/GameMessage.kt
+index 1ff784a3b..a2453f52a 100644
+--- a/api/player-output/src/main/kotlin/org/rsmod/api/player/output/GameMessage.kt
++++ b/api/player-output/src/main/kotlin/org/rsmod/api/player/output/GameMessage.kt
+@@ -17,20 +17,82 @@ public fun Player.mes(text: String, type: ChatType = ChatType.GameMessage) {
+     client.write(message)
+ }
+ 
++/**
++ * Sends the examine as [ChatType.ObjExamine], the type RuneLite expects for items (the stock
++ * `examine_item` clientscript prints it with `mes`, as a plain game message). Enhanced clients also
++ * get that script's price line.
++ */
+ public fun Player.objExamine(type: ItemServerType, count: Int, marketPrice: Int) {
+-    ClientScripts.examineItem(
+-        player = this,
+-        obj = type.id,
+-        count = count,
+-        desc = type.examine,
+-        market = type.stockmarket,
+-        marketPrice = marketPrice,
+-        alchable = type.param(params.no_alchemy) == 0,
+-        lowAlch = type.lowAlch,
+-        highAlch = type.highAlch,
+-    )
++    val total = maxOf(count, 1).toLong()
++    val large = count >= 100_000
++    val text = if (large) "${spacer(count.toLong())} x ${type.name}." else type.examine
++    mes(text, ChatType.ObjExamine)
++    if (!mobileClient) {
++        return
++    }
++    val price =
++        examinePriceInfo(
++            name = uncertName(type),
++            count = total,
++            withCount = !large,
++            market = type.stockmarket,
++            marketPrice = marketPrice.toLong(),
++            alchable = type.param(params.no_alchemy) == 0,
++            highAlch = type.highAlch.toLong(),
++            lowAlch = type.lowAlch.toLong(),
++        ) ?: return
++    mes(price, ChatType.GameMessage)
++}
++
++/** The price line of `[proc,examine_price_info]` (6005) / `[proc,script6006]`, or null if none. */
++public fun examinePriceInfo(
++    name: String,
++    count: Long,
++    withCount: Boolean,
++    market: Boolean,
++    marketPrice: Long,
++    alchable: Boolean,
++    highAlch: Long,
++    lowAlch: Long,
++): String? {
++    var line = ""
++    if (market) {
++        line = pricePart(line, "GE", marketPrice, count)
++    }
++    if (alchable) {
++        if (highAlch > 0) {
++            line = pricePart(line, "HA", highAlch, count)
++        }
++        if (lowAlch > 0) {
++            line = pricePart(line, "LA", lowAlch, count)
++        }
++    }
++    if (line.isEmpty()) {
++        return null
++    }
++    return when {
++        !withCount -> "Price: $line"
++        count > 1 -> "Price of ${spacer(count)} x $name: $line"
++        else -> "Price of $name: $line"
++    }
++}
++
++private fun pricePart(prev: String, label: String, each: Long, count: Long): String {
++    val sep = if (prev.isNotEmpty()) "  " else ""
++    val total = if (Long.MAX_VALUE / count > each) spacer(each * count) else "Lots!"
++    var line = "$prev$sep$label <col=ef1020>$total</col>"
++    if (count > 1 && each > 0) {
++        line = "$line (<col=ef1020>${spacer(each)}</col>ea)"
++    }
++    val plain = line.replace(Regex("<[^>]*>"), "")
++    return if (plain.length < 80) line else prev
+ }
+ 
++private fun uncertName(type: ItemServerType): String =
++    if (type.isCert) ServerCacheManager.getItem(type.certlink)?.name ?: type.name else type.name
++
++private fun spacer(value: Long): String = "%,d".format(java.util.Locale.ROOT, value)
++
+ public object GameMessage {
+     /** @see [MessageGame] */
+     public fun requestMes(
+diff --git a/api/player-output/src/test/kotlin/org/rsmod/api/player/output/ObjExamineTest.kt b/api/player-output/src/test/kotlin/org/rsmod/api/player/output/ObjExamineTest.kt
+new file mode 100644
+index 000000000..c4dce4bcd
+--- /dev/null
++++ b/api/player-output/src/test/kotlin/org/rsmod/api/player/output/ObjExamineTest.kt
+@@ -0,0 +1,72 @@
++package org.rsmod.api.player.output
++
++import dev.openrune.types.ItemServerType
++import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertNull
++import org.junit.jupiter.api.Test
++import org.rsmod.game.client.Client
++import org.rsmod.game.entity.Player
++
++class ObjExamineTest {
++    @Test fun `item examine is sent as an ObjExamine message, not through clientscript mes`() {
++        val (player, sent) = player()
++        val type = ItemServerType(id = 1925, name = "Bucket", examine = "It's a wooden bucket.")
++        player.objExamine(type, count = 1, marketPrice = 4)
++        val message = sent.single() as MessageGame
++        assertEquals(ChatType.ObjExamine.id, message.type)
++        assertEquals(27, message.type)
++        assertEquals("It's a wooden bucket.", message.message)
++    }
++
++    @Test fun `large stacks are examined as count x name`() {
++        val (player, sent) = player()
++        val type = ItemServerType(id = 995, name = "Coins", examine = "Lovely money!")
++        player.objExamine(type, count = 1_234_567, marketPrice = 1)
++        val message = sent.single() as MessageGame
++        assertEquals(ChatType.ObjExamine.id, message.type)
++        assertEquals("1,234,567 x Coins.", message.message)
++    }
++
++    @Test fun `price line matches examine_price_info`() {
++        val red = "<col=ef1020>"
++        assertEquals(
++            "Price of Bucket: GE ${red}4</col>  HA ${red}1</col>",
++            examinePriceInfo("Bucket", 1, true, true, 4, true, 1, 0),
++        )
++        assertEquals(
++            "Price of 2,000 x Shrimps: GE ${red}100,000</col> (${red}50</col>ea)",
++            examinePriceInfo("Shrimps", 2000, true, true, 50, false, 5, 2),
++        )
++        assertEquals(
++            "Price: GE ${red}1,234,567</col> (${red}1</col>ea)",
++            examinePriceInfo("Coins", 1_234_567, false, true, 1, false, 0, 0),
++        )
++        assertNull(examinePriceInfo("Quest item", 1, true, false, 0, false, 0, 0))
++    }
++
++    private fun player(): Pair<Player, List<Any>> {
++        val client = RecordingClient()
++        val player = Player()
++        player.client = client
++        return player to client.messages
++    }
++
++    private class RecordingClient : Client<Any, Any> {
++        val messages = mutableListOf<Any>()
++
++        override fun write(message: Any) {
++            messages += message
++        }
++
++        override fun close() {}
++
++        override fun read(player: Player) {}
++
++        override fun flush() {}
++
++        override fun flushHighPriority() {}
++
++        override fun unregister(service: Any, player: Player) {}
++    }
++}
 diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
 index 95ca2cd98..28129d308 100644
 --- a/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
@@ -469,6 +645,19 @@ index 95ca2cd98..28129d308 100644
  private fun Player.ifSetPauseText(component: String, text: String) {
      if (text.isNotBlank()) {
          ifSetEvents(component, -1..-1, IfEvent.PauseButton)
+diff --git a/content/events/shooting-stars/src/main/kotlin/org/rsmod/content/skills/shootingstars/scripts/StarMiningScript.kt b/content/events/shooting-stars/src/main/kotlin/org/rsmod/content/skills/shootingstars/scripts/StarMiningScript.kt
+index 91f0017b9..be27eaed8 100644
+--- a/content/events/shooting-stars/src/main/kotlin/org/rsmod/content/skills/shootingstars/scripts/StarMiningScript.kt
++++ b/content/events/shooting-stars/src/main/kotlin/org/rsmod/content/skills/shootingstars/scripts/StarMiningScript.kt
+@@ -66,7 +66,7 @@ constructor(
+         } else {
+             val pickaxe = Mining.findPickaxe(player) ?: return
+             anim(pickaxeAnim(pickaxe))
+-            spam("You swing your pickaxe at the rock.")
++            spam("You swing your pick at the rock.")
+             mine(rock)
+         }
+     }
 diff --git a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
 index d64463d3d..a8ea51729 100644
 --- a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
@@ -2227,6 +2416,54 @@ index 39f1247cd..30566f2dc 100644
      }
  
      @Test
+diff --git a/content/skills/cooking/src/main/kotlin/org/rsmod/content/skills/cooking/CookingEvents.kt b/content/skills/cooking/src/main/kotlin/org/rsmod/content/skills/cooking/CookingEvents.kt
+index dc68e7964..5ad59359d 100644
+--- a/content/skills/cooking/src/main/kotlin/org/rsmod/content/skills/cooking/CookingEvents.kt
++++ b/content/skills/cooking/src/main/kotlin/org/rsmod/content/skills/cooking/CookingEvents.kt
+@@ -213,12 +213,12 @@ class CookingEvents @Inject constructor(
+ 
+         if (burned) {
+             invAdd(inv, food.burnt.internalName, 1)
+-            mes("You accidentally burn the ${food.raw.name}.")
++            spam("You accidentally burn the ${food.cooked.name.lowercase()}.")
+         } else {
+             invAdd(inv, food.cooked.internalName, 1)
+             val xpModifier = xpMods.get(player, "stat.cooking")
+             statAdvance("stat.cooking", food.xp.toDouble() * xpModifier)
+-            mes("You successfully cook the ${food.raw.name}.")
++            spam("You successfully cook the ${food.cooked.name.lowercase()}.")
+         }
+     }
+ 
+diff --git a/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt b/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt
+index 09ea6418a..2d80936b6 100644
+--- a/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt
++++ b/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt
+@@ -279,9 +279,9 @@ constructor(
+             return
+         }
+ 
+-        val name = type.name.lowercase()
++        val name = type.name.lowercase().removePrefix("raw ")
+         val article = if (active.article == "some") "some" else if (name.firstOrNull() in vowels) "an" else "a"
+-        spam("You catch $article $name")
++        spam("You catch $article $name.")
+         if (infernalHarpoon) {
+             cookInfernalCatch(item, product.count)
+         }
+diff --git a/content/skills/mining/src/main/kotlin/org/rsmod/content/skills/mining/scripts/Mining.kt b/content/skills/mining/src/main/kotlin/org/rsmod/content/skills/mining/scripts/Mining.kt
+index d5436b90c..7996755f3 100644
+--- a/content/skills/mining/src/main/kotlin/org/rsmod/content/skills/mining/scripts/Mining.kt
++++ b/content/skills/mining/src/main/kotlin/org/rsmod/content/skills/mining/scripts/Mining.kt
+@@ -98,7 +98,7 @@ constructor(
+                 return
+             }
+             anim(miningAnim(pickaxe, data))
+-            spam("You swing your pickaxe at the rock.")
++            spam("You swing your pick at the rock.")
+             mine(rock, type)
+         }
+     }
 diff --git a/engine/game/src/main/kotlin/org/rsmod/game/debug/TestFlags.kt b/engine/game/src/main/kotlin/org/rsmod/game/debug/TestFlags.kt
 new file mode 100644
 index 000000000..713d0fe77

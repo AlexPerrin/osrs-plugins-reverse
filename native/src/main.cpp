@@ -11,6 +11,7 @@
 #include "log.h"
 #include "net_trace.h"
 #include "overlay.h"
+#include "npc_probe.h"
 #include "script_hooks.h"
 
 namespace {
@@ -37,6 +38,7 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void*) {
     }
     net_trace_init(kGameLib);
     gl_trace_init(kGameLib);
+    npc_probe_install(kGameLib);
     if (game::init() && client_thread::install()) script_hooks::install();
     agent_start();
     jni_bridge_start(vm);

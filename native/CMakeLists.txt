@@ -17,6 +17,7 @@ add_library(osrsrl SHARED
     src/net_trace.cpp
     src/overlay.cpp
     src/script_hooks.cpp
+    src/npc_probe.cpp
     src/script_stubs.S
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp

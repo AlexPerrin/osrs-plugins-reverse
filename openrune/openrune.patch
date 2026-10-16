@@ -346,7 +346,7 @@ index 0c3cdf4e5..7b7681c96 100644
      override fun getExceptionHandlers(): ExceptionHandlers<Player> {
          return ExceptionHandlersProvider.provide()
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt
-index 98c922c45..33c237ec4 100644
+index 98c922c45..76770d5bd 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt
 +++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt
 @@ -140,7 +140,11 @@ constructor(
@@ -362,17 +362,6 @@ index 98c922c45..33c237ec4 100644
  
          val client = RspClient(session, infos) as Client<Any, Any>
          val cycle = RspCycle(session, infos, regionReg)
-@@ -209,7 +213,9 @@ constructor(
-                 level = npc.level,
-                 x = npc.x,
-                 z = npc.z,
--                spawnCycle = mapClock.cycle,
-+                // A non-zero spawn cycle sends NPC_INFO's spawn-clock branch, whose Android bit
-+                // layout is unverified: NPCs added after startup never showed on the app.
-+                spawnCycle = 0,
-                 direction = npc.respawnDir.id,
-             )
-         npc.infoProtocol = RspNpcInfo(rspAvatar)
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandler.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandler.kt
 new file mode 100644
 index 000000000..dc9224eca

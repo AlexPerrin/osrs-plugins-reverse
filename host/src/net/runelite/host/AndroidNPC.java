@@ -51,6 +51,9 @@ public class AndroidNPC extends NPCStub {
      * model hull (highlights, arrows, click boxes).
      */
     @Override public java.awt.Shape getConvexHull() {
+        // A multi-NPC that currently transforms to nothing isn't drawn: no model, no hull (as RuneLite).
+        net.runelite.api.NPCComposition base = getComposition();
+        if (base != null && base.getConfigs() != null && base.getConfigs().length > 0 && getTransformedComposition() == null) return null;
         if (Hulls.modelHulls() && Native.isClientThread()) {
             java.awt.Shape s = Hulls.model(Native.actorModel(false, index), localX, localY, currentOrientation, Host.worldView().getPlane());
             if (s != null) return s;

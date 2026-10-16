@@ -148,6 +148,23 @@ session; its notes are in `docs/android-protocol.md`.
   why the real zoom (512) doesn't reproduce the fitted projection (camera distance/height?);
   menuAction (needs the menu builder's per-action std::function, or reuse of an existing entry);
   more Widget/Client coverage (tools/progress.py lists per-interface counts).
+- **2026-10-16 (client dev gen 6)**: **second plugin: Ground Items** (core RuneLite, on by default on
+  desktop). It uses API that Quest Helper doesn't: MenuEntryAdded and menu text edits, ground item
+  timers, prices, notifications. Core plugins need no dex: `tools/dex-plugin.sh --core grounditems
+  re/host/plugins/grounditems.jar` (just plugin-classes.txt), then push it like any plugin. Needed a
+  same-name `Notifier` (javax.sound is missing). Verified on device: labels "Egg (3) (GE: 12 gp) (HA: 6 gp)"
+  (prices = store value), MenuEntryAdded posted before MenuOpened, plugin edits to option/target
+  written back into the game's open menu (orange names), picking a rewritten entry and plain taps
+  still work, Widget.getType, setText/setHidden, wall/ground decoration models read. The renderer's
+  camera equals ours, so the zoom 512 mismatch is a pure factor (see docs/offsets.md "Scene object
+  models"). Static, unverified: definition params (`getIntValue/getStringValue` on item/NPC/object
+  compositions), getMapRegions, isPrayerActive, getLocalDestinationLocation, idle ticks, playSoundEffect
+  (ran, not heard). Debug hooks: `debug.osrsrl.set 'whide|wtext <group:child> <v>'`, `'sound <id> <vol>'`,
+  `'iparam <item> <param>'`; `debug.osrsrl.where deco|ground` lists those within 5 tiles; `camlog`
+  logs the scene camera and its trig. Coverage ranking: a small script over the client jar's core
+  plugins (javap, Client/Player/... calls minus host overrides and API defaults) gave the order used
+  this session; the remaining top items are getWorld, createScriptEventBuilder, getFriendsChatManager,
+  getDBTableField, getClanChannel, getMessages, sidebar combo boxes and NPC multi-transforms (still unverified).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

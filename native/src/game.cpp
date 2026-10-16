@@ -349,6 +349,42 @@ std::vector<Npc> read_npcs() {
     return out;
 }
 
+// The live Npc*/Player* for an index right now (the per-cycle snapshot's addresses can be freed
+// later in the same cycle, e.g. by a region rebuild). 0 if not active. Game thread only.
+uintptr_t live_npc(int index) {
+    uintptr_t c = client();
+    if (!c || game_state() != 30 || index < 0) return 0;
+    auto wv = read_at<uintptr_t>(c + g_build->f_world_view);
+    if (!wv) return 0;
+    int count = read_at<int32_t>(wv + g_build->wv_npc_count);
+    auto indices = read_at<const int32_t*>(wv + g_build->wv_npc_indices);
+    if (count <= 0 || count > 65535 || !indices) return 0;
+    for (int i = 0; i < count; i++)
+        if (indices[i] == index) return npc_lookup(wv, index);
+    return 0;
+}
+
+uintptr_t live_player(int index) {
+    uintptr_t c = client();
+    if (!c || game_state() != 30 || index < 0) return 0;
+    int active_count = read_at<int32_t>(c + g_build->f_gpi);
+    if (active_count < 0 || active_count > 2048) return 0;
+    bool active = false;
+    for (int i = 0; i < active_count && !active; i++) active = read_at<int32_t>(c + g_build->f_gpi + 4 + i * 4) == index;
+    if (!active) return 0;
+    auto wv = read_at<uintptr_t>(c + g_build->f_world_view);
+    if (!wv) return 0;
+    auto buckets = read_at<uintptr_t>(wv + g_build->wv_player_buckets);
+    auto count = read_at<uint64_t>(wv + g_build->wv_player_bucket_count) & 0xffffffff;
+    if (!buckets || !count || count > 1 << 16) return 0;
+    uintptr_t sentinel = read_at<uintptr_t>(buckets + count * 8);
+    int guard = 0;
+    for (auto node = read_at<uintptr_t>(buckets + (static_cast<uint64_t>(index) % count) * 8); node && node != sentinel && guard++ < 2048;
+         node = read_at<uintptr_t>(node + 0x18))
+        if (read_at<int32_t>(node) == index) return read_at<uintptr_t>(node + 0x10);
+    return 0;
+}
+
 Point scene_base() {
     uintptr_t c = client();
     if (!c) return {-1, -1};

@@ -67,12 +67,8 @@ jint n_varp(JNIEnv*, jclass, jint id) { return game::varp(id); }
 // {height, x0, y0, z0, x1, ...} of an NPC's (player=false) or player's posed model; null if none.
 jintArray n_actor_model(JNIEnv* env, jclass, jboolean player, jint index) {
     if (!client_thread::on_client_thread()) return nullptr;
-    uintptr_t a = 0;
-    if (player) {
-        for (const auto& p : client_thread::players()) if (p.index == index) a = p.address;
-    } else {
-        for (const auto& n : client_thread::npcs()) if (n.index == index) a = n.address;
-    }
+    // Resolve now, not from the cycle's snapshot: entities can be freed after it was taken.
+    uintptr_t a = player ? game::live_player(index) : game::live_npc(index);
     std::vector<int32_t> xyz;
     int height = 0;
     if (!game::actor_model(a, xyz, height)) return nullptr;

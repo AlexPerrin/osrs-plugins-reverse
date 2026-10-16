@@ -48,8 +48,31 @@ final class Probe {
     private static void testSetter(net.runelite.api.Client c, String[] a) {
         if (a.length < 3) return;
         try {
-            int id = Integer.parseInt(a[1]);
+            int colon = a[1].indexOf(':');
+            int id = colon < 0 ? Integer.parseInt(a[1])
+                : Integer.parseInt(a[1].substring(0, colon)) << 16 | Integer.parseInt(a[1].substring(colon + 1));
             switch (a[0]) {
+                case "whide": {  // "whide <group:child> 0|1"
+                    net.runelite.api.widgets.Widget w = c.getWidget(id);
+                    if (w == null) { Log.w(TAG, "whide: no widget " + a[1]); break; }
+                    boolean before = w.isSelfHidden();
+                    w.setHidden(!"0".equals(a[2]));
+                    Log.i(TAG, "set hidden " + a[1] + " " + before + " -> " + w.isSelfHidden());
+                    break;
+                }
+                case "wtext": {  // "wtext <group:child> text"
+                    net.runelite.api.widgets.Widget w = c.getWidget(id);
+                    if (w == null) { Log.w(TAG, "wtext: no widget " + a[1]); break; }
+                    String before = w.getText();
+                    w.setText(a[2]);
+                    Log.i(TAG, "set text " + a[1] + " '" + before + "' -> '" + w.getText() + "' type " + w.getType());
+                    break;
+                }
+                case "sound": {  // "sound <id> <volume>"
+                    c.playSoundEffect(id, Integer.parseInt(a[2]));
+                    Log.i(TAG, "playSoundEffect " + id);
+                    break;
+                }
                 case "varbit": {
                     int before = c.getVarbitValue(id);
                     c.setVarbit(id, Integer.parseInt(a[2]));
@@ -98,7 +121,7 @@ final class Probe {
             lastSay = say;
             Host.client().addChatMessage(net.runelite.api.ChatMessageType.GAMEMESSAGE, "", say, null);
         }
-        String set = Native.property("debug.osrsrl.set");  // test hook: "varbit|varp|varc|varcstr <id> <value>", once per value
+        String set = Native.property("debug.osrsrl.set");  // test hook: "varbit|varp|varc|varcstr <id> <value>", "whide|wtext <group:child> <v>", "sound <id> <vol>"; once per value
         if (!set.isEmpty() && !set.equals(lastSet) && Host.client() != null) {
             lastSet = set;
             testSetter(Host.client(), set.split(" ", 3));
@@ -143,9 +166,13 @@ final class Probe {
     }
 
     private static void logWhere(String arg) {
-        int id;
-        try { id = Integer.parseInt(arg.trim()); } catch (NumberFormatException e) { return; }
+        // "deco" / "ground": the decorative or ground objects within 5 tiles of the player instead.
+        final String kind = arg.trim();
+        int id = -1;
+        if (!kind.equals("deco") && !kind.equals("ground"))
+            try { id = Integer.parseInt(kind); } catch (NumberFormatException e) { return; }
         net.runelite.api.Client c = Host.client();
+        net.runelite.api.coords.WorldPoint me = c != null && c.getLocalPlayer() != null ? c.getLocalPlayer().getWorldLocation() : null;
         AndroidWorldView wv = Host.worldView();
         if (c == null || wv == null) return;
         net.runelite.api.Tile[][][] tiles = wv.getScene().getTiles();
@@ -161,7 +188,10 @@ final class Probe {
                     if (t.getGroundObject() != null) objs.add(t.getGroundObject());
                     if (t.getGameObjects() != null) for (net.runelite.api.GameObject g : t.getGameObjects()) if (g != null) objs.add(g);
                     for (net.runelite.api.TileObject o : objs) {
-                        if (o.getId() != id || !o.getWorldLocation().equals(t.getWorldLocation())) continue;
+                        if (!o.getWorldLocation().equals(t.getWorldLocation())) continue;
+                        if (id >= 0 ? o.getId() != id
+                                : !(kind.equals("deco") ? o instanceof net.runelite.api.DecorativeObject : o instanceof net.runelite.api.GroundObject)
+                                  || me == null || me.distanceTo(o.getWorldLocation()) > 5 || found >= 8) continue;
                         java.awt.Shape box = o.getClickbox();
                         String at = "offscreen";
                         if (box != null) {
@@ -176,11 +206,11 @@ final class Probe {
                             if (m != null) model = "model at " + m[0] + "," + m[1] + " h " + m[2] + " orient " + m[3]
                                     + " height " + m[4] + " verts " + (m.length - 5) / 3 + " (local " + o.getX() + "," + o.getY() + " z " + o.getZ() + ")";
                         }
-                        Log.i(TAG, "where " + id + " " + o.getClass().getSimpleName() + " at " + o.getWorldLocation() + ": " + at + "; " + model);
+                        Log.i(TAG, "where " + (id >= 0 ? "" + id : kind + " " + o.getId()) + " " + o.getClass().getSimpleName() + " at " + o.getWorldLocation() + ": " + at + "; " + model);
                         found++;
                     }
                 }
-        if (found == 0) Log.i(TAG, "where " + id + ": not in scene");
+        if (found == 0) Log.i(TAG, "where " + kind + ": not in scene");
     }
 
     private static Object eval(String path) throws Exception {

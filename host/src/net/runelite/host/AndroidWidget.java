@@ -27,7 +27,7 @@ public class AndroidWidget extends WidgetBag {
     }
 
     @Override public int getId() { return id; }
-    @Override public int getType() { return 0; }
+    @Override public int getType() { return prop(34, 0); }
     @Override public String getText() { String t = Native.widgetText(id); return t != null ? t : ""; }
     @Override public boolean isSelfHidden() { return Native.widgetHidden(id); }
 

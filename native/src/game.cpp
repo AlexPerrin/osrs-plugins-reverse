@@ -558,7 +558,10 @@ void widget_props(uintptr_t w, int32_t out[kWidgetProps]) {
         {0x18c}, {0x190}, {0x188}, {0x150},
         // CC_SETPOSITION (1000): original x/y +0x4c/+0x50, x/y modes +0x3c/+0x40; CC_SETSIZE (1001):
         // original width/height +0x54/+0x58, modes +0x44/+0x48; 1005/1006 no click/scroll through.
-        {0x4c}, {0x50}, {0x3c}, {0x40}, {0x54}, {0x58}, {0x44}, {0x48}, {0xb98, true}, {0xb99, true}};
+        {0x4c}, {0x50}, {0x3c}, {0x40}, {0x54}, {0x58}, {0x44}, {0x48}, {0xb98, true}, {0xb99, true},
+        // Component type (WidgetType: 0 layer, 3 rectangle, 4 text, 5 graphic, 6 model, 9 line,
+        // 12 = the game's text input type with its object at +0xba8), int at +0x28.
+        {0x28}};
     for (int i = 0; i < kWidgetProps; i++)
         out[i] = !w ? 0 : kFields[i].byte ? read_at<uint8_t>(w + kFields[i].off) : read_at<int32_t>(w + kFields[i].off);
 }
@@ -1286,6 +1289,39 @@ bool menu_entry_for_path(uintptr_t menu, const uint64_t* path, size_t len, MenuE
     return true;
 }
 
+namespace {
+// Menu entry strings (+0x50 target, +0xb8 option) are the game's arena-backed string: the usual
+// 24-byte layout (inline when byte 23 >= 0, else {char*, size, cap | 1 << 63}) followed by an arena
+// whose address is at +0x20; the entry constructor (0x4bc564) fills them with append 0x48e860(str,
+// begin, end), which reallocates past the capacity and frees the old buffer unless it is the arena.
+void set_entry_string(uintptr_t str, const std::string& value) {
+    auto* b = reinterpret_cast<uint8_t*>(str);
+    if (static_cast<int8_t>(b[23]) < 0) {
+        auto* words = reinterpret_cast<uint64_t*>(str);
+        words[1] = 0;
+        if (words[0]) *reinterpret_cast<char*>(words[0]) = 0;
+    } else {
+        b[0] = 0;
+        b[23] = 23;
+    }
+    if (!value.empty())
+        reinterpret_cast<void* (*)(uintptr_t, const char*, const char*)>(g_base + 0x48e860)(str, value.data(), value.data() + value.size());
+}
+}  // namespace
+
+// index = position in read_menu() (top-level nodes, game order). Game thread only.
+bool menu_set_text(size_t index, const std::string* option, const std::string* target) {
+    uintptr_t menu = menu_object();
+    if (!menu || !menu_open()) return false;
+    auto b = read_at<uintptr_t>(menu + kMenuNodes), e = read_at<uintptr_t>(menu + kMenuNodes + 8);
+    if (!b || e < b || index >= (e - b) / kNodeSize) return false;
+    uintptr_t entry = node_entry(b + index * kNodeSize);
+    if (!entry) return false;
+    if (option) set_entry_string(entry + 0xb8, *option);
+    if (target) set_entry_string(entry + 0x50, *target);
+    return true;
+}
+
 uintptr_t menu_vtable() { return g_build ? g_base + g_build->menu_vtable : 0; }
 uintptr_t menu_select() { return g_build ? g_base + g_build->menu_select : 0; }
 
@@ -1344,7 +1380,8 @@ std::vector<SceneObject> scene_objects() {
 
 // Ground items: WorldView +0x140 → planes (0x18 each, +0x10 → x columns (0x18 each, +0x10 → y
 // list heads (0x18 each: libc++ std::list {prev, next, size}))). Nodes {prev, next, Obj*, ctrl};
-// Obj +0x40 id, +0x44 quantity (OBJ_ADD 0x45775c).
+// Obj +0x40 id, +0x44 quantity, +0x48/+0x4c visible/despawn tick, +0x50 ownership, +0x54 private
+// (OBJ_ADD 0x45775c).
 std::vector<GroundItem> ground_items() {
     std::vector<GroundItem> out;
     uintptr_t wv = top_world_view();
@@ -1368,7 +1405,9 @@ std::vector<GroundItem> ground_items() {
                     uintptr_t obj = read_at<uintptr_t>(node + 0x10);
                     if (obj)
                         out.push_back({static_cast<uint8_t>(p), static_cast<uint8_t>(x), static_cast<uint8_t>(y),
-                                       read_at<int32_t>(obj + 0x40), read_at<int32_t>(obj + 0x44)});
+                                       read_at<int32_t>(obj + 0x40), read_at<int32_t>(obj + 0x44),
+                                       read_at<int32_t>(obj + 0x48), read_at<int32_t>(obj + 0x4c),
+                                       read_at<int32_t>(obj + 0x50), read_at<uint8_t>(obj + 0x54) != 0});
                     node = read_at<uintptr_t>(node + 8);
                 }
             }

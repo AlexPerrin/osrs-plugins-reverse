@@ -6,6 +6,9 @@ import net.runelite.api.Node;
 /** A ground item read from the game's per-tile item lists (game::ground_items). */
 final class AndroidTileItem implements net.runelite.api.TileItem {
     final int id, quantity;
+    /** Server ticks on the getTickCount() clock (Obj +0x48/+0x4c); ownership as RuneLite's constants. */
+    int visibleTime, despawnTime, ownership;
+    boolean isPrivate;
 
     AndroidTileItem(int id, int quantity) {
         this.id = id;
@@ -14,11 +17,10 @@ final class AndroidTileItem implements net.runelite.api.TileItem {
 
     @Override public int getId() { return id; }
     @Override public int getQuantity() { return quantity; }
-    /** Timers and ownership aren't read yet. */
-    @Override public int getVisibleTime() { return 0; }
-    @Override public int getDespawnTime() { return 0; }
-    @Override public int getOwnership() { return OWNERSHIP_NONE; }
-    @Override public boolean isPrivate() { return false; }
+    @Override public int getVisibleTime() { return visibleTime; }
+    @Override public int getDespawnTime() { return despawnTime; }
+    @Override public int getOwnership() { return ownership; }
+    @Override public boolean isPrivate() { return isPrivate; }
 
     @Override public Model getModel() { return null; }
     @Override public int getModelHeight() { return 0; }

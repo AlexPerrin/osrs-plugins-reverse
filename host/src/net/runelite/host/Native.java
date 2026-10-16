@@ -121,6 +121,8 @@ final class Native {
     static native String[] message(int id);
     /** Game thread: the shown menu's entries, {int[] {kind, hasChildren, raw[10]} per entry, String[] {option, target} per entry}. */
     static native Object[] menuEntries();
+    /** Rewrites an open menu entry's option/target (null keeps it); index in menuEntries() order. */
+    static native boolean menuSetText(int index, String option, String target);
     /** The entry being selected (valid while MenuOptionClicked is dispatched), same format. */
     static native Object[] clickedMenuEntry();
     static native boolean menuOpen();

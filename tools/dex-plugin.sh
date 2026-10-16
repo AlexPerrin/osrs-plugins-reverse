@@ -3,10 +3,30 @@
 #   tools/dex-plugin.sh plugin.jar out.jar
 # The output holds classes*.dex plus plugin-classes.txt (classes annotated with
 # @PluginDescriptor). Push it to /sdcard/Android/data/com.jagex.oldscape.android/files/plugins/.
+#
+# Core RuneLite plugins are already inside host.jar (it embeds the client jar), so they need no
+# dex; this writes a jar holding only plugin-classes.txt for one plugin package:
+#   tools/dex-plugin.sh --core grounditems re/host/plugins/grounditems.jar
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 RL=$ROOT/re/runelite
+
+if [[ ${1:-} == --core ]]; then
+    PKG=$2
+    OUT=$(realpath -m "$3")
+    WORK=$(mktemp -d)
+    trap 'rm -rf "$WORK"' EXIT
+    (cd "$WORK" && unzip -q "$RL/client-1.13.1.jar" "net/runelite/client/plugins/$PKG/*.class")
+    (cd "$WORK" && grep -l 'Lnet/runelite/client/plugins/PluginDescriptor;' net/runelite/client/plugins/"$PKG"/*.class || true) \
+        | sed -e 's|\.class$||' -e 's|/|.|g' > "$WORK/plugin-classes.txt"
+    [[ -s $WORK/plugin-classes.txt ]] || { echo "no plugin class in net.runelite.client.plugins.$PKG"; exit 1; }
+    echo "plugin classes: $(tr '\n' ' ' < "$WORK/plugin-classes.txt")"
+    rm -f "$OUT"
+    (cd "$WORK" && zip -q "$OUT" plugin-classes.txt)
+    ls -la "$OUT"
+    exit 0
+fi
 SDK=${ANDROID_SDK:-/mnt/c/Users/Alex/AppData/Local/Android/Sdk}
 ANDROID_JAR=$SDK/platforms/android-37.0/android.jar
 IN=$(realpath "$1")

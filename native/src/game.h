@@ -101,7 +101,7 @@ struct WidgetItem { int id = -1, quantity = 0; };
 WidgetItem widget_item(uintptr_t widget);
 // scrollX, scrollY, scrollWidth, scrollHeight, modelZoom, rotationX, rotationY, rotationZ,
 // opacity, modelType, modelId, animationId.
-constexpr int kWidgetProps = 34;
+constexpr int kWidgetProps = 35;
 void widget_props(uintptr_t widget, int32_t out[kWidgetProps]);  // item set by IF_SETOBJECT / CC_SETOBJECT
 int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colour for text widgets
 void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty
@@ -267,6 +267,8 @@ bool set_varc_string(int id, const std::string& value);
 bool menu_point(int& x, int& y);
 std::vector<MenuEntry> read_menu();  // game thread only
 bool menu_entry_for_path(uintptr_t menu, const uint64_t* path, size_t len, MenuEntry& out);
+// Rewrites an open menu entry's option/target (null = keep); index as in read_menu().
+bool menu_set_text(size_t index, const std::string* option, const std::string* target);
 uintptr_t menu_vtable();  // menu model vtable; slot 1 = select
 uintptr_t menu_select();  // expected value of that slot
 
@@ -282,6 +284,8 @@ std::vector<SceneObject> scene_objects();
 struct GroundItem {
     uint8_t plane, x, y;
     int32_t id, quantity;
+    int32_t visible_tick, despawn_tick, ownership;  // server ticks (Client +0x3058 clock); ownership 0 none, 1 self, 2 other, 3 group
+    bool is_private;
 };
 std::vector<GroundItem> ground_items();  // per tile in stack order (top first)
 

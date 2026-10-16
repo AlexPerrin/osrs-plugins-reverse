@@ -11,7 +11,8 @@ import net.runelite.client.util.AsyncBufferedImage;
 
 /**
  * Replaces RuneLite's ItemManager (same name; the original needs OkHttp and the price API).
- * Definitions come from the client; prices are 0 and images blank until item sprites exist.
+ * Definitions come from the client; prices are store values (no price API) and images blank
+ * until item sprites exist.
  */
 public class ItemManager {
     private final Client client;
@@ -29,8 +30,17 @@ public class ItemManager {
         if (c.getPlaceholderTemplateId() != -1) return c.getPlaceholderId();
         return id;
     }
-    public long getItemPrice(int id) { return 0; }
-    public long getItemPriceWithSource(int id, boolean useWiki) { return 0; }
+    /**
+     * No price API on the device: coins and platinum tokens have their fixed value, everything else
+     * its store value (ItemComposition.getPrice), so value thresholds still order items sensibly.
+     */
+    public long getItemPrice(int id) {
+        if (id == 995) return 1;          // ItemID.COINS_995
+        if (id == 13204) return 1000;     // ItemID.PLATINUM_TOKEN
+        ItemComposition c = client.getItemDefinition(canonicalize(id));
+        return c != null ? c.getPrice() : 0;
+    }
+    public long getItemPriceWithSource(int id, boolean useWiki) { return getItemPrice(id); }
     public List<?> search(String query) { return Collections.emptyList(); }
     public ItemStats getItemStats(int id) { return null; }
 

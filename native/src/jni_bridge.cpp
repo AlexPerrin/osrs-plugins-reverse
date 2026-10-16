@@ -475,22 +475,45 @@ jintArray n_scene_objects(JNIEnv* env, jclass) {
     return out;
 }
 
-// 3 ints per item: plane << 16 | x << 8 | y, id, quantity.
+// 7 ints per item: plane << 16 | x << 8 | y, id, quantity, visible tick, despawn tick, ownership,
+// private.
 jintArray n_ground_items(JNIEnv* env, jclass) {
     if (!require_client_thread(env, "groundItems")) return nullptr;
     auto items = game::ground_items();
     std::vector<jint> packed;
-    packed.reserve(items.size() * 3);
+    packed.reserve(items.size() * 7);
     for (const auto& i : items) {
         packed.push_back(i.plane << 16 | i.x << 8 | i.y);
         packed.push_back(i.id);
         packed.push_back(i.quantity);
+        packed.push_back(i.visible_tick);
+        packed.push_back(i.despawn_tick);
+        packed.push_back(i.ownership);
+        packed.push_back(i.is_private ? 1 : 0);
     }
     jintArray out = env->NewIntArray(static_cast<jsize>(packed.size()));
     if (out && !packed.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(packed.size()), packed.data());
     return out;
 }
 void n_consume_menu_click(JNIEnv*, jclass) { client_thread::consume_menu_click(); }
+namespace {
+std::string to_latin1(JNIEnv* env, jstring text) {
+    std::string out;
+    const jchar* c = env->GetStringChars(text, nullptr);
+    jsize n = env->GetStringLength(text);
+    for (jsize i = 0; i < n; i++) out.push_back(c[i] < 256 ? static_cast<char>(c[i]) : '?');
+    env->ReleaseStringChars(text, c);
+    return out;
+}
+}  // namespace
+jboolean n_menu_set_text(JNIEnv* env, jclass, jint index, jstring option, jstring target) {
+    if (!require_client_thread(env, "menuSetText") || index < 0) return false;
+    std::string o, t;
+    if (option) o = to_latin1(env, option);
+    if (target) t = to_latin1(env, target);
+    return game::menu_set_text(static_cast<size_t>(index), option ? &o : nullptr, target ? &t : nullptr);
+}
+
 
 // {name, sender, text}, or null if the message is no longer kept.
 jobjectArray n_message(JNIEnv* env, jclass, jint id) {
@@ -736,6 +759,7 @@ const JNINativeMethod kNatives[] = {
     {"message", "(I)[Ljava/lang/String;", reinterpret_cast<void*>(n_message)},
     {"npcs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_npcs)},
     {"menuEntries", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_menu_entries)},
+    {"menuSetText", "(ILjava/lang/String;Ljava/lang/String;)Z", reinterpret_cast<void*>(n_menu_set_text)},
     {"clickedMenuEntry", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_clicked_menu_entry)},
     {"menuOpen", "()Z", reinterpret_cast<void*>(n_menu_open)},
     {"menuPoint", "()[I", reinterpret_cast<void*>(n_menu_point)},

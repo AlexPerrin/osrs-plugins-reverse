@@ -151,6 +151,9 @@ public class AndroidClient extends ClientStub {
         return AndroidNPCComposition.lookup(id);
     }
 
+    /** No physical keyboard modifiers on a touch screen. */
+    @Override public boolean isKeyPressed(int keycode) { return false; }
+
     /** No hover on a touch screen: (-1, -1) is what RuneLite reports with the mouse off the canvas. */
     @Override
     public net.runelite.api.Point getMouseCanvasPosition() {

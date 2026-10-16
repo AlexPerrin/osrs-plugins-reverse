@@ -28,6 +28,10 @@ final class AndroidMenuEntry implements MenuEntry {
     int npcId = -1;
     /** Created by a plugin (not in the game's menu). */
     boolean synthetic;
+    /** Position in the game's top-level node list (Native.menuEntries order), -1 if none. */
+    int nativeIndex = -1;
+    /** Option/target as read, to detect plugin edits (MenuEntryAdded handlers recolour targets). */
+    String readOption = "", readTarget = "";
 
     static AndroidMenuEntry[] fromNative(Object[] data) {
         if (data == null) return new AndroidMenuEntry[0];
@@ -39,6 +43,9 @@ final class AndroidMenuEntry implements MenuEntry {
             AndroidMenuEntry e = new AndroidMenuEntry();
             e.option = strs[2 * i] != null ? strs[2 * i] : "";
             e.target = strs[2 * i + 1] != null ? strs[2 * i + 1] : "";
+            e.nativeIndex = i;
+            e.readOption = e.option;
+            e.readTarget = e.target;
             e.kind = ints[12 * i];
             e.hasChildren = ints[12 * i + 1] != 0;
             System.arraycopy(ints, 12 * i + 2, e.raw, 0, 10);
@@ -145,6 +152,16 @@ final class AndroidMenuEntry implements MenuEntry {
             case 5: return MenuAction.GAME_OBJECT_FIFTH_OPTION;
             default: return MenuAction.UNKNOWN;
         }
+    }
+
+    /** Writes option/target edits made by plugins back into the open game menu. */
+    boolean writeBack() {
+        if (synthetic || nativeIndex < 0) return false;
+        String o = option.equals(readOption) ? null : option, t = target.equals(readTarget) ? null : target;
+        if (o == null && t == null) return false;
+        boolean ok = Native.menuSetText(nativeIndex, o, t);
+        if (ok) { readOption = option; readTarget = target; }
+        return ok;
     }
 
     @Override public String getOption() { return option; }

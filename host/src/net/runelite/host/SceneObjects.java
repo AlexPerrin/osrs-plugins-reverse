@@ -106,7 +106,7 @@ final class SceneObjects {
         Map<Long, AndroidTileItem> nextItems = new HashMap<>();
         List<long[]> itemSpawns = new ArrayList<>();
         Map<Long, Integer> seen = new HashMap<>();
-        for (int i = 0; i + 2 < packedItems.length; i += 3) {
+        for (int i = 0; i + 6 < packedItems.length; i += 7) {
             int pos = packedItems[i];
             int plane = pos >>> 16 & 0xff, x = pos >>> 8 & 0xff, y = pos & 0xff;
             if (plane >= 4 || x >= SIZE || y >= SIZE) continue;
@@ -118,6 +118,10 @@ final class SceneObjects {
             AndroidTileItem item = items.get(key);
             if (item == null || item.quantity != qty) {
                 item = new AndroidTileItem(id, qty);
+                item.visibleTime = packedItems[i + 3];
+                item.despawnTime = packedItems[i + 4];
+                item.ownership = packedItems[i + 5];
+                item.isPrivate = packedItems[i + 6] != 0;
                 itemSpawns.add(new long[] {key, plane, x, y});
             }
             nextItems.put(key, item);

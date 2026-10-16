@@ -43,7 +43,8 @@ VarbitChanged).
 | `getLocalPlayer().getWorldLocation()/getLocalLocation()`, `getPlane()` | WorldView scene base + player scene tile; plane from `Client+0xcb78` / `wv+0x18` |
 | `ChatMessage` (type, name, sender, text; `MessageNode` copy) | per-cycle poll of the game's next-message-id counter + by-id map |
 | `getWidget(group, child)`/`getWidget(id)` (text, hidden), `getTopLevelInterfaceId()`, `WidgetLoaded`/`WidgetClosed` | widget group table (loaded groups only); per-cycle diff of the root + open sub-interfaces |
-| Camera getters (`getCameraX/Y/Z/Pitch/Yaw`, Fp variants), viewport = overlay canvas | camera block `Client+0x89488`; `getScale()` not calibrated yet |
+| `getWorld()` (verified: 1 old server, 255 OpenRune), `getWorldType()` from the world flags; `getDBTableField` (unverified); null friends chat/clan getters, sprite override maps | `Client+0x3174` / `+0x2f64` (CS2 map_world / worldflags); db_getfield 7502 in `0x5cd7f4` |
+| Camera getters (`getCameraX/Y/Z/Pitch/Yaw`, Fp variants), `getScale()` and viewport offsets/size from the game's viewport zoom (follows zoom settings; verified on both servers) | camera block `Client+0x89488`; zoom `Client+0x46d4` * height / 334, viewport `+0x46e0..+0x46ec` |
 | `javax.imageio.ImageIO`, `RescaleOp`, `AffineTransformOp`, `getScaledInstance` (for `ImageUtil`) | BitmapFactory / Bitmap |
 | Overlays: `OverlayManager`, `Overlay`, `OverlayPanel` + components, `OverlayUtil`, `FontManager` | `OverlayRenderer` draws on the game thread through `CanvasGraphics` (Graphics2D over android.graphics.Canvas) into a Bitmap at a 720-px-high logical canvas; `overlay.cpp` uploads it as a GL texture and composites it in the swap hook |
 | `getTopLevelWorldView()`, `getNpcs()`, `WorldView.npcs()`, `NpcSpawned`/`NpcDespawned` | NPC snapshot taken on the game thread every cycle (`client_thread::npcs()`); NPC id, name, index, world/local location |

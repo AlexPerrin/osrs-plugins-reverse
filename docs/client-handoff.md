@@ -220,7 +220,12 @@ session; its notes are in `docs/android-protocol.md`.
   `0x6ec320`; type descriptors at globals `0x1d8aff8` int, `0x1d8b000` long, `0x1d8b008` string). Test:
   `setprop debug.osrsrl.set 'db <row> <col> <tuple> [rows]'`. Also: null friends chat/clan getters,
   sprite override maps, empty instance template chunks.
-  **Next session, first:** with a device slot (old server, then OpenRune with the zoomed-in account),
+  **Fixed later in gen 7:** the projection scale now comes from the game's viewport zoom
+  (`Client+0x46d4` * viewport height / 334, viewport rect `+0x46e0..+0x46ec`; docs/offsets.md), which
+  follows the zoom settings: QH's Romeo outline sits on his model on OpenRune (zoom 512) and on the old
+  server (zoom 127). Also getVarps had the same 1 << 16 bound as the varp diff (empty on OpenRune; now
+  1 << 20). The UBO notes below are kept for reference only.
+  **(Superseded) next session:** with a device slot (old server, then OpenRune with the zoomed-in account),
   `setprop debug.osrsrl.gltrace 1`, restart, log in, and read the `gltrace:` lines (hook flags, which
   upload path carries the UBO, then 7 rows of the block). Map uCameraPosition onto our camera
   (6848/-825/5328-style local units), check the projection's P[5] * 1080/2 against the fitted 427 on the

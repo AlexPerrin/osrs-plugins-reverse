@@ -63,9 +63,12 @@ void scan(const void* data, size_t size, const char* via) {
     for (size_t i = 0; i + 16 <= n; i += 4) {
         const float* m = f + i;
         if (!(m[0] > 0.05f && m[5] > 0.05f && m[0] < 100 && m[5] < 100)) continue;
-        if (!(near0(m[1]) && near0(m[2]) && near0(m[3]) && near0(m[4]) && near0(m[6]) && near0(m[7]) &&
-              near0(m[12]) && near0(m[13]) && near0(m[15]))) continue;
-        if (!(m[11] > 0.999f && m[11] < 1.001f) && !(m[11] < -0.999f && m[11] > -1.001f)) continue;
+        auto one = [](float f) { return (f > 0.999f && f < 1.001f) || (f < -0.999f && f > -1.001f); };
+        bool col = near0(m[1]) && near0(m[2]) && near0(m[3]) && near0(m[4]) && near0(m[6]) && near0(m[7]) &&
+                   near0(m[12]) && near0(m[13]) && near0(m[15]) && one(m[11]);
+        bool row = near0(m[1]) && near0(m[3]) && near0(m[4]) && near0(m[7]) && near0(m[8]) && near0(m[9]) &&
+                   near0(m[12]) && near0(m[13]) && near0(m[15]) && one(m[14]);
+        if (!col && !row) continue;
         std::lock_guard lock(g_mutex);
         g_ubo = {};
         g_ubo.valid = true;
@@ -110,11 +113,22 @@ void hook_flush(GLenum target, GLintptr offset, GLsizeiptr length) {
     g_orig_flush(target, offset, length);
 }
 
+std::map<size_t, uint64_t> g_unmap_sizes;
 GLboolean hook_unmap(GLenum target) {
     g_calls[4]++;
+    {
+        auto it2 = g_mapped.find(target);
+        if (it2 != g_mapped.end()) g_unmap_sizes[it2->second.second * 0x10000 + target]++;
+    }
     auto it = g_mapped.find(target);
     if (it != g_mapped.end()) {
+        static auto last_big = std::chrono::steady_clock::now();
+        auto now = std::chrono::steady_clock::now();
         if (it->second.second <= (1u << 20)) scan(it->second.first, it->second.second, "unmap");
+        else if (now - last_big > std::chrono::milliseconds(500)) {
+            last_big = now;
+            scan(it->second.first, it->second.second, target == GL_ARRAY_BUFFER ? "unmap-big-array" : "unmap-big");
+        }
         g_mapped.erase(it);
     }
     return g_orig_unmap(target);
@@ -188,6 +202,13 @@ void gl_trace_frame() {
          (unsigned long long)g_calls[0], (unsigned long long)g_calls[1], (unsigned long long)g_calls[2],
          (unsigned long long)g_calls[3], (unsigned long long)g_calls[4], (unsigned long long)g_ubo.found, g_ubo.via,
          g_ubo.offset, g_ubo.size, g_ubo.full);
+    {
+        char buf[512];
+        int o = snprintf(buf, sizeof buf, "gltrace: unmap sizes:");
+        for (auto& [k, c] : g_unmap_sizes)
+            if (o < (int)sizeof buf - 40) o += snprintf(buf + o, sizeof buf - o, " %zu@%#zx x%llu", k / 0x10000, k % 0x10000, (unsigned long long)c);
+        LOGI("%s", buf);
+    }
     if (g_ubo.valid) {
         for (int row = 0; row < 7; row++) {
             char buf[512];

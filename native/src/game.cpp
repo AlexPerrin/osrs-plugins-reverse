@@ -202,6 +202,13 @@ int varp(int id) { return g_build ? read_varp_table(g_build->varps, id) : 0; }
 // UPDATE_RUNWEIGHT (dispatcher case 0x1a) stores s16 at Client+0x33a4; UPDATE_RUNENERGY (0x66)
 // stores 0..10000 at Client+0x33a0.
 int world() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x3174) : 0; }
+bool viewport_zoom(int out[5]) {
+    uintptr_t c = client();
+    if (!c) return false;
+    out[0] = read_at<int32_t>(c + 0x46d4);
+    for (int i = 0; i < 4; i++) out[1 + i] = read_at<int32_t>(c + 0x46e0 + 4 * i);
+    return out[0] > 0 && out[0] < 100000 && out[3] > 0 && out[4] > 0;
+}
 int world_flags() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x2f64) : 0; }
 int weight() { uintptr_t c = client(); return c ? read_at<int16_t>(c + 0x33a4) : 0; }
 int run_energy() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x33a0) : 0; }
@@ -210,7 +217,7 @@ std::vector<int32_t> varps() {
     if (!g_build) return {};
     uint32_t count = read_at<uint32_t>(g_base + g_build->varps + 8);
     auto* values = read_at<const int32_t*>(g_base + g_build->varps + 0x10);
-    if (!values || count > 1 << 16) return {};
+    if (!values || count > 1 << 20) return {};  // OpenRune has 65660 varps
     return std::vector<int32_t>(values, values + count);
 }
 

@@ -359,7 +359,8 @@ final class Probe {
             int[] cam = Native.camera(), pos = Native.playerPosition();
             if (cam == null || pos == null) return;
             Log.i(TAG, "viewport " + java.util.Arrays.toString(Native.viewport()) + " scale " + Host.client().getScale()
-                    + " viewport size " + Host.client().getViewportWidth() + "x" + Host.client().getViewportHeight());
+                    + " viewport size " + Host.client().getViewportWidth() + "x" + Host.client().getViewportHeight()
+                    + " game zoom " + java.util.Arrays.toString(Native.viewportZoom()));
             net.runelite.api.Client c = Host.client();
             AndroidWorldView wv = Host.worldView();
             net.runelite.api.coords.LocalPoint lp = new net.runelite.api.coords.LocalPoint(pos[4], pos[5], net.runelite.api.WorldView.TOPLEVEL);

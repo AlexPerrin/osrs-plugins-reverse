@@ -35,6 +35,8 @@ final class Native {
     static native int weight();
     static native int world();
     static native int worldFlags();
+    /** {zoom, x, y, width, height} of the 3D viewport in UI canvas pixels, or null. */
+    static native int[] viewportZoom();
     /** GPU ViewTransforms block (camera pos @0, view @4, inverse view @20, projection @36, view-projection @52), or null. */
     static native float[] viewTransforms();
     /** One tuple of a DB row column (Integer/Long/String values), or null. Game thread only. */

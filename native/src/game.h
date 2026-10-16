@@ -273,6 +273,9 @@ std::vector<int32_t> varps();
 int weight();      // kg (UPDATE_RUNWEIGHT)
 int world();       // Client +0x3174 (CS2 map_world 3318; jav_config param 12)
 int world_flags(); // Client +0x2f64 (CS2 worldflags 3324)
+// 3D viewport projection: {zoom, x, y, width, height} in UI canvas pixels (Client +0x46d4, +0x46e0..+0x46ec,
+// computed by 0x5561e8 from the CS2 viewport zoom/fov settings; RuneLite's getScale/viewport).
+bool viewport_zoom(int out[5]);
 int run_energy();  // 0..10000 (UPDATE_RUNENERGY)
 // The game's addChatMessage (what MESSAGE_GAME calls). Game thread only.
 bool add_chat_message(int type, const std::string& name, const std::string& text);

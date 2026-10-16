@@ -68,6 +68,13 @@ jint n_varp(JNIEnv*, jclass, jint id) { return game::varp(id); }
 jint n_weight(JNIEnv*, jclass) { return game::weight(); }
 jint n_world(JNIEnv*, jclass) { return game::world(); }
 jint n_world_flags(JNIEnv*, jclass) { return game::world_flags(); }
+jintArray n_viewport_zoom(JNIEnv* env, jclass) {
+    int v[5];
+    if (!game::viewport_zoom(v)) return nullptr;
+    jintArray a = env->NewIntArray(5);
+    env->SetIntArrayRegion(a, 0, 5, v);
+    return a;
+}
 // getDBTableField: Object[] of Integer/Long/String, or null (game thread).
 jobjectArray n_db_field(JNIEnv* env, jclass, jint row, jint column, jint tuple) {
     std::vector<game::DbValue> vals;
@@ -833,6 +840,7 @@ const JNINativeMethod kNatives[] = {
     {"weight", "()I", reinterpret_cast<void*>(n_weight)},
     {"world", "()I", reinterpret_cast<void*>(n_world)},
     {"worldFlags", "()I", reinterpret_cast<void*>(n_world_flags)},
+    {"viewportZoom", "()[I", reinterpret_cast<void*>(n_viewport_zoom)},
     {"viewTransforms", "()[F", reinterpret_cast<void*>(n_view_transforms)},
     {"dbField", "(III)[Ljava/lang/Object;", reinterpret_cast<void*>(n_db_field)},
     {"runEnergy", "()I", reinterpret_cast<void*>(n_run_energy)},

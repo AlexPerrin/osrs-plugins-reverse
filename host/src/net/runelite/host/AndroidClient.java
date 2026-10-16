@@ -371,16 +371,29 @@ public class AndroidClient extends ClientStub {
             } catch (NumberFormatException ignored) {
             }
         }
-        return scaleOverride > 0 ? scaleOverride : Math.round(285f * getViewportHeight() / 720f);
+        if (scaleOverride > 0) return scaleOverride;
+        int[] z = gameViewport();
+        // As the desktop client's viewportZoom: zoom * viewport height / 334.
+        return z != null ? z[0] * z[4] / 334 : Math.round(285f * getViewportHeight() / 720f);
+    }
+
+    /**
+     * The game's 3D viewport in UI canvas pixels: {zoom, x, y, width, height} from Client +0x46d4 and
+     * +0x46e0..+0x46ec (0x5561e8, RuneLite's viewportZoom/viewport bounds; follows the zoom settings
+     * and pinch zoom). Null while unset; `setprop debug.osrsrl.scale N` still wins for getScale.
+     */
+    private int[] gameViewport() {
+        int[] z = Native.viewportZoom();
+        return z != null && z[0] > 0 && z[3] > 0 && z[4] > 0 ? z : null;
     }
     @Override public boolean isGpu() { return false; }
     @Override public boolean isResized() { return true; }
-    @Override public int getViewportXOffset() { return 0; }
-    @Override public int getViewportYOffset() { return 0; }
-    @Override public int getViewportWidth() { return OverlayRenderer.canvasSize().width; }
-    @Override public int getViewportHeight() { return OverlayRenderer.canvasSize().height; }
-    @Override public int getCanvasWidth() { return getViewportWidth(); }
-    @Override public int getCanvasHeight() { return getViewportHeight(); }
+    @Override public int getViewportXOffset() { int[] z = gameViewport(); return z != null ? z[1] : 0; }
+    @Override public int getViewportYOffset() { int[] z = gameViewport(); return z != null ? z[2] : 0; }
+    @Override public int getViewportWidth() { int[] z = gameViewport(); return z != null ? z[3] : OverlayRenderer.canvasSize().width; }
+    @Override public int getViewportHeight() { int[] z = gameViewport(); return z != null ? z[4] : OverlayRenderer.canvasSize().height; }
+    @Override public int getCanvasWidth() { return OverlayRenderer.canvasSize().width; }
+    @Override public int getCanvasHeight() { return OverlayRenderer.canvasSize().height; }
 
     // --- skills (Skill.ordinal() is the game's stat index) ---
 

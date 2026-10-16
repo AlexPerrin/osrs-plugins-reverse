@@ -89,6 +89,7 @@ VarbitChanged).
 | `setGameState(LOADING)` (others ignored) | the game's settings-changed reload `0x429900`; verified: 30 → 25 → 30, session continues |
 | `Actor.setOverheadText/setOverheadCycle` written into the game (string assign on `+0x2d8`, timer `+0x2f4`) | verified 2026-10-16 (`setprop debug.osrsrl.set 'ohead <npc id> <text>'`) |
 | **Opponent Information** (core) runs: name + health bar/`3/5` over goblins (NPCManager max health over okhttp) | okhttp 3.14.9 + okio 1.17.2 in host.jar, `OkHttpClient` and `@Named("runelite.static.base")` bound in Host. Verified 2026-10-16 on OpenRune |
+| Other core plugins tried 2026-10-16 (jars in `re/host/plugins-extra/`, not pushed by default): **Boosts Information** runs (strength 111 after a potion, compact overlay top-left); **XP Drop** starts but does nothing visible (needs `ScriptPreFired`, not posted yet); **Status Bars** failed on the missing `ItemStatChangesService` binding (now bound to RuneLite's impl, unverified; it also needs the desktop inventory/viewport widgets) | `getServerVarbitValue`, `getIdleTimeout/setIdleTimeout`, `getMouseLastPressedMillis` added (unverified) |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so

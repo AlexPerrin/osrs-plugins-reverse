@@ -132,6 +132,15 @@ public final class Host {
                         .toInstance(okhttp3.HttpUrl.get("https://static.runelite.net"));
                 bind(okhttp3.HttpUrl.class).annotatedWith(com.google.inject.name.Names.named("runelite.api.base"))
                         .toInstance(okhttp3.HttpUrl.get("https://api.runelite.net/runelite-1.13.1"));
+                // What RuneLite's Item Stats plugin binds for its dependents (Status Bars).
+                try {  // package-private implementation
+                    @SuppressWarnings({"unchecked", "rawtypes"})
+                    Class<net.runelite.client.plugins.itemstats.ItemStatChangesService> impl = (Class) Class.forName(
+                            "net.runelite.client.plugins.itemstats.ItemStatChangesServiceImpl");
+                    bind(net.runelite.client.plugins.itemstats.ItemStatChangesService.class).to(impl);
+                } catch (ClassNotFoundException e) {
+                    Log.w(TAG, "no ItemStatChangesServiceImpl", e);
+                }
                 bind(net.runelite.client.callback.Hooks.class).toInstance(new net.runelite.client.callback.Hooks());
                 bind(net.runelite.client.ui.ClientToolbar.class).toInstance(new net.runelite.client.ui.ClientToolbar());
                 bind(net.runelite.client.game.SpriteManager.class).toInstance(new net.runelite.client.game.SpriteManager());

@@ -203,6 +203,23 @@ public class AndroidClient extends ClientStub {
     /** Idle time since the last touch or key event (client cycles of 20 ms), as RuneLite counts them. */
     private static int idleCycles() { return (int) Math.min(Integer.MAX_VALUE, (android.os.SystemClock.uptimeMillis() - Sidebar.lastInputMillis) / 20); }
     @Override public int getMouseIdleTicks() { return idleCycles(); }
+    /** Wall-clock time of the last touch/key event (desktop compares it with currentTimeMillis). */
+    @Override public long getMouseLastPressedMillis() {
+        return System.currentTimeMillis() - (android.os.SystemClock.uptimeMillis() - Sidebar.lastInputMillis);
+    }
+    // The game's own AFK logout isn't driven from here; plugins only read/raise this value.
+    private int idleTimeout = 15000;
+    @Override public int getIdleTimeout() { return idleTimeout; }
+    @Override public void setIdleTimeout(int ticks) { idleTimeout = ticks; }
+    /** Varbit over the server's copy of its varp (RuneLite's getServerVarbitValue). */
+    @Override public int getServerVarbitValue(int id) {
+        net.runelite.api.VarbitComposition v = getVarbit(id);
+        if (v == null) return 0;
+        int lsb = v.getLeastSignificantBit(), msb = v.getMostSignificantBit();
+        int bits = msb - lsb + 1;
+        int mask = bits >= 32 ? -1 : (1 << bits) - 1;
+        return (getServerVarpValue(v.getIndex()) >>> lsb) & mask;
+    }
     @Override public int getKeyboardIdleTicks() { return idleCycles(); }
     @Override public int getMouseCurrentButton() { return 0; }
 

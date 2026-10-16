@@ -352,6 +352,13 @@ session; its notes are in `docs/android-protocol.md`.
     game thread, its LRU cache), so `ItemManager.getImage`/`getItemOutline` work (Inventory Tags outline,
     stamina InfoBox icon verified 2026-10-16, no crash, 30 fps). `scale` != 512 is ignored.
   - Table at the end of gen 11: 30 runs. Cannon: OpenRune doesn't set up cannons.
+  - Next (gen 12): Fishing/Cooking counters after the OpenRune redeploy (river spot 1527 = Lure fly rod +
+    feathers lvl 20 / Bait rod + bait lvl 25; sea spots at Draynor), Examine single price line (server line
+    removed); ConfigPanel colour buttons in the sidebar (unverified); hover entries for equipment (387) and
+    bank (12) slots; Chat Timestamps (the mobile chat already prints times; its `addTimestamp` callback isn't
+    raised), Chat History, Logout Timer, Daily Task Indicator, Random Events, Implings (`::npc` takes a duration
+    and name on OpenRune), Player Indicators / Special Attack Counter (need other players / spec weapon),
+    Poison; then rank_api.py. Chat Filter's duplicate collapsing needs per-redraw callbacks (not emulated).
     OpenRune mining text was "pickaxe" (server fix requested); `::npc` takes `duration npcDebugName`.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 

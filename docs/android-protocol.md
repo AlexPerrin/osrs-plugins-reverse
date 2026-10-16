@@ -89,20 +89,20 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 3 | HINT_ARROW | as desktop (FUN_004fd3a4 switches on the desktop types) |
 | 5 | NPC_HEADICON_SPECIFIC | index `p2Alt2`, headIconSlot `p1Alt2`, spriteGroup `p4Alt2`, spriteIndex `p2Alt1` |
 | 9 | MESSAGE_CLANCHANNEL_SYSTEM | as desktop (chat type 43 / 46 guest) |
-| 11 | CHAT_FILTER_SETTINGS_PRIVATECHAT (unverified) | privateChatFilter `p1` |
+| 11 | CHAT_FILTER_SETTINGS_PRIVATECHAT (unverified) | privateChatFilter `p1` (`::pmfilter 2` did not change the Private tab label on 2026-10-15) |
 | 12 | OBJ_CUSTOMISE_SPECIFIC_V1 | retex `p2`, retexIndex `p2`, coordGrid.packed `p4`, model `p2Alt2`, recolIndex `p2Alt1`, id `p2Alt2`, recol `p2Alt2`, quantity `p4` |
 | 13 | UPDATE_IGNORELIST | as desktop (FUN_0066ee54 on the ignore list) |
 | 15 | CAM_MODE | as desktop (oculus orb state) |
 | 18 | UPDATE_INV_STOPTRANSMIT | as desktop (inventory p2Alt2, clears it) |
 | 19 | CLANCHANNEL_FULL (unverified) | recognised, no codec |
-| 20 | HIDENPCOPS (unverified, see notes) | hidden `p1` (b & 1) |
+| 20 | HIDELOCOPS | hidden `p1` (b & 1); verified live (loc ops vanish) |
 | 21 | UPDATE_UID192 | as desktop (24 bytes + crc32) |
 | 22 | VARP_RESET | as desktop (zeroes all varps) |
 | 24 | URL_OPEN (unverified) | recognised, no codec |
 | 25 | UPDATE_FRIENDLIST | as desktop (FUN_0066e448) |
 | 27 | LOGOUT_WITHREASON | as desktop (reason p1) |
 | 29 | IF_SETCOLOUR | combinedId `pCombinedIdAlt1`, colour15BitPacked `p2Alt2` |
-| 31 | MINIMAP_TOGGLE (unverified) | minimapState `p1` |
+| 31 | MINIMAP_TOGGLE | minimapState `p1`; verified live (2 blanks the minimap) |
 | 33 | UPDATE_FRIENDCHAT_CHANNEL_SINGLEUSER | as desktop (FUN_00569184) |
 | 35 | LOGOUT_TRANSFER | as desktop (host, id, properties) |
 | 36 | MESSAGE_PRIVATE_ECHO | as desktop (chat type 6) |
@@ -110,7 +110,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 38 | ACCOUNT_FLAGS | as desktop (p8) |
 | 39 | UPDATE_TRADINGPOST_V2 | as desktop (FUN_006ff0cc(version 2)) |
 | 40 | UPDATE_FRIENDCHAT_CHANNEL_FULL_V2 | as desktop (FUN_005689fc) |
-| 41 | REBUILD_REGION_V2 | see notes; encoder `AndroidRebuildRegionV2Encoder`, test `::region [dzx] [dzz] [rot]` |
+| 41 | REBUILD_REGION_V2 | see notes; verified live (`::region 0 0 1` rebuilt the area with every zone rotated) |
 | 43 | MESSAGE_FRIENDCHANNEL | as desktop (chat type 9) |
 | 44 | OCULUS_SYNC | as desktop (p4) |
 | 45 | IF_SETPOSITION | combinedId `pCombinedIdAlt3`, y `p2Alt2`, x `p2Alt2` |
@@ -134,7 +134,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 71 | SYNTH_SOUND | as desktop (FUN_005ae508(id, loops, delay)) |
 | 73 | CAM_ROTATETO | as desktop (absolute yaw/pitch) |
 | 74 | MIDI_SONG_WITHSECONDARY | fadeInSpeed `p2Alt3`, primaryId `p2Alt1`, secondaryId `p2`, fadeInDelay `p2Alt3`, fadeOutDelay `p2`, fadeOutSpeed `p2` |
-| 76 | PROJANIM_SPECIFIC_V4 | sourceIndex `p3Alt2`, progress `p2`, startHeight `p2`, targetIndex `p3Alt3`, startTime `p2Alt3`, end `p4Alt1`, start `p4Alt3`, angle `p1`, id `p2Alt1` (0xffff = none), endTime `p2Alt2`, endHeight `p2Alt3` (byte orders read; roles of the 2-byte fields, the indices and the coords by the order of the struct the case fills, unverified; test `::proj id [dx]`) |
+| 76 | PROJANIM_SPECIFIC_V4 | sourceIndex `p3Alt2`, progress `p2`, startHeight `p2`, targetIndex `p3Alt3`, startTime `p2Alt3`, end `p4Alt1`, start `p4Alt3`, angle `p1`, id `p2Alt1` (0xffff = none), endTime `p2Alt2`, endHeight `p2Alt3` (byte orders read; roles of the 2-byte fields, the indices and the coords by the order of the struct the case fills, unverified: `::proj 27/92/100` showed no projectile on 2026-10-15, so a role is probably wrong (times?)) |
 | 78 | CHAT_FILTER_SETTINGS | publicChatFilter `p1Alt1`, tradeChatFilter `p1Alt3` |
 | 80 | MIDI_JINGLE | lengthInMillis `p3Alt1`, id `p2Alt3` |
 | 82 | HISCORE_REPLY | recognised, no codec |
@@ -162,9 +162,9 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 110 | UNKNOWN_STRING (unverified) | one string, read and discarded; by elimination; no codec |
 | 111 | MAP_ANIM_SPECIFIC | delay `p2Alt3`, height `p1Alt3`, coordInBuildAreaPacked `p3Alt3`, id `p2Alt3` |
 | 112 | SET_PLAYER_OP | if (priority) 1 else 0 `p1Alt1`, id `p1Alt1`, op ?: "null" `pjstr` |
-| 113 | HIDELOCOPS (unverified, see notes) | hidden `p1` (b & 1) |
+| 113 | HIDENPCOPS | hidden `p1` (b & 1); verified live (NPC ops vanish) |
 | 114 | RESET_INTERACTION_MODE | as desktop (world id p2) |
-| 115 | HIDEOBJOPS (unverified, see notes) | hidden `p1` (b & 1) |
+| 115 | HIDEOBJOPS (unverified: by elimination) | hidden `p1` (b & 1) |
 | 117 | MESSAGE_CLANCHANNEL | as desktop (chat types 41/44) |
 | 118 | OBJ_COUNT_SPECIFIC | newQuantity `p4Alt1`, id `p2Alt2`, oldQuantity `p4Alt2`, coordGrid.packed `p4Alt1` |
 | 119 | VARCLAN | as desktop (id + typed value) |
@@ -189,7 +189,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 140 | GROUP_FULL (unverified) | as desktop (smart id / p8 header) |
 | 141 | GROUP_VAR_LONG (unverified) | as desktop (shared handler FUN_006871e0) |
 | 142 | CAM_ROTATETO_COORDINATE_V3 | height `p2Alt1`, if (trackTarget) 1 else 0 `p1`, easing.id `p1Alt3`, cycles `p2Alt1`, if (heightRelative) 1 else 0 `p1Alt1`, z `p2Alt3`, x `p2Alt1` |
-| 143 | SET_MAP_FLAG_V2 | coord `p4` (as desktop), -1 clears the flag; test with `::flag x z` / `::flag` |
+| 143 | SET_MAP_FLAG_V2 | coord `p4` (as desktop), -1 clears the flag; verified live (`::flag x z` shows the minimap flag) |
 | 144 | CAM_LOOKAT_CYCLES | z `p2Alt1`, x `p2Alt1`, easing.id `p1Alt3`, height `p2Alt2`, if (heightRelative) 1 else 0 `p1`, cycles `p2Alt2` |
 | 146 | WORLDENTITY_INFO_V7 | recognised, no codec |
 | 147 | AMBIENTSOUND_START | id `p2Alt2`, if (fade) 1 else 0 `p1` |
@@ -204,8 +204,8 @@ Notes:
   SET_HEATMAP_ENABLED / HIDENPCOPS / HIDELOCOPS / HIDEOBJOPS. Cases 20, 113 and 115 store `b & 1` at
   bytes +4, +3 and +5 of one settings struct (`*(client+0x4132b0)+0x3b8`, accessor FUN_0068fa48;
   a CS2 op at 0x5c2b10 writes +2), and opcode 0 is ignored by the dispatcher, so 0 is taken as the
-  heatmap flag. Provisional names: 20 HIDENPCOPS, 113 HIDELOCOPS, 115 HIDEOBJOPS; test live with
-  `::hideops npc|loc|obj [1|0]` and rename by which minimenu ops disappear.
+  heatmap flag. Live test 2026-10-15 (`::hideops npc|loc|obj [1|0]`): 113 hides NPC ops, 20 hides
+  loc ops, so 115 is HIDEOBJOPS by elimination (struct bytes: +3 npc, +4 loc, +5 obj).
 - 116 and 137 (var-short) are ignored by the dispatcher: REFLECTION_CHECKER (no Java reflection on
   Android) and the opcode desktop leaves unassigned, in some order. Left unnamed.
 - 148 CAM_SKYBOX: the last size-4 prot once 143 = SET_MAP_FLAG_V2 (stores an int; -1 clears a
@@ -213,7 +213,7 @@ Notes:
 - 41 REBUILD_REGION_V2 (FUN_00655510 -> parser 0x6580e4): reload `p1Alt3` (raw byte 0x7f = reload),
   zoneX `p2Alt1`, zoneZ `p2Alt1` (order from the base-coord call FUN_006d0a94(level 0, x*8-48,
   z*8-48)), then as desktop: distinct mapsquare count `p2`, and for 4 levels x 13 x 13 zones a 1-bit
-  present flag + 26-bit reference zone. Implemented, not tested on device.
+  present flag + 26-bit reference zone. Verified on device 2026-10-15.
 - 132 OBJ_CUSTOMISE_SPECIFIC_V2: id `p2`, recol count `p1`, (index `p1Alt1`, value `p2Alt3`)*,
   colour flag `p1Alt3` [+ colour `p2Alt2`], model `p2Alt3`, retex count `p1`, (index `p1Alt1`,
   value `p2`)*, coord `p4`, quantity `p4`. The colour flag is present when the raw byte is 0x7f
@@ -286,7 +286,7 @@ appearance, `0x1` say, `0x80000` ?, `0x100000` ?, `0x20` ?, `0x1000` ?, `0x40000
 | 63 | OPLOCT | ctrl `g1Alt1`, selected combined id `g4Alt1`, id `g2Alt1`, selected sub `g2Alt3`, selected obj `g2Alt2`, x `g2`, z `g2` (sender `0x61cfa8`) |
 | 74 | OPOBJT | selected sub `g2`, ctrl `g1Alt2`, id `g2`, selected combined id `g4`, z `g2Alt2`, x `g2Alt2`, selected obj `g2Alt1` (sender `0x6205c4`) |
 | 2 | OPNPCT | selected sub `g2Alt2`, index `g2Alt2`, selected combined id `g4Alt3`, ctrl `g1Alt3`, selected obj `g2Alt3` (sender `0x61f9fc`) |
-| 38 / 6 / 49? | OPLOC6 / OPOBJ6 / OPNPC6? | examine; 6 (6 bytes) is OPOBJ6's sender `0x6211ac`, 49 (2 bytes) sender `0x620400` |
+| 38 / 6 / 49 | OPLOC6 / OPOBJ6 / OPNPC6 | examine; 6 (6 bytes) is OPOBJ6's sender `0x6211ac`, 49 (2 bytes) sender `0x620400` |
 
 The T packets (63, 74, 2) were decoded from the senders and verified live (bush, cabbage, Hans; inventory "Use" needs events1 target bits 11-16). Other single-packet
 senders near them: 5 (11 bytes, `0x622bd4`, probably OPWORLDENTITYT), 69 (`0x623550`), 45
@@ -352,7 +352,7 @@ too large, so the g3Alt3 transform is unconfirmed).
 | 43 | IF_BUTTOND | selectedCombinedId `g4Alt2`, targetSub `g2Alt2`, targetObj `g2Alt2`, targetCombinedId `g4Alt3`, selectedObj `g2Alt3`, selectedSub `g2Alt2` |
 | 45 | SET_HEADING (unverified) | heading `g1Alt2` |
 | 47 | SET_CHATFILTERSETTINGS | as desktop |
-| 49 / 69 | OPNPC6 / OPWORLDENTITY6 (unverified) | id `g2` / id `g2Alt3` |
+| 49 / 69 | OPNPC6 (verified live: Examine chicken -> id 1173) / OPWORLDENTITY6 (unverified) | id `g2` / id `g2Alt3` |
 | 51 / 61 / 88 | FRIENDCHAT_KICK / FRIENDCHAT_JOIN_LEAVE / FRIENDCHAT_SETRANK | name / name / rank `g1Alt1`, name |
 | 56 / 72 | CLANCHANNEL_FULL_REQUEST / CLANSETTINGS_FULL_REQUEST | clanId `g1s` |
 | 70 | IF_SUBOP | as desktop |

@@ -833,13 +833,13 @@ class World(
                 player.send(if (x != null && z != null) SetMapFlagV2(x, z) else SetMapFlagV2())
             }
             "hideops" -> {
-                // Android opcodes 20 (npc) / 113 (loc) / 115 (obj) as provisionally named; see which ops vanish.
+                // Android opcodes 113 (npc) / 20 (loc) / 115 (obj); npc and loc verified live.
                 val on = args.getOrNull(2) != "0"
                 when (args.getOrNull(1)) {
                     "npc" -> player.send(HideNpcOps(on))
                     "loc" -> player.send(HideLocOps(on))
                     "obj" -> player.send(HideObjOps(on))
-                    else -> return player.message("Usage: ::hideops npc|loc|obj [1|0]  (opcodes 20|113|115)")
+                    else -> return player.message("Usage: ::hideops npc|loc|obj [1|0]  (opcodes 113|20|115)")
                 }
                 player.message("Sent hideops ${args[1]} = $on")
             }

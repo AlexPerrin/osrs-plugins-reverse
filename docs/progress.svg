@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 470" width="1000" height="470">
 <rect x="0" y="0" width="1000" height="470" fill="#0d1117"/>
-<text x="4" y="21" font-family="sans-serif" font-size="16" fill="#ffffff">Mobile packets: 94.07% mapped (238/253), 86.96% implemented (220); 25 mapped entries unverified</text>
+<text x="4" y="21" font-family="sans-serif" font-size="16" fill="#ffffff">Mobile packets: 95.26% mapped (241/253), 87.75% implemented (222); 25 mapped entries unverified</text>
 <g><title>Server→client: 148/151 mapped, 138 implemented</title>
 <rect x="2.00" y="32.00" width="23.35" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="25.35" y="32.00" width="23.35" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -156,7 +156,7 @@
 <rect x="1.00" y="31.00" width="562.31" height="150.00" fill="none" stroke="#0d1117" stroke-width="2"/>
 <text x="6.00" y="47.00" font-family="sans-serif" font-size="12" fill="#ffffff" stroke="#0d1117" stroke-width="3" paint-order="stroke">Server→client</text>
 </g>
-<g><title>Client→server: 90/102 mapped, 82 implemented</title>
+<g><title>Client→server: 93/102 mapped, 84 implemented</title>
 <rect x="564.31" y="32.00" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="587.92" y="32.00" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="611.54" y="32.00" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -239,17 +239,17 @@
 <rect x="918.53" y="116.57" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="564.31" y="137.71" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="587.92" y="137.71" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="611.54" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="635.15" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="611.54" y="137.71" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="635.15" y="137.71" width="23.61" height="21.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="658.76" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="682.38" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="705.99" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="729.61" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="753.22" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="776.84" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="800.45" y="137.71" width="23.61" height="21.14" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="824.07" y="137.71" width="23.61" height="21.14" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="847.68" y="137.71" width="23.61" height="21.14" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="800.45" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="824.07" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="847.68" y="137.71" width="23.61" height="21.14" fill="#d29922" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="871.30" y="137.71" width="23.61" height="21.14" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="894.91" y="137.71" width="23.61" height="21.14" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="918.53" y="137.71" width="23.61" height="21.14" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>

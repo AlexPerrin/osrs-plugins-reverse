@@ -229,8 +229,15 @@ final class OverlayRenderer {
                 case CANVAS_TOP_RIGHT: c = new Point(size.width - BORDER, BORDER); break;
                 case TOP_CENTER: c = new Point(size.width / 2, BORDER); break;
                 case BOTTOM_LEFT: c = new Point(BORDER, size.height - BORDER); break;
-                case BOTTOM_RIGHT:
-                case ABOVE_CHATBOX_RIGHT: c = new Point(size.width - BORDER, size.height - BORDER); break;
+                case BOTTOM_RIGHT: c = new Point(size.width - BORDER, size.height - BORDER); break;
+                case ABOVE_CHATBOX_RIGHT: {
+                    // The mobile chatbox is at the top left: stack these down from its bottom-right
+                    // corner (the desktop spot, above the chatbox at the bottom, is under the tab stones).
+                    Rectangle chat = chatBounds();
+                    c = chat != null ? new Point(chat.x + chat.width - BORDER, chat.y + chat.height + BORDER)
+                        : new Point(size.width / 2, size.height / 2);
+                    break;
+                }
                 default: c = new Point(BORDER, BORDER); break;
             }
             cursor.put(pos, c);
@@ -241,10 +248,19 @@ final class OverlayRenderer {
             case CANVAS_TOP_RIGHT: return new Point(c.x - w, c.y);
             case TOP_CENTER: return new Point(c.x - w / 2, c.y);
             case BOTTOM_LEFT: return new Point(c.x, c.y - h);
-            case BOTTOM_RIGHT:
-            case ABOVE_CHATBOX_RIGHT: return new Point(c.x - w, c.y - h);
+            case BOTTOM_RIGHT: return new Point(c.x - w, c.y - h);
+            case ABOVE_CHATBOX_RIGHT: return new Point(c.x - w, c.y);
             default: return new Point(c.x, c.y);
         }
+    }
+
+    /** The chatbox (162:0) in UI-canvas coordinates, or null when it isn't open. */
+    private static Rectangle chatBounds() {
+        net.runelite.api.Client client = Host.client();
+        net.runelite.api.widgets.Widget w = client != null ? client.getWidget(162, 0) : null;
+        if (w == null || w.isHidden() || w.getWidth() <= 0) return null;
+        java.awt.Rectangle b = w.getBounds();
+        return new Rectangle(b.x, b.y, b.width, b.height);
     }
 
     private static void advance(Map<OverlayPosition, Point> cursor, OverlayPosition pos, Dimension d) {
@@ -252,8 +268,7 @@ final class OverlayRenderer {
         if (c == null) return;
         switch (pos) {
             case BOTTOM_LEFT:
-            case BOTTOM_RIGHT:
-            case ABOVE_CHATBOX_RIGHT: c.y -= d.height + PADDING; break;
+            case BOTTOM_RIGHT: c.y -= d.height + PADDING; break;
             default: c.y += d.height + PADDING; break;
         }
     }

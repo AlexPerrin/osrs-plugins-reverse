@@ -101,6 +101,7 @@ rewriting vtable slot 5 (`0xa6a008`, in .data.rel.ro) after checking that it hol
 | next chat message id | `0xaab658` | Global counter, incremented by the Message constructor `0x3f0a04` |
 | chat messages by id | `0xaab628` | Hash map `{?, buckets +8, u32 count +0x10}`; node `{int id; +0x10 Message*; +0x18 next}` |
 | chat channels | `0xaab5e0` | Map type → channel: 100 × `{ctrl*, Message*}` ring, count `+0x640`, write index `+0x644` (`0x3ef964`) |
+| all chat messages | `0xaab610` | libc++ `std::list` {prev, next, size}, newest first (push_front in the Message constructor `0x3f0a04`); node {prev, next, int id}; Message +0 = node. Walked by chat_getprevuid `0x3f061c` / chat_getnextuid `0x3f0694` (All tab). `chat_remove_message` unlinks from it (verified 2026-10-16) |
 | Message | | `+0x00` id node (`node+0x10` = id), `+0x08` cycle, `+0x40` type, `+0x48` name, `+0x70` sender, `+0xa0` text (24-byte strings) |
 | addChatMessage | `0x43a9c0(client, type, name, text)` | Called by MESSAGE_GAME (dispatcher case 0x51) |
 | `0x441dd4` | "Unrecognized packet type: %d" |

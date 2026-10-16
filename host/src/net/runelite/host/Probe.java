@@ -28,6 +28,7 @@ final class Probe {
 
     static void onGameTick() {
         if ("1".equals(Native.property("debug.osrsrl.camlog"))) logCamera();
+        if ("1".equals(Native.property("debug.osrsrl.selflog")) && (tick % 5) == 0) logSelf();
         String where = Native.property("debug.osrsrl.where");
         if (!where.isEmpty() && (tick % 5) == 0) logWhere(where);
         if (plugins == null || (tick++ % 5) != 0) return;
@@ -45,6 +46,23 @@ final class Probe {
      * Debug hook: `setprop debug.osrsrl.where <loc id>` logs every scene object with that id: world
      * position, plane and the centre of its click box in UI-canvas and screen pixels (for adb taps).
      */
+    /** Debug hook: `setprop debug.osrsrl.selflog 1` logs the local player's and first NPC's API state. */
+    private static void logSelf() {
+        net.runelite.api.Client c = Host.client();
+        if (c == null) return;
+        net.runelite.api.Player me = c.getLocalPlayer();
+        if (me != null)
+            Log.i(TAG, "self " + me.getName() + " cb " + me.getCombatLevel() + " skull " + me.getSkullIcon() + " prayer " + me.getOverheadIcon()
+                    + " team " + me.getTeam() + " pose " + me.getPoseAnimation() + " idle/walk/run " + me.getIdlePoseAnimation() + "/"
+                    + me.getWalkAnimation() + "/" + me.getRunAnimation() + " " + me.getPlayerComposition());
+        for (net.runelite.api.NPC n : c.getTopLevelWorldView().npcs()) {
+            net.runelite.api.NPCComposition comp = n.getComposition();
+            Log.i(TAG, "npc " + n.getName() + " id " + n.getId() + " pose " + n.getPoseAnimation() + " idle/walk " + n.getIdlePoseAnimation()
+                    + "/" + n.getWalkAnimation() + " configs " + (comp == null ? null : java.util.Arrays.toString(comp.getConfigs())));
+            break;
+        }
+    }
+
     private static void logWhere(String arg) {
         int id;
         try { id = Integer.parseInt(arg.trim()); } catch (NumberFormatException e) { return; }

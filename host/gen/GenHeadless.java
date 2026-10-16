@@ -82,7 +82,11 @@ public class GenHeadless {
             changed = false;
             for (Class<?> c : new ArrayList<>(generate)) {
                 for (Method m : abstractToImplement(c)) {
-                    if (members.computeIfAbsent(c, k -> new LinkedHashSet<>()).add(m)) {
+                    // A JDK implementation in a generated superclass belongs there (PlainDocument must
+                    // inherit AbstractDocument.addDocumentListener, not shadow it with a no-op).
+                    Class<?> d = m.getDeclaringClass();
+                    Class<?> target = d != c && !d.isInterface() && generate.contains(d) ? d : c;
+                    if (members.computeIfAbsent(target, k -> new LinkedHashSet<>()).add(m)) {
                         changed = true;
                         for (Class<?> t : types(m)) want(t);
                     }

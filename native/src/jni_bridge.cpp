@@ -381,9 +381,10 @@ void n_overlay_publish(JNIEnv*, jclass, jint w, jint h) { overlay_publish(w, h);
 
 jintArray n_camera(JNIEnv* env, jclass) {
     game::Camera c = game::camera();
-    jint v[5] = {c.x, c.y, c.z, c.pitch, c.yaw};
-    jintArray arr = env->NewIntArray(5);
-    env->SetIntArrayRegion(arr, 0, 5, v);
+    jint v[11] = {c.x, c.y, c.z, c.pitch, c.yaw, c.focal_x, c.focal_y, c.focal_z,
+                  c.render_base_x, c.render_base_y, c.render_wv_same};
+    jintArray arr = env->NewIntArray(11);
+    env->SetIntArrayRegion(arr, 0, 11, v);
     return arr;
 }
 

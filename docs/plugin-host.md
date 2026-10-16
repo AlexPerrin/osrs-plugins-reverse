@@ -56,6 +56,7 @@ VarbitChanged).
 | Sidebar: ClientToolbar buttons + the selected plugin panel, usable by touch | `Sidebar.java` (model + tap dispatch + touch router) and `overlay.cpp` (ImGui window); see "Sidebar" below |
 | Inert stand-ins so plugin code runs: models/`RuneLiteObject`s (`ModelDataBag`, `ModelBag`), world map (`WorldMapBag`), hint arrows (remembered only), sprites (blank 16×16), `getMinimapZoom()` 4, `getMinimapLocation()` null, `findWorldViewFromWorldPoint` = top level | nothing is drawn for them |
 | Menus: `getMenu()`, `getMenuEntries()` (RuneLite order, top entry last), `isMenuOpen()`, `createMenuEntry` (host-side only), `MenuOpened`, `MenuOptionClicked` (consumable; also fired by plain taps); entries carry MenuAction/identifier/param0/param1, `getNpc()`, `getWidget()` for NPC, loc, walk, widget and cancel entries | `game::read_menu` over the menu model; select hooked through the menu vtable slot 1 (verified on device 2026-10-15) |
+| `Widget.setTextColor/getTextColor` (components and CC_CREATE children), written to the game widget | Widget `+0x98` plus the IF_SETCOLOUR dirty flag; QH's dialogue-option highlight (verified 2026-10-15). Other widget setters (text, hidden, ...) stay Java-side only |
 | `macroExpand(text)` | identity (CS1 macros aren't expanded) |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
 
@@ -78,7 +79,11 @@ constructor text/icon/layout, CardLayout.show, visibility, and `SwingUtilities.i
 Test hooks: `setprop debug.osrsrl.sbclick "<text>"` taps the first button with that text or
 following a label with that text (e.g. `"Demon Slayer"` starts that quest in Quest Helper);
 `setprop debug.osrsrl.sbdump 1` writes the model to `files/sidebar-model.txt` on change.
-Not yet: text input (no soft keyboard), combo box popups, icons, label colours.
+Text fields (`JTextField`, kind E) show as an input box; a tap opens an Android dialog with an
+EditText (soft keyboard), and OK sets the text on the game thread and fires the field's
+DocumentListeners and ActionListeners (Quest Helper's search filters the quest list, verified
+2026-10-15). Test hook: `setprop debug.osrsrl.sbtext "<text>"` types into the first text field
+(`-` clears it). Not yet: combo box popups, icons, label colours.
 
 ## Gaps, in rough order
 

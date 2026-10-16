@@ -313,6 +313,17 @@ Camera camera() {
     cam.y = read_at<int32_t>(b + 8);
     cam.pitch = read_at<int32_t>(b + 12) & 0x3fff;
     cam.yaw = read_at<int32_t>(b + 16) & 0x3fff;
+    cam.focal_x = read_at<int32_t>(b + 0x78);  // camera block +0x89488, focal point +0x89500
+    cam.focal_z = read_at<int32_t>(b + 0x7c);
+    cam.focal_y = read_at<int32_t>(b + 0x80);
+    // The camera/player-position code (0x51d0a4) works in the frame of Client[+0xc940]; the NPC
+    // readers use Client[+0xc950]. Debug: report the former's base and whether they match.
+    auto rwv = read_at<uintptr_t>(c + 0xc940);
+    if (rwv) {
+        cam.render_base_x = read_at<int32_t>(rwv + g_build->wv_base_x);
+        cam.render_base_y = read_at<int32_t>(rwv + g_build->wv_base_y);
+    }
+    cam.render_wv_same = rwv == read_at<uintptr_t>(c + g_build->f_world_view);
     return cam;
 }
 

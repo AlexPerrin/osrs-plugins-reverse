@@ -27,6 +27,7 @@ final class Probe {
     }
 
     static void onGameTick() {
+        if ("1".equals(Native.property("debug.osrsrl.camlog"))) logCamera();
         if (plugins == null || (tick++ % 5) != 0) return;
         String path = Native.property("debug.osrsrl.probe");
         if (path.isEmpty()) return;
@@ -112,5 +113,37 @@ final class Probe {
             s = v.getClass().getName() + "<toString threw>";
         }
         return s.length() > 160 ? s.substring(0, 160) + "..." : s;
+    }
+
+    /** `setprop debug.osrsrl.camlog 1`: camera vs player frames, for projection offsets. */
+    private static void logCamera() {
+        try {
+            int[] cam = Native.camera(), pos = Native.playerPosition();
+            if (cam == null || pos == null) return;
+            net.runelite.api.Client c = Host.client();
+            AndroidWorldView wv = Host.worldView();
+            net.runelite.api.coords.LocalPoint lp = new net.runelite.api.coords.LocalPoint(pos[4], pos[5], -1);
+            net.runelite.api.Point p = net.runelite.api.Perspective.localToCanvas(c, lp, wv.getPlane());
+            Log.i(TAG, "cam " + java.util.Arrays.toString(cam) + " player world " + pos[0] + "," + pos[1]
+                + " tile " + pos[2] + "," + pos[3] + " fine " + pos[4] + "," + pos[5]
+                + " focal-fine " + (cam[5] - pos[4]) + "," + (cam[6] - pos[5])
+                + " base " + wv.getBaseX() + "," + wv.getBaseY()
+                + " h " + wv.getTileHeights()[wv.getPlane()][pos[2]][pos[3]]
+                + " hgame " + c.getTopLevelWorldView().getTileHeight(pos[4], pos[5], wv.getPlane())
+                + " canvas " + p + " of " + c.getViewportWidth() + "x" + c.getViewportHeight());
+            if ((tick % 10) == 0) {
+                int root = Native.rootInterface(), n = Native.widgetChildCount(root);
+                StringBuilder sb = new StringBuilder("root " + root + ":");
+                for (int i = 0; i < n; i++) {
+                    AndroidWidget w = new AndroidWidget(root << 16 | i);
+                    if (w.rawGeo() == null || w.isHidden() || w.getWidth() <= 0) continue;
+                    java.awt.Rectangle r = w.getBounds();
+                    sb.append(' ').append(i).append('=').append(r.x).append(',').append(r.y).append(' ').append(r.width).append('x').append(r.height);
+                }
+                Log.i(TAG, sb.toString());
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "camlog: " + t);
+        }
     }
 }

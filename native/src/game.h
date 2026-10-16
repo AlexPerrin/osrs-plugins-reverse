@@ -52,6 +52,8 @@ struct Camera {
     bool valid = false;
     int x = 0, y = 0, z = 0;
     int pitch = 0, yaw = 0;  // 0..16383
+    int focal_x = 0, focal_z = 0, focal_y = 0;  // +0x89500: smoothed player position (camera frame)
+    int render_base_x = 0, render_base_y = 0, render_wv_same = 0;  // debug: WorldView at Client+0xc940
 };
 Camera camera();
 

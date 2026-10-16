@@ -191,6 +191,13 @@ void sidebar_frame(int w, int h) {
                 if (n.text.empty()) ImGui::TextDisabled("[ ]");
                 else ImGui::TextWrapped("%s", n.text.c_str());
                 break;
+            case 'E': {  // text field: tap opens an Android text prompt (Sidebar.promptText)
+                std::string label = (n.text.empty() ? std::string("Search...") : n.text) + id;
+                ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+                clicked = ImGui::Button(label.c_str(), ImVec2(-1, 0));
+                ImGui::PopStyleColor();
+                break;
+            }
             case 'X':
                 ImGui::TextDisabled("%s v", n.text.c_str());
                 break;

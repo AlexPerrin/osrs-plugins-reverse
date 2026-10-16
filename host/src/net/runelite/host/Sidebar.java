@@ -30,7 +30,7 @@ import net.runelite.client.ui.NavigationButton;
  * The plugin sidebar: RuneLite's navigation buttons and the selected plugin panel (headless Swing)
  * shown by the native overlay (overlay.cpp) as an ImGui window.
  *
- * The panel's component tree is flattened into lines "kind\tdepth\tcolor\ttext" (kinds: L label,
+ * The panel's component tree is flattened into lines "kind\tdepth\tcolor\ttext" (kinds: L label, E text field,
  * B button, C checkbox (text prefixed with 0/1), T text field, X combo box, H clickable panel)
  * after a header line "S\tselected\ttooltip...". The overlay sends back taps as (kind, index)
  * pairs, which are dispatched to the Swing listeners on the game thread.
@@ -76,6 +76,7 @@ final class Sidebar {
         try {
             String model = build();
             autoClick();
+            autoText();
             if (!model.equals(lastModel)) {
                 lastModel = model;
                 Native.sidebarSetModel(model);
@@ -97,6 +98,20 @@ final class Sidebar {
      * Test hook: `setprop debug.osrsrl.sbclick "<text>"` taps the first button whose text, or
      * whose preceding label's text, equals <text> (once per value; e.g. a quest name in Quest Helper).
      */
+    private static String autoTextDone = "";
+
+    /** Test hook: `setprop debug.osrsrl.sbtext "<text>"` types into the first text field (`-` clears it). */
+    private static void autoText() {
+        String want = Native.property("debug.osrsrl.sbtext");
+        if (want.isEmpty() || want.equals(autoTextDone)) return;
+        for (Component c : nodes)
+            if (c instanceof javax.swing.JTextField) {
+                autoTextDone = want;
+                setFieldText((JTextComponent) c, want.equals("-") ? "" : want, true);
+                return;
+            }
+    }
+
     private static void autoClick() {
         String want = Native.property("debug.osrsrl.sbclick");
         if (want.isEmpty() || want.equals(autoClickDone)) return;
@@ -111,6 +126,87 @@ final class Sidebar {
                 return;
             }
         }
+    }
+
+    /**
+     * Text input: the sidebar has no keyboard of its own, so a tap on a text field opens an
+     * Android dialog (soft keyboard included); OK applies the text on the game thread.
+     */
+    private static void promptText(JTextComponent field) {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                Activity a = currentActivity();
+                if (a == null) return;
+                final android.widget.EditText edit = new android.widget.EditText(a);
+                edit.setSingleLine(true);
+                edit.setText(field.getText());
+                edit.setSelection(edit.getText().length());
+                android.app.AlertDialog d = new android.app.AlertDialog.Builder(a)
+                    .setView(edit)
+                    .setPositiveButton("OK", (dlg, w) -> {
+                        String text = edit.getText().toString();
+                        javax.swing.SwingUtilities.invokeLater(() -> setFieldText(field, text, true));
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .create();
+                d.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                d.show();
+                edit.requestFocus();
+            } catch (Throwable t) {
+                Log.e(TAG, "text prompt failed", t);
+            }
+        });
+    }
+
+    /**
+     * Sets a text field's text and tells its listeners, as typing would: DocumentListeners
+     * (removeUpdate then insertUpdate) and, when `enter`, ActionListeners. Game thread only.
+     */
+    static void setFieldText(JTextComponent field, String text, boolean enter) {
+        String old = field.getText();
+        field.setText(text);
+        Log.i(TAG, "text field '" + old + "' -> '" + text + "'");
+        javax.swing.text.Document doc = field.getDocument();
+        List<javax.swing.event.DocumentListener> listeners = documentListeners(doc);
+        javax.swing.event.DocumentEvent ev = (javax.swing.event.DocumentEvent) java.lang.reflect.Proxy.newProxyInstance(
+            Sidebar.class.getClassLoader(), new Class<?>[] {javax.swing.event.DocumentEvent.class}, (proxy, m, args) -> {
+                switch (m.getName()) {
+                    case "getDocument": return doc;
+                    case "getLength": return text.length();
+                    case "getOffset": return 0;
+                    case "hashCode": return System.identityHashCode(proxy);
+                    case "equals": return proxy == args[0];
+                    case "toString": return "DocumentEvent";
+                    default: return null;
+                }
+            });
+        for (javax.swing.event.DocumentListener l : listeners) {
+            try {
+                if (!old.isEmpty()) l.removeUpdate(ev);
+                if (!text.isEmpty()) l.insertUpdate(ev);
+            } catch (Throwable t) {
+                Log.e(TAG, "DocumentListener threw", t);
+            }
+        }
+        if (enter && field instanceof javax.swing.JTextField)
+            for (java.awt.event.ActionListener l : ((javax.swing.JTextField) field).getActionListeners())
+                l.actionPerformed(new java.awt.event.ActionEvent());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<javax.swing.event.DocumentListener> documentListeners(javax.swing.text.Document doc) {
+        for (Class<?> k = doc.getClass(); k != null; k = k.getSuperclass()) {
+            try {
+                java.lang.reflect.Field f = k.getDeclaredField("__DocumentListeners");
+                f.setAccessible(true);
+                return new java.util.ArrayList<>((List<javax.swing.event.DocumentListener>) f.get(doc));
+            } catch (NoSuchFieldException e) {
+                // keep looking
+            } catch (Throwable t) {
+                break;
+            }
+        }
+        return java.util.Collections.emptyList();
     }
 
     /** Runs what plugins posted with SwingUtilities.invokeLater (the game thread acts as the EDT). */
@@ -139,6 +235,10 @@ final class Sidebar {
             AbstractButton b = (AbstractButton) c;
             if (b instanceof JToggleButton) b.setSelected(!b.isSelected());
             for (java.awt.event.ActionListener l : b.getActionListeners()) l.actionPerformed(new java.awt.event.ActionEvent());
+            return;
+        }
+        if (c instanceof JTextComponent) {
+            promptText((JTextComponent) c);
             return;
         }
         long now = System.currentTimeMillis();
@@ -174,6 +274,10 @@ final class Sidebar {
         }
         if (c instanceof AbstractButton) {
             add(sb, 'B', depth, c, text(c));
+            return;
+        }
+        if (c instanceof javax.swing.JTextField) {  // editable: tap opens a text prompt
+            add(sb, 'E', depth, c, clean(((JTextComponent) c).getText()));
             return;
         }
         if (c instanceof JTextComponent) {

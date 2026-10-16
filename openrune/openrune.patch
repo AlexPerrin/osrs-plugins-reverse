@@ -346,7 +346,7 @@ index 0c3cdf4e5..7b7681c96 100644
      override fun getExceptionHandlers(): ExceptionHandlers<Player> {
          return ExceptionHandlersProvider.provide()
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt
-index 98c922c45..76770d5bd 100644
+index 98c922c45..33c237ec4 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt
 +++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt
 @@ -140,7 +140,11 @@ constructor(
@@ -362,6 +362,17 @@ index 98c922c45..76770d5bd 100644
  
          val client = RspClient(session, infos) as Client<Any, Any>
          val cycle = RspCycle(session, infos, regionReg)
+@@ -209,7 +213,9 @@ constructor(
+                 level = npc.level,
+                 x = npc.x,
+                 z = npc.z,
+-                spawnCycle = mapClock.cycle,
++                // A non-zero spawn cycle sends NPC_INFO's spawn-clock branch, whose Android bit
++                // layout is unverified: NPCs added after startup never showed on the app.
++                spawnCycle = 0,
+                 direction = npc.respawnDir.id,
+             )
+         npc.infoProtocol = RspNpcInfo(rspAvatar)
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandler.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandler.kt
 new file mode 100644
 index 000000000..dc9224eca
@@ -1700,25 +1711,29 @@ index 83435d83b..6d8e37a98 100644
  [gamevals.inv]
  spawn_results = 1100
 diff --git a/content/other/special-attacks/src/main/kotlin/org/rsmod/content/other/special/attacks/SpecialAttackModule.kt b/content/other/special-attacks/src/main/kotlin/org/rsmod/content/other/special/attacks/SpecialAttackModule.kt
-index 1f502f77a..d4df99410 100644
+index 1f502f77a..f51b1e1cf 100644
 --- a/content/other/special-attacks/src/main/kotlin/org/rsmod/content/other/special/attacks/SpecialAttackModule.kt
 +++ b/content/other/special-attacks/src/main/kotlin/org/rsmod/content/other/special/attacks/SpecialAttackModule.kt
-@@ -2,6 +2,7 @@ package org.rsmod.content.other.special.attacks
+@@ -2,7 +2,9 @@ package org.rsmod.content.other.special.attacks
  
  import org.rsmod.api.specials.SpecialAttackMap
  import org.rsmod.content.other.special.attacks.boost.StatBoostSpecialAttacks
 +import org.rsmod.content.other.special.attacks.melee.DragonDaggerSpecialAttack
  import org.rsmod.content.other.special.attacks.melee.DragonLongswordSpecialAttack
++import org.rsmod.content.other.special.attacks.melee.DragonWarhammerSpecialAttack
  import org.rsmod.content.other.special.attacks.melee.HalberdSpecialAttack
  import org.rsmod.content.other.special.attacks.ranged.DarkBowSpecialAttack
-@@ -11,6 +12,7 @@ class SpecialAttackModule : PluginModule() {
+ import org.rsmod.plugin.module.PluginModule
+@@ -11,7 +13,9 @@ class SpecialAttackModule : PluginModule() {
      override fun bind() {
          addSetBinding<SpecialAttackMap>(StatBoostSpecialAttacks::class.java)
          addSetBinding<SpecialAttackMap>(DarkBowSpecialAttack::class.java)
 +        addSetBinding<SpecialAttackMap>(DragonDaggerSpecialAttack::class.java)
          addSetBinding<SpecialAttackMap>(DragonLongswordSpecialAttack::class.java)
++        addSetBinding<SpecialAttackMap>(DragonWarhammerSpecialAttack::class.java)
          addSetBinding<SpecialAttackMap>(HalberdSpecialAttack::class.java)
      }
+ }
 diff --git a/content/other/special-attacks/src/main/kotlin/org/rsmod/content/other/special/attacks/melee/DragonDaggerSpecialAttack.kt b/content/other/special-attacks/src/main/kotlin/org/rsmod/content/other/special/attacks/melee/DragonDaggerSpecialAttack.kt
 new file mode 100644
 index 000000000..285f6f58f
@@ -1797,6 +1812,88 @@ index 000000000..285f6f58f
 +                "obj.dragon_dagger_p+",
 +                "obj.dragon_dagger_p++",
 +            )
++    }
++}
+diff --git a/content/other/special-attacks/src/main/kotlin/org/rsmod/content/other/special/attacks/melee/DragonWarhammerSpecialAttack.kt b/content/other/special-attacks/src/main/kotlin/org/rsmod/content/other/special/attacks/melee/DragonWarhammerSpecialAttack.kt
+new file mode 100644
+index 000000000..80fd80adf
+--- /dev/null
++++ b/content/other/special-attacks/src/main/kotlin/org/rsmod/content/other/special/attacks/melee/DragonWarhammerSpecialAttack.kt
+@@ -0,0 +1,76 @@
++package org.rsmod.content.other.special.attacks.melee
++
++import org.rsmod.api.combat.commons.CombatAttack
++import org.rsmod.api.combat.commons.types.MeleeAttackType
++import org.rsmod.api.config.constants
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.stat.defenceLvl
++import org.rsmod.api.player.stat.statSub
++import org.rsmod.api.specials.SpecialAttackManager
++import org.rsmod.api.specials.SpecialAttackMap
++import org.rsmod.api.specials.SpecialAttackRepository
++import org.rsmod.api.specials.combat.MeleeSpecialAttack
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.entity.PathingEntity
++import org.rsmod.game.entity.Player
++
++/** Smash: 1.5x max hit; a hit that deals damage lowers the target's defence by 30% (50% energy). */
++class DragonWarhammerSpecialAttack : SpecialAttackMap {
++    override fun SpecialAttackRepository.register(manager: SpecialAttackManager) {
++        val smash = DragonWarhammer(manager)
++        for (hammer in HAMMERS) {
++            registerMelee(hammer, smash)
++        }
++    }
++
++    private class DragonWarhammer(private val manager: SpecialAttackManager) : MeleeSpecialAttack {
++        override suspend fun ProtectedAccess.attack(
++            target: Npc,
++            attack: CombatAttack.Melee,
++        ): Boolean {
++            val damage = smash(target, attack)
++            if (damage > 0) {
++                target.defenceLvl -= target.defenceLvl * DRAIN_PERCENT / 100
++            }
++            manager.continueCombat(this, target)
++            return true
++        }
++
++        override suspend fun ProtectedAccess.attack(
++            target: Player,
++            attack: CombatAttack.Melee,
++        ): Boolean {
++            val damage = smash(target, attack)
++            if (damage > 0) {
++                target.statSub("stat.defence", target.defenceLvl * DRAIN_PERCENT / 100, percent = 0)
++            }
++            manager.continueCombat(this, target)
++            return true
++        }
++
++        private fun ProtectedAccess.smash(target: PathingEntity, attack: CombatAttack.Melee): Int {
++            anim("seq.dragon_warhammer_sa_player")
++            spotanim(
++                spot = "spotanim.dragon_warhammer_sa_spotanim",
++                slot = constants.spotanim_slot_combat,
++            )
++            val damage =
++                manager.rollMeleeDamage(
++                    source = this,
++                    target = target,
++                    attack = attack,
++                    accuracyMultiplier = 1.0,
++                    maxHitMultiplier = 1.5,
++                    blockType = MeleeAttackType.Crush,
++                )
++            manager.giveCombatXp(this, target, attack, damage)
++            manager.queueMeleeHit(this, target, damage)
++            return damage
++        }
++    }
++
++    private companion object {
++        const val DRAIN_PERCENT = 30
++        val HAMMERS = listOf("obj.dragon_warhammer", "obj.dragon_warhammer_ornament")
 +    }
 +}
 diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml

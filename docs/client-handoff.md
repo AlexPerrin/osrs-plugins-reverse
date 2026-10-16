@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 9 entry (2026-10-16) at the end of "Where things stand".
+> Latest state: see the gen 10 entry (2026-10-16) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -298,6 +298,21 @@ session; its notes are in `docs/android-protocol.md`.
   - Device-run recipe: config tweaks go in /sdcard/Android/data/com.jagex.oldscape.android/files/settings.properties
     (group.key=value; append while the app is stopped), `EXTRA=... tools/plugin-test.sh`, `setprop debug.osrsrl.overlay 0`
     for clean screenshots, probe plugin fields with `setprop debug.osrsrl.probe Plugin.field` (tag osrsrl-probe).
+- **2026-10-16 (client dev gen 10)**, commits 1c137ef..:
+  - **Plugin menu entries** (`createMenuEntry`) show as a strip under the game's long-press menu
+    (ImGui, `plugin_menu_frame`); a tap runs `onClick` + `MenuOptionClicked` and closes the game menu
+    (`game::menu_close`, the close branch of `0x599f68`). **Virtual Shift** toggle under the RL button
+    (`isKeyPressed(KC_SHIFT)`), `getSelectedSceneTile`, touch-as-mouse (`getMouseCanvasPosition` = touch
+    point while down + 3 s) with RuneLite's `TooltipOverlay`, login varp resync on ring overflow.
+    Verified: Ground Markers, Object Markers, Attack Styles, Regeneration Meter (draws only below full
+    HP/spec by default), Run Energy (orb tooltip). Table: 14 runs.
+  - **Sign-in rule (orchestrator, hard):** on login screens tap only the signed-in "Play Now" button or,
+    when signed out, "Sign in with Email / Username" (LOCAL_AUTH). Never tap "Sign in with Google" or touch
+    any Google/Jagex account screen; screenshot and match the screen before every tap there and abort if it
+    isn't the expected one. `tools/plugin-test.sh` now classifies a screenshot (Play Now vs chooser) and
+    exits 2 instead of tapping when it isn't the Play Now screen. Background: blind retry taps signed the
+    account out and the old fixed Play Now tap then opened Google sign-in (backed out with BACK).
+  - "Either your account is still logged in": wait ~30 s after a force-stop before logging in again.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

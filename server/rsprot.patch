@@ -1327,12 +1327,14 @@ index 00000000..2a69303f
 +    )
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
 new file mode 100644
-index 00000000..c768b2b5
+index 00000000..db61478b
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidMoreEncoders.kt
-@@ -0,0 +1,1013 @@
+@@ -0,0 +1,1019 @@
 +package net.rsprot.protocol.android
 +
++import net.rsprot.protocol.game.outgoing.codec.misc.client.UrlOpenEncoder
++import net.rsprot.protocol.game.outgoing.misc.client.UrlOpen
 +import net.rsprot.protocol.game.outgoing.clan.ClanChannelDelta
 +import net.rsprot.protocol.game.outgoing.clan.ClanChannelFull
 +import net.rsprot.protocol.game.outgoing.clan.ClanSettingsDelta
@@ -1668,6 +1670,10 @@ index 00000000..c768b2b5
 +/** Case 135: as desktop (frees the obj-unlock array). */
 +public fun androidObjUnlockResetEncoder(): MessageEncoder<ObjUnlockReset> =
 +    AndroidDelegatingEncoder(AndroidGameServerProt.OBJUNLOCK_RESET, ObjUnlockResetEncoder())
++
++/** Case 24: one plain gjstr (FUN_0058d824 flag 0) handed to a Java bridge call, as desktop's pjstr. */
++public fun androidUrlOpenEncoder(): MessageEncoder<UrlOpen> =
++    AndroidDelegatingEncoder(AndroidGameServerProt.URL_OPEN, UrlOpenEncoder())
 +
 +/** Case 19: as desktop (body FUN_0056e768 -> 0x6f8a3c, compared field by field). */
 +public fun androidClanChannelFullEncoder(): MessageEncoder<ClanChannelFull> =
@@ -2785,10 +2791,10 @@ index 00000000..b1436285
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..d6d00375
+index 00000000..f6d1f022
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,242 @@
+@@ -0,0 +1,243 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2889,6 +2895,7 @@ index 00000000..d6d00375
 +            bind(androidResetInteractionModeEncoder())
 +            bind(androidMessageClanChannelEncoder(huffmanCodecProvider))
 +            bind(androidVarClanEncoder())
++            bind(androidUrlOpenEncoder())
 +            bind(androidClanChannelFullEncoder())
 +            bind(androidClanSettingsFullEncoder())
 +            bind(androidClanSettingsDeltaEncoder())

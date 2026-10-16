@@ -768,6 +768,18 @@ index 7af3c1d93..953380a8a 100644
          val gameframe = gameframes[gameframeTopLevel]
          if (gameframe != null && gameframe.resizable == ui.frameResizable) {
              ifOpenTop(gameframe.topLevel)
+diff --git a/content/other/commands/build.gradle.kts b/content/other/commands/build.gradle.kts
+index ea293b6e0..126edec7c 100644
+--- a/content/other/commands/build.gradle.kts
++++ b/content/other/commands/build.gradle.kts
+@@ -5,6 +5,7 @@ plugins {
+ dependencies {
+     implementation(libs.fastutil)
+     implementation(libs.simmetrics.core)
++    implementation(libs.rsprot.api)
+     implementation(projects.api.account)
+     implementation(projects.api.areaChecker)
+     implementation(projects.api.combat.combatCommons)
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
 index a8bc2108d..9cf4c201c 100644
 --- a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
@@ -877,13 +889,14 @@ index a8bc2108d..9cf4c201c 100644
  
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
 new file mode 100644
-index 000000000..03233f5b5
+index 000000000..f79a312bf
 --- /dev/null
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
-@@ -0,0 +1,85 @@
+@@ -0,0 +1,94 @@
 +package org.rsmod.content.other.commands
 +
 +import jakarta.inject.Inject
++import net.rsprot.protocol.game.outgoing.misc.client.UrlOpen
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccessLauncher
 +import org.rsmod.api.repo.npc.NpcRepository
@@ -897,7 +910,7 @@ index 000000000..03233f5b5
 +
 +/**
 + * osrs-plugins-reverse: the `::` commands our Android device tests use that OpenRune lacks
-+ * (`::freeze`, `::npcsay`, `::options`). The rest map onto OpenRune's own commands: `::give` and
++ * (`::freeze`, `::npcsay`, `::options`, `::url`). The rest map onto OpenRune's own commands: `::give` and
 + * `::empty` are aliases of `::item` and `::invclear`, `::quest` lives in the quest module.
 + */
 +class TestCommands
@@ -912,6 +925,7 @@ index 000000000..03233f5b5
 +            invalidArgs = "Use as ::npcsay text"
 +        }
 +        onCommand("options", "Open a chatmenu with 2-5 options (::options One Two Three)", ::options)
++        onCommand("url", "Send URL_OPEN (::url https://example.com)", ::url)
 +    }
 +
 +    private fun freeze(cheat: Cheat) =
@@ -954,6 +968,13 @@ index 000000000..03233f5b5
 +                mes("Picked option $picked: ${choices[picked - 1]}")
 +            }
 +            Unit
++        }
++
++    private fun url(cheat: Cheat) =
++        with(cheat) {
++            val target = args.firstOrNull() ?: "https://example.com"
++            player.client.write(UrlOpen(target))
++            player.mes("URL_OPEN sent: $target")
 +        }
 +
 +    private fun nearbyNpcs(player: Player): List<Npc> =

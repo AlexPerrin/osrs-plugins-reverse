@@ -818,15 +818,16 @@ class World(
                 player.message("Region rebuilt from zones offset $dzx,$dzz rot $rot")
             }
             "proj" -> {
-                // PROJANIM_SPECIFIC_V4 (Android 76) test: ::proj id [dx] [mode]. Nominal: starts high (160) at your tile,
-                // lands low (0) dx tiles east, flying from cycle +30 to +300 (about 6 s). mode bits swap the values given
-                // to suspect fields: 1 = start/end time, 2 = start/end height, 4 = progress/startHeight.
+                // PROJANIM_SPECIFIC_V4 (Android 76) test: ::proj id [dx] [mode]. Nominal: starts at height 40 (x4 in the
+                // client, about a player's height) at your tile, lands at 0 dx tiles east, flying from cycle +30 to +300
+                // (about 6 s). mode bits swap the values given to suspect fields: 1 = start/end time, 2 = start/end
+                // height, 4 = progress/startHeight. Struct slots are confirmed by the zone variant (see android-protocol.md).
                 val id = args.getOrNull(1)?.toIntOrNull() ?: return player.message("Usage: ::proj spotanim [dx] [mode]")
                 val dx = args.getOrNull(2)?.toIntOrNull() ?: 5
                 val mode = args.getOrNull(3)?.toIntOrNull() ?: 0
-                var t1 = 30; var t2 = 300; var h1 = 160; var h2 = 0; var prog = 0
+                var t1 = 30; var t2 = 300; var h1 = 40; var h2 = 0; var prog = 0
                 if (mode and 1 != 0) { t1 = 300; t2 = 30 }
-                if (mode and 2 != 0) { h1 = 0; h2 = 160 }
+                if (mode and 2 != 0) { h1 = 0; h2 = 40 }
                 if (mode and 4 != 0) { prog = h1; h1 = 0 }
                 val c = player.coord
                 player.send(ProjAnimSpecificV4(id, h1, h2, t1, t2, 16, prog, CoordGrid(c.level, c.x, c.z), 0,
@@ -1627,7 +1628,16 @@ class World(
             action = { p ->
                 when (opName?.lowercase()) {
                     "bank" -> openBank(p)
-                    "open", "close" -> toggleDoor(p, id, Coord(x, z, p.coord.level), opName.lowercase() == "open")
+                    "open", "close" -> {
+                        val open = opName.lowercase() == "open"
+                        val c = Coord(x, z, p.coord.level)
+                        // Double gates (e.g. Fred's sheep pen 12986/12987): the other half next to it swings too.
+                        val other = if (type?.name == "Gate") listOf(0 to 1, 0 to -1, 1 to 0, -1 to 0).map { (dx, dz) -> Coord(x + dx, z + dz, c.level) }
+                            .firstOrNull { n -> wallAt(n)?.let { w -> locTypes[w.id]?.let { t -> t.name == "Gate" && t.ops.any { it.equals(opName, true) } } } == true } else null
+                        val otherId = other?.let { wallAt(it)?.id }
+                        toggleDoor(p, id, c, open)
+                        if (other != null && otherId != null) toggleDoor(p, otherId, other, open)
+                    }
                     "spin" -> spin(p)
                     "pick-from" -> if (type?.name.equals("Cadava bush", true)) {
                         if (give(p, OBJ_CADAVA_BERRIES, 1)) { p.send(p.inventory.toMessage()); p.message("You pick some cadava berries.") }

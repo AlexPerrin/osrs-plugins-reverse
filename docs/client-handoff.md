@@ -282,9 +282,22 @@ session; its notes are in `docs/android-protocol.md`.
     Status Bars' viewport 161:73 → side panel 601:111, `getChatLineMap` (host-side), `getStructComposition`.
   - **Android 9 lacks Java 9+ APIs**: `host/tools/api_gaps.py` (dexdump.exe of host.jar vs the SDK's
     api-versions.xml) lists them; RuneLite's `Text` and `WildcardMatcher` are same-name replacements for that.
-  - Open: mobile orbs aren't group 160 (Regen Meter, Run Energy anchor there; find with
-    `setprop debug.osrsrl.wdump all` and grep the text '99'); Attack Styles draws nothing (struct support
-    added, unverified); XP Drop's hideSkillIcons (children array is a copy); ChatIconManager.loadRankIcons NPE.
+  - Later in gen 9 (up to c4b8ab3): NPC Indicators runs; getStructComposition verified (Attack Styles computes
+    the style); VarbitChanged for unchanged server varps (changed-varp ring) + per-varbit events (verified, fps 30,
+    index 23 ms); Player Indicators / Special Attack Counter start (protobuf + http-api). Table: 9 runs, 32 starts,
+    0 throws.
+  - Next (gen 10): verify Attack Styles' overlay below the mobile chatbox (ABOVE_CHATBOX_RIGHT remap,
+    unverified; config group `attackIndicator`); orbs ARE group 160 as on desktop (`wdump all` shows
+    160:10 '99' etc.; the old single-group dump stopped at the first missing child), so check why Regen
+    Meter / Run Energy draw nothing; promote more `starts` rows by checking each plugin's visible feature
+    (Ground/Object Markers need shift-menu entries: `isKeyPressed(SHIFT)` is always false; Timers & Buffs,
+    Item Charges, Inventory Tags need items/config); the login varp burst can overflow the 32-entry ring
+    (Attack Styles misses varp 43 = 0 at login); NPC hulls also draw over the left button column (add it to
+    OverlayRenderer's opaque list); XP Drop's hideSkillIcons; ChatIconManager.loadRankIcons NPE (getModIcons
+    null); Chat History removal from the game's chat; InfoBox placement (bottom right, by the tab stones).
+  - Device-run recipe: config tweaks go in /sdcard/Android/data/com.jagex.oldscape.android/files/settings.properties
+    (group.key=value; append while the app is stopped), `EXTRA=... tools/plugin-test.sh`, `setprop debug.osrsrl.overlay 0`
+    for clean screenshots, probe plugin fields with `setprop debug.osrsrl.probe Plugin.field` (tag osrsrl-probe).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

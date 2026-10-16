@@ -19,7 +19,7 @@ Staged port of our Android test server onto OpenRune-Server, approved 2026-10-16
 | 1.3 | Test commands (`::freeze`, `::quest`, `::npcsay`, `::options`, `::give`, `::empty`, numeric `::varp`/`::varbit`) | done; `::options`, `::freeze`, `::quest` verified on device |
 | 1.4 | Door content gaps (castle) | kitchen + dining-room double doors tagged; front doors need nothing |
 | 1.5 | Docker deploy beside osrs-rsps-test; app build option in `repack.sh` | done |
-| 2 | Device checklist | slot 1 done (crash check, sign-in, chatmenu, commands); rest open |
+| 2 | Device checklist | done except Quest Helper's overlay steps and weight, which need the client dev |
 | 3 | Sheep Shearer, Romeo & Juliet; make OpenRune the default | waiting for the go-ahead |
 
 ## Phase 1 findings
@@ -152,11 +152,18 @@ port patched to 40255, OpenRune's modulus).
 | Chatmenu with 4 options (`::options One Two Three Four`) | ok: all 4 rows visible, tapping "four" gives "Picked option 4: four", chat history comes back after closing |
 | `::freeze` | ok ("NPC wandering off.") |
 | `::quest cook` | ok ("Cook's Assistant: varbit.cooks_assistant_progress = 0 (not_started, end 2)") |
-| Door (tagged: poordoor at 3226,3214; kitchen 3207,3217) | open |
-| NPC dialogue (Cook) and Cook's Assistant end to end | open |
-| Bank, combat | open |
-| Saves across relog | open (verified in the spike) |
+| Door | ok: the kitchen door (`hundred_lumbridge_door`, newly tagged) shows Open Door on long-press and opens (zone loc change on Android) |
+| NPC dialogue (Cook) and Cook's Assistant end to end | ok: chat_left/right, the Cook's 4-option chatmenu (all rows visible), "Start the Cook's Assistant quest?" Yes/No, hand-in of egg/milk/flour (`::give`), the quest-complete scroll (1 QP, 300 Cooking XP); stage 2 = finished |
+| Bank, combat | ok: `::openbank` shows the Bank of Gielinor on mobile; Attack Man: hitsplats, headbars, XP drops and level-ups, the man dies and drops bones |
+| Saves across relog | ok: logout and Play Now return to the same tile, with Cook's Assistant still finished |
 | Weight (UPDATE_RUNWEIGHT) | open on device. OpenRune sends it on inventory/worn changes (`PlayerInvUpdateProcessor`) and our RSProt has the Android encoder; the client dev can read getWeight via the plugin host, e.g. after `::item 1127` and wearing it |
-| Plugin host + Quest Helper (Cook's Assistant overlay) | open |
+| Plugin host + Quest Helper (Cook's Assistant overlay) | partly: the host loads (RL button) and the Cook is outlined in cyan before the quest starts, which looks like QH's NPC highlight; the step text and overlay still need the client dev's check |
 
-Slot 1: 01:29-01:43. The normal build (8080) was reinstalled at the end and Play Now signed in.
+Slot 1: 01:29-01:43. Slot 2: 01:48-01:55. Each time the normal build (8080) was reinstalled at the
+end and Play Now signed in.
+
+Notes:
+- OpenRune's dev realm uses a 150x XP rate (Cooking 41 after the quest, Attack 20 after one man).
+- `adb input keyevent 66` (Enter) sometimes leaves a `::` command in the chat input; deleting and
+  retyping it works.
+- `::freeze` is world-wide server state; it was switched back on ("NPC wandering on").

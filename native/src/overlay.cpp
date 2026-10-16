@@ -217,7 +217,7 @@ void sidebar_frame(int w, int h) {
     for (size_t i = 0; i < g_sb_nodes.size(); i++) {
         const SidebarNode& n = g_sb_nodes[i];
         std::string id = "##n" + std::to_string(i);
-        bool same_row = n.kind == 'B' && n.text.size() <= 3 && (prev_kind == 'L' || prev_kind == 'B') && n.depth == prev_depth;
+        bool same_row = ((n.kind == 'B' && n.text.size() <= 3) || n.kind == 'I') && (prev_kind == 'L' || prev_kind == 'B') && n.depth == prev_depth;
         if (same_row) ImGui::SameLine();
         bool clicked = false;
         switch (n.kind) {
@@ -264,7 +264,8 @@ void sidebar_frame(int w, int h) {
                 GLuint tex = sidebar_icon_texture(atoi(n.text.c_str()), &iw, &ih);
                 bool sel = n.text.size() >= 2 && n.text.back() == '1';
                 float side = ImGui::GetFrameHeight() * 1.6f;
-                if (prev_kind == 'I' && n.depth == prev_depth &&
+                if (same_row) side = ImGui::GetTextLineHeight();  // small icon button after a label (QH's ">")
+                if (!same_row && prev_kind == 'I' && n.depth == prev_depth &&
                     ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + side + 2 * ImGui::GetStyle().FramePadding.x <
                         ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
                     ImGui::SameLine();

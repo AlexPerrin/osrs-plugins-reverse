@@ -47,7 +47,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Emojis | starts | cache dir now under the app's files dir (user.home); emoji rendering in chat not possible (game chat) |
 | Examine | runs | "Price of Salmon: GE average 30 HA value 18" after Examine on an inventory item, one price line after OpenRune dropped its own (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
 | Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Color Tile > Pick opens the Android colour dialog and recolours the tile (verified 2026-10-16) |
-| Implings | starts | `implings.showbaby=HIGHLIGHT`; `::npc 300 ii_impling_type_1` replies "Spawned npc (id 1635)" but no NPC reaches the client (2026-10-16) |
+| Implings | starts | `implings.showbaby=HIGHLIGHT`; OpenRune's `::npc` spawns (implings and goblins alike) reply "Spawned npc" but never reach the client (server gap, confirmed 2026-10-16) |
 | Interact Highlight | runs | outline on the hovered NPC (long-press) and red outline on the attacked goblin (long-press + Attack, verified 2026-10-16) |
 | Inventory Tags | runs | green outline on a tagged pot; Shift + long-press an item: "Inventory tag" > Pick sets the tag (verified 2026-10-16; outlines from the game's createItemSprite) |
 | Item Charges | runs | "8" drawn on a Ring of dueling(8) in the inventory (verified 2026-10-16) |
@@ -70,16 +70,16 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Idle Notifier | runs | "[RuneLite] You are now idle!" in the game chat after mining/fishing stops (Notifier → game chat, verified 2026-10-16) |
 | Mining | runs | "Mining" / "NOT mining" session panel below the chatbox while mining copper (after OpenRune's OSRS wording fix; TOP_LEFT placement verified 2026-10-16) |
 | Player Indicators | starts | needed protobuf-javalite + RuneLite http-api (PartyService) |
-| Special Attack Counter | starts | OpenRune: "This weapon does not have a special attack." for a dragon dagger (2026-10-16) |
+| Special Attack Counter | starts | the dragon dagger spec works on OpenRune (energy 100 -> 75, 2026-10-16), but the plugin only counts its SpecialWeapon list (dragon warhammer, arclight, darklight, BGS, bone dagger, ...), not the dragon dagger; needs one of those with a spec server-side |
 | XP Globes | runs | attack/HP globes over the chat tabs after combat |
-| Bank | starts | not checked (`::openbank` didn't open the bank in the test) |
-| Notes | starts | sidebar tab added, but its JTextArea shows as a checkbox "[ ]" (no text editing yet) |
+| Bank | starts | `::openbank` opens the bank (2026-10-16); the bank value in the title isn't shown: the mobile bank scripts don't call runelite_callback `setBankTitle` |
+| Notes | runs | tap the note in the sidebar: multi-line Android prompt; OK saves it (`notes.notesData=Buy feathers`, verified 2026-10-16). Headless documents hold their text, and the prompt raises focusLost, where Notes saves |
 | Slayer | starts | task InfoBox drawn (enchanted gem "?" icon from the game's sprites) with no task |
 | NPC Aggression Timer | starts | not checked |
 | Mouse Tooltips | runs | "Eat Lobster" tooltip while a finger rests on an inventory item and "Remove Dragon dagger" on the worn weapon slot (hover entries, verified 2026-10-16) |
 | Loot Tracker | runs | sidebar: "Goblin (lvl-2) 2 gp, Total count: 1" after killing a goblin (verified 2026-10-16); local only (same-name SessionManager without a runelite.net session) |
 | Hiscore | runs | sidebar lookup of "Lynx Titan" shows the levels from the public hiscores (okhttp, off the game thread; verified 2026-10-16). The player-menu "Lookup" entry is host-side only |
-| Skill Calculator | starts | panel shows its level/experience fields; the skill picker (icon buttons) isn't shown in the flattened sidebar |
+| Skill Calculator | runs | skill icons drawn as image buttons in the sidebar; picking Woodcutting fills current/target level and XP and lists the log actions (verified 2026-10-16) |
 
 ## Build and run
 

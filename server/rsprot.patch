@@ -629,7 +629,7 @@ index 00000000..4302ebc2
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
-index 00000000..a44d2077
+index 00000000..f03c3c8e
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 @@ -0,0 +1,123 @@
@@ -721,7 +721,7 @@ index 00000000..a44d2077
 +    OPLOC5(66, 8),
 +    MAP_BUILD_COMPLETE(67, 0), // sender read
 +    OPPLAYER7(68, 3), // sender read
-+    OPWORLDENTITY6(69, 2), // unverified: sender FUN_00623550 writes one id g2Alt3 (like OPNPC6/OPOBJ6 examine, in the same 0x62xxxx cluster); reached only indirectly, so world-entity examine is still by elimination
++    OPWORLDENTITY6(69, 2), // sender read: FUN_00623550 writes one id g2Alt3; the menu builder FUN_00633a1c binds it to the entry it adds right after a world entity's five op entries (OPWORLDENTITY1-5 sender 0x622f10), with the entity's type id, as it does OPOBJ6 (0x6211ac) after OPOBJ1-5
 +    IF_SUBOP(70, 10), // sender read
 +    OPNPC3(71, 4),
 +    CLANSETTINGS_FULL_REQUEST(72, 1), // sender read

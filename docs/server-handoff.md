@@ -44,7 +44,8 @@ this repo's `rsprot.patch`) all run there.
   listed in `docs/openrune-port.md`.
 - 148 CAM_SKYBOX verified statically (renderer sky slot set/clear, see android-protocol.md).
 - S->C 0 is now `OP_0 // dead:` (no dispatcher case; was named SET_HEATMAP_ENABLED by elimination only).
-- Remaining unverified: C->S 45, 69.
+- C->S 69 OPWORLDENTITY6 verified statically (menu builder 0x633a1c).
+- Remaining unverified: C->S 45 only (likely sailing's heading).
 
 ## Latest state (2026-10-16 evening, fourth server dev, on OpenRune)
 

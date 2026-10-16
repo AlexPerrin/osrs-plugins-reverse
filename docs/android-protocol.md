@@ -376,7 +376,7 @@ too large, so the g3Alt3 transform is unconfirmed).
 | 43 | IF_BUTTOND | selectedCombinedId `g4Alt2`, targetSub `g2Alt2`, targetObj `g2Alt2`, targetCombinedId `g4Alt3`, selectedObj `g2Alt3`, selectedSub `g2Alt2` |
 | 45 | SET_HEADING (unverified) | heading `g1Alt2` |
 | 47 | SET_CHATFILTERSETTINGS | as desktop |
-| 49 / 69 | OPNPC6 (verified live: Examine chicken -> id 1173) / OPWORLDENTITY6 (unverified) | id `g2` / id `g2Alt3` |
+| 49 / 69 | OPNPC6 (verified live: Examine chicken -> id 1173) / OPWORLDENTITY6 (verified statically: the menu builder `0x633a1c` adds its entry, bound to sender `0x623550` with the world entity's type id, right after the entity's five OPWORLDENTITY1-5 entries, the same way it adds OPOBJ6 after OPOBJ1-5) | id `g2` / id `g2Alt3` |
 | 51 / 61 / 88 | FRIENDCHAT_KICK / FRIENDCHAT_JOIN_LEAVE / FRIENDCHAT_SETRANK | name / name / rank `g1Alt1`, name |
 | 56 / 72 | CLANCHANNEL_FULL_REQUEST / CLANSETTINGS_FULL_REQUEST | clanId `g1s` |
 | 70 | IF_SUBOP | as desktop |

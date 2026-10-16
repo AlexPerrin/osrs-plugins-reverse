@@ -62,6 +62,20 @@ public class GenHeadless {
                 }
             }
         }
+        // A property accessor whose other half lives in a superclass (JComponent.setVisible vs
+        // Component.isVisible) delegates to it, so pull the superclass's pair in too.
+        for (Class<?> c : new ArrayList<>(members.keySet())) {
+            for (Member m : new ArrayList<>(members.get(c))) {
+                if (!(m instanceof Method) || prop((Method) m) == null || !partners(c, (Method) m).isEmpty()) continue;
+                Method sup = superAccessor(c, (Method) m);
+                if (sup == null) continue;
+                Class<?> sc = sup.getDeclaringClass();
+                if (members.computeIfAbsent(sc, k -> new LinkedHashSet<>()).add(sup)) for (Class<?> t : types(sup)) want(t);
+                for (Method partner : partners(sc, sup))
+                    if (types(partner).stream().allMatch(GenHeadless::available) && members.get(sc).add(partner))
+                        for (Class<?> t : types(partner)) want(t);
+            }
+        }
         // Concrete classes must implement abstract methods of their generated supertypes.
         boolean changed = true;
         while (changed) {
@@ -134,6 +148,17 @@ public class GenHeadless {
         if (n.startsWith("set") && m.getParameterCount() == 1 && m.getReturnType() == void.class) return n.substring(3);
         if (n.startsWith("get") && m.getParameterCount() == 0 && m.getReturnType() != void.class) return n.substring(3);
         if (n.startsWith("is") && m.getParameterCount() == 0 && m.getReturnType() == boolean.class) return n.substring(2);
+        return null;
+    }
+
+    /** The same accessor in the nearest generated superclass that also declares its partner. */
+    static Method superAccessor(Class<?> c, Method m) {
+        for (Class<?> s = c.getSuperclass(); s != null && candidate(s) && !handwritten(s); s = s.getSuperclass()) {
+            try {
+                Method x = s.getDeclaredMethod(m.getName(), m.getParameterTypes());
+                if (Modifier.isPublic(x.getModifiers()) && !Modifier.isAbstract(x.getModifiers()) && !partners(s, x).isEmpty()) return x;
+            } catch (NoSuchMethodException e) { /* keep looking */ }
+        }
         return null;
     }
 
@@ -560,6 +585,8 @@ public class GenHeadless {
             return "return (" + typeName(x.getReturnType()) + ") __" + l + "s.toArray(new " + typeName(x.getReturnType().getComponentType()) + "[0]);";
         }
         String p = prop(x);
+        if (p != null && partners(c, x).isEmpty() && superAccessor(c, x) != null)
+            return (x.getReturnType() == void.class ? "super." : "return super.") + n + "(" + (ps.length == 1 ? "a0" : "") + ");";
         if (p != null && props.containsKey(p)) {
             Class<?> t = props.get(p);
             if (n.startsWith("set")) return "__" + p + " = a0; __" + p + "Set = true;";

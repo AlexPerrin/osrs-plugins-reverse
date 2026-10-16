@@ -29,12 +29,14 @@ index 00000000..2a4d99f1
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt
 new file mode 100644
-index 00000000..d509af58
+index 00000000..a11c5f82
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidDecoders.kt
-@@ -0,0 +1,210 @@
+@@ -0,0 +1,219 @@
 +package net.rsprot.protocol.android
 +
++import net.rsprot.protocol.game.incoming.codec.messaging.MessagePrivateDecoder
++import net.rsprot.protocol.game.incoming.messaging.MessagePrivate
 +import net.rsprot.buffer.JagByteBuf
 +import net.rsprot.protocol.ClientProt
 +import net.rsprot.compression.provider.HuffmanCodecProvider
@@ -82,6 +84,13 @@ index 00000000..d509af58
 +/** Opcode 64: type, colour, effect, huffman text (observed: 00 00 00 05 838c70 = "hello"). */
 +public fun androidMessagePublicDecoder(huffman: HuffmanCodecProvider): MessageDecoder<MessagePublic> =
 +    AndroidDelegatingDecoder(AndroidGameClientProt.MESSAGE_PUBLIC, MessagePublicDecoder(huffman))
++
++/**
++ * Opcode 50: [name gjstr][huffman message], as desktop. Sender: CS2 op 5009 (0x1391) in FUN_005bdf14,
++ * which writes the name as a CP1252 C string and the message through the Huffman encoder FUN_008668f0.
++ */
++public fun androidMessagePrivateDecoder(huffman: HuffmanCodecProvider): MessageDecoder<MessagePrivate> =
++    AndroidDelegatingDecoder(AndroidGameClientProt.MESSAGE_PRIVATE, MessagePrivateDecoder(huffman))
 +
 +/** Opcode 99: combined id, sub, obj, op (observed: 02590030 ffff ffff 01 = 601:48 op 1). */
 +public fun androidIfButtonXDecoder(): MessageDecoder<If3Button> =
@@ -615,7 +624,7 @@ index 00000000..ea743851
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 new file mode 100644
-index 00000000..a38ed703
+index 00000000..49a1cf04
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidGameClientProt.kt
 @@ -0,0 +1,123 @@
@@ -684,11 +693,11 @@ index 00000000..a38ed703
 +    IF_BUTTOND(43, 16), // sender read
 +    OPNPC2(44, 4),
 +    SET_HEADING(45, 1), // unverified: medium: sent from a special minimap click mode (0x68d438, angle from the click); a plain minimap long-press sends nothing
-+    SOUND_JINGLEEND(46, 4), // unverified: medium: sender 0x5694e4 writes the jingle id p4 as desktop, but only with volume > 0; ::jingle 152 got no reply (emulator audio muted?)
++    SOUND_JINGLEEND(46, 4), // sender read: FUN_005694e4 writes the jingle id p4 (only while volume +0x2f58 > 0); called by the music module when it stops a jingle player (FUN_00790634, FUN_0079a8e0)
 +    SET_CHATFILTERSETTINGS(47, 3), // sender read
 +    RESUME_PAUSEBUTTON(48, 6),
 +    OPNPC6(49, 2), // verified live 2026-10-15: Examine on the chicken sent OpNpc6(id=1173), its type id
-+    MESSAGE_PRIVATE(50, Prot.VAR_SHORT), // unverified: interpreter sender pops two strings; layout not decoded
++    MESSAGE_PRIVATE(50, Prot.VAR_SHORT), // sender read: CS2 op 5009 (FUN_005bdf14) writes name gjstr + huffman message, as desktop
 +    FRIENDCHAT_KICK(51, Prot.VAR_BYTE), // sender read
 +    OPWORLDENTITY4(52, 3), // sender read
 +    OPPLAYER4(53, 3), // sender read
@@ -2807,10 +2816,10 @@ index 00000000..b1436285
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
 new file mode 100644
-index 00000000..3124c09d
+index 00000000..a4a8ebc3
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/AndroidRepositories.kt
-@@ -0,0 +1,244 @@
+@@ -0,0 +1,246 @@
 +package net.rsprot.protocol.android
 +
 +import net.rsprot.buffer.JagByteBuf
@@ -2989,6 +2998,7 @@ index 00000000..3124c09d
 +            AndroidGameClientProt.MOVE_GAMECLICK,
 +            AndroidGameClientProt.CLIENT_CHEAT,
 +            AndroidGameClientProt.MESSAGE_PUBLIC,
++            AndroidGameClientProt.MESSAGE_PRIVATE,
 +            AndroidGameClientProt.IF_BUTTONX,
 +            AndroidGameClientProt.RESUME_PAUSEBUTTON,
 +        ) + (ANDROID_OPLOC + ANDROID_OPOBJ + ANDROID_OPNPC).map { it.first } +
@@ -3001,6 +3011,7 @@ index 00000000..3124c09d
 +            bind(AndroidMoveGameClickDecoder())
 +            bind(androidClientCheatDecoder())
 +            bind(androidMessagePublicDecoder(huffmanCodecProvider))
++            bind(androidMessagePrivateDecoder(huffmanCodecProvider))
 +            bind(androidIfButtonXDecoder())
 +            bind(AndroidResumePauseButtonDecoder())
 +            for ((prot, op, spec) in ANDROID_OPLOC) bind(AndroidOpLocDecoder(prot, op, spec))

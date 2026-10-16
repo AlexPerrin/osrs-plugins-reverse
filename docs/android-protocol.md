@@ -380,7 +380,9 @@ too large, so the g3Alt3 transform is unconfirmed).
 | 95 | IF_BUTTON | combinedId `g4` |
 | 91, 17, 65, 53, 25, 26, 68, 101 | OPPLAYER1-8 | 1: index `g2Alt1` ctrl `g1Alt1`; 2: index `g2Alt3` ctrl `g1`; 3: index `g2Alt1` ctrl `g1Alt3`; 4: ctrl `g1` index `g2Alt3`; 5: index `g2` ctrl `g1Alt1`; 6: index `g2Alt3` ctrl `g1Alt3`; 7: index `g2` ctrl `g1Alt2`; 8: ctrl `g1Alt3` index `g2Alt2` |
 | 78, 54, 11, 52, 59 | OPWORLDENTITY1-5 | 1: index `g2Alt3` ctrl `g1Alt2`; 2: index `g2` ctrl `g1Alt2`; 3: ctrl `g1Alt2` index `g2Alt1`; 4: ctrl `g1Alt3` index `g2`; 5: ctrl `g1Alt3` index `g2Alt1` |
-| 8, 20, 28, 46, 50, 57, 84 | IF_SCRIPT_TRIGGER, AFFINEDCLANSETTINGS_SETMUTED/ADDBANNED_FROMCHANNEL, SOUND_JINGLEEND, MESSAGE_PRIVATE, CLANCHANNEL_KICKUSER, IF_CRMVIEW_OP | named, unverified, mostly no codec |
+| 46 | SOUND_JINGLEEND | jingle id `g4` (FUN_005694e4, only while client+0x2f58 > 0); called when the music module stops a jingle player (FUN_00790634 loops the active jingles and reports each id; FUN_0079a8e0) |
+| 50 | MESSAGE_PRIVATE | name gjstr, Huffman message, as desktop (CS2 op 5009 = 0x1391 in FUN_005bdf14: CP1252 C string, then FUN_008668f0); decoder bound |
+| 8, 20, 28, 57, 84 | IF_SCRIPT_TRIGGER, AFFINEDCLANSETTINGS_SETMUTED/ADDBANNED_FROMCHANNEL, CLANCHANNEL_KICKUSER, IF_CRMVIEW_OP | named, unverified, no codec |
 
 Third pass (2026-10-16): a raw scan of every `bl` to the packet constructor `0x79cc90` over the
 whole text segment (capstone, not limited to Ghidra-analysed functions; the opcode is the `w0`
@@ -504,9 +506,10 @@ NPC "Attack" is hidden unless varp 1306 (attack option setting) is non-zero.
 - 45 SET_HEADING: the sender sits in the minimap click handler (`0x68d438`) under a special
   minimap mode; a plain long-press on the minimap sends nothing. Still unverified.
 - 46 SOUND_JINGLEEND: `::jingle 152` got no reply; the sender only fires with a positive volume
-  (client+0x2f58), and the emulator's audio is probably off. Still unverified.
+  (client+0x2f58), and the emulator's audio is probably off. Verified statically 2026-10-16: the
+  music module calls the sender with each jingle player's id when it stops them (FUN_00790634).
 - 11 CHAT_FILTER_SETTINGS_PRIVATECHAT: stores at client+0x33c4, between 78's public (+0x33c0,
   which gates overhead public chat) and trade (+0x33c8). Neither `::pmfilter 2` nor the control
-  `::chatfilter 2 2` (78) changes the chat tab labels, so the labels need a script redraw; still
-  unverified, but the structural evidence is good.
+  `::chatfilter 2 2` (78) changes the chat tab labels, so the labels need a script redraw.
+  Verified statically 2026-10-16 through the CS2 chat_setfilter op (see the table).
 

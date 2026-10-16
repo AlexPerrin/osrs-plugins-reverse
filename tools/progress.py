@@ -319,7 +319,7 @@ def main():
         text = read(readme)
         badges = " ".join(
             f"![{n}](https://img.shields.io/badge/{n.replace(' ', '%20').replace('→', '%E2%86%92')}-{pct(a, b):.1f}%25-blue)"
-            for n, a, b, _ in head if n in ("Mobile packets mapped", "Mobile packets implemented", "RuneLite API implemented"))
+            for n, a, b, _ in head if n in ("Mobile packets mapped", "Mobile packets implemented", "RuneLite API implemented", "Plugins running on Android"))
         block = (f"<!-- progress:start -->\n{badges}\n\n[![Progress map](docs/progress.svg)](docs/progress.md)\n\n"
                  + "\n".join(f"- **{n}**: {a}/{b} ({pct(a, b):.1f}%)" for n, a, b, _ in head)
                  + "\n\n\\* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the"

@@ -235,13 +235,14 @@ have encoders (`AndroidZoneProts.write`). `::zfx mapanim|locanim|sound|proj id .
 Flag bytes: 1–3; `0x80` in the first byte announces a second, `0x4000` a third (desktop uses
 `0x2000`). Blocks are read in this order:
 
-`0x2` reset, `0x200` tinting, `0x4` sequence, `0x20000` headbars, `0x40` ?, `0x100` move speed,
+`0x2` reset, `0x200` tinting, `0x4` sequence, `0x20000` headbars, `0x40` face, `0x100` move speed,
 `0x8000` ? (three strings), `0x2000` temp move speed, `0x10000` ?, `0x400` chat, `0x10`
 appearance, `0x1` say, `0x80000` ?, `0x100000` ?, `0x20` ?, `0x1000` ?, `0x40000` hitmarks
 
 | Block | Layout |
 |---|---|
 | sequence `0x4` | id `p2Alt2`, delay `p1` |
+| face `0x40` | flag (walkMode \| kind << 3 \| instant << 6) `p1Alt3`, then the desktop face payload (parser `0x4fb10c`: kind 0 entity = type smart, index smart2or4null, fallback angle smart; 1 loc = x, z, sizes smarts; 2 angle = smart; 3 reset) |
 | move speed `0x100` | `p1Alt2` |
 | temp move speed `0x2000` | `p1Alt1` (127 = teleport) |
 | chat `0x400` | colour<<8\|effects `p2Alt3`, modicon `p1Alt1`, autotyper `p1`, huffman length `p1Alt2`, huffman `pdataAlt3`, pattern bytes `p1Alt1` |
@@ -382,6 +383,7 @@ NPC extended info: flag bytes chain with `0x20` (second byte), `0x2000` (third) 
 | transformation `0x2` | id `p2Alt2` (as desktop) |
 | sequence `0x1` | id `p2Alt3`, delay `p1` |
 | say `0x4` | `pjstr` (as desktop) |
+| face `0x40` | flag byte `p1` (raw; desktop writes `p1Alt2`), then the face payload as for players |
 | headbars `0x1000000` | count `p1Alt2`; per bar: type smart, endTime smart (0x7FFF = remove), startTime smart, startFill `p1Alt1`, endFill `p1` if endTime != 0 |
 | hitmarks `0x40000` | count `p1`; per hit: type, value, delay, limit (smart1or2) |
 

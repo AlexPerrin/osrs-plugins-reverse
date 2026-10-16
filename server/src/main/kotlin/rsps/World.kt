@@ -1321,6 +1321,7 @@ class World(
         if (!npc.alive || player.deathTicks >= 0) return
         player.combatTarget = null
         if (opName.equals("attack", true)) return attack(player, npc)
+        faceNpc(player, npc)
         pathToNpc(player, npc)
         val interaction = Interaction(
             reached = { abs(it.coord.x - npc.x) <= 1 && abs(it.coord.z - npc.z) <= 1 },
@@ -1438,6 +1439,7 @@ class World(
     private fun attack(player: Player, npc: Npc) {
         player.interaction = null
         player.combatTarget = npc
+        faceNpc(player, npc)
         if (!inMeleeReach(player.coord.x, player.coord.z, player.coord.level, npc)) pathToMelee(player, npc)
         playerCombat(player)
     }
@@ -1514,6 +1516,7 @@ class World(
         if (npc.hitpoints <= 0) {
             npc.deathTicks = DEATH_TICKS
             npc.target = null
+            npcFacePlayer(npc, null)
             info.setSequence(npcAnims(npc).death, 0)
             for (p in players) if (p?.combatTarget === npc) p.combatTarget = null
             return
@@ -1522,7 +1525,18 @@ class World(
         if (npc.target == null) {
             npc.target = attacker
             npc.attackDelay = 1
+            npcFacePlayer(npc, attacker)
         }
+    }
+
+    // Facing (extended info: player 0x40 / NPC 0x40 on Android, desktop payload).
+    private fun faceNpc(player: Player, npc: Npc) =
+        player.extendedInfo.setFaceNpc(npc.index, false, 1, 0)
+
+    @Suppress("DEPRECATION")
+    private fun npcFacePlayer(npc: Npc, player: Player?) {
+        if (player == null) npc.avatar.extendedInfo.setFacePathingEntity(-1)
+        else npc.avatar.extendedInfo.setFacePlayer(player.index, false, 1, 0)
     }
 
     private class NpcAnims(val attack: Int, val block: Int, val death: Int)
@@ -1555,6 +1569,7 @@ class World(
             abs(c.x - npc.spawn.x) > NPC_CHASE_RANGE || abs(c.z - npc.spawn.z) > NPC_CHASE_RANGE
         ) {
             npc.target = null
+            npcFacePlayer(npc, null)
             return
         }
         if (!inMeleeReach(c.x, c.z, c.level, npc)) {
@@ -1608,6 +1623,7 @@ class World(
         // Auto retaliate when idle.
         if (player.combatTarget == null && player.interaction == null && player.path.isEmpty()) {
             player.combatTarget = npc
+            faceNpc(player, npc)
         }
     }
 

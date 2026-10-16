@@ -3200,10 +3200,10 @@ index 00000000..7be07ad5
 +}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt
 new file mode 100644
-index 00000000..ac4eb785
+index 00000000..371ac3f2
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/NpcAvatarExtendedInfoAndroidWriter.kt
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,134 @@
 +@file:Suppress("DuplicatedCode")
 +
 +package net.rsprot.protocol.android
@@ -3217,7 +3217,8 @@ index 00000000..ac4eb785
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcBodyCustomisationEncoder
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcCombatLevelChangeEncoder
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcExactMoveEncoder
-+import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcFaceEncoder
++import net.rsprot.protocol.internal.game.outgoing.info.shared.extendedinfo.Face
++import net.rsprot.protocol.internal.game.outgoing.info.encoder.PrecomputedExtendedInfoEncoder
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcFreezeEncoder
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcHeadCustomisationEncoder
 +import net.rsprot.protocol.game.outgoing.codec.npcinfo.extendedinfo.NpcHeadIconCustomisationEncoder
@@ -3231,7 +3232,6 @@ index 00000000..ac4eb785
 +import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcAvatarExtendedInfo
 +import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcAvatarExtendedInfoBlocks
 +import net.rsprot.protocol.game.outgoing.info.npcinfo.NpcAvatarExtendedInfoWriter
-+import net.rsprot.protocol.internal.game.outgoing.info.encoder.PrecomputedExtendedInfoEncoder
 +import net.rsprot.protocol.internal.game.outgoing.info.npcinfo.encoder.NpcExtendedInfoEncoders
 +import net.rsprot.protocol.internal.game.outgoing.info.shared.extendedinfo.Sequence
 +
@@ -3255,7 +3255,7 @@ index 00000000..ac4eb785
 +            NpcCombatLevelChangeEncoder(),
 +            AndroidNpcHitmarkEncoder(),
 +            AndroidNpcHeadbarEncoder(),
-+            NpcFaceEncoder(),
++            AndroidNpcFaceEncoder(),
 +            NpcBaseAnimationSetEncoder(),
 +            NpcTransparencyEncoder(),
 +            NpcFreezeEncoder(),
@@ -3278,6 +3278,7 @@ index 00000000..ac4eb785
 +        if (flag and NpcAvatarExtendedInfo.SAY != 0) clientFlag = clientFlag or ANDROID_SAY
 +        if (flag and NpcAvatarExtendedInfo.HEADBARS != 0) clientFlag = clientFlag or ANDROID_HEADBARS
 +        if (flag and NpcAvatarExtendedInfo.HITMARKS != 0) clientFlag = clientFlag or ANDROID_HITMARKS
++        if (flag and NpcAvatarExtendedInfo.FACE != 0) clientFlag = clientFlag or ANDROID_FACE
 +        if (clientFlag and 0xFFFFFF.inv() != 0) clientFlag = clientFlag or EXTENDED_LARGE
 +        if (clientFlag and 0xFFFF.inv() != 0) clientFlag = clientFlag or EXTENDED_MEDIUM
 +        if (clientFlag and 0xFF.inv() != 0) clientFlag = clientFlag or EXTENDED_SHORT
@@ -3289,6 +3290,7 @@ index 00000000..ac4eb785
 +        if (clientFlag and ANDROID_SEQUENCE != 0) pCachedData(buffer, blocks.sequence)
 +        if (clientFlag and ANDROID_SAY != 0) pCachedData(buffer, blocks.say)
 +        if (clientFlag and ANDROID_HEADBARS != 0) pOnDemandData(buffer, localIndex, blocks.headbarList, observerIndex)
++        if (clientFlag and ANDROID_FACE != 0) pCachedData(buffer, blocks.face)
 +        if (clientFlag and ANDROID_HITMARKS != 0) pOnDemandData(buffer, localIndex, blocks.hitmarkList, observerIndex)
 +    }
 +
@@ -3297,6 +3299,7 @@ index 00000000..ac4eb785
 +        private const val ANDROID_TRANSFORMATION: Int = 0x2
 +        private const val ANDROID_SAY: Int = 0x4
 +        private const val ANDROID_HITMARKS: Int = 0x40000
++        private const val ANDROID_FACE: Int = 0x40
 +        private const val ANDROID_HEADBARS: Int = 0x1000000
 +        private const val EXTENDED_SHORT: Int = 0x20
 +        private const val EXTENDED_MEDIUM: Int = 0x2000
@@ -3316,12 +3319,31 @@ index 00000000..ac4eb785
 +            it.p1(extendedInfo.delay.toInt())
 +        }
 +}
++
++/**
++ * NPC flag 0x40 (read after 0x400, before hitmarks 0x40000): the face flag byte is read raw (desktop
++ * writes p1Alt2), then the shared face payload (parser 0x4fb10c, same as desktop).
++ */
++public class AndroidNpcFaceEncoder : PrecomputedExtendedInfoEncoder<Face> {
++    override fun precompute(
++        alloc: ByteBufAllocator,
++        huffmanCodecProvider: HuffmanCodecProvider,
++        extendedInfo: Face,
++    ): JagByteBuf {
++        val buffer = alloc.buffer(9, 9).toJagByteBuf()
++        var flag = extendedInfo.walkMode or (extendedInfo.kind.value shl 3)
++        if (extendedInfo.instant) flag = flag or (1 shl 6)
++        buffer.p1(flag)
++        extendedInfo.encode(buffer)
++        return buffer
++    }
++}
 diff --git a/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/PlayerAvatarExtendedInfoAndroidWriter.kt b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/PlayerAvatarExtendedInfoAndroidWriter.kt
 new file mode 100644
-index 00000000..eed518c2
+index 00000000..15551c2d
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android/PlayerAvatarExtendedInfoAndroidWriter.kt
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,175 @@
 +package net.rsprot.protocol.android
 +
 +import io.netty.buffer.ByteBufAllocator
@@ -3352,9 +3374,12 @@ index 00000000..eed518c2
 + *
 + * Flags are 1-3 bytes: 0x80 in the first byte announces a second, 0x4000 a third. Blocks follow in
 + * the order the client tests them:
-+ *   0x2 reset, 0x200 tinting, 0x4 sequence, 0x20000 headbars, 0x40 ?, 0x100 move speed,
++ *   0x2 reset, 0x200 tinting, 0x4 sequence, 0x20000 headbars, 0x40 face, 0x100 move speed,
 + *   0x8000 ?, 0x2000 temp move speed, 0x10000 ?, 0x400 chat, 0x10 appearance, 0x1 say,
 + *   0x80000 ?, 0x100000 ?, 0x20 ?, 0x1000 ?, 0x40000 hitmarks
++ *
++ * Face (0x40): flag byte 128-b (walkMode | kind << 3 | instant << 6) and the desktop payload,
++ * parsed by 0x4fb10c (kinds 0 entity, 1 loc, 2 angle, 3 reset) - same as desktop.
 + *
 + * Only blocks whose Android layout has been verified are written; any other flagged block is
 + * dropped from the update rather than sent in a layout the client would misread.
@@ -3391,6 +3416,7 @@ index 00000000..eed518c2
 +        var clientFlag = 0
 +        if (flag and PlayerAvatarExtendedInfo.SEQUENCE != 0) clientFlag = clientFlag or SEQUENCE
 +        if (flag and PlayerAvatarExtendedInfo.MOVE_SPEED != 0) clientFlag = clientFlag or MOVE_SPEED
++        if (flag and PlayerAvatarExtendedInfo.FACE != 0) clientFlag = clientFlag or FACE
 +        if (flag and PlayerAvatarExtendedInfo.TEMP_MOVE_SPEED != 0) clientFlag = clientFlag or TEMP_MOVE_SPEED
 +        if (flag and PlayerAvatarExtendedInfo.CHAT != 0) clientFlag = clientFlag or CHAT
 +        if (flag and PlayerAvatarExtendedInfo.APPEARANCE != 0) clientFlag = clientFlag or APPEARANCE
@@ -3405,6 +3431,7 @@ index 00000000..eed518c2
 +
 +        if (clientFlag and SEQUENCE != 0) pCachedData(buffer, blocks.sequence)
 +        if (clientFlag and HEADBARS != 0) pOnDemandData(buffer, localIndex, blocks.headbarList, observerIndex)
++        if (clientFlag and FACE != 0) pCachedData(buffer, blocks.face)
 +        if (clientFlag and MOVE_SPEED != 0) pCachedData(buffer, blocks.moveSpeed)
 +        if (clientFlag and TEMP_MOVE_SPEED != 0) pCachedData(buffer, blocks.temporaryMoveSpeed)
 +        if (clientFlag and CHAT != 0) pCachedData(buffer, blocks.chat)
@@ -3417,6 +3444,7 @@ index 00000000..eed518c2
 +        private const val EXTENDED_MEDIUM = 0x4000
 +
 +        private const val SEQUENCE = 0x4
++        private const val FACE = 0x40
 +        private const val APPEARANCE = 0x10
 +        private const val MOVE_SPEED = 0x100
 +        private const val TEMP_MOVE_SPEED = 0x2000

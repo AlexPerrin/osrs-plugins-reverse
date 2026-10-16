@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 12 entry (2026-10-16) at the end of "Where things stand".
+> Latest state: see the gen 13 entry (2026-10-16) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -398,6 +398,42 @@ session; its notes are in `docs/android-protocol.md`.
     rebuild: find the All tab's list); Poison infobox (copyData shim fix, unverified); Player Indicators via
     multi-client; Menu Entry Swapper needs the game's default tap action reordered (only text edits are written
     back today). host/tools/rank_api.py shows no API gap used by more than 3 core plugins.
+- **2026-10-16 (client dev gen 13)**, commits 67113dc..c563943:
+  - **Sidebar**: headless documents hold their text (GenHeadless: `AbstractDocument.__content`;
+    `JTextComponent.get/setText` go through the document, so `Document.getText(0, getLength())` works) and text
+    components start editable as in Swing. Editable non-JTextField text components are kind `A` (multi-line Android
+    prompt, then FocusListeners' focusLost, where Notes saves). Icon-only clickables (MaterialTab, icon buttons
+    without text/tooltip) are kind `I` "<icon id>:<selected>": the pixels go to the overlay once per image
+    (`Native.sidebarIcon`) and draw as ImGui image buttons (GL texture per EGL context); small ones after a label sit
+    on the label's row (QH's quest arrows). The headless `ImageIcon(Image)` now keeps its image.
+  - **Menu Entry Swapper**: a plain tap selects node 0 without opening the menu. `hook_menu_select` raises
+    `MenuTap` first (synchronous); the host reads the tapped menu once (`AndroidMenu.beginSession`, setMenuEntries
+    reorders persist within the tap), posts MenuEntryAdded per entry + PostMenuSort, and if a plugin put another
+    game entry on top calls `Native.redirectMenuTap(nativeIndex)`; the hook then runs the game's own select with that
+    node. Verified: banker tap -> "Bank"; taps with nothing swapped unchanged (MES off and on). Not done: the
+    long-press menu's order (needs the game's node vector reordered) and plugin-created entries on top.
+  - **Chat History clear**: `game::chat_remove_message` also unlinks the message's node from the all-messages
+    std::list at `0xaab610` ({prev, next, size}, push_front in the Message ctor `0x3f0a04`; Message +0 = node, node
+    +0x10 = id), which the All tab walks via chat_getprevuid/nextuid (`0x3f061c`/`0x3f0694`, by-id map `0xaab628`).
+    Message +0 is pointed at the list head so the channel add `0x3ef964` skips its own unlink/free when it reuses
+    the ring slot (the node and the by-id entry leak, a few bytes per cleared line). Verified.
+  - Verified in gen 13: Notes, Skill Calculator, Menu Entry Swapper, Chat History. Table: 43 runs / 8 starts /
+    0 throws of 51.
+  - Findings: OpenRune dragon dagger (100 -> 75) and DWH (100 -> 50) specs work. Special Attack Counter logs
+    "Special attack used ... DRAGON_WARHAMMER" then "Timeout waiting for hitsplat": its onHitsplatApplied needs
+    `Hitsplat.isMine()` (types DAMAGE_ME 16 / BLOCK_ME 12 ...), `actor == lastSpecTarget` (same NPC instance) and
+    `hitsplatTick == client.getTickCount()`; check which fails with `setprop debug.osrsrl.actorlog 1` (logs
+    HitsplatApplied with type). It also logged "Removing counters due to interact change" right after the spec.
+  - Bank: `::openbank` works; script 505 does run on mobile (as a gosub, `setprop debug.osrsrl.scripts 2` before
+    start logs every script) but `BankPlugin.prices` stays null, and its "Computing bank price" debug line never
+    appears, so getWidgetContainerPrices(12:12, 95) returns early: check `getWidget(786444)`, `getItemContainer(95)`
+    (client_thread inventories snapshot) and varbit 4150 at PreFired(505), then the title widget 12:3.
+  - Runtime NPC spawns (`::npc 300 goblin`) still didn't show right after the reply after OpenRune 3cf4e2b; one
+    showed ~1 min later after walking. NPC_INFO add-block layout checked statically (reader at Ghidra 0x569778,
+    getBits `0x71430c` vaddr): index 16, dx/dz 6|8, spawn clock flag + 2-bit sel {18,19,20,32}, type 2-bit sel
+    {12,14,17,24}, ext 1, direction 3, jump 1; matches the server encoder. The spawn clock is only an identity key.
+  - Next (gen 14): Special Attack Counter hitsplat match; Bank title value; Poison infobox (`poison.showInfoboxes`);
+    Implings once spawns show; MES on the long-press menu order; then widely used Plugin Hub plugins (add rows).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

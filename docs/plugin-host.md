@@ -39,7 +39,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Tile Indicators | runs | destination tile drawn while walking |
 | Attack Styles | runs | style overlay ("Accurate") below the mobile chatbox from login (varp 43 via the ring-overflow resync, verified 2026-10-16) |
 | Chat Filter | runs | game chat censored ("You get some oak ****" with `chatfilter.filterGameChat=true`, `filteredWords=Logs`, verified 2026-10-16): chatFilterCheck is raised once per new message; the game shows the new text when the chat next rebuilds; duplicate collapsing doesn't work |
-| Chat History | starts | "Game: Clear history" (long-press a chat tab, plugin strip) removes the lines from the game's chat channels (verified once, 2026-10-16), but they came back when the chatbox next rebuilt (the All tab likely reads another list); the mobile game keeps chat across logout itself, so the restore isn't needed |
+| Chat History | runs | "Game: Clear history" (long-press a chat tab, plugin strip) removes the lines and they stay gone after the chatbox rebuilds and on tab switches (verified 2026-10-16): the line is taken out of its channel ring and unlinked from the all-messages list the All tab walks (`0xaab610`); the mobile game keeps chat across logout itself, so the restore isn't needed |
 | Chat Timestamps | runs | "[15:04]" (local time, plugin format) before each chat line, after the game's own UTC time (chatMessageBuilding raised once per new message, verified 2026-10-16); the newest line shows it once the chat next rebuilds |
 | Combat Level | runs | precise level in the combat tab ("Combat Lvl: 126.1", verified 2026-10-16) |
 | Cannon | runs | green "30" ball count drawn on the placed cannon after Set-up + Fire on goblins, one "Your cannon is out of ammo!" notification when empty (verified 2026-10-16; the Notifier no longer posts a ChatMessage, which had made the plugin re-notify on its own line). Members items need the client's members flag: a members world started from jav_config skips setWorld, so the host applies the world flags through the game's setMembersWorld `0x642f14` when they disagree (Set-up showed without the world switcher on 2026-10-16, though the host's sync didn't need to run that time) |
@@ -70,7 +70,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Idle Notifier | runs | "[RuneLite] You are now idle!" in the game chat after mining/fishing stops (Notifier → game chat, verified 2026-10-16) |
 | Mining | runs | "Mining" / "NOT mining" session panel below the chatbox while mining copper (after OpenRune's OSRS wording fix; TOP_LEFT placement verified 2026-10-16) |
 | Player Indicators | starts | needed protobuf-javalite + RuneLite http-api (PartyService) |
-| Special Attack Counter | starts | the dragon dagger spec works on OpenRune (energy 100 -> 75, 2026-10-16), but the plugin only counts its SpecialWeapon list (dragon warhammer, arclight, darklight, BGS, bone dagger, ...), not the dragon dagger; needs one of those with a spec server-side |
+| Special Attack Counter | starts | detects the dragon warhammer spec on OpenRune ("Special attack used ... weapon: DRAGON_WARHAMMER", energy 100 -> 50, 2026-10-16) but then logs "Timeout waiting for hitsplat": the goblin's hitsplat isn't matched (HitsplatApplied type/isMine or timing still to check), so no counter InfoBox |
 | XP Globes | runs | attack/HP globes over the chat tabs after combat |
 | Bank | starts | `::openbank` opens the bank (2026-10-16); the bank value in the title isn't shown: the mobile bank scripts don't call runelite_callback `setBankTitle` |
 | Notes | runs | tap the note in the sidebar: multi-line Android prompt; OK saves it (`notes.notesData=Buy feathers`, verified 2026-10-16). Headless documents hold their text, and the prompt raises focusLost, where Notes saves |
@@ -80,6 +80,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Loot Tracker | runs | sidebar: "Goblin (lvl-2) 2 gp, Total count: 1" after killing a goblin (verified 2026-10-16); local only (same-name SessionManager without a runelite.net session) |
 | Hiscore | runs | sidebar lookup of "Lynx Titan" shows the levels from the public hiscores (okhttp, off the game thread; verified 2026-10-16). The player-menu "Lookup" entry is host-side only |
 | Skill Calculator | runs | skill icons drawn as image buttons in the sidebar; picking Woodcutting fills current/target level and XP and lists the log actions (verified 2026-10-16) |
+| Menu Entry Swapper | runs | a plain tap on a banker runs "Bank" instead of "Talk-to" (verified 2026-10-16): taps raise MenuEntryAdded + PostMenuSort over the tapped menu and the game's select runs the entry MES leaves on top; taps with nothing swapped are unchanged. The long-press menu order isn't rewritten |
 
 ## Build and run
 

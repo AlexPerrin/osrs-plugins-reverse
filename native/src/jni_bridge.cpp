@@ -594,6 +594,20 @@ jobjectArray n_clicked_menu_entry(JNIEnv* env, jclass) {
     return menu_array(env, {client_thread::clicked_menu_entry()});
 }
 jboolean n_menu_open(JNIEnv*, jclass) { return game::menu_open(); }
+bool require_client_thread(JNIEnv* env, const char* what);
+// {width, height, pixels...} (ARGB, 0 = transparent) or null while the model isn't loaded.
+jintArray n_item_sprite(JNIEnv* env, jclass, jint id, jint quantity, jint border, jint shadow, jint text_mode, jboolean noted) {
+    if (!require_client_thread(env, "createItemSprite")) return nullptr;
+    std::vector<uint32_t> px;
+    int w = 0, h = 0;
+    if (!game::item_sprite(id, quantity, border, shadow, text_mode, noted, px, w, h)) return nullptr;
+    jintArray r = env->NewIntArray(2 + static_cast<jsize>(px.size()));
+    jint wh[2] = {w, h};
+    env->SetIntArrayRegion(r, 0, 2, wh);
+    env->SetIntArrayRegion(r, 2, static_cast<jsize>(px.size()), reinterpret_cast<const jint*>(px.data()));
+    return r;
+}
+
 jintArray n_menu_point(JNIEnv* env, jclass) {
     int xy[2];
     if (!game::menu_point(xy[0], xy[1])) return nullptr;
@@ -955,6 +969,7 @@ const JNINativeMethod kNatives[] = {
     {"menuSetText", "(ILjava/lang/String;Ljava/lang/String;)Z", reinterpret_cast<void*>(n_menu_set_text)},
     {"clickedMenuEntry", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_clicked_menu_entry)},
     {"menuOpen", "()Z", reinterpret_cast<void*>(n_menu_open)},
+    {"itemSprite", "(IIIIIZ)[I", reinterpret_cast<void*>(n_item_sprite)},
     {"menuPoint", "()[I", reinterpret_cast<void*>(n_menu_point)},
     {"sceneObjects", "()[I", reinterpret_cast<void*>(n_scene_objects)},
     {"groundItems", "()[I", reinterpret_cast<void*>(n_ground_items)},

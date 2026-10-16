@@ -171,6 +171,8 @@ final class Native {
     /** The entry being selected (valid while MenuOptionClicked is dispatched), same format. */
     static native Object[] clickedMenuEntry();
     static native boolean menuOpen();
+    /** {width, height, ARGB pixels...} of an item icon (game thread), or null while not loaded. */
+    static native int[] itemSprite(int id, int quantity, int border, int shadow, int textMode, boolean noted);
     /** Widget properties (component, or its CC_CREATE child when index >= 0): scrollX, scrollY,
      *  scrollWidth, scrollHeight, modelZoom, rotationX, rotationY, rotationZ, opacity, modelType,
      *  modelId, animationId; null if absent. */

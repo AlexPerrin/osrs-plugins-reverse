@@ -626,6 +626,28 @@ public class AndroidClient extends ClientStub {
     @Override public java.util.Map<Integer, net.runelite.api.SpritePixels> getWidgetSpriteOverrides() { return widgetSpriteOverrides; }
     /** Sprite overrides aren't applied to the game's sprites, so there is no cache to reset. */
     @Override public net.runelite.api.NodeCache getWidgetSpriteCache() { return () -> {}; }
+    /**
+     * The game's own item icon renderer (createItemSprite, docs/offsets.md): 36x32, border 0/1/2,
+     * shadow colour, quantity text per `stackable` (0 never, 1 always, 2 if the item stacks).
+     * Game thread only; null elsewhere or while the item's model is still loading. `scale` other
+     * than 512 isn't applied.
+     */
+    @Override
+    public net.runelite.api.SpritePixels createItemSprite(int itemId, int quantity, int border, int shadowColor,
+                                                          int stackable, boolean noted, int scale) {
+        if (!Native.isClientThread()) return null;
+        int textMode = 0;
+        if (stackable == 1) textMode = 1;
+        else if (stackable == 2 && quantity != 1) {
+            net.runelite.api.ItemComposition c = getItemDefinition(itemId);
+            textMode = c != null && c.isStackable() ? 1 : 0;
+        }
+        int[] r = Native.itemSprite(itemId, quantity, border, shadowColor, textMode, noted);
+        if (r == null) return null;
+        int w = r[0], h = r[1];
+        return new HostSpritePixels(java.util.Arrays.copyOfRange(r, 2, 2 + w * h), w, h);
+    }
+
     @Override public net.runelite.api.SpritePixels createSpritePixels(int[] pixels, int width, int height) {
         return new HostSpritePixels(pixels, width, height);
     }

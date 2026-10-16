@@ -226,6 +226,11 @@ struct ItemDef {
     std::string inventory_actions[5];
 };
 bool item_def(int id, ItemDef& out);
+// Item icon as the inventory draws it (createItemSprite 0x63ff9c): 36x32 ARGB pixels, 0 = transparent.
+// border 0/1/2, shadow colour (0 none), text_mode 0 none / 1 quantity, noted. Game thread only.
+// False while the model isn't loaded yet (retry later) or for an unknown id.
+bool item_sprite(int id, int quantity, int border, int shadow, int text_mode, bool noted,
+                 std::vector<uint32_t>& pixels, int& width, int& height);
 
 // NPC definitions (NpcType), from the game's cache. Game thread only.
 struct NpcDef {

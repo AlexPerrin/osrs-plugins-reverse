@@ -1236,6 +1236,38 @@ bool set_varc_string(int id, const std::string& value) {
 }
 
 
+bool item_sprite(int id, int quantity, int border, int shadow, int text_mode, bool noted,
+                 std::vector<uint32_t>& pixels, int& width, int& height) {
+    if (!g_build || !g_build->get_obj_type || id < 0 || id > 0xfffff) return false;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    // createItemSprite dereferences the ObjType unchecked: validate the id first.
+    {
+        SharedPtr t = reinterpret_cast<SharedPtr (*)(int)>(g_base + g_build->get_obj_type)(id);
+        uintptr_t ctrl = t.ctrl, o = t.obj;
+        bool ok = o && read_at<int32_t>(o) != -1;
+        release_shared(ctrl);
+        if (!ok) return false;
+    }
+    // void createItemSprite(out x8, id, quantity, border, shadow, textMode, flags, width, height,
+    // const string* text): the native ItemComposition.getItemSprite with its LRU cache (docs/offsets.md).
+    // Only 36x32 is safe (the note overlay and text assume that stride).
+    GameString empty{std::string()};
+    using Fn = SharedPtr (*)(int, int, int, int, int, int, int, int, const void*);
+    SharedPtr r = reinterpret_cast<Fn>(g_base + 0x63ff9c)(id, quantity, border, shadow, text_mode, noted ? 1 : 0, 36, 32, empty.bytes);
+    uintptr_t ctrl = r.ctrl, spr = r.obj;
+    if (!spr) { release_shared(ctrl); return false; }
+    width = read_at<int32_t>(spr + 0x18);
+    height = read_at<int32_t>(spr + 0x1c);
+    auto px = read_at<uintptr_t>(spr + 0x10);
+    bool ok = px && width > 0 && height > 0 && width <= 512 && height <= 512;
+    if (ok) pixels.assign(reinterpret_cast<const uint32_t*>(px), reinterpret_cast<const uint32_t*>(px) + width * height);
+    release_shared(ctrl);
+    return ok;
+}
+
 bool item_def(int id, ItemDef& out) {
     if (!g_build || !g_build->get_obj_type || id < 0 || id > 0xfffff) return false;
     // Returns shared_ptr<ObjType> by value: a non-trivial type, so the result goes through x8

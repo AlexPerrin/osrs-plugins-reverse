@@ -574,6 +574,9 @@ public class GenHeadless {
             if (n.equals("getItemAt") && ps.length == 1) return "return a0 >= 0 && a0 < __items.size() ? __items.get(a0) : null;";
             if (n.equals("getSelectedIndex") && ps.length == 0) return "return __items.indexOf(getSelectedItem());";
         }
+        // Skill Calculator casts the editor to DefaultEditor for its text field.
+        if (c == javax.swing.JSpinner.class && n.equals("getEditor") && ps.length == 0 && props.containsKey("Editor"))
+            return "if (!__EditorSet) { __Editor = new javax.swing.JSpinner.DefaultEditor(); __EditorSet = true; } return (javax.swing.JComponent) __Editor;";
         if (c == java.awt.event.ItemEvent.class) {
             if (n.equals("getItem") && ps.length == 0) return "return __item;";
             if (n.equals("getStateChange") && ps.length == 0) return "return __state;";

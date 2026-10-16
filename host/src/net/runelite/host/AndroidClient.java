@@ -669,6 +669,14 @@ public class AndroidClient extends ClientStub {
         net.runelite.api.Friend f = friends.findByName(name);
         return f != null && (!mustBeLoggedIn || f.getWorld() > 0);
     }
+    // Player menu options (MenuManager.addPlayerMenuItem: Hiscore's "Lookup"). Kept host-side;
+    // the game's player menus are built from its own option list.
+    private final String[] playerOptions = new String[8];
+    private final boolean[] playerOptionsPriorities = new boolean[8];
+    private final int[] playerMenuTypes = new int[8];
+    @Override public String[] getPlayerOptions() { return playerOptions; }
+    @Override public boolean[] getPlayerOptionsPriorities() { return playerOptionsPriorities; }
+    @Override public int[] getPlayerMenuTypes() { return playerMenuTypes; }
     @Override public net.runelite.api.clan.ClanChannel getClanChannel() { return null; }
     @Override public net.runelite.api.clan.ClanChannel getGuestClanChannel() { return null; }
     @Override public net.runelite.api.clan.ClanSettings getClanSettings() { return null; }

@@ -22,6 +22,11 @@ Results of on-device runs (OpenRune, BlueStacks). `runs` = does its job on the d
 startUp OK and no runtime exceptions seen, but the feature wasn't checked or is incomplete;
 `throws` = fails to start; `untested`. Batch test 2026-10-16: `EXTRA="<names>" tools/plugin-test.sh`
 with jars from `tools/dex-plugin.sh --core <package> re/host/plugins-extra/<package>.jar`.
+Platform gaps: `host/tools/api_gaps.py classes*.dex.txt` (dexdump of host.jar) lists Java/Android
+methods host.jar calls that API 28 lacks. RuneLite's `Text` and `WildcardMatcher` are replaced for
+that reason (Java 9 `Matcher` methods). Left (2026-10-16): `Files.readString/writeString`,
+`privateLookupIn`, `Runtime.Version`, `Collectors.toUnmodifiableMap` (Fairy Ring), guava's `ClassValue`
+use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 
 | Plugin | Status | Notes |
 |---|---|---|
@@ -32,7 +37,7 @@ with jars from `tools/dex-plugin.sh --core <package> re/host/plugins-extra/<pack
 | XP Drop | runs | drop colours via ScriptPreFired (script 996); `hideSkillIcons` has no effect |
 | Status Bars | runs | HP/prayer bars beside the side panel (161:73 routed to 601:111) |
 | Tile Indicators | runs | destination tile drawn while walking |
-| Attack Styles | starts | |
+| Attack Styles | starts | nothing drawn with `attackstyles.alwaysShowStyle=true`; needs `getStructComposition` (weapon style structs) |
 | Chat Filter | starts | |
 | Chat History | starts | getChatLineMap is host-side (no removal from the game's chat) |
 | Chat Timestamps | starts | |
@@ -48,7 +53,7 @@ with jars from `tools/dex-plugin.sh --core <package> re/host/plugins-extra/<pack
 | Item Charges | starts | WidgetItemOverlay fixed (no NPE) |
 | Item Stats | starts | |
 | Logout Timer | starts | |
-| NPC Indicators | starts | |
+| NPC Indicators | starts | name highlights threw NoSuchMethodError (WildcardMatcher uses Java 9 `Matcher.appendReplacement(StringBuilder)`); same-name replacement added, retest with `npcindicators.npcToHighlight=Goblin` |
 | Object Markers | starts | |
 | Poison | starts | |
 | Prayer | starts | |
@@ -63,8 +68,8 @@ with jars from `tools/dex-plugin.sh --core <package> re/host/plugins-extra/<pack
 | Fishing | starts | |
 | Idle Notifier | starts | config defaults now registered; Notification config values were a ClassCastException on GameTick (fixed after the run: stored as on/off) |
 | Mining | starts | |
-| Player Indicators | throws | protobuf-javalite added; then `@Named("runelite.ws")` unbound (bound after the run, retest) |
-| Special Attack Counter | throws | as Player Indicators (runelite.ws bound after the run, retest) |
+| Player Indicators | throws | PartyService's WSClient needs RuneLite's http-api (`RuneLiteAPI`); http-api 1.2.25 added to host.jar after the run, retest |
+| Special Attack Counter | throws | as Player Indicators (http-api added, retest) |
 | XP Globes | runs | attack/HP globes over the chat tabs after combat |
 
 ## Build and run

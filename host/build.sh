@@ -14,7 +14,7 @@ D8="java -cp $SDK/build-tools/36.0.0/lib/d8.jar com.android.tools.r8.D8"
 API=$RL/runelite-api-1.13.1.jar
 DEPS=($RL/guice-4.1.0-no_aop.jar $RL/guava-23.2-jre.jar $RL/javax.inject-1.jar $RL/aopalliance-1.0.jar
       $RL/slf4j-api-1.7.25.jar $RL/jsr305-3.0.2.jar $RL/commons-text-1.2.jar $RL/commons-lang3-3.7.jar $RL/gson-2.8.5.jar
-      $RL/okhttp-3.14.9.jar $RL/okio-1.17.2.jar $RL/protobuf-javalite-3.21.12.jar)
+      $RL/okhttp-3.14.9.jar $RL/okio-1.17.2.jar $RL/protobuf-javalite-3.21.12.jar $RL/http-api-1.2.25.jar)
 CP=$(IFS=:; echo "$API:$RL/client-1.13.1.jar:${DEPS[*]}")
 
 rm -rf "$OUT/gen" "$OUT/classes" "$OUT/client-classes" "$OUT/awt-classes" "$OUT/awt-shim.jar" "$OUT/resources"
@@ -70,7 +70,7 @@ javac -nowarn -Xlint:none -source 8 -target 8 -bootclasspath "$ANDROID_JAR:$OUT/
 for f in config/ConfigManager config/ConfigInvocationHandler callback/ClientThread eventbus/EventBus \
          ui/overlay/OverlayManager ui/FontManager callback/Hooks plugins/PluginManager ui/ClientToolbar \
          game/ItemManager game/SpriteManager chat/ChatMessageManager game/chatbox/ChatboxPanelManager \
-         ui/overlay/outline/ModelOutlineRenderer Notifier; do
+         ui/overlay/outline/ModelOutlineRenderer Notifier util/WildcardMatcher util/Text; do
     rm -f "$OUT"/client-classes/net/runelite/client/$f.class "$OUT"/client-classes/net/runelite/client/$f\$*.class
 done
 (cd "$OUT/client-classes" && jar cf ../client-subset.jar .)

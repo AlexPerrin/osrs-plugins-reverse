@@ -7,6 +7,26 @@ transforms differ per packet. Login and JS5 are the same as desktop. The Android
 
 Addresses below are Ghidra addresses (ELF vaddr + 0x100000).
 
+## Protocol status (2026-10-16)
+
+| | S->C (151) | C->S (102) | Total (253) |
+|---|---|---|---|
+| Named (mapped) | 147 | 93 | 240 |
+| Verified (live or from the client's own reader/sender) | 147 | 92 | 239 |
+| Dead (`OP_n // dead:`) | 4: 0, 110, 116, 137 | 9: 1, 12, 27, 62, 73, 76, 83, 85, 87 | 13 |
+| Open | none | 45 SET_HEADING | 1 |
+
+How opcodes were verified:
+- **S->C:** each one has a case in the dispatcher (`0x541dd4`), and its reads were matched field by
+  field with RSProt's desktop encoder; many were also checked live on the device.
+- **C->S:** each one has a sender found by a raw scan for calls to the packet constructor
+  `0x79cc90`. The identity comes from its UI or CS2 caller, or from a live capture (`::trace`).
+- **Dead:** S->C opcodes the dispatcher ignores or drops, and C->S opcodes with no sender. They stay
+  unnamed, because nothing in the client ties them to a desktop prot.
+- **Open:** 45 has a sender in the minimap click handler under a special mode, most likely the
+  sailing boat heading. It can't be sent live until a server has sailing.
+- Counts come from `tools/progress.py` (tags in `AndroidGameServerProt`/`AndroidGameClientProt`).
+
 ## Where things are in the client
 
 | What | Where |

@@ -39,10 +39,10 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Tile Indicators | runs | destination tile drawn while walking |
 | Attack Styles | runs | style overlay ("Accurate") below the mobile chatbox from login (varp 43 via the ring-overflow resync, verified 2026-10-16) |
 | Chat Filter | runs | game chat censored ("You get some oak ****" with `chatfilter.filterGameChat=true`, `filteredWords=Logs`, verified 2026-10-16): chatFilterCheck is raised once per new message; the game shows the new text when the chat next rebuilds; duplicate collapsing doesn't work |
-| Chat History | starts | "Game: Clear history" shows in the plugin strip on a long-press of a chat tab, but getChatLineMap is host-side (nothing is removed from the game's chat); retain-on-login waits for "Welcome to Old School RuneScape", which OpenRune doesn't send ("Welcome to OpenRune."). addChatMessage now returns a node (2026-10-16) |
+| Chat History | starts | "Game: Clear history" (long-press a chat tab, plugin strip) removes the lines from the game's chat channels (verified once, 2026-10-16), but they came back when the chatbox next rebuilt (the All tab likely reads another list); the mobile game keeps chat across logout itself, so the restore isn't needed |
 | Chat Timestamps | runs | "[15:04]" (local time, plugin format) before each chat line, after the game's own UTC time (chatMessageBuilding raised once per new message, verified 2026-10-16); the newest line shows it once the chat next rebuilds |
 | Combat Level | runs | precise level in the combat tab ("Combat Lvl: 126.1", verified 2026-10-16) |
-| Cannon | starts | OpenRune doesn't set up a cannon ("Set-up" on the base does nothing, 2026-10-16) |
+| Cannon | starts | OpenRune's cannon is deployed, but the inventory menu shows "Cannon base (Members)" with no Set-up: the client treats world 255 as free-to-play (world flags; server gap, 2026-10-16) |
 | Daily Task Indicator | runs | "You have battlestaves waiting to be collected from Zaff." on login with `::varbit 4479 1` (verified 2026-10-16) |
 | Emojis | starts | cache dir now under the app's files dir (user.home); emoji rendering in chat not possible (game chat) |
 | Examine | runs | "Price of Salmon: GE average 30 HA value 18" after Examine on an inventory item, one price line after OpenRune dropped its own (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
@@ -52,10 +52,10 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Inventory Tags | runs | green outline on a tagged pot; Shift + long-press an item: "Inventory tag" > Pick sets the tag (verified 2026-10-16; outlines from the game's createItemSprite) |
 | Item Charges | runs | "8" drawn on a Ring of dueling(8) in the inventory (verified 2026-10-16) |
 | Item Stats | runs | "+0 (99) Hitpoints" tooltip while a finger rests on a lobster (hover entry: getMenuEntries with no menu open = the inventory slot under the touch point, verified 2026-10-16) |
-| Logout Timer | starts | |
+| Logout Timer | runs | logged out after 1 min idle with `logouttimer.idleTimeout=1` (setIdleTimeout writes the game's AFKTimeout setting, whole minutes, re-applied at login; the game saves it, so reset it to 5 after tests; verified 2026-10-16 after OpenRune's IDLE handling) |
 | NPC Indicators | runs | hull highlights + minimap dots for `npcindicators.npcToHighlight=Goblin` (after the WildcardMatcher replacement); the left button column (601:41/40) is now clipped (unverified) |
 | Object Markers | runs | Shift + long-press an object: "Mark object"; hull drawn on the tree (verified 2026-10-16). Submenus not shown |
-| Poison | starts | no longer throws when poisoned (getWidgetSpriteCache/createSpritePixels, 2026-10-16); its heart icon override isn't applied to the game's sprite and no infobox was seen with defaults |
+| Poison | runs | HP orb heart turns green when poisoned (`::varp 102 6`) and back to red when cured: Client.getSpriteOverrides writes into the game's cached sprite 1067 (verified 2026-10-16). The infobox (`poison.showInfoboxes`, off by default) threw on BufferedImage.copyData; fixed in the shim, unverified |
 | Prayer | runs | prayer orb tooltip (time remaining, prayer bonus) on a tap of the orb (verified 2026-10-16); dose indicator not checked |
 | Random Events | starts | |
 | Regeneration Meter | runs | HP ring on the HP orb (verified with `regenmeter.showWhenNoChange`); by default it draws only below full HP or spec |

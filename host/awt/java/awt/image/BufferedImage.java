@@ -19,6 +19,26 @@ public class BufferedImage extends Image implements RenderedImage {
         this.pixels = new int[width * height];
     }
 
+    /** Over a raster from getRaster/copyData (shares its pixels, as on desktop); other rasters give 1x1. */
+    public BufferedImage(ColorModel cm, WritableRaster raster, boolean premultiplied, java.util.Hashtable<?, ?> properties) {
+        HostRaster r = raster instanceof HostRaster ? (HostRaster) raster : new HostRaster(1, 1, new int[1]);
+        this.width = r.width;
+        this.height = r.height;
+        this.type = TYPE_INT_ARGB;
+        this.pixels = r.pixels;
+    }
+
+    public WritableRaster getRaster() { return new HostRaster(width, height, pixels); }
+
+    /** Copies the pixels into a new raster (the `out` argument is ignored unless it is null). */
+    public WritableRaster copyData(WritableRaster out) {
+        if (out instanceof HostRaster && ((HostRaster) out).pixels.length == pixels.length) {
+            System.arraycopy(pixels, 0, ((HostRaster) out).pixels, 0, pixels.length);
+            return out;
+        }
+        return new HostRaster(width, height, pixels.clone());
+    }
+
     public int getWidth() { return width; }
     public int getHeight() { return height; }
     public int getType() { return type; }

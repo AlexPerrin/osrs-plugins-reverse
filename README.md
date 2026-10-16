@@ -30,7 +30,7 @@ account: the server is also the local sign-in provider.
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-16, `e69b946+`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-16, `f63a715+`).
 <!-- progress:end -->
 
 Milestones:
@@ -61,7 +61,9 @@ Milestones:
 - [x] **Third plugin: Opponent Information** (core RuneLite; opponent name and health bar from hitsplats
   and health ratios, NPC data fetched over OkHttp), 2026-10-16
 - [x] Fourth plugin: Boosts Information (core RuneLite), 2026-10-16
-- [ ] More plugins (GPU/region-dependent ones excluded): XP Drop needs ScriptPreFired, Status Bars to verify
+- [x] Fifth plugin: XP Drop (core RuneLite; needs ScriptPreFired/PostFired, posted from inline arm64 hooks
+  on the game's script VM, which work under BlueStacks' ARM translation), 2026-10-16
+- [ ] More plugins (GPU/region-dependent ones excluded): Status Bars, Chat History, InfoBox-based plugins
 
 ## Layout
 

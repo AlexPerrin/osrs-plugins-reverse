@@ -1,7 +1,10 @@
 name: CodeQL
 
-# Advanced setup: the default setup's Autobuild cannot build server/, because settings.gradle.kts
-# includes server/rsprot, which is gitignored and has to be cloned by scripts/rsprot.sh first.
+# Advanced setup. Scope: all first-party code; vendored dependencies (server/rsprot,
+# native/third_party) are left to their upstreams.
+#   java (no build)  host/, tools/: host/build.sh needs the Android SDK and re/ jars, not in CI
+#   server (manual)  server/src Kotlin: rsprot is compiled before CodeQL starts tracing, so only
+#                    the server is extracted
 on:
   push:
     branches: [main]
@@ -17,17 +20,23 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
+    name: Analyze (${{ matrix.name }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - language: python
+          - name: python
+            language: python
             build-mode: none
-          - language: c-cpp
+          - name: c-cpp
+            language: c-cpp
             build-mode: none
-          - language: java-kotlin
+          - name: java
+            language: java-kotlin
+            build-mode: none
+          - name: server-kotlin
+            language: java-kotlin
             build-mode: manual
     steps:
       - uses: actions/checkout@v4
@@ -43,17 +52,26 @@ jobs:
         with:
           gradle-version: "8.14.3"
 
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
-
+      # Untraced: builds rsprot (an included build that the root project's clean leaves alone).
       - if: matrix.build-mode == 'manual'
         working-directory: server
         run: |
           scripts/rsprot.sh init
-          gradle --no-daemon --console=plain --no-build-cache classes
+          gradle --no-daemon --console=plain classes
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config: |
+            paths-ignore:
+              - native/third_party
+              - server/rsprot
+
+      - if: matrix.build-mode == 'manual'
+        working-directory: server
+        run: gradle --no-daemon --console=plain --no-build-cache -Pkotlin.compiler.execution.strategy=in-process clean classes
 
       - uses: github/codeql-action/analyze@v3
         with:
-          category: "/language:${{ matrix.language }}"
+          category: "/language:${{ matrix.name }}"

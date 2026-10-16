@@ -172,6 +172,37 @@ jobjectArray n_npc_def(JNIEnv* env, jclass, jint id) {
     env->SetObjectArrayElement(res, 1, strs);
     return res;
 }
+// Object[] {int[] {id, sizeX, sizeY, varbit, varp}, String[] {name, 5 actions}, int[] transforms or null}.
+jobjectArray n_loc_def(JNIEnv* env, jclass, jint id) {
+    if (!client_thread::on_client_thread()) {
+        env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "getObjectDefinition must be called on the client thread");
+        return nullptr;
+    }
+    game::LocDef d;
+    if (!game::loc_def(id, d)) return nullptr;
+    jint v[5] = {d.id, d.size_x, d.size_y, d.varbit, d.varp};
+    jintArray ints = env->NewIntArray(5);
+    env->SetIntArrayRegion(ints, 0, 5, v);
+    jclass string = env->FindClass("java/lang/String");
+    jobjectArray strs = env->NewObjectArray(6, string, nullptr);
+    for (int i = 0; i < 6; i++) {
+        const std::string& t = i == 0 ? d.name : d.actions[i - 1];
+        if (i > 0 && t.empty()) continue;
+        jstring js = env->NewStringUTF(t.c_str());
+        env->SetObjectArrayElement(strs, i, js);
+        env->DeleteLocalRef(js);
+    }
+    jintArray tr = nullptr;
+    if (!d.transforms.empty()) {
+        tr = env->NewIntArray(static_cast<jsize>(d.transforms.size()));
+        env->SetIntArrayRegion(tr, 0, static_cast<jsize>(d.transforms.size()), d.transforms.data());
+    }
+    jobjectArray res = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(res, 0, ints);
+    env->SetObjectArrayElement(res, 1, strs);
+    env->SetObjectArrayElement(res, 2, tr);
+    return res;
+}
 void n_sidebar_set_model(JNIEnv* env, jclass, jstring model) {
     const char* c = model ? env->GetStringUTFChars(model, nullptr) : nullptr;
     sidebar_set_model(c ? c : "");
@@ -560,6 +591,7 @@ const JNINativeMethod kNatives[] = {
     {"playerPosition", "()[I", reinterpret_cast<void*>(n_player_position)},
     {"itemDef", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_item_def)},
     {"npcDef", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_npc_def)},
+    {"locDef", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_loc_def)},
     {"sidebarSetModel", "(Ljava/lang/String;)V", reinterpret_cast<void*>(n_sidebar_set_model)},
     {"sidebarPollEvents", "()[I", reinterpret_cast<void*>(n_sidebar_poll_events)},
     {"sidebarOpen", "()Z", reinterpret_cast<void*>(n_sidebar_open)},

@@ -93,6 +93,17 @@ public class AndroidClient extends ClientStub {
         return AndroidNPCComposition.lookup(id);
     }
 
+    /** No hover on a touch screen: (-1, -1) is what RuneLite reports with the mouse off the canvas. */
+    @Override
+    public net.runelite.api.Point getMouseCanvasPosition() {
+        return new net.runelite.api.Point(-1, -1);
+    }
+
+    @Override
+    public net.runelite.api.ObjectComposition getObjectDefinition(int id) {
+        return AndroidObjectComposition.lookup(id);
+    }
+
     // --- models: not read from the game; inert placeholders so fake-object code runs (nothing is drawn) ---
 
     static final class InertModelData extends ModelDataBag {
@@ -282,6 +293,13 @@ public class AndroidClient extends ClientStub {
             default:
                 return id;
         }
+    }
+
+    /** Deprecated, but RuneLite's own Perspective.localToMinimap still calls it. */
+    @Override
+    @SuppressWarnings("deprecation")
+    public net.runelite.api.widgets.Widget getWidget(net.runelite.api.widgets.WidgetInfo info) {
+        return getWidget(info.getId());
     }
 
     @Override

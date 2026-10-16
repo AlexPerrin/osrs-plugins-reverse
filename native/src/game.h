@@ -162,6 +162,17 @@ struct NpcDef {
 };
 bool npc_def(int id, NpcDef& out);
 
+// Loc (scene object) definitions (LocType), from the game's cache. Game thread only.
+struct LocDef {
+    int id = -1;
+    std::string name;
+    int size_x = 1, size_y = 1;
+    int varbit = -1, varp = -1;
+    std::vector<int32_t> transforms;  // multiloc ids, last = default (-1 = none); empty if not a multiloc
+    std::string actions[5];
+};
+bool loc_def(int id, LocDef& out);
+
 // Ground heights of the top-level scene: heights[(plane * (size_x + 1) + x) * (size_y + 1) + y]
 // (corner vertices, negative = up), settings[(plane * size_x + x) * size_y + y] (bit 2 = bridge).
 struct SceneHeights {

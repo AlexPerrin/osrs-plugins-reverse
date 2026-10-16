@@ -42,6 +42,7 @@ final class Native {
     static native Object[] itemDef(int id);
     /** NPC definition (game thread only): {int[] {id, size, combatLevel, minimapVisible, interactable}, String[] {name, actions x5}}, or null. */
     static native Object[] npcDef(int id);
+    static native Object[] locDef(int id);
     /** Sidebar (overlay.cpp): replaces the model shown (format in Sidebar). */
     static native void sidebarSetModel(String model);
     /** Taps since the last call as (kind, index) pairs, or null. */

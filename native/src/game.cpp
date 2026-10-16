@@ -71,6 +71,9 @@ struct Build {
     // 0x58dab8); the menu model's vtable, whose slot 1 = select(menu, path, x, y, flag) (0x515854); ELF vaddrs.
     uint32_t f_menu_manager;
     uintptr_t menu_vtable, menu_select;
+    // const shared_ptr<LocType>* getLocType(int id): cache lookup/load (pointer to the cached
+    // {ctrl, LocType*}; the world menu builder 0x533a1c uses it for loc entries).
+    uintptr_t get_loc_type;
 };
 
 constexpr Build kBuilds[] = {
@@ -82,7 +85,7 @@ constexpr Build kBuilds[] = {
      0xc950, 0x18, 0x24, 0x28, 0x98, 0xa0, 0xd0, 0xd8, 0x68, 0x70, 0xcb0c, 0x718, 0xcb90, 0x730, 0x1fc, 0x200, 0x0, 0x8,
      0x89488, 0x413a98, 0x413a88, 0x413a60, 0x413a68, 0x78, 0x158, 0x5c, 0x60, 0x64, 0x68, 0x74, 0x6, 0x3210, 0x3274, 0x32d8, 0xaab690, 0xaab658, 0xaab628,
      0xaef1d0, 0x4df54c, 0x63bfe8, 0x63633c, 0x65c798, 0x6de99c, 0x65cac8,
-     0x4132b0, 0xa6d6c0, 0x515854},
+     0x4132b0, 0xa6d6c0, 0x515854, 0x62e5ec},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -692,6 +695,30 @@ bool npc_def(int id, NpcDef& out) {
 }  // namespace game
 
 namespace game {
+
+bool loc_def(int id, LocDef& out) {
+    if (!g_build || !g_build->get_loc_type || id < 0 || id > 0xfffff) return false;
+    auto sp = reinterpret_cast<const uintptr_t* (*)(int)>(g_base + g_build->get_loc_type)(id);
+    if (!sp) return false;
+    uintptr_t o = sp[1];  // the cache keeps its reference while we read (game thread)
+    if (!o) return false;
+    out.id = read_at<int32_t>(o + 0x08);
+    out.name = read_string(o + 0x40);
+    out.size_x = read_at<int32_t>(o + 0xbc);
+    out.size_y = read_at<int32_t>(o + 0xc0);
+    out.varbit = read_at<int32_t>(o + 0x150);
+    out.varp = read_at<int32_t>(o + 0x154);
+    auto n = read_at<uint64_t>(o + 0x140);
+    auto t = read_at<const int32_t*>(o + 0x148);
+    out.transforms.clear();
+    if (n > 0 && n < 4096 && t) out.transforms.assign(t, t + n);
+    auto op_text = reinterpret_cast<uintptr_t (*)(uintptr_t, int)>(g_base + g_build->op_text);
+    for (int i = 0; i < 5; i++) {
+        uintptr_t str = op_text(o + 0xe8, i);
+        out.actions[i] = str ? read_string(str) : std::string();
+    }
+    return true;
+}
 
 bool scene_heights(SceneHeights& out) {
     if (!g_build || !g_build->tile_settings) return false;

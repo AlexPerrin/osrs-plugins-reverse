@@ -60,7 +60,10 @@ abstract class AndroidTileObject implements net.runelite.api.TileObject {
         return Host.client() == null ? null : Perspective.getCanvasTextLocation(Host.client(), g, getLocalLocation(), text, zOffset);
     }
     /** Minimap geometry isn't mapped yet. */
-    @Override public Point getMinimapLocation() { return null; }
+    @Override public Point getMinimapLocation() {
+        net.runelite.api.Client c = Host.client();
+        return c == null ? null : net.runelite.api.Perspective.localToMinimap(c, getLocalLocation());
+    }
     @Override public Shape getClickbox() {
         int h = boxHeight();
         if (h <= 0) return getCanvasTilePoly();

@@ -260,8 +260,22 @@ $M --tool screenshot '{}'                             # PNG (base64) of the canv
    - `::empty`, `::item <id> [n]`;
    - `::tele x z 0`.
 3. Install the plugin under test.
-   - Desktop: the Plugin Hub in the isolated client (it runs the real 1.13.2). The other way is to
-     drop the hub jar into `C:\osrs-test\home\.rlcustom\sideloaded-plugins` and restart.
+   - Desktop: the Plugin Hub in the isolated client (it runs the real 1.13.2). The hub UI is in
+     RuneLite's Swing sidebar, which the MCP tools can't reach, so install by config instead:
+     `desktop.sh stop`, append `runelite.externalPlugins=<internal-name>[,<more>]` to
+     `.rlcustom\profiles2\default-*.properties`, then `start` and `login`. RuneLite downloads the
+     current hub build into `.rlcustom\plugins\` ("Loading external plugin" in the log). Quest
+     Helper was installed this way on 2026-10-17 (gen 28).
+   - **Don't sideload plugins for an A/B.** Jars in `C:\osrs-test\home\.rlcustom\sideloaded-plugins`
+     can't load RuneLite client resources in this RSProx-launched client. Quest Helper's
+     `/util/clue_arrow.png` failed ("Failed to load image ... path: /util/clue_arrow.png"), so every
+     ObjectStep threw in startUp, and the overlay and highlights disappeared at the first object step.
+     The hub build loads it.
+   - Version caveat: the hub serves its current build, which can be newer than the jar Android runs
+     (2026-10-17: hub QH 4.18.0 vs `re/hub/quest-helper.jar` 4.17.1). Record both versions with an A/B.
+   - The desktop log `C:\osrs-test\home\.runelite\logs\client.log` is ISO-8859 with CRLF. Use
+     `grep -a`, or plain grep treats it as binary and prints nothing. Plugin exceptions show as
+     "Uncaught exception in event subscriber".
    - Android: the host build.
 4. Step through in lockstep. At each step capture the following on both clients:
    - `screenshot`;

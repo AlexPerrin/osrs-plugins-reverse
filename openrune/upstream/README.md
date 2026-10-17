@@ -70,6 +70,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 54 | `54-ernest-stage-2` | `content/quest/.../draynor/ErnestTheChicken.kt` | OSRS sets varp `haunted` to 2 after Professor Oddenstein's first talk (Quest Helper's stage 2); the server stayed at 1 until completion | Contains nothing of ours |
 | 55 | `55-general-store-stock-wiring` | `lumbridge/.../GeneralStore.kt`, `edgeville/.../EdgevilleGeneralStore.kt` | Lumbridge opened the Al Kharid stock (no spade/knife) and Edgeville the Lumbridge stock; now Lumbridge = generalshop5, Edgeville = generalshop2 (stock per the wiki) | |
 | 56 | `56-misthalin-mystery-mandy-guards` | `content/quest/.../misthalin/MisthalinMystery.kt` | Mandy outside completed the quest at any stage (the multinpc falls back to its base handler) and the gem reward was lost with a full inventory; now stage 130 and 3 free slots are required | The refusal line "You need 3 free inventory spaces to take the gems." is a guess |
+| 57 | `57-gameframe-no-fullscreen-map-at-login` | `content/interfaces/gameframe/.../GameframeScript.kt` | The login fallback (saved gameframe missing or not matching the client mode) picks the first frame with matching resizable/stone-arrangement flags; the fullscreen world map frame (`toplevel_display`) shares pre-EoC's flags and opening the map sets the stone-arrangement varbit, so a login could land on a black frame without the map, saved for every later login. Reproduced with `varp gameframe` = 548 + stone bit set + a resizable login | Rows are taken in cache order; that the fullscreen row (65530) comes before pre-EoC (65532) is inferred from the repro, not read |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -183,3 +184,6 @@ Compiled and tested (`GrandExchangeScriptTest` 7) in our tree.
 
 Patch 49 (diary areas and progress) was added 2026-10-17: `git am` of all 49 on the pin applies.
 Compiled and tested (`DiaryTasksTest` 4) in our tree.
+
+Patch 57 (gameframe fallback) was added 2026-10-17: it applies alone on the pin, and `git am` of all 57 on the pin applies.
+Compiled in our tree (`:content:interfaces:gameframe:compileKotlin`).

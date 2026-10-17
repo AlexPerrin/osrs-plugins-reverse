@@ -1662,3 +1662,53 @@ Read-only audit of the three quests (stage tables per quest are in the session r
   stage-2 fix could not be seen; it was widened to set 2 on any Oddenstein talk once Ernest is found (built, not
   deployed). Tip: the Mandy npc is only reachable from (1637,4816); interact from other tiles says "I can't reach
   that!".
+
+## Eighteenth server dev (2026-10-17): Misthalin Mystery run, Ernest stage 2, gameframe fallback
+
+### Misthalin Mystery: full playthrough with Quest Helper (desktop, fresh account qhtest2)
+
+QH from the Plugin Hub (4.18.0) on the isolated desktop client; 90247ad live. The stage values in the server
+(`MisthalinStage`) are exactly QH's step keys (0, 5, 10 ... 110, 111, 115 ... 130; read from the QH jar's
+`loadSteps`), so the earlier "uncertain" note is resolved. QH showed the matching step at every stage checked.
+
+Varbit 3468 trail: Abigale "Yes." -> 5 -> 10 (dialogue); bucket by the fountain -> 15; barrel Search -> Sid
+cutscene -> 20; bucket on the barrel ("You fill the bucket from the barrel.") -> 25; Search -> manor key; front
+door ("You use the manor key to unlock the door.") -> 30; knife from the table; pink-knob door -> Tayten cutscene
+-> 35; note 1 Take + Read -> 40; knife on the painting -> 45; Search -> ruby key; ruby door -> 50; tinderbox from
+the shelves, 4 candles -> 55 ("The room is sufficiently warmed, the fuse should now have dried out."); fuse,
+leave -> explosion -> 65; climb the wall, observe the tree -> Lacey cutscene (answer "Count Draynor") -> 70; note 2
+-> 75; piano D-E-A-D (interface 554, children 21/22/25/21) -> 80; piano Search (op 3) -> emerald key; climb back,
+ruby door, emerald door -> 85; Bandos room door -> Mandy cutscene -> 90; note 3 -> 95; knife on the fireplace -> 100;
+Search -> gem panel 555 (Sapphire 19, Diamond 3, Zenyte 11, Emerald 23, Onyx 7, Ruby 15) -> 105; Search -> sapphire
+key; sapphire door -> confrontation -> 111; mirror: 3 reflections (57 ticks apart: the mirror parked at the west
+wardrobe's row, last push west, scores every third cycle) -> unmask cutscene -> 120; killer's knife Take, Wield,
+Fight Abigale -> 125; sapphire door ("You decide it's wise to leave the murder weapon behind.") -> 130; Mandy outside
+-> 135. Scroll: 1 QP, 600 Crafting XP, uncut ruby/emerald/sapphire (matches the wiki).
+
+- No server bug found in the quest. One fill of the bucket empties the barrel (the wiki only says "use the bucket on
+  the barrel to empty it"; whether OSRS needs several fills is unchecked).
+- Driving tips (camera, scene base, `invoke_menu_action`) are in docs/multi-client.md "Driving tips".
+
+### Ernest the Chicken stage 2 (fresh account qhtest3, 90247ad)
+
+Veronica -> varp 32 = 1; first Professor Oddenstein talk ("I'm missing the pressure gauge and a rubber tube...")
+-> varp 32 = 2. Fix confirmed.
+
+### Black screen after login: the fullscreen world map gameframe (upstream 57)
+
+qhtest1 logged in to an all-black frame, and every later login did the same: the client root was
+`toplevel_display` (165, the fullscreen world map frame) with no map and no 161/548. Its saved `varp.gameframe` was
+165 (the others 161/548), and bit 8 of `varp.chat_filter_assist` was set (assumed to be
+`resizable_stone_arrangement`; qhtest2 has it clear).
+- Cause, reproduced on qhtest3: opening the fullscreen map sets the stone-arrangement bit (`changeGameframe` copies
+  the destination's flag), and the bit stays set if the session ends while the map is open. A login whose saved frame
+  does not match the client mode (`::varp gameframe 548` plus a resizable client) goes through
+  `selectFallback(resizable = true, stone = true)`, which took the first frame with those flags: the fullscreen map
+  frame (dbrow 65530, before pre-EoC 65532; the order is inferred from the repro). That frame is saved as
+  `gameframe_toplevel`, so it sticks.
+- How qhtest1 itself got there (where it opened the map and which login mismatched) is not known.
+- Fix: the login restore, the fallback and the intermediate-frame lookup skip `toplevel_display`, and ours also skip
+  the mobile toplevel. A saved fullscreen frame now falls back to a normal frame (this recovers qhtest1).
+- Android is not affected: mobile sessions always open `toplevel_osm` before the fallback.
+- Not changed: opening the fullscreen map still flips the stone-arrangement bit. With the fix, a later mismatched login
+  picks pre-EoC ("modern" resizable) instead of classic.

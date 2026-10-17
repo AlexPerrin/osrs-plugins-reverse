@@ -249,6 +249,35 @@ $M --tool type_chat '{"text":"::tele 3222 3218 0"}'
 $M --tool screenshot '{}'                             # PNG (base64) of the canvas
 ```
 
+### Driving tips: camera, scene coordinates, accounts
+
+- **Fresh accounts:** `desktop.sh login <user> <pass>` (or `relogin`) creates any local account on its first login,
+  e.g. `qhtest3`/`qhtest3`. Use a new one to re-test a quest; `::quest <name> reset` leaves internal flags set.
+- **Logout:** `desktop.sh logout` clicks (642,483) then (641,423). That works in the resizable layout at the
+  minimum size too, but not while a fullscreen interface (the fullscreen world map) hides the side stones.
+- **Screenshots** are 1.5x the canvas (765x503) on this machine's DPI. Divide screenshot pixels by 1.5 before
+  `click`.
+- **Hidden objects:** the camera sits low and behind the player, and `press_key UP/LEFT` is a single tap that
+  does not move it. Objects behind walls or under the side panel make `interact_object`/`walk_to` fail ("No menu
+  entry", "not visible", or a click at x > 765). Use `invoke_menu_action` with scene coordinates instead:
+  - `type` `GAME_OBJECT_FIRST_OPTION` (`_SECOND_`, `_THIRD_`, ...), `identifier` = object id,
+    `param0`/`param1` = world x/y minus the scene base;
+  - item on object: `item_action {"option":"Use"}` first, then `type` `WIDGET_TARGET_ON_GAME_OBJECT`;
+  - scene base = ((x >> 3) - 6) * 8, ((y >> 3) - 6) * 8 for the tile where the scene was last rebuilt. OpenRune
+    rebuilds after a teleport or step within 16 tiles of the scene edge, and after every cutscene or instance
+    exit (the return tile).
+  - A wrong base fails silently: the server finds no loc and only clears the map flag.
+  - Multi-tile locs: `list_objects` reports the middle tile, but the op needs the origin (south-west) tile, e.g.
+    the Misthalin fireplace (1x3) is listed at (1647,4836) and answers at (1647,4835).
+  - `WALK` through `invoke_menu_action` walks to the hovered tile, not to the params.
+- **Dialogue first:** `type_chat` while a message box or item box is open loses characters, and the rest goes
+  out as public chat. Continue or close the dialogue before a `::` command.
+- **Quest Helper drops the helper** at the first region load after a new account's first login. QH's
+  `onRuneScapeProfileChanged` sets `profileChanged`, and the next LOGGED_IN calls `shutDownQuest`. The real
+  RuneLite does the same, so do one teleport or region change before "Start Quest Helper".
+- **Inventory tab:** clicking the inventory stone while the tab is open closes the panel, and then `item_action`
+  fails. Click it only when `get_inventory` reports the widget is not visible.
+
 ### A/B recipe (desktop vs Android)
 
 1. Start both clients:

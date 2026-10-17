@@ -4503,13 +4503,14 @@ index 523f4c3e8..5ea021697 100644
          val topLevel = RSCM.getReverseMapping(RSCMType.INTERFACE, row.toplevel)
          val clientMode = row.clientMode
 diff --git a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
-index 7af3c1d93..953380a8a 100644
+index 7af3c1d93..c13b4ad5d 100644
 --- a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
 +++ b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
-@@ -64,6 +64,13 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+@@ -64,7 +64,14 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
      }
  
      private fun Player.openLoginGameframe() {
+-        val gameframe = gameframes[gameframeTopLevel]
 +        if (mobileClient) {
 +            val mobile = gameframes.values.first { it.topLevel == GameframeLoader.MOBILE_TOPLEVEL }
 +            gameframeTopLevel = mobile.topLevel.asRSCM(RSCMType.INTERFACE)
@@ -4517,9 +4518,50 @@ index 7af3c1d93..953380a8a 100644
 +            openGameframe(mobile, eventBus)
 +            return
 +        }
-         val gameframe = gameframes[gameframeTopLevel]
++        val gameframe = gameframes[gameframeTopLevel]?.takeIf { it.isLoginSelectable() }
          if (gameframe != null && gameframe.resizable == ui.frameResizable) {
              ifOpenTop(gameframe.topLevel)
+             openGameframe(gameframe, eventBus)
+@@ -135,12 +142,23 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+             if (!requiresIntermediate) {
+                 return null
+             }
+-            return gameframes.values.first { it.hasFlags(resizable = true, stoneArrangements) }
++            return gameframes.values.first {
++                it.isLoginSelectable() && it.hasFlags(resizable = true, stoneArrangements)
++            }
+         }
+ 
+         private fun Gameframe.hasFlags(resizable: Boolean, stoneArrangements: Boolean): Boolean {
+             return this.resizable == resizable && this.stoneArrangement == stoneArrangements
+         }
++
++        /**
++         * The fullscreen world map shares the resizable + stone-arrangement flags with pre-EoC, so
++         * flag-based selection could pick it and leave the player on a black frame without the map.
++         */
++        private fun Gameframe.isLoginSelectable(): Boolean =
++            topLevel != FULLSCREEN_MAP_TOPLEVEL && topLevel != GameframeLoader.MOBILE_TOPLEVEL
++
++        private const val FULLSCREEN_MAP_TOPLEVEL = "interface.toplevel_display"
+     }
+ 
+     public fun Player.changeGameframe(move: GameframeMove) {
+@@ -172,11 +190,12 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+     }
+ 
+     private fun selectFallback(resizable: Boolean, stoneArrangements: Boolean): Gameframe? {
+-        val priority = gameframes.values.firstOrNull { it.hasFlags(resizable, stoneArrangements) }
++        val candidates = gameframes.values.filter { it.isLoginSelectable() }
++        val priority = candidates.firstOrNull { it.hasFlags(resizable, stoneArrangements) }
+         if (priority != null) {
+             return priority
+         }
+-        return gameframes.values.firstOrNull { it.resizable == resizable }
++        return candidates.firstOrNull { it.resizable == resizable }
+     }
+ 
+     private fun loadAll() {
 diff --git a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/SideChannelsScript.kt b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/SideChannelsScript.kt
 new file mode 100644
 index 000000000..8dd884024

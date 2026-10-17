@@ -4524,6 +4524,52 @@ index 000000000..ad4b48ccf
 +            }
 +        }
 +}
+diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScriptTest.kt
+new file mode 100644
+index 000000000..e6b5cdcda
+--- /dev/null
++++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScriptTest.kt
+@@ -0,0 +1,40 @@
++package org.rsmod.content.skills.hunter
++
++import java.time.LocalTime
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertNotEquals
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.content.skills.hunter.CrystalImplingScript.Companion.halfHourSlot
++import org.rsmod.content.skills.hunter.CrystalImplingScript.Companion.isVisibleTime
++
++@Execution(ExecutionMode.SAME_THREAD)
++class CrystalImplingScriptTest {
++    @Test
++    fun `a new half hour starts three minutes past`() {
++        assertEquals(halfHourSlot(LocalTime.of(10, 3)), halfHourSlot(LocalTime.of(10, 32)))
++        assertNotEquals(halfHourSlot(LocalTime.of(10, 32)), halfHourSlot(LocalTime.of(10, 33)))
++        assertFalse(isVisibleTime(LocalTime.of(10, 31)))
++        assertTrue(isVisibleTime(LocalTime.of(10, 33)))
++    }
++
++    @Test
++    fun GameTestState.`one crystal impling at a time, on a wiki spot`() =
++        runInjectedGameTest(CrystalImplingScript::class, null, CrystalImplingScript::class) {
++            script ->
++            for (spot in CrystalImplingScript.SPOTS) allocZoneCollision(spot)
++            val first = checkNotNull(script.spawn())
++            assertTrue(first.coords in CrystalImplingScript.SPOTS)
++            val second = checkNotNull(script.spawn())
++            assertEquals(second, script.current())
++            // The first game tick also spawns one (server start), replacing the second.
++            advance(ticks = 1)
++            assertFalse(first.isSlotAssigned)
++            assertFalse(second.isSlotAssigned)
++            assertTrue(checkNotNull(script.current()).coords in CrystalImplingScript.SPOTS)
++        }
++}
 diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingLootScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingLootScriptTest.kt
 new file mode 100644
 index 000000000..28d41f396
@@ -4697,6 +4743,113 @@ index 000000000..d2c61d6fe
 +        player.setBaseLevel(HUNTER, level)
 +        player.setCurrentLevel(HUNTER, level)
 +        return spawnNpc(center.translate(1, 0), impling.npc)
++    }
++}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScript.kt
+new file mode 100644
+index 000000000..ab6ab0bb5
+--- /dev/null
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScript.kt
+@@ -0,0 +1,101 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import jakarta.inject.Inject
++import jakarta.inject.Singleton
++import java.time.Clock
++import java.time.LocalTime
++import org.rsmod.api.game.process.GameLifecycle
++import org.rsmod.api.random.GameRandom
++import org.rsmod.api.repo.npc.NpcRepository
++import org.rsmod.api.script.onEvent
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.game.entity.Npc
++import org.rsmod.map.CoordGrid
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Crystal implings (OSRS Wiki, Crystal impling): one per world in Prifddinas, at one of 12 spawn
++ * spots as one of 17 named implings. A new one appears 3 minutes after each :00 and :30 (UTC here)
++ * and one at server start. Hunter 80 (90 barehanded), 280 XP, into a crystal impling jar.
++ * Deviation: the catch chance is the generic impling curve, not the crystal one.
++ */
++@Singleton
++class CrystalImplingScript
++@Inject
++constructor(
++    private val npcRepo: NpcRepository,
++    private val random: GameRandom,
++    private val implings: ImplingScript,
++) : PluginScript() {
++    private var current: Npc? = null
++    private var lastSlot: Int = -1
++    var clock: Clock = Clock.systemUTC()
++
++    override fun ScriptContext.startup() {
++        for (name in NAMES) {
++            onOpNpc1(name) {
++                with(implings) {
++                    catch(it.npc, LEVEL, JAR, XP) { remove(it.npc) }
++                }
++            }
++        }
++        onEvent<GameLifecycle.LateCycle> { tick() }
++    }
++
++    fun tick() {
++        val slot = halfHourSlot(LocalTime.now(clock))
++        if (slot == lastSlot) return
++        if (lastSlot != -1 && !isVisibleTime(LocalTime.now(clock))) return
++        lastSlot = slot
++        spawn()
++    }
++
++    fun spawn(): Npc? {
++        current?.let { remove(it) }
++        val type =
++            ServerCacheManager.getNpc(NAMES[random.of(NAMES.size)].asRSCM(RSCMType.NPC))
++                ?: return null
++        val npc = Npc(type, SPOTS[random.of(SPOTS.size)])
++        npcRepo.add(npc, Int.MAX_VALUE)
++        current = npc
++        return npc
++    }
++
++    fun current(): Npc? = current?.takeIf { it.isSlotAssigned }
++
++    private fun remove(npc: Npc) {
++        if (npc.isSlotAssigned) npcRepo.del(npc, Int.MAX_VALUE)
++        if (current === npc) current = null
++    }
++
++    companion object {
++        const val LEVEL = 80
++        const val XP = 280
++        const val JAR = "obj.ii_captured_impling_12"
++        const val VISIBLE_AFTER_MINUTES = 3
++
++        val NAMES =
++            listOf(
++                "johnny", "junior", "andy", "joey", "trouble", "hingy", "zolty", "neil", "yanny",
++                "matty", "stace", "ian", "jamie", "damo", "xander", "steveo", "stewie",
++            ).map { "npc.ii_impling_type_12_$it" }
++
++        /** The wiki's spawn map for Prifddinas. */
++        val SPOTS =
++            listOf(
++                3290 to 6117, 3307 to 6041, 3210 to 6110, 3213 to 6049, 3237 to 6102,
++                3308 to 6117, 3240 to 6046, 3214 to 6113, 3290 to 6049, 3234 to 6072,
++                3240 to 6120, 3234 to 6129,
++            ).map { (x, z) -> CoordGrid(x, z, 0) }
++
++        /** Which half hour of the day [time] falls in, counting from 3 minutes past. */
++        fun halfHourSlot(time: LocalTime): Int =
++            ((time.toSecondOfDay() / 60 - VISIBLE_AFTER_MINUTES + 1440) % 1440) / 30
++
++        fun isVisibleTime(time: LocalTime): Boolean = time.minute % 30 >= VISIBLE_AFTER_MINUTES
 +    }
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootScript.kt
@@ -5148,10 +5301,10 @@ index 000000000..90d166d4c
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingScript.kt
 new file mode 100644
-index 000000000..65eb29ae9
+index 000000000..8227019c6
 --- /dev/null
 +++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingScript.kt
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,109 @@
 +package org.rsmod.content.skills.hunter
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -5186,8 +5339,20 @@ index 000000000..65eb29ae9
 +        impling: ImplingTypesRow,
 +        puroPuro: Boolean,
 +    ) {
++        val xp = if (puroPuro) impling.xpPuroPuro else impling.xpGielinor
++        catch(npc, impling.level, impling.jar.internalName, xp) { removeCaught(npc, impling) }
++    }
++
++    /** Catches [npc] into [jar] at Hunter [level] for [xp]; [onCaught] removes the npc. */
++    suspend fun ProtectedAccess.catch(
++        npc: Npc,
++        level: Int,
++        jar: String,
++        xp: Int,
++        onCaught: () -> Unit,
++    ) {
 +        val net = wieldedNet()
-+        val required = if (net == null) impling.level + BAREHANDED_EXTRA_LEVELS else impling.level
++        val required = if (net == null) level + BAREHANDED_EXTRA_LEVELS else level
 +        if (stat(HUNTER) < required) {
 +            val barehanded = if (net == null) " barehanded" else ""
 +            mes("You need a Hunter level of $required to catch this impling$barehanded.")
@@ -5207,10 +5372,9 @@ index 000000000..65eb29ae9
 +            if (random.of(100) >= chance) return@repeat
 +            val slot = (0 until inv.size).firstOrNull { inv[it]?.id == jarId } ?: return
 +            if (invDel(inv, IMPLING_JAR, slot = slot).failure) return
-+            invAdd(inv, impling.jar.internalName, slot = slot)
-+            val xp = if (puroPuro) impling.xpPuroPuro else impling.xpGielinor
++            invAdd(inv, jar, slot = slot)
 +            statAdvance(HUNTER, xp.toDouble())
-+            removeCaught(npc, impling)
++            onCaught()
 +            mes("You manage to catch the impling and squeeze it into a jar.", ChatType.Spam)
 +            return
 +        }

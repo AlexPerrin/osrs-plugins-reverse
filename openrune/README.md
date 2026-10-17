@@ -83,6 +83,8 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   the catch message is a best guess. Loot on a caught jar rolls the OSRS Wiki's loot table for that jar (main table,
   gourmet's grubby-key pre-roll, clue scroll tertiaries; noted where the wiki says so), and the empty
   jar comes back 9 times in 10. The lucky impling (clue reward rolls) has no loot.
+  Crystal implings: one at a time in Prifddinas (12 wiki spots, 17 named implings), a new one 3
+  minutes after every :00/:30 UTC and one at server start; Hunter 80, 280 XP (generic catch curve).
 - **Random events** (`content/events/random-events`): the Genie, every 1-2 hours of play or with
   `::randomevent`. He appears beside the player, faces them, calls them by name every 12 s,
   follows, and leaves after a minute; Talk-to gives the lamp (Rub: xpreward, 10 x level), Dismiss

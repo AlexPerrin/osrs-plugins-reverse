@@ -30,7 +30,7 @@ final class AndroidItemComposition extends ItemCompositionStub {
         }
         // The game's ObjType for a negative id (an empty slot, -1) is the default definition named
         // "null"; desktop returns it too, and plugins read its name (Inventory Setups' empty slots).
-        if (id < 0) return new AndroidItemComposition(id, new int[10], new String[] {"null", null, null, null, null, null});
+        if (id < 0) return new AndroidItemComposition(id, new int[14], new String[] {"null", null, null, null, null, null});
         Object[] r = Native.itemDef(id);
         if (r == null) return null;
         AndroidItemComposition c = new AndroidItemComposition(id, (int[]) r[0], (String[]) r[1]);
@@ -54,6 +54,14 @@ final class AndroidItemComposition extends ItemCompositionStub {
     @Override public int getNote() { return v[7]; }
     @Override public int getPlaceholderId() { return v[8]; }
     @Override public int getPlaceholderTemplateId() { return v[9]; }
+    // Inventory icon view (ObjType +0xc0..+0xc8, static RE; unverified). Setters keep host-side values
+    // (desktop's change the cached definition; the game's icons aren't redrawn from them here).
+    @Override public int getXan2d() { return v.length > 11 ? v[11] : 0; }
+    @Override public int getYan2d() { return v.length > 12 ? v[12] : 0; }
+    @Override public int getZan2d() { return v.length > 13 ? v[13] : 0; }
+    @Override public void setXan2d(int a) { if (v.length > 11) v[11] = a; }
+    @Override public void setYan2d(int a) { if (v.length > 12) v[12] = a; }
+    @Override public void setZan2d(int a) { if (v.length > 13) v[13] = a; }
     @Override public String[] getInventoryActions() { return actions; }
     @Override public int getShiftClickActionIndex() { return shiftClickIndex; }
     @Override public void setShiftClickActionIndex(int i) { shiftClickIndex = i; }

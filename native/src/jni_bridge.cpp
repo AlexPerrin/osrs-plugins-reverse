@@ -379,10 +379,11 @@ jobjectArray n_item_def(JNIEnv* env, jclass, jint id) {
     }
     game::ItemDef d;
     if (!game::item_def(id, d)) return nullptr;
-    jint v[10] = {d.price, d.weight, d.category, d.stackable, d.members, d.tradeable_guess,
-                  d.linked_note, d.note_template, d.placeholder, d.placeholder_template};
-    jintArray ints = env->NewIntArray(10);
-    env->SetIntArrayRegion(ints, 0, 10, v);
+    jint v[14] = {d.price, d.weight, d.category, d.stackable, d.members, d.tradeable_guess,
+                  d.linked_note, d.note_template, d.placeholder, d.placeholder_template,
+                  d.zoom2d, d.xan2d, d.yan2d, d.zan2d};
+    jintArray ints = env->NewIntArray(14);
+    env->SetIntArrayRegion(ints, 0, 14, v);
     jclass string = env->FindClass("java/lang/String");
     jobjectArray strs = env->NewObjectArray(6, string, nullptr);
     for (int i = 0; i < 6; i++) {

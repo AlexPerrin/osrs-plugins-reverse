@@ -1990,6 +1990,12 @@ bool item_def(int id, ItemDef& out) {
     out.weight = read_at<int32_t>(o + 0x2d0);
     out.category = read_at<int32_t>(o + 0x278);
     out.tradeable_guess = read_at<uint8_t>(o + 0x308) != 0;
+    // Icon view, as CC_SETOBJECT (0x4e06dc) copies it into the widget's model zoom/angles: zoom2d +0xbc,
+    // xan2d/yan2d/zan2d +0xc0/+0xc4/+0xc8 (static RE).
+    out.zoom2d = read_at<int32_t>(o + 0xbc);
+    out.xan2d = read_at<int32_t>(o + 0xc0);
+    out.yan2d = read_at<int32_t>(o + 0xc4);
+    out.zan2d = read_at<int32_t>(o + 0xc8);
     auto iops = read_at<uintptr_t>(o + 0x108);
     for (int i = 0; i < 5; i++) out.inventory_actions[i] = iops ? read_string(iops + i * 0x18) : std::string();
     release_shared(sp[0]);

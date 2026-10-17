@@ -267,6 +267,7 @@ struct ItemDef {
     bool stackable = false, members = false, tradeable_guess = false;
     int linked_note = -1, note_template = -1, placeholder = -1, placeholder_template = -1;
     std::string inventory_actions[5];
+    int zoom2d = 0, xan2d = 0, yan2d = 0, zan2d = 0;  // inventory icon view (CC_SETOBJECT copies them)
 };
 bool item_def(int id, ItemDef& out);
 // Item icon as the inventory draws it (createItemSprite 0x63ff9c): 36x32 ARGB pixels, 0 = transparent.

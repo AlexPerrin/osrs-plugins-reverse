@@ -904,3 +904,31 @@ was verified.
   cycle and state at login would settle it. Guess: real OSRS sends UPDATE_FRIENDLIST ticks after login
   (once Central answers), never in the login burst, so the delayed resend matches OSRS timing; it
   stays (`// unverified`).
+- **Hunter traps** (`content/skills/hunter` `HunterTrapScript`, pack `HunterTrapTables`: dbtables
+  `hunter_traps` 60011 and `hunter_trap_creatures` 60012, rows 60350-60360, timer 470). For
+  RuneLite's Hunter plugin, which tracks the trap locs only:
+  - Lay (item op 1, `seq.hunting_setting_trap_small`, 3 ticks): the set loc (`hunting_ojibway_trap`
+    9345 / `hunting_boxtrap_empty` 9380, shape 10, angle west) appears on the player's own tile and
+    the player steps off (W, E, S, N), so the plugin's "placed on last tick's tile" check holds.
+    Limit 1 + one per Hunter 20/40/60/80 (wiki).
+  - Every 3 ticks (wiki: box traps; birds the same, guess) a set trap whose owner is off it rolls
+    against the nearest matching creature within 2 tiles: chance out of 256 on the crimson swift's
+    curve (wiki: 39.45% at 1, 164% at 99 = OSRS skilling low 100 / high 419) at level minus the
+    creature's requirement plus 1 (guess for the others). Caught: the npc despawns (50 ticks,
+    guess), loc -> `*_trapping_<creature>` (box: `_n` variant) -> 2 ticks -> `*_full_<creature>`.
+    Missed: `*_failing` -> broken/failed. Every swap is a del + add in the same tick so the tile
+    never looks empty to the plugin.
+  - Ops from the cache (bird snare): set = Dismantle/Investigate, full = Check/Reset, broken =
+    Dismantle/Reset (box trap ops assumed the same). Check: bones + raw bird meat + 5-10 feathers
+    (wiki for the crimson swift, guess for the others) or the creature item, the trap back, XP,
+    "You've caught a crimson swift.". Reset = Check/Dismantle, walk onto the tile, lay again.
+  - **Guesses:** "You begin setting up the trap.", "You can't lay a trap here.", "You don't have a
+    high enough Hunter level to set up more than N trap(s).", "This bird snare hasn't caught
+    anything yet.", "You dismantle the trap.", "This isn't your trap.", "Your trap has collapsed."
+    (after 200 ticks untouched; the trap item is dropped), traps dropped on logout.
+  - The script is `@Singleton`: the test harness (and Guice) made two instances, and the soft
+    timer fired on the one without traps. The test world does not process walking, so the tests
+    teleport the player off the trap.
+  - Device test: `::item hunting_ojibway_bird_snare 3`, `::npc 500 hunting_bird_jungle` beside the
+    player (spawned npcs stand still), Lay, step away. Box traps need Hunter 27+ (`::setxp hunter
+    ...`). Upstream `35-hunter-traps`.

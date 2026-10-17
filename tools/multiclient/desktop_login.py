@@ -6,8 +6,9 @@ reads the game stream for a few seconds and checks what a desktop client must ge
   - login response 2 (OK) for a username/password account (OpenRune creates it on first login);
   - IF_OPENTOP with a desktop toplevel (161/548/165), not the mobile 601;
   - REBUILD_NORMAL and a steady PLAYER_INFO stream.
-It prints the game messages (MESSAGE_GAME) and a packet histogram. No client packets are sent after
-login, so the session changes nothing in the world; it disconnects at the end.
+It prints the game messages (MESSAGE_GAME) and a packet histogram. After login it only sends
+NO_TIMEOUT keepalives (every 8 s, so --seconds can exceed RSProt's 15 s idle timeout); the session
+changes nothing in the world, and it disconnects at the end.
 
 Usage: desktop_login.py [--host 127.0.0.1] [--port 43594] [--http http://127.0.0.1:8082]
                         [--user desktop] [--password desktop] [--seconds 8]
@@ -263,6 +264,10 @@ def main():
         raise SystemExit(f"FAIL: login response {code} (3 = invalid username/password, 5 = already online)")
 
     isaac = Isaac([(s + 50) & M32 for s in seed])
+    # Keepalive: RSProt closes a game channel after 15 s without inbound packets, so send desktop
+    # NO_TIMEOUT (opcode 75, empty; ISAAC-encrypted opcode byte) every 8 s. Never IDLE (logs out).
+    out_isaac = Isaac(list(seed))
+    next_keepalive = time.time() + 8
     counts, toplevel, messages = {}, None, []
     c.s.settimeout(0.5)
     end = time.time() + args.seconds
@@ -271,8 +276,11 @@ def main():
     buf = ok[34:]
 
     def need(n):
-        nonlocal buf
+        nonlocal buf, next_keepalive
         while len(buf) < n:
+            if time.time() >= next_keepalive:
+                c.s.sendall(bytes([(75 + out_isaac.next()) & 255]))
+                next_keepalive = time.time() + 8
             if time.time() > end:
                 raise TimeoutError
             try:

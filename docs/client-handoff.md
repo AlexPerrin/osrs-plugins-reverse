@@ -981,12 +981,9 @@ session; its notes are in `docs/android-protocol.md`.
     defaults for stretched/oculus/camera mode. Use `tools/progress.py --dry-run` (never the full run: it rewrites the
     orchestrator's progress files). More in gen 25: ParamHolder getLongValue/setValue (item/NPC/loc/struct), Node
     getHash/next/previous for containers/messages, ItemComposition xan2d/yan2d/zan2d. API 590/866 at the end.
-  - **Project goal (orchestrator, 2026-10-17): all F2P content.** Client work now serves F2P play and verification:
-    Quest Helper per F2P quest (the main end-to-end tool; checklist docs/f2p-content.md by the auditor), core plugins
-    F2P players rely on, host gaps that block F2P checks. No members-only plugin/host work; ask when unsure.
-  - **Next (gen 26)**: take the F2P quest list from docs/f2p-content.md and run Quest Helper through the quests the server
-    supports (done so far: Cook's Assistant, Sheep Shearer, Romeo & Juliet; Demon Slayer started once); fix host gaps QH
-    hits (NpcStep/ObjectStep/item highlights, dialogue options, widget-based steps). FC name field (above).
+  - **Next (gen 26)**: the orchestrator's queue (gen 25's was Bank Tag Layouts, FC/clan readers, API coverage where plugins
+    hit stubs). Open items: the FC name field ("Test Fc" vs "Test FC"); Team's counts on screen; setItemQuantityMode's
+    drawn result; getSearchingTagTab still unverified. (A short-lived F2P goal set during gen 25 was withdrawn, 819f24e.)
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

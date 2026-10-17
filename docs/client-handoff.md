@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 25 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 26 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -992,6 +992,42 @@ session; its notes are in `docs/android-protocol.md`.
   - **Next (gen 26)**: the orchestrator's queue (gen 25's was Bank Tag Layouts, FC/clan readers, API coverage where plugins
     hit stubs). Open items: Team's counts on screen (next slot); pin/build the five new hub rows; getWidgetConfig and setItemQuantityMode's
     drawn result; getSearchingTagTab still unverified. (A short-lived F2P goal set during gen 25 was withdrawn, 819f24e.)
+- **2026-10-17 (client dev gen 26)**, commits 6a98646..726a3d0 (progress at start: core 80/84, hub 30/37; end: core 82/84, hub 32/37, API 592/866).
+  - **Team runs**: its FC/clan counters count nearby players with `Player.isFriendsChatMember/isClanMember`, which
+    were constant false; they now check the name against the friends chat / clan 0 channel (`ChatChannels.isFcMember/
+    isClanMember`; fresh on the game thread, the last read elsewhere). Config group is **`teamCapes`**, not `team`.
+    Recipe: headless `tools/multiclient/desktop_login.py --user desktop --password desktop --seconds 200 --cheat 'tele 3223 3218'`
+    (background), `::fakeclan join`, `::fakeclan add desktop`: two InfoBoxes "1" top-left; `::fakeclan del desktop` removes them.
+  - **Friend List runs** (rechecked by me; the server dev's evidence was the game's own UI): title "Friends - W255 (1/200)"
+    (script 631), "desktop has logged in. (World 255)" with `friendlist.showWorldOnLogin=true`.
+  - **Five hub rows pinned/built**: Tile Packs (runs: Barrows pack 42 drawn at `::tele 3565 3289 0`), Runecrafting Utilities
+    (runs: "Fill Small pouch" first in the bank), Custom Menu Swaps (starts), C Engineer (starts), Resource packs (starts).
+    `host/plugins/hub/deps.txt` lists transitive Maven deps Gradle would resolve (resource-packs: antlr4-runtime for tomlj).
+    Bytecode stub scan (scratch: javap -c, match `Method net/runelite/api/X.m` against ApiCoverage's missing list): only
+    Resource packs hits stubs (getCrossSprites, getWidgetRoots, setCompass, setLoginScreen, Widget getContentType/setType/
+    setOnTargetEnter/LeaveListener).
+  - Host fixes: Gson bound to `RuneLiteAPI.GSON` (Color adapter; Tile Packs); `host/src/net/runelite/client/audio/AudioPlayer.java`
+    replaces RuneLite's (MediaPlayer; players held until completion, the first build was GC-finalized mid-clip; the hold is
+    unverified); CompatRewrite maps `Path.of` and `Files.readString` (API 34+). `getGameState()` reports LOADING from state 30
+    until GameStateChanged(LOGGED_IN) is posted (latched, `Host.loggedInPosted`; Runecrafting Utilities' ClientTick NPE).
+    **Teleports posted LOGGED_IN twice** (native 30->25->30, then the scene-base replay): a LOGGED_IN after LOADING now waits
+    for the new scene base (or 50 cycles). Verified: login and a far teleport each give one LOADING, WorldViewLoaded, LOGGED_IN
+    (each posted state is logged: "GameStateChanged X (getGameState Y, local player Z)").
+  - Menu Entry Swapper getWidgetConfig: faithful; mobile's IF_SETEVENTS for bank items (12:12) is 0x140000 (drag bits, no op
+    bits), so "Swap left-click" lists the default op too (desktop leaves it out). getSearchingTagTab and the item quantity
+    mode's drawn result are still unchecked.
+  - Probe additions (`setprop debug.osrsrl.set '...'`): `config <group> <key>` without '=' unsets; `sprite <id> 0`;
+    `players 0 0` (names, fc/clan/friend flags); `pfield <PluginClass> <field>` (plugin field by reflection).
+    Config read at startUp (Tile Packs' `tilePacks.packs=[42]`): edit settings.properties with the app stopped
+    (force-stop, `adb shell cat`, edit, push), then start. A relaunch soon after a force-stop shows "account still logged in":
+    wait ~20 s and tap "Try again" (958,668), then Play Now.
+  - **Next (gen 27)**: Custom Menu Swaps (`config hotkeyablemenuswaps customSwaps=examine,man`, long-press a Lumbridge man,
+    expect Examine on top; unset after); C Engineer audio checked objectively via AudioFlinger frames during the clip
+    (as Metronome was; trigger with `config cengineercompleted selectAnySoundToTestPlayIt=LEVEL_UP`, unset after, and also
+    remove the plugin's own `cengineercompleted.needToInformAboutDelayedCoxColLogs`); getSearchingTagTab; the quantity mode
+    drawn result; Resource packs needs a hub pack installed (GitHub GETs) and mostly targets desktop interfaces. Remaining
+    tracked stub hits (gen 25 list): getInventoryModel, QH fake objects, NPC.getModel, getAnimationHeightOffset.
+    BlueStacks was unreachable at the end of gen 26 (adb connect refused), so the last slot did not run.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

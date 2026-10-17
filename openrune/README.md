@@ -87,6 +87,13 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   jar comes back 9 times in 10. The lucky impling (clue reward rolls) has no loot.
   Crystal implings: one at a time in Prifddinas (12 wiki spots, 17 named implings), a new one 3
   minutes after every :00/:30 UTC and one at server start; Hunter 80, 280 XP (generic catch curve).
+- **Bird houses** (`content/skills/hunter`, `BirdHouseScript`): the four Fossil Island spaces
+  (`::tele 3677 3880`, `3678 3815`, `3763 3755`): Build (or use a bird house on the space), 10
+  seeds (hop, allotment, herb, flower or bush), and after 50 minutes (wall clock) Empty or Reset
+  for the clockwork, 10 raw bird meat, 30-60 feathers, nests and the Hunter XP. The spaces' varps
+  1626-1629 are the values RuneLite's Time Tracking reads, and the collect message is the one
+  its Loot Tracker parses. Tier data in the server-only dbtable `birdhouse_types`. `::birdhouses`
+  makes seeded houses full now. Crafting bird houses was already in OpenRune.
 - **Random events** (`content/events/random-events`): the Genie, every 1-2 hours of play or with
   `::randomevent`. He appears beside the player, faces them, calls them by name every 12 s,
   follows, and leaves after a minute; Talk-to gives the lamp (Rub: xpreward, 10 x level), Dismiss

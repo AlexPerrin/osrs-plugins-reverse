@@ -80,7 +80,9 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   extra Hunter levels barehanded; an empty impling jar is required (the jar-less loot of Gielinor
   catches is not done). Chance 12-98% by level, +8 with a magic net or barehanded; XP, jar and
   respawn per type from the new server-only dbtable `impling_types` (OSRS Wiki values). Wording of
-  the catch message is a best guess.
+  the catch message is a best guess. Loot on a caught jar rolls the OSRS Wiki's loot table for that jar (main table,
+  gourmet's grubby-key pre-roll, clue scroll tertiaries; noted where the wiki says so), and the empty
+  jar comes back 9 times in 10. The lucky impling (clue reward rolls) has no loot.
 - **Random events** (`content/events/random-events`): the Genie, every 1-2 hours of play or with
   `::randomevent`. He appears beside the player, faces them, calls them by name every 12 s,
   follows, and leaves after a minute; Talk-to gives the lamp (Rub: xpreward, 10 x level), Dismiss

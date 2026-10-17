@@ -21,6 +21,43 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-16 late night, sixth server dev, on OpenRune)
+
+Protocol unchanged (240/253 mapped, 239 verified; only C->S 45 SET_HEADING open). This session was
+content for RuneLite plugins plus upstream patches.
+
+- **Deployed** (21:40): everything up to 63f453b. Device-verified: Genie lamp Rub (xpreward +
+  Confirm, 990 XP at 99 = 1x), impling jar Loot (dragon and crystal jars), crystal impling catch
+  in Prifddinas. Not yet on the device: bird houses.
+- **Commits:** be36cc2 Slayer streak varbits + OSRS gem/completion wording; c39fca0 jar Loot (wiki
+  tables); 145fae7 crystal implings; f332f42 Loot on the cache's op ("Loot" is the jars' THIRD iop:
+  the client sends If3Button op 4 -> HeldOp3); 79d641b xpRate forced to 1.0 at login (the realm gave
+  new accounts 150x; existing saved XP stays); 63f453b bird houses; 6737557 openrune/upstream/.
+- **Slayer:** server side complete (varps 394/395/2096/4258, varbits 4067/4068/4069; Turael gives
+  tasks, gem Check). The plugin needed Client.getDBRowsByValue on the host (client dev, 3ea9b49).
+- **`starts` rows checked:** NPC Aggression Timer, Player Indicators and Emojis need nothing from
+  the server (aggression timer: client config `npcUnaggroAlwaysActive` or a name pattern; Player
+  Indicators: a second player via `tools/multiclient/desktop_login.py`).
+- **Bird houses** (`content/skills/hunter/.../BirdHouseScript.kt`, dbtable `birdhouse_types`,
+  server varps 63760-63767 in the hunter pack): spaces at 3677,3882 / 3678,3815 / 3763,3755 /
+  3768,3761 (multilocs birdhouse_1..4 on varps 1626..1629). Device check pending: the space wasn't
+  found with a long-press near 3677,3880 (try a tap beside the wall to the north, or the southern
+  spaces). `::birdhouses` makes seeded houses full.
+- **Upstream:** `openrune/upstream/` has 18 format-patch files + README (apply-checked alone and
+  together on the pin, compiled together, tests and spotlessCheck pass). Patch 15 (implings) was
+  regenerated after the Loot op fix; bird houses are NOT in it yet (add them to 15 or a new 19 from
+  the scratch clone approach in that README).
+- **Gotchas:** OpenRune's AGENTS.md (in openrune/src) wants game data in dbtables, few comments,
+  and tests for anything that moves items. Content tests that drop items to the ground need
+  `player.observerUUID = 793L`. `onOpHeldU(clockwork, logs)` was already taken by crafting (an
+  existing feature makes registration throw at startup; the integration tests catch that). On the
+  device, devtools `item_action`/`interact_object` currently fail ("No menu entry matching"); taps
+  and long-presses work. After any restart: wait ~30 s, "Try again", screenshot, Play Now.
+- **Next ideas (sizes):** bird house device check (5 min); farming patches for Time Tracking
+  (1.5-3 days: planting, growth cycles, the farming_transmit varbits per region); clue scrolls for
+  the Clue Scroll plugin (1-2 days for a beginner/easy slice: clue items, the clue interface text,
+  dig/talk/emote steps); lucky impling loot (clue reward tables).
+
 ## Latest state (2026-10-16 night, fifth server dev, on OpenRune)
 
 Metric at the end: mapped 240/253, verified 239/253 (`tools/progress.py --working --no-history`).

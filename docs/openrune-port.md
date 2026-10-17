@@ -411,9 +411,11 @@ upstream later; nobody has contacted upstream.
 | Quest scripts: Sheep Shearer, Romeo & Juliet | `content/quest/...` (+ `QuestTalkFixture` tests) | New content on OpenRune's quest framework |
 | Dwarf multicannon, dragon dagger/warhammer specs | `content/other/dwarf-multicannon`, `content/other/special-attacks` | New content with tests |
 | Implings, Genie random event | `content/skills/hunter`, `content/events/random-events` | New content with tests (2026-10-16, fifth server dev) |
+| Impling jar loot, crystal implings, bird houses | `content/skills/hunter` | New content with tests (sixth server dev); jar loot and crystal implings are in `upstream/15-implings.patch`, bird houses not yet |
+| Slayer streak and wording | `content/skills/slayer` | Streaks were server-only varbits; RuneLite reads 4069/5617 (`upstream/17`) |
 
-Before sending any of it: drop the `osrs-plugins-reverse:` comments, run upstream's ktlint
-(Spotless), and split per topic.
+The split patches are in `openrune/upstream/` (one per fix, with a README); see there for what
+was verified.
 
 ## Fifth server dev (2026-10-16 evening)
 

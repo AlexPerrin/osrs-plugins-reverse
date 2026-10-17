@@ -11,7 +11,7 @@ import net.runelite.client.eventbus.EventBus;
  * in separate bytes; desktop packs them into one (type = bit 3). GrandExchangeOfferChanged is
  * posted when a slot differs from the last cycle's, and for every slot on the first read after a
  * login (desktop gets UPDATE_STOCKMARKET_SLOT for each slot at login).
- * // unverified: on the device (needs an OpenRune account with GE offers).
+ * Verified 2026-10-17 on OpenRune's GE (server dev's device run: SELLING -> SOLD, BUYING -> CANCELLED_BUY).
  */
 final class GeOffers {
     private GeOffers() {}

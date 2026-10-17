@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 26 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 27 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1028,6 +1028,29 @@ session; its notes are in `docs/android-protocol.md`.
     drawn result; Resource packs needs a hub pack installed (GitHub GETs) and mostly targets desktop interfaces. Remaining
     tracked stub hits (gen 25 list): getInventoryModel, QH fake objects, NPC.getModel, getAnimationHeightOffset.
     BlueStacks was unreachable at the end of gen 26 (adb connect refused), so the last slot did not run.
+- **2026-10-17 (client dev gen 27)**, commits c76a6cb..(see git log; progress at start: core 82/84, hub 32/37, API 592/866; end: hub 34/37, API 596/866).
+  - **C Engineer runs** (726a3d0's held MediaPlayer): `config cengineercompleted selectAnySoundToTestPlayIt=LEVEL_UP` played
+    LevelUpCompleted_r2.wav to MEDIA_PLAYBACK_COMPLETE; `dumpsys media.audio_flinger` during the clip showed a second active track
+    from the app's pid (44100 Hz, 0 dB) advancing ~33k frames in ~0.7 s, gone after completion.
+  - **Custom Menu Swaps runs**: the gen 26 recipe `examine,man` can't match (targets are compared as `Text.standardize(target)` =
+    "man (level-2)", also on desktop); `examine,cat` (the tester's follower cat, level-less, stays close) put Examine on top of the
+    long-press menu and redirected plain taps. Use `man*` (STARTS_WITH) for leveled NPCs. Wandering men are hard to long-press; the
+    server dev's "desktop" player may stand in the courtyard.
+  - **getSearchingTagTab verified** (tag tab open, `set 'varbit 4150 1'`, tap a quantity button to rebuild 276: "bank tab 1 -> 0").
+    **setItemQuantityMode verified**, all three modes, with the new probe `set 'wqty <group:child> <slot> <mode>'` (15:3 = inventory
+    beside the bank).
+  - **Actor models**: `NPC/Player.getModel` = `AndroidModel` (posed vertices, face indices, lit colours 1/2/3 from Model
+    `+0xd0/+0xe8/+0x100`, static RE of the light pass `0x72aea4`; per-cycle cache). Verified with `set 'npcmodel 3108 0'` (Man: 288
+    verts, 510 faces, 18 flat). Improved Tile Indicators' actor cut-out (`currentTileBelowPlayer`) is gated on `client.isGpu()`,
+    which we answer false; deciding whether isGpu should be true on mobile (the game does render with GL) needs a look at what
+    else checks it (GPU plugin paths, draw callbacks).
+  - **Constant defaults counted as implemented** (orchestrator: keep, tagged `// unverified: default`, find the real field or exclude
+    from the metric): NPC/Player.getAnimationHeightOffset (0), Model.getFaceTransparencies (null; the ModelData keeps alpha at `+0xe8`,
+    not found in Model), Model.getFaceTextures (null).
+  - Still open: getInventoryModel (ObjType decoder `0x63bfe8`/Ghidra `0x73bfe8`: its switch starts at case 2; opcode 1 is not a
+    case, look at the code before the loop and the "opcode < 0x18" range checks), QH fake objects, Resource packs (hub packs = GitHub
+    GETs), the Quest Helper desktop-vs-Android A/B (queue item 4; plan it with the orchestrator first: both locks + server dev).
+  - Gotcha: `debug.osrsrl.set` splits into 3 parts (`split(" ", 3)`), so a probe's extra arguments arrive together in a[2].
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

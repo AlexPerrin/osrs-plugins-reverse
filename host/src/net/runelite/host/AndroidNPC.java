@@ -59,8 +59,8 @@ public class AndroidNPC extends NPCStub {
         return AndroidModel.of(false, index);
     }
 
-    // unverified: desktop's offset is non-zero only while some animations lift the model; the game's
-    // field is not found, so this is the resting 0.
+    // unverified: default. Desktop's offset is non-zero only while some animations lift the model;
+    // the game's field is not found, so this is the resting 0.
     @Override public int getAnimationHeightOffset() { return 0; }
 
     /** The posed model's height, as desktop (Implings' labels); a footprint estimate without a model. */

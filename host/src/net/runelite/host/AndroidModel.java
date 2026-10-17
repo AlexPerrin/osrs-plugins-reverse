@@ -78,9 +78,9 @@ final class AndroidModel extends ModelBag {
     @Override public int[] getFaceColors1() { return c1; }
     @Override public int[] getFaceColors2() { return c2; }
     @Override public int[] getFaceColors3() { return c3; }
-    // unverified: where the game's Model keeps per-face alpha is not found (the ModelData's is at
+    // unverified: default. Where the game's Model keeps per-face alpha is not found (the ModelData's is at
     // +0xe8, a byte vector, consumed by the light pass). Desktop returns null for models without
     // alpha, and callers null-check it (Improved Tile Indicators), so every face reads as opaque.
     @Override public byte[] getFaceTransparencies() { return null; }
-    @Override public short[] getFaceTextures() { return null; }
+    @Override public short[] getFaceTextures() { return null; }  // unverified: default (textures not read)
 }

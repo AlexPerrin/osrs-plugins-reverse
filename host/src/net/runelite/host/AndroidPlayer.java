@@ -47,7 +47,7 @@ public class AndroidPlayer extends PlayerStub {
     // Geometry: players are 1x1; models aren't read, so hulls are boxes (as for NPCs).
     @Override public int getLogicalHeight() { return ActorHeights.get(true, index, 200); }
     @Override public net.runelite.api.Model getModel() { return AndroidModel.of(true, index); }
-    // unverified: as AndroidNPC.getAnimationHeightOffset (resting 0; the game's field is not found).
+    // unverified: default (resting 0; the game's field is not found, as AndroidNPC).
     @Override public int getAnimationHeightOffset() { return 0; }
     @Override public int getFootprintSize() { return 1; }
     @Override public java.awt.Shape getConvexHull() {

@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 17 entry (2026-10-16) at the end of "Where things stand".
+> Latest state: see the gen 18 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -602,6 +602,54 @@ session; its notes are in `docs/android-protocol.md`.
     (`MenuManager.addPlayerMenuItem` / RUNELITE_PLAYER, Equipment Inspector); `Client.getItemContainers`
     (devtools list_inventories); in-process relog with createChild on; promote the hub `starts` rows by
     checking each feature; Large Logout on mobile.
+- **2026-10-17 (client dev gen 18)**, commits b0780b9..:
+  - **Own public chat line**: not a host bug. The admin account's chat is type 1 MODCHAT (`<img=1>tester`,
+    text unchanged by filters, `setprop debug.osrsrl.chatlog 1` logs every message with its type) and the
+    chatbox shows it. Right after one login the chatbox didn't redraw new lines until a chat tab was tapped;
+    not seen again.
+  - **Player menus**: player entries are target type 6 (`[3]` player index, op 1-based: Follow 3, Trade 4,
+    Report 8) → `PLAYER_*_OPTION`, `getPlayer()`/`getActor()`. Plugin player options
+    (`MenuManager.addPlayerMenuItem`, `getPlayerOptions()[4..7]` + RUNELITE_PLAYER) are added to the plugin
+    strip once per player when a menu opens (`AndroidMenu.addPlayerOptions`, after the pre-open
+    MenuEntryAdded pass because MenuManager sets them from MenuEntryAdded). `ClientToolbar.openPanel` opens
+    the sidebar on that panel (`Native.sidebarSetOpen`); sidebar tabs wrap. Headless GroupLayout adds the
+    components its groups name to the host container (GenHeadless). Verified with Equipment Inspector.
+  - `Client.getItemContainers()` (`Native.inventoryIds`; not exercised yet). **getItemContainer returns the
+    same instance while an inventory is unchanged**: Ammo/Cannon/Wintertodt/Drift Net compare
+    `event.getItemContainer() != client.getItemContainer(id)` by identity (that was the Ammo bug).
+  - **ItemManager.search** over the game's item defs (tradeable, unnoted, 5615 items; built after login in
+    4096-id steps per cycle, ~160 ms total), getWikiPrice, getItemStats(int, boolean). ItemManager is now
+    `@Singleton` with a static index (it had been built once per plugin, 4x). Chat Commands' !price works.
+  - **Chatbox inputs**: same-name ChatboxTextInput / ChatboxTextMenuInput open Android dialogs
+    (`AndroidPrompts`); ChatboxPanelManager.openTextInput/openTextMenuInput. Tooltips are cleared on the
+    cycles overlays skip (Item Prices drew its tooltip twice).
+  - Verified (rows promoted): Ammo, Chat Commands, Item Prices (with `itemprices.hideInventory=false`),
+    Equipment Inspector, Hunter Rumours, Radius Markers, Wilderness Player Alarm (desktop player at
+    Wilderness 2), Barrows Door Highlighter. In-process relog with createChild on (left door icon → "Tap
+    here to logout" → Play Now): clean.
+  - Findings: core Metronome only plays sounds (no audio on the host); Fairy Rings augments the travel-log
+    panel the server doesn't open; Ess Pouch's Check regex wants "There are three essences in this pouch."
+    (server wording gap, relayed); Quest List's button is shown (createChild under 399:0) but filtering
+    needs the "questFilter" runelite_callback only RuneLite's patched CS2 has. Idea (orchestrator): post a
+    synthetic `ScriptCallbackEvent("questFilter")` from our CS2 VM hooks around the questlist build script,
+    with the stack the patched script would push; the same pattern could cover other runelite_callback-only
+    plugins.
+  - Gotchas: `plugin-test.sh` relaunches faster than the server drops the old session, so the app shows
+    "account still logged in": wait ~30 s, tap Try again (958,668), screenshot, then Play Now. `pkill -f
+    desktop_login.py` also kills your own shell (its command line matches). Mobile side tabs: inventory
+    (1757,517), skills (1840,517), quests (1757,935), spellbook (1757,768), emotes (1843,600).
+  - Verified at the end (f562faf): Ground Markers "Label Tile" opens the Android dialog and the label is
+    drawn; Item Prices' tooltip is drawn once; the singleton index is built once (204 ms over 16 cycles)
+    and !price works. **Quest List's magnifier (its createChild button under 399:0) does nothing on tap**:
+    the tap resolves to Cancel because the game's menu has no op for a plugin-created widget whose
+    action/onOp listener is a Java lambda (`setAction` + `setOnOpListener(Object[]{lambda})`). Next step for
+    such buttons: write the action text into the created widget's op slot and, when its menu entry runs,
+    call the plugin's Java listener instead of a CS2 script.
+  - Next (gen 19): the created-widget op/listener path above (Quest List search, other plugin buttons);
+    touch → MouseManager
+    dispatch for Screen Markers (listeners consume → don't forward to the game; plain taps unchanged
+    otherwise; no MouseManager dispatch exists yet); the questFilter callback idea; remaining `starts` rows (Rune Pouch and Plank Sack need
+    server support; Virtual Levels needs XP above 99; Friend Notes needs a friends list).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

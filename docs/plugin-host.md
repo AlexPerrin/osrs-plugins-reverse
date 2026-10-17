@@ -51,7 +51,7 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Daily Task Indicator | runs | "You have battlestaves waiting to be collected from Zaff." on login with `::varbit 4479 1` (verified 2026-10-16) |
 | Emojis | runs | "hello :) <3 :D" draws smiley, heart and grin over the player (verified 2026-10-17): the font's `<img=N>` table is replaced by ours (`game::mod_icons_cycle`, docs/offsets.md "Mod icons"; log "mod icons: 340 (game 60) installed"). The chatbox line of your own public chat didn't appear at all (with or without emoji; the server sends the chat block to self, so it's client side, open) |
 | Examine | runs | "Price of Salmon: GE average 30 HA value 18" after Examine on an inventory item, one price line after OpenRune dropped its own (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
-| Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Color Tile > Pick opens the Android colour dialog and recolours the tile (verified 2026-10-16) |
+| Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Color Tile > Pick opens the Android colour dialog and recolours the tile (verified 2026-10-16). "Label Tile" opens an Android text dialog and the label is drawn (2026-10-17, ChatboxTextInput replacement) |
 | Implings | runs | Puro-Puro (`::tele 2592 4320`): a gourmet impling outlined and named with `implings.showgourmet=HIGHLIGHT`, and caught with a butterfly net (verified 2026-10-16). Labels sat twice too high: Actor.getCanvas*Location added getLogicalHeight to the plugin's zOffset (fixed 2026-10-17, label height checked with Player Indicators) |
 | Interact Highlight | runs | outline on the hovered NPC (long-press) and red outline on the attacked goblin (long-press + Attack, verified 2026-10-16) |
 | Inventory Tags | runs | green outline on a tagged pot; Shift + long-press an item: "Inventory tag" > Pick sets the tag (verified 2026-10-16; outlines from the game's createItemSprite) |
@@ -94,10 +94,10 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Ammo | runs | the worn 50 bronze arrows show as a "50" arrow infobox (2026-10-17). It compares `event.getItemContainer() != client.getItemContainer(EQUIPMENT)` by identity, so the host now returns the same container instance while an inventory is unchanged |
 | Metronome | starts | starts; no errors over login and ticks since getPreferences (2026-10-17). Its tick/tock sounds need audio, which the host lacks (no javax.sound) |
 | Hunter | starts | starts (2026-10-17); traps not checked |
-| Quest List | starts | starts; the mobile quest tab shows its own list with a search icon, no visible plugin change (2026-10-17; the plugin targets desktop's quest list widgets) |
+| Quest List | starts | its search button shows (createChild under the quest list 399:0, 2026-10-17) but a tap resolves to Cancel: ops/listeners on plugin-created widgets aren't wired to the game's menu. Filtering would also need the "questFilter" runelite_callback, which only RuneLite's patched CS2 raises |
 | Chat Commands | runs | `!price lobster` in public chat: the line becomes "Price of Lobster: GE average 70 HA value 42" (store values; ItemManager.search, 2026-10-17) |
 | Fairy Rings | starts | starts; `::interface 398` opens the ring dial without errors (2026-10-17). Its code list and search live in the travel-log panel the server doesn't open with it, so not checked |
-| Item Prices | runs | with `itemprices.hideInventory=false` (default true hides inventory tooltips), a tap on rune essence shows "GE: 4 gp / HA: 2 gp" (hover entry, 2026-10-17). The tooltip is drawn twice, stacked (open). Bank not checked |
+| Item Prices | runs | with `itemprices.hideInventory=false` (default true hides inventory tooltips), a tap on rune essence shows one "GE: 4 gp / HA: 2 gp" tooltip (hover entry, 2026-10-17). Bank not checked |
 | Screen Markers | starts | starts (2026-10-17); not checked |
 | Friend Notes | starts | starts (2026-10-17); not checked |
 

@@ -88,10 +88,13 @@ final class AndroidMenu implements Menu {
         // RuneLite order: the last element is the top (default) entry.
         List<MenuEntry> out = new ArrayList<>(added);
         for (int i = game.length - 1; i >= 0; i--) out.add(game[i]);
-        if (game.length == 0 && !Native.menuOpen()) {
+        // With no menu open the game's list can still hold a lone Cancel (left by the last build).
+        boolean onlyCancel = game.length == 0 || (game.length == 1 && game[0].getType() == net.runelite.api.MenuAction.CANCEL);
+        if (onlyCancel && !Native.menuOpen()) {
             // A driving plugin's virtual mouse (DevInput): the menu the game builds there.
             AndroidMenuEntry[] dev = DevMenu.hoverMenu();
             if (dev != null) {
+                out = new ArrayList<>(added);
                 for (int i = dev.length - 1; i >= 0; i--) out.add(dev[i]);
                 return out.toArray(new MenuEntry[0]);
             }

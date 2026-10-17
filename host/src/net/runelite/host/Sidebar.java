@@ -216,12 +216,31 @@ final class Sidebar {
         }
     }
 
+    /**
+     * The text a combo box shows for an item: its renderer's label text when the renderer is a
+     * JLabel-like component (plugins render items with names), else the item's toString.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static String comboLabel(JComboBox box, Object item, int index) {
+        try {
+            javax.swing.ListCellRenderer r = box.getRenderer();
+            if (r != null) {
+                java.awt.Component c = r.getListCellRendererComponent(new javax.swing.JList(), item, index, false, false);
+                if (c instanceof javax.swing.JLabel) {
+                    String t = ((javax.swing.JLabel) c).getText();
+                    if (t != null && !t.isEmpty()) return clean(t);
+                }
+            }
+        } catch (Throwable ignored) { }
+        return clean(String.valueOf(item));
+    }
+
     /** Combo box: a tap opens an Android list of its items; the pick is applied on the game thread. */
     private static void promptChoice(JComboBox box) {
         final java.util.List<Object> items = new java.util.ArrayList<Object>(box.__items);
         if (items.isEmpty()) return;
         final String[] labels = new String[items.size()];
-        for (int i = 0; i < labels.length; i++) labels[i] = clean(String.valueOf(items.get(i)));
+        for (int i = 0; i < labels.length; i++) labels[i] = comboLabel(box, items.get(i), i);
         final int current = items.indexOf(box.getSelectedItem());
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
@@ -408,7 +427,7 @@ final class Sidebar {
         }
         if (c instanceof JComboBox) {
             Object sel = ((JComboBox) c).getSelectedItem();
-            add(sb, 'X', depth, c, sel != null ? clean(sel.toString()) : "");
+            add(sb, 'X', depth, c, sel != null ? comboLabel((JComboBox) c, sel, ((JComboBox) c).getSelectedIndex()) : "");
             return;
         }
         if (c instanceof JScrollPane) {

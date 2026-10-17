@@ -101,22 +101,22 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Monster HP Percentage | runs | health percentage over NPCs with `MonsterHP.npcShowAll=true` (verified 2026-10-16). Its onNpcSpawned throws for nameless multi-NPCs (null name, also on desktop) |
 | Visual Metronome | runs | tick box alternating each game tick (verified 2026-10-16) |
 | Attack Timer Metronome | runs | attack cooldown count over the player while attacking a Man (verified 2026-10-16) |
-| Customizable XP Drops | starts | total XP counter drawn; drops not checked. Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
+| Customizable XP Drops | starts | XP counter updates on a kill; no drops seen (2026-10-16): they advance on BeforeRender, which the host now posts each frame (unverified). Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
 | Shortest Path | runs | Shift + long-press a tile, "Set Target" in the plugin strip: red path on the scene and the minimap; from Burthorpe it routes via "Lumbridge Home Teleport" (verified 2026-10-16). Targets within its reached distance (default 5 tiles) clear at once. Needed getDBTableRows, getProfile, DB fields with desktop semantics, the menu tile after the menu closes |
 | Improved Tile Indicators | starts | not checked (its overlay threw before login until overlays were limited to LOGGED_IN) |
 | Inventory Setups | starts | sidebar panel renders (version notes, Return to Setups); setups not tried. Needed jopt-simple, headless JPopupMenu children, getItemCount, DB fields |
 | Equipment Inspector | starts | not checked (needs another player). Needed headless GroupLayout builders |
 | Bank Heatmap | starts | `::openbank`: its "Right click this button for Heatmap overlay" hint is drawn by the bank buttons (2026-10-16); the overlay itself not checked |
 | Wasted Bank Space | starts | sidebar panel: "Number of Items Wasting Space: 0" with a 3-item bank (2026-10-16) |
-| Banked Experience | starts | sidebar panel renders; its skill combo box shows the class name instead of the skill (headless JComboBox renderer) |
+| Banked Experience | starts | sidebar panel renders; the skill combo shows "Construction" and its Android list the skill names (the renderer's JLabel text, `Sidebar.comboLabel`, verified 2026-10-16); banked XP from a bank not checked |
 | Kitten Tracker | starts | not checked |
 | Large Logout | starts | not checked |
 | Radius Markers | starts | not checked |
 | Skills Tab Progress Bars | starts | not checked |
-| Tree Despawn Timer | starts | not checked (needed Java 9 Duration methods, CompatRewrite) |
+| Tree Despawn Timer | starts | not checked; its onGameTick threw on the first ticks of a login (no local player yet), so GameTick now waits for the local player. Needed Java 9 Duration methods (CompatRewrite) |
 | Max Hit | runs | "Max Hit: 11.0" overlay (verified 2026-10-16) |
 | Wilderness Multi Lines | starts | starts; not checked (needs the Wilderness) |
-| Charges Improved | throws | startUp called `Collection.toArray(IntFunction)` (Java 11); CompatRewrite now rewrites interface calls too (fix unverified) |
+| Charges Improved | starts | starts and posts its update notes to chat (2026-10-16) after the CompatRewrite of `Collection.toArray(IntFunction)` (Java 11); charges not checked. Its daily reset throws NumberFormatException until the bank was opened once (empty `storage_bank`; the same on desktop) |
 | Loot Lookup |
 
 ## Build and run

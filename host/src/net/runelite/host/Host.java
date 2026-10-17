@@ -90,6 +90,7 @@ public final class Host {
     }
     private static final AndroidWorldView worldView = new AndroidWorldView(npcCache, playerCache);
     private static final ClientTick clientTick = new ClientTick();
+    private static final net.runelite.api.events.BeforeRender beforeRender = new net.runelite.api.events.BeforeRender();
     private static final net.runelite.client.ui.overlay.OverlayManager overlayManager =
             new net.runelite.client.ui.overlay.OverlayManager();
     private static final OverlayRenderer overlayRenderer = new OverlayRenderer(overlayManager);
@@ -347,6 +348,9 @@ public final class Host {
                 } catch (Throwable t) {
                     Log.e(TAG, "draw manager failed", t);
                 }
+                // Desktop posts BeforeRender once per frame before drawing (Customizable XP Drops
+                // advances its drops there); here one cycle is one rendered frame.
+                bus.post(beforeRender);
                 try {
                     overlayRenderer.render();
                 } catch (Throwable t) {
@@ -358,6 +362,8 @@ public final class Host {
                 // QH's quest list update runs on GameTick and drops its one-shot flag if the state
                 // isn't LOGGED_IN; OpenRune's login sends a rebuild, so ticks arrive while LOADING.
                 if (client.getGameState() == GameState.LOADING) break;
+                // Nor before the local player exists (Tree Despawn Timer reads it every tick).
+                if (localPlayer() == null) break;
                 if (client.getGameState() == GameState.LOGGED_IN) {
                     try {
                         worldView().androidScene().objects.refresh();

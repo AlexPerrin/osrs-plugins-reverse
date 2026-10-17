@@ -3095,6 +3095,291 @@ index a325cee80..741ff0b66 100644
          }
  
          val broadcast = realm.config.loginBroadcast
+diff --git a/content/other/plank-sack/build.gradle.kts b/content/other/plank-sack/build.gradle.kts
+new file mode 100644
+index 000000000..fc1089168
+--- /dev/null
++++ b/content/other/plank-sack/build.gradle.kts
+@@ -0,0 +1,16 @@
++plugins {
++    id("base-conventions")
++    id("integration-test-suite")
++}
++
++dependencies {
++    implementation(projects.api.invStorage)
++    implementation(projects.api.pluginCommons)
++}
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.invStorage)
++        implementation(projects.api.pluginCommons)
++    }
++}
+diff --git a/content/other/plank-sack/src/integration/kotlin/org/rsmod/content/other/planksack/PlankSackScriptTest.kt b/content/other/plank-sack/src/integration/kotlin/org/rsmod/content/other/planksack/PlankSackScriptTest.kt
+new file mode 100644
+index 000000000..c8f40739f
+--- /dev/null
++++ b/content/other/plank-sack/src/integration/kotlin/org/rsmod/content/other/planksack/PlankSackScriptTest.kt
+@@ -0,0 +1,73 @@
++package org.rsmod.content.other.planksack
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.util.UncheckedType
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.inv.storage.PlayerItemStorageContext
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.game.entity.Player
++import org.rsmod.game.inv.InvObj
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class PlankSackScriptTest {
++    @Test
++    fun `fill, check and empty are the sack's first, third and fourth inventory ops`() {
++        val type = checkNotNull(ServerCacheManager.getItem(PlankSack.SACK.asRSCM(RSCMType.OBJ)))
++        assertEquals(0, type.interfaceOptions.indexOf("Fill"))
++        assertEquals(2, type.interfaceOptions.indexOf("Check"))
++        assertEquals(3, type.interfaceOptions.indexOf("Empty"))
++    }
++
++    private fun Player.give(slot: Int, obj: String) {
++        inv[slot] = InvObj(obj.asRSCM(RSCMType.OBJ), 1)
++    }
++
++    @Test
++    fun GameTestState.`fill stops at 28 planks and empty gives them all back`() =
++        runInjectedGameTest(PlankSackScript::class, null, PlankSackScript::class) { script ->
++            player.clearInv()
++            player.give(0, PlankSack.SACK)
++            for (slot in 1 until 21) player.give(slot, "obj.plank_oak")
++            with(script) { player.withProtectedAccess { assertEquals(20, fill(PlankSack.planks)) } }
++            for (slot in 1 until 21) player.give(slot, "obj.woodplank")
++            with(script) { player.withProtectedAccess { assertEquals(8, fill(PlankSack.planks)) } }
++            assertEquals(20, player.vars["varbit.plank_sack_oak"])
++            assertEquals(8, player.vars["varbit.plank_sack_plain"])
++            assertEquals(12, player.inv.physicalCount("obj.woodplank"))
++            assertEquals(0, player.inv.physicalCount("obj.plank_oak"))
++
++            with(script) { player.withProtectedAccess { assertEquals(15, empty()) } }
++            assertEquals(0, player.inv.freeSpace())
++            assertEquals(13, PlankSack.total(player))
++            val inInv =
++                player.inv.physicalCount("obj.woodplank") + player.inv.physicalCount("obj.plank_oak")
++            assertEquals(27, inInv)
++            assertEquals(40, inInv + PlankSack.total(player))
++        }
++
++    @Test
++    fun GameTestState.`stored planks count as held while the sack is in the inventory`() =
++        runInjectedGameTest(PlankSackScript::class, null, PlankSackScript::class) { script ->
++            player.clearInv()
++            player.give(0, PlankSack.SACK)
++            player.give(1, "obj.plank_teak")
++            player.give(2, "obj.plank_teak")
++            with(script) { player.withProtectedAccess { fill(PlankSack.planks) } }
++            val hook = PlankSackStorageHook()
++            val ctx = PlayerItemStorageContext(player, player.inv, "obj.plank_teak")
++            assertTrue(hook.shouldProcess(ctx))
++            assertEquals(2, hook.contains(ctx))
++            assertEquals(1, hook.remove(ctx, 1))
++            assertEquals(1, player.vars["varbit.plank_sack_teak"])
++            player.inv[0] = null
++            assertFalse(hook.shouldProcess(ctx))
++        }
++}
+diff --git a/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSack.kt b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSack.kt
+new file mode 100644
+index 000000000..43aa2a4e7
+--- /dev/null
++++ b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSack.kt
+@@ -0,0 +1,50 @@
++package org.rsmod.content.other.planksack
++
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.game.entity.Player
++
++object PlankSack {
++    const val SACK = "obj.plank_sack"
++    const val CAPACITY = 28
++
++    class Plank(val obj: String, val varbit: String, val label: String)
++
++    val planks =
++        listOf(
++            Plank("obj.woodplank", "varbit.plank_sack_plain", "Regular planks"),
++            Plank("obj.plank_oak", "varbit.plank_sack_oak", "Oak planks"),
++            Plank("obj.plank_teak", "varbit.plank_sack_teak", "Teak planks"),
++            Plank("obj.plank_mahogany", "varbit.plank_sack_mahogany", "Mahogany planks"),
++            Plank("obj.plank_camphor", "varbit.plank_sack_camphor", "Camphor planks"),
++            Plank("obj.plank_ironwood", "varbit.plank_sack_ironwood", "Ironwood planks"),
++            Plank("obj.plank_rosewood", "varbit.plank_sack_rosewood", "Rosewood planks"),
++        )
++
++    private val byObj = planks.associateBy { it.obj }
++
++    fun plank(obj: String): Plank? = byObj[obj]
++
++    fun hasSack(player: Player): Boolean = SACK in player.inv
++
++    fun stored(player: Player, plank: Plank): Int = player.vars[plank.varbit]
++
++    fun total(player: Player): Int = planks.sumOf { stored(player, it) }
++
++    fun freeSpace(player: Player): Int = (CAPACITY - total(player)).coerceAtLeast(0)
++
++    fun add(player: Player, plank: Plank, amount: Int): Int {
++        val added = minOf(amount, freeSpace(player))
++        if (added > 0) {
++            VarPlayerIntMapSetter.set(player, plank.varbit, stored(player, plank) + added)
++        }
++        return added.coerceAtLeast(0)
++    }
++
++    fun remove(player: Player, plank: Plank, amount: Int): Int {
++        val removed = minOf(amount, stored(player, plank)).coerceAtLeast(0)
++        if (removed > 0) {
++            VarPlayerIntMapSetter.set(player, plank.varbit, stored(player, plank) - removed)
++        }
++        return removed
++    }
++}
+diff --git a/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackModule.kt b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackModule.kt
+new file mode 100644
+index 000000000..7ee9e2f3d
+--- /dev/null
++++ b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackModule.kt
+@@ -0,0 +1,10 @@
++package org.rsmod.content.other.planksack
++
++import org.rsmod.api.inv.storage.PlayerItemStorageHook
++import org.rsmod.plugin.module.PluginModule
++
++public class PlankSackModule : PluginModule() {
++    override fun bind() {
++        addSetBinding<PlayerItemStorageHook>(PlankSackStorageHook::class.java)
++    }
++}
+diff --git a/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackScript.kt b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackScript.kt
+new file mode 100644
+index 000000000..66c570a00
+--- /dev/null
++++ b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackScript.kt
+@@ -0,0 +1,71 @@
++package org.rsmod.content.other.planksack
++
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.script.onOpHeld1
++import org.rsmod.api.script.onOpHeld3
++import org.rsmod.api.script.onOpHeld4
++import org.rsmod.api.script.onOpHeldU
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++class PlankSackScript : PluginScript() {
++    override fun ScriptContext.startup() {
++        onOpHeld1(PlankSack.SACK) { fill(PlankSack.planks) }
++        onOpHeld3(PlankSack.SACK) { check() }
++        onOpHeld4(PlankSack.SACK) { empty() }
++        for (plank in PlankSack.planks) {
++            onOpHeldU(plank.obj, PlankSack.SACK) { fill(listOf(plank)) }
++        }
++    }
++
++    fun ProtectedAccess.fill(types: List<PlankSack.Plank>): Int {
++        val held = types.filter { inv.physicalCount(it.obj) > 0 }
++        if (held.isEmpty()) {
++            mes(NO_PLANKS)
++            return 0
++        }
++        var filled = 0
++        for (plank in held) {
++            val amount = minOf(inv.physicalCount(plank.obj), PlankSack.freeSpace(player))
++            if (amount <= 0) break
++            if (invDel(inv, plank.obj, amount, ignoreVirtualStorage = true).failure) continue
++            filled += PlankSack.add(player, plank, amount)
++        }
++        if (filled == 0) mes(FULL)
++        return filled
++    }
++
++    fun ProtectedAccess.empty(): Int {
++        if (PlankSack.total(player) == 0) {
++            mes(EMPTY)
++            return 0
++        }
++        var emptied = 0
++        for (plank in PlankSack.planks) {
++            val amount = minOf(PlankSack.stored(player, plank), inv.freeSpace())
++            if (amount <= 0) continue
++            if (invAdd(inv, plank.obj, amount, ignoreVirtualStorage = true).failure) continue
++            emptied += PlankSack.remove(player, plank, amount)
++        }
++        if (PlankSack.total(player) > 0) mes(NO_SPACE)
++        return emptied
++    }
++
++    private fun ProtectedAccess.check() {
++        if (PlankSack.total(player) == 0) {
++            mes(EMPTY)
++            return
++        }
++        for (plank in PlankSack.planks) {
++            val stored = PlankSack.stored(player, plank)
++            if (stored > 0) mes("${plank.label}: $stored")
++        }
++    }
++
++    private companion object {
++        const val EMPTY = "Your sack is currently empty."
++        const val NO_PLANKS = "You don't have any planks to put in the sack."
++        const val FULL = "Your sack is full."
++        const val NO_SPACE = "You don't have enough inventory space to empty the sack."
++    }
++}
+diff --git a/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackStorageHook.kt b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackStorageHook.kt
+new file mode 100644
+index 000000000..30e59bacc
+--- /dev/null
++++ b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackStorageHook.kt
+@@ -0,0 +1,29 @@
++package org.rsmod.content.other.planksack
++
++import jakarta.inject.Inject
++import jakarta.inject.Singleton
++import org.rsmod.api.inv.storage.PlayerItemStorageContext
++import org.rsmod.api.inv.storage.PlayerItemStorageHook
++import org.rsmod.api.inv.storage.VirtualItemConsumePolicy
++
++@Singleton
++class PlankSackStorageHook @Inject constructor() : PlayerItemStorageHook {
++    override val consumePolicy: VirtualItemConsumePolicy = VirtualItemConsumePolicy.InventoryFirst
++
++    override fun shouldProcess(ctx: PlayerItemStorageContext): Boolean =
++        ctx.inventory === ctx.player.inv &&
++            PlankSack.plank(ctx.itemInternal) != null &&
++            PlankSack.hasSack(ctx.player)
++
++    override fun contains(ctx: PlayerItemStorageContext): Int {
++        val plank = PlankSack.plank(ctx.itemInternal) ?: return 0
++        return PlankSack.stored(ctx.player, plank)
++    }
++
++    override fun remove(ctx: PlayerItemStorageContext, amount: Int): Int {
++        val plank = PlankSack.plank(ctx.itemInternal) ?: return 0
++        return PlankSack.remove(ctx.player, plank, amount)
++    }
++
++    override fun add(ctx: PlayerItemStorageContext, amount: Int): Int = 0
++}
 diff --git a/content/other/spawn/pack/src/main/resources/pack/cs2/symbols/clientscript.sym b/content/other/spawn/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
 index d71a51d5f..2df561e5d 100644
 --- a/content/other/spawn/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
@@ -10901,6 +11186,438 @@ index 000000000..d8e0b6f99
 +birdhouse_type_yew = 60146
 +birdhouse_type_magic = 60147
 +birdhouse_type_redwood = 60148
+diff --git a/content/skills/magic/rune-pouch/build.gradle.kts b/content/skills/magic/rune-pouch/build.gradle.kts
+new file mode 100644
+index 000000000..6eb9d5aea
+--- /dev/null
++++ b/content/skills/magic/rune-pouch/build.gradle.kts
+@@ -0,0 +1,14 @@
++plugins {
++    id("base-conventions")
++    id("integration-test-suite")
++}
++
++dependencies {
++    implementation(projects.api.pluginCommons)
++}
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.pluginCommons)
++    }
++}
+diff --git a/content/skills/magic/rune-pouch/src/integration/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScriptTest.kt b/content/skills/magic/rune-pouch/src/integration/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScriptTest.kt
+new file mode 100644
+index 000000000..494c9f7f5
+--- /dev/null
++++ b/content/skills/magic/rune-pouch/src/integration/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScriptTest.kt
+@@ -0,0 +1,102 @@
++package org.rsmod.content.skills.magic.runepouch
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.util.UncheckedType
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertNull
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.game.inv.InvObj
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class RunePouchScriptTest {
++    @Test
++    fun `open and empty are the pouches' first and fourth inventory ops`() {
++        for (pouch in RunePouch.pouches) {
++            val type = checkNotNull(ServerCacheManager.getItem(pouch.asRSCM(RSCMType.OBJ)))
++            assertEquals(0, type.interfaceOptions.indexOf("Open"), pouch)
++            assertEquals(3, type.interfaceOptions.indexOf("Empty"), pouch)
++        }
++    }
++
++    @Test
++    fun `the rune varbits use the client's compact ids`() {
++        assertEquals(1, RunePouch.compactId("obj.airrune"))
++        assertEquals(4, RunePouch.compactId("obj.firerune"))
++    }
++
++    @Test
++    fun GameTestState.`store and withdraw move runes without losing any`() =
++        runInjectedGameTest(RunePouchScript::class, null, RunePouchScript::class) { script ->
++            player.clearInv()
++            player.inv[0] = InvObj("obj.bh_rune_pouch".asRSCM(RSCMType.OBJ), 1)
++            player.inv[1] = InvObj("obj.airrune".asRSCM(RSCMType.OBJ), 100)
++            player.inv[2] = InvObj("obj.firerune".asRSCM(RSCMType.OBJ), 20)
++            with(script) {
++                player.withProtectedAccess {
++                    assertEquals(30, store("obj.airrune", 30))
++                    assertEquals(20, store("obj.firerune", Int.MAX_VALUE))
++                }
++            }
++            assertEquals(70, player.inv.count("obj.airrune"))
++            assertEquals(0, player.inv.count("obj.firerune"))
++            assertEquals("obj.airrune" to 30, RunePouch.slot(player, 0))
++            assertEquals("obj.firerune" to 20, RunePouch.slot(player, 1))
++            assertEquals(1, player.vars["varbit.rune_pouch_type_1"])
++            assertEquals(30, player.vars["varbit.rune_pouch_quantity_1"])
++
++            with(script) { player.withProtectedAccess { assertEquals(5, withdraw(0, 5)) } }
++            assertEquals(75, player.inv.count("obj.airrune"))
++            assertEquals(25, RunePouch.storedAmount(player, "obj.airrune"))
++
++            with(script) { player.withProtectedAccess { emptyPouch() } }
++            assertEquals(100, player.inv.count("obj.airrune"))
++            assertEquals(20, player.inv.count("obj.firerune"))
++            assertNull(RunePouch.slot(player, 0))
++            assertNull(RunePouch.slot(player, 1))
++            assertEquals(0, player.vars["varbit.rune_pouch_type_1"])
++        }
++
++    @Test
++    fun GameTestState.`a regular pouch holds three rune types up to 16000 each`() =
++        runInjectedGameTest(RunePouchScript::class, null, RunePouchScript::class) { script ->
++            player.clearInv()
++            player.inv[0] = InvObj("obj.bh_rune_pouch".asRSCM(RSCMType.OBJ), 1)
++            val runes = listOf("obj.airrune", "obj.waterrune", "obj.earthrune", "obj.firerune")
++            runes.forEachIndexed { i, rune ->
++                player.inv[i + 1] = InvObj(rune.asRSCM(RSCMType.OBJ), 20_000)
++            }
++            with(script) {
++                player.withProtectedAccess {
++                    assertEquals(16_000, store("obj.airrune", Int.MAX_VALUE))
++                    assertEquals(0, store("obj.airrune", Int.MAX_VALUE))
++                    assertEquals(10, store("obj.waterrune", 10))
++                    assertEquals(10, store("obj.earthrune", 10))
++                    assertEquals(0, store("obj.firerune", 10))
++                }
++            }
++            assertEquals(4_000, player.inv.count("obj.airrune"))
++            assertEquals(20_000, player.inv.count("obj.firerune"))
++            assertEquals(16_000, RunePouch.storedAmount(player, "obj.airrune"))
++        }
++
++    @Test
++    fun GameTestState.`withdrawing into a full inventory keeps the runes in the pouch`() =
++        runInjectedGameTest(RunePouchScript::class, null, RunePouchScript::class) { script ->
++            player.clearInv()
++            player.inv[0] = InvObj("obj.divine_rune_pouch".asRSCM(RSCMType.OBJ), 1)
++            player.inv[1] = InvObj("obj.lawrune".asRSCM(RSCMType.OBJ), 50)
++            with(script) { player.withProtectedAccess { store("obj.lawrune", 50) } }
++            for (slot in 1 until player.inv.size) {
++                player.inv[slot] = InvObj("obj.bronze_dagger".asRSCM(RSCMType.OBJ), 1)
++            }
++            with(script) { player.withProtectedAccess { assertEquals(0, withdraw(0, 50)) } }
++            assertEquals(50, RunePouch.storedAmount(player, "obj.lawrune"))
++            assertEquals(0, player.inv.count("obj.lawrune"))
++        }
++}
+diff --git a/content/skills/magic/rune-pouch/src/main/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouch.kt b/content/skills/magic/rune-pouch/src/main/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouch.kt
+new file mode 100644
+index 000000000..131d25e67
+--- /dev/null
++++ b/content/skills/magic/rune-pouch/src/main/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouch.kt
+@@ -0,0 +1,93 @@
++package org.rsmod.content.skills.magic.runepouch
++
++import dev.openrune.rscm.RSCM
++import dev.openrune.rscm.RSCMType
++import org.rsmod.api.enums.RuneEnums.rune_compact_ids
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.game.entity.Player
++
++/**
++ * Rune pouch contents live in the client-visible varbits `rune_pouch_type_n` (the rune's compact
++ * id, enum `rune_compact_ids`) and `rune_pouch_quantity_n`: the pouch interface (190) draws them,
++ * spells cast from them and RuneLite's Rune Pouch plugin reads them.
++ */
++object RunePouch {
++    const val CAPACITY = 16_000
++
++    val regularPouches = listOf("obj.bh_rune_pouch", "obj.bh_rune_pouch_trouver")
++    val divinePouches = listOf("obj.divine_rune_pouch", "obj.divine_rune_pouch_trouver")
++    val pouches = regularPouches + divinePouches
++
++    private val typeVarbits = (1..4).map { "varbit.rune_pouch_type_$it" }
++    private val quantityVarbits = (1..4).map { "varbit.rune_pouch_quantity_$it" }
++
++    private val compactIds: Map<String, Int> by lazy {
++        rune_compact_ids.filterValuesNotNull().backing.entries.associate {
++            RSCM.getReverseMapping(RSCMType.OBJ, it.key.id) to it.value
++        }
++    }
++    private val runesByCompactId: Map<Int, String> by lazy {
++        compactIds.entries.associate { it.value to it.key }
++    }
++
++    val runes: Set<String> get() = compactIds.keys
++
++    fun compactId(obj: String): Int? = compactIds[obj]
++
++    fun isRune(obj: String): Boolean = obj in compactIds
++
++    fun slotCount(player: Player): Int =
++        when {
++            divinePouches.any { it in player.inv } -> 4
++            regularPouches.any { it in player.inv } -> 3
++            else -> 0
++        }
++
++    /** The rune and amount in pouch slot [slot] (0-based), or null when it is empty. */
++    fun slot(player: Player, slot: Int): Pair<String, Int>? {
++        val amount = player.vars[quantityVarbits[slot]]
++        val rune = runesByCompactId[player.vars[typeVarbits[slot]]]
++        return if (rune != null && amount > 0) rune to amount else null
++    }
++
++    fun setSlot(player: Player, slot: Int, rune: String?, amount: Int) {
++        val empty = rune == null || amount <= 0
++        val type = if (empty) 0 else compactIds.getValue(rune!!)
++        VarPlayerIntMapSetter.set(player, typeVarbits[slot], type)
++        VarPlayerIntMapSetter.set(player, quantityVarbits[slot], if (empty) 0 else amount)
++    }
++
++    fun storedAmount(player: Player, rune: String): Int =
++        (0 until 4).sumOf { i -> slot(player, i)?.takeIf { it.first == rune }?.second ?: 0 }
++
++    /** The slot that holds [rune], else the first free one, else null (no free type slot). */
++    fun slotFor(player: Player, rune: String, slots: Int = slotCount(player)): Int? {
++        val held = (0 until slots).firstOrNull { slot(player, it)?.first == rune }
++        return held ?: (0 until slots).firstOrNull { slot(player, it) == null }
++    }
++
++    /** Adds up to [amount] of [rune]; returns how many fit. */
++    fun add(player: Player, rune: String, amount: Int, slots: Int = slotCount(player)): Int {
++        val target = slotFor(player, rune, slots) ?: return 0
++        val current = slot(player, target)?.second ?: 0
++        val added = minOf(amount, CAPACITY - current)
++        if (added > 0) {
++            setSlot(player, target, rune, current + added)
++        }
++        return added.coerceAtLeast(0)
++    }
++
++    fun remove(player: Player, slot: Int, amount: Int): Int {
++        val (rune, current) = slot(player, slot) ?: return 0
++        val removed = minOf(amount, current)
++        setSlot(player, slot, rune, current - removed)
++        return removed
++    }
++
++    fun swap(player: Player, from: Int, into: Int) {
++        val a = slot(player, from)
++        val b = slot(player, into)
++        setSlot(player, from, b?.first, b?.second ?: 0)
++        setSlot(player, into, a?.first, a?.second ?: 0)
++    }
++}
+diff --git a/content/skills/magic/rune-pouch/src/main/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScript.kt b/content/skills/magic/rune-pouch/src/main/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScript.kt
+new file mode 100644
+index 000000000..1d26ceb52
+--- /dev/null
++++ b/content/skills/magic/rune-pouch/src/main/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScript.kt
+@@ -0,0 +1,199 @@
++package org.rsmod.content.skills.magic.runepouch
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.definition.type.widget.IfEvent
++import dev.openrune.rscm.RSCM
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.aconverted.interf.IfButtonOp
++import org.rsmod.api.player.output.objExamine
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.script.onIfModalButton
++import org.rsmod.api.script.onIfModalDrag
++import org.rsmod.api.script.onOpHeld1
++import org.rsmod.api.script.onOpHeld4
++import org.rsmod.api.script.onOpHeldU
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++class RunePouchScript : PluginScript() {
++    override fun ScriptContext.startup() {
++        for (pouch in RunePouch.pouches) {
++            onOpHeld1(pouch) { openPouch() }
++            onOpHeld4(pouch) { emptyPouch() }
++            for (rune in RunePouch.runes) {
++                onOpHeldU(rune, pouch) { storeAll(rune) }
++            }
++        }
++        onIfModalButton(POUCH) { pouchOp(it.comsub, it.op) }
++        onIfModalButton(INVENTORY) { inventoryOp(it.comsub, it.op) }
++        onIfModalDrag(POUCH) { drag ->
++            val from = drag.selectedSlot ?: return@onIfModalDrag
++            val into = drag.targetSlot ?: return@onIfModalDrag
++            val slots = RunePouch.slotCount(player)
++            if (from in 0 until slots && into in 0 until slots) RunePouch.swap(player, from, into)
++        }
++        onIfModalDrag(INVENTORY) { drag ->
++            val from = drag.selectedSlot ?: return@onIfModalDrag
++            val into = drag.targetSlot ?: return@onIfModalDrag
++            invMoveToSlot(inv, inv, from, into)
++        }
++        onIfModalButton("component.rune_pouch:1") { selectQuantity(Quantity.One) }
++        onIfModalButton("component.rune_pouch:5") { selectQuantity(Quantity.Five) }
++        onIfModalButton("component.rune_pouch:all") { selectQuantity(Quantity.All) }
++        onIfModalButton("component.rune_pouch:x") {
++            if (it.op == IfButtonOp.Op2) {
++                val amount = countDialog()
++                if (amount > 0) vars[CUSTOM_QUANTITY] = amount
++                selectQuantity(Quantity.Custom)
++            } else if (vars[CUSTOM_QUANTITY] > 0) {
++                selectQuantity(Quantity.Custom)
++            }
++        }
++    }
++
++    private fun ProtectedAccess.openPouch() {
++        vars["varp.if1"] = RunePouch.slotCount(player)
++        ifOpenMainModal("interface.rune_pouch")
++        ifSetEvents(POUCH, 0..5, *SLOT_EVENTS)
++        ifSetEvents(INVENTORY, inv.indices, *SLOT_EVENTS)
++    }
++
++    private fun ProtectedAccess.selectQuantity(quantity: Quantity) {
++        vars[SELECTED_QUANTITY] = quantity.varValue
++    }
++
++    private suspend fun ProtectedAccess.pouchOp(comsub: Int, op: IfButtonOp) {
++        if (comsub !in 0 until RunePouch.slotCount(player)) return
++        val (rune, _) = RunePouch.slot(player, comsub) ?: return
++        if (op == IfButtonOp.Op10) {
++            examine(rune)
++            return
++        }
++        val amount = requestedAmount(op) ?: return
++        withdraw(comsub, amount)
++    }
++
++    private suspend fun ProtectedAccess.inventoryOp(slot: Int, op: IfButtonOp) {
++        val obj = inv[slot] ?: return
++        val internal = RSCM.getReverseMapping(RSCMType.OBJ, obj.id)
++        if (op == IfButtonOp.Op10) {
++            objExamine(inv, slot)
++            return
++        }
++        if (!RunePouch.isRune(internal)) {
++            mes(NOT_A_RUNE)
++            return
++        }
++        val amount = requestedAmount(op) ?: return
++        store(internal, amount)
++    }
++
++    private suspend fun ProtectedAccess.requestedAmount(op: IfButtonOp): Int? {
++        val choice =
++            when (op) {
++                IfButtonOp.Op1 ->
++                    Quantity.entries.firstOrNull { it.varValue == vars[SELECTED_QUANTITY] }
++                        ?: Quantity.One
++                IfButtonOp.Op2 -> Quantity.One
++                IfButtonOp.Op3 -> Quantity.Five
++                IfButtonOp.Op4 -> Quantity.Custom
++                IfButtonOp.Op5 -> Quantity.X
++                IfButtonOp.Op6 -> Quantity.All
++                else -> return null
++            }
++        val custom = vars[CUSTOM_QUANTITY]
++        return when (choice) {
++            Quantity.One -> 1
++            Quantity.Five -> 5
++            Quantity.All -> Int.MAX_VALUE
++            Quantity.Custom -> if (custom > 0) custom else countDialog().takeIf { it > 0 }
++            Quantity.X -> countDialog().takeIf { it > 0 }
++        }
++    }
++
++    fun ProtectedAccess.store(rune: String, requested: Int): Int {
++        val slots = RunePouch.slotCount(player)
++        if (slots == 0) return 0
++        val held = inv.physicalCount(rune)
++        if (held <= 0) return 0
++        val target = RunePouch.slotFor(player, rune, slots)
++        if (target == null) {
++            mes(NO_FREE_SLOT)
++            return 0
++        }
++        val space = RunePouch.CAPACITY - (RunePouch.slot(player, target)?.second ?: 0)
++        if (space <= 0) {
++            mes(FULL)
++            return 0
++        }
++        val amount = minOf(requested, held, space)
++        if (invDel(inv, rune, amount, ignoreVirtualStorage = true).failure) return 0
++        return RunePouch.add(player, rune, amount, slots)
++    }
++
++    fun ProtectedAccess.withdraw(slot: Int, requested: Int): Int {
++        val (rune, stored) = RunePouch.slot(player, slot) ?: return 0
++        val amount = minOf(requested, stored)
++        if (invAdd(inv, rune, amount, ignoreVirtualStorage = true).failure) {
++            mes(NO_SPACE)
++            return 0
++        }
++        return RunePouch.remove(player, slot, amount)
++    }
++
++    private fun ProtectedAccess.storeAll(rune: String) {
++        store(rune, Int.MAX_VALUE)
++    }
++
++    fun ProtectedAccess.emptyPouch() {
++        val slots = RunePouch.slotCount(player)
++        if ((0 until slots).none { RunePouch.slot(player, it) != null }) {
++            mes(EMPTY)
++            return
++        }
++        for (slot in 0 until slots) {
++            if (RunePouch.slot(player, slot) == null) continue
++            if (withdraw(slot, Int.MAX_VALUE) == 0) return
++        }
++    }
++
++    private fun ProtectedAccess.examine(rune: String) {
++        val type = ServerCacheManager.getItem(rune.asRSCM(RSCMType.OBJ)) ?: return
++        player.objExamine(type, 1, 0)
++    }
++
++    private enum class Quantity(val varValue: Int) {
++        One(0),
++        Five(1),
++        All(2),
++        Custom(3),
++        X(-1),
++    }
++
++    private companion object {
++        const val POUCH = "component.rune_pouch:pouch"
++        const val INVENTORY = "component.rune_pouch:inventory"
++        const val SELECTED_QUANTITY = "varbit.rune_pouch_selectedquantity"
++        const val CUSTOM_QUANTITY = "varbit.rune_pouch_customquantity"
++
++        const val NOT_A_RUNE = "You can only store runes in the rune pouch."
++        const val NO_FREE_SLOT = "Your rune pouch has no room for another type of rune."
++        const val FULL = "Your rune pouch cannot hold any more of those runes."
++        const val NO_SPACE = "You don't have enough inventory space."
++        const val EMPTY = "Your rune pouch is empty."
++
++        val SLOT_EVENTS =
++            arrayOf(
++                IfEvent.Op1,
++                IfEvent.Op2,
++                IfEvent.Op3,
++                IfEvent.Op4,
++                IfEvent.Op5,
++                IfEvent.Op6,
++                IfEvent.Op10,
++                IfEvent.Depth1,
++                IfEvent.DragTarget,
++            )
++    }
++}
 diff --git a/content/skills/mining/src/main/kotlin/org/rsmod/content/skills/mining/scripts/Mining.kt b/content/skills/mining/src/main/kotlin/org/rsmod/content/skills/mining/scripts/Mining.kt
 index d5436b90c..7996755f3 100644
 --- a/content/skills/mining/src/main/kotlin/org/rsmod/content/skills/mining/scripts/Mining.kt
@@ -11224,17 +11941,16 @@ index a28095cd2..68553dd32 100644
                      mes("Your Varrock armour helps you smelt an extra $barName.")
 diff --git a/content/travel/fairy-rings/build.gradle.kts b/content/travel/fairy-rings/build.gradle.kts
 new file mode 100644
-index 000000000..65478ea25
+index 000000000..6eb9d5aea
 --- /dev/null
 +++ b/content/travel/fairy-rings/build.gradle.kts
-@@ -0,0 +1,15 @@
+@@ -0,0 +1,14 @@
 +plugins {
 +    id("base-conventions")
 +    id("integration-test-suite")
 +}
 +
 +dependencies {
-+    implementation(libs.rsprot.api)
 +    implementation(projects.api.pluginCommons)
 +}
 +
@@ -11335,16 +12051,16 @@ index 000000000..6a9e7a50f
 +}
 diff --git a/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
 new file mode 100644
-index 000000000..6d286376b
+index 000000000..93d62a658
 --- /dev/null
 +++ b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
-@@ -0,0 +1,190 @@
+@@ -0,0 +1,191 @@
 +package org.rsmod.content.travel.fairyrings
 +
 +import dev.openrune.rscm.RSCM.asRSCM
 +import dev.openrune.rscm.RSCMType
 +import dev.openrune.types.aconverted.interf.IfButtonOp
-+import net.rsprot.protocol.game.outgoing.misc.player.TriggerOnDialogAbort
++import org.rsmod.api.player.output.ClientScripts
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.player.righthand
@@ -11428,7 +12144,7 @@ index 000000000..6d286376b
 +        val id = player.dial1 * 100 + player.dial2 * 10 + player.dial3
 +        val row = FairyringRow.all().firstOrNull { it.id == id }
 +        ifClose()
-+        player.client.write(TriggerOnDialogAbort)
++        ClientScripts.mesLayerClose(player, MESLAYER_MODE_SEARCH)
 +        travel(row?.takeIf { isDestination(it) })
 +    }
 +
@@ -11488,6 +12204,7 @@ index 000000000..6d286376b
 +        const val ZANARIS_CODE = "B K S"
 +        const val LAST_DESTINATION_BASE = 64
 +        const val TRAVEL_DELAY = 3
++        const val MESLAYER_MODE_SEARCH = 28
 +        const val VANISH_SEQ = "seq.human_fairy_vanish"
 +        const val APPEAR_SEQ = "seq.human_fairy_appear"
 +        const val RING_SPOTANIM = "spotanim.fairy_flower_ring"

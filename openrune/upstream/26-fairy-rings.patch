@@ -1,22 +1,23 @@
-From 0580dc83b27656f5e303a7e97d499ba5f3aae6e1 Mon Sep 17 00:00:00 2001
+From 6dd65790b5c7df6644bd719b0dd22b60e6692cf4 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 03:02:47 -0400
-Subject: [PATCH 26/27] Fairy rings: dial, travel log, Zanaris and
- Last-destination
+Subject: [PATCH] Fairy rings: dial, travel log, Zanaris and Last-destination
 
 New module on the cache's fairyring dbtable: Configure (Dramen or Lunar staff) opens the dial
 (398) with the travel log (381); dial buttons and 'Use code' set fairyring_1..3; Confirm,
 Zanaris and Last-destination teleport (fairyring_lastloc_opvis drives the op text); the log
 lists visited codes (server varps). A code with no ring, or the ring you stand in, does not
 move you (OSRS Wiki). Favourites, the hideout sequence and per-ring requirements are not done.
+
+On teleport the travel log's mobile search input (meslayer mode 28, opened by the client) is closed with meslayer_close: meslayer_ondialogabort does not cover mode 28.
 ---
- content/travel/fairy-rings/build.gradle.kts   |  15 ++
+ content/travel/fairy-rings/build.gradle.kts   |  14 ++
  .../travel/fairy-rings/pack/build.gradle.kts  |   7 +
  .../fairyrings/pack/FairyRingsPluginPack.kt   |   5 +
  .../pack/src/main/resources/gamevals.toml     |   3 +
  .../pack/configs/fairy_ring_vars.toml         |  11 +
  .../travel/fairyrings/FairyRingScriptTest.kt  |  34 ++++
- .../travel/fairyrings/FairyRingScript.kt      | 190 ++++++++++++++++++
+ .../travel/fairyrings/FairyRingScript.kt      | 191 ++++++++++++++++++
  7 files changed, 265 insertions(+)
  create mode 100644 content/travel/fairy-rings/build.gradle.kts
  create mode 100644 content/travel/fairy-rings/pack/build.gradle.kts
@@ -28,17 +29,16 @@ move you (OSRS Wiki). Favourites, the hideout sequence and per-ring requirements
 
 diff --git a/content/travel/fairy-rings/build.gradle.kts b/content/travel/fairy-rings/build.gradle.kts
 new file mode 100644
-index 000000000..65478ea25
+index 000000000..6eb9d5aea
 --- /dev/null
 +++ b/content/travel/fairy-rings/build.gradle.kts
-@@ -0,0 +1,15 @@
+@@ -0,0 +1,14 @@
 +plugins {
 +    id("base-conventions")
 +    id("integration-test-suite")
 +}
 +
 +dependencies {
-+    implementation(libs.rsprot.api)
 +    implementation(projects.api.pluginCommons)
 +}
 +
@@ -139,16 +139,16 @@ index 000000000..6a9e7a50f
 +}
 diff --git a/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
 new file mode 100644
-index 000000000..6d286376b
+index 000000000..93d62a658
 --- /dev/null
 +++ b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
-@@ -0,0 +1,190 @@
+@@ -0,0 +1,191 @@
 +package org.rsmod.content.travel.fairyrings
 +
 +import dev.openrune.rscm.RSCM.asRSCM
 +import dev.openrune.rscm.RSCMType
 +import dev.openrune.types.aconverted.interf.IfButtonOp
-+import net.rsprot.protocol.game.outgoing.misc.player.TriggerOnDialogAbort
++import org.rsmod.api.player.output.ClientScripts
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.player.righthand
@@ -232,7 +232,7 @@ index 000000000..6d286376b
 +        val id = player.dial1 * 100 + player.dial2 * 10 + player.dial3
 +        val row = FairyringRow.all().firstOrNull { it.id == id }
 +        ifClose()
-+        player.client.write(TriggerOnDialogAbort)
++        ClientScripts.mesLayerClose(player, MESLAYER_MODE_SEARCH)
 +        travel(row?.takeIf { isDestination(it) })
 +    }
 +
@@ -292,6 +292,7 @@ index 000000000..6d286376b
 +        const val ZANARIS_CODE = "B K S"
 +        const val LAST_DESTINATION_BASE = 64
 +        const val TRAVEL_DELAY = 3
++        const val MESLAYER_MODE_SEARCH = 28
 +        const val VANISH_SEQ = "seq.human_fairy_vanish"
 +        const val APPEAR_SEQ = "seq.human_fairy_appear"
 +        const val RING_SPOTANIM = "spotanim.fairy_flower_ring"

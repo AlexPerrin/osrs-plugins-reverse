@@ -39,9 +39,11 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 23 | `23-openable-drawers-chests` | `generic-locs/.../DrawersScript.kt`, `PlainChestScript.kt` | drawers1/3, the Draynor wardrobe, Seers' Village drawers and the Camelot chest had Open with no handler | Messages for the new ones follow the existing pattern ("You search the wardrobe but find nothing." is a best guess) |
 | 24 | `24-treasure-trails-drawers-and-maps` | `treasure-trails`: `TrailSteps.kt`, `TreasureTrailScript.kt`, `TrailDataTables.kt`, pack `gamevals.toml`, `TreasureTrailScriptTest.kt` | Easy searches on locs that open first (27 rows) target the open variant's Search; map rows 2232/2234 get their interfaces | Needs 21 and 23 |
 | 25 | `25-ice-mountain-music-area` | `or-cache/.../impl/Music.kt`, `.data/gamevals/area.rscm`, `dbrow.rscm`, `.data/raw-cache/map/area/ice_mountain.toml` (new) | Only Lumbridge had a modern music area; Alone (an easy clue music step) never unlocked | Polygon from the OSRS Wiki's Map:Alone; area 32762, dbrow 60920 |
-| 26 | `26-fairy-rings` | `content/travel/fairy-rings` + `fairy-rings/pack` (new modules) | Fairy rings on the cache's `fairyring` dbtable: dial 398 + travel log 381, Zanaris, Last-destination, staff check; integration tests | Server varps 63860-63861 (visited codes); no favourites, hideout sequence or per-ring quest requirements |
+| 26 | `26-fairy-rings` | `content/travel/fairy-rings` + `fairy-rings/pack` (new modules) | Fairy rings on the cache's `fairyring` dbtable: dial 398 + travel log 381, Zanaris, Last-destination, staff check; integration tests | Server varps 63860-63861 (visited codes); no favourites, hideout sequence or per-ring quest requirements; teleport closes the log's mobile search input with `meslayer_close` (mode 28) |
 | 27 | `27-essence-pouch-check-wording` | `runecrafting/.../EssencePouchScript.kt` | OSRS Check wording (number words, pure/daeyalt/guardian) that RuneLite's Ess Pouch plugin parses | |
 | 28 | `28-treasure-trails-medium` | `content/other/treasure-trails` (12 files, incl. `MediumCasketTable.kt`, `TrailKeyDropHook.kt` new) | Medium Treasure Trails: challenge scrolls, coordinates, double emotes, keys, maps, music, medium STASH units and casket; integration tests | Needs 21-24; dbtable 60008 (rows 61000-61191), varps 63870-63875; challenge dialogue wording is a best guess |
+| 29 | `29-rune-pouch` | `content/skills/magic/rune-pouch` (new module) | Rune pouches had no Open/Empty/store: the pouch interface (190) with Store/Withdraw quantities, drag reorder and Examine, Empty, rune-on-pouch, on the client-visible `rune_pouch_type_n`/`_quantity_n` varbits spells already read; integration tests | No loadouts (Configure); full/non-rune messages are best guesses |
+| 30 | `30-plank-sack` | `content/other/plank-sack` (new module) | Plank sack Fill/Check/Empty on the `plank_sack_*` varbits, and a storage hook so content can use planks from the sack; integration tests | Fill/full/no-space messages are best guesses; the sawmill does not fill the sack |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -122,3 +124,9 @@ cache's cluehelper tables, with easy clues and `LocOpOverrides`.
 
 Patch 22 (music tab Play) was added 2026-10-17: `git apply --check` on the pin passes; compiled and
 boot-checked in our tree.
+
+Patches 29 (rune pouch) and 30 (plank sack) were added 2026-10-17 (eleventh server dev): new files
+only; `git apply --check` on the pin passes for each, and `git am` applies all 30 in order. Compiled,
+tested (`RunePouchScriptTest` 5, `PlankSackScriptTest` 3), spotless-checked and boot-checked in our
+tree. Patch 26 was regenerated the same day (the meslayer close on teleport; the module no longer
+needs `libs.rsprot.api`).

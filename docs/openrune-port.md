@@ -743,3 +743,45 @@ was verified.
     map crates, medium STASH.
 - **Upstream:** `23-openable-drawers-chests`, `24-treasure-trails-drawers-and-maps` (needs 21, 23),
   `25-ice-mountain-music-area`, `26-fairy-rings`, `27-essence-pouch-check-wording`.
+
+## Eleventh server dev (2026-10-17)
+
+- **Rune pouch** (`content/skills/magic/rune-pouch`, `RunePouchScript`): RuneLite's Rune Pouch
+  overlay reads only varbits: `rune_pouch_type_1..6` (29, 1622, 1623, 14285, 15373, 15374; the
+  rune's compact id, enum 55 `rune_compact_ids`, back through enum 982) and
+  `rune_pouch_quantity_1..6` (1624-1626, 14286, 15375, 15376), on items 12791/24416/27281/27509.
+  OpenRune already cast spells from those varbits but could not fill them. Now:
+  - Open (iop 1) sets varp `if1` = 3 (regular) or 4 (divine) and opens 190 as the main modal; the
+    client draws everything (`rune_pouch_init`, `rune_pouch_drawpouch_slot`,
+    `rune_pouch_drawinventory_slot` in osrs-dumps). IF_SETEVENTS on `rune_pouch:pouch` 0-5 and
+    `rune_pouch:inventory` 0-27: ops 1-6, 10, Depth1, DragTarget (the event set is our choice).
+  - The op labels depend on `rune_pouch_selectedquantity` (16201: 0=1, 1=5, 2=All, 3=custom) and
+    `rune_pouch_customquantity` (16206): op1 is the selected quantity, op2 = 1, op3 = 5, op4 =
+    custom, op5 = X (count dialog), op6 = All, op10 Examine. The client sets the varbit itself when
+    the 1/5/X/All buttons (static `transmitop` components) are pressed; the server mirrors each
+    button so its copy matches. X op2 "Set custom quantity" asks for the amount (guess: it also
+    selects the custom mode).
+  - Pouch drags swap the two slots' varbits (the client swaps locally in
+    `rune_pouch_pouchreorder`); inventory drags move the inventory slot.
+  - Empty (iop 4) and use-rune-on-pouch (stores all). Capacity 16,000 per type (wiki).
+  - **Guessed messages:** "You can only store runes in the rune pouch.", "Your rune pouch has no
+    room for another type of rune.", "Your rune pouch cannot hold any more of those runes.",
+    "You don't have enough inventory space.", "Your rune pouch is empty.".
+  - Not done: Configure/loadouts (bank), slots 5-6 (league relic), runes auto-placed in the pouch.
+- **Plank sack** (`content/other/plank-sack`): the hub Plank Sack plugin reads only the varbits
+  `plank_sack_plain/oak/teak/mahogany/camphor/ironwood/rosewood` (18171-18177) and checks that
+  obj 24882 is in the inventory. Fill (iop 1) and plank-on-sack store up to 28 planks in all
+  (wiki); Check (iop 3) prints one game message per stored type, "Regular planks: 3" / "Oak
+  planks: 5" ..., and Empty (iop 4) / Check on an empty sack say "Your sack is currently empty."
+  (these follow tictac7x Charges' regexes; the per-type split and the order are guesses). Empty
+  puts back what fits. `PlankSackStorageHook` lets content take planks from the sack while it is in
+  the inventory (inventory first; it never captures incoming planks).
+  **Guessed messages:** "You don't have any planks to put in the sack.", "Your sack is full.",
+  "You don't have enough inventory space to empty the sack.". Not done: the bank's Fill/Empty
+  toggle, sawmill planks into the sack.
+- **Fairy ring search input** (client dev's report on 9a73dbe: "Search for destination: *" stayed
+  open after a teleport and swallowed the next chat command): the log's search is opened by
+  `meslayer_mode20`, which calls `meslayer_open(28)`; `meslayer_ondialogabort` closes only modes
+  7/8/9/11/14-21/27/29/30, so TRIGGER_ONDIALOGABORT could never close mode 28, in any order. The
+  teleport now runs clientscript 101 `meslayer_close(28)` after the IF_CLOSE.
+- **Upstream:** `29-rune-pouch`, `30-plank-sack`; `26-fairy-rings` regenerated.

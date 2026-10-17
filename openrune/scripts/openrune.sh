@@ -91,7 +91,9 @@ build)
     fi
     # The packer leaves new clientscript groups with zero sizes in the reference table (crashes
     # the Android client at cache sync), and the quest scripts use varcs rev 241 does not define.
+    # Its compiler also reads/writes long varps with the int opcodes 1/2 (Jagex: 64/65).
     python3 -I scripts/add_varcs.py
+    python3 -I scripts/fix_long_varps.py
     python3 -I scripts/fix_reftable.py
     gradle generateRsa
     gradle :server:app:installDist -x test

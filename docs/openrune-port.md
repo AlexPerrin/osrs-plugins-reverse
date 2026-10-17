@@ -407,6 +407,7 @@ upstream later; nobody has contacted upstream.
 | Juliet's house stairs | `content/generic/generic-locs/.../StraightStaircaseScript.kt` | `fai_varrock_stairs_taller`/`_top` had no handler |
 | Item examine as `ObjExamine` | `api/player-output/.../GameMessage.kt` (+ test) | Examine texts went out through the `examine_item` script as type 0, which RuneLite's Examine plugin does not match |
 | OSRS message wording | mining, fishing, cooking, smelting scripts; `LoginScript` ("Welcome to Old School RuneScape.") | Small text differences from OSRS that client plugins parse |
+| Long varps in compiled clientscripts | our workaround: `openrune/scripts/fix_long_varps.py`; the fix belongs in OpenRune's CS2 compiler (Neptune `0.0.7-openrune`) | Varps typed `long` are read/written with opcodes 1/2 instead of 64/65, which breaks every script using them (the Grand Exchange setup panel, `ge_itemsink_get`) |
 | Clientscript id guard | `or-cache/.../PluginPacks.kt`, `openrune/scripts/check_cache.py` | Fails the build on custom clientscript ids above 9999 |
 | Quest scripts: Sheep Shearer, Romeo & Juliet | `content/quest/...` (+ `QuestTalkFixture` tests) | New content on OpenRune's quest framework |
 | Dwarf multicannon, dragon dagger/warhammer specs | `content/other/dwarf-multicannon`, `content/other/special-attacks` | New content with tests |
@@ -1336,3 +1337,34 @@ differences where the plugin's text was used). Headings are the plugin's keys ("
 "Kourend & Kebos Tasks", "Morytania Tasks", "Western Area Tasks", "Wilderness Area Tasks"). Wiki-only
 wordings (97 tasks) are **guesses** at the in-game journal text. Deployed 12:01 with the GE build, not
 device-checked yet.
+
+### GE device runs and the long-varp compiler bug (sixteenth server dev)
+
+- **12:01 run (0964ae7):** the clerk's Exchange opens 465 with all 8 slots ("Empty", Buy/Sell; the
+  members slots unlocked) and the GE plugin posts EMPTY for each slot at login. Two problems: Exchange
+  across the booth answered "I can't reach that!" (fixed in 6524cac with an Ap handler, as the bankers
+  have), and Buy or Sell showed "Grand Exchange: Offer status" for an empty slot ("Sell offer", Dwarf
+  remains) instead of the setup panel.
+- **12:27 run (6524cac):** Exchange works across the booth, Buy opens the mobile item search ("What would
+  you like to buy?"), and the server's vars reach the client (host hook `debug.osrsrl.set "quest
+  COOKS_ASSISTANT <varp>"`: varp 3204 = -1, 375 = 0x1400010 i.e. ge_selectedslot 1 and taxrate 20, 563 =
+  0x80000005 i.e. quantity 5 + sell, 1151 = 379 lobster; 465:27/28 hold the examine and "70 coins"). The
+  panel was still wrong.
+- **Root cause: OpenRune's clientscript compiler.** OpenRune recompiles 9917 of the 9975 clientscripts
+  from the osrs-dumps sources (their data starts with the "[proc,name].cs2 [proc,name]" name string). For
+  varps typed `long` in symbols/varp.sym it emits PUSH_VARP/POP_VARP (opcodes 1/2) instead of
+  PUSH_VAR_LONG/POP_VAR_LONG (64/65). Jagex's own `ge_itemsink_get` (5733, OpenRS2 cache 2740) reads
+  ge_itemsink_price_long_0 (5762) with opcode 64; OpenRune's with opcode 1, which pushes an int, so
+  `long_max` is a long short and the proc returns obj 0 (Dwarf remains) for an empty slot, and
+  `ge_offers_switchpanel` (806) takes the offer-status branch. Long varcs compile correctly (51/52).
+  Affected: scripts 778, 779, 5156, 5732, 5733, 9911 (40 ops; the 17 long varps 5753-5769:
+  ge_newoffer_price, ge_tax_slot_long_0-7, ge_itemsink_price_long_0-7).
+- **Workaround:** `openrune/scripts/fix_long_varps.py` (run by `openrune.sh build` after add_varcs)
+  rewrites those opcodes in the packed cache, re-containers the scripts (gzip) and updates idx12 and
+  the archive-12 reference table (crc, sizes, version). It walks each script's instructions and skips
+  any whose walk does not end at the instruction count. Idempotent. The proper fix belongs in
+  OpenRune's compiler (Neptune fork `0.0.7-openrune`); listed under the upstream fixes.
+- Static RE on the way (both address forms; Ghidra = ELF + 0x100000): CS2 stockmarket ops at ELF
+  0x4ed838 / Ghidra FUN_005ed838 (3910 isofferempty = state==0, 3911 stable = 2, 3912 finished = 5,
+  3913 adding = 1); slot packet decode Ghidra FUN_00700428 (desktop status byte, state = b&7, type =
+  bit 3, 7 = version prefix); empty slot init FUN_00700408 (state 0, type 1).

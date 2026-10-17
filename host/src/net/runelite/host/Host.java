@@ -792,8 +792,8 @@ public final class Host {
      * the game's result as is.
      */
     /**
-     * RuneLite's patched bank search filter proc 279 (BankSearchFilter.rs2asm: args item id, filter
-     * string; returns 1 to show the item) starts with `iconst -1; iload 0; sload 0; runelite_callback
+     * RuneLite's patched bank search filter proc 279 (BankSearchFilter.rs2asm: args item id, an int,
+     * filter string; returns 1 to show the item; bankmain_build 277 calls it for every item) starts with `iconst -1; iload 0; sload 0; runelite_callback
      * "bankSearchFilter"` and returns the plugin's answer unless it is still -1 (Bank Tags: tag tabs
      * and "tag:" searches). Raised here when the proc returns, the answer replacing its result.
      * // unverified: that the mobile bank runs 279 (the desktop id) and with these args.
@@ -805,7 +805,8 @@ public final class Host {
         if (phase == 0) {
             int n = ac.getIntStackSize(), m = ac.getObjectStackSize();
             Object top = m >= 1 ? ac.getObjectStack()[m - 1] : null;
-            bankFilterArgs.push(new Object[] {n >= 1 ? ac.getIntStack()[n - 1] : -1, top instanceof String ? top : null});
+            // gosub 279(item, int, string) from bankmain_build 277: the item is the second int from the top.
+            bankFilterArgs.push(new Object[] {n >= 2 ? ac.getIntStack()[n - 2] : -1, top instanceof String ? top : null});
             return;
         }
         if (phase != 1 || bankFilterArgs.isEmpty()) return;

@@ -125,7 +125,7 @@ final class OverlayRenderer {
         net.runelite.api.Client client = Host.client();
         boolean loggedIn = client != null && client.getGameState() == net.runelite.api.GameState.LOGGED_IN
             && client.getLocalPlayer() != null;
-        if (overlays.isEmpty() || !loggedIn) {
+        if ((overlays.isEmpty() && CustomSpriteWidgets.isEmpty()) || !loggedIn) {
             if (published) Native.overlayPublish(0, 0);
             published = false;
             return;
@@ -153,6 +153,7 @@ final class OverlayRenderer {
                 if (menuRect != null) canvas.clipOutRect(menuRect);
                 CanvasGraphics root = new CanvasGraphics(canvas);
                 root.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                if (layer == OverlayLayer.ABOVE_WIDGETS) CustomSpriteWidgets.draw(root);
                 net.runelite.client.ui.overlay.outline.ModelOutlineRenderer.target = root;
                 try {
                     renderLayer(root, layer, size);

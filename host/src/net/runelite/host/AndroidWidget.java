@@ -54,7 +54,7 @@ public class AndroidWidget extends WidgetBag {
     @Override public Widget setOriginalHeight(int v) { return set(0x58, v); }
     @Override public Widget setFilled(boolean v) { return set(0xa8, v ? 1 : 0); }
     @Override public Widget setOpacity(int v) { return set(0xb0, v); }
-    @Override public Widget setSpriteId(int v) { return set(0xc8, v); }
+    @Override public Widget setSpriteId(int v) { CustomSpriteWidgets.note(this, v); return set(0xc8, v); }
     @Override public Widget setSpriteTiling(boolean v) { return set(0xec, v ? 1 : 0); }
     @Override public void setBorderType(int v) { set(0xf0, v); }
     @Override public void setFlippedVertically(boolean v) { set(0xf8, v ? 1 : 0); }

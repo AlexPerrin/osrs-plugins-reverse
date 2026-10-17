@@ -477,3 +477,11 @@ was verified.
   `floor(high * (max(50, level) - 1) / 98) / 1000` (normal 30% at 99, 15% at 50 and below; redwood
   52.5%). The code used it as /256, so every roll succeeded for every tier. Now `nestChance()` per
   mille, with a test. The seed nest (0-200 out of 256) was right. Upstream patch 20 = bird houses.
+- **More farms** (after the device check): Ardougne (mapsquare 10548), Morytania/Port Phasmatys
+  (14391, 14390), Hosidius (6967, 6711) and Civitas illa Fortis (6192 + 6447/6448/6449/6191/6193),
+  RuneLite's FarmingWorld areas (no extra bounds there). Varps 63796-63827. Patch locs: veg 5/6,
+  7/8, 10/11, 16/17; flower 3, 4, 5, 8; herb 3, 4, 6, 8. Their varbits are checked by the test;
+  which farm each pair sits in follows the id pattern (Falador 1/2, Catherby 3/4, compost bins
+  7836-7839, 27112, 50694) and is NOT yet checked in game: `::tele` to each farm and `list_objects`.
+  Prifddinas and the Farming Guild are left out (their patches use other varbits: herb/compost
+  swapped, 7904-7912). Upstream patch 19 regenerated.

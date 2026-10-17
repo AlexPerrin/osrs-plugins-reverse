@@ -1,30 +1,30 @@
-From 63a19078bee4079307a1d56f58c3ae25750579b6 Mon Sep 17 00:00:00 2001
+From ed6d00fb3c2a347bd9cd09986bdab063ffb133be Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
-Date: Fri, 16 Oct 2026 22:10:44 -0400
-Subject: [PATCH] Add allotment, flower and herb patches at Catherby and
- Falador
+Date: Fri, 16 Oct 2026 22:35:21 -0400
+Subject: [PATCH] Add allotment, flower and herb patches at six farms
 
-Rake, plant with a seed dibber, growth on the farming clock (allotments every
-10 minutes, flowers 5, herbs 20, also while logged out) and harvest with the
-OSRS Wiki's harvest lives, chance-to-save constants and XP. Each patch's state
-is the farming_transmit value the patch multilocs show (and RuneLite's Time
-Tracking reads), written to farming_transmit_a-d while the player is in that
-farm's area. New module content/skills/farming with the server-only dbtable
-farming_crops (60002, rows 60160-60187), server varps 63780-63795, timer
-farming_transmit (460) and ::growpatches. Integration tests in
-FarmingScriptTest. No disease, compost, watering, payments, weed regrowth or
+Catherby, Falador, Ardougne, Morytania (Port Phasmatys), Hosidius and Civitas
+illa Fortis. Rake, plant with a seed dibber, growth on the farming clock
+(allotments every 10 minutes, flowers 5, herbs 20, also while logged out) and
+harvest with the OSRS Wiki's harvest lives, chance-to-save constants and XP.
+Each patch's state is the farming_transmit value the patch multilocs show (and
+RuneLite's Time Tracking reads), written to farming_transmit_a-d while the
+player is in that farm's area. New module content/skills/farming with the
+server-only dbtable farming_crops (60002, rows 60160-60187), server varps
+63780-63827, timer farming_transmit (460) and ::growpatches. Integration tests
+in FarmingScriptTest. No disease, compost, watering, payments, weed regrowth or
 tool leprechaun.
 ---
  content/skills/farming/build.gradle.kts       |  14 +
  content/skills/farming/pack/build.gradle.kts  |   3 +
  .../skills/farming/pack/FarmingCropsTable.kt  | 146 ++++++++
  .../skills/farming/pack/FarmingPluginPack.kt  |   8 +
- .../pack/src/main/resources/gamevals.toml     |  17 +
- .../resources/pack/configs/farming_vars.toml  |  95 ++++++
- .../skills/farming/FarmingScriptTest.kt       | 207 ++++++++++++
- .../content/skills/farming/FarmingScript.kt   | 315 ++++++++++++++++++
+ .../pack/src/main/resources/gamevals.toml     |  49 +++
+ .../resources/pack/configs/farming_vars.toml  | 287 ++++++++++++++++
+ .../skills/farming/FarmingScriptTest.kt       | 218 ++++++++++++
+ .../content/skills/farming/FarmingScript.kt   | 324 ++++++++++++++++++
  .../farming/src/main/resources/gamevals.toml  |  35 ++
- 9 files changed, 840 insertions(+)
+ 9 files changed, 1084 insertions(+)
  create mode 100644 content/skills/farming/build.gradle.kts
  create mode 100644 content/skills/farming/pack/build.gradle.kts
  create mode 100644 content/skills/farming/pack/src/main/kotlin/org/rsmod/content/skills/farming/pack/FarmingCropsTable.kt
@@ -232,10 +232,10 @@ index 000000000..d72a86acb
 +}
 diff --git a/content/skills/farming/pack/src/main/resources/gamevals.toml b/content/skills/farming/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..efd196e16
+index 000000000..72303504e
 --- /dev/null
 +++ b/content/skills/farming/pack/src/main/resources/gamevals.toml
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,49 @@
 +[gamevals.varp]
 +farming_catherby_a_state = 63780
 +farming_catherby_a_time = 63781
@@ -253,12 +253,44 @@ index 000000000..efd196e16
 +farming_falador_c_time = 63793
 +farming_falador_d_state = 63794
 +farming_falador_d_time = 63795
++farming_ardougne_a_state = 63796
++farming_ardougne_a_time = 63797
++farming_ardougne_b_state = 63798
++farming_ardougne_b_time = 63799
++farming_ardougne_c_state = 63800
++farming_ardougne_c_time = 63801
++farming_ardougne_d_state = 63802
++farming_ardougne_d_time = 63803
++farming_morytania_a_state = 63804
++farming_morytania_a_time = 63805
++farming_morytania_b_state = 63806
++farming_morytania_b_time = 63807
++farming_morytania_c_state = 63808
++farming_morytania_c_time = 63809
++farming_morytania_d_state = 63810
++farming_morytania_d_time = 63811
++farming_hosidius_a_state = 63812
++farming_hosidius_a_time = 63813
++farming_hosidius_b_state = 63814
++farming_hosidius_b_time = 63815
++farming_hosidius_c_state = 63816
++farming_hosidius_c_time = 63817
++farming_hosidius_d_state = 63818
++farming_hosidius_d_time = 63819
++farming_civitas_a_state = 63820
++farming_civitas_a_time = 63821
++farming_civitas_b_state = 63822
++farming_civitas_b_time = 63823
++farming_civitas_c_state = 63824
++farming_civitas_c_time = 63825
++farming_civitas_d_state = 63826
++farming_civitas_d_time = 63827
 diff --git a/content/skills/farming/pack/src/main/resources/pack/configs/farming_vars.toml b/content/skills/farming/pack/src/main/resources/pack/configs/farming_vars.toml
 new file mode 100644
-index 000000000..cfafdf8f9
+index 000000000..84fea1ae8
 --- /dev/null
 +++ b/content/skills/farming/pack/src/main/resources/pack/configs/farming_vars.toml
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,287 @@
 +[[varp]]
 +isServerOnly = true
 +id = "varp.farming_catherby_a_state"
@@ -354,12 +386,204 @@ index 000000000..cfafdf8f9
 +id = "varp.farming_falador_d_time"
 +scope = "Perm"
 +transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_ardougne_a_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_ardougne_a_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_ardougne_b_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_ardougne_b_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_ardougne_c_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_ardougne_c_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_ardougne_d_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_ardougne_d_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_morytania_a_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_morytania_a_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_morytania_b_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_morytania_b_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_morytania_c_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_morytania_c_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_morytania_d_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_morytania_d_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_hosidius_a_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_hosidius_a_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_hosidius_b_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_hosidius_b_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_hosidius_c_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_hosidius_c_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_hosidius_d_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_hosidius_d_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_civitas_a_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_civitas_a_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_civitas_b_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_civitas_b_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_civitas_c_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_civitas_c_time"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_civitas_d_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_civitas_d_time"
++scope = "Perm"
++transmit = "Never"
 diff --git a/content/skills/farming/src/integration/kotlin/org/rsmod/content/skills/farming/FarmingScriptTest.kt b/content/skills/farming/src/integration/kotlin/org/rsmod/content/skills/farming/FarmingScriptTest.kt
 new file mode 100644
-index 000000000..f417eedf0
+index 000000000..095205a0e
 --- /dev/null
 +++ b/content/skills/farming/src/integration/kotlin/org/rsmod/content/skills/farming/FarmingScriptTest.kt
-@@ -0,0 +1,207 @@
+@@ -0,0 +1,218 @@
 +package org.rsmod.content.skills.farming
 +
 +import dev.openrune.ServerCacheManager
@@ -557,6 +781,17 @@ index 000000000..f417eedf0
 +            assertEquals(0, player.vars[patch.transmitVarbit])
 +            assertNull(AREAS.firstOrNull { it.contains(player.coords) })
 +            assertNotNull(AREAS.firstOrNull { it.contains(catherbyTile) })
++            val farms =
++                listOf(
++                    CoordGrid(3055, 3307, 0),
++                    CoordGrid(2666, 3374, 0),
++                    CoordGrid(3601, 3525, 0),
++                    CoordGrid(1738, 3550, 0),
++                    CoordGrid(1585, 3100, 0),
++                )
++            for ((index, tile) in farms.withIndex()) {
++                assertEquals(AREAS[index + 1], AREAS.firstOrNull { it.contains(tile) }, tile.toString())
++            }
 +        }
 +
 +    private fun GameTestScope.prepare(level: Int = 99) {
@@ -569,10 +804,10 @@ index 000000000..f417eedf0
 +}
 diff --git a/content/skills/farming/src/main/kotlin/org/rsmod/content/skills/farming/FarmingScript.kt b/content/skills/farming/src/main/kotlin/org/rsmod/content/skills/farming/FarmingScript.kt
 new file mode 100644
-index 000000000..01a7c6b75
+index 000000000..fd32f89c4
 --- /dev/null
 +++ b/content/skills/farming/src/main/kotlin/org/rsmod/content/skills/farming/FarmingScript.kt
-@@ -0,0 +1,315 @@
+@@ -0,0 +1,324 @@
 +package org.rsmod.content.skills.farming
 +
 +import jakarta.inject.Inject
@@ -596,12 +831,13 @@ index 000000000..01a7c6b75
 +import org.rsmod.plugin.scripts.ScriptContext
 +
 +/**
-+ * Allotment, flower and herb patches at Catherby and Falador (OSRS Wiki, Farming). Each patch keeps
-+ * its `farming_transmit` value (weeds 0-3, then the crop's growth values from [FarmingCropsRow]) and
-+ * harvest lives in a server varp, and the minute it last grew in another. Crops grow on the farming
-+ * clock (every 10/5/20 minutes of UTC time for allotments/flowers/herbs), also while logged out.
-+ * While the player is in a farming area the area's patches are written to `farming_transmit_a-e`,
-+ * exactly what the patch multilocs and RuneLite's Time Tracking read.
++ * Allotment, flower and herb patches at Catherby, Falador, Ardougne, Morytania, Hosidius and Civitas
++ * illa Fortis (OSRS Wiki, Farming). Each patch keeps its `farming_transmit` value (weeds 0-3, then
++ * the crop's growth values from [FarmingCropsRow]) and harvest lives in a server varp, and the
++ * minute it last grew in another. Crops grow on the farming clock (every 10/5/20 minutes of UTC time
++ * for allotments/flowers/herbs), also while logged out. While the player is in a farming area the
++ * area's patches are written to `farming_transmit_a-e`, exactly what the patch multilocs and
++ * RuneLite's Time Tracking read.
 + *
 + * Deviations: no disease, compost, watering, protection payments, weed regrowth, tool leprechaun or
 + * digging up growing crops.
@@ -860,6 +1096,14 @@ index 000000000..01a7c6b75
 +                    patches("catherby", 3, 4, 2, 2),
 +                ),
 +                Area(setOf(12083), { it.z >= 3272 }, patches("falador", 1, 2, 1, 1)),
++                Area(setOf(10548), { true }, patches("ardougne", 5, 6, 3, 3)),
++                Area(setOf(14391, 14390), { true }, patches("morytania", 7, 8, 4, 4)),
++                Area(setOf(6967, 6711), { true }, patches("hosidius", 10, 11, 5, 6)),
++                Area(
++                    setOf(6192, 6447, 6448, 6449, 6191, 6193),
++                    { true },
++                    patches("civitas", 16, 17, 8, 8),
++                ),
 +            )
 +
 +        val CROPS: List<FarmingCropsRow> by lazy { FarmingCropsRow.all() }

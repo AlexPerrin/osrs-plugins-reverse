@@ -29,7 +29,8 @@ Tracking, and the bird house device check. Details in `docs/openrune-port.md`, "
 - **Deployed** 22:11: everything up to 3f46725 (farming). Device-verified: rake, plant, growth on
   the clock, `::growpatches`, harvest/pick at Catherby, full-inventory stop; bird houses (Build,
   Seeds, `::birdhouses`, Empty, Loot Tracker message) at the southern space.
-- **Farming** (`content/skills/farming`): Catherby and Falador allotments, flower and herb patches;
+- **Farming** (`content/skills/farming`): allotments, flower and herb patches at Catherby, Falador,
+  and (not yet deployed or checked in game) Ardougne, Morytania, Hosidius, Civitas illa Fortis;
   server-only dbtable `farming_crops`, varps 63780-63795, timer 460, `::growpatches [cycles]`.
   Values checked against client-1.13.1.jar's PatchImplementation by reflection. Tests:
   `:content:skills:farming:integration` (8). Upstream: `openrune/upstream/19-farming-patches.patch`.

@@ -87,7 +87,8 @@ public class AndroidWidget extends WidgetBag {
      * Item quantity mode, Widget +0x13c. The mobile client's values (CC_SETOBJECT handler 0x4e06dc):
      * 1205 setobject_nonum stores 0, 1212 setobject_alwaysnum 3, 1200 setobject 3 for stackable items
      * and 1 otherwise; so RuneLite's NEVER 0 / ALWAYS 1 / STACKABLE 2 map to 0 / 3 / 1.
-     * // unverified: the drawn number for each value on the device.
+     * Verified on the device (2026-10-17 gen 27, probe `wqty 15:3 <slot> <mode>`): NEVER hid coins'
+     * "100K", ALWAYS drew "1" on a single log, STACKABLE drew "100K" and hid the log's "1".
      */
     @Override public Widget setItemQuantityMode(int mode) { return set(0x13c, mode == 1 ? 3 : mode == 2 ? 1 : 0); }
 

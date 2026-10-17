@@ -230,6 +230,16 @@ final class Probe {
                     Log.i(TAG, "set hidden " + a[1] + " " + before + " -> " + w.isSelfHidden());
                     break;
                 }
+                case "wqty": {  // "wqty <group:child> <slot> <mode>": child's setItemQuantityMode (API 0 never, 1 always, 2 stackable)
+                    String[] q = a[2].trim().split(" +");
+                    net.runelite.api.widgets.Widget p = c.getWidget(id);
+                    net.runelite.api.widgets.Widget w = p == null ? null : p.getChild(Integer.parseInt(q[0]));
+                    if (w == null) { Log.w(TAG, "wqty: no widget " + a[1] + "[" + q[0] + "]"); break; }
+                    w.setItemQuantityMode(Integer.parseInt(q[1]));
+                    Log.i(TAG, "set quantity mode " + a[1] + "[" + q[0] + "] item " + w.getItemId() + " x" + w.getItemQuantity()
+                        + " -> " + q[1]);
+                    break;
+                }
                 case "wtext": {  // "wtext <group:child> text"
                     net.runelite.api.widgets.Widget w = c.getWidget(id);
                     if (w == null) { Log.w(TAG, "wtext: no widget " + a[1]); break; }

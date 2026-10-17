@@ -3322,7 +3322,7 @@ index 000000000..724a884e2
 +mcannon_fire = 440
 +mcannon_decay = 441
 diff --git a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
-index a325cee80..f5b4ed9cc 100644
+index a325cee80..67b599dea 100644
 --- a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 +++ b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 @@ -24,6 +24,7 @@ import org.rsmod.api.player.output.UpdateRun
@@ -3349,7 +3349,7 @@ index a325cee80..f5b4ed9cc 100644
 +    }
 +
 +    /**
-+     * osrs-plugins-reverse: the Android client was left with its friend list in the loading
++     * osrs-plugins-reverse (unverified: root cause open): the Android client was left with its friend list in the loading
 +     * state (friend_count < 0) after the login-time UPDATE_FRIENDLIST; the list is sent again once
 +     * the map is built.
 +     */

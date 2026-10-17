@@ -26,7 +26,7 @@ this repo's `rsprot.patch`) all run there.
 Protocol unchanged. Details in `docs/openrune-port.md`, "Eleventh server dev".
 
 - **Deployed** at 08:55 UTC: everything up to 245ed50 (stage 3 committed right after the deploy;
-  same build). The tester has the hard casket rewards, a rune pouch (100 air) and a hard clue in
+  same build). 20d266c (social fixes) is built and boot-checked but not deployed. The tester has the hard casket rewards, a rune pouch (100 air) and a hard clue in
   the inventory; the plank sack holds 2 planks + 3 oak.
 - **Rune Pouch** (`content/skills/magic/rune-pouch`): interface 190 with Store/Withdraw
   quantities, drag, Empty, rune-on-pouch, on the `rune_pouch_type/quantity` varbits.
@@ -41,10 +41,37 @@ Protocol unchanged. Details in `docs/openrune-port.md`, "Eleventh server dev".
 - **Smaller fixes:** fairy ring search input closed with `meslayer_close(28)` on teleport (dialog
   abort never covers mode 28; not device-checked); `::setxp`/`::addxp` up to 200M; friend add
   answers with the new friend's UPDATE_FRIENDLIST entry (Central pushed one only for online friends).
-- **Open:** friends tab on mobile shows only a "00:00 UTC" clock (client dev's report). Login
-  already sends FRIENDLIST_LOADED / private filter / UPDATE_FRIENDLIST / UPDATE_IGNORELIST, and 429
-  goes to 601:125 via enum 1745; 429 itself has no clock, so the tab seen is probably not 429. Needs
-  a device look (which interface sits in the tab).
+- **Open: mobile friends list stuck "Loading friends list"** (root cause unknown). The client dev's
+  dump: the two-faces tab is `side_channels` 707 (clock 707:8, empty contents), and 429 is loaded
+  but friend_count < 0. Android dispatcher: FRIENDLIST_LOADED (69) sets friend-manager state 1,
+  UPDATE_FRIENDLIST (25) sets 2 even for an empty list (re/decomp FUN_004fbd30). The server sends
+  both (desktop order via `desktop_login.py` DEBUG=1: FRIENDLIST_LOADED 3rd, UPDATE_FRIENDLIST
+  ~120 packets later after IF_OPENTOP), so the Android UPDATE_FRIENDLIST apparently does not land.
+  **20d266c is committed but NOT deployed**: a mobile-only resend of the social snapshot after
+  `loadDelay()` + 2 ticks (tagged unverified, a stopgap) and `SideChannelsScript` (707 sub-tabs open
+  7/701/702/76 into `side_channels:contents`, tab order a guess). The orchestrator wants the root
+  cause: next deploy should add a one-off outgoing log of Android sends around login (opcode, size,
+  first bytes; e.g. in `AndroidDelegatingEncoder` or the game channel's outbound handler, gated
+  like `IncomingPacketTrace`) to see whether the first UPDATE_FRIENDLIST went out and its bytes
+  (empty-list encoding, size, ordering). Not coded yet. Then device-check: 429 shows "You may add
+  friends...", Add Friend for the headless `desktop_login.py --seconds 300` account shows it online
+  (world 255), and the 707 sub-tabs open their panels.
+- **Next plan (agreed with the orchestrator, plugin-backed first):**
+  1. **Hunter traps** for RuneLite's Hunter plugin (~1 day): it tracks trap locs only
+     (`HunterPlugin.onGameObjectSpawned`): placed = `loc.hunting_ojibway_trap` 9345 / `hunting_boxtrap_empty`
+     9380 on the tile the player stood on the previous tick; transition = `*_trapping_*`; full =
+     `*_full_*`; empty/failed = `hunting_ojibway_trap_broken` 9344 / `hunting_boxtrap_failed` 9385.
+     Spawns for `npc.hunting_bird_{jungle,desert,woodland,polar,coloured?}`, `hunting_chinchompa(_big,_black)`,
+     `hunting_ferret` exist in `.data/raw-cache/map/npcs`. Items: `obj.hunting_ojibway_bird_snare`,
+     `obj.hunting_box_trap`, `obj.chinchompa_captured`, `obj.chinchompa_big_captured`,
+     `obj.chinchompa_black`, `obj.hunting_ferret`, `obj.spit_raw_bird_meat`, feathers
+     `obj.hunting_{jungle,desert,woodland,polar,stripy_bird}_feather`. Plan: Lay (loc on the tile,
+     player steps off), catch roll per tick with a matching creature nearby (creature despawns),
+     trapping -> full / failing -> broken, Check (loot + XP: wiki per creature; "You've caught a
+     <creature>." is the OSRS pattern), Dismantle, timeout collapse. Not started.
+  2. **Boss kill counts** for KPH Tracker ("Your <boss> kill count is: N."): pick a boss we can
+     spawn and kill (Giant Mole, Obor, Bryophyta). ~0.5 day.
+  3. **Kitten Tracker**: kitten growth/hunger timers and messages. ~0.5-1 day.
 - **Upstream:** patches 29-34 (rune pouch, plank sack, friend add, hard core, puzzle boxes, foes);
   26 regenerated. `git am` of all 34 applies on the pin.
 - **Tools (scratch, easy to redo):** item dump (`id|name|gameval|certtemplate|placeholder|...|param623`

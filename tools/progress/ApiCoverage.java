@@ -10,8 +10,11 @@ import java.lang.reflect.Modifier;
 public class ApiCoverage {
     public static void main(String[] args) throws Exception {
         for (int i = 0; i + 1 < args.length; i += 2) {
-            Class<?> iface = Class.forName("net.runelite.api." + args[i]);
-            Class<?> impl = Class.forName("net.runelite.host." + args[i + 1]);
+            // Load without initializing: host classes' static initializers may call into Native,
+            // which has no library on the desktop JVM.
+            ClassLoader cl = ApiCoverage.class.getClassLoader();
+            Class<?> iface = Class.forName("net.runelite.api." + args[i], false, cl);
+            Class<?> impl = Class.forName("net.runelite.host." + args[i + 1], false, cl);
             int total = 0, done = 0;
             StringBuilder missing = new StringBuilder();
             for (Method m : iface.getMethods()) {

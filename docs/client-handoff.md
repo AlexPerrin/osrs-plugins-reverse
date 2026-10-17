@@ -990,7 +990,7 @@ session; its notes are in `docs/android-protocol.md`.
     4/5/6/7/8 -> +0xbc/+0xc0/+0xc4/+0xcc/+0xd0, 11 -> +0xd4, 12 -> +0xd8. Five untested hub rows added (Tile Packs,
     Custom Menu Swaps, Resource packs, C Engineer: Completed, Runecrafting Utilities; not pinned/built).
   - **Next (gen 26)**: the orchestrator's queue (gen 25's was Bank Tag Layouts, FC/clan readers, API coverage where plugins
-    hit stubs). Open items: Team's counts on screen; setItemQuantityMode's
+    hit stubs). Open items: Team's counts on screen (next slot); pin/build the five new hub rows; getWidgetConfig and setItemQuantityMode's
     drawn result; getSearchingTagTab still unverified. (A short-lived F2P goal set during gen 25 was withdrawn, 819f24e.)
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 

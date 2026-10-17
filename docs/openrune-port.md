@@ -1619,6 +1619,6 @@ test, 1 TODO), His Faithful Servants (351). The quest list counts 11 quests ("Co
   key; closet door (loc 131 at 3107,3367) unlocks with the key; rubber tube on the floor at 3111,3367.
   **Deviation:** OSRS sets varp 32 = 2 after the first Oddenstein conversation (Quest Helper's stage 2,
   "talk to Oddenstein again"); OpenRune stays at 1 until completion. Quest Helper still guides through stage 1's
-  steps, so this only changes its last step's wording. Small fix in ErnestTheChicken.kt if wanted.
+  steps, so this only changes its last step's wording. **Fixed** after the run: the first Oddenstein talk now sets 2 (upstream `54`; not checked in game yet).
 - The desktop session logged out between 17:25 and 17:31 with no input (desktop.sh shows the login screen),
   consistent with the client's AFK IDLE packet, which OpenRune honours (patch 18).

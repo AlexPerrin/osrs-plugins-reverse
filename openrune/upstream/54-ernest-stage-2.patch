@@ -1,0 +1,38 @@
+From 3068603e194e24e914af8f8d7992d6be360ce0e5 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 17:46:55 -0400
+Subject: [PATCH] Ernest the Chicken: varp haunted = 2 after Professor
+ Oddenstein's first talk
+
+OSRS moves the quest to stage 2 once Oddenstein has explained the machine (Quest Helper's
+stage 2, 'talk to Oddenstein again'); the server stayed at 1 until completion.
+---
+ .../org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
+index 8fba8cb4d..d3a99291f 100644
+--- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
+@@ -238,6 +238,9 @@ constructor(
+                 "which I'm going to need to get this thing started again.",
+         )
+         progress.foundErnest.set(player, true)
++        if (quest.getQuestStage(player) < STAGE_TALKED_TO_ODDENSTEIN) {
++            quest.advanceQuestStage(access, STAGE_TALKED_TO_ODDENSTEIN - quest.getQuestStage(player))
++        }
+     }
+ 
+     private suspend fun Dialogue.handIn(npc: Npc) {
+@@ -341,6 +344,8 @@ constructor(
+     }
+ 
+     private companion object {
++        /** Varp `haunted` after Professor Oddenstein's first talk, as in OSRS (Quest Helper's stage 2). */
++        private const val STAGE_TALKED_TO_ODDENSTEIN = 2
+         private const val RubberTube = "obj.rubber_tube"
+         private const val PressureGauge = "obj.pressure_gauge"
+         private const val OilCan = "obj.oil_can"
+-- 
+2.43.0
+

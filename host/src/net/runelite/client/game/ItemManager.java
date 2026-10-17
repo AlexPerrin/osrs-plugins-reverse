@@ -133,8 +133,8 @@ public class ItemManager {
      */
     public long getItemPrice(int id) { return getItemPriceWithSource(id, useWikiPrices()); }
 
-    /** As desktop: noted -> unnoted, worn -> tradeable, the price list, else the sum of the item's
-     *  ItemMapping parts. Store value only while the price list hasn't loaded. */
+    /** As desktop: noted -> unnoted, worn -> tradeable, then the sum of the item's ItemMapping parts
+     *  if it has any, else the price list. Store value only while the price list hasn't loaded. */
     public long getItemPriceWithSource(int id, boolean useWiki) {
         if (id == 995) return 1;          // ItemID.COINS_995
         if (id == 13204) return 1000;     // ItemID.PLATINUM_TOKEN
@@ -147,10 +147,13 @@ public class ItemManager {
         if (c != null && c.getNote() != -1) id = c.getLinkedNoteId();
         Integer worn = WORN_ITEMS.get(id);
         if (worn != null) id = worn;
-        net.runelite.http.api.item.ItemPrice ip = prices.get(id);
-        if (ip != null) return useWiki ? getWikiPrice(ip) : ip.getPrice();
+        java.util.Collection<net.runelite.client.game.ItemMapping> parts = net.runelite.client.game.ItemMapping.map(id);
+        if (parts == null) {  // as desktop: the item's own price only when it has no mapping
+            net.runelite.http.api.item.ItemPrice ip = prices.get(id);
+            return ip == null ? 0 : useWiki ? getWikiPrice(ip) : ip.getPrice();
+        }
         long price = 0;
-        for (net.runelite.client.game.ItemMapping m : net.runelite.client.game.ItemMapping.map(id))
+        for (net.runelite.client.game.ItemMapping m : parts)
             price += getItemPriceWithSource(m.getTradeableItem(), useWiki) * m.getQuantity();
         return price;
     }

@@ -95,7 +95,8 @@ public class AndroidWidget extends WidgetBag {
     /** Inverse of setItemQuantityMode's mapping (game 0 → NEVER, 3 → ALWAYS, 1 → STACKABLE). */
     @Override public int getItemQuantityMode() { int m = field(0x13c, 0); return m == 3 ? 1 : m == 1 ? 2 : 0; }
     // Drag dead zone / dead time (+0x320/+0x324, ints the drag block compares; static RE gen 28).
-    // unverified: on the device (Anti Drag, Quest Helper's bank tab)
+    // Dead time verified 2026-10-17 gen 29 with Anti Drag on 149:0's children: the game's own value
+    // is 6; at 100 a 1 s inventory drag did nothing, at 5 and at 30 it moved the item. Dead zone unverified.
     @Override public int getDragDeadZone() { return field(0x320, 0); }
     @Override public void setDragDeadZone(int v) { set(0x320, v); }
     @Override public int getDragDeadTime() { return field(0x324, 0); }

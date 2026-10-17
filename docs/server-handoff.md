@@ -21,6 +21,41 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-17, twelfth server dev, on OpenRune)
+
+Details in `docs/openrune-port.md`, "Twelfth server dev".
+
+- **Deployed** 11:13 UTC: everything up to 5ff197d (a114f17 trace/social commands, 4fc1f1d Hunter
+  traps, 5ff197d Giant Mole KC + kitten growth). 11ac6d7 (social resend off by default) is committed,
+  not deployed; the live container has the resend on (`::socialresend off|on` switches it at runtime).
+  The tester is LOGGED_IN at Lumbridge on the normal build, "desktop" is a friend again.
+- **Friends list:** the outgoing trace (`OUT #n`, now off unless `RSPROT_OUT_TRACE=n` or
+  `::traceout n`) and the client dev's friend probe (`setprop debug.osrsrl.friendprobe 1`) show the
+  login UPDATE_FRIENDLIST landing (state 1 -> 2) with one friend and with an empty list, with and
+  without the resend; "Loading friends list" did not reproduce. Resend kept as a diagnostic, off by
+  default from 11ac6d7. `::social [both|loaded|update]` sends the pieces by hand. 707's sub-tab order
+  (chat-channel / your clan / other clan / grouping) is device-checked.
+- **Open (low priority): FRIENDLIST_DEL** reaches the server and Central deletes, but the Android
+  list keeps the entry until relog (see the port doc for the lead).
+- **Hunter traps** (`HunterTrapScript`, dbtables 60011/60012, timer 470): bird snares and box traps
+  for the core Hunter plugin. Device-checked: lay, catch, Check with a spawned crimson swift
+  (`::item hunting_ojibway_bird_snare 3`, `::npc 500 hunting_bird_jungle`). Box traps (Hunter 27+,
+  `::npc 500 hunting_chinchompa` etc.) not tried on the device. The plugin jar is
+  `EXTRA="hunter" tools/plugin-test.sh`.
+- **Giant Mole kill count** (KPH Tracker): `::tele 1759 5189` (mole lair, its spawn) or
+  `::npc 500 mole_giant`; `::maxhit` speeds the kill; message "Your Giant Mole kill count is: N".
+  Not device-checked. Scurrius already had a KC.
+- **Kittens** (Kitten Tracker): `::item kittenobject` and Drop it (or ask Gertrude, 3151,3411, after
+  Gertrude's Cat); growth event every 90 s says "Meow!", growth paused in modals, "Your kitten got
+  lonely and ran off.". Not device-checked.
+- **Upstream:** 35 hunter traps, 36 Giant Mole KC, 37 kitten growth; all 37 `git am` on the pin.
+- **Device tips:** spaces in `adb input text` must be `%s`; a typed `::` line stays unsent unless the
+  keyboard is shown (tap 90,220 until `mInputShown=true`, then keyevent 66); every app restart costs
+  ~45 s of "account still logged in" (Try again at 958,668). Del Friend at 1577,1013, Add Friend
+  1400,1013, friends tab 1840,852, side_channels 1843,768 (sub-tabs at y 520: 1340/1440/1537/1637).
+- **Next candidates:** box traps on the device; KPH Tracker and Kitten Tracker checks (client dev's
+  slot); FRIENDLIST_DEL; then the eleventh dev's list (fairy ring favourites, music areas, elite clues).
+
 ## Latest state (2026-10-17, eleventh server dev, on OpenRune)
 
 Protocol unchanged. Details in `docs/openrune-port.md`, "Eleventh server dev".

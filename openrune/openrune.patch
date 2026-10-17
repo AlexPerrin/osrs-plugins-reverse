@@ -3340,7 +3340,7 @@ index 000000000..724a884e2
 +mcannon_fire = 440
 +mcannon_decay = 441
 diff --git a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
-index a325cee80..da118b091 100644
+index a325cee80..a977ca49b 100644
 --- a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 +++ b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 @@ -12,6 +12,8 @@ import net.rsprot.protocol.game.outgoing.misc.client.HideObjOps
@@ -3414,13 +3414,13 @@ index a325cee80..da118b091 100644
 +    }
 +
 +    /**
-+     * osrs-plugins-reverse (unverified: root cause open): the Android client was left with its friend list in the loading
-+     * state (friend_count < 0) after the login-time UPDATE_FRIENDLIST; the list is sent again once
-+     * the map is built.
++     * osrs-plugins-reverse (diagnostic, off by default): sends the social snapshot again once the
++     * map is built. Kept for the "Loading friends list" reports on Android, which did not reproduce.
 +     */
 +    private fun Player.resendSocialWhenLoaded() {
-+        // unverified: the login burst's UPDATE_FRIENDLIST goes out after FRIENDLIST_LOADED (traced),
-+        // but the Android client stays at friend_count -1 without this resend.
++        // Off by default (::socialresend on): the 2026-10-17 device probe showed the login
++        // UPDATE_FRIENDLIST landing (state 2) with and without friends; the earlier stuck state
++        // did not reproduce.
 +        if (!mobileClient || !socialResend) return
 +        protectedAccess.launch(this) {
 +            loadDelay()
@@ -3451,7 +3451,7 @@ index a325cee80..da118b091 100644
          }
  
      private companion object {
-+        @Volatile var socialResend: Boolean = true
++        @Volatile var socialResend: Boolean = false
          const val TUTORIAL_DEFAULT_SETTINGS = "clientscript.[clientscript,tutorial_default_settings]"
 +        const val SOCIAL_RESEND_DELAY = 2
      }

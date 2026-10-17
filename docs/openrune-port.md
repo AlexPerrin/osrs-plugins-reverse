@@ -950,3 +950,24 @@ was verified.
   lonely and ran off." (what the plugin matches) / "Your kitten got hungry and ran off." (guess).
   Kittens come from Gertrude after Gertrude's Cat. Not device-checked. Upstream
   `37-kitten-growth-and-wording`.
+- **Friends list, device run 2026-10-17 07:13-07:27 EDT** (deployed a114f17 + 4fc1f1d + 5ff197d at
+  11:13 UTC; the client dev's `setprop debug.osrsrl.friendprobe 1` logs the friend manager's state
+  changes): with "desktop" (offline) as a friend, the first UPDATE_FRIENDLIST (len 15) set state
+  1 -> 2; after deleting "desktop", the first UPDATE_FRIENDLIST was len 0 (empty) and still set
+  1 -> 2, also with `::socialresend off`, and 429 showed "You may add friends..." without the resend.
+  So the stuck "Loading friends list" does not reproduce on this build: neither the empty list nor
+  the packet order is the cause. Most likely a one-time state of the earlier build or session
+  (unverified). The resend is now **off by default** (`::socialresend on` turns it back on); the
+  running container still has it on until the next deploy.
+- **Follow-up (low priority): FRIENDLIST_DEL on Android.** The server receives `FriendListDel`
+  ("desktop", traced) and Central deletes it (gone after relog), but the mobile friends list keeps
+  showing the entry until relog. Whether the client removes the entry itself (desktop
+  `FriendSystem.removeFriend` does, then sends) or waits for something from the server is not known
+  for Android: the sender is in code Ghidra did not analyse (CS2 interpreter, ELF 0x4e82d0; the
+  packet constructor is `0x79cc90` with opcode 41). OpenRune's `FriendListDeleteHandler` sends
+  nothing back.
+- **Hunter traps device-checked** (core Hunter plugin via `EXTRA="hunter" tools/plugin-test.sh`):
+  `::item hunting_ojibway_bird_snare 3`, `::npc 500 hunting_bird_jungle`, Lay: "You begin setting up
+  the trap.", the snare appears on 3222,3218 and the player steps to 3221; the plugin draws its trap
+  circle; the swift is caught within a few ticks; Check gives "You've caught a crimson swift.",
+  bones, raw bird meat, 6 red feathers, the snare back and Hunter XP. Box traps not tried on the device.

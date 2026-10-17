@@ -466,6 +466,22 @@ jobjectArray n_enum_def(JNIEnv* env, jclass, jint id) {
 jboolean n_is_client_thread(JNIEnv*, jclass) { return client_thread::on_client_thread(); }
 
 void n_set_script_events(JNIEnv*, jclass, jboolean on) { script_hooks::set_enabled(on); }
+jboolean n_set_script_string(JNIEnv* env, jclass, jint index, jstring text) {
+    if (!client_thread::on_client_thread() || !text) return false;
+    std::string latin1;  // game strings are Latin-1 (as set_varc_string)
+    const jchar* c = env->GetStringChars(text, nullptr);
+    jsize n = env->GetStringLength(text);
+    for (jsize i = 0; i < n; i++) latin1.push_back(c[i] < 256 ? static_cast<char>(c[i]) : '?');
+    env->ReleaseStringChars(text, c);
+    return game::set_script_string(index, latin1);
+}
+void n_set_op_watches(JNIEnv* env, jclass, jintArray pairs) {
+    if (!pairs) { script_hooks::set_op_watches(nullptr, 0); return; }
+    jsize n = env->GetArrayLength(pairs);
+    std::vector<jint> v(static_cast<size_t>(n));
+    env->GetIntArrayRegion(pairs, 0, n, v.data());
+    script_hooks::set_op_watches(reinterpret_cast<const int32_t*>(v.data()), n / 2);
+}
 
 jobjectArray n_script_stacks(JNIEnv* env, jclass) {
     game::ScriptResult r;
@@ -1251,6 +1267,8 @@ const JNINativeMethod kNatives[] = {
     {"setScriptEvents", "(Z)V", reinterpret_cast<void*>(n_set_script_events)},
     {"scriptStacks", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_stacks)},
     {"setScriptIntStack", "([II)Z", reinterpret_cast<void*>(n_set_script_int_stack)},
+    {"setOpWatches", "([I)V", reinterpret_cast<void*>(n_set_op_watches)},
+    {"setScriptString", "(ILjava/lang/String;)Z", reinterpret_cast<void*>(n_set_script_string)},
     {"scriptEventArgs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_event_args)},
     {"scriptEventSource", "()[I", reinterpret_cast<void*>(n_script_event_source)},
     {"widgetListener", "(III)[Ljava/lang/Object;", reinterpret_cast<void*>(n_widget_listener)},

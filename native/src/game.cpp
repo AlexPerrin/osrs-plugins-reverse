@@ -1308,6 +1308,18 @@ bool set_script_int_stack(const int32_t* values, int size) {
     return true;
 }
 
+bool set_script_string(int index, const std::string& text) {
+    if (!g_build || !g_build->script_vm) return false;
+    uintptr_t vm = g_base + g_build->script_vm;
+    int m = read_at<int32_t>(vm + 0xac38);
+    if (m < 0 || m > 1000 || index < 0 || index >= m) return false;
+    uintptr_t v = vm + 0xff8 + static_cast<uintptr_t>(index) * 0x28;
+    if (read_at<uint32_t>(v + 0x20) != 2) return false;
+    GameString s(text);
+    reinterpret_cast<void* (*)(uintptr_t, const void*)>(g_base + 0x3f1498)(v, s.bytes);
+    return true;
+}
+
 // ScriptEvent +0x40: the source widget (Widget*), null for scripts not run from a widget hook.
 bool script_event_source(uintptr_t ev, int* component, int* index) {
     return ev && widget_ref(read_at<uintptr_t>(ev + 0x40), component, index);

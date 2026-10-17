@@ -212,6 +212,9 @@ bool run_script(const std::vector<ScriptArg>& args, ScriptResult& out, std::stri
 // copied whole (size entries); set_script_int_stack writes values back and sets the size.
 bool script_stacks(ScriptResult& out);
 bool set_script_int_stack(const int32_t* values, int size);
+// Replaces the string at object stack slot `index` (0 = bottom) through the game's string assign
+// 0x3f1498, as CC_SETTEXT stores text. False when the slot isn't a string. Game thread only.
+bool set_script_string(int index, const std::string& text);
 // A ScriptEvent's arguments (+0x08 argc, +0x10 0x28-byte variants); non-int/string args come
 // back as an empty string with is_string = false and i = -1.
 std::vector<ScriptArg> script_event_args(uintptr_t ev);

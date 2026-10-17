@@ -679,6 +679,7 @@ public final class Host {
     static void updateScriptEvents() {
         EventBus bus = eventBus;
         boolean on = bus != null && (bus.hasSubscribers(ScriptPreFired.class) || bus.hasSubscribers(ScriptPostFired.class));
+        ScriptCallbacks.update(bus);
         if (on == scriptEventsOn) return;
         scriptEventsOn = on;
         Native.setScriptEvents(on);
@@ -688,7 +689,8 @@ public final class Host {
     /**
      * From the script VM hooks, on the game thread, while the script runs. phase 0 = a proc is
      * entered (GOSUB; its arguments are on the stacks), 1 = a script returned (results on the
-     * stacks), 2 = a root script starts (its ScriptEvent's arguments are available).
+     * stacks), 2 = a root script starts (its ScriptEvent's arguments are available), 3/4 = before/
+     * after a watched instruction (id = opcode << 16 | script, ScriptCallbacks).
      */
     public static void onScript(int phase, int id) {
         EventBus bus = eventBus;
@@ -696,6 +698,10 @@ public final class Host {
         AndroidClient ac = (AndroidClient) client;
         ac.beginScriptEvent();
         try {
+            if (phase == 3 || phase == 4) {  // a watched instruction (ScriptCallbacks)
+                ScriptCallbacks.onOp(bus, ac, phase, id & 0xffff, id >>> 16);
+                return;
+            }
             if (id == QUEST_FILTER_PROC) questFilter(bus, ac, phase);
             if (phase == 1) {
                 bus.post(new ScriptPostFired(id));

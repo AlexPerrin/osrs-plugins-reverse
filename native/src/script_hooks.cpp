@@ -32,6 +32,8 @@ constexpr uintptr_t kReturnSwapRet = 0x4de0e0;   // bl kSwapLocals in case 0x15 
 constexpr uint32_t kRunScriptEventCode[4] = {0xd10343ff, 0xa9077bfd, 0xa9086ffc, 0xa90967fa};
 constexpr uint32_t kScriptLookupCode[4] = {0xd10243ff, 0xa9047bfd, 0xf9002bf9, 0xa9065ff8};
 constexpr uint32_t kSwapLocalsCode[4] = {0xd101c3ff, 0xa9017bfd, 0xf90013fb, 0xa90367fa};
+constexpr uintptr_t kOpDispatch = 0x4e06dc;  // opcodes >= 100: (vm, opcode, ...)
+constexpr uint32_t kOpDispatchCode[4] = {0xd10583ff, 0xa9107bfd, 0xa9116ffc, 0xa91267fa};
 
 using RunScriptEventFn = void (*)(uintptr_t vm, uintptr_t ev, int max_ops);
 RunScriptEventFn g_orig_run = nullptr;
@@ -47,6 +49,12 @@ int g_ids[kMaxDepth];
 int g_depth = 0;
 int g_root_base = 0;  // g_depth index of the innermost root script
 uintptr_t g_event = 0;
+
+// Watched (script, opcode) pairs; written by the game thread's JNI calls only.
+int32_t g_watch[kMaxOpWatches * 2];
+std::atomic<int> g_watch_count{0};
+using OpDispatchFn = __uint128_t (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
+OpDispatchFn g_orig_op = nullptr;
 
 std::atomic<uint64_t> g_roots{0}, g_gosubs{0}, g_returns{0}, g_delivered{0};
 
@@ -83,7 +91,32 @@ void hook_run_script_event(uintptr_t vm, uintptr_t ev, int max_ops) {
     g_event = outer_event;
 }
 
+// The wrapper keeps x0-x7 and the x0:x1 result; the handler takes (vm, opcode, ...) in x0-x3.
+__uint128_t hook_op_dispatch(uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t a5,
+                             uint64_t a6, uint64_t a7) {
+    int n = g_watch_count.load(std::memory_order_relaxed);
+    int match = -1;
+    if (n > 0 && g_depth > 0 && g_depth <= kMaxDepth && g_listener) {
+        int op = static_cast<int32_t>(a1), id = g_ids[g_depth - 1];
+        for (int i = 0; i < n; i++)
+            if (g_watch[2 * i] == id && g_watch[2 * i + 1] == op) { match = (op << 16) | (id & 0xffff); break; }
+        if (match >= 0 && !client_thread::on_client_thread()) match = -1;
+    }
+    if (match >= 0) g_listener(OpPre, match);
+    __uint128_t r = g_orig_op(a0, a1, a2, a3, a4, a5, a6, a7);
+    if (match >= 0) g_listener(OpPost, match);
+    return r;
+}
+
 }  // namespace
+
+void set_op_watches(const int32_t* pairs, int count) {
+    if (count < 0) count = 0;
+    if (count > kMaxOpWatches) count = kMaxOpWatches;
+    g_watch_count.store(0, std::memory_order_relaxed);
+    for (int i = 0; i < count * 2; i++) g_watch[i] = pairs[i];
+    g_watch_count.store(count, std::memory_order_relaxed);
+}
 
 bool install() {
     if (!game::available()) return false;
@@ -106,6 +139,10 @@ bool install() {
     osrsrl_script_swap_orig = inline_hook(g_base + kSwapLocals, kSwapLocalsCode,
                                           reinterpret_cast<void*>(osrsrl_script_swap_stub));
     if (!osrsrl_script_swap_orig) return false;
+    // Opcode wrapper: optional (opcode callbacks only); a failure leaves the rest working.
+    g_orig_op = reinterpret_cast<OpDispatchFn>(
+        inline_hook(g_base + kOpDispatch, kOpDispatchCode, reinterpret_cast<void*>(hook_op_dispatch)));
+    if (!g_orig_op) LOGI("script hooks: opcode dispatch hook not installed");
     g_orig_run = reinterpret_cast<RunScriptEventFn>(
         inline_hook(g_base + kRunScriptEvent, kRunScriptEventCode, reinterpret_cast<void*>(hook_run_script_event)));
     if (!g_orig_run) return false;

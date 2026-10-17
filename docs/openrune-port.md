@@ -1606,3 +1606,19 @@ test, 1 TODO), His Faithful Servants (351). The quest list counts 11 quests ("Co
   side before trusting it. On real OSRS the box would switch to the next step.
 - Small things seen: dialogue lines sometimes print several times in the devtools dialogue read (the driver,
   not the game); the desktop account died to the altar skeleton (10 HP), the skull was kept.
+- **Rune Mysteries: complete on the server** (17:33, desktop). Varp 63: 1 (Duke Horacio) -> 2 (Sedridor in the
+  Wizards' Tower basement: "Okay, here you are." takes the talisman) -> 3 ("Go ahead."; research package) -> 5
+  (Aubury: research notes; offers tea) -> 6 (Sedridor; the air talisman back; scroll: 1 QP, Rune Essence Mine
+  access). The scroll opens while Sedridor's last chatmenu ("I'd better get going." / "Can you teleport me...") is
+  still up (in OSRS the scroll follows the dialogue; cosmetic).
+- **Ernest the Chicken: complete on the server**, except that the oil can came from `::item oil_can` (the basement
+  lever puzzle has unit tests but was not walked on the desktop). Varp 32: 1 (Veronica) -> 1 after Professor
+  Oddenstein's first talk -> 3 on the hand-in ("You give a rubber tube, a pressure gauge, and a can of oil to the
+  professor.", the machine, Ernest: "a cash reward is always nice", scroll: 4 QP, 300 coins). Fountain: poison on
+  fish food, poisoned food on the fountain (piranhas die), Search -> pressure gauge; compost heap with a spade ->
+  key; closet door (loc 131 at 3107,3367) unlocks with the key; rubber tube on the floor at 3111,3367.
+  **Deviation:** OSRS sets varp 32 = 2 after the first Oddenstein conversation (Quest Helper's stage 2,
+  "talk to Oddenstein again"); OpenRune stays at 1 until completion. Quest Helper still guides through stage 1's
+  steps, so this only changes its last step's wording. Small fix in ErnestTheChicken.kt if wanted.
+- The desktop session logged out between 17:25 and 17:31 with no input (desktop.sh shows the login screen),
+  consistent with the client's AFK IDLE packet, which OpenRune honours (patch 18).

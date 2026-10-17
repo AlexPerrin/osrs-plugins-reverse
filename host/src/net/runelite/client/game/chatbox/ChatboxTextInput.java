@@ -29,8 +29,10 @@ public class ChatboxTextInput extends ChatboxInput implements net.runelite.clien
         this(chatboxPanelManager, null);
     }
 
-    /** RuneLite's constructor: subclasses (ChatboxItemSearch, used by Bank Tags) call it. */
-    protected ChatboxTextInput(ChatboxPanelManager chatboxPanelManager, net.runelite.client.callback.ClientThread clientThread) {
+    /** RuneLite's constructor: subclasses (ChatboxItemSearch, used by Bank Tags) call it, and
+     *  plugins inject Provider<ChatboxTextInput> (Inventory Setups' own panel manager). */
+    @javax.inject.Inject
+    public ChatboxTextInput(ChatboxPanelManager chatboxPanelManager, net.runelite.client.callback.ClientThread clientThread) {
         this.chatboxPanelManager = chatboxPanelManager;
         this.clientThread = clientThread;
     }

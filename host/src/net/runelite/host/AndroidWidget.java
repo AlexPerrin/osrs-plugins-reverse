@@ -107,6 +107,13 @@ public class AndroidWidget extends WidgetBag {
     // back as stored, as on desktop). Quest List reruns 399:2's onVarTransmit to redraw the list.
     @Override public Object[] getOnVarTransmitListener() { return Native.widgetListener(id, childIndex(), 0x590); }
     @Override public Object[] getOnInvTransmitListener() { return Native.widgetListener(id, childIndex(), 0x5d8); }
+    // Read from the game; an empty array (not null) when unreadable, since plugins stream it
+    // unchecked (Banked Experience, Bank Tags' PotionStorage on the potion store widget).
+    @Override public int[] getVarTransmitTrigger() { return triggers(0x5c0); }
+    private int[] triggers(int offset) {
+        int[] t = Native.widgetTriggers(id, childIndex(), offset);
+        return t != null ? t : new int[0];
+    }
     @Override public Object[] getOnLoadListener() { return Native.widgetListener(id, childIndex(), 0x350); }
     @Override public Object[] getOnKeyListener() { return Native.widgetListener(id, childIndex(), 0x758); }
     @Override public Widget setHasListener(boolean v) { return this; }

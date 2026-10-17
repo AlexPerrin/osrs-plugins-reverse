@@ -454,6 +454,9 @@ public class GenHeadless {
             if (c == javax.swing.text.AbstractDocument.class)
                 sb.append(in).append("/** Host: the document's text (JTextComponent.get/setText read and write it, as in Swing). */\n")
                   .append(in).append("public final java.lang.StringBuilder __content = new java.lang.StringBuilder();\n");
+            if (c == javax.swing.JPopupMenu.class)
+                sb.append(in).append("/** Host: the popup a listener last show()ed (the sidebar lists its menu items in a picker). */\n")
+                  .append(in).append("public static volatile javax.swing.JPopupMenu __shown;\n");
             if (c == javax.swing.JComboBox.class)
                 sb.append(in).append("/** Host: the items (the sidebar lists them in a picker). */\n")
                   .append(in).append("public final java.util.List __items = new java.util.ArrayList();\n");
@@ -515,7 +518,15 @@ public class GenHeadless {
             else if (javax.swing.AbstractButton.class.isAssignableFrom(c) && ps[i] == boolean.class && generatedHas(c, "setSelected", boolean.class)) b.append(" setSelected(").append(a).append(");");
             else if (c == javax.swing.ImageIcon.class && ps[i] == java.awt.Image.class && generatedHas(c, "setImage", java.awt.Image.class)) b.append(" setImage(").append(a).append(");");
             else if (javax.swing.JComboBox.class.isAssignableFrom(c) && ps[i] == Object[].class && generatedHas(c, "addItem", Object.class)) b.append(" if (").append(a).append(" != null) for (Object o : ").append(a).append(") addItem(o);");
+            // JSpinner(SpinnerModel) keeps the model and starts at its value (Banked Experience sets it through getModel()).
+            else if (ps[i] == javax.swing.SpinnerModel.class && generatedHas(c, "setModel", javax.swing.SpinnerModel.class)) {
+                b.append(" setModel(").append(a).append(");");
+                if (generatedHas(c, "setValue", Object.class)) b.append(" if (").append(a).append(" != null) setValue(").append(a).append(".getValue());");
+            }
         }
+        // SpinnerNumberModel(value, minimum, maximum, stepSize)
+        if (c == javax.swing.SpinnerNumberModel.class && ps.length == 4 && generatedHas(c, "setValue", Object.class))
+            b.append(" setValue(a0); setMinimum(a1); setMaximum(a2); setStepSize(a3);");
         return b.toString();
     }
 
@@ -584,6 +595,7 @@ public class GenHeadless {
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[0] == String.class) return "__cards.put(a0, a1);";
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[1] == Object.class) return "if (a1 instanceof String) __cards.put(a1, a0);";
         }
+        if (c == javax.swing.JPopupMenu.class && n.equals("show") && ps.length == 3) return "__shown = this;";
         if (c == javax.swing.JComboBox.class) {
             if (n.equals("addItem") && ps.length == 1) return "__items.add(a0); if (getSelectedItem() == null) setSelectedItem(a0);";
             if (n.equals("removeAllItems") && ps.length == 0) return "__items.clear();";

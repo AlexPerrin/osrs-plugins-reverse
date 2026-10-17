@@ -111,7 +111,9 @@ public class GeneralPath implements Shape, Cloneable {
             @Override public int currentSegment(float[] out) {
                 double[] d = new double[6];
                 int t = currentSegment(d);
-                for (int i = 0; i < 6; i++) out[i] = (float) d[i];
+                // Only the segment's coordinates: callers may pass a float[2] for line paths (Geometry.clipPath).
+                int n = t == SEG_CLOSE ? 0 : t == SEG_QUADTO ? 4 : t == SEG_CUBICTO ? 6 : 2;
+                for (int i = 0; i < n; i++) out[i] = (float) d[i];
                 return t;
             }
         };

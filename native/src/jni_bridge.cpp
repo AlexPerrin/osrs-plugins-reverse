@@ -528,6 +528,24 @@ jobjectArray n_widget_listener(JNIEnv* env, jclass, jint id, jint index, jint of
     return args.empty() ? nullptr : script_args_to_java(env, args);
 }
 
+// A widget's transmit trigger list (the varps/invs/stats its onVarTransmit/onInvTransmit/
+// onStatTransmit listener waits on): a std::vector<int32_t> {begin, end, cap} right after the
+// listener slot (docs/offsets.md "Widget listeners"). null when unset.
+// unverified: element type int32 (static RE says "vector"; checked only for a sane size here).
+jintArray n_widget_triggers(JNIEnv* env, jclass, jint id, jint index, jint offset) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    if (offset != 0x5c0 && offset != 0x608 && offset != 0x650) return nullptr;
+    uintptr_t w = widget_or_child(id, index);
+    if (!w) return nullptr;
+    auto begin = *reinterpret_cast<const int32_t* const*>(w + offset);
+    auto end = *reinterpret_cast<const int32_t* const*>(w + offset + 8);
+    if (!begin || end < begin || end - begin > 256) return nullptr;
+    jsize n = static_cast<jsize>(end - begin);
+    jintArray a = env->NewIntArray(n);
+    env->SetIntArrayRegion(a, 0, n, reinterpret_cast<const jint*>(begin));
+    return a;
+}
+
 jintArray n_script_event_source(JNIEnv* env, jclass) {
     if (!client_thread::on_client_thread()) return nullptr;
     int id, index;
@@ -1236,6 +1254,7 @@ const JNINativeMethod kNatives[] = {
     {"scriptEventArgs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_event_args)},
     {"scriptEventSource", "()[I", reinterpret_cast<void*>(n_script_event_source)},
     {"widgetListener", "(III)[Ljava/lang/Object;", reinterpret_cast<void*>(n_widget_listener)},
+    {"widgetTriggers", "(III)[I", reinterpret_cast<void*>(n_widget_triggers)},
     {"scriptStats", "()[J", reinterpret_cast<void*>(n_script_stats)},
 };
 

@@ -72,6 +72,8 @@ final class Native {
     static native long widgetPtr(int id, int index);
     /** A widget's CS2 listener {scriptId, args...} stored at `offset` (0x590 onVarTransmit, ...), or null. */
     static native Object[] widgetListener(int id, int index, int offset);
+    /** A widget's var/inv/stat transmit trigger ids (offset 0x5c0/0x608/0x650), or null. */
+    static native int[] widgetTriggers(int id, int index, int offset);
     static native boolean playSound(int id, int loops, int delay);
     static native int varcInt(int id);
     static native String varcString(int id);

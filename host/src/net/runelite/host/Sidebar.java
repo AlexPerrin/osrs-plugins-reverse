@@ -386,11 +386,48 @@ final class Sidebar {
             return;
         }
         long now = System.currentTimeMillis();
+        javax.swing.JPopupMenu.__shown = null;
         for (java.awt.event.MouseListener l : c.getMouseListeners()) {
             l.mousePressed(new java.awt.event.MouseEvent(c, 501, now, 0, 1, 1, 1, false, 1));
             l.mouseReleased(new java.awt.event.MouseEvent(c, 502, now, 0, 1, 1, 1, false, 1));
             l.mouseClicked(new java.awt.event.MouseEvent(c, 500, now, 0, 1, 1, 1, false, 1));
         }
+        // A listener that opened a JPopupMenu (Inventory Setups' "+"): offer its items in a picker.
+        javax.swing.JPopupMenu popup = javax.swing.JPopupMenu.__shown;
+        javax.swing.JPopupMenu.__shown = null;
+        if (popup != null) promptPopup(popup);
+    }
+
+    /** A popup menu's enabled JMenuItems in an Android list; the pick fires the item's ActionListeners on the game thread. */
+    private static void promptPopup(javax.swing.JPopupMenu popup) {
+        final java.util.List<javax.swing.JMenuItem> items = new java.util.ArrayList<>();
+        for (Component k : popup.getComponents())
+            if (k instanceof javax.swing.JMenuItem && k.isVisible()) items.add((javax.swing.JMenuItem) k);
+        if (items.isEmpty()) return;
+        final String[] labels = new String[items.size()];
+        for (int i = 0; i < labels.length; i++) labels[i] = clean(items.get(i).getText());
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                Activity a = currentActivity();
+                if (a == null) return;
+                new android.app.AlertDialog.Builder(a)
+                    .setItems(labels, (dlg, which) -> javax.swing.SwingUtilities.invokeLater(() -> {
+                        javax.swing.JMenuItem item = items.get(which);
+                        Log.i(TAG, "popup menu item '" + labels[which] + "'");
+                        for (java.awt.event.ActionListener l : item.getActionListeners()) {
+                            try {
+                                l.actionPerformed(new java.awt.event.ActionEvent());
+                            } catch (Throwable t) {
+                                Log.e(TAG, "popup ActionListener threw", t);
+                            }
+                        }
+                    }))
+                    .setNegativeButton("Cancel", null)
+                    .show();
+            } catch (Throwable t) {
+                Log.e(TAG, "popup prompt failed", t);
+            }
+        });
     }
 
     private static String build() {

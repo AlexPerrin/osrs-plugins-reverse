@@ -22,6 +22,7 @@ public class ChatboxTextMenuInput extends ChatboxInput implements net.runelite.c
     private final List<Entry> options = new ArrayList<>();
     private Runnable onClose;
 
+    @javax.inject.Inject
     protected ChatboxTextMenuInput(ChatboxPanelManager chatboxPanelManager) {
         this.chatboxPanelManager = chatboxPanelManager;
     }

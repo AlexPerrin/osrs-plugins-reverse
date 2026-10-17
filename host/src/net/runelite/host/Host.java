@@ -155,7 +155,9 @@ public final class Host {
                 bind(net.runelite.client.config.ChatColorConfig.class)
                         .toInstance(configManager.getConfig(net.runelite.client.config.ChatColorConfig.class));
                 bind(java.util.concurrent.ScheduledExecutorService.class)
-                        .toInstance(java.util.concurrent.Executors.newSingleThreadScheduledExecutor());
+                        // As on desktop, task exceptions are logged instead of vanishing in the Future.
+                        .toInstance(new net.runelite.client.util.ExecutorServiceExceptionLogger(
+                                java.util.concurrent.Executors.newSingleThreadScheduledExecutor()));
                 // HTTP for plugin services (NPCManager, HiscoreManager, ...): okhttp 3.14 (pure Java,
                 // API-compatible with the calls RuneLite's client makes).
                 bind(okhttp3.OkHttpClient.class).toInstance(new okhttp3.OkHttpClient());
@@ -347,8 +349,31 @@ public final class Host {
             profilePosted = true;
             bus.post(new net.runelite.client.events.RuneScapeProfileChanged(null, "default"));
         }
+        // Desktop posts WorldViewLoaded for the top-level view when a scene load finishes, before
+        // the LOADING -> LOGGED_IN change (Ground Markers/Object Indicators reload their points
+        // for the new regions, Wilderness Lines rebuilds its paths).
+        if (s == GameState.LOGGED_IN) postWorldViewLoaded(bus);
+        else if (s == GameState.LOGIN_SCREEN || s == GameState.HOPPING) loadedBase = Long.MIN_VALUE;
         e.setGameState(s != null ? s : GameState.UNKNOWN);
         bus.post(e);
+    }
+
+    /** Scene base (x << 32 | y) the last WorldViewLoaded was posted for. */
+    private static long loadedBase = Long.MIN_VALUE;
+
+    /**
+     * Posts WorldViewLoaded for the top-level view once per scene. The game rebuilds a scene
+     * (state 30 -> 25 -> 30) within one cycle on a teleport or region crossing, so the state poll
+     * doesn't see LOADING; a changed scene base marks a new scene instead.
+     */
+    private static void postWorldViewLoaded(EventBus bus) {
+        AndroidWorldView wv = worldView;
+        if (wv == null || client.getTopLevelWorldView() == null) return;
+        long base = ((long) wv.getBaseX() << 32) | (wv.getBaseY() & 0xffffffffL);
+        if (base == loadedBase || base == 0) return;  // 0,0 = mid-rebuild (seen on a teleport)
+        loadedBase = base;
+        Log.i(TAG, "WorldViewLoaded base " + wv.getBaseX() + "," + wv.getBaseY());
+        bus.post(new net.runelite.api.events.WorldViewLoaded(client.getTopLevelWorldView()));
     }
 
     private static void dispatch(EventBus bus, int type, int a, int b) {
@@ -360,6 +385,9 @@ public final class Host {
                 bus.post(clientTick);
                 postActorChanges(bus);
                 if (pendingLoggedIn && localPlayer() != null) postLoggedIn(bus);
+                if (!pendingLoggedIn && client.getGameState() == GameState.LOGGED_IN && localPlayer() != null) {
+                    postWorldViewLoaded(bus);
+                }
                 if (!pendingNpcs.isEmpty() && localPlayer() != null) {
                     java.util.List<AndroidNPC> held = new java.util.ArrayList<>(pendingNpcs.values());
                     pendingNpcs.clear();

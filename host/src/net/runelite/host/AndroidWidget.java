@@ -83,6 +83,17 @@ public class AndroidWidget extends WidgetBag {
     // then draws the item on a graphic widget; the host redraws items over custom sprites anyway.
     @Override public Widget setItemId(int v) { return set(0xb38, v); }
     @Override public Widget setItemQuantity(int v) { return set(0xb3c, v); }
+    // Scroll and model view fields (the ones getScroll*/getModelZoom/getRotation* read; widget_props).
+    // Written raw as desktop's setters do (no clamping); Bank Tags sets the bank's scroll height/position
+    // for its layouts. // unverified: on the device.
+    @Override public Widget setScrollX(int v) { return set(0x84, v); }
+    @Override public Widget setScrollY(int v) { return set(0x88, v); }
+    @Override public Widget setScrollWidth(int v) { return set(0x8c, v); }
+    @Override public Widget setScrollHeight(int v) { return set(0x90, v); }
+    @Override public Widget setModelZoom(int v) { return set(0x128, v); }
+    @Override public Widget setRotationX(int v) { return set(0x11c, v); }
+    @Override public Widget setRotationY(int v) { return set(0x120, v); }
+    @Override public Widget setRotationZ(int v) { return set(0x124, v); }
     // Click mask = the game widget's flags (+0x2b0; CC_SETFLAGS/IF_SETEVENTS bits, desktop layout:
     // ops at bits 1..10, drag 17, drag target 20). Spellbook's reorder mode sets 0x120000.
     @Override public int getClickMask() { return Native.widgetFlags(id, childIndex()); }

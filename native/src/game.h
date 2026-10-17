@@ -232,6 +232,7 @@ bool script_top_string_starts_with(const std::string& prefix);
 std::vector<ScriptArg> script_event_args(uintptr_t ev);
 bool script_event_source(uintptr_t ev, int* component, int* index);
 bool script_active_widget(bool dot, int* component, int* index);
+int text_width(int font_id, const std::string& text);
 bool widget_ref(uintptr_t w, int* component, int* index);
 
 // One tuple of a DB row's column, through the script VM's db_getfield (7502): values in column-type

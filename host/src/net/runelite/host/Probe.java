@@ -65,6 +65,11 @@ final class Probe {
                     Log.i(TAG, "db row " + r + " col " + col + " tuple " + tup + " -> " + java.util.Arrays.toString(c.getDBTableField(r, col, tup)));
                 return;
             }
+            if (a[0].equals("twidth")) {  // "twidth <font id> <text>": GameFont.getTextWidth (the game's PARAWIDTH measure)
+                int font = Integer.parseInt(a[1]);
+                Log.i(TAG, "twidth font " + font + " '" + a[2] + "' -> " + GameFont.of(font).getTextWidth(a[2]));
+                return;
+            }
             if (a[0].equals("config") && Host.configManager != null) {  // "config <group> <key>=<value>": setConfiguration (fires ConfigChanged)
                 int eq = a[2].indexOf('=');
                 if (eq > 0) {

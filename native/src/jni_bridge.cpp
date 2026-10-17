@@ -626,6 +626,13 @@ jintArray n_script_event_source(JNIEnv* env, jclass) {
     return a;
 }
 
+jint n_text_width(JNIEnv* env, jclass, jint font, jstring text) {
+    if (!client_thread::on_client_thread() || !text) return -1;
+    const char* c = env->GetStringUTFChars(text, nullptr);
+    std::string s(c ? c : "");
+    if (c) env->ReleaseStringUTFChars(text, c);
+    return game::text_width(font, s);
+}
 jintArray n_script_active_widget(JNIEnv* env, jclass, jboolean dot) {
     if (!client_thread::on_client_thread()) return nullptr;
     int id, index;
@@ -1341,6 +1348,7 @@ const JNINativeMethod kNatives[] = {
     {"scriptEventArgs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_event_args)},
     {"scriptEventSource", "()[I", reinterpret_cast<void*>(n_script_event_source)},
     {"scriptActiveWidget", "(Z)[I", reinterpret_cast<void*>(n_script_active_widget)},
+    {"textWidth", "(ILjava/lang/String;)I", reinterpret_cast<void*>(n_text_width)},
     {"widgetListener", "(III)[Ljava/lang/Object;", reinterpret_cast<void*>(n_widget_listener)},
     {"widgetTriggers", "(III)[I", reinterpret_cast<void*>(n_widget_triggers)},
     {"scriptStats", "()[J", reinterpret_cast<void*>(n_script_stats)},

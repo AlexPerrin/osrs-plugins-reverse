@@ -1346,6 +1346,19 @@ bool set_script_string(int index, const std::string& text) {
     return true;
 }
 
+// Text width in a game font, as CS2 PARAWIDTH (4109, case 0x100d of Ghidra 005ef2ec.c): font =
+// 0x43cce0(client, font id) (the font cache at Client +0x414fc8, loads on a miss), and the
+// per-line width 0x685370(font, string*, 1) that PARAWIDTH's 0x6871ec takes the max of over the
+// wrapped lines. -1 when the font isn't available. Game thread. Static RE (gen 22).
+int text_width(int font_id, const std::string& text) {
+    uintptr_t c = client();
+    if (!c || font_id < 0) return -1;
+    uintptr_t font = reinterpret_cast<uintptr_t (*)(uintptr_t, int)>(g_base + 0x43cce0)(c, font_id);
+    if (!font) return -1;
+    GameString s(text);
+    return reinterpret_cast<int (*)(uintptr_t, const void*, int)>(g_base + 0x685370)(font, s.bytes, 1);
+}
+
 // The VM's active components (RuneLite's scriptActiveWidget / scriptDotWidget): {ctrl, Widget*}
 // pairs at vm +0xded8 (cc_*) and +0xdee8 (.cc_*, the opcode's isLong flag), set by CC_CREATE /
 // CC_FIND and read by every CC_* handler in 0x4e06dc (case 0x65 null-checks +0 and bumps its

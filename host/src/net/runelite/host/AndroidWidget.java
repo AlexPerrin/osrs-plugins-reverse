@@ -132,6 +132,11 @@ public class AndroidWidget extends WidgetBag {
     @Override public int getYTextAlignment() { return prop(21, 0); }
     @Override public int getLineHeight() { return prop(22, 0); }
     @Override public int getFontId() { return prop(23, -1); }
+    /** The widget's game font: getTextWidth measures with the game's own font (PARAWIDTH's), off-thread on the game thread. */
+    @Override public net.runelite.api.FontTypeFace getFont() {
+        int id = getFontId();
+        return id < 0 ? null : GameFont.of(id);
+    }
     @Override public int getOriginalX() { return prop(24, 0); }
     @Override public int getOriginalY() { return prop(25, 0); }
     @Override public int getXPositionMode() { return prop(26, 0); }

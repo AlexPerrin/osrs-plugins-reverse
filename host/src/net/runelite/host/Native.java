@@ -121,6 +121,8 @@ final class Native {
     static native int[] scriptEventSource();
     /** {component id, CC_CREATE index or -1} of the VM's active component (dot = the .cc_ one), or null. Game thread. */
     static native int[] scriptActiveWidget(boolean dot);
+    /** Width of one line of text in game font `font` (CS2 PARAWIDTH's measure), -1 if unavailable. Game thread. */
+    static native int textWidth(int font, String text);
     /** CC_CREATE under static layer `id` at `index` (-1 = append); the index, or -1. Game thread. */
     static native int widgetCreateChild(int id, int index, int type);
     /** CC_DELETEALL on static component `id`. Game thread. */

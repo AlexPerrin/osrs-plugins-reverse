@@ -10951,12 +10951,16 @@ index 000000000..6eb9d5aea
 +}
 diff --git a/content/skills/hunter/pack/build.gradle.kts b/content/skills/hunter/pack/build.gradle.kts
 new file mode 100644
-index 000000000..92f804a7e
+index 000000000..10c8703c8
 --- /dev/null
 +++ b/content/skills/hunter/pack/build.gradle.kts
-@@ -0,0 +1,3 @@
+@@ -0,0 +1,7 @@
 +plugins {
 +    id("base-conventions")
++}
++
++dependencies {
++    implementation(projects.engine.map)
 +}
 diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHouseTypesTable.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHouseTypesTable.kt
 new file mode 100644
@@ -11021,12 +11025,214 @@ index 000000000..155016bf0
 +            }
 +        }
 +}
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HerbiboarTables.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HerbiboarTables.kt
+new file mode 100644
+index 000000000..f2e66f8eb
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HerbiboarTables.kt
+@@ -0,0 +1,196 @@
++package org.rsmod.content.skills.hunter.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++import dev.openrune.pack.columnCoord
++import org.rsmod.map.CoordGrid
++
++/**
++ * The herbiboar tracking network in Fossil Island's Mushroom Forest.
++ *
++ * Sources:
++ * - The map gives the 5 start locs, the 19 clue locs, the 9 tunnels and the footprint multilocs.
++ *   The footprints sit on 24 trail varbits (`hunting_trail_state9_*`, `_state10_*`,
++ *   `_state11_0..3`). Each varbit's value picks its footprint loc: 3 and 4 show the trail (one per
++ *   walking direction), 5 and 6 show it faded, 0-2 show nothing.
++ * - RuneLite's Herbiboar plugin (`HerbiboarSearchSpot`) lists the (trail, direction) pairs that
++ *   belong to each clue loc. The other end of each trail comes from its footprint tiles on the map.
++ *
++ * Reading of the plugin data (inferred, not confirmed): a pair listed under a clue loc is a leg
++ * that leaves that loc in that direction. Start legs are the directions the plugin does not list.
++ * A leg either reaches a [HerbiboarSpotsTable] group, where the next leg starts, or ends only at a
++ * tunnel ([END_TUNNEL], a `hunting_trail_ends_fossil` value). A leg into a group that has a
++ * tunnel can also be the last leg ([END_TUNNEL] set together with [TO_GROUP]).
++ */
++object HerbiboarLegsTable {
++    const val FROM_LOC = 0
++    const val TRAIL = 1
++    const val DIR = 2
++    const val TO_GROUP = 3
++    const val END_TUNNEL = 4
++
++    const val NO_GROUP = -1
++
++    private data class Leg(val from: String, val trail: String, val dir: Int, val to: Char?, val endTunnel: Int)
++
++    private val GROUP_TUNNELS = mapOf('C' to 5, 'D' to 4, 'F' to 9, 'J' to 6, 'K' to 2)
++
++    private fun leg(from: String, trail: String, dir: Int, to: Char) = Leg(from, trail, dir, to, GROUP_TUNNELS[to] ?: 0)
++
++    private fun last(from: String, trail: String, dir: Int, tunnel: Int) = Leg(from, trail, dir, null, tunnel)
++
++    private val LEGS =
++        listOf(
++            leg("a_mushroom", "9_5", 1, 'B'),
++            leg("a_mushroom", "9_6", 1, 'E'),
++            last("a_patch", "9_1", 2, 8),
++            leg("b_seaweed", "9_4", 2, 'C'),
++            leg("b_seaweed", "9_5", 2, 'A'),
++            last("b_seaweed", "10_1", 1, 5),
++            leg("b_seaweed", "10_2", 1, 'D'),
++            last("c_mushroom", "9_0", 2, 8),
++            leg("c_patch", "9_3", 1, 'D'),
++            leg("c_patch", "9_4", 1, 'B'),
++            leg("d_patch", "9_9", 1, 'H'),
++            leg("d_patch", "10_0", 1, 'G'),
++            leg("d_seaweed", "9_3", 2, 'C'),
++            leg("d_seaweed", "10_2", 2, 'B'),
++            leg("e_mushroom", "10_3", 1, 'F'),
++            leg("e_mushroom", "10_4", 1, 'I'),
++            leg("e_patch", "9_6", 2, 'A'),
++            leg("f_mushroom", "9_7", 1, 'I'),
++            leg("f_mushroom", "9_8", 1, 'G'),
++            leg("f_mushroom", "10_3", 2, 'E'),
++            last("f_patch", "9_2", 2, 8),
++            leg("g_mushroom", "10_0", 2, 'D'),
++            last("g_mushroom", "10_7", 1, 3),
++            leg("g_patch", "9_8", 2, 'F'),
++            leg("h_seaweed_east", "10_8", 1, 'J'),
++            last("h_seaweed_east", "10_9", 1, 7),
++            leg("h_seaweed_west", "9_9", 2, 'D'),
++            leg("h_seaweed_west", "11_0", 1, 'G'),
++            leg("i_mushroom", "10_5", 1, 'K'),
++            last("i_mushroom", "10_6", 1, 1),
++            leg("i_patch", "9_7", 2, 'F'),
++            leg("i_patch", "10_4", 2, 'E'),
++            leg("j_patch", "10_8", 2, 'H'),
++            leg("j_patch", "11_3", 1, 'D'),
++            leg("k_patch", "10_5", 2, 'I'),
++            last("k_patch", "11_1", 1, 1),
++            leg("k_patch", "11_2", 1, 'J'),
++            leg("start_middle", "9_0", 1, 'C'),
++            leg("start_middle", "9_1", 1, 'A'),
++            leg("start_middle", "9_2", 1, 'F'),
++            leg("start_ghost_mushroom", "11_1", 2, 'K'),
++            leg("start_ghost_mushroom", "10_6", 2, 'I'),
++            leg("start_camp_entrance", "10_5", 2, 'I'),
++            leg("start_camp_entrance", "11_2", 1, 'J'),
++            leg("start_leprechaun", "10_7", 2, 'G'),
++            leg("start_driftwood", "10_9", 2, 'H'),
++        )
++
++    private val FROM_LOCS =
++        HerbiboarSpotsTable.SPOTS.associate { it.key to it.loc } +
++            mapOf(
++                "start_middle" to "loc.hunting_trail_spawn_fossil1",
++                "start_ghost_mushroom" to "loc.hunting_trail_spawn_fossil2",
++                "start_camp_entrance" to "loc.hunting_trail_spawn_fossil3",
++                "start_leprechaun" to "loc.hunting_trail_spawn_fossil4",
++                "start_driftwood" to "loc.hunting_trail_spawn_fossil5",
++            )
++
++    fun herbiboarLegs() =
++        dbTable("dbtable.herbiboar_legs", serverOnly = true) {
++            column("from_loc", FROM_LOC, VarType.LOC)
++            column("trail", TRAIL, VarType.INT)
++            column("dir", DIR, VarType.INT)
++            column("to_group", TO_GROUP, VarType.INT)
++            column("end_tunnel", END_TUNNEL, VarType.INT)
++
++            LEGS.forEachIndexed { index, leg ->
++                row("dbrow.herbiboar_leg_$index") {
++                    columnRSCM(FROM_LOC, checkNotNull(FROM_LOCS[leg.from]) { leg.from })
++                    columnRSCM(TRAIL, "varbit.hunting_trail_state${leg.trail}")
++                    column(DIR, leg.dir)
++                    column(TO_GROUP, leg.to?.let { it - 'A' } ?: NO_GROUP)
++                    column(END_TUNNEL, leg.endTunnel)
++                }
++            }
++        }
++}
++
++/** The 19 clue locs and their group (A-K as 0-10, the plugin's HerbiboarSearchSpot names). */
++object HerbiboarSpotsTable {
++    const val LOC = 0
++    const val GROUP = 1
++
++    data class Spot(val key: String, val loc: String, val group: Char)
++
++    val SPOTS =
++        listOf(
++            Spot("a_mushroom", "loc.hunting_trail_clue9_1", 'A'),
++            Spot("a_patch", "loc.hunting_trail_clue10_5", 'A'),
++            Spot("b_seaweed", "loc.hunting_trail_clue9_4", 'B'),
++            Spot("c_mushroom", "loc.hunting_trail_clue10_4", 'C'),
++            Spot("c_patch", "loc.hunting_trail_clue9_0", 'C'),
++            Spot("d_patch", "loc.hunting_trail_clue9_3", 'D'),
++            Spot("d_seaweed", "loc.hunting_trail_clue11_0", 'D'),
++            Spot("e_mushroom", "loc.hunting_trail_clue9_6", 'E'),
++            Spot("e_patch", "loc.hunting_trail_clue10_8", 'E'),
++            Spot("f_mushroom", "loc.hunting_trail_clue9_2", 'F'),
++            Spot("f_patch", "loc.hunting_trail_clue10_1", 'F'),
++            Spot("g_mushroom", "loc.hunting_trail_clue9_8", 'G'),
++            Spot("g_patch", "loc.hunting_trail_clue10_0", 'G'),
++            Spot("h_seaweed_east", "loc.hunting_trail_clue9_9", 'H'),
++            Spot("h_seaweed_west", "loc.hunting_trail_clue10_9", 'H'),
++            Spot("i_mushroom", "loc.hunting_trail_clue9_7", 'I'),
++            Spot("i_patch", "loc.hunting_trail_clue10_6", 'I'),
++            Spot("j_patch", "loc.hunting_trail_clue10_3", 'J'),
++            Spot("k_patch", "loc.hunting_trail_clue10_2", 'K'),
++        )
++
++    fun herbiboarSpots() =
++        dbTable("dbtable.herbiboar_spots", serverOnly = true) {
++            column("loc", LOC, VarType.LOC)
++            column("group", GROUP, VarType.INT)
++
++            for (spot in SPOTS) {
++                row("dbrow.herbiboar_spot_${spot.key}") {
++                    columnRSCM(LOC, spot.loc)
++                    column(GROUP, spot.group - 'A')
++                }
++            }
++        }
++}
++
++/** `hunting_trail_ends_fossil` values 1-9 (the plugin's END_LOCATIONS order) and their tiles. */
++object HerbiboarTunnelsTable {
++    const val INDEX = 0
++    const val COORDS = 1
++
++    private val TUNNELS =
++        listOf(
++            CoordGrid(3693, 3798, 0),
++            CoordGrid(3702, 3808, 0),
++            CoordGrid(3703, 3826, 0),
++            CoordGrid(3710, 3881, 0),
++            CoordGrid(3700, 3877, 0),
++            CoordGrid(3715, 3840, 0),
++            CoordGrid(3751, 3849, 0),
++            CoordGrid(3685, 3869, 0),
++            CoordGrid(3681, 3863, 0),
++        )
++
++    fun herbiboarTunnels() =
++        dbTable("dbtable.herbiboar_tunnels", serverOnly = true) {
++            column("index", INDEX, VarType.INT)
++            column("coords", COORDS, VarType.COORDGRID)
++
++            TUNNELS.forEachIndexed { i, coords ->
++                row("dbrow.herbiboar_tunnel_${i + 1}") {
++                    column(INDEX, i + 1)
++                    columnCoord(COORDS, coords)
++                }
++            }
++        }
++}
 diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
 new file mode 100644
-index 000000000..c5b78f791
+index 000000000..e6e42b676
 --- /dev/null
 +++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,17 @@
 +package org.rsmod.content.skills.hunter.pack
 +
 +import dev.openrune.definition.dbtables.DBTable
@@ -11039,6 +11245,9 @@ index 000000000..c5b78f791
 +            BirdHouseTypesTable.birdHouseTypes(),
 +            HunterTrapsTable.hunterTraps(),
 +            HunterTrapCreaturesTable.hunterTrapCreatures(),
++            HerbiboarLegsTable.herbiboarLegs(),
++            HerbiboarSpotsTable.herbiboarSpots(),
++            HerbiboarTunnelsTable.herbiboarTunnels(),
 +        )
 +}
 diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapTables.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapTables.kt
@@ -13309,15 +13518,18 @@ index 000000000..8227019c6
 +}
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..8b47beb7e
+index 000000000..5fbee684b
 --- /dev/null
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,118 @@
 +[gamevals.dbtable]
 +impling_types = 60000
 +birdhouse_types = 60001
 +hunter_traps = 60011
 +hunter_trap_creatures = 60012
++herbiboar_legs = 60013
++herbiboar_spots = 60014
++herbiboar_tunnels = 60015
 +
 +[gamevals.dbrow]
 +impling_type_baby = 60124
@@ -13351,6 +13563,80 @@ index 000000000..8b47beb7e
 +hunter_trap_creature_chinchompa = 60358
 +hunter_trap_creature_chinchompa_big = 60359
 +hunter_trap_creature_chinchompa_black = 60360
++herbiboar_leg_0 = 60370
++herbiboar_leg_1 = 60371
++herbiboar_leg_2 = 60372
++herbiboar_leg_3 = 60373
++herbiboar_leg_4 = 60374
++herbiboar_leg_5 = 60375
++herbiboar_leg_6 = 60376
++herbiboar_leg_7 = 60377
++herbiboar_leg_8 = 60378
++herbiboar_leg_9 = 60379
++herbiboar_leg_10 = 60380
++herbiboar_leg_11 = 60381
++herbiboar_leg_12 = 60382
++herbiboar_leg_13 = 60383
++herbiboar_leg_14 = 60384
++herbiboar_leg_15 = 60385
++herbiboar_leg_16 = 60386
++herbiboar_leg_17 = 60387
++herbiboar_leg_18 = 60388
++herbiboar_leg_19 = 60389
++herbiboar_leg_20 = 60390
++herbiboar_leg_21 = 60391
++herbiboar_leg_22 = 60392
++herbiboar_leg_23 = 60393
++herbiboar_leg_24 = 60394
++herbiboar_leg_25 = 60395
++herbiboar_leg_26 = 60396
++herbiboar_leg_27 = 60397
++herbiboar_leg_28 = 60398
++herbiboar_leg_29 = 60399
++herbiboar_leg_30 = 60400
++herbiboar_leg_31 = 60401
++herbiboar_leg_32 = 60402
++herbiboar_leg_33 = 60403
++herbiboar_leg_34 = 60404
++herbiboar_leg_35 = 60405
++herbiboar_leg_36 = 60406
++herbiboar_leg_37 = 60407
++herbiboar_leg_38 = 60408
++herbiboar_leg_39 = 60409
++herbiboar_leg_40 = 60410
++herbiboar_leg_41 = 60411
++herbiboar_leg_42 = 60412
++herbiboar_leg_43 = 60413
++herbiboar_leg_44 = 60414
++herbiboar_leg_45 = 60415
++herbiboar_spot_a_mushroom = 60420
++herbiboar_spot_a_patch = 60421
++herbiboar_spot_b_seaweed = 60422
++herbiboar_spot_c_mushroom = 60423
++herbiboar_spot_c_patch = 60424
++herbiboar_spot_d_patch = 60425
++herbiboar_spot_d_seaweed = 60426
++herbiboar_spot_e_mushroom = 60427
++herbiboar_spot_e_patch = 60428
++herbiboar_spot_f_mushroom = 60429
++herbiboar_spot_f_patch = 60430
++herbiboar_spot_g_mushroom = 60431
++herbiboar_spot_g_patch = 60432
++herbiboar_spot_h_seaweed_east = 60433
++herbiboar_spot_h_seaweed_west = 60434
++herbiboar_spot_i_mushroom = 60435
++herbiboar_spot_i_patch = 60436
++herbiboar_spot_j_patch = 60437
++herbiboar_spot_k_patch = 60438
++herbiboar_tunnel_1 = 60440
++herbiboar_tunnel_2 = 60441
++herbiboar_tunnel_3 = 60442
++herbiboar_tunnel_4 = 60443
++herbiboar_tunnel_5 = 60444
++herbiboar_tunnel_6 = 60445
++herbiboar_tunnel_7 = 60446
++herbiboar_tunnel_8 = 60447
++herbiboar_tunnel_9 = 60448
 +
 +[gamevals.timer]
 +hunter_traps = 470

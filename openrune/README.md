@@ -104,6 +104,13 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   area for that farm. Crop data in the server-only dbtable `farming_crops`; state in server varps
   63780-63827. `::growpatches [cycles]` grows your crops (fully by default). No disease, compost,
   watering, payments, weed regrowth or tool leprechaun.
+- **Beginner clue scrolls** (`content/other/treasure-trails`, `BeginnerClueScript`): Read opens
+  the clue text interface (203) or a beginner map (346-356) with the texts RuneLite's Clue Scroll
+  plugin matches; 21 steps (anagram and cryptic talks, six emotes with Uri, five map digs) in the
+  server-only dbtable `trail_beginner_steps`; the reward casket rolls the OSRS Wiki table and sends
+  the completion message and `trail_rewardinv` the Loot Tracker records. `::clue [step] [left]`.
+  Talk steps on NPCs that already have dialogue go through the new `NpcOpOverrides` API. No
+  hot-cold, Charlie the Tramp, STASH units or scroll cases.
 - **Random events** (`content/events/random-events`): the Genie, every 1-2 hours of play or with
   `::randomevent`. He appears beside the player, faces them, calls them by name every 12 s,
   follows, and leaves after a minute; Talk-to gives the lamp (Rub: xpreward, 10 x level), Dismiss

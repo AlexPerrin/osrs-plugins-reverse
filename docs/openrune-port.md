@@ -486,3 +486,54 @@ was verified.
   each farm's own patch ids, and a Rake on each farm's first allotment set 4771 to 3.
   Prifddinas and the Farming Guild are left out (their patches use other varbits: herb/compost
   swapped, 7904-7912). Upstream patch 19 regenerated.
+- **Time Tracking verified with farming** (client dev, 2026-10-16 ~23:00, after its sidebar fix
+  7d1ff62): Catherby (South) went from "Done" to "Done at 23:05" after `::growpatches`. The
+  farming slice works end to end with the plugin.
+
+## Eighth server dev (2026-10-16 night): beginner clue scrolls
+
+- **Module** `content/other/treasure-trails` (+ `treasure-trails/pack`): `BeginnerClueScript`
+  (`@Singleton`, also the `SpadeDigHook` through `TreasureTrailsModule`). Server-only dbtables
+  `trail_beginner_steps` (60003, rows 60200-60220) and `trail_beginner_casket` (60004, rows
+  60240-60313); server varps 63840-63842 (`trail_beginner_step` = the step's dbrow id,
+  `_steps_left`, `_completed`).
+- **What the plugin reads** (`re/rlsrc/.../cluescrolls`): a "Read" click on an item named "Clue
+  scroll..." (23182 resets the plugin's clue, then it waits for the widget); `WidgetLoaded` 203 ->
+  text of 203:2 (13303810), sanitized (`<br>` -> space) and lowercased, matched exactly against
+  AnagramClue ("The anagram reveals who to speak to next: AN EARL"), CrypticClue, EmoteClue
+  texts; `WidgetLoaded` 346-356 -> BeginnerMapClue (only 346, 347, 348, 351, 356 exist); the
+  objectbox item 193:1 (12648449) showing 23182 resets the clue (the "You've found a new clue!"
+  objbox). DIALOG chat is only parsed for Charlie the Tramp and Falo, so talk steps need no chat.
+  Loot Tracker: game message `You have completed N beginner Treasure Trails?.` (tags removed),
+  then the next change of inv 141 (`trail_rewardinv`) is the loot; 141 is cleared when the reward
+  interface (73) closes so the next snapshot starts empty.
+- **Steps (21):** anagrams Ranael, Apothecary, Doric, Brian, Veronica, Gertrude, Hairdresser;
+  cryptics Hans, Cook, Shantay; emotes Aris (raspberry, gold ring + necklace), Brugsen (bow),
+  Iffie (cheer, chef's hat + red cape), Bob's axes (clap, bronze axe + leather boots), Al Kharid
+  mine (panic), Flynn (spin); maps 346 Champions' Guild, 347 Varrock east mine, 348 south of
+  Draynor bank, 351 standing stones, 356 Wizards' Tower. Texts are the plugin's strings (e.g.
+  "chef hat", not the wiki's "chef's hat"). Left out: Archmage Sedridor, Fortunato, Hunding (no
+  spawns in OpenRune's map), Charlie the Tramp (item task), Reldo's hot-cold.
+- **Flow:** the trail length (1/2/3 steps at 10/45/45%) and first step are rolled at the first
+  Read. Talk: "Well done." then objbox "You've found a new clue!" / "You've obtained a casket!"
+  (Transcript:Ranael/Hans). Emote within the row's radius -> Uri (`trail_beginner_uri`, 8638)
+  appears beside the player for 100 ticks; Talk-to checks the worn items ("I do not believe we
+  have any business, Comrade." otherwise), says a Transcript:Uri line, the player "What?", then
+  the objbox. Map: dig within 1 tile of the plugin's tile. Casket: 1-3 rolls of a single flattened
+  table out of 44,280 (generic 11/492, black 11/8,856, unique 1/360, noted cabbage 1/24), needs 3
+  free slots, items go to the inventory, the reward interface shows inv 141. Scroll box (beginner)
+  Open gives a clue unless one is held anywhere.
+- **NPCs that already talk** (Cook, Hans, Doric, Veronica, Apothecary, Ranael's shop): new API
+  `NpcOpOverrides` (api/player) + event `NpcOverrideEvents.Op`; `NpcInteractions.opTrigger`
+  checks it first and only for players a registered claim accepts (here: holds the clue and the
+  current step is a talk to that npc type), so everyone else keeps the normal dialogue.
+- **Test command:** `::clue [step] [steps_left]`, e.g. `::clue map_draynor_bank 1`,
+  `::clue anagram_ranael 3`; an unknown step name lists them all.
+- **Build note:** after adding the module, `openrune.sh build` reused a configuration-cache entry
+  that did not see it and regenerated `api/generated` without the new tables (compile errors).
+  Fix: `openrune.sh gradle --no-configuration-cache :or-cache:buildCache`, then the rest of the
+  build steps (add_varcs, fix_reftable, `generateRsa :server:app:installDist`, check_cache).
+- **Tests:** `:content:other:treasure-trails:integration` (6: casket table maths, step data, a 3-step
+  trail ending in exactly one casket, place/npc checks, casket space and payout, scroll box).
+  Upstream: `openrune/upstream/21-beginner-clue-scrolls.patch`.
+- **Device:** pending (203 and map layout on mobile, plugin overlay, Loot Tracker entry).

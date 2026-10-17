@@ -981,12 +981,14 @@ public class AndroidClient extends ClientStub {
         Native.closeSubInterface((int) node.getHash(), node.getId(), unload);
     }
     /**
-     * As desktop: the scene's minimap image of a plane (512x512, 4 px per tile, the 104x104 scene
-     * at 48,48), drawn by the game's own minimap renderer (`Native.drawMinimap`). Client thread.
+     * As desktop: the scene's minimap image of a plane (736x736 = desktop's 184-tile extended scene
+     * at 4 px per tile; the mobile 104-tile scene is the middle 416 px, as Instance Map crops it with
+     * getExpandedMapLoading() 0), drawn by the game's own minimap renderer (`Native.drawMinimap`).
+     * Client thread.
      */
     @Override public net.runelite.api.SpritePixels drawInstanceMap(int plane) {
         int[] px = Native.drawMinimap(plane);
-        return px == null ? null : new HostSpritePixels(px, 512, 512);
+        return px == null ? null : new HostSpritePixels(px, 736, 736);
     }
     /** Only LOADING is honoured (plugins use it to rebuild the scene), via the game's own reload. */
     @Override public void setGameState(GameState state) {

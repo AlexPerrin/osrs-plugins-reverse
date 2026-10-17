@@ -1173,14 +1173,16 @@ bool draw_minimap(int plane, std::vector<int32_t>& out) {
     using Render = void (*)(uintptr_t, int, uintptr_t);
     auto render = reinterpret_cast<Render>(g_base + 0x589180);
     render(mm, plane, scene);
-    out.assign(512 * 512, 0);
-    // Desktop layout: the 104x104 tile area starts at (48, 48), 416 px wide. Nearest-neighbour
-    // when the game's zoom isn't 4 (identity at 4).
-    for (int y = 0; y < 512; y++) {
-        int sy = y < 48 || y >= 464 ? -1 : 48 + (y - 48) * zoom / 4;
-        for (int x = 0; x < 512; x++) {
-            int sx = x < 48 || x >= 464 ? -1 : 48 + (x - 48) * zoom / 4;
-            if (sx >= 0 && sy >= 0 && sx < size && sy < size) out[y * 512 + x] = px[sy * size + sx] & 0xffffff;
+    // Desktop layout: the extended scene (184 tiles, 4 px each = 736 px); the mobile scene's 104
+    // tiles are its middle (5 chunks in: 160 px), which is what Instance Map crops with
+    // getExpandedMapLoading() = 0. The game's image has its 104 tiles at 48 px, zoom px each:
+    // nearest-neighbour when zoom isn't 4.
+    out.assign(kInstanceMapSize * kInstanceMapSize, 0);
+    for (int y = 0; y < 416; y++) {
+        int sy = 48 + y * zoom / 4;
+        for (int x = 0; x < 416; x++) {
+            int sx = 48 + x * zoom / 4;
+            if (sx < size && sy < size) out[(160 + y) * kInstanceMapSize + 160 + x] = px[sy * size + sx] & 0xffffff;
         }
     }
     // Put the game's image back (0x589180 doesn't touch +0xc; at -1 the cycle redraws anyway).

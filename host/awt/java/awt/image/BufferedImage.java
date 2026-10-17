@@ -17,6 +17,7 @@ public class BufferedImage extends Image implements RenderedImage {
         this.height = height;
         this.type = type;
         this.pixels = new int[width * height];
+        if (type == TYPE_INT_RGB) java.util.Arrays.fill(pixels, 0xff000000);  // desktop: no alpha, starts black
     }
 
     /** Over a raster from getRaster/copyData (shares its pixels, as on desktop); other rasters give 1x1. */
@@ -45,7 +46,8 @@ public class BufferedImage extends Image implements RenderedImage {
     @Override public int getWidth(ImageObserver observer) { return width; }
     @Override public int getHeight(ImageObserver observer) { return height; }
     public int getRGB(int x, int y) { return type == TYPE_INT_RGB ? pixels[y * width + x] | 0xff000000 : pixels[y * width + x]; }
-    public void setRGB(int x, int y, int argb) { pixels[y * width + x] = argb; }
+    /** TYPE_INT_RGB has no alpha on desktop: what is stored reads back (and draws) opaque. */
+    public void setRGB(int x, int y, int argb) { pixels[y * width + x] = type == TYPE_INT_RGB ? argb | 0xff000000 : argb; }
     public int[] getRGB(int x, int y, int w, int h, int[] out, int off, int scan) {
         if (out == null) out = new int[off + h * scan];
         for (int j = 0; j < h; j++) for (int i = 0; i < w; i++) out[off + j * scan + i] = getRGB(x + i, y + j);
@@ -53,6 +55,8 @@ public class BufferedImage extends Image implements RenderedImage {
     }
     public void setRGB(int x, int y, int w, int h, int[] in, int off, int scan) {
         for (int j = 0; j < h; j++) System.arraycopy(in, off + j * scan, pixels, (y + j) * width + x, w);
+        if (type == TYPE_INT_RGB)
+            for (int j = 0; j < h; j++) for (int i = 0; i < w; i++) pixels[(y + j) * width + x + i] |= 0xff000000;
     }
     public BufferedImage getSubimage(int x, int y, int w, int h) {
         BufferedImage out = new BufferedImage(w, h, type);

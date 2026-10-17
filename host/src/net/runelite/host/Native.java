@@ -96,7 +96,7 @@ final class Native {
     static native boolean widgetClearListener(int id, int index, int offset);
     /** IF_CLOSESUB for `group` open in `component` (`0x462384`); false if not open. Client thread. */
     static native boolean closeSubInterface(int component, int group, boolean unload);
-    /** The game's minimap image of `plane` as desktop's drawInstanceMap layout (512x512 RGB), or null. Client thread. */
+    /** The game's minimap image of `plane` as desktop's drawInstanceMap layout (736x736 RGB), or null. Client thread. */
     static native int[] drawMinimap(int plane);
     /** A widget's var/inv/stat transmit trigger ids (offset 0x5c0/0x608/0x650), or null. */
     static native int[] widgetTriggers(int id, int index, int offset);

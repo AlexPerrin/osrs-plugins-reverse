@@ -271,6 +271,9 @@ struct ItemDef {
     int linked_note = -1, note_template = -1, placeholder = -1, placeholder_template = -1;
     std::string inventory_actions[5];
     int zoom2d = 0, xan2d = 0, yan2d = 0, zan2d = 0;  // inventory icon view (CC_SETOBJECT copies them)
+    int inventory_model = -1, ambient = 0, contrast = 0;
+    // Recolours / retextures (opcodes 40/41): find, replace pairs.
+    std::vector<int16_t> recolor_from, recolor_to, retexture_from, retexture_to;
 };
 bool item_def(int id, ItemDef& out);
 // Item icon as the inventory draws it (createItemSprite 0x63ff9c): 36x32 ARGB pixels, 0 = transparent.

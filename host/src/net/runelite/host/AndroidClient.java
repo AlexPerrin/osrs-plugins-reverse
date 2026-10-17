@@ -529,11 +529,33 @@ public class AndroidClient extends ClientStub {
     @Override public net.runelite.api.Model loadModel(int id) { return new ModelBag(); }
     @Override public net.runelite.api.Model loadModel(int id, short[] a, short[] b) { return new ModelBag(); }
     @Override public net.runelite.api.RuneLiteObject createRuneLiteObject() { return new net.runelite.api.RuneLiteObject(this); }
-    @Override public void registerRuneLiteObject(net.runelite.api.RuneLiteObjectController o) {}
-    @Override public void removeRuneLiteObject(net.runelite.api.RuneLiteObjectController o) {}
-    @Override public boolean isRuneLiteObjectRegistered(net.runelite.api.RuneLiteObjectController o) { return false; }
+    // RuneLiteObjects (Quest Helper's fake NPCs): registration is tracked so isActive() answers as on
+    // desktop, but nothing is drawn (no scene renderables are injected; orchestrator decision, gen 28).
+    private final java.util.Set<net.runelite.api.RuneLiteObjectController> runeLiteObjects =
+            java.util.Collections.synchronizedSet(java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<net.runelite.api.RuneLiteObjectController, Boolean>()));
+    @Override public void registerRuneLiteObject(net.runelite.api.RuneLiteObjectController o) { if (o != null) runeLiteObjects.add(o); }
+    @Override public void removeRuneLiteObject(net.runelite.api.RuneLiteObjectController o) { runeLiteObjects.remove(o); }
+    @Override public boolean isRuneLiteObjectRegistered(net.runelite.api.RuneLiteObjectController o) { return runeLiteObjects.contains(o); }
 
-    @Override public net.runelite.api.Animation loadAnimation(int id) { return null; }
+    // Animations aren't read from the game (SeqType): an inert one keeps fake-NPC code that reads
+    // getNumFrames() after setAnimation() from failing (Quest Helper's FakeNpc). Nothing animates.
+    // unverified: placeholder values (one frame, no frame lengths, no hand items)
+    @Override public net.runelite.api.Animation loadAnimation(final int id) {
+        if (id < 0) return null;
+        return new net.runelite.api.Animation() {
+            private int restartMode;
+            @Override public int getId() { return id; }
+            @Override public boolean isMayaAnim() { return false; }
+            @Override public int getNumFrames() { return 1; }
+            @Override public int getRestartMode() { return restartMode; }
+            @Override public void setRestartMode(int m) { restartMode = m; }
+            @Override public int getDuration() { return 0; }
+            @Override public int getFrameStep() { return 0; }
+            @Override public int[] getFrameLengths() { return new int[] {1}; }
+            @Override public int getLeftHandItem() { return -1; }
+            @Override public int getRightHandItem() { return -1; }
+        };
+    }
 
     // Hint arrows: not read from the game (HINT_ARROW packet); plugin-set arrows are remembered only.
     private Object hintArrow;

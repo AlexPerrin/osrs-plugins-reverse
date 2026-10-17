@@ -14,10 +14,16 @@ final class AndroidItemComposition extends ItemCompositionStub {
     private final int[] v;
     private final String[] actions = new String[5];
     private int shiftClickIndex = -1;
+    // Model fields (ObjType +0x04 model, +0x2c4 ambient, +0x2c8 contrast, recolour/retexture arrays;
+    // static RE of the decoder, docs/offsets.md ObjType). Setters keep host-side values, as for the
+    // icon view: nothing here re-renders the game's icons or ground models.
+    private int inventoryModel = -1, ambient, contrast;
+    private short[] colorFrom, colorTo, textureFrom, textureTo;
 
     private AndroidItemComposition(int id, int[] v, String[] s) {
         this.id = id;
         this.v = v;
+        if (v.length > 16) { inventoryModel = v[14]; ambient = v[15]; contrast = v[16]; }
         this.name = s[0];
         System.arraycopy(s, 1, actions, 0, 5);
     }
@@ -30,10 +36,14 @@ final class AndroidItemComposition extends ItemCompositionStub {
         }
         // The game's ObjType for a negative id (an empty slot, -1) is the default definition named
         // "null"; desktop returns it too, and plugins read its name (Inventory Setups' empty slots).
-        if (id < 0) return new AndroidItemComposition(id, new int[14], new String[] {"null", null, null, null, null, null});
+        if (id < 0) return new AndroidItemComposition(id, new int[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0}, new String[] {"null", null, null, null, null, null});
         Object[] r = Native.itemDef(id);
         if (r == null) return null;
         AndroidItemComposition c = new AndroidItemComposition(id, (int[]) r[0], (String[]) r[1]);
+        if (r.length > 2 && r[2] != null) {
+            short[][] m = (short[][]) r[2];
+            c.colorFrom = m[0]; c.colorTo = m[1]; c.textureFrom = m[2]; c.textureTo = m[3];
+        }
         synchronized (cache) { cache.put(id, c); }
         return c;
     }
@@ -70,6 +80,21 @@ final class AndroidItemComposition extends ItemCompositionStub {
     @Override public void setYan2d(int a) { if (v.length > 12) v[12] = a; }
     @Override public void setZan2d(int a) { if (v.length > 13) v[13] = a; }
     @Override public String[] getInventoryActions() { return actions; }
+    // unverified: static RE (ObjType +0x04, mobile opcode 0x2c); check against the cache's model ids
+    @Override public int getInventoryModel() { return inventoryModel; }
+    @Override public void setInventoryModel(int m) { inventoryModel = m; }
+    // unverified: static RE (ObjType recolour/retexture arrays, opcodes 40/41)
+    @Override public short[] getColorToReplace() { return colorFrom; }
+    @Override public void setColorToReplace(short[] c) { colorFrom = c; }
+    @Override public short[] getColorToReplaceWith() { return colorTo; }
+    @Override public void setColorToReplaceWith(short[] c) { colorTo = c; }
+    @Override public short[] getTextureToReplace() { return textureFrom; }
+    @Override public void setTextureToReplace(short[] t) { textureFrom = t; }
+    @Override public short[] getTextureToReplaceWith() { return textureTo; }
+    @Override public void setTextureToReplaceWith(short[] t) { textureTo = t; }
+    // unverified: static RE (ObjType +0x2c4 / +0x2c8, opcodes 113/114)
+    @Override public int getAmbient() { return ambient; }
+    @Override public int getContrast() { return contrast; }
     @Override public int getShiftClickActionIndex() { return shiftClickIndex; }
     @Override public void setShiftClickActionIndex(int i) { shiftClickIndex = i; }
 
@@ -77,6 +102,6 @@ final class AndroidItemComposition extends ItemCompositionStub {
     public String toString() {
         return "ItemComposition[" + id + " '" + name + "' price=" + v[0] + " stackable=" + isStackable() + " members=" + isMembers()
                 + " tradeable?=" + isTradeable() + " note=" + v[7] + "/" + v[6] + " placeholder=" + v[9] + "/" + v[8]
-                + " weight=" + v[1] + " actions=" + java.util.Arrays.toString(actions) + "]";
+                + " weight=" + v[1] + " model=" + inventoryModel + " recolors=" + (colorFrom == null ? 0 : colorFrom.length) + " actions=" + java.util.Arrays.toString(actions) + "]";
     }
 }

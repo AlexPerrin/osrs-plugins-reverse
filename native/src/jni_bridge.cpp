@@ -389,11 +389,11 @@ jobjectArray n_item_def(JNIEnv* env, jclass, jint id) {
     }
     game::ItemDef d;
     if (!game::item_def(id, d)) return nullptr;
-    jint v[14] = {d.price, d.weight, d.category, d.stackable, d.members, d.tradeable_guess,
+    jint v[17] = {d.price, d.weight, d.category, d.stackable, d.members, d.tradeable_guess,
                   d.linked_note, d.note_template, d.placeholder, d.placeholder_template,
-                  d.zoom2d, d.xan2d, d.yan2d, d.zan2d};
-    jintArray ints = env->NewIntArray(14);
-    env->SetIntArrayRegion(ints, 0, 14, v);
+                  d.zoom2d, d.xan2d, d.yan2d, d.zan2d, d.inventory_model, d.ambient, d.contrast};
+    jintArray ints = env->NewIntArray(17);
+    env->SetIntArrayRegion(ints, 0, 17, v);
     jclass string = env->FindClass("java/lang/String");
     jobjectArray strs = env->NewObjectArray(6, string, nullptr);
     for (int i = 0; i < 6; i++) {
@@ -403,9 +403,20 @@ jobjectArray n_item_def(JNIEnv* env, jclass, jint id) {
         env->SetObjectArrayElement(strs, i, js);
         env->DeleteLocalRef(js);
     }
-    jobjectArray res = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    // short[][4] {recolour find, replace, retexture find, replace}; an empty array is null.
+    jobjectArray recol = env->NewObjectArray(4, env->FindClass("[S"), nullptr);
+    const std::vector<int16_t>* lists[4] = {&d.recolor_from, &d.recolor_to, &d.retexture_from, &d.retexture_to};
+    for (int i = 0; i < 4; i++) {
+        if (lists[i]->empty()) continue;
+        jshortArray a = env->NewShortArray(static_cast<jsize>(lists[i]->size()));
+        env->SetShortArrayRegion(a, 0, static_cast<jsize>(lists[i]->size()), lists[i]->data());
+        env->SetObjectArrayElement(recol, i, a);
+        env->DeleteLocalRef(a);
+    }
+    jobjectArray res = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
     env->SetObjectArrayElement(res, 0, ints);
     env->SetObjectArrayElement(res, 1, strs);
+    env->SetObjectArrayElement(res, 2, recol);
     return res;
 }
 // Object[] {int[] {id, size, combatLevel, minimapVisible, interactable, varbit, varp}, String[] {name, 5 actions}, int[] transforms or null}.

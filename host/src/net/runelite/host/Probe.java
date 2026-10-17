@@ -272,6 +272,14 @@ final class Probe {
                     Log.i(TAG, "item " + id + " param " + key + " int " + ic.getIntValue(key) + " string '" + ic.getStringValue(key) + "'");
                     break;
                 }
+                case "idef": {  // "idef <item id> 0": the ItemComposition, model fields included
+                    net.runelite.api.ItemComposition ic = c.getItemDefinition(id);
+                    Log.i(TAG, "item " + id + " " + ic + " model " + ic.getInventoryModel()
+                            + " recolor " + java.util.Arrays.toString(ic.getColorToReplace()) + "->" + java.util.Arrays.toString(ic.getColorToReplaceWith())
+                            + " retexture " + java.util.Arrays.toString(ic.getTextureToReplace()) + "->" + java.util.Arrays.toString(ic.getTextureToReplaceWith())
+                            + " ambient " + ic.getAmbient() + " contrast " + ic.getContrast());
+                    break;
+                }
                 case "wlisten": {  // "wlisten <group:child> <index|-1>": the game's onDrag/onDragComplete/onOp listeners
                     int idx = Integer.parseInt(a[2]);
                     int[] slots = {0x4d0, 0x500, 0x698};

@@ -2021,6 +2021,23 @@ bool item_def(int id, ItemDef& out) {
     out.zan2d = read_at<int32_t>(o + 0xc8);
     auto iops = read_at<uintptr_t>(o + 0x108);
     for (int i = 0; i < 5; i++) out.inventory_actions[i] = iops ? read_string(iops + i * 0x18) : std::string();
+    // Model fields (static RE of the decoder 0x63bfe8 and ObjType::getModel 0x63f1e8): +0x04 inventory
+    // model (mobile opcode 0x2c, int32; noted items copy their template's), ambient +0x2c4 (op 113),
+    // contrast +0x2c8 (op 114, stored * 5 as on desktop). Recolour / retexture arrays (ops 40/41):
+    // {u64 count, int16* data} at +0x60/+0x68 (find), +0x78/+0x80 (replace), +0x90/+0x98, +0xa8/+0xb0.
+    out.inventory_model = read_at<int32_t>(o + 0x04);
+    out.ambient = read_at<int32_t>(o + 0x2c4);
+    out.contrast = read_at<int32_t>(o + 0x2c8);
+    auto shorts = [&](uintptr_t at, std::vector<int16_t>& v) {
+        auto n = read_at<uint64_t>(at);
+        auto data = read_at<uintptr_t>(at + 8);
+        if (!data || n == 0 || n > 255) return;
+        v.assign(reinterpret_cast<const int16_t*>(data), reinterpret_cast<const int16_t*>(data) + n);
+    };
+    shorts(o + 0x60, out.recolor_from);
+    shorts(o + 0x78, out.recolor_to);
+    shorts(o + 0x90, out.retexture_from);
+    shorts(o + 0xa8, out.retexture_to);
     release_shared(sp[0]);
     return true;
 }

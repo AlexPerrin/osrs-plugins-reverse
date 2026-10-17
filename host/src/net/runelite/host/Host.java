@@ -815,11 +815,6 @@ public final class Host {
     }
 
     static void runQueued() {
-        // Desktop's client thread only runs once the client has loaded its cache (login screen);
-        // here cycles start earlier, and tasks queued by startUp (Inventory Setups' item names)
-        // got null definitions. They wait for LOGIN_SCREEN (10) now. // unverified: not run on device yet
-        int state = Native.gameState();
-        if (state >= 0 && state < 10) return;
         clientThread.runQueued();
     }
 }

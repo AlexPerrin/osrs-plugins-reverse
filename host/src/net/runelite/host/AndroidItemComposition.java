@@ -28,6 +28,9 @@ final class AndroidItemComposition extends ItemCompositionStub {
             AndroidItemComposition c = cache.get(id);
             if (c != null) return c;
         }
+        // The game's ObjType for a negative id (an empty slot, -1) is the default definition named
+        // "null"; desktop returns it too, and plugins read its name (Inventory Setups' empty slots).
+        if (id < 0) return new AndroidItemComposition(id, new int[10], new String[] {"null", null, null, null, null, null});
         Object[] r = Native.itemDef(id);
         if (r == null) return null;
         AndroidItemComposition c = new AndroidItemComposition(id, (int[]) r[0], (String[]) r[1]);

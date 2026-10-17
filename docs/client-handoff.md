@@ -827,10 +827,21 @@ session; its notes are in `docs/android-protocol.md`.
     queued). Hunter Rumours promoted on the server dev's device run.
   - Verified: Minimap, Entity Hider players, Kitten BOTTOM_LEFT, Herbiboar, Barrows (client-side varbit),
     Large Logout (mobile logout is interface 182 with desktop's layout), NPC dialogue arrives as ChatMessage
-    DIALOG "Name|text". Tables at the end of gen 22: core 71/71, hub 28/32, API 531/866.
+    DIALOG "Name|text". Tables at the end of gen 22: core 73/82, hub 28/32, API 534/866.
   - Server gaps relayed: follower varp 447 is 0 after a relog (Kitten Tracker expects (npc id << 16) |
     index); games necklace Rub has no teleport menu (Better Teleport Menu untestable); Hunter Rumours needs
     the guild dialogue or the whistle message.
+  - Third slot (09:45-10:01): **widget Java onOp listeners no longer swallow the game's ops**. Better Teleport
+    Menu sets an empty listener on interface 187's options; WidgetListeners consumed every click on such a
+    widget, so "Continue" never sent RESUME_PAUSEBUTTON. Now only ops a plugin wrote with setAction are
+    consumed (`WidgetListeners.notePluginOp`); verified Rub → Burthorpe with BTM loaded. Ten more core
+    plugins converted (Diary Requirements, Inventory Viewer, Runecraft, Boss Timers, DPS Counter, Friend List,
+    Spellbook, Grand Exchange, Music, Instance Map): all start; Runecraft and Inventory Viewer run. The mobile
+    bank (12) mirrors desktop's component ids; a tap on the bank wrench is CC_OP "Show menu" (Bank Heatmap's
+    hook: show plugin entries created during a tap, next step). BOTTOM_RIGHT overlays sit under the tab
+    stones (Inventory Viewer): start them left of the column. Instances aren't modelled (isInstance false;
+    Spawn Predictor, Instance Map); `getArray` needs the frame's object locals (Spellbook also needs its
+    runelite_callback).
   - Gotchas: `debug.osrsrl.set` may hold another agent's leftover ("reload 0 0"): check `getprop` before
     launching. The varp probe sets before it logs the old value (`set varp N v` prints "before").
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".

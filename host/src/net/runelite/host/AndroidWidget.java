@@ -91,11 +91,15 @@ public class AndroidWidget extends WidgetBag {
     @Override public void setAction(int index, String action) {
         if (index < 0 || index > 31) return;
         Native.widgetSetString(id, childIndex(), index, action != null ? action : "");
+        WidgetListeners.notePluginOp(id, childIndex(), index, action != null && !action.isEmpty());
         WidgetListeners.syncFlags(id, childIndex());
     }
     @Override public void clearActions() {
         String[] a = getActions();
-        for (int i = 0; a != null && i < a.length; i++) if (a[i] != null) Native.widgetSetString(id, childIndex(), i, "");
+        for (int i = 0; a != null && i < a.length; i++) {
+            if (a[i] != null) Native.widgetSetString(id, childIndex(), i, "");
+            WidgetListeners.notePluginOp(id, childIndex(), i, false);
+        }
         WidgetListeners.syncFlags(id, childIndex());
     }
     @Override public void setOnOpListener(Object... args) { WidgetListeners.setOnOp(id, childIndex(), args); }

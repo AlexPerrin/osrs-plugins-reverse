@@ -11,8 +11,10 @@ import net.runelite.api.widgets.Widget;
  * widget when its event flags (+0x2b0, bit i+1) allow it or it has a CS2 onOp listener, so while a
  * Java listener is set the flags get one bit per non-empty op (the widget's own bits are restored
  * when it is cleared). When such an entry is selected and no MenuOptionClicked subscriber consumed
- * it, the listener runs and the click is consumed, so the game neither runs a script nor sends
- * IF_BUTTON. Entries are keyed by (component, CC_CREATE index) and the game's Widget* so a slot
+ * it, the listener runs; the click is consumed (no script, no IF_BUTTON) only for an op a plugin
+ * wrote with setAction (such as Quest List's "Open Search"). The game's own ops still go to the game, as on desktop: Better Teleport Menu sets an
+ * empty listener on the teleport menu's options, and consuming their "Continue" stopped the
+ * RESUME_PAUSEBUTTON (gen 22). Entries are keyed by (component, CC_CREATE index) and the game's Widget* so a slot
  * the game re-creates doesn't inherit a stale listener. Game thread.
  */
 final class WidgetListeners {
@@ -70,6 +72,21 @@ final class WidgetListeners {
         Native.widgetSetFlags(id, index, e.ownFlags | bits);
     }
 
+    /** Ops (0-based) that plugins wrote with setAction, per widget slot and the game's Widget*. */
+    private static final Map<Long, long[]> pluginOps = new HashMap<>();  // {ptr, bitmask}
+
+    static synchronized void notePluginOp(int id, int index, int op, boolean set) {
+        long k = key(id, index), ptr = Native.widgetPtr(id, index);
+        long[] v = pluginOps.get(k);
+        if (v == null || v[0] != ptr) pluginOps.put(k, v = new long[] {ptr, 0});
+        if (set) v[1] |= 1L << op; else v[1] &= ~(1L << op);
+    }
+
+    private static synchronized boolean isPluginOp(int id, int index, int op) {
+        long[] v = pluginOps.get(key(id, index));
+        return v != null && v[0] == Native.widgetPtr(id, index) && op >= 0 && op < 64 && (v[1] & 1L << op) != 0;
+    }
+
     /** Created children of `id` were deleted (or one is re-created at `index`; -1 = all). */
     static synchronized void forget(int id, int index) {
         if (index >= 0) { entries.remove(key(id, index)); return; }
@@ -78,22 +95,30 @@ final class WidgetListeners {
 
     /**
      * After MenuOptionClicked was posted for a widget entry and not consumed: runs the widget's Java
-     * onOp listener, if any. Returns true when it ran (the caller consumes the click).
+     * onOp listener, if any. Returns true when the caller should consume the click: the op is one
+     * the game's widget didn't have (only the plugin's listener can act on it).
      */
     static boolean dispatch(net.runelite.api.MenuEntry entry, net.runelite.api.Client client) {
         int id = entry.getParam1(), index = entry.getParam0();
-        Object[] l = onOp(id, index);
-        if (l == null && index != -1) {
-            index = -1;
-            l = onOp(id, -1);
+        Entry e;
+        synchronized (WidgetListeners.class) {
+            e = entries.get(key(id, index));
+            if ((e == null || e.ptr != Native.widgetPtr(id, index)) && index != -1) {
+                index = -1;
+                e = entries.get(key(id, -1));
+            }
+            if (e != null && e.ptr != Native.widgetPtr(id, index)) e = null;
         }
+        Object[] l = e != null ? e.onOp : null;
         if (l == null || !(l[0] instanceof JavaScriptCallback)) return false;
         Widget source = index >= 0 ? new AndroidWidget.Dynamic(id, index) : new AndroidWidget(id);
         AndroidScriptEvent ev = new AndroidScriptEvent(client, l);
         ev.setSource(source);
         ev.setOp(entry.getIdentifier());
-        android.util.Log.i(Host.TAG, "widget onOp listener: " + (id >>> 16) + ":" + (id & 0xffff) + "[" + index + "] op " + entry.getIdentifier());
+        int op = entry.getIdentifier();  // 1-based for CC_OP entries (the pause-button "Continue" is 0x80000000)
+        boolean pluginOnly = op >= 1 && op <= 32 && isPluginOp(id, index, op - 1);
+        android.util.Log.i(Host.TAG, "widget onOp listener: " + (id >>> 16) + ":" + (id & 0xffff) + "[" + index + "] op " + op + (pluginOnly ? " (plugin op, consumed)" : " (game op, passed on)"));
         ((JavaScriptCallback) l[0]).run(ev);
-        return true;
+        return pluginOnly;
     }
 }

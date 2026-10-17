@@ -135,6 +135,12 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Spawn Predictor | starts | starts; its NPE on GameStateChanged(LOGGED_IN) (no local player yet) is gone since LOGGED_IN waits for the local player (2026-10-17); not checked (Fight Caves) |
 | Barrows Door Highlighter | starts | starts (2026-10-17); not checked (Barrows) |
 | Better Teleport Menu | starts | starts (2026-10-17); not checked |
+| Wilderness Player Alarm | untested | built 2026-10-17 (`hub-wilderness-player-alarm`), no API gaps; not run yet |
+| Hunter Rumours | untested | built 2026-10-17 (`hub-hunter-rumours`), no API gaps; not run yet |
+| Ess Pouch | untested | built 2026-10-17 (`hub-ess-pouch`), no API gaps; not run yet |
+| Plank Sack | untested | built 2026-10-17 (`hub-plank-sack`), no API gaps; not run yet |
+| KPH Tracker | untested | built 2026-10-17 (`hub-kph-tracker`), no API gaps; not run yet |
+| Thrall Helper | untested | built 2026-10-17 (`hub-thrall-helper`), no API gaps; not run yet |
 | Loot Lookup | untested | not built: it needs jsoup, an extra Maven dependency (build.sh stops on those) |
 
 ## Build and run

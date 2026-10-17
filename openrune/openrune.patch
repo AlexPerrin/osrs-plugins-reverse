@@ -4572,12 +4572,13 @@ index 000000000..e6b5cdcda
 +}
 diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingLootScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingLootScriptTest.kt
 new file mode 100644
-index 000000000..28d41f396
+index 000000000..0c04742d7
 --- /dev/null
 +++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingLootScriptTest.kt
-@@ -0,0 +1,54 @@
+@@ -0,0 +1,61 @@
 +package org.rsmod.content.skills.hunter
 +
++import dev.openrune.ServerCacheManager
 +import dev.openrune.rscm.RSCM.asRSCM
 +import dev.openrune.rscm.RSCMType
 +import dev.openrune.types.util.UncheckedType
@@ -4603,6 +4604,12 @@ index 000000000..28d41f396
 +            val sum = table.main.sumOf { it.num.toDouble() / it.den }
 +            assertEquals(1.0, sum, 1e-9, row.jar.internalName)
 +        }
++    }
++
++    @Test
++    fun `loot is the jars' third inventory op, which the client sends as op 3`() {
++        val type = checkNotNull(ServerCacheManager.getItem(11256))
++        assertEquals(2, type.interfaceOptions.indexOfFirst { it == "Loot" })
 +    }
 +
 +    @Test
@@ -4854,18 +4861,22 @@ index 000000000..ab6ab0bb5
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootScript.kt
 new file mode 100644
-index 000000000..b5031245b
+index 000000000..35fd6ef33
 --- /dev/null
 +++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootScript.kt
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,125 @@
 +package org.rsmod.content.skills.hunter
 +
++import dev.openrune.ServerCacheManager
 +import dev.openrune.rscm.RSCM
 +import dev.openrune.rscm.RSCM.asRSCM
 +import dev.openrune.rscm.RSCMType
 +import jakarta.inject.Inject
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.script.onOpHeld1
++import org.rsmod.api.script.onOpHeld2
++import org.rsmod.api.script.onOpHeld3
++import org.rsmod.api.script.onOpHeld4
 +import org.rsmod.api.table.ImplingTypesRow
 +import org.rsmod.plugin.scripts.PluginScript
 +import org.rsmod.plugin.scripts.ScriptContext
@@ -4904,7 +4915,15 @@ index 000000000..b5031245b
 +    override fun ScriptContext.startup() {
 +        val jars = ImplingTypesRow.all().map { it.jar.internalName } + CRYSTAL_JAR
 +        for (jar in jars.distinct()) {
-+            onOpHeld1(jar) { loot(it.slot, jar) }
++            // "Loot" is the jars' third inventory op in the cache (the client sends op 3), not the
++            // first: register on whichever op carries it.
++            val type = ServerCacheManager.getItem(jar.asRSCM(RSCMType.OBJ))
++            when (type?.interfaceOptions?.indexOfFirst { it.equals(LOOT, ignoreCase = true) }) {
++                0 -> onOpHeld1(jar) { loot(it.slot, jar) }
++                1 -> onOpHeld2(jar) { loot(it.slot, jar) }
++                3 -> onOpHeld4(jar) { loot(it.slot, jar) }
++                else -> onOpHeld3(jar) { loot(it.slot, jar) }
++            }
 +        }
 +    }
 +
@@ -4934,6 +4953,7 @@ index 000000000..b5031245b
 +
 +    companion object {
 +        const val CRYSTAL_JAR = "obj.ii_captured_impling_12"
++        const val LOOT = "Loot"
 +        const val JAR_BREAK_NUM = 1
 +        const val JAR_BREAK_DEN = 10
 +

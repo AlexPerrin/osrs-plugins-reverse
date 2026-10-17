@@ -281,8 +281,8 @@
 <rect x="943.14" y="31.00" width="55.86" height="150.00" fill="none" stroke="#0d1117" stroke-width="2"/>
 <text x="948.14" y="47.00" font-family="sans-serif" font-size="12" fill="#ffffff" stroke="#0d1117" stroke-width="3" paint-order="stroke">Zone</text>
 </g>
-<text x="4" y="210" font-family="sans-serif" font-size="16" fill="#ffffff">RuneLite API*: 57.62% (499/866)</text>
-<g><title>Client: 172/325 (53%)</title>
+<text x="4" y="210" font-family="sans-serif" font-size="16" fill="#ffffff">RuneLite API*: 57.85% (501/866)</text>
+<g><title>Client: 174/325 (54%)</title>
 <rect x="2.00" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="18.20" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="34.39" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -455,8 +455,8 @@
 <rect x="131.58" y="327.40" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="147.78" y="327.40" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="163.97" y="327.40" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="180.17" y="327.40" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="196.37" y="327.40" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="180.17" y="327.40" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="196.37" y="327.40" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="212.57" y="327.40" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="228.76" y="327.40" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="244.96" y="327.40" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>

@@ -4,12 +4,17 @@ Goal: run the real desktop RuneLite with the real Quest Helper on the same test 
 Android app. The desktop client is then a reference to diff the Android plugin host against:
 highlights, step order, events and widget text, with both clients in the same server state.
 
-Status (2026-10-16):
+Status (2026-10-17):
 - The server side works.
 - A headless desktop-protocol login passes against OpenRune while the Android app is signed in (see
   "Headless check").
-- The GUI part (RSProx and RuneLite on Windows) is prepared but has not been run yet. The user runs
-  it with the steps below.
+- **Agent-driven desktop client works.** RuneLite 1.13.2 runs through a headless RSProx in an
+  isolated home (`C:\osrs-test`). Agents start it, log in and drive it from WSL through
+  OpenRune-Developer-Tools' MCP server. Checked in game at Lumbridge on 2026-10-17: tools/list
+  (47 tools), walk_to, player position, and the Android `tester` visible in list_players. See
+  "Desktop A/B client (agent-driven)". This is the default way to run the desktop side.
+- The manual GUI route ("Steps for the user") still works the same way, but it uses the user's own
+  `%USERPROFILE%`. Prefer the isolated client.
 
 ## Architecture
 
@@ -119,6 +124,152 @@ Protocol notes:
 
 Not checked headlessly: that each client sees the other player. Seeing it means decoding
 PLAYER_INFO bit by bit; it is step 6 of the GUI walkthrough.
+
+## Desktop A/B client (agent-driven)
+
+```
+WSL                                      Windows (C:\osrs-test, user.home = C:\osrs-test\home)
+tools/multiclient/desktop.sh ──powershell──> jdk\bin\java OsrsTestLauncher (headless RSProx)
+                                               ├─ :43600 jav_config/world list (rewritten from :8082)
+                                               ├─ :43701 game proxy ── re-encrypts login ──> OpenRune :43594
+                                               └─ RuneLite launcher ─> RuneLite 1.13.2 client
+                                                     └─ OpenRune-DeveloperTools, MCP on 127.0.0.1:7780
+tools/multiclient/desktop-devtools-mcp.sh ──curl.exe (WSL interop)──> 127.0.0.1:7780/mcp
+```
+
+### Layout and isolation
+
+| Path | What |
+|---|---|
+| `C:\osrs-test\jdk` | Temurin 11 **JDK** (Adoptium zip, sha256 checked). A JRE does not work: RSProx's RuneLite launcher signs its patched jars with `jdk.jartool` |
+| `C:\osrs-test\rsprox\lib`, `\launcher` | RSProx runtime classpath (`re/rsprox`, 1.0.5) and `OsrsTestLauncher` |
+| `C:\osrs-test\home\.rsprox` | RSProx home: `proxy-targets.yaml`, its RSA key, `binary\` transcripts, the RuneLite launcher it downloads |
+| `C:\osrs-test\home\.runelite` | RuneLite **launcher** dir: `repository2` (patched 1.13.2 jars), `logs` |
+| `C:\osrs-test\home\.rlcustom` | RuneLite **client** dir (RSProx renames `.runelite`): `profiles2`, `sideloaded-plugins`, `jagexcache`, `random.dat`, `jagex_cl_*.dat` |
+| `C:\osrs-test\logs\rsprox-<ts>.out/.err` | RSProx, launcher and client stdout (one file per start) |
+
+- Isolation is `JAVA_TOOL_OPTIONS=-Duser.home=C:\osrs-test\home`. It is set only in the PowerShell
+  process that starts RSProx, never user- or machine-wide. RSProx, the RuneLite launcher and the
+  client inherit it: each logs `Picked up JAVA_TOOL_OPTIONS`, and the client logs it under "Java VM
+  arguments".
+- Every path RSProx and RuneLite use is `user.home`-relative. This includes the Jagex-account
+  credentials lookup (`.runelite/credentials.properties`), which only applies to the official
+  target anyway.
+- The user's `C:\Users\Alex\.runelite` and the installed RuneLite are never touched.
+- `OsrsTestLauncher` (source `tools/multiclient/headless/`) refuses to start in any of these cases:
+  - `user.home` is not under `C:\osrs-test`;
+  - any `RSPS_*` or `JX_*` (Jagex launcher) variable is set;
+  - the selected target is not exactly one "OpenRune Test" with a `http://127.0.0.1:` jav_config and
+    its own modulus.
+
+  It never builds the official target, and it exits when the client exits.
+- What the game connection looks like (`desktop.sh status`, by our PIDs):
+  - client → `127.0.255.3:43701` (RSProx);
+  - RSProx → `127.0.0.1:43594` (OpenRune);
+  - the client's jav_config/world list → RSProx `:43600`.
+- Other outbound traffic, all non-Jagex:
+  - RSProx: cdn.rsprox.net (its RuneLite launcher), archive.rsprox.net (clientscript names, by cache
+    hash; answers 403 for our cache);
+  - the launcher: raw.githubusercontent.com (pinned 1.13.2 bootstrap);
+  - the client: *.runelite.net (artifacts, Plugin Hub, item prices).
+
+### Plugins turned off in the isolated profile
+
+There is no NetGuard on desktop. `desktop-build.sh` seeds `.rlcustom/settings.properties`, which
+RuneLite imports into its first profile:
+- `runelite.<x>plugin=false` for: discord, loottracker, xptracker (XpClient), xpupdater,
+  crowdsourcing, grandexchange (trade submissions), chatcommands (kc/pb submissions), hiscore
+  (Jagex hiscore web lookups), worldhopper and defaultworld (either could move the client to a real
+  Jagex world), twitch, and party (`partyplugin2`);
+- `runelite.openrunedevtoolsplugin=true`, `openrunedevtools.autoUpdate=false` (it is a `-local`
+  build, so the GitHub update check is off anyway).
+
+Telemetry is off (`--disable-telemetry`), and there is no RuneLite account login.
+
+RuneLite's core DiscordService still connects to the local Discord app over IPC ("Discord RPC
+service is ready"). It sets no presence while the Discord plugin is off.
+
+Turn one of these plugins back on for an A/B only after checking that its submissions can't go
+out (and with the orchestrator's OK).
+
+### Build, start, log in, stop
+
+```
+tools/multiclient/make_proxy_target.sh     # refresh the modulus from :8082/rsa
+tools/multiclient/desktop-build.sh         # Docker build of RSProx + launcher, stage into C:\osrs-test
+                                           # (SKIP_RSPROX_BUILD=1 to only restage)
+tools/multiclient/desktop.sh start         # checks 7780/43600-9/43700-19 are free; ~10 s to the login screen
+tools/multiclient/desktop.sh login         # desktop/desktop via the Existing User form, retries ~2 min
+tools/multiclient/desktop.sh status        # our processes (exe under C:\osrs-test) + their sockets
+tools/multiclient/desktop.sh log 80        # tail of the newest log
+tools/multiclient/desktop.sh logout        # in-game logout
+tools/multiclient/desktop.sh stop          # logout, then kill only processes whose exe is under C:\osrs-test
+```
+
+- **First start only:** the client shows the terms screen. Click Accept at canvas (302,311) with
+  `desktop-devtools-mcp.sh --tool click '{"x":302,"y":311}'`. Never click Decline or "New User":
+  both open a browser.
+- **Login clicks:** `login` uses fixed canvas coordinates (765x503, fixed mode).
+  - After the first "Existing User" of each run, the client shows a "Upgrade to a Jagex Account"
+    page. `login` clicks its **Login** button (never "Download Launcher") once per run.
+  - After a failure the form stays open; `relogin` refills it.
+- **Refused logins:** OpenRune refuses the account for a while after a session ends.
+  - After a logout: CONNECT_FAIL 50, roughly 30 to 90 s.
+  - After a killed client: "already logged in" (5), up to about 6 min.
+  - `login` retries for about 2 minutes. `stop` logs out first to keep this short.
+- **Server restarts:** the client shows "Unexpected server response". Click Try again at (382,311),
+  then run `relogin`.
+- **Windows firewall:** RSProx listens on all interfaces, because it serves a 127.x.y.z address per
+  world and can't bind only 127.0.0.1. The first start showed a Windows Firewall prompt for
+  `C:\osrs-test\jdk\bin\java.exe`.
+  - On 2026-10-17 it was answered **Allow (Public)**. That exposes :43600/:43701 to the LAN.
+  - Loopback is never filtered, so set the rules to Block (admin PowerShell):
+    `Get-NetFirewallApplicationFilter | ? Program -like 'C:\osrs-test\*' | Get-NetFirewallRule | Set-NetFirewallRule -Action Block`
+  - Answer any later prompt with **Cancel**.
+
+### Driving it (MCP)
+
+`tools/multiclient/desktop-devtools-mcp.sh`:
+- An MCP stdio server, the same as `tools/devtools-mcp.sh` for Android. Register it as
+  `{"command": "<repo>/tools/multiclient/desktop-devtools-mcp.sh"}`, for example as
+  `osrs-devtools-desktop`.
+- WSL runs in NAT mode, so Windows' 127.0.0.1 is not reachable from WSL. Each JSON-RPC line goes
+  through Windows' `curl.exe` instead (about 0.1 s per call). Nothing is opened beyond Windows
+  loopback.
+- The upstream plugin build has no token.
+- Input is `canvas.dispatchEvent`, so the user's real mouse and keyboard focus are not used.
+
+```
+M=tools/multiclient/desktop-devtools-mcp.sh
+$M --call tools/list                                  # 47 tools
+$M --tool get_client_state '{}'                       # gameState, worldX/worldY/plane, camera, ...
+$M --tool walk_to '{"x":3218,"y":3222,"plane":0}'
+$M --tool list_players '{}'                           # shows the Android "tester" when both are near
+$M --tool type_chat '{"text":"::tele 3222 3218 0"}'
+$M --tool screenshot '{}'                             # PNG (base64) of the canvas
+```
+
+### A/B recipe (desktop vs Android)
+
+1. Start both clients:
+   - desktop: `desktop.sh start && desktop.sh login`;
+   - Android: under the device lock (`tools/device-lock.sh`), `tools/devtools-mcp.sh`.
+2. Put both characters in the same state, with the same commands on each client (`type_chat` on
+   both):
+   - `::quest cook reset` or `::quest cook <stage>`;
+   - `::empty`, `::item <id> [n]`;
+   - `::tele x z 0`.
+3. Install the plugin under test.
+   - Desktop: the Plugin Hub in the isolated client (it runs the real 1.13.2). The other way is to
+     drop the hub jar into `C:\osrs-test\home\.rlcustom\sideloaded-plugins` and restart.
+   - Android: the host build.
+4. Step through in lockstep. At each step capture the following on both clients:
+   - `screenshot`;
+   - `get_widget`/`dump_interface` for the plugin panel or overlay widgets;
+   - `get_var` for the quest varp/varbits;
+   - `list_npcs`/`list_objects` for highlight targets.
+5. The desktop RSProx transcript in `C:\osrs-test\home\.rsprox\binary` has every server packet.
+   Transcribe it with RSProx's `transcribe` CLI.
 
 ## Steps for the user (Windows)
 
@@ -233,4 +384,9 @@ updates only to Android players, so use OpenRune for multi-client.
 | `tools/multiclient/desktop_login.py` | headless desktop login check |
 | `tools/multiclient/make_proxy_target.sh` | writes `proxy-targets.yaml` from the live `/rsa` |
 | `tools/multiclient/proxy-targets.yaml` | RSProx target "OpenRune Test" (rev 241.1, port 43594, RuneLite 1.13.2 pin) |
+| `tools/multiclient/desktop-build.sh` | builds RSProx + headless launcher (Docker) and stages the isolated `C:\osrs-test` home |
+| `tools/multiclient/desktop.sh` | start / login / relogin / status / log / logout / stop of the isolated desktop client |
+| `tools/multiclient/headless/OsrsTestLauncher.java` | headless RSProx session launcher with the OpenRune-only guard |
+| `tools/multiclient/headless/export-runtime.init.gradle.kts` | Gradle init script exporting RSProx's runtime classpath |
+| `tools/multiclient/desktop-devtools-mcp.sh`, `desktop_devtools_mcp.py` | MCP stdio bridge to the desktop Developer-Tools server (via Windows curl.exe) |
 | `re/rsprox` (git-ignored) | RSProx checkout (blurite/rsprox, MIT), builds in Docker with `eclipse-temurin:11` |

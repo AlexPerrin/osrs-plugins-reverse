@@ -1,0 +1,670 @@
+From dac8ed6a9a657d170c95d3cbf967d5eae7fc551b Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 08:35:27 -0400
+Subject: [PATCH] Hunter: Hunters' Rumours state, rare parts, turn-in, whistle
+
+Hunters' Rumours (wiki) without the guild hunters' dialogues yet: per-hunter
+rumours in server varps, assignment rules (each hunter's list, level, no
+duplicate across hunters), the rare-part roll on catches with the wiki's
+rates and pity thresholds (held part blocks, full inventory drops a rolled
+part and destroys a pity part), turn-in XP ((level + 5) * 50/55/60) and the
+tier's loot sack, and the quetzal whistle's Rumour op. Only creatures this
+server can catch are assigned (wagtail, grey and carnivorous chinchompas,
+herbiboar). ::rumour assigns, shows and hands in for testing.
+---
+ .../skills/hunter/pack/HunterPluginPack.kt    |   2 +
+ .../skills/hunter/pack/HunterRumourTables.kt  | 133 ++++++++++++++++++
+ .../pack/src/main/resources/gamevals.toml     |  11 ++
+ .../pack/configs/hunter_rumour_vars.toml      |  65 +++++++++
+ .../skills/hunter/HunterRumoursTest.kt        | 130 +++++++++++++++++
+ .../content/skills/hunter/HerbiboarScript.kt  |   7 +-
+ .../skills/hunter/HunterRumourScript.kt       |  60 ++++++++
+ .../content/skills/hunter/HunterRumours.kt    | 112 +++++++++++++++
+ .../content/skills/hunter/HunterTrapScript.kt |   2 +
+ .../hunter/src/main/resources/gamevals.toml   |  12 ++
+ 10 files changed, 533 insertions(+), 1 deletion(-)
+ create mode 100644 content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterRumourTables.kt
+ create mode 100644 content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml
+ create mode 100644 content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterRumoursTest.kt
+ create mode 100644 content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumourScript.kt
+ create mode 100644 content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumours.kt
+
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
+index 300c697d3..c6ce8f5a4 100644
+--- a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
+@@ -14,5 +14,7 @@ class HunterPluginPack : PluginPack() {
+             HerbiboarSpotsTable.herbiboarSpots(),
+             HerbiboarTunnelsTable.herbiboarTunnels(),
+             HerbiboarHerbsTable.herbiboarHerbs(),
++            HunterRumourHuntersTable.hunterRumourHunters(),
++            HunterRumoursTable.hunterRumours(),
+         )
+ }
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterRumourTables.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterRumourTables.kt
+new file mode 100644
+index 000000000..87ee9ab02
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterRumourTables.kt
+@@ -0,0 +1,133 @@
++package org.rsmod.content.skills.hunter.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++
++/**
++ * The Hunter Guild's guild hunters (OSRS Wiki: Hunters' Rumours). [INDEX] is the hunter's bit in
++ * [HunterRumoursTable.HUNTERS]; [MODIFIER] is the turn-in XP factor, (Hunter level + 5) * modifier.
++ */
++object HunterRumourHuntersTable {
++    const val INDEX = 0
++    const val NPC = 1
++    const val NAME = 2
++    const val LEVEL = 3
++    const val MODIFIER = 4
++    const val LOOT_SACK = 5
++
++    private data class Hunter(val key: String, val name: String, val level: Int, val modifier: Int, val sack: String)
++
++    private val HUNTERS =
++        listOf(
++            Hunter("gilman", "Gilman", 46, 50, "obj.hg_lootsack_t0"),
++            Hunter("cervus", "Cervus", 57, 50, "obj.hg_lootsack_t1"),
++            Hunter("ornus", "Ornus", 57, 50, "obj.hg_lootsack_t1"),
++            Hunter("aco", "Aco", 72, 55, "obj.hg_lootsack_t2"),
++            Hunter("teco", "Teco", 72, 55, "obj.hg_lootsack_t2"),
++            Hunter("wolf", "Wolf", 91, 60, "obj.hg_lootsack_t3"),
++        )
++
++    fun hunterRumourHunters() =
++        dbTable("dbtable.hunter_rumour_hunters", serverOnly = true) {
++            column("index", INDEX, VarType.INT)
++            column("npc", NPC, VarType.NPC)
++            column("name", NAME, VarType.STRING)
++            column("level", LEVEL, VarType.INT)
++            column("modifier", MODIFIER, VarType.INT)
++            column("loot_sack", LOOT_SACK, VarType.OBJ)
++
++            HUNTERS.forEachIndexed { index, hunter ->
++                row("dbrow.hunter_rumour_hunter_${hunter.key}") {
++                    column(INDEX, index)
++                    columnRSCM(NPC, "npc.hg_${hunter.key}")
++                    column(NAME, hunter.name)
++                    column(LEVEL, hunter.level)
++                    column(MODIFIER, hunter.modifier)
++                    columnRSCM(LOOT_SACK, hunter.sack)
++                }
++            }
++        }
++}
++
++/**
++ * Rumours for the creatures this server can catch (wiki: Hunters' Rumours list and drop rates).
++ * [CREATURE] is the creature npc a catch reports; [RATE] and [PITY] are the rare-part chance (1 in
++ * RATE) and the pity threshold; [HUNTERS] has bit n set when hunter n (see
++ * [HunterRumourHuntersTable]) gives this rumour. [PART_TEXT] is the "bring back some of its ..."
++ * wording (a guess except grey chinchompa "fur", from the wiki's whistle example).
++ */
++object HunterRumoursTable {
++    const val INDEX = 0
++    const val NAME = 1
++    const val CREATURE = 2
++    const val LEVEL = 3
++    const val PART = 4
++    const val PART_TEXT = 5
++    const val RATE = 6
++    const val PITY = 7
++    const val HUNTERS = 8
++
++    private data class Rumour(
++        val key: String,
++        val name: String,
++        val creature: String,
++        val level: Int,
++        val part: String,
++        val partText: String,
++        val rate: Int,
++        val pity: Int,
++        val hunters: Int,
++    )
++
++    private const val GILMAN = 1
++    private const val CERVUS = 2
++    private const val ORNUS = 4
++    private const val ACO = 8
++    private const val TECO = 16
++    private const val WOLF = 32
++
++    private val RUMOURS =
++        listOf(
++            Rumour("tropical_wagtail", "tropical wagtail", "npc.multicoloured_bird", 19, "obj.hg_tailfeather", "tail feathers", 20, 40, GILMAN),
++            Rumour("grey_chinchompa", "grey chinchompa", "npc.hunting_chinchompa", 53, "obj.hg_chinchompatuft", "fur", 50, 100, GILMAN or CERVUS or ACO or TECO),
++            Rumour(
++                "carnivorous_chinchompa",
++                "carnivorous chinchompa",
++                "npc.hunting_chinchompa_big",
++                63,
++                "obj.hg_chinchompatuft_red",
++                "fur",
++                50,
++                100,
++                GILMAN or CERVUS or ORNUS or ACO or TECO or WOLF,
++            ),
++            Rumour("herbiboar", "herbiboar", "npc.fossil_herbiboar_visible", 80, "obj.hg_herbytuft", "fur", 7, 14, GILMAN or TECO or WOLF),
++        )
++
++    fun hunterRumours() =
++        dbTable("dbtable.hunter_rumours", serverOnly = true) {
++            column("index", INDEX, VarType.INT)
++            column("name", NAME, VarType.STRING)
++            column("creature", CREATURE, VarType.NPC)
++            column("level", LEVEL, VarType.INT)
++            column("part", PART, VarType.OBJ)
++            column("part_text", PART_TEXT, VarType.STRING)
++            column("rate", RATE, VarType.INT)
++            column("pity", PITY, VarType.INT)
++            column("hunters", HUNTERS, VarType.INT)
++
++            RUMOURS.forEachIndexed { index, rumour ->
++                row("dbrow.hunter_rumour_${rumour.key}") {
++                    column(INDEX, index + 1)
++                    column(NAME, rumour.name)
++                    columnRSCM(CREATURE, rumour.creature)
++                    column(LEVEL, rumour.level)
++                    columnRSCM(PART, rumour.part)
++                    column(PART_TEXT, rumour.partText)
++                    column(RATE, rumour.rate)
++                    column(PITY, rumour.pity)
++                    column(HUNTERS, rumour.hunters)
++                }
++            }
++        }
++}
+diff --git a/content/skills/hunter/pack/src/main/resources/gamevals.toml b/content/skills/hunter/pack/src/main/resources/gamevals.toml
+index 661edc681..e82d7f469 100644
+--- a/content/skills/hunter/pack/src/main/resources/gamevals.toml
++++ b/content/skills/hunter/pack/src/main/resources/gamevals.toml
+@@ -9,3 +9,14 @@ birdhouse_seeds_c = 63766
+ birdhouse_seeds_d = 63767
+ herbiboar_harvested = 63890
+ herbiboar_route_length = 63891
++hunter_rumour_gilman = 63892
++hunter_rumour_cervus = 63893
++hunter_rumour_ornus = 63894
++hunter_rumour_aco = 63895
++hunter_rumour_teco = 63896
++hunter_rumour_wolf = 63897
++hunter_rumour_current = 63898
++hunter_rumour_pity = 63899
++hunter_rumour_unlocked = 63900
++hunter_rumours_completed = 63901
++hunter_rumour_back_to_back = 63902
+diff --git a/content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml b/content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml
+new file mode 100644
+index 000000000..5082a7317
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml
+@@ -0,0 +1,65 @@
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumour_gilman"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumour_cervus"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumour_ornus"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumour_aco"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumour_teco"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumour_wolf"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumour_current"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumour_pity"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumour_unlocked"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumours_completed"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumour_back_to_back"
++scope = "Perm"
++transmit = "Never"
+diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterRumoursTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterRumoursTest.kt
+new file mode 100644
+index 000000000..6750d4dd4
+--- /dev/null
++++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterRumoursTest.kt
+@@ -0,0 +1,130 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.util.UncheckedType
++import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertNull
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.api.testing.scope.GameTestScope
++import org.rsmod.content.skills.hunter.HunterRumours.Companion.HUNTER
++import org.rsmod.content.skills.hunter.HunterRumours.Companion.PITY
++import org.rsmod.content.skills.hunter.HunterRumours.Companion.turnInXp
++import org.rsmod.game.inv.InvObj
++import org.rsmod.map.CoordGrid
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class HunterRumoursTest {
++    @Test
++    fun `turn-in XP matches the wiki ranges`() {
++        assertEquals(2550, turnInXp(46, 50))
++        assertEquals(5200, turnInXp(99, 50))
++        assertEquals(4235, turnInXp(72, 55))
++        assertEquals(6240, turnInXp(99, 60))
++    }
++
++    @Test
++    fun GameTestState.`assignments follow each hunter's list, level and other hunters`() =
++        runInjectedGameTest(HunterRumours::class) { rumours ->
++            prepare(level = 53)
++            val gilman = rumours.hunters.first { it.name == "Gilman" }
++            val ornus = rumours.hunters.first { it.name == "Ornus" }
++            val cervus = rumours.hunters.first { it.name == "Cervus" }
++            assertNull(rumours.assign(player, ornus))
++            val first = checkNotNull(rumours.assign(player, gilman))
++            assertTrue(first.name in setOf("tropical wagtail", "grey chinchompa"), first.name)
++            val grey = rumours.rumours.first { it.name == "grey chinchompa" }
++            rumours.assign(player, gilman, grey)
++            assertNull(rumours.assign(player, cervus), "grey chinchompa is Gilman's already")
++        }
++
++    @Test
++    fun GameTestState.`catches reach the rare part by the pity threshold and the whistle names it`() =
++        runInjectedGameTest(HunterRumours::class) { rumours ->
++            prepare(level = 99)
++            val cervus = rumours.hunters.first { it.name == "Cervus" }
++            val grey = rumours.rumours.first { it.name == "grey chinchompa" }
++            assertEquals(grey, rumours.assign(player, cervus, grey))
++            val whistle = rumours.whistleMessage(player)
++            assertTrue("grey chinchompa" in whistle && "cervus" in whistle.lowercase(), whistle)
++
++            rumours.onCatch(player, "npc.hunting_chinchompa_big")
++            assertEquals(0, player.vars[PITY])
++            var catches = 0
++            while (player.inv.count(PART) == 0) {
++                rumours.onCatch(player, "npc.hunting_chinchompa")
++                assertTrue(++catches <= grey.pity)
++            }
++            assertEquals(0, player.vars[PITY])
++            val sent = client.mapOf(MessageGame::message).toMutableList()
++            advance(ticks = 1)
++            sent += client.mapOf(MessageGame::message)
++            assertTrue(sent.any { "You find a rare piece of the creature!" in it }, sent.toString())
++
++            repeat(5) { rumours.onCatch(player, "npc.hunting_chinchompa") }
++            assertEquals(1, player.inv.count(PART), "a held rare part blocks another")
++        }
++
++    @Test
++    fun GameTestState.`a pity part is destroyed when the inventory is full and comes on the next catch`() =
++        runInjectedGameTest(HunterRumours::class) { rumours ->
++            prepare(level = 99)
++            val gilman = rumours.hunters.first { it.name == "Gilman" }
++            val grey = rumours.rumours.first { it.name == "grey chinchompa" }
++            rumours.assign(player, gilman, grey)
++            fillInventory()
++            org.rsmod.api.player.vars.VarPlayerIntMapSetter.set(player, PITY, grey.pity - 1)
++            rumours.onCatch(player, "npc.hunting_chinchompa")
++            assertEquals(0, player.inv.count(PART))
++            player.inv[0] = null
++            rumours.onCatch(player, "npc.hunting_chinchompa")
++            assertEquals(1, player.inv.count(PART))
++        }
++
++    @Test
++    fun GameTestState.`turn-in swaps the part for the loot sack once`() =
++        runInjectedGameTest(HunterRumours::class) { rumours ->
++            prepare(level = 99)
++            val wolf = rumours.hunters.first { it.name == "Wolf" }
++            val red = rumours.rumours.first { it.name == "carnivorous chinchompa" }
++            rumours.assign(player, wolf, red)
++            assertFalse(rumours.turnIn(player, wolf), "no part yet")
++            fillInventory()
++            player.inv[0] = InvObj(RED_PART.asRSCM(RSCMType.OBJ), 1)
++            val xp = player.statMap.getXP(HUNTER)
++            assertTrue(rumours.turnIn(player, wolf))
++            assertEquals(0, player.inv.count(RED_PART))
++            assertEquals(1, player.inv.count("obj.hg_lootsack_t3"))
++            assertEquals((xp + turnInXp(99, 60)).toDouble(), player.statMap.getXP(HUNTER).toDouble(), 1.0)
++            assertFalse(rumours.turnIn(player, wolf))
++            assertEquals(1, player.inv.count("obj.hg_lootsack_t3"))
++            assertNull(rumours.rumourOf(player, wolf))
++        }
++
++    private fun GameTestScope.fillInventory() {
++        for (slot in 0 until player.inv.size) {
++            player.inv[slot] = InvObj("obj.logs".asRSCM(RSCMType.OBJ), 1)
++        }
++    }
++
++    private fun GameTestScope.prepare(level: Int) {
++        val center = CoordGrid(0, 24, 147, 20, 50)
++        allocZoneCollision(center)
++        player.teleport(center)
++        player.clearInv()
++        player.setBaseLevel(HUNTER, level)
++        player.setCurrentLevel(HUNTER, level)
++    }
++
++    private companion object {
++        const val PART = "obj.hg_chinchompatuft"
++        const val RED_PART = "obj.hg_chinchompatuft_red"
++    }
++}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HerbiboarScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HerbiboarScript.kt
+index 329f642e4..cf99ba11f 100644
+--- a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HerbiboarScript.kt
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HerbiboarScript.kt
+@@ -39,7 +39,11 @@ import org.rsmod.plugin.scripts.ScriptContext
+  */
+ class HerbiboarScript
+ @Inject
+-constructor(private val objRepo: ObjRepository, private val random: GameRandom) : PluginScript() {
++constructor(
++    private val objRepo: ObjRepository,
++    private val random: GameRandom,
++    private val rumours: HunterRumours,
++) : PluginScript() {
+     private val legs: List<Leg> by lazy { loadLegs() }
+     private val spotGroups: Map<Int, Int> by lazy {
+         HerbiboarSpotsRow.all().associate { it.loc.id to it.group }
+@@ -131,6 +135,7 @@ constructor(private val objRepo: ObjRepository, private val random: GameRandom)
+         if (count > 1) statAdvance(HERBLORE, HERB_XP * (count - 1))
+         VarPlayerIntMapSetter.set(player, HARVESTED, vars[HARVESTED] + 1)
+         mes("You harvest herbs from the herbiboar, whereupon it escapes.")
++        rumours.onCatch(player, HERBIBOAR)
+     }
+ 
+     private fun ProtectedAccess.toggleWarning() {
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumourScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumourScript.kt
+new file mode 100644
+index 000000000..51bb17ff5
+--- /dev/null
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumourScript.kt
+@@ -0,0 +1,60 @@
++package org.rsmod.content.skills.hunter
++
++import jakarta.inject.Inject
++import org.rsmod.api.player.output.mes
++import org.rsmod.api.script.onCommand
++import org.rsmod.api.script.onOpHeld3
++import org.rsmod.game.cheat.Cheat
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * The quetzal whistle's Rumour op and `::rumour` (test command: `::rumour [hunter] [creature]`
++ * assigns, `::rumour turnin [hunter]` hands in, `::rumour` alone shows the state). The guild
++ * hunters' dialogues are not done yet.
++ */
++class HunterRumourScript @Inject constructor(private val rumours: HunterRumours) : PluginScript() {
++    override fun ScriptContext.startup() {
++        for (whistle in WHISTLES) {
++            onOpHeld3(whistle) { mes(rumours.whistleMessage(player)) }
++        }
++        onCommand("rumour") {
++            desc = "Assign, show or hand in a Hunters' Rumour"
++            cheat { rumourCheat() }
++        }
++    }
++
++    private fun Cheat.rumourCheat() {
++        val args = this.args.map { it.lowercase() }
++        if (args.firstOrNull() == "turnin") {
++            val hunter = hunterArg(args.getOrNull(1)) ?: rumours.currentHunter(player)
++            val done = hunter != null && rumours.turnIn(player, hunter)
++            player.mes(if (done) "Rumour handed in to ${hunter?.name}." else "Nothing to hand in.")
++            return
++        }
++        val hunter = hunterArg(args.firstOrNull())
++        if (hunter == null) {
++            player.mes(rumours.whistleMessage(player))
++            for (h in rumours.hunters) {
++                player.mes("${h.name}: ${rumours.rumourOf(player, h)?.name ?: "-"}")
++            }
++            return
++        }
++        val creature = args.drop(1).joinToString(" ").replace('_', ' ').ifEmpty { null }
++        val forced = creature?.let { name -> rumours.rumours.firstOrNull { it.name == name } }
++        val rumour = rumours.assign(player, hunter, forced)
++        player.mes(rumour?.let { "${hunter.name} assigned ${it.name}." } ?: "${hunter.name} has no rumour for you.")
++    }
++
++    private fun hunterArg(arg: String?) = rumours.hunters.firstOrNull { it.name.lowercase() == arg }
++
++    private companion object {
++        val WHISTLES =
++            listOf(
++                "obj.hg_quetzalwhistle_basic",
++                "obj.hg_quetzalwhistle_enhanced",
++                "obj.hg_quetzalwhistle_perfected",
++                "obj.hg_quetzalwhistle_perfected_infinite",
++            )
++    }
++}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumours.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumours.kt
+new file mode 100644
+index 000000000..8c419e2c5
+--- /dev/null
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumours.kt
+@@ -0,0 +1,112 @@
++package org.rsmod.content.skills.hunter
++
++import jakarta.inject.Inject
++import jakarta.inject.Singleton
++import org.rsmod.api.invtx.invAddOrDrop
++import org.rsmod.api.invtx.invDel
++import org.rsmod.api.player.output.mes
++import org.rsmod.api.player.stat.statAdvance
++import org.rsmod.api.player.stat.statBase
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.random.GameRandom
++import org.rsmod.api.repo.obj.ObjRepository
++import org.rsmod.api.table.hunter.HunterRumourHuntersRow
++import org.rsmod.api.table.hunter.HunterRumoursRow
++import org.rsmod.game.entity.Player
++
++/**
++ * Hunters' Rumours state and rules (OSRS Wiki: Hunters' Rumours), kept in server varps: one rumour
++ * per guild hunter (`hunter_rumour_<name>` = rumour index), the hunter last talked to about a
++ * rumour (`hunter_rumour_current`), catches since the last rare part (`hunter_rumour_pity`).
++ *
++ * - A catch of the current rumour's creature rolls the rare part (1 in rate) or gives it at the
++ *   pity threshold. No part while any rare part is held. A full inventory drops a rolled part and
++ *   destroys a pity part (wiki).
++ * - Turning in takes the part and gives (Hunter level + 5) * modifier XP and the tier's loot sack.
++ *
++ * Deviation: only creatures this server can catch are assigned (wagtail, grey and carnivorous
++ * chinchompas, herbiboar).
++ */
++@Singleton
++class HunterRumours @Inject constructor(private val objRepo: ObjRepository, private val random: GameRandom) {
++    val hunters: List<HunterRumourHuntersRow> by lazy { HunterRumourHuntersRow.all().sortedBy { it.index } }
++    val rumours: List<HunterRumoursRow> by lazy { HunterRumoursRow.all().sortedBy { it.index } }
++
++    fun hunterVarp(hunter: HunterRumourHuntersRow): String = "varp.hunter_rumour_${hunter.name.lowercase()}"
++
++    fun rumourOf(player: Player, hunter: HunterRumourHuntersRow): HunterRumoursRow? =
++        rumours.firstOrNull { it.index == player.vars[hunterVarp(hunter)] }
++
++    fun currentHunter(player: Player): HunterRumourHuntersRow? =
++        hunters.firstOrNull { it.index + 1 == player.vars[CURRENT] }
++
++    fun currentRumour(player: Player): HunterRumoursRow? = currentHunter(player)?.let { rumourOf(player, it) }
++
++    /** Picks a rumour [hunter] gives that no other hunter has assigned. Null when none fits. */
++    fun assign(player: Player, hunter: HunterRumourHuntersRow, forced: HunterRumoursRow? = null): HunterRumoursRow? {
++        val level = player.statBase(HUNTER)
++        if (level < hunter.level) return null
++        val taken = hunters.filter { it != hunter }.mapNotNull { rumourOf(player, it)?.index }.toSet()
++        val options =
++            rumours.filter {
++                it.hunters and (1 shl hunter.index) != 0 && level >= it.level && it.index !in taken
++            }
++        val rumour = forced?.takeIf { it in options } ?: options.randomOrNull() ?: return null
++        VarPlayerIntMapSetter.set(player, hunterVarp(hunter), rumour.index)
++        VarPlayerIntMapSetter.set(player, CURRENT, hunter.index + 1)
++        VarPlayerIntMapSetter.set(player, PITY, 0)
++        return rumour
++    }
++
++    /** Called for every successful catch of [creature] (a creature npc's internal name). */
++    fun onCatch(player: Player, creature: String) {
++        val rumour = currentRumour(player) ?: return
++        if (rumour.creature.internalName != creature) return
++        val pity = player.vars[PITY] + 1
++        VarPlayerIntMapSetter.set(player, PITY, pity)
++        if (rumours.any { it.part.internalName in player.inv }) return
++        val pityDrop = pity >= rumour.pity
++        if (!pityDrop && random.of(rumour.rate) != 0) return
++        if (player.inv.freeSpace() == 0 && pityDrop) return
++        player.invAddOrDrop(objRepo, rumour.part.internalName)
++        VarPlayerIntMapSetter.set(player, PITY, 0)
++        player.mes(FOUND_MESSAGE)
++    }
++
++    /** Hands in [hunter]'s rumour if its rare part is carried. False when there is nothing to hand in. */
++    fun turnIn(player: Player, hunter: HunterRumourHuntersRow): Boolean {
++        val rumour = rumourOf(player, hunter) ?: return false
++        if (player.invDel(player.inv, rumour.part.id, 1).failure) return false
++        VarPlayerIntMapSetter.set(player, hunterVarp(hunter), 0)
++        if (player.vars[CURRENT] == hunter.index + 1) VarPlayerIntMapSetter.set(player, CURRENT, 0)
++        VarPlayerIntMapSetter.set(player, COMPLETED, player.vars[COMPLETED] + 1)
++        player.statAdvance(HUNTER, turnInXp(player.statBase(HUNTER), hunter.modifier).toDouble())
++        player.invAddOrDrop(objRepo, hunter.lootSack.internalName)
++        return true
++    }
++
++    /** The whistle's Rumour op (wiki example: "Your current rumour target is a grey chinchompa..."). */
++    fun whistleMessage(player: Player): String {
++        val hunter = currentHunter(player)
++        val rumour = hunter?.let { rumourOf(player, it) } ?: return NO_RUMOUR_MESSAGE
++        return "Your current rumour target is ${article(rumour.name)} ${rumour.name}. You'll need to bring back " +
++            "some of its ${rumour.partText}. ${hunter.name} was the source of the rumour."
++    }
++
++    private fun <T> List<T>.randomOrNull(): T? = if (isEmpty()) null else this[random.of(size)]
++
++    companion object {
++        const val HUNTER = "stat.hunter"
++        const val CURRENT = "varp.hunter_rumour_current"
++        const val PITY = "varp.hunter_rumour_pity"
++        const val COMPLETED = "varp.hunter_rumours_completed"
++        const val FOUND_MESSAGE =
++            "<col=0dc10d>You find a rare piece of the creature! You should take it back to the Hunter Guild.</col>"
++        const val NO_RUMOUR_MESSAGE = "You don't have a rumour to investigate at the moment."
++
++        /** Wiki: (Hunter level + 5) * modifier (50 novice/adept, 55 expert, 60 master). */
++        fun turnInXp(level: Int, modifier: Int): Int = (level + 5) * modifier
++
++        fun article(name: String): String = if (name.first().lowercaseChar() in "aeiou") "an" else "a"
++    }
++}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
+index 712864fe1..892091ff5 100644
+--- a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
+@@ -62,6 +62,7 @@ constructor(
+     private val collision: CollisionFlagMap,
+     private val random: GameRandom,
+     private val clock: MapClock,
++    private val rumours: HunterRumours,
+ ) : PluginScript() {
+     private val traps = HashMap<CoordGrid, Trap>()
+     private val kinds: List<TrapKind> by lazy { loadKinds() }
+@@ -159,6 +160,7 @@ constructor(
+         }
+         statAdvance(HUNTER, creature.xp)
+         mes("You've caught ${creature.article} ${creature.name}.")
++        rumours.onCatch(player, creature.npc)
+         return true
+     }
+ 
+diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
+index 31bb55bca..8dd35ad12 100644
+--- a/content/skills/hunter/src/main/resources/gamevals.toml
++++ b/content/skills/hunter/src/main/resources/gamevals.toml
+@@ -7,6 +7,8 @@ herbiboar_legs = 60013
+ herbiboar_spots = 60014
+ herbiboar_tunnels = 60015
+ herbiboar_herbs = 60016
++hunter_rumour_hunters = 60017
++hunter_rumours = 60018
+ 
+ [gamevals.dbrow]
+ impling_type_baby = 60124
+@@ -127,6 +129,16 @@ herbiboar_herb_tarromin = 60459
+ herbiboar_herb_harralander = 60460
+ herbiboar_herb_marentill = 60461
+ herbiboar_herb_guam = 60462
++hunter_rumour_hunter_gilman = 60470
++hunter_rumour_hunter_cervus = 60471
++hunter_rumour_hunter_ornus = 60472
++hunter_rumour_hunter_aco = 60473
++hunter_rumour_hunter_teco = 60474
++hunter_rumour_hunter_wolf = 60475
++hunter_rumour_tropical_wagtail = 60480
++hunter_rumour_grey_chinchompa = 60481
++hunter_rumour_carnivorous_chinchompa = 60482
++hunter_rumour_herbiboar = 60483
+ 
+ [gamevals.timer]
+ hunter_traps = 470
+-- 
+2.43.0
+

@@ -1057,3 +1057,28 @@ was verified.
   LOGGED_IN. Nothing is drawn until the plugin re-checks; on the device I forced it with
   `setprop debug.osrsrl.probe 'HerbiboarPlugin.startUp()'` (cleared right after). Desktop RuneLite
   returns the regions during LOADING.
+- **Hunters' Rumours, part 1** (no dialogues; `HunterRumours` + `HunterRumourScript`, pack
+  `HunterRumourTables`: dbtables `hunter_rumour_hunters` 60017, `hunter_rumours` 60018; varps
+  63892-63902). For the hub Hunter Rumours plugin, which reads npc DIALOG lines in the Burrow, the
+  rare-part and whistle game messages and Hunter XP drops (ours match its tables: wagtail 95,
+  chinchompa 198, carnivorous 265, herbiboar 1,950-2,461).
+  - State: one rumour per guild hunter (`hunter_rumour_<name>`), the current hunter, the pity count,
+    completed count (plus unlocked / back-to-back varps for the dialogue part).
+  - Assignment (wiki table): each hunter's own list, the creature's level, never a creature another
+    hunter has assigned. **Deviation:** only creatures this server can catch: tropical wagtail
+    (Gilman), grey chinchompa (Gilman, Cervus, Aco, Teco), carnivorous chinchompa (all six),
+    herbiboar (Gilman, Teco, Wolf).
+  - Rare part on a catch of the current rumour's creature (trap Check, herbiboar harvest): 1 in rate
+    or at the pity threshold (wiki: snare 1/20 pity 40, box trap 1/50 pity 100, herbiboar 1/7 pity
+    14); none while any rare part is held; full inventory: a rolled part drops, a pity part is
+    destroyed and comes on the next catch (wiki). Message: the wiki's "You find a rare piece of the
+    creature! You should take it back to the Hunter Guild." in green (exact colour a **guess**).
+  - Turn-in (`HunterRumours.turnIn`, for the dialogues later): takes the part, (Hunter level + 5) x
+    50/50/55/60 XP (wiki), the tier's `hg_lootsack_t0-3` (they don't open yet).
+  - Quetzal whistles (all four) Rumour op: "Your current rumour target is a grey chinchompa. You'll
+    need to bring back some of its fur. Cervus was the source of the rumour." (wiki example; part
+    words for the other creatures are **guesses**: tail feathers, fur); none: "You don't have a
+    rumour to investigate at the moment." (**guess**).
+  - `::rumour [hunter] [creature]` assigns, `::rumour turnin [hunter]`, `::rumour` shows the state.
+  - Waiting on the client dev: whether the Android host emits DIALOG ChatMessages (the plugin's
+    assignment/turn-in tracking). The guild hunter dialogues come after that. Upstream `40-hunter-rumours`.

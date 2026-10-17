@@ -101,7 +101,7 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Monster HP Percentage | runs | health percentage over NPCs with `MonsterHP.npcShowAll=true` (verified 2026-10-16). Its onNpcSpawned throws for nameless multi-NPCs (null name, also on desktop) |
 | Visual Metronome | runs | tick box alternating each game tick (verified 2026-10-16) |
 | Attack Timer Metronome | runs | attack cooldown count over the player while attacking a Man (verified 2026-10-16) |
-| Customizable XP Drops | starts | XP counter updates on a kill; no drops seen (2026-10-16): they advance on BeforeRender, which the host now posts each frame (unverified). Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
+| Customizable XP Drops | starts | XP counter follows the last skill; drops are queued and flown (BeforeRender, now posted each frame) but not drawn (2026-10-16, XpDropOverlay render to check). Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
 | Shortest Path | runs | Shift + long-press a tile, "Set Target" in the plugin strip: red path on the scene and the minimap; from Burthorpe it routes via "Lumbridge Home Teleport" (verified 2026-10-16). Targets within its reached distance (default 5 tiles) clear at once. Needed getDBTableRows, getProfile, DB fields with desktop semantics, the menu tile after the menu closes |
 | Improved Tile Indicators | starts | not checked (its overlay threw before login until overlays were limited to LOGGED_IN) |
 | Inventory Setups | starts | sidebar panel renders (version notes, Return to Setups); setups not tried. Needed jopt-simple, headless JPopupMenu children, getItemCount, DB fields |
@@ -113,7 +113,7 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Large Logout | starts | not checked |
 | Radius Markers | starts | not checked |
 | Skills Tab Progress Bars | starts | not checked |
-| Tree Despawn Timer | starts | not checked; its onGameTick threw on the first ticks of a login (no local player yet), so GameTick now waits for the local player. Needed Java 9 Duration methods (CompatRewrite) |
+| Tree Despawn Timer | runs | pie timer over a Lumbridge oak while chopping, green to yellow (verified 2026-10-16). Its onGameTick threw on the first ticks of a login (no local player yet), so GameTick now waits for the local player. Needed Java 9 Duration methods (CompatRewrite) |
 | Max Hit | runs | "Max Hit: 11.0" overlay (verified 2026-10-16) |
 | Wilderness Multi Lines | starts | starts; not checked (needs the Wilderness) |
 | Charges Improved | starts | starts and posts its update notes to chat (2026-10-16) after the CompatRewrite of `Collection.toArray(IntFunction)` (Java 11); charges not checked. Its daily reset throws NumberFormatException until the bank was opened once (empty `storage_bank`; the same on desktop) |

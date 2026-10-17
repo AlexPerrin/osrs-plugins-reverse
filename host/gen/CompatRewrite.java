@@ -33,6 +33,12 @@ public class CompatRewrite {
             "toUnmodifiableMap"));
     static final String TO_ARRAY = "(Ljava/util/function/IntFunction;)[Ljava/lang/Object;";
     static final String COMPAT = "net/runelite/host/compat/JdkCompat";
+
+    static boolean isCollection(String owner) {
+        String rest = owner.startsWith("java/util/concurrent/") ? owner.substring(21)
+            : owner.startsWith("java/util/") ? owner.substring(10) : null;
+        return rest != null && rest.indexOf('/') < 0;
+    }
     static int rewritten;
 
     public static void main(String[] a) throws Exception {
@@ -60,9 +66,10 @@ public class CompatRewrite {
                     public void visitMethodInsn(int op, String owner, String n, String d, boolean itf) {
                         boolean inst = op == Opcodes.INVOKEVIRTUAL || op == Opcodes.INVOKEINTERFACE;
                         String target = inst ? TABLE.get(owner + "." + n + d) : null;
-                        if (inst && target == null && n.equals("toArray") && d.equals(TO_ARRAY) && owner.startsWith("java/util/")) {
+                        if (inst && target == null && n.equals("toArray") && d.equals(TO_ARRAY) && isCollection(owner)) {
                             // The default method through a concrete collection (ArrayList, HashSet, ...):
-                            // any java.util receiver is a Collection, so the Collection overload takes it.
+                            // java.util / java.util.concurrent types with toArray(IntFunction) are
+                            // Collections (not java.util.stream.Stream, whose toArray is Java 8).
                             rewritten++;
                             super.visitMethodInsn(Opcodes.INVOKESTATIC, COMPAT, "toArray", "(Ljava/util/Collection;" + d.substring(1), false);
                             return;

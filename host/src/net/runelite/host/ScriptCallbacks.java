@@ -89,6 +89,31 @@ final class ScriptCallbacks {
         else if (script == FRIEND_UPDATE && opcode == CC_SETPOSITION) raiseOnLive(bus, ac, "friendsChatSetPosition", 4, 0);
     }
 
+    /**
+     * getSearchingTagTab (BankmainBuild clientscript 276): RuneLite's copy starts with `iconst 1;
+     * iconst 0; runelite_callback "getSearchingTagTab"; if_icmpne`, and when the plugin answers 1
+     * (a Bank Tags tag tab is open) and varbit 4150 (the open bank tab) isn't 0 it sets 4150 to 0
+     * (log "Server attempted to reset bank tab."). Raised here as 276 starts, with the same varbit write
+     * (client-side, as the script's set_varbit). The game's 276 (LIVE cache, 22 instructions) is the
+     * rest of RuneLite's copy.
+     * Not emulated: bankBuildTab (proc 277). RuneLite's 277 is restructured, not just patched: when the
+     * callback answers 1 it jumps to a block the game's 277 does not have (sums tab sizes 4171-4179 and
+     * lays the tag tab out as one list without tab separators); with no such code in the game's
+     * script there is no instruction to redirect to.
+     */
+    static final int BANKMAIN_BUILD = 276, BANK_TAB_VARBIT = 4150;
+
+    /** From Host.onScript as a root script starts (phase 2), before ScriptPreFired. */
+    static void onRootStart(EventBus bus, AndroidClient ac, int id) {
+        if (id != BANKMAIN_BUILD || !installed) return;
+        int answer = raise(bus, ac, "getSearchingTagTab", new int[] {1, 0}, new Object[0], 1);
+        if (answer != 1) return;
+        int tab = ac.getVarbitValue(BANK_TAB_VARBIT);
+        if (tab == 0) return;
+        ac.setVarbit(BANK_TAB_VARBIT, 0);
+        Log.i(TAG, "getSearchingTagTab: bank tab " + tab + " -> 0 (tag tab open)");
+    }
+
     static final int SPELLBOOK_BUILD = 2611, SPELLBOOK_SORT_PROC = 2621;
     private static int sortLogs;
 

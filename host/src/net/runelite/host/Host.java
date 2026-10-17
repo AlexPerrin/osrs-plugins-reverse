@@ -762,6 +762,10 @@ public final class Host {
                 ac.beginScriptEvent();  // the callback's fake stacks end here
                 bus.post(new ScriptPostFired(id));
             } else {
+                if (phase == 2) {
+                    ScriptCallbacks.onRootStart(bus, ac, id);
+                    ac.beginScriptEvent();  // the callback's fake stacks end here
+                }
                 ScriptPreFired e = new ScriptPreFired(id);
                 if (phase == 2) {
                     Object[] args = Native.scriptEventArgs();

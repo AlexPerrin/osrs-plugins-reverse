@@ -644,6 +644,43 @@ public class AndroidClient extends ClientStub {
     @Override
     public Object[] getDBTableField(int rowID, int column, int tupleIndex) {
         if (!isClientThread()) return null;
+        // The lookups run the game's db_getfield handler on the script VM's stacks, which can't be
+        // used while a script runs (script events, runelite_callback emulation such as
+        // questFilter). Database rows are static cache data, so results are kept; one asked for
+        // mid-script that isn't known yet reads as empty and is fetched on the next cycle.
+        long key = ((long) rowID << 32) | ((long) (column & 0xffff) << 16) | (tupleIndex & 0xffff);
+        Object[] cached = dbCache.get(key);
+        if (cached != null) return cached.clone();
+        if (liveStacks) {
+            dbWanted.add(key);
+            return new Object[0];
+        }
+        Object[] r = readDBTableField(rowID, column, tupleIndex);
+        if (r.length > 0 && dbCache.size() < 65536) dbCache.put(key, r.clone());
+        return r;
+    }
+
+    private final java.util.Map<Long, Object[]> dbCache = new java.util.HashMap<>();
+    private final java.util.Set<Long> dbWanted = new java.util.LinkedHashSet<>();
+
+    /** Game thread, each cycle outside scripts: fetches the db fields asked for mid-script. */
+    void fetchWantedDbFields() {
+        if (dbWanted.isEmpty() || liveStacks) return;
+        java.util.List<Long> keys = new java.util.ArrayList<>(dbWanted);
+        dbWanted.clear();
+        for (long k : keys) {
+            Object[] r = readDBTableField((int) (k >>> 32), (int) (k >>> 16) & 0xffff, (int) k & 0xffff);
+            if (r.length > 0 && dbCache.size() < 65536) dbCache.put(k, r);
+        }
+    }
+
+    /** Remembers a field so it is known before a script asks for it (see getDBTableField). */
+    void wantDbField(int rowID, int column, int tupleIndex) {
+        long key = ((long) rowID << 32) | ((long) (column & 0xffff) << 16) | (tupleIndex & 0xffff);
+        if (!dbCache.containsKey(key)) dbWanted.add(key);
+    }
+
+    private Object[] readDBTableField(int rowID, int column, int tupleIndex) {
         int n = Native.dbFieldCount(rowID, column);
         // A row without values in the column reads the table's column default (db_getfield on
         // tuple 0 returns it), as on desktop.

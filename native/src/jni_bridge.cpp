@@ -493,11 +493,7 @@ jboolean n_set_script_int_stack(JNIEnv* env, jclass, jintArray values, jint size
     return game::set_script_int_stack(v.data(), size);
 }
 
-jobjectArray n_script_event_args(JNIEnv* env, jclass) {
-    if (!client_thread::on_client_thread()) return nullptr;
-    uintptr_t ev = script_hooks::current_event();
-    if (!ev) return nullptr;
-    auto args = game::script_event_args(ev);
+static jobjectArray script_args_to_java(JNIEnv* env, const std::vector<game::ScriptArg>& args) {
     jclass integer = env->FindClass("java/lang/Integer");
     jmethodID value_of = env->GetStaticMethodID(integer, "valueOf", "(I)Ljava/lang/Integer;");
     jobjectArray res = env->NewObjectArray(static_cast<jsize>(args.size()), env->FindClass("java/lang/Object"), nullptr);
@@ -508,6 +504,28 @@ jobjectArray n_script_event_args(JNIEnv* env, jclass) {
         env->DeleteLocalRef(o);
     }
     return res;
+}
+
+jobjectArray n_script_event_args(JNIEnv* env, jclass) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    uintptr_t ev = script_hooks::current_event();
+    if (!ev) return nullptr;
+    return script_args_to_java(env, game::script_event_args(ev));
+}
+
+// A widget's stored CS2 listener (CC_SETON*/IF_SETON* slot, same {+8 count, +0x10 variants} layout
+// as a ScriptEvent, docs/offsets.md) as {scriptId, args...}, or null when none is set. Offsets are
+// whitelisted: onLoad, onVarTransmit, onInvTransmit, onStatTransmit, onTimer, onOp, onKey.
+static uintptr_t widget_or_child(jint id, jint index);
+jobjectArray n_widget_listener(JNIEnv* env, jclass, jint id, jint index, jint offset) {
+    static constexpr int kSlots[] = {0x350, 0x590, 0x5d8, 0x620, 0x668, 0x698, 0x758};
+    if (!client_thread::on_client_thread()) return nullptr;
+    bool ok = false;
+    for (int o : kSlots) ok |= o == offset;
+    uintptr_t w = ok ? widget_or_child(id, index) : 0;
+    if (!w || *reinterpret_cast<const uint64_t*>(w + offset + 8) == 0) return nullptr;
+    auto args = game::script_event_args(w + offset);
+    return args.empty() ? nullptr : script_args_to_java(env, args);
 }
 
 jintArray n_script_event_source(JNIEnv* env, jclass) {
@@ -1217,6 +1235,7 @@ const JNINativeMethod kNatives[] = {
     {"setScriptIntStack", "([II)Z", reinterpret_cast<void*>(n_set_script_int_stack)},
     {"scriptEventArgs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_event_args)},
     {"scriptEventSource", "()[I", reinterpret_cast<void*>(n_script_event_source)},
+    {"widgetListener", "(III)[Ljava/lang/Object;", reinterpret_cast<void*>(n_widget_listener)},
     {"scriptStats", "()[J", reinterpret_cast<void*>(n_script_stats)},
 };
 

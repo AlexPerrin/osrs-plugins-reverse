@@ -372,6 +372,7 @@ public final class Host {
                 }
                 runQueued();
                 AndroidMenu.onCycle();
+                ((AndroidClient) client).fetchWantedDbFields();
                 HostSprites.onCycle(client);
                 Sidebar.onCycle();
                 try {
@@ -667,6 +668,7 @@ public final class Host {
         AndroidClient ac = (AndroidClient) client;
         ac.beginScriptEvent();
         try {
+            if (id == QUEST_FILTER_PROC) questFilter(bus, ac, phase);
             if (phase == 1) {
                 bus.post(new ScriptPostFired(id));
             } else {
@@ -687,6 +689,46 @@ public final class Host {
         } finally {
             AndroidWidget.applyChildEdits();
             ac.endScriptEvent();
+        }
+    }
+
+    /**
+     * RuneLite's patched quest filter proc 3238 (runelite-client/src/main/scripts/QuestFilter.rs2asm,
+     * 8 int args, arg 0 = the quest's dbrow; returns 1 to hide the row, 0 to show it) raises
+     * runelite_callback "questFilter" with int stack [..., -1, dbrow] and returns what a plugin
+     * left in the -1 slot unless it is still -1. The game's proc has no callback, so it is raised
+     * here when the proc returns: the dbrow is taken from its arguments at entry, and a plugin's
+     * answer replaces the proc's result on the int stack (Quest List's search). Only the
+     * questFilter check before the proc's own filters is lost when the answer is -1, which leaves
+     * the game's result as is.
+     */
+    static final int QUEST_FILTER_PROC = 3238;
+    private static final java.util.ArrayDeque<Integer> questFilterRows = new java.util.ArrayDeque<>();
+
+    private static void questFilter(EventBus bus, AndroidClient ac, int phase) {
+        if (phase == 0) {
+            int n = ac.getIntStackSize();
+            int row = n >= 8 ? ac.getIntStack()[n - 8] : -1;
+            questFilterRows.push(row);
+            // Quest List reads the quest's name (column 2) in the callback: have it cached by then.
+            if (row >= 0) ac.wantDbField(row, 2, 0);
+            return;
+        }
+        if (phase != 1 || questFilterRows.isEmpty()) return;
+        int row = questFilterRows.pop();
+        if (row < 0 || !bus.hasSubscribers(net.runelite.api.events.ScriptCallbackEvent.class)) return;
+        int n = ac.getIntStackSize();
+        if (n < 1) return;
+        int[] live = java.util.Arrays.copyOf(ac.getIntStack(), n);
+        ac.fakeStacks(new int[] {-1, row}, new Object[0]);
+        net.runelite.api.events.ScriptCallbackEvent e = new net.runelite.api.events.ScriptCallbackEvent();
+        e.setEventName("questFilter");
+        bus.post(e);
+        int answer = ac.getIntStack()[0];
+        ac.beginScriptEvent();  // back to the live stacks; the fake ones are not written back
+        if (answer != -1 && answer != live[n - 1]) {
+            live[n - 1] = answer;
+            Native.setScriptIntStack(live, n);
         }
     }
 

@@ -99,7 +99,16 @@ public class AndroidWidget extends WidgetBag {
         WidgetListeners.syncFlags(id, childIndex());
     }
     @Override public void setOnOpListener(Object... args) { WidgetListeners.setOnOp(id, childIndex(), args); }
-    @Override public Object[] getOnOpListener() { return WidgetListeners.onOp(id, childIndex()); }
+    @Override public Object[] getOnOpListener() {
+        Object[] java = WidgetListeners.onOp(id, childIndex());
+        return java != null ? java : Native.widgetListener(id, childIndex(), 0x698);
+    }
+    // The game's CS2 listeners (CC_SETON*/IF_SETON* slots; magic args such as event_opbase come
+    // back as stored, as on desktop). Quest List reruns 399:2's onVarTransmit to redraw the list.
+    @Override public Object[] getOnVarTransmitListener() { return Native.widgetListener(id, childIndex(), 0x590); }
+    @Override public Object[] getOnInvTransmitListener() { return Native.widgetListener(id, childIndex(), 0x5d8); }
+    @Override public Object[] getOnLoadListener() { return Native.widgetListener(id, childIndex(), 0x350); }
+    @Override public Object[] getOnKeyListener() { return Native.widgetListener(id, childIndex(), 0x758); }
     @Override public Widget setHasListener(boolean v) { return this; }
     @Override public String[] getActions() {
         String[] s = strings();

@@ -70,6 +70,8 @@ final class Native {
     static native void widgetSetFlags(int id, int index, int flags);
     /** The game's Widget* (0 if absent): identifies a CC_CREATE child across re-creations. */
     static native long widgetPtr(int id, int index);
+    /** A widget's CS2 listener {scriptId, args...} stored at `offset` (0x590 onVarTransmit, ...), or null. */
+    static native Object[] widgetListener(int id, int index, int offset);
     static native boolean playSound(int id, int loops, int delay);
     static native int varcInt(int id);
     static native String varcString(int id);

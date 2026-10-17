@@ -382,6 +382,32 @@ public class AndroidClient extends ClientStub {
         @Override public java.util.Iterator<net.runelite.api.Projectile> iterator() { return java.util.Collections.emptyIterator(); }
     };
     @Override public net.runelite.api.Deque<net.runelite.api.Projectile> getProjectiles() { return projectiles; }
+    private final net.runelite.api.Deque<net.runelite.api.AmbientSoundEffect> ambientSounds = new net.runelite.api.Deque<net.runelite.api.AmbientSoundEffect>() {
+        @Override public void addLast(net.runelite.api.AmbientSoundEffect e) { }
+        @Override public void clear() { }
+        @Override public java.util.Iterator<net.runelite.api.AmbientSoundEffect> iterator() { return java.util.Collections.emptyIterator(); }
+    };
+    /** Area sounds aren't read from the game: always empty (Music's area-sound muting has nothing to act on). */
+    @Override public net.runelite.api.Deque<net.runelite.api.AmbientSoundEffect> getAmbientSoundEffects() { return ambientSounds; }
+    /** Desktop's world-map loading percentage; the mobile world map isn't modelled. */
+    @Override public int getExpandedMapLoading() { return 0; }
+    private static final net.runelite.api.GrandExchangeOffer EMPTY_OFFER = new net.runelite.api.GrandExchangeOffer() {
+        @Override public int getQuantitySold() { return 0; }
+        @Override public int getItemId() { return 0; }
+        @Override public int getTotalQuantity() { return 0; }
+        @Override public long getPrice() { return 0; }
+        @Override public long getSpent() { return 0; }
+        @Override public net.runelite.api.GrandExchangeOfferState getState() { return net.runelite.api.GrandExchangeOfferState.EMPTY; }
+    };
+    /**
+     * The 8 GE slots, all EMPTY. // unverified: the game's offers (UPDATE_GE_OFFERS) are not read yet,
+     * so real offers show as empty slots; desktop never returns null here.
+     */
+    @Override public net.runelite.api.GrandExchangeOffer[] getGrandExchangeOffers() {
+        net.runelite.api.GrandExchangeOffer[] a = new net.runelite.api.GrandExchangeOffer[8];
+        java.util.Arrays.fill(a, EMPTY_OFFER);
+        return a;
+    }
     @Override public net.runelite.api.widgets.Widget getSelectedWidget() { return null; }
     /** The script VM's active component (CC_CREATE/CC_FIND), as desktop's scriptActiveWidget. Game thread. */
     @Override public net.runelite.api.widgets.Widget getScriptActiveWidget() { return scriptWidget(false); }

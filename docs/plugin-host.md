@@ -106,6 +106,16 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Minimap | runs | recolouring works (2026-10-17 gen 22): `minimap.npc=#ffff00ff` turns the NPC dots magenta, `item` red, the friend dot green. The plugin's keys are `minimap.item/npc/player/friend/team/clan/clanchat` (gen 21 used a wrong key). The host maps desktop's dot index to the mobile category (items 5, NPCs 6, players 4, friend 0, team 1, friends chat 2, clan 3; the game's default colours match desktop's per role) and sets that category's dot colour via `setDotStyle` (`0x588eac`, only once the minimap's base dot exists: an early call crashed the game at startup). `setMinimapZoom` is a no-op |
 | Mouse Highlight | runs | runs as "Mouse Tooltips": a finger on an inventory item shows "Drop Raw bird meat" by the item (hover entry, verified 2026-10-17 gen 21). Scene hover has no entries yet (hover is inventory slots only) |
 | Smelting | runs | "Smelting Bars: 1" session panel at Edgeville (server dev's check on the device, 2026-10-17) |
+| Diary Requirements | untested | converted gen 22 (`achievementdiary.jar`); measures diary task text with `Widget.getFont().getTextWidth` (game PARAWIDTH measure, gen 22) |
+| Inventory Viewer | untested | converted gen 22 (`inventoryviewer.jar`) |
+| Runecraft | untested | converted gen 22 (`runecraft.jar`) |
+| Boss Timers | untested | converted gen 22 (`bosstimer.jar`); respawn timers after a boss dies (Giant Mole on OpenRune) |
+| DPS Counter | untested | converted gen 22 (`dpscounter.jar`); solo boss DPS from hitsplats |
+| Friend List | untested | converted gen 22 (`friendlist.jar`) |
+| Spellbook | untested | converted gen 22 (`spellbook.jar`); `Client.getArray` is still a stub: mobile CS2 arrays are frame object locals (vm `+0x38`, slot = operand >> 16, opcode 44 in `0x4dd08c`), not global arrays by id |
+| Grand Exchange | untested | converted gen 22 (`grandexchange.jar`); `getGrandExchangeOffers` returns 8 EMPTY offers (the game's offers aren't read yet); its trade submissions are blocked (getEnvironment = 1, NetGuard) |
+| Music | untested | converted gen 22 (`music.jar`); `getAmbientSoundEffects` is empty (area sounds not read) |
+| Instance Map | untested | converted gen 22 (`instancemap.jar`); `drawInstanceMap` is a stub and instances aren't modelled (`isInstance` false) |
 
 ## Plugin Hub status
 

@@ -973,8 +973,7 @@ session; its notes are in `docs/android-protocol.md`.
     (jars in re/host/plugins-extra). **Verified with the server's `::fakeclan join|add <n>|del <n>|leave`** (args lowercased;
     not kept over a relog): `set 'chat log 0'` lists 'Test Fc' (owner Tester, OWNER) and clan 0 'Test Clan' with members;
     **Chat Channel runs** (join/leave lines for FC and clan after its 10-tick delay; config group is `clanchat`, keys
-    `showJoinLeave`, `clanChatShowJoinLeave`). Team `starts`. Open: the FC name reads "Test Fc" while the server says
-    "Test FC" (the reader may take the game's normalised name; check the field next to +0xa8). The clan tab itself stays
+    `showJoinLeave`, `clanChatShowJoinLeave`). Team `starts`. The FC name reads "Test Fc" where the server's text says "Test FC": FC names travel as base37 names, which decode to word-capitalised form (desktop shows the same), so this is probably correct. The clan tab itself stays
     "Connecting..." until the server sends CLANSETTINGS_FULL (server dev).
   - API (546 -> 570): Widget scroll x/y/size, model zoom/rotation, setPos/setSize, setItemQuantityMode (+0x13c, mobile
     encoding 0 never / 3 always / 1 if >1; unverified), Client getFPS, getCenterX/Y, getVarbitValue(int[],int), desktop
@@ -982,7 +981,7 @@ session; its notes are in `docs/android-protocol.md`.
     orchestrator's progress files). More in gen 25: ParamHolder getLongValue/setValue (item/NPC/loc/struct), Node
     getHash/next/previous for containers/messages, ItemComposition xan2d/yan2d/zan2d. API 590/866 at the end.
   - **Next (gen 26)**: the orchestrator's queue (gen 25's was Bank Tag Layouts, FC/clan readers, API coverage where plugins
-    hit stubs). Open items: the FC name field ("Test Fc" vs "Test FC"); Team's counts on screen; setItemQuantityMode's
+    hit stubs). Open items: Team's counts on screen; setItemQuantityMode's
     drawn result; getSearchingTagTab still unverified. (A short-lived F2P goal set during gen 25 was withdrawn, 819f24e.)
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 

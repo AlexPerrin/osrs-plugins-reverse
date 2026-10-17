@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 27 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 28 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1051,6 +1051,43 @@ session; its notes are in `docs/android-protocol.md`.
     case, look at the code before the loop and the "opcode < 0x18" range checks), QH fake objects, Resource packs (hub packs = GitHub
     GETs), the Quest Helper desktop-vs-Android A/B (queue item 4; plan it with the orchestrator first: both locks + server dev).
   - Gotcha: `debug.osrsrl.set` splits into 3 parts (`split(" ", 3)`), so a probe's extra arguments arrive together in a[2].
+- **2026-10-17 (client dev gen 28)**, commits da20f14..c1cec5e (progress at start: core 82/84, hub 34/37, API 596/866; end: API 640/866).
+  - **Quest Helper A/B, desktop vs Android: matching.** Restless Ghost stage 1 → 2 (`::varp 107 1/2`) and Imp Catcher
+    (`::varp 160 1`, then `::item 1470/1472/1474/1476`) give the same step text, requirement colours and minimap arrow on both.
+    The desktop's earlier "overlay vanishes" was a harness problem: QH **sideloaded** into the RSProx-launched desktop can't
+    load client resources (`/util/clue_arrow.png`), so every ObjectStep threw in startUp. The fix was installing from the hub by
+    config (`runelite.externalPlugins=quest-helper` in `.rlcustom\profiles2\default-*.properties`, client stopped);
+    docs/multi-client.md has the recipe. Version caveat: hub QH 4.18.0 vs our `re/hub/quest-helper.jar` **4.17.1** (not 4.17.0).
+    Desktop client.log is ISO-8859 + CRLF: use `grep -a`.
+  - **Live item prices** (f43c2d1, b2699a2): ItemManager fetches `api.runelite.net/runelite-1.13.1/item/prices.js` like
+    ItemClient. It refreshes every 30 min, follows desktop's lookup order (WORN_ITEMS copied from 1.13.1, ItemMapping), and
+    uses store value only while offline. The host's shared OkHttp client now sends desktop's `User-Agent: RuneLite/1.13.1-e7fb1f9`
+    (network interceptor) and nothing else identifying. Verified: one GET with only Host/Connection/Accept-Encoding/UA; Ground
+    Items shows the desktop price (red bead 1,205 gp). Earlier "verified" price rows were store values (noted in each row).
+    The second ground label "(1240 gp)" is the **official client's own** value label (stays with Ground Items' prices off).
+  - **Item/NPC model fields** (verified with probes `set 'idef 1351 0'`, `set 'npcdef 3108 0'`): ObjType +0x04 inventory model
+    (mobile opcode 0x2c; there is no opcode 1), recolours/retextures, ambient/contrast; NpcType models (opcode 61), chatheads (62),
+    recolours, width/height scale (scale unverified). docs/offsets.md has the layouts.
+  - **QH fake objects**: used only by the default-off quest-complete "fan" (showFan) and the empty player-made-quest framework.
+    The orchestrator decided bookkeeping only: RuneLiteObject registration tracked, models inert, nothing drawn;
+    `loadAnimation` returns a one-frame placeholder (FakeNpc NPE).
+  - Widgets (b447b7c, c1cec5e; all unverified): drag dead zone/time `+0x320/+0x324`; model type/id/anim, line height and laid-out
+    x/y/w/h setters; hasListener `+0x348`; getItemQuantityMode; revalidateScroll. Java onTimer runs each cycle, onDrag each
+    held drag cycle, onVarTransmit after a varp transmit (host-side triggers, `WidgetListeners.runCycle`). Other listener kinds
+    are stored only. Client: getWidgetRoots, getRevision 241.
+  - isGpu stays false (orchestrator): Improved Tile Indicators' below-player cut-out is a known gap (noted in its row).
+  - Remaining tracked stub hits (scan: javap over hub jars + client plugins vs ApiCoverage's missing list, excluding
+    gpu/devtools/camera/skybox/interfacestyles/loginscreen): Widget.setType (QH chat boxes, Resource packs),
+    Scene.removeGameObject (QH fake objects), getRasterizer (Better Teleport Menu), setInventoryDragDelay (Anti Drag),
+    closeInterface (Bank), Widget.setSubOp (Bank Tags), drawInstanceMap, Widget.isIf3 (Inventory Grid),
+    getFocusedInputFieldWidget (Key Remapping), Low Memory, Roof Removal (buildRoofs/setRoofRemovalMode/getMapRegions on Scene),
+    World Hopper (hopToWorld etc.), getMapElementConfig (World Map).
+  - Gotchas: the scratchpad holds older generations' PNGs (use a fresh subfolder); OpenRune logs an idle player out after
+    ~5 min (tap Play Now); `setprop x ''` fails on this Android ("Need 2 arguments"), so clear props with `0`;
+    `debug.osrsrl.sbclick '<quest>'` only works from the quest list (send `Close helper` first if a helper is open).
+  - **Next (gen 29)**: Chat Commands `!price` didn't rewrite on the device (probably not in the default plugin set); check with
+    EXTRA=chatcommands. Device-verify the gen 28 widget listeners (Anti Drag's dead time; QH bank tab onTimer/onDrag).
+    Then the remaining stub hits above, in tracked-plugin order.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

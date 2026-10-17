@@ -2067,7 +2067,57 @@ bool append_model(uintptr_t renderable, int dx, int dz, std::vector<int32_t>& xy
     release_shared(ctrl);
     return ok;
 }
+
+// Mesh of a posed model for Model.getVertices*/getFaceIndices*/getFaceColors*: {height, vertex
+// count n, face count f, colour flag, x[n], y[n], z[n], a[f], b[f], c[f], colours1[f], colours2[f],
+// colours3[f]} (colour arrays only when the flag is 1). Faces: +0x70 count, +0x88/+0xa0/+0xb8 int*
+// vertex indices. Lit face colours: +0xd0/+0xe8/+0x100 int* (written by the light pass 0x72aea4 from
+// the ModelData's 16-bit HSL colours; colours3 = -1 for a flat face, -2 for a hidden one, as desktop's
+// Model.getFaceColors1/2/3).
+bool read_mesh(uintptr_t renderable, std::vector<int32_t>& out) {
+    out.clear();
+    if (!renderable) return false;
+    uintptr_t vt = read_at<uintptr_t>(renderable);
+    if (!vt) return false;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    auto fn = reinterpret_cast<SharedPtr (*)(uintptr_t, int)>(read_at<uintptr_t>(vt));
+    g_own_model_call = true;
+    SharedPtr r = fn(renderable, cycle());
+    g_own_model_call = false;
+    uintptr_t ctrl = r.ctrl, m = r.obj;
+    if (!m) { release_shared(ctrl); return false; }
+    int n = read_at<int32_t>(m + 0x20), f = read_at<int32_t>(m + 0x70);
+    auto xs = read_at<const int32_t*>(m + 0x38), ys = read_at<const int32_t*>(m + 0x50), zs = read_at<const int32_t*>(m + 0x68);
+    auto fa = read_at<const int32_t*>(m + 0x88), fb = read_at<const int32_t*>(m + 0xa0), fc = read_at<const int32_t*>(m + 0xb8);
+    auto c1 = read_at<const int32_t*>(m + 0xd0), c2 = read_at<const int32_t*>(m + 0xe8), c3 = read_at<const int32_t*>(m + 0x100);
+    bool ok = n > 0 && n < 20000 && f >= 0 && f < 40000 && xs && ys && zs && (f == 0 || (fa && fb && fc));
+    if (ok) {
+        bool colours = f > 0 && c1 && c2 && c3;
+        out.reserve(4 + 3 * static_cast<size_t>(n) + (colours ? 6 : 3) * static_cast<size_t>(f));
+        out.push_back(read_at<int32_t>(m + 0x18));
+        out.push_back(n);
+        out.push_back(f);
+        out.push_back(colours ? 1 : 0);
+        out.insert(out.end(), xs, xs + n);
+        out.insert(out.end(), ys, ys + n);
+        out.insert(out.end(), zs, zs + n);
+        for (auto arr : {fa, fb, fc}) out.insert(out.end(), arr, arr + f);
+        if (colours)
+            for (auto arr : {c1, c2, c3}) out.insert(out.end(), arr, arr + f);
+        // A face index outside the vertex range would make the Java side throw: reject the model.
+        for (size_t i = 4 + 3 * static_cast<size_t>(n), e = i + 3 * static_cast<size_t>(f); i < e; i++)
+            if (out[i] < 0 || out[i] >= n) { ok = false; break; }
+    }
+    release_shared(ctrl);
+    if (!ok) out.clear();
+    return ok;
+}
 }  // namespace
+
+bool actor_mesh(uintptr_t actor, std::vector<int32_t>& out) { return read_mesh(actor, out); }
 
 // Draw log (setprop debug.osrsrl.drawlog 1): hooks the Npc vtable slot 0 (getModel) to record
 // which Npc objects the renderer asks for a model, then logs them every ~50 cycles next to the

@@ -190,6 +190,16 @@ jintArray n_actor_model(JNIEnv* env, jclass, jboolean player, jint index) {
     env->SetIntArrayRegion(arr, 1, static_cast<jsize>(xyz.size()), xyz.data());
     return arr;
 }
+// Posed mesh of an NPC's (player=false) or player's model (layout: game.cpp read_mesh); null if none.
+jintArray n_actor_mesh(JNIEnv* env, jclass, jboolean player, jint index) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    uintptr_t a = player ? game::live_player(index) : game::live_npc(index);
+    std::vector<int32_t> mesh;
+    if (!game::actor_mesh(a, mesh)) return nullptr;
+    jintArray arr = env->NewIntArray(static_cast<jsize>(mesh.size()));
+    env->SetIntArrayRegion(arr, 0, static_cast<jsize>(mesh.size()), mesh.data());
+    return arr;
+}
 // meta: 7 ints per icon {gameIndex, w, h, ox, oy, fullW, fullH}; pixels/palettes null for game icons.
 void n_set_mod_icons(JNIEnv* env, jclass, jintArray meta, jobjectArray pixels, jobjectArray palettes) {
     if (!meta) return;
@@ -1426,6 +1436,7 @@ const JNINativeMethod kNatives[] = {
     {"dbFieldCount", "(II)I", reinterpret_cast<void*>(n_db_field_count)},
     {"runEnergy", "()I", reinterpret_cast<void*>(n_run_energy)},
     {"actorModel", "(ZI)[I", reinterpret_cast<void*>(n_actor_model)},
+    {"actorMesh", "(ZI)[I", reinterpret_cast<void*>(n_actor_mesh)},
     {"actorHeight", "(ZI)I", reinterpret_cast<void*>(n_actor_height)},
     {"setModIcons", "([I[[B[[I)V", reinterpret_cast<void*>(n_set_mod_icons)},
     {"modIconSizes", "()[I", reinterpret_cast<void*>(n_mod_icon_sizes)},

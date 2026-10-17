@@ -52,6 +52,17 @@ public class AndroidNPC extends NPCStub {
     }
 
 
+    /** The posed model (vertices, faces, lit colours), as desktop; null for a hidden multi-NPC. */
+    @Override public net.runelite.api.Model getModel() {
+        net.runelite.api.NPCComposition base = getComposition();
+        if (base != null && base.getConfigs() != null && base.getConfigs().length > 0 && getTransformedComposition() == null) return null;
+        return AndroidModel.of(false, index);
+    }
+
+    // unverified: desktop's offset is non-zero only while some animations lift the model; the game's
+    // field is not found, so this is the resting 0.
+    @Override public int getAnimationHeightOffset() { return 0; }
+
     /** The posed model's height, as desktop (Implings' labels); a footprint estimate without a model. */
     @Override public int getLogicalHeight() {
         net.runelite.api.NPCComposition c = getComposition();

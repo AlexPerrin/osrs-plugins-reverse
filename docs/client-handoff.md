@@ -1021,8 +1021,8 @@ session; its notes are in `docs/android-protocol.md`.
     Config read at startUp (Tile Packs' `tilePacks.packs=[42]`): edit settings.properties with the app stopped
     (force-stop, `adb shell cat`, edit, push), then start. A relaunch soon after a force-stop shows "account still logged in":
     wait ~20 s and tap "Try again" (958,668), then Play Now.
-  - **Next (gen 27)**: Custom Menu Swaps (`config hotkeyablemenuswaps customSwaps=examine,man`, long-press a Lumbridge man,
-    expect Examine on top; unset after); C Engineer audio checked objectively via AudioFlinger frames during the clip
+  - **Next (gen 27)**: Custom Menu Swaps (done in gen 27; the recipe here was wrong: `examine,man` never matches "man (level-2)",
+    use `examine,man*` or a level-less target such as `examine,cat`); C Engineer audio checked objectively via AudioFlinger frames during the clip
     (as Metronome was; trigger with `config cengineercompleted selectAnySoundToTestPlayIt=LEVEL_UP`, unset after, and also
     remove the plugin's own `cengineercompleted.needToInformAboutDelayedCoxColLogs`); getSearchingTagTab; the quantity mode
     drawn result; Resource packs needs a hub pack installed (GitHub GETs) and mostly targets desktop interfaces. Remaining

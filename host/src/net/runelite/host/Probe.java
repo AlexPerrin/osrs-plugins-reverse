@@ -210,6 +210,15 @@ final class Probe {
                         b = "height " + m[0] + " verts " + (m.length - 1) / 3 + " x " + lo[0] + ".." + hi[0] + " y " + lo[1] + ".." + hi[1] + " z " + lo[2] + ".." + hi[2];
                     }
                     java.awt.Shape h = n.getConvexHull();
+                    net.runelite.api.Model gm = n.getModel();
+                    if (gm == null) Log.i(TAG, "npcmodel " + want + " index " + n.getIndex() + " getModel null");
+                    else {
+                        int hidden = 0, flat = 0;
+                        for (int v : gm.getFaceColors3()) { if (v == -2) hidden++; else if (v == -1) flat++; }
+                        Log.i(TAG, "npcmodel " + want + " index " + n.getIndex() + " getModel verts " + gm.getVerticesCount() + " faces " + gm.getFaceCount()
+                                + " hidden " + hidden + " flat " + flat + " height " + gm.getModelHeight()
+                                + " colours1[0..3] " + java.util.Arrays.toString(java.util.Arrays.copyOf(gm.getFaceColors1(), Math.min(4, gm.getFaceCount()))));
+                    }
                     net.runelite.api.NPCComposition comp = n.getComposition();
                     Log.i(TAG, "npcmodel " + want + " getId " + n.getId() + " base " + (base != null ? base.getId() + " configs " + java.util.Arrays.toString(base.getConfigs()) : "?") + " index " + n.getIndex() + " name " + n.getName() + " world " + n.getWorldLocation()
                             + " local " + n.getLocalLocation() + " orient " + n.getCurrentOrientation() + " size " + (comp != null ? comp.getSize() : -1)

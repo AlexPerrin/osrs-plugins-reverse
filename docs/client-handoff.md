@@ -578,6 +578,12 @@ session; its notes are in `docs/android-protocol.md`.
   - Clue Scroll (core) starts: `re/host/plugins-extra/cluescrolls.jar`, `EXTRA=cluescrolls`.
   - Hub: built bank-tag-layouts, barrows-door-highlighter, spawnpredictor, better-teleport-menu (no API gaps;
     collection-log skipped: built against a newer API, `getStringStack`).
+  - Next: a device slot for (a) Emojis: run `EXTRA=emojis`, type ":)" in public chat; look for "mod icons: N
+    (game M) installed" in logcat and the emoji drawn in chat and overhead; size may need tuning; (b) Player
+    Indicators with `tools/multiclient/desktop_login.py --seconds 240` (desktop/desktop stands in Lumbridge) and
+    `playerindicators.highlightOthers=ENABLED`, `drawTiles=true` in settings.properties; (c) the impling label;
+    (d) the four new hub jars (add their rows to the Plugin Hub table after the run); (e) in-process relog with
+    createChild on.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

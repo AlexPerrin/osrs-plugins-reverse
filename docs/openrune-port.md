@@ -1368,3 +1368,15 @@ device-checked yet.
   0x4ed838 / Ghidra FUN_005ed838 (3910 isofferempty = state==0, 3911 stable = 2, 3912 finished = 5,
   3913 adding = 1); slot packet decode Ghidra FUN_00700428 (desktop status byte, state = b&7, type =
   bit 3, 7 = version prefix); empty slot init FUN_00700408 (state 0, type 1).
+- **12:43 run (834a1c7):** setup panel, VARP_LONG price (live), the client's tax line "345 coins (350 - 2%)",
+  sell 5 lobsters at guide (SELLING -> SOLD, "Grand Exchange: Finished selling 5 x Lobster."), buy 10 at
+  64 gp below guide (BUYING), Abort (CANCELLED_BUY, the abort line, 640 coins in the collection), collect,
+  Collect-all. Found: RSProt's `UpdateStockMarketSlotV2Encoder` Reset writes slot 0 (bug in the pinned
+  upstream source; Android delegates to it), so collecting one slot emptied slot 0 on the client. Fixed in
+  rsprot.patch (32643cd), note in `openrune/upstream/ISSUE-rsprot-stockmarket-reset-slot.md`.
+- **12:51 run (32643cd), GE device-checked end to end:** buy 10 at 76 gp above guide -> BOUGHT, "You bought a
+  total of 10 for a total price of 700 coins", 10 lobsters + 60 coins refund in the collection; a 1 gp buy
+  via Enter price stays BUYING; the GE plugin's sidebar lists "Lobster Bought 10 / 10" and "Lobster Bought 0 /
+  1"; after an app restart and relog the plugin gets BOUGHT (slot 0) and BUYING (slot 1) again (state
+  persisted); the banker's Collect opens the Collection Box with both slots, and Inventory collects slot 0
+  (the reset now hits the right slot). Left open: the 1 gp lobster buy in slot 1 (abort to clear).

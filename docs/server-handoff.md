@@ -21,6 +21,44 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-17, eleventh server dev, on OpenRune)
+
+Protocol unchanged. Details in `docs/openrune-port.md`, "Eleventh server dev".
+
+- **Deployed** at 08:55 UTC: everything up to 245ed50 (stage 3 committed right after the deploy;
+  same build). The tester has the hard casket rewards, a rune pouch (100 air) and a hard clue in
+  the inventory; the plank sack holds 2 planks + 3 oak.
+- **Rune Pouch** (`content/skills/magic/rune-pouch`): interface 190 with Store/Withdraw
+  quantities, drag, Empty, rune-on-pouch, on the `rune_pouch_type/quantity` varbits.
+  Device-checked with the RuneLite Rune Pouch overlay. **Plank Sack** (`content/other/plank-sack`):
+  Fill/Check/Empty on `plank_sack_*`, storage hook; device-checked with the hub Plank Sack overlay.
+- **Hard clues** (treasure-trails engine, `TrailTier.Hard`): the core tier, the hard casket, the
+  7 hard maps (identified by rendering; see the port doc), puzzle boxes (slide puzzle 306, inv
+  140, server-mirrored moves), coordinate wizards and the Double agent. Device-checked: Yanille
+  map, dig, casket; puzzle box with RuneLite's Puzzle Solver. Not device-checked: wizards,
+  Double agent, challenge talks, emotes. `::clue hard [row] [left]`, `::clue solve` (solves the held
+  puzzle box).
+- **Smaller fixes:** fairy ring search input closed with `meslayer_close(28)` on teleport (dialog
+  abort never covers mode 28; not device-checked); `::setxp`/`::addxp` up to 200M; friend add
+  answers with the new friend's UPDATE_FRIENDLIST entry (Central pushed one only for online friends).
+- **Open:** friends tab on mobile shows only a "00:00 UTC" clock (client dev's report). Login
+  already sends FRIENDLIST_LOADED / private filter / UPDATE_FRIENDLIST / UPDATE_IGNORELIST, and 429
+  goes to 601:125 via enum 1745; 429 itself has no clock, so the tab seen is probably not 429. Needs
+  a device look (which interface sits in the tab).
+- **Upstream:** patches 29-34 (rune pouch, plank sack, friend add, hard core, puzzle boxes, foes);
+  26 regenerated. `git am` of all 34 applies on the pin.
+- **Tools (scratch, easy to redo):** item dump (`id|name|gameval|certtemplate|placeholder|...|param623`
+  from a throwaway integration test over `ServerCacheManager.getItems()`), the wiki casket parser
+  (`?action=raw`, `{{DropsLineReward}}` rarity = product of the `{{#expr:1/( a/b * c/d )}}` factors,
+  weights over the LCD), a composite map renderer (if3 `type=model` components drawn with
+  ModelDecoder at their x/y/angle/zoom; `k = 512/zoom`, depth-sorted).
+- **Device tips:** typed `::` commands sometimes stay in the input: toggle the keyboard (90,220)
+  until `mInputShown=true` and send keyevent 66; after a restart or plugin-test.sh reinstall the
+  old session lingers ~45 s ("account still logged in"): wait, Try again, Play Now. The host's
+  debug panel covers x < ~600 (taps there do not reach the game).
+- **Next candidates:** fairy ring favourites + hideout sequence, music areas importer, the
+  Awowogei loc anagram (hard), medium/hard leftovers (master clue tertiary), elite clues.
+
 ## Latest state (2026-10-17, tenth server dev, on OpenRune)
 
 Protocol unchanged. Details in `docs/openrune-port.md`, "Tenth server dev".

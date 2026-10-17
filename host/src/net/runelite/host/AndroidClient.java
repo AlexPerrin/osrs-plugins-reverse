@@ -494,6 +494,14 @@ public class AndroidClient extends ClientStub {
     private final net.runelite.api.SpritePixels[] mapDots = mapDotPlaceholders.clone();
     private final net.runelite.api.SpritePixels[] mapDotsSeen = mapDotPlaceholders.clone();
     private final int[][] mapDotOriginal = new int[7][];
+    /**
+     * Desktop map dot index (item, NPC, player, friend, team, friends chat, clan) -> the mobile
+     * minimap's category. The dot draw 0x58cab4 takes the category in w6: items 5 and NPCs 6
+     * (constants at its callers; verified on device, gen 22), players by precedence in 0x58c6f0..
+     * 0x58c79c: 0 (0x461564), 1 (team, player +0x790), 2 (0x4615ec), 3 (0x4774d0), else 4.
+     * // unverified: 0 = friend, 2 = friends chat, 3 = clan are inferred from desktop's precedence
+     */
+    private static final int[] MOBILE_DOT_CATEGORY = {5, 6, 4, 0, 1, 2, 3};
     /** Desktop's default dot colours, for restoring a category the game hadn't styled. */
     private static final int[] MAP_DOT_DEFAULTS = {0xff0000, 0xffff00, 0xffffff, 0x00ff00, 0x0000ff, 0x8000ff, 0x00ffff};
     private static net.runelite.api.SpritePixels[] newMapDots() {
@@ -505,19 +513,21 @@ public class AndroidClient extends ClientStub {
 
     /** Game thread, every few cycles: pushes replaced map dot sprites into the game's dot styles. */
     void applyMapDots() {
+        if (getGameState() != GameState.LOGGED_IN) return;  // the minimap's base dot isn't set up before
         for (int i = 0; i < 7; i++) {
             net.runelite.api.SpritePixels sp = mapDots[i];
             if (sp == mapDotsSeen[i]) continue;
-            int[] cur = Native.minimapDot(i, 0, 0, -1);
-            android.util.Log.i(Host.TAG, "map dot " + i + " replaced; game style " + java.util.Arrays.toString(cur) + (sp != null ? " colour " + Integer.toHexString(mainColor(sp)) : ""));
+            int cat = MOBILE_DOT_CATEGORY[i];
+            int[] cur = Native.minimapDot(cat, 0, 0, -1);
+            android.util.Log.i(Host.TAG, "map dot " + i + " (mobile category " + cat + ") replaced; game style " + java.util.Arrays.toString(cur) + (sp != null ? " colour " + Integer.toHexString(mainColor(sp)) : ""));
             if (cur == null) return;  // minimap not built yet: retry later
             if (mapDotOriginal[i] == null) mapDotOriginal[i] = cur;
             int[] o = mapDotOriginal[i];
             if (sp == null || sp == mapDotPlaceholders[i]) {
-                if (o[0] != 0) Native.minimapDot(i, o[1], o[2], o[3]);
-                else Native.minimapDot(i, MAP_DOT_DEFAULTS[i], 0, 1);
+                if (o[0] != 0) Native.minimapDot(cat, o[1], o[2], o[3]);
+                else Native.minimapDot(cat, MAP_DOT_DEFAULTS[i], 0, 1);
             } else {
-                Native.minimapDot(i, mainColor(sp), o[0] != 0 ? o[2] : 0, o[0] != 0 ? o[3] : 1);
+                Native.minimapDot(cat, mainColor(sp), o[0] != 0 ? o[2] : 0, o[0] != 0 ? o[3] : 1);
             }
             mapDotsSeen[i] = sp;
         }

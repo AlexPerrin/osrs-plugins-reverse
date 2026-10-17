@@ -1580,20 +1580,29 @@ bool set_ge_search_int(bool index, int value) {
 // +0x40e970) (also the map flag holder); per category 0-6 a shared_ptr dot sprite at +0x64c0 +
 // cat*0x10 and dot colour / outline colour / outline thickness at +0x6530 / +0x6534 / +0x6538
 // + cat*0x10. setDotStyle(minimap, cat, dot rgb, outline rgb, thickness) 0x588eac rebuilds the
-// sprite from the base dot (+0x6610 +0x60). Static RE (gen 21). // unverified: not run on device yet
-bool minimap_dot_style(int cat, int dot_rgb, int outline_rgb, int thickness) {
+// sprite from the base dot (+0x6610 +0x60). Static RE (gen 21); recolouring verified on device (gen 22)
+// The base dot (*(mm +0x6610)) only exists once the minimap is set up after login; with it null,
+// setDotStyle's rebuild reads null+0x88 (crashed the game at startup, gen 22). Both functions
+// refuse until then.
+static uintptr_t minimap_ready() {
     uintptr_t c = client();
-    if (!c || cat < 0 || cat > 6 || thickness < 0) return false;
+    if (!c) return 0;
     uintptr_t mm = read_at<uintptr_t>(c + 0x40e970);
+    if (!mm || !read_at<uintptr_t>(mm + 0x6610)) return 0;
+    return mm;
+}
+
+bool minimap_dot_style(int cat, int dot_rgb, int outline_rgb, int thickness) {
+    if (cat < 0 || cat > 6 || thickness < 0) return false;
+    uintptr_t mm = minimap_ready();
     if (!mm) return false;
     reinterpret_cast<void (*)(uintptr_t, unsigned, int, int, int)>(g_base + 0x588eac)(mm, cat, dot_rgb, outline_rgb, thickness);
     return true;
 }
 
 bool minimap_dot_get(int cat, int out[4]) {
-    uintptr_t c = client();
-    if (!c || cat < 0 || cat > 6) return false;
-    uintptr_t mm = read_at<uintptr_t>(c + 0x40e970);
+    if (cat < 0 || cat > 6) return false;
+    uintptr_t mm = minimap_ready();
     if (!mm) return false;
     uintptr_t e = mm + static_cast<uintptr_t>(cat) * 0x10;
     out[0] = read_at<uintptr_t>(e + 0x64c8) != 0;  // a styled sprite exists

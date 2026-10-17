@@ -1082,3 +1082,32 @@ was verified.
   - `::rumour [hunter] [creature]` assigns, `::rumour turnin [hunter]`, `::rumour` shows the state.
   - Waiting on the client dev: whether the Android host emits DIALOG ChatMessages (the plugin's
     assignment/turn-in tracking). The guild hunter dialogues come after that. Upstream `40-hunter-rumours`.
+
+## Fourteenth server dev (2026-10-17)
+
+- **Butterfly netting** (`content/skills/hunter` `ButterflyScript`, pack `HunterButterfliesTable`:
+  dbtable `hunter_butterflies` 60019, rows 60484-60490). Catch (op1) ruby harvest, sapphire
+  glacialis, snowy knight, black warlock, sunlight moth, moonlight moth (`moth_moonlight` and
+  `_low_wander`; `_noclick` has no op). Wiki: level 15/25/35/45/65/75, XP 24/34/44/54/74/84,
+  barehanded at +10 levels, jar keeps the catch (`butterfly_jar_*`), no jar = released at once with
+  its effect, the rumour wing comes without a jar too. Success: OSRS 256 roll on Hunter with the
+  wiki's skilling success charts: black warlock net 20/296, barehanded/magic 40/316; sunlight net and
+  barehanded 20/296, magic 40/316; moonlight net and barehanded 0/276, magic 20/286. Ruby, sapphire
+  and snowy have no chart and copy the black warlock (**guess**). Below the level every swing fails
+  silently (Jagex's did-you-know tip "You will just fail 100% of the time", **guess** that it covers
+  butterflies). Release (iop4) on the jars: Attack/Defence/Strength +4 +15%, Hitpoints 15, sunlight
+  20% + 6 of every stat but Prayer/Hitpoints and 8 Hitpoints, moonlight 22 Prayer (wiki), empty jar
+  back, `hunting_butterfly_out_jar`. **Guesses:** one swing per click (2 ticks), the impling net
+  animation also barehanded, respawn 7 ticks (wiki: 4.2 s at the Great Conch), messages "You manage
+  to catch the butterfly/moth." (jar), "You catch the butterfly and release it." (no jar), "You
+  release the butterfly." (Release). The hub Hunter Rumours plugin counts catches by Hunter XP drops
+  (its creature table has 34/44/54/74/84), so the XP is what matters for it.
+- **Rumours:** the five butterfly/moth rumours (rows 60491-60495): sapphire glacialis (Gilman 25),
+  snowy knight (Gilman, Ornus 35), black warlock (Gilman, Cervus 45), sunlight moth (Gilman, Cervus,
+  Teco; assigned from 75), moonlight moth (Gilman, Aco, Wolf; from 85); 1/40, pity 80 (wiki); parts
+  `hg_butterflywing_blue/white/black`, `hg_mothwing_sun/moon`; whistle wording "some of its wings"
+  (**guess**). The rare-part message colour is now the wiki's #229628 (was a guess).
+- Tests: `ButterflyScriptTest` (jar swap, no-jar boost, Release once, barehanded below +10, rumour
+  pity). Upstream `41-butterfly-netting`.
+- Device test: `::item hunting_butterfly_net`, wield, `::item butterfly_jar 5`, `::npc
+  butterfly_warlock` (or `::tele 2551 2915`, Feldip), Catch; `::rumour cervus black_warlock`.

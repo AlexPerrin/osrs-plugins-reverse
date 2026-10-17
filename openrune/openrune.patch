@@ -11270,12 +11270,131 @@ index 000000000..f4592185e
 +            }
 +        }
 +}
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterButterfliesTable.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterButterfliesTable.kt
+new file mode 100644
+index 000000000..d287fb0f4
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterButterfliesTable.kt
+@@ -0,0 +1,113 @@
++package org.rsmod.content.skills.hunter.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++
++/**
++ * Butterflies and moths caught with a butterfly net (OSRS Wiki: Butterfly (Hunter) and the creature
++ * pages). One row per catchable npc; [CREATURE] is the npc a catch reports to Hunters' Rumours.
++ * Success numerators out of 256 at level 1 and 99 per tool ([NET_LOW]..[MAGIC_HIGH]) are the wiki's
++ * skilling success charts (black warlock, sunlight and moonlight moth); ruby harvest, sapphire
++ * glacialis and snowy knight have no chart and copy the black warlock (guess).
++ *
++ * Release effect ([EFFECT]): [EFFECT_BOOST] boosts [EFFECT_STAT] by constant + percent of its base,
++ * [EFFECT_HEAL] heals it, [EFFECT_RESTORE] heals every stat except Prayer and Hitpoints; then
++ * [HITPOINTS_HEAL] Hitpoints are healed.
++ */
++object HunterButterfliesTable {
++    const val NPC = 0
++    const val CREATURE = 1
++    const val JAR = 2
++    const val KIND = 3
++    const val LEVEL = 4
++    const val XP = 5
++    const val NET_LOW = 6
++    const val NET_HIGH = 7
++    const val BARE_LOW = 8
++    const val BARE_HIGH = 9
++    const val MAGIC_LOW = 10
++    const val MAGIC_HIGH = 11
++    const val EFFECT = 12
++    const val EFFECT_STAT = 13
++    const val EFFECT_CONSTANT = 14
++    const val EFFECT_PERCENT = 15
++    const val HITPOINTS_HEAL = 16
++
++    const val EFFECT_BOOST = 0
++    const val EFFECT_HEAL = 1
++    const val EFFECT_RESTORE = 2
++
++    private data class Row(
++        val key: String,
++        val npc: String,
++        val creature: String,
++        val jar: String,
++        val kind: String,
++        val level: Int,
++        val xp: Int,
++        val chances: IntArray,
++        val effect: Int,
++        val stat: String,
++        val constant: Int,
++        val percent: Int,
++        val hitpoints: Int,
++    )
++
++    private val BUTTERFLY = intArrayOf(20, 296, 40, 316, 40, 316)
++    private val SUNLIGHT = intArrayOf(20, 296, 20, 296, 40, 316)
++    private val MOONLIGHT = intArrayOf(0, 276, 0, 276, 20, 286)
++
++    private val ROWS =
++        listOf(
++            Row("ruby_harvest", "npc.butterfly_ruby", "npc.butterfly_ruby", "obj.butterfly_jar_ruby", "butterfly", 15, 24, BUTTERFLY, EFFECT_BOOST, "stat.attack", 4, 15, 0),
++            Row("sapphire_glacialis", "npc.butterfly_glacialis", "npc.butterfly_glacialis", "obj.butterfly_jar_glacialis", "butterfly", 25, 34, BUTTERFLY, EFFECT_BOOST, "stat.defence", 4, 15, 0),
++            Row("snowy_knight", "npc.butterfly_snowy", "npc.butterfly_snowy", "obj.butterfly_jar_snowy", "butterfly", 35, 44, BUTTERFLY, EFFECT_HEAL, "stat.hitpoints", 15, 0, 0),
++            Row("black_warlock", "npc.butterfly_warlock", "npc.butterfly_warlock", "obj.butterfly_jar_warlock", "butterfly", 45, 54, BUTTERFLY, EFFECT_BOOST, "stat.strength", 4, 15, 0),
++            Row("sunlight_moth", "npc.moth_sunlight", "npc.moth_sunlight", "obj.butterfly_jar_sunmoth", "moth", 65, 74, SUNLIGHT, EFFECT_RESTORE, "stat.hitpoints", 6, 20, 8),
++            Row("moonlight_moth", "npc.moth_moonlight", "npc.moth_moonlight", "obj.butterfly_jar_moonmoth", "moth", 75, 84, MOONLIGHT, EFFECT_HEAL, "stat.prayer", 22, 0, 0),
++            Row("moonlight_moth_low_wander", "npc.moth_moonlight_low_wander", "npc.moth_moonlight", "obj.butterfly_jar_moonmoth", "moth", 75, 84, MOONLIGHT, EFFECT_HEAL, "stat.prayer", 22, 0, 0),
++        )
++
++    fun hunterButterflies() =
++        dbTable("dbtable.hunter_butterflies", serverOnly = true) {
++            column("npc", NPC, VarType.NPC)
++            column("creature", CREATURE, VarType.NPC)
++            column("jar", JAR, VarType.OBJ)
++            column("kind", KIND, VarType.STRING)
++            column("level", LEVEL, VarType.INT)
++            column("xp", XP, VarType.INT)
++            column("net_low", NET_LOW, VarType.INT)
++            column("net_high", NET_HIGH, VarType.INT)
++            column("bare_low", BARE_LOW, VarType.INT)
++            column("bare_high", BARE_HIGH, VarType.INT)
++            column("magic_low", MAGIC_LOW, VarType.INT)
++            column("magic_high", MAGIC_HIGH, VarType.INT)
++            column("effect", EFFECT, VarType.INT)
++            column("effect_stat", EFFECT_STAT, VarType.STAT)
++            column("effect_constant", EFFECT_CONSTANT, VarType.INT)
++            column("effect_percent", EFFECT_PERCENT, VarType.INT)
++            column("hitpoints_heal", HITPOINTS_HEAL, VarType.INT)
++
++            for (r in ROWS) {
++                row("dbrow.hunter_butterfly_${r.key}") {
++                    columnRSCM(NPC, r.npc)
++                    columnRSCM(CREATURE, r.creature)
++                    columnRSCM(JAR, r.jar)
++                    column(KIND, r.kind)
++                    column(LEVEL, r.level)
++                    column(XP, r.xp)
++                    column(NET_LOW, r.chances[0])
++                    column(NET_HIGH, r.chances[1])
++                    column(BARE_LOW, r.chances[2])
++                    column(BARE_HIGH, r.chances[3])
++                    column(MAGIC_LOW, r.chances[4])
++                    column(MAGIC_HIGH, r.chances[5])
++                    column(EFFECT, r.effect)
++                    columnRSCM(EFFECT_STAT, r.stat)
++                    column(EFFECT_CONSTANT, r.constant)
++                    column(EFFECT_PERCENT, r.percent)
++                    column(HITPOINTS_HEAL, r.hitpoints)
++                }
++            }
++        }
++}
 diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
 new file mode 100644
-index 000000000..c6ce8f5a4
+index 000000000..2ed34b0d4
 --- /dev/null
 +++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
-@@ -0,0 +1,20 @@
+@@ -0,0 +1,21 @@
 +package org.rsmod.content.skills.hunter.pack
 +
 +import dev.openrune.definition.dbtables.DBTable
@@ -11294,14 +11413,15 @@ index 000000000..c6ce8f5a4
 +            HerbiboarHerbsTable.herbiboarHerbs(),
 +            HunterRumourHuntersTable.hunterRumourHunters(),
 +            HunterRumoursTable.hunterRumours(),
++            HunterButterfliesTable.hunterButterflies(),
 +        )
 +}
 diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterRumourTables.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterRumourTables.kt
 new file mode 100644
-index 000000000..87ee9ab02
+index 000000000..49e7e5251
 --- /dev/null
 +++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterRumourTables.kt
-@@ -0,0 +1,133 @@
+@@ -0,0 +1,140 @@
 +package org.rsmod.content.skills.hunter.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -11358,7 +11478,9 @@ index 000000000..87ee9ab02
 + * [CREATURE] is the creature npc a catch reports; [RATE] and [PITY] are the rare-part chance (1 in
 + * RATE) and the pity threshold; [HUNTERS] has bit n set when hunter n (see
 + * [HunterRumourHuntersTable]) gives this rumour. [PART_TEXT] is the "bring back some of its ..."
-+ * wording (a guess except grey chinchompa "fur", from the wiki's whistle example).
++ * wording (a guess except grey chinchompa "fur", from the wiki's whistle example). Butterflies and
++ * moths: 1/40, pity 80 (wiki, since the 2024 change); moths only from the level they can be caught
++ * barehanded (75 sunlight, 85 moonlight, wiki), which is the [LEVEL] here.
 + */
 +object HunterRumoursTable {
 +    const val INDEX = 0
@@ -11406,6 +11528,11 @@ index 000000000..87ee9ab02
 +                GILMAN or CERVUS or ORNUS or ACO or TECO or WOLF,
 +            ),
 +            Rumour("herbiboar", "herbiboar", "npc.fossil_herbiboar_visible", 80, "obj.hg_herbytuft", "fur", 7, 14, GILMAN or TECO or WOLF),
++            Rumour("sapphire_glacialis", "sapphire glacialis", "npc.butterfly_glacialis", 25, "obj.hg_butterflywing_blue", "wings", 40, 80, GILMAN),
++            Rumour("snowy_knight", "snowy knight", "npc.butterfly_snowy", 35, "obj.hg_butterflywing_white", "wings", 40, 80, GILMAN or ORNUS),
++            Rumour("black_warlock", "black warlock", "npc.butterfly_warlock", 45, "obj.hg_butterflywing_black", "wings", 40, 80, GILMAN or CERVUS),
++            Rumour("sunlight_moth", "sunlight moth", "npc.moth_sunlight", 75, "obj.hg_mothwing_sun", "wings", 40, 80, GILMAN or CERVUS or TECO),
++            Rumour("moonlight_moth", "moonlight moth", "npc.moth_moonlight", 85, "obj.hg_mothwing_moon", "wings", 40, 80, GILMAN or ACO or WOLF),
 +        )
 +
 +    fun hunterRumours() =
@@ -12067,6 +12194,131 @@ index 000000000..b5b114f63
 +        }
 +    }
 +}
+diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ButterflyScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ButterflyScriptTest.kt
+new file mode 100644
+index 000000000..410310661
+--- /dev/null
++++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ButterflyScriptTest.kt
+@@ -0,0 +1,119 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.util.UncheckedType
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.player.righthand
++import org.rsmod.api.player.stat.stat
++import org.rsmod.api.player.stat.statBase
++import org.rsmod.api.table.hunter.HunterButterfliesRow
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.api.testing.scope.GameTestScope
++import org.rsmod.content.skills.hunter.ButterflyScript.Companion.BUTTERFLY_JAR
++import org.rsmod.content.skills.hunter.ButterflyScript.Companion.HUNTER
++import org.rsmod.content.skills.hunter.ButterflyScript.Companion.MAGIC_NET
++import org.rsmod.content.skills.hunter.ButterflyScript.Companion.NET
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.inv.InvObj
++import org.rsmod.map.CoordGrid
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class ButterflyScriptTest {
++    @Test
++    fun GameTestState.`a catch with a jar swaps exactly one jar for the butterfly`() =
++        runInjectedGameTest(ButterflyScript::class, null, ButterflyScript::class) { script ->
++            val warlock = row("dbrow.hunter_butterfly_black_warlock")
++            val npc = prepare(warlock, net = NET, jars = 3, level = 99)
++            val xp = player.statMap.getXP(HUNTER)
++            catch(script, npc, warlock)
++            assertEquals(2, player.inv.count(BUTTERFLY_JAR))
++            assertEquals(1, player.inv.count(warlock.jar.internalName))
++            assertEquals(xp.toDouble() + 54, player.statMap.getXP(HUNTER).toDouble(), 0.5)
++            assertFalse(npc.isSlotAssigned && npc.isVisible)
++        }
++
++    @Test
++    fun GameTestState.`without a jar the butterfly is released and its boost applies`() =
++        runInjectedGameTest(ButterflyScript::class, null, ButterflyScript::class) { script ->
++            val warlock = row("dbrow.hunter_butterfly_black_warlock")
++            val npc = prepare(warlock, net = NET, jars = 0, level = 99)
++            player.setBaseLevel(STRENGTH, 60)
++            player.setCurrentLevel(STRENGTH, 60)
++            catch(script, npc, warlock)
++            assertEquals(0, player.inv.count(warlock.jar.internalName))
++            assertEquals(60 + 13, player.stat(STRENGTH))
++        }
++
++    @Test
++    fun GameTestState.`releasing a jarred moth gives the empty jar back once`() =
++        runInjectedGameTest(ButterflyScript::class, null, ButterflyScript::class) { script ->
++            val moon = row("dbrow.hunter_butterfly_moonlight_moth")
++            prepare(moon, net = null, jars = 0, level = 99)
++            player.inv[0] = InvObj(moon.jar.id, 1)
++            player.setBaseLevel(PRAYER, 70)
++            player.setCurrentLevel(PRAYER, 10)
++            with(script) { player.withProtectedAccess { release(moon) } }
++            with(script) { player.withProtectedAccess { release(moon) } }
++            advance(ticks = 2)
++            assertEquals(1, player.inv.count(BUTTERFLY_JAR))
++            assertEquals(0, player.inv.count(moon.jar.internalName))
++            assertEquals(32, player.stat(PRAYER))
++            assertEquals(70, player.statBase(PRAYER))
++        }
++
++    @Test
++    fun GameTestState.`barehanded below ten extra levels always fails`() =
++        runInjectedGameTest(ButterflyScript::class, null, ButterflyScript::class) { script ->
++            val sunlight = row("dbrow.hunter_butterfly_sunlight_moth")
++            val npc = prepare(sunlight, net = null, jars = 1, level = sunlight.level + 9)
++            val xp = player.statMap.getXP(HUNTER)
++            repeat(10) { catch(script, npc, sunlight) }
++            assertEquals(1, player.inv.count(BUTTERFLY_JAR))
++            assertEquals(xp.toDouble(), player.statMap.getXP(HUNTER).toDouble(), 0.01)
++            assertTrue(npc.isSlotAssigned && npc.isVisible)
++        }
++
++    @Test
++    fun GameTestState.`a magic net catch counts for the rumour`() =
++        runInjectedGameTest(ButterflyScript::class, null, ButterflyScript::class) { script ->
++            val snowy = row("dbrow.hunter_butterfly_snowy_knight")
++            val npc = prepare(snowy, net = MAGIC_NET, jars = 0, level = 99)
++            val rumours = script.rumours
++            val ornus = rumours.hunters.first { it.name == "Ornus" }
++            val rumour = rumours.rumours.first { it.name == "snowy knight" }
++            rumours.assign(player, ornus, rumour)
++            catch(script, npc, snowy)
++            assertEquals(1, player.vars[HunterRumours.PITY])
++        }
++
++    private fun GameTestScope.catch(script: ButterflyScript, npc: Npc, row: HunterButterfliesRow) {
++        with(script) { player.withProtectedAccess { catch(npc, row) } }
++        advance(ticks = 3)
++    }
++
++    private fun row(name: String) = HunterButterfliesRow.getRow(name)
++
++    private fun GameTestScope.prepare(row: HunterButterfliesRow, net: String?, jars: Int, level: Int): Npc {
++        val center = CoordGrid(0, 50, 50, 20, 20)
++        allocZoneCollision(center)
++        player.teleport(center)
++        player.clearInv()
++        player.righthand = net?.let { InvObj(it.asRSCM(RSCMType.OBJ), 1) }
++        repeat(jars) { player.inv[it] = InvObj(BUTTERFLY_JAR.asRSCM(RSCMType.OBJ), 1) }
++        player.setBaseLevel(HUNTER, level)
++        player.setCurrentLevel(HUNTER, level)
++        return spawnNpc(center.translate(1, 0), row.npc)
++    }
++
++    private companion object {
++        const val STRENGTH = "stat.strength"
++        const val PRAYER = "stat.prayer"
++    }
++}
 diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScriptTest.kt
 new file mode 100644
 index 000000000..e6b5cdcda
@@ -12272,10 +12524,10 @@ index 000000000..ab966e359
 +}
 diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterRumoursTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterRumoursTest.kt
 new file mode 100644
-index 000000000..6750d4dd4
+index 000000000..1b7f1c235
 --- /dev/null
 +++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterRumoursTest.kt
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,131 @@
 +package org.rsmod.content.skills.hunter
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -12317,7 +12569,8 @@ index 000000000..6750d4dd4
 +            val cervus = rumours.hunters.first { it.name == "Cervus" }
 +            assertNull(rumours.assign(player, ornus))
 +            val first = checkNotNull(rumours.assign(player, gilman))
-+            assertTrue(first.name in setOf("tropical wagtail", "grey chinchompa"), first.name)
++            val novice53 = setOf("tropical wagtail", "sapphire glacialis", "snowy knight", "black warlock", "grey chinchompa")
++            assertTrue(first.name in novice53, first.name)
 +            val grey = rumours.rumours.first { it.name == "grey chinchompa" }
 +            rumours.assign(player, gilman, grey)
 +            assertNull(rumours.assign(player, cervus), "grey chinchompa is Gilman's already")
@@ -13022,6 +13275,127 @@ index 000000000..ed11a889d
 +        }
 +    }
 +}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ButterflyScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ButterflyScript.kt
+new file mode 100644
+index 000000000..6ba4441d8
+--- /dev/null
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ButterflyScript.kt
+@@ -0,0 +1,115 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import jakarta.inject.Inject
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.righthand
++import org.rsmod.api.repo.npc.NpcRepository
++import org.rsmod.api.script.onOpHeld4
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.api.table.hunter.HunterButterfliesRow
++import org.rsmod.game.entity.Npc
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Butterfly netting (OSRS Wiki: Butterfly (Hunter) and the creature pages): Catch with a wielded
++ * butterfly net or magic butterfly net, or barehanded. A butterfly jar in the inventory keeps the
++ * catch; without one the butterfly is released at once and its effect applies. Either way the
++ * catch gives the wiki's Hunter XP and counts for Hunters' Rumours (wiki: the wing comes without a
++ * jar too). Jarred butterflies have a Release op (effect, empty jar back).
++ *
++ * Below the level (or 10 levels above it barehanded) every swing fails, as Jagex's "Did you know"
++ * tip says for most Hunter creatures (no message; guess for butterflies). Guesses: one swing per
++ * click (2 ticks), the impling net animation for barehanded catches too, the messages, the respawn
++ * (7 ticks, the wiki's 4.2 s at the Great Conch).
++ */
++class ButterflyScript @Inject constructor(private val npcRepo: NpcRepository, val rumours: HunterRumours) :
++    PluginScript() {
++    override fun ScriptContext.startup() {
++        val rows = HunterButterfliesRow.all()
++        for (row in rows) onOpNpc1(row.npc) { catch(it.npc, row) }
++        for (row in rows.distinctBy { it.jar.id }) onOpHeld4(row.jar) { release(row) }
++    }
++
++    suspend fun ProtectedAccess.catch(npc: Npc, row: HunterButterfliesRow) {
++        if (!npc.isCatchable()) return
++        faceEntitySquare(npc)
++        anim(CATCH_SEQ)
++        delay(ATTEMPT_TICKS)
++        if (!npc.isCatchable() || !rollCatch(row)) return
++        if (npc.respawns) npcRepo.despawn(npc, RESPAWN_TICKS) else npcRepo.del(npc, Int.MAX_VALUE)
++        statAdvance(HUNTER, row.xp.toDouble())
++        if (BUTTERFLY_JAR in inv && invReplace(inv, BUTTERFLY_JAR, 1, row.jar.internalName).success) {
++            mes("You manage to catch the ${row.kind}.")
++        } else {
++            applyEffect(row)
++            mes("You catch the ${row.kind} and release it.")
++        }
++        rumours.onCatch(player, row.creature.internalName)
++    }
++
++    private fun ProtectedAccess.rollCatch(row: HunterButterfliesRow): Boolean {
++        val net = wieldedNet()
++        val required = if (net == null) row.level + BAREHANDED_EXTRA_LEVELS else row.level
++        if (stat(HUNTER) < required) return false
++        val (low, high) =
++            when (net) {
++                NET -> row.netLow to row.netHigh
++                MAGIC_NET -> row.magicLow to row.magicHigh
++                else -> row.bareLow to row.bareHigh
++            }
++        return statRandom(HUNTER, low, high, invisibleBoost = 0)
++    }
++
++    suspend fun ProtectedAccess.release(row: HunterButterfliesRow) {
++        if (invReplace(inv, row.jar.internalName, 1, BUTTERFLY_JAR).failure) return
++        anim(RELEASE_SEQ)
++        applyEffect(row)
++        mes("You release the ${row.kind}.")
++    }
++
++    private fun ProtectedAccess.applyEffect(row: HunterButterfliesRow) {
++        val stat = row.effectStat.internalName
++        when (row.effect) {
++            EFFECT_BOOST -> statBoost(stat, row.effectConstant, row.effectPercent)
++            EFFECT_HEAL -> statHeal(stat, row.effectConstant, row.effectPercent)
++            EFFECT_RESTORE ->
++                for (restored in RESTORED_STATS) statHeal(restored, row.effectConstant, row.effectPercent)
++        }
++        if (row.hitpointsHeal > 0) statHeal(HITPOINTS, row.hitpointsHeal, 0)
++    }
++
++    private fun Npc.isCatchable(): Boolean = isSlotAssigned && isVisible
++
++    private fun ProtectedAccess.wieldedNet(): String? {
++        val held = player.righthand ?: return null
++        return listOf(NET, MAGIC_NET).firstOrNull { it.asRSCM(RSCMType.OBJ) == held.id }
++    }
++
++    companion object {
++        const val HUNTER = "stat.hunter"
++        const val HITPOINTS = "stat.hitpoints"
++        const val NET = "obj.hunting_butterfly_net"
++        const val MAGIC_NET = "obj.ii_magic_butterfly_net"
++        const val BUTTERFLY_JAR = "obj.butterfly_jar"
++        const val CATCH_SEQ = "seq.hunting_impling_catch"
++        const val RELEASE_SEQ = "seq.hunting_butterfly_out_jar"
++        const val BAREHANDED_EXTRA_LEVELS = 10
++        const val ATTEMPT_TICKS = 2
++        const val RESPAWN_TICKS = 7
++
++        /** `effect` column values (HunterButterfliesTable in the pack). */
++        const val EFFECT_BOOST = 0
++        const val EFFECT_HEAL = 1
++        const val EFFECT_RESTORE = 2
++
++        private val RESTORED_STATS =
++            listOf(
++                "attack", "defence", "strength", "ranged", "magic", "cooking", "woodcutting", "fletching",
++                "fishing", "firemaking", "crafting", "smithing", "mining", "herblore", "agility", "thieving",
++                "slayer", "farming", "runecrafting", "hunter", "construction", "sailing",
++            ).map { "stat.$it" }
++    }
++}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScript.kt
 new file mode 100644
 index 000000000..ab6ab0bb5
@@ -13495,10 +13869,10 @@ index 000000000..51bb17ff5
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumours.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumours.kt
 new file mode 100644
-index 000000000..8c419e2c5
+index 000000000..50ddfc78d
 --- /dev/null
 +++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumours.kt
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,113 @@
 +package org.rsmod.content.skills.hunter
 +
 +import jakarta.inject.Inject
@@ -13526,7 +13900,8 @@ index 000000000..8c419e2c5
 + * - Turning in takes the part and gives (Hunter level + 5) * modifier XP and the tier's loot sack.
 + *
 + * Deviation: only creatures this server can catch are assigned (wagtail, grey and carnivorous
-+ * chinchompas, herbiboar).
++ * chinchompas, herbiboar, and the net-caught sapphire glacialis, snowy knight, black warlock,
++ * sunlight and moonlight moths).
 + */
 +@Singleton
 +class HunterRumours @Inject constructor(private val objRepo: ObjRepository, private val random: GameRandom) {
@@ -13602,7 +13977,7 @@ index 000000000..8c419e2c5
 +        const val PITY = "varp.hunter_rumour_pity"
 +        const val COMPLETED = "varp.hunter_rumours_completed"
 +        const val FOUND_MESSAGE =
-+            "<col=0dc10d>You find a rare piece of the creature! You should take it back to the Hunter Guild.</col>"
++            "<col=229628>You find a rare piece of the creature! You should take it back to the Hunter Guild.</col>"
 +        const val NO_RUMOUR_MESSAGE = "You don't have a rumour to investigate at the moment."
 +
 +        /** Wiki: (Hunter level + 5) * modifier (50 novice/adept, 55 expert, 60 master). */
@@ -14581,10 +14956,10 @@ index 000000000..8227019c6
 +}
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..8dd35ad12
+index 000000000..eaffc4892
 --- /dev/null
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
-@@ -0,0 +1,144 @@
+@@ -0,0 +1,157 @@
 +[gamevals.dbtable]
 +impling_types = 60000
 +birdhouse_types = 60001
@@ -14596,6 +14971,7 @@ index 000000000..8dd35ad12
 +herbiboar_herbs = 60016
 +hunter_rumour_hunters = 60017
 +hunter_rumours = 60018
++hunter_butterflies = 60019
 +
 +[gamevals.dbrow]
 +impling_type_baby = 60124
@@ -14726,6 +15102,18 @@ index 000000000..8dd35ad12
 +hunter_rumour_grey_chinchompa = 60481
 +hunter_rumour_carnivorous_chinchompa = 60482
 +hunter_rumour_herbiboar = 60483
++hunter_butterfly_ruby_harvest = 60484
++hunter_butterfly_sapphire_glacialis = 60485
++hunter_butterfly_snowy_knight = 60486
++hunter_butterfly_black_warlock = 60487
++hunter_butterfly_sunlight_moth = 60488
++hunter_butterfly_moonlight_moth = 60489
++hunter_butterfly_moonlight_moth_low_wander = 60490
++hunter_rumour_sapphire_glacialis = 60491
++hunter_rumour_snowy_knight = 60492
++hunter_rumour_black_warlock = 60493
++hunter_rumour_sunlight_moth = 60494
++hunter_rumour_moonlight_moth = 60495
 +
 +[gamevals.timer]
 +hunter_traps = 470

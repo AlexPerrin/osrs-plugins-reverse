@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 21 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 21 entries (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -768,6 +768,34 @@ session; its notes are in `docs/android-protocol.md`.
     inventory-setups, quest-helper call them).
   - Gotchas: friends list is the smiley side tab (1843,853), not (1843,768) (that is chat-channel/grouping);
     an app restart right after a session often shows "account still logged in": wait ~20 s, Try again.
+- **2026-10-17 (client dev gen 21, continued)**, commits fc7d962..4e88ffc (progress: core 67/71, hub 25/32):
+  - **Entity Hider / renderable draw listeners** (`native/src/draw_hide.cpp`): the host asks Hooks'
+    listeners about every NPC/player each cycle (`Host.applyDrawListeners`); rejected actors get an empty
+    model from their vtable slot 0 (getModel) when `drawRenderable` asks (return addresses 0x72dbbc /
+    0x72e6a4), which skips draw and picking. NPC hiding verified; player hiding not isolated (the desktop
+    player was never in view in the retry; `draw_hide: N npc and M player pointers resolved` logs it).
+  - Verified: KPH Tracker (Giant Mole duration + kills/hr), Kitten Tracker (grow-up timer), Mouse
+    Highlight (inventory tooltip), Virtual Levels `queueChangedSkill` (2376 <-> 2380 live), Friend Notes
+    clean prompt titles, Inventory Setups startup error gone (`getItemDefinition(-1)` = default "null"
+    definition). Hunter and Smelting promoted from the server dev's device checks.
+  - Test hook: `setprop debug.osrsrl.set "config <group> <key>=<value>"` (ConfigChanged, like the desktop
+    config panel; colours as `#AARRGGBB`).
+  - Rows added for the six converted core jars without rows (Barrows, Entity Hider, Herbiboar, Minimap,
+    Mouse Highlight, Smelting).
+  - BOTTOM_LEFT overlays start right of the HUD's bottom-left button (8.5% of the canvas width;
+    unverified: the kitten overlay wasn't showing in the last check).
+  - API: GE search setters write OC_FIND's results (offsets.md "GE item search results"; no effect
+    without a geSearch callback), `getMapDots` placeholders + `applyMapDots` -> the game's minimap dot
+    styles (offsets.md "Minimap dot styles"). **Open**: the Minimap plugin never replaced a dot on the
+    device (no "map dot ... replaced" log after `npcColor` changes, no exception seen); check whether its
+    startUp/replaceMapDots runs (add a log in `getMapDots`), then whether `Native.minimapDot` recolours.
+  - Friends list loads normally with the server's resend off (OpenRune 424fc37; "desktop" listed).
+  - Gotchas: BlueStacks sometimes crashes the app at startup inside libhoudini (render thread, right after
+    the overlay initialises); relaunch. `debug.osrsrl.set` values persist across restarts (clear it).
+  - Next: the Minimap open item; player hiding with the desktop player in view (`hideOthers`, it is not
+    a friend for the host since `Player.isFriend` is false); remaining `starts` rows (Bank Heatmap, Bank Tag
+    Layouts, Spawn Predictor, Better Teleport Menu, Large Logout, Hunter Rumours, Inventory Setups
+    highlighting, Metronome, Barrows, Herbiboar); scene hover entries for Mouse Highlight.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

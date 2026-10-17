@@ -879,7 +879,7 @@ public class AndroidClient extends ClientStub {
     }
 
     // Friends chat / clans: not in a channel (RuneLite returns null then).
-    @Override public net.runelite.api.FriendsChatManager getFriendsChatManager() { return null; }
+    @Override public net.runelite.api.FriendsChatManager getFriendsChatManager() { return ChatChannels.friendsChat(); }
     private final AndroidNameables.Friends friends = new AndroidNameables.Friends();
     private final AndroidNameables.Ignores ignores = new AndroidNameables.Ignores();
     @Override public net.runelite.api.FriendContainer getFriendContainer() { return friends; }
@@ -935,11 +935,11 @@ public class AndroidClient extends ClientStub {
     @Override public String[] getPlayerOptions() { return playerOptions; }
     @Override public boolean[] getPlayerOptionsPriorities() { return playerOptionsPriorities; }
     @Override public int[] getPlayerMenuTypes() { return playerMenuTypes; }
-    @Override public net.runelite.api.clan.ClanChannel getClanChannel() { return null; }
-    @Override public net.runelite.api.clan.ClanChannel getGuestClanChannel() { return null; }
+    @Override public net.runelite.api.clan.ClanChannel getClanChannel() { return ChatChannels.clan(net.runelite.api.clan.ClanID.CLAN); }
+    @Override public net.runelite.api.clan.ClanChannel getGuestClanChannel() { return ChatChannels.clan(-1); }
     @Override public net.runelite.api.clan.ClanSettings getClanSettings() { return null; }
     @Override public net.runelite.api.clan.ClanSettings getGuestClanSettings() { return null; }
-    @Override public net.runelite.api.clan.ClanChannel getClanChannel(int clanId) { return null; }
+    @Override public net.runelite.api.clan.ClanChannel getClanChannel(int clanId) { return clanId >= 0 ? ChatChannels.clan(clanId) : null; }
     @Override public net.runelite.api.clan.ClanSettings getClanSettings(int clanId) { return null; }
 
     // Sprite overrides are written into the game's cached sprite of the same id and size

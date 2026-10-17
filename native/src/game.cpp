@@ -298,6 +298,50 @@ void drag_clear_target() {
 }
 int touch_state() { uintptr_t c = client(); return c ? read_at<int32_t>(c + kTouchState) : 0; }
 
+namespace { std::string read_string(uintptr_t addr); }
+
+// Friends chat: *(Client+0x4608) (CS2 ops 3611-3627, handler 0x4ebdb0): +0x0c member count,
+// +0x20 member pointers; member +0x08 name, +0x68 world, +0x88 rank; +0xa8 channel name, +0xd8
+// owner, s8 +0xf0 kick rank, +0xf4 own rank.
+// Clan channels (ops 3850-3861, handler 0x4ecf20): {ref, ClanChannel*} at Client+0x4660 (listened)
+// and +0x4670 + clan id * 0x10 (affined); channel +0x30/+0x38 vector of 16-byte {?, member*}, +0x50
+// name, s8 +0x69 talk rank, s8 +0x6a kick rank; member s8 +0x08 rank, +0x0c world, +0x10 name.
+bool friends_chat(ChatChannel& out) {
+    uintptr_t c = client();
+    uintptr_t fc = c ? read_at<uintptr_t>(c + 0x4608) : 0;
+    if (!fc) return false;
+    out.name = read_string(fc + 0xa8);
+    out.owner = read_string(fc + 0xd8);
+    out.kick_rank = read_at<int8_t>(fc + 0xf0);
+    out.my_rank = read_at<int32_t>(fc + 0xf4);
+    int n = read_at<int32_t>(fc + 0x0c);
+    uintptr_t arr = read_at<uintptr_t>(fc + 0x20);
+    if (n < 0 || n > 2000 || !arr) n = 0;
+    for (int i = 0; i < n; i++) {
+        uintptr_t m = read_at<uintptr_t>(arr + 8u * static_cast<uintptr_t>(i));
+        if (!m) continue;
+        out.members.push_back({read_string(m + 0x08), read_at<int32_t>(m + 0x68), read_at<int32_t>(m + 0x88)});
+    }
+    return true;
+}
+bool clan_channel(int which, ChatChannel& out) {
+    uintptr_t c = client();
+    if (!c || which < -1 || which > 7) return false;
+    uintptr_t ch = read_at<uintptr_t>(c + (which < 0 ? 0x4668 : 0x4678 + 0x10u * static_cast<uintptr_t>(which)));
+    if (!ch) return false;
+    out.name = read_string(ch + 0x50);
+    out.talk_rank = read_at<int8_t>(ch + 0x69);
+    out.kick_rank = read_at<int8_t>(ch + 0x6a);
+    uintptr_t b = read_at<uintptr_t>(ch + 0x30), e = read_at<uintptr_t>(ch + 0x38);
+    if (!b || e < b || (e - b) / 16 > 2000) return true;
+    for (uintptr_t p = b; p < e; p += 16) {
+        uintptr_t m = read_at<uintptr_t>(p + 8);
+        if (!m) continue;
+        out.members.push_back({read_string(m + 0x10), read_at<int32_t>(m + 0x0c), read_at<int8_t>(m + 0x08)});
+    }
+    return true;
+}
+
 // Instances (REBUILD_REGION). The scene loader manager is *(Client+0x4868) (passed to both rebuild
 // handlers from the packet dispatcher, 0x442610). REBUILD_REGION (0x555510) sets byte +0x54dd to 1,
 // both normal rebuild paths (0x5551dc, 0x5555xx) clear it. The region parser (0x5580e4) fills

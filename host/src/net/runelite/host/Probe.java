@@ -145,6 +145,16 @@ final class Probe {
                         + " price " + o.getPrice() + " qty " + o.getQuantitySold() + "/" + o.getTotalQuantity() + " spent " + o.getSpent());
                 return;
             }
+            if (a[0].equals("chat")) {  // "chat log 0": friends chat and clan channels as the API returns them
+                net.runelite.api.FriendsChatManager fc = c.getFriendsChatManager();
+                Log.i(TAG, "friends chat " + (fc == null ? "null" : "'" + fc.getName() + "' owner '" + fc.getOwner() + "' my " + fc.getMyRank()
+                        + " kick " + fc.getKickRank() + " " + java.util.Arrays.toString(fc.getMembers())));
+                for (int id = -1; id <= 1; id++) {
+                    net.runelite.api.clan.ClanChannel ch = id < 0 ? c.getGuestClanChannel() : c.getClanChannel(id);
+                    Log.i(TAG, "clan channel " + id + " " + (ch == null ? "null" : "'" + ch.getName() + "' " + ch.getMembers()));
+                }
+                return;
+            }
             if (a[0].equals("script")) {  // "script <id> <int args, comma-separated>": runScript, then the int/object stacks
                 java.util.List<Object> args = new java.util.ArrayList<>();
                 args.add(Integer.parseInt(a[1]));

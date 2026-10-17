@@ -388,6 +388,17 @@ bool drag_state(int out[7]);
 // setDraggedOnWidget(null): clears the dragged-on Widget* so the release does no swap.
 void drag_clear_target();
 int touch_state();
+
+// Friends chat and clan channels (docs/offsets.md "Friends chat / clan channels").
+struct ChatMember { std::string name; int world = 0; int rank = 0; };
+struct ChatChannel {
+    std::string name, owner;
+    int my_rank = 0, kick_rank = 0, talk_rank = 0;
+    std::vector<ChatMember> members;
+};
+bool friends_chat(ChatChannel& out);
+// which = -1: the listened (guest) clan channel; 0..: the affined channel of that clan id.
+bool clan_channel(int which, ChatChannel& out);
 // Inline hook on the menu-open check 0x58da0c; `cb` runs (game thread) when it is called from the
 // drag block of the cycle (return address 0x41ffe8), i.e. once per cycle while a widget is held,
 // before the release is processed.

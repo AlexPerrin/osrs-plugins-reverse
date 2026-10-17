@@ -46,6 +46,8 @@ final class Native {
     static native void dragClearTarget();
     /** Client+0x40e988: 3 held, 4 released. // unverified: other values */
     static native int touchState();
+    /** Friends chat (-2) or clan channel (-1 listened, 0.. affined): {name, owner, int[] {myRank, kickRank, talkRank}, String[] names, int[] worlds, int[] ranks}, or null (client thread). */
+    static native Object[] chatChannel(int which);
     static native int worldFlags();
     /** {zoom, x, y, width, height} of the 3D viewport in UI canvas pixels, or null. */
     static native int[] viewportZoom();

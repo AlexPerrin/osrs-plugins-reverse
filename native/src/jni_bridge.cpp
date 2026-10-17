@@ -79,6 +79,37 @@ jintArray n_drag_state(JNIEnv* env, jclass) {
 }
 void n_drag_clear_target(JNIEnv*, jclass) { if (client_thread::on_client_thread()) game::drag_clear_target(); }
 jint n_touch_state(JNIEnv*, jclass) { return game::touch_state(); }
+// Friends chat (which = -2) or clan channel (-1 listened, 0.. affined): {String name, String owner,
+// int[] {myRank, kickRank, talkRank}, String[] names, int[] worlds, int[] ranks}, or null.
+jobjectArray n_chat_channel(JNIEnv* env, jclass, jint which) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    game::ChatChannel ch;
+    if (!(which == -2 ? game::friends_chat(ch) : game::clan_channel(which, ch))) return nullptr;
+    jclass str = env->FindClass("java/lang/String");
+    jsize n = static_cast<jsize>(ch.members.size());
+    jobjectArray names = env->NewObjectArray(n, str, nullptr);
+    std::vector<jint> worlds(n), ranks(n);
+    for (jsize i = 0; i < n; i++) {
+        jstring s = env->NewStringUTF(ch.members[i].name.c_str());
+        env->SetObjectArrayElement(names, i, s);
+        env->DeleteLocalRef(s);
+        worlds[i] = ch.members[i].world;
+        ranks[i] = ch.members[i].rank;
+    }
+    jintArray w = env->NewIntArray(n), r = env->NewIntArray(n), info = env->NewIntArray(3);
+    env->SetIntArrayRegion(w, 0, n, worlds.data());
+    env->SetIntArrayRegion(r, 0, n, ranks.data());
+    jint iv[3] = {ch.my_rank, ch.kick_rank, ch.talk_rank};
+    env->SetIntArrayRegion(info, 0, 3, iv);
+    jobjectArray out = env->NewObjectArray(6, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(out, 0, env->NewStringUTF(ch.name.c_str()));
+    env->SetObjectArrayElement(out, 1, env->NewStringUTF(ch.owner.c_str()));
+    env->SetObjectArrayElement(out, 2, info);
+    env->SetObjectArrayElement(out, 3, names);
+    env->SetObjectArrayElement(out, 4, w);
+    env->SetObjectArrayElement(out, 5, r);
+    return out;
+}
 // GE slot object probe: 8 bytes address (little endian) + 0x28 raw bytes, or null.
 jbyteArray n_ge_slot_raw(JNIEnv* env, jclass, jint slot) {
     uint8_t buf[8 + 0x28] = {};
@@ -1376,6 +1407,7 @@ const JNINativeMethod kNatives[] = {
     {"dragState", "()[I", reinterpret_cast<void*>(n_drag_state)},
     {"dragClearTarget", "()V", reinterpret_cast<void*>(n_drag_clear_target)},
     {"touchState", "()I", reinterpret_cast<void*>(n_touch_state)},
+    {"chatChannel", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_chat_channel)},
     {"worldFlags", "()I", reinterpret_cast<void*>(n_world_flags)},
     {"viewportZoom", "()[I", reinterpret_cast<void*>(n_viewport_zoom)},
     {"viewTransforms", "()[F", reinterpret_cast<void*>(n_view_transforms)},

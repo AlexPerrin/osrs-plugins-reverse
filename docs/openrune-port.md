@@ -932,3 +932,21 @@ was verified.
   - Device test: `::item hunting_ojibway_bird_snare 3`, `::npc 500 hunting_bird_jungle` beside the
     player (spawned npcs stand still), Lay, step away. Box traps need Hunter 27+ (`::setxp hunter
     ...`). Upstream `35-hunter-traps`.
+- **Boss kill counts for KPH Tracker:** OpenRune already has a generic hook
+  (`content/generic/killcount`, `KillcountNpcKillHook`): an npc with `param.killcount_varp` adds 1 to
+  that varp and sends "Your <npc> kill count is: <col=ff0000>N</col>", which KPH Tracker matches
+  (`message.contains("Your Giant Mole kill count is:")`, number = the digits after stripping
+  `<col=ff0000>`) and RuneLite's chat-commands pattern takes. Scurrius (`rat_boss_*`) already had
+  it. Added to the Giant Mole (`npc.mole_giant`, OSRS varp `total_mole_kills` 1515), which spawns
+  in its lair (Falador mole hole) and with `::npc 500 mole_giant`. KPH Tracker's Giant Mole entry
+  is display type 0 (the kill time comes from its own hitsplat timer; no "Fight duration" message
+  needed). Not device-checked. Upstream `36-giant-mole-kill-count`.
+- **Kitten Tracker:** OpenRune's cats (`content/other/pets/cats`) already follow the wiki (growth
+  event every 150 ticks, adult after 120, hunger 24+3+3 min, attention 25/18/51 min, stroke and
+  feed messages Kitten Tracker matches; varp `follower_npc` = type << 16 | slot, which the plugin
+  reads as `varp 447 >> 16`). Changed (`CatCare`): every growth event the follower says "Meow!"
+  (guess at the wording; the plugin counts growth by the follower's overhead text), growth waits
+  while a modal is open (wiki: paused during dialogue), and the run-away lines are "Your kitten got
+  lonely and ran off." (what the plugin matches) / "Your kitten got hungry and ran off." (guess).
+  Kittens come from Gertrude after Gertrude's Cat. Not device-checked. Upstream
+  `37-kitten-growth-and-wording`.

@@ -454,17 +454,57 @@ public class AndroidClient extends ClientStub {
     @Override public void setMinimapZoom(boolean enabled) { }
     /**
      * Desktop's minimap dot sprites (item, NPC, player, friend, team, friends chat, clan). The
-     * mobile client draws its dots itself (it has a "setminimapdotstyle" setting) and where it keeps
-     * them isn't found, so plugins (Minimap's recolouring) get placeholders and their writes have no
-     * effect. // unverified: the mobile dot storage is not reverse-engineered
+     * mobile client styles its dots per category instead (dot colour, outline colour, thickness;
+     * its `setminimapdotstyle` console command, game `minimap_dot_style`). Plugins get placeholder
+     * sprites; when one replaces an entry (Minimap's recolouring), `applyMapDots` sets that
+     * category's dot colour to the sprite's main colour, and putting the placeholder back
+     * restores the original style. // unverified: not run on the device yet
      */
-    private final net.runelite.api.SpritePixels[] mapDots = newMapDots();
+    private final net.runelite.api.SpritePixels[] mapDotPlaceholders = newMapDots();
+    private final net.runelite.api.SpritePixels[] mapDots = mapDotPlaceholders.clone();
+    private final net.runelite.api.SpritePixels[] mapDotsSeen = mapDotPlaceholders.clone();
+    private final int[][] mapDotOriginal = new int[7][];
+    /** Desktop's default dot colours, for restoring a category the game hadn't styled. */
+    private static final int[] MAP_DOT_DEFAULTS = {0xff0000, 0xffff00, 0xffffff, 0x00ff00, 0x0000ff, 0x8000ff, 0x00ffff};
     private static net.runelite.api.SpritePixels[] newMapDots() {
         net.runelite.api.SpritePixels[] a = new net.runelite.api.SpritePixels[7];
         for (int i = 0; i < a.length; i++) a[i] = new HostSpritePixels(new int[16], 4, 4);
         return a;
     }
     @Override public net.runelite.api.SpritePixels[] getMapDots() { return mapDots; }
+
+    /** Game thread, every few cycles: pushes replaced map dot sprites into the game's dot styles. */
+    void applyMapDots() {
+        for (int i = 0; i < 7; i++) {
+            net.runelite.api.SpritePixels sp = mapDots[i];
+            if (sp == mapDotsSeen[i]) continue;
+            int[] cur = Native.minimapDot(i, 0, 0, -1);
+            android.util.Log.i(Host.TAG, "map dot " + i + " replaced; game style " + java.util.Arrays.toString(cur) + (sp != null ? " colour " + Integer.toHexString(mainColor(sp)) : ""));
+            if (cur == null) return;  // minimap not built yet: retry later
+            if (mapDotOriginal[i] == null) mapDotOriginal[i] = cur;
+            int[] o = mapDotOriginal[i];
+            if (sp == null || sp == mapDotPlaceholders[i]) {
+                if (o[0] != 0) Native.minimapDot(i, o[1], o[2], o[3]);
+                else Native.minimapDot(i, MAP_DOT_DEFAULTS[i], 0, 1);
+            } else {
+                Native.minimapDot(i, mainColor(sp), o[0] != 0 ? o[2] : 0, o[0] != 0 ? o[3] : 1);
+            }
+            mapDotsSeen[i] = sp;
+        }
+    }
+
+    /** The most common opaque, non-black colour of a sprite (a dot's fill), RGB. */
+    private static int mainColor(net.runelite.api.SpritePixels sp) {
+        java.util.Map<Integer, Integer> counts = new java.util.HashMap<>();
+        int best = 0, bestN = 0;
+        for (int p : sp.getPixels()) {
+            int rgb = p & 0xffffff;
+            if (p == 0 || rgb == 0) continue;
+            int n = counts.merge(rgb, 1, Integer::sum);
+            if (n > bestN) { bestN = n; best = rgb; }
+        }
+        return best;
+    }
 
     /** The long-press menu (game::read_menu); plugin-created entries stay host-side for now. */
     static final AndroidMenu MENU = new AndroidMenu();

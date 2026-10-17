@@ -25,6 +25,10 @@ int server_varp(int id);  // last value the server sent
 // Calls the game's varbit lookup (definition from the cache + bit extraction). Game thread only:
 // the definition cache isn't thread-safe.
 int varbit(int id);
+// Minimap dot style per category 0-6 (item, NPC, player, friend, team, friends chat, clan):
+// set (rebuilds the dot sprite) and get {styled, dot rgb, outline rgb, thickness}. Game thread only.
+bool minimap_dot_style(int cat, int dot_rgb, int outline_rgb, int thickness);
+bool minimap_dot_get(int cat, int out[4]);
 // Client.setGeSearchResultIds/Count/Index: the GE item search results OC_FINDNEXT reads. Game thread only.
 bool set_ge_search_ids(const int16_t* ids, int n);
 bool set_ge_search_int(bool index, int value);

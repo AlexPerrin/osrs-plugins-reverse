@@ -1541,6 +1541,33 @@ bool set_ge_search_int(bool index, int value) {
     return true;
 }
 
+// Minimap dot styles (the `setminimapdotstyle` console command 0x594634): Minimap = *(Client
+// +0x40e970) (also the map flag holder); per category 0-6 a shared_ptr dot sprite at +0x64c0 +
+// cat*0x10 and dot colour / outline colour / outline thickness at +0x6530 / +0x6534 / +0x6538
+// + cat*0x10. setDotStyle(minimap, cat, dot rgb, outline rgb, thickness) 0x588eac rebuilds the
+// sprite from the base dot (+0x6610 +0x60). Static RE (gen 21). // unverified: not run on device yet
+bool minimap_dot_style(int cat, int dot_rgb, int outline_rgb, int thickness) {
+    uintptr_t c = client();
+    if (!c || cat < 0 || cat > 6 || thickness < 0) return false;
+    uintptr_t mm = read_at<uintptr_t>(c + 0x40e970);
+    if (!mm) return false;
+    reinterpret_cast<void (*)(uintptr_t, unsigned, int, int, int)>(g_base + 0x588eac)(mm, cat, dot_rgb, outline_rgb, thickness);
+    return true;
+}
+
+bool minimap_dot_get(int cat, int out[4]) {
+    uintptr_t c = client();
+    if (!c || cat < 0 || cat > 6) return false;
+    uintptr_t mm = read_at<uintptr_t>(c + 0x40e970);
+    if (!mm) return false;
+    uintptr_t e = mm + static_cast<uintptr_t>(cat) * 0x10;
+    out[0] = read_at<uintptr_t>(e + 0x64c8) != 0;  // a styled sprite exists
+    out[1] = read_at<int32_t>(e + 0x6530);
+    out[2] = read_at<int32_t>(e + 0x6534);
+    out[3] = read_at<int32_t>(e + 0x6538);
+    return true;
+}
+
 bool queue_changed_skill(int skill) {
     uintptr_t c = client();
     if (!c || skill < 0 || skill >= 25) return false;

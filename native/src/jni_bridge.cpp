@@ -478,8 +478,23 @@ void n_set_hidden_actors(JNIEnv* env, jclass, jintArray npcs, jintArray players)
             if (uintptr_t p = lookup(i)) ptrs.push_back(p);
     };
     add(npcs, game::live_npc);
+    size_t before = ptrs.size();
     add(players, game::live_player);
+    static int logs = 0;
+    if (logs < 20 && (npcs || players)) {
+        logs++;
+        LOGI("draw_hide: %zu npc and %zu player pointers resolved", before, ptrs.size() - before);
+    }
     draw_hide::set_hidden(ptrs);
+}
+jintArray n_minimap_dot(JNIEnv* env, jclass, jint cat, jint dot, jint outline, jint thickness) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    if (thickness >= 0 && !game::minimap_dot_style(cat, dot, outline, thickness)) return nullptr;
+    int v[4];
+    if (!game::minimap_dot_get(cat, v)) return nullptr;
+    jintArray a = env->NewIntArray(4);
+    env->SetIntArrayRegion(a, 0, 4, v);
+    return a;
 }
 jboolean n_set_ge_search(JNIEnv* env, jclass, jshortArray ids, jint count, jint index) {
     if (!client_thread::on_client_thread()) return false;
@@ -1307,6 +1322,7 @@ const JNINativeMethod kNatives[] = {
     {"queueChangedSkill", "(I)Z", reinterpret_cast<void*>(n_queue_changed_skill)},
     {"setHiddenActors", "([I[I)V", reinterpret_cast<void*>(n_set_hidden_actors)},
     {"setGeSearch", "([SII)Z", reinterpret_cast<void*>(n_set_ge_search)},
+    {"minimapDot", "(IIII)[I", reinterpret_cast<void*>(n_minimap_dot)},
     {"setScriptEvents", "(Z)V", reinterpret_cast<void*>(n_set_script_events)},
     {"scriptStacks", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_stacks)},
     {"setScriptIntStack", "([II)Z", reinterpret_cast<void*>(n_set_script_int_stack)},

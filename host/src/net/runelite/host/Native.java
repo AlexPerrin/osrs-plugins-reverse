@@ -107,6 +107,8 @@ final class Native {
     static native void setHiddenActors(int[] npcs, int[] players);
     /** GE item search results: ids (null = keep), count / index (Integer.MIN_VALUE = keep). Client thread only. */
     static native boolean setGeSearch(short[] ids, int count, int index);
+    /** Minimap dot style of category 0-6: sets it when thickness >= 0, returns {styled, dot rgb, outline rgb, thickness} (null if unavailable). Client thread only. */
+    static native int[] minimapDot(int cat, int dot, int outline, int thickness);
     /** Turns the script VM callbacks (Host.onScript) on or off. */
     static native void setScriptEvents(boolean on);
     /** The VM's live stacks (game thread): {int[] intStack (size entries), String[] objectStack}. */

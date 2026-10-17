@@ -406,6 +406,7 @@ public final class Host {
                 ((AndroidClient) client).fetchWantedDbFields();
                 HostSprites.onCycle(client);
                 applyDrawListeners();
+                if (cycleStamp % 10 == 0) ((AndroidClient) client).applyMapDots();
                 Sidebar.onCycle();
                 try {
                     DevMenu.onCycle();
@@ -810,6 +811,7 @@ public final class Host {
             Log.e(TAG, "draw listener threw", t);
         }
         if (n == 0 && p == 0 && !hiding) return;
+        if ((n > 0 || p > 0) != hiding || (cycleStamp % 500) == 0) Log.i(TAG, "draw listeners hide " + n + " npcs, " + p + " players");
         Native.setHiddenActors(java.util.Arrays.copyOf(npcs, n), java.util.Arrays.copyOf(players, p));
         hiding = n > 0 || p > 0;
     }

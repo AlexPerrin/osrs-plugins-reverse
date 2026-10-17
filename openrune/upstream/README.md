@@ -2,7 +2,7 @@
 
 One `git format-patch` file per fix, each against OpenRune-Server
 [`9a8b338a8`](https://github.com/OpenRune/OpenRune-Server/commit/9a8b338a89cb87345e002bf83228e775a746ce69).
-Each applies on its own (`git apply --check` on a clean checkout of the pin) and
+Each applies on its own (or on the patches its row says it needs) (`git apply --check` on a clean checkout of the pin) and
 all apply together in number order (`git am *.patch`). Nothing has been sent
 upstream.
 
@@ -51,6 +51,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 35 | `35-hunter-traps` | `content/skills/hunter`: `HunterTrapScript.kt`, pack `HunterTrapTables.kt` (new), `HunterPluginPack.kt`, `gamevals.toml`, `HunterTrapScriptTest.kt` (new) | Bird snares and box traps (5 birds, ferret, 3 chinchompas) with the trap locs RuneLite's Hunter plugin tracks; integration tests | Needs 15 and 20; dbtables 60011-60012 (rows 60350-60360), timer 470; the catch curve beyond the crimson swift, the 200-tick collapse and most messages are best guesses; no smoking/baiting, no Eagles' Peak requirement |
 | 36 | `36-giant-mole-kill-count` | `.data/raw-cache/server/npcs.toml` | The Giant Mole had no `killcount_varp`, so no "Your Giant Mole kill count is:" (RuneLite chat commands, KPH Tracker) | Uses the OSRS varp `total_mole_kills` (1515) |
 | 37 | `37-kitten-growth-and-wording` | `pets/.../cats/CatCare.kt` | Overhead text on each kitten/cat growth event (what RuneLite's Kitten Tracker counts), growth paused while a modal is open (wiki), OSRS run-away wording | "Meow!" and the hunger run-away line are best guesses |
+| 38 | `38-varrock-platebody-smelting` | `smithing/.../smelting/SmeltingScript.kt` | The Varrock platebody bonus at the Edgeville furnace smelts the next ore at the same time (second set of ores, its own XP) with OSRS's spam line "The Varrock platebody enabled you to smelt your next ore simultaneously.", which RuneLite's Smelting plugin counts; the bar used to be free, with an invented game message | Needs 09; the second ore set, the Make-X count and no bonus on the last bar of a Make-X are inferred from the message, not confirmed |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.

@@ -971,3 +971,17 @@ was verified.
   the trap.", the snare appears on 3222,3218 and the player steps to 3221; the plugin draws its trap
   circle; the swift is caught within a few ticks; Check gives "You've caught a crimson swift.",
   bones, raw bird meat, 6 red feathers, the snare back and Hunter XP. Box traps not tried on the device.
+
+## Thirteenth server dev (2026-10-17)
+
+- **Varrock platebody smelting** (`SmeltingScript`): RuneLite's Smelting plugin counts a bar per
+  SPAM message starting "You retrieve a bar of" or "The Varrock platebody enabled you to smelt your
+  next ore". OpenRune gave a free second bar with the game message "Your Varrock armour helps you
+  smelt an extra ...". Now, at the Edgeville furnace with an eligible armour tier (10%, wiki), the
+  next ore set is smelted at once: a second set of ores is used, a second bar and its XP are given,
+  and the spam line is "The Varrock platebody enabled you to smelt your next ore simultaneously."
+  The prefix is the plugin's. "simultaneously." is from memory: the wiki page only says the message
+  changed on 14 January 2016 "to be less misleading" (**guess**). The extra bar counts towards
+  Make-X and is skipped on the last bar of a Make-X (**guess**, inferred from "next ore"). The
+  iron 50% failure roll applies to the first bar only (**guess**). Upstream `38-varrock-platebody-smelting`
+  (needs 09).

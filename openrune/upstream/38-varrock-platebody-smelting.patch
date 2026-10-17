@@ -1,0 +1,166 @@
+From 9a9889342911d90dfd22517260e441931098b3c3 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 07:34:01 -0400
+Subject: [PATCH] Smelting: OSRS Varrock platebody extra bar
+
+In OSRS the Varrock platebody bonus at the Edgeville furnace smelts the
+next ore at the same time: a second set of ores becomes a second bar,
+with its own XP, and the spam message "The Varrock platebody enabled you
+to smelt your next ore simultaneously." (RuneLite's Smelting plugin
+counts it as one bar). The bar used to be free, with a game message.
+---
+ .../smithing/smelting/SmeltingScript.kt       | 105 +++++++++++-------
+ 1 file changed, 65 insertions(+), 40 deletions(-)
+
+diff --git a/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/smelting/SmeltingScript.kt b/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/smelting/SmeltingScript.kt
+index 68553dd32..af115e069 100644
+--- a/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/smelting/SmeltingScript.kt
++++ b/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/smelting/SmeltingScript.kt
+@@ -164,15 +164,17 @@ class SmeltingScript @Inject constructor(private val xpMods: XpModifiers) : Plug
+             return
+         }
+ 
+-        performSmelt(
+-            task.bar,
+-            task.isSuperHeat,
+-            task.furnaceLocInternal,
+-            task.furnaceCoords,
+-            task.regularFurnace,
+-        )
++        val made =
++            performSmelt(
++                task.bar,
++                task.isSuperHeat,
++                task.furnaceLocInternal,
++                task.furnaceCoords,
++                task.regularFurnace,
++                remaining = task.amount - task.completed,
++            )
+ 
+-        val completed = task.completed + 1
++        val completed = task.completed + made
+         if (completed >= task.amount || !canSmelt(task.bar, task.regularFurnace)) {
+             return
+         }
+@@ -210,11 +212,57 @@ class SmeltingScript @Inject constructor(private val xpMods: XpModifiers) : Plug
+         furnaceLocInternal: String,
+         furnaceCoords: org.rsmod.map.CoordGrid,
+         regularFurnace: Boolean,
+-    ) {
++        remaining: Int = 1,
++    ): Int {
+         anim("seq.human_furnace")
+         soundSynth("synth.furnace")
+         delay(2)
+ 
++        if (!consumeBarInputs(bar, regularFurnace)) {
++            return 1
++        }
++
++        val isIronBar = bar.output.internalName == "obj.iron_bar"
++        val hasRingOfForging = "obj.ring_of_forging" in player.worn
++        val success = if (isIronBar && !hasRingOfForging && !isSuperHeat) {
++            Random.nextBoolean()
++        } else {
++            true
++        }
++
++        if (!success) {
++            mes("The ore is too impure and you fail to refine it.")
++            return 1
++        }
++        if (!invAdd(inv, bar.output.internalName, 1).success) {
++            return 1
++        }
++        val xp = SmithingSmeltXp.resolve(player, inv, bar, isSuperHeat, xpMods, regularFurnace)
++        statAdvance("stat.smithing", xp)
++        val metal = SmithingUtils.itemName(bar.output, "bar").removeSuffix(" bar").lowercase()
++        spam("You retrieve a bar of $metal.")
++
++        // OSRS's Varrock platebody bonus smelts the *next* ore at the same
++        // time (its own ores, its own XP), with the spam line RuneLite's Smelting plugin counts as
++        // one bar. Wiki: 10% chance, Edgeville furnace, bar tier by armour tier. That the extra bar
++        // uses a second set of ores and counts towards Make-X is inferred from the message (unverified).
++        if (
++            !isSuperHeat &&
++                remaining > 1 &&
++                varrockExtraBar(bar, furnaceLocInternal, furnaceCoords) &&
++                hasItemsForBar(bar, regularFurnace) &&
++                consumeBarInputs(bar, regularFurnace) &&
++                invAdd(inv, bar.output.internalName, 1).success
++        ) {
++            val extraXp = SmithingSmeltXp.resolve(player, inv, bar, isSuperHeat, xpMods, regularFurnace)
++            statAdvance("stat.smithing", extraXp)
++            spam("The Varrock platebody enabled you to smelt your next ore simultaneously.")
++            return 2
++        }
++        return 1
++    }
++
++    private fun ProtectedAccess.consumeBarInputs(bar: SmithingBarsRow, regularFurnace: Boolean): Boolean {
+         val primaryAmt = bar.inputAmount.first()
+         val secondary = bar.input.getOrNull(1)
+         val requiresSecondary = secondary != null && (bar.input.getOrNull(1)?.let { bar.inputAmount.getOrNull(1) } ?: 0) > 0
+@@ -234,51 +282,28 @@ class SmeltingScript @Inject constructor(private val xpMods: XpModifiers) : Plug
+             }
+ 
+         if (!primaryRemoved || !secondaryRemoved) {
+-            return
++            return false
+         }
+ 
+         if (shouldConsumeSmithingCatalyst(player, inv, bar, regularFurnace)) {
+             invDel(inv, SmithingBonuses.SMITHING_CATALYST, 1)
+         }
+-
+-        val isIronBar = bar.output.internalName == "obj.iron_bar"
+-        val hasRingOfForging = "obj.ring_of_forging" in player.worn
+-        val success = if (isIronBar && !hasRingOfForging && !isSuperHeat) {
+-            Random.nextBoolean()
+-        } else {
+-            true
+-        }
+-
+-        if (success) {
+-            val outputCount = outputBarCount(bar, furnaceLocInternal, furnaceCoords)
+-            if (invAdd(inv, bar.output.internalName, outputCount).success) {
+-                val xp = SmithingSmeltXp.resolve(player, inv, bar, isSuperHeat, xpMods, regularFurnace)
+-                statAdvance("stat.smithing", xp)
+-                val metal = SmithingUtils.itemName(bar.output, "bar").removeSuffix(" bar").lowercase()
+-                spam("You retrieve a bar of $metal.")
+-                if (outputCount > 1) {
+-                    val barName = SmithingUtils.itemName(bar.output, "bar")
+-                    mes("Your Varrock armour helps you smelt an extra $barName.")
+-                }
+-            }
+-        } else {
+-            mes("The ore is too impure and you fail to refine it.")
+-        }
++        return true
+     }
+ 
+-    private fun ProtectedAccess.outputBarCount(
++    private fun ProtectedAccess.varrockExtraBar(
+         bar: SmithingBarsRow,
+         furnaceLocInternal: String,
+         furnaceCoords: org.rsmod.map.CoordGrid,
+-    ): Int {
++    ): Boolean {
+         if (!isEdgevilleFurnace(furnaceLocInternal, furnaceCoords)) {
+-            return 1
++            return false
+         }
+-        val tier = player.varrockArmourTier() ?: return 1
++        val tier = player.varrockArmourTier() ?: return false
+         if (!isBarEligibleForVarrockArmour(bar, tier)) {
+-            return 1
++            return false
+         }
+-        return if (rollVarrockDoubleBar()) 2 else 1
++        return rollVarrockDoubleBar()
+     }
+ 
+     private suspend fun ProtectedAccess.canSmelt(bar: SmithingBarsRow, regularFurnace: Boolean = true): Boolean {
+-- 
+2.43.0
+

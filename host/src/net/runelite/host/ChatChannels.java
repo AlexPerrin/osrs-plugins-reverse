@@ -15,7 +15,7 @@ import net.runelite.client.util.Text;
 
 /**
  * Friends chat and clan channels read from the game (Native.chatChannel, docs/offsets.md "Friends
- * chat / clan channels"). Snapshots: a new object per call, as the game replaces its own.
+ * chat / clan channels"). One object per channel state (see friendsChat()).
  * // unverified: on the device (static RE of the CS2 ops; OpenRune's friends chat / clan support unknown).
  */
 final class ChatChannels {
@@ -106,16 +106,61 @@ final class ChatChannels {
         }
     }
 
+    // Desktop's channel objects live until the game replaces them, and plugins compare them with ==
+    // (Chat Channel: clanMemberJoined.getClanChannel() == client.getClanChannel()); the same object is
+    // returned while the game's data is unchanged.
+    private static String fcSig;
+    private static Fc fcCached;
+    private static final java.util.Map<Integer, Object[]> clanCached = new java.util.HashMap<>();  // which -> {sig, Clan}
+
     /** The friends chat the player is in, or null. Client thread only (null elsewhere). */
-    static FriendsChatManager friendsChat() {
+    static synchronized FriendsChatManager friendsChat() {
         Object[] r = Native.chatChannel(-2);
-        return r != null ? new Fc(r) : null;
+        if (r == null) { fcSig = null; fcCached = null; return null; }
+        String sig = java.util.Arrays.deepToString(r);
+        if (!sig.equals(fcSig)) { fcSig = sig; fcCached = new Fc(r); }
+        return fcCached;
     }
 
     /** -1: the listened (guest) clan channel; 0..: the affined channel of that clan id (ClanID). */
-    static ClanChannel clan(int which) {
+    static synchronized ClanChannel clan(int which) {
         Object[] r = Native.chatChannel(which);
-        return r != null ? new Clan(r) : null;
+        if (r == null) { clanCached.remove(which); return null; }
+        String sig = java.util.Arrays.deepToString(r);
+        Object[] c = clanCached.get(which);
+        if (c == null || !sig.equals(c[0])) clanCached.put(which, c = new Object[] {sig, new Clan(r)});
+        return (Clan) c[1];
+    }
+
+    /**
+     * Clan settings are not read from the game (CLANSETTINGS packets): this view is built from the
+     * clan channel (online members only, no titles), so plugins that need the settings to exist (Chat
+     * Channel's clan join/leave messages) work without rank titles. // unverified: on the device.
+     */
+    static net.runelite.api.clan.ClanSettings settings(int which) {
+        ClanChannel ch = clan(which);
+        if (ch == null) return null;
+        return new net.runelite.api.clan.ClanSettings() {
+            @Override public String getName() { return ch.getName(); }
+            @Override public List<net.runelite.api.clan.ClanMember> getMembers() {
+                List<net.runelite.api.clan.ClanMember> l = new ArrayList<>();
+                for (ClanChannelMember m : ch.getMembers()) l.add(asMember(m));
+                return l;
+            }
+            @Override public net.runelite.api.clan.ClanMember findMember(String n) {
+                ClanChannelMember m = ch.findMember(n);
+                return m != null ? asMember(m) : null;
+            }
+            @Override public net.runelite.api.clan.ClanTitle titleForRank(ClanRank rank) { return null; }
+        };
+    }
+
+    private static net.runelite.api.clan.ClanMember asMember(ClanChannelMember m) {
+        return new net.runelite.api.clan.ClanMember() {
+            @Override public String getName() { return m.getName(); }
+            @Override public ClanRank getRank() { return m.getRank(); }
+            @Override public java.time.LocalDate getJoinDate() { return null; }  // not in the channel data
+        };
     }
 
     // --- events: desktop posts them from the channel packets; here the channels are diffed once per
@@ -137,8 +182,7 @@ final class ChatChannels {
         boolean any = false;
         for (Class<?> c : EVENTS) any |= bus.hasSubscribers(c);
         if (!any) return;
-        Object[] r = Native.chatChannel(-2);
-        Fc fc = r != null ? new Fc(r) : null;
+        Fc fc = (Fc) friendsChat();
         Fc was = lastFc;
         lastFc = fc;
         if ((was == null) != (fc == null) || (was != null && !was.name.equals(fc.name))) {
@@ -155,8 +199,7 @@ final class ChatChannels {
         }
         for (int k = 0; k < CLAN_SLOTS.length; k++) {
             int which = CLAN_SLOTS[k];
-            Object[] cr = Native.chatChannel(which);
-            Clan ch = cr != null ? new Clan(cr) : null;
+            Clan ch = (Clan) clan(which);
             Clan old = lastClan[k];
             lastClan[k] = ch;
             if ((old == null) != (ch == null) || (old != null && !old.name.equals(ch.name))) {
@@ -175,5 +218,6 @@ final class ChatChannels {
     static void reset() {
         lastFc = null;
         java.util.Arrays.fill(lastClan, null);
+        synchronized (ChatChannels.class) { fcSig = null; fcCached = null; clanCached.clear(); }
     }
 }

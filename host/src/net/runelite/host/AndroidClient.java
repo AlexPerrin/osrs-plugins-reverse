@@ -938,10 +938,10 @@ public class AndroidClient extends ClientStub {
     @Override public int[] getPlayerMenuTypes() { return playerMenuTypes; }
     @Override public net.runelite.api.clan.ClanChannel getClanChannel() { return ChatChannels.clan(net.runelite.api.clan.ClanID.CLAN); }
     @Override public net.runelite.api.clan.ClanChannel getGuestClanChannel() { return ChatChannels.clan(-1); }
-    @Override public net.runelite.api.clan.ClanSettings getClanSettings() { return null; }
-    @Override public net.runelite.api.clan.ClanSettings getGuestClanSettings() { return null; }
+    @Override public net.runelite.api.clan.ClanSettings getClanSettings() { return ChatChannels.settings(net.runelite.api.clan.ClanID.CLAN); }
+    @Override public net.runelite.api.clan.ClanSettings getGuestClanSettings() { return ChatChannels.settings(-1); }
     @Override public net.runelite.api.clan.ClanChannel getClanChannel(int clanId) { return clanId >= 0 ? ChatChannels.clan(clanId) : null; }
-    @Override public net.runelite.api.clan.ClanSettings getClanSettings(int clanId) { return null; }
+    @Override public net.runelite.api.clan.ClanSettings getClanSettings(int clanId) { return clanId >= 0 ? ChatChannels.settings(clanId) : null; }
 
     // Sprite overrides are written into the game's cached sprite of the same id and size
     // (HostSprites.Overrides); widget sprite overrides are kept but not applied.

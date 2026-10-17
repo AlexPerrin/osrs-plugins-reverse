@@ -172,13 +172,24 @@ void diff_npcs() {
     }
 }
 
-void poll_messages() {
+// What getItemContainer sees while events are posted (game thread): set to the inventories as of
+// the event being posted, so handlers see packet-order state (see game::take_message_inventories).
+const std::vector<game::Inventory>* g_inv_view = nullptr;
+
+void post_inventory_changes(const std::vector<game::Inventory>& state);
+
+// Chat messages in id order. With the world up, the inventory changes made before each message
+// (recorded by the Message constructor hook) are posted first, and the handlers see the
+// inventories as of that message; diff_inventories then posts the rest.
+void poll_messages(bool world_up) {
     int next = game::next_message_id();
     if (g_next_message < 0 || next < g_next_message) {  // first cycle: don't replay history
         g_next_message = next;
         return;
     }
     for (; g_next_message < next; g_next_message++) {
+        std::vector<game::Inventory> at;
+        bool snap = game::take_message_inventories(g_next_message, at) && world_up;
         game::ChatLine line;
         if (!game::read_message(g_next_message, line)) continue;
         {
@@ -186,7 +197,11 @@ void poll_messages() {
             g_messages.push_back(line);
             if (g_messages.size() > kMessageHistory) g_messages.pop_front();
         }
+        if (snap) post_inventory_changes(at);
+        const std::vector<game::Inventory>* saved = g_inv_view;
+        if (snap) g_inv_view = &at;
         post({EventType::ChatMessage, line.id, line.type});
+        g_inv_view = saved;
     }
 }
 
@@ -225,19 +240,27 @@ void diff_skills() {
     g_skills_valid = true;
 }
 
+// Posts ItemContainerChanged for every inventory in `state` that differs from the posted state
+// (g_inventories), updating it first, with getItemContainer showing `state`.
+void post_inventory_changes(const std::vector<game::Inventory>& state) {
+    const std::vector<game::Inventory>* saved = g_inv_view;
+    g_inv_view = &state;
+    for (const auto& n : state) {
+        bool changed;
+        {
+            std::lock_guard lock(g_inv_mutex);
+            game::Inventory* before = nullptr;
+            for (auto& o : g_inventories) if (o.id == n.id) before = &o;
+            changed = !before || before->ids != n.ids || before->quantities != n.quantities;
+            if (before) *before = n; else if (changed) g_inventories.push_back(n);
+        }
+        if (changed) post({EventType::ItemContainerChanged, n.id});
+    }
+    g_inv_view = saved;
+}
+
 void diff_inventories() {
-    std::vector<game::Inventory> now = game::read_inventories();
-    std::vector<game::Inventory> old;
-    {
-        std::lock_guard lock(g_inv_mutex);
-        old.swap(g_inventories);
-        g_inventories = now;
-    }
-    for (const auto& n : now) {
-        const game::Inventory* before = nullptr;
-        for (const auto& o : old) if (o.id == n.id) before = &o;
-        if (!before || before->ids != n.ids || before->quantities != n.quantities) post({EventType::ItemContainerChanged, n.id});
-    }
+    post_inventory_changes(game::read_inventories());
 }
 
 void diff_players() {
@@ -383,14 +406,14 @@ void after_cycle() {
         if (world_up) {
             diff_npcs();
             diff_players();
-            diff_inventories();
         } else {
             clear_actors();
         }
     }
     diff_skills();
     game::sync_members_world();
-    poll_messages();
+    poll_messages(world_up);
+    if (world_up) diff_inventories();  // after the messages: changes made after the last one
     diff_interfaces();
     if (world_up) diff_menu();
     game::drawlog_cycle();
@@ -477,6 +500,16 @@ bool message(int id, game::ChatLine& out) {
             return true;
         }
     }
+    return false;
+}
+
+bool inventory_view(int id, game::Inventory& out) {
+    if (!g_inv_view || !on_client_thread()) return false;
+    for (const auto& inv : *g_inv_view)
+        if (inv.id == id) {
+            out = inv;
+            return true;
+        }
     return false;
 }
 

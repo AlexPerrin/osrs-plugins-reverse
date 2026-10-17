@@ -55,15 +55,15 @@ public class AndroidPlayer extends PlayerStub {
         return Hulls.box(localX, localY, 48, 48, Host.worldView().getPlane(), getLogicalHeight()); }
     @Override public net.runelite.api.Point getCanvasImageLocation(java.awt.image.BufferedImage image, int zOffset) {
         net.runelite.api.Client c = Host.client();
-        return c == null ? null : net.runelite.api.Perspective.getCanvasImageLocation(c, getLocalLocation(), image, getLogicalHeight() + zOffset);
+        return c == null ? null : net.runelite.api.Perspective.getCanvasImageLocation(c, getLocalLocation(), image, zOffset);
     }
     @Override public net.runelite.api.Point getCanvasSpriteLocation(net.runelite.api.SpritePixels sprite, int zOffset) {
         net.runelite.api.Client c = Host.client();
-        return c == null ? null : net.runelite.api.Perspective.getCanvasSpriteLocation(c, getLocalLocation(), sprite, getLogicalHeight() + zOffset);
+        return c == null ? null : net.runelite.api.Perspective.getCanvasSpriteLocation(c, getLocalLocation(), sprite, zOffset);
     }
     @Override public net.runelite.api.Point getCanvasTextLocation(java.awt.Graphics2D g, String text, int zOffset) {
         net.runelite.api.Client c = Host.client();
-        return c == null ? null : net.runelite.api.Perspective.getCanvasTextLocation(c, g, getLocalLocation(), text, getLogicalHeight() + zOffset);
+        return c == null ? null : net.runelite.api.Perspective.getCanvasTextLocation(c, g, getLocalLocation(), text, zOffset);
     }
     @Override public java.awt.Polygon getCanvasTilePoly() {
         net.runelite.api.Client c = Host.client();

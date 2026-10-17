@@ -14,9 +14,11 @@
 #include <memory>
 
 #include "got_hook.h"
+#include "inline_hook.h"
 #include "log.h"
 
 namespace game {
+void install_message_hook();
 namespace {
 
 // Offsets are ELF virtual addresses (as in readelf/objdump; Ghidra shows them +0x100000)
@@ -98,6 +100,7 @@ struct Build {
     // 0x518840), the "picked" flag the menu build checks, and the pick mode (2 pending, 3 done).
     uintptr_t pick_set, pick_ready, pick_mode;
     uintptr_t mod_icons;  // global shared_ptr obj of the font's <img=N> table (setModIcons 0x431a84)
+    uintptr_t message_ctor;  // Message(this, type, name*, sender*, text*): every chat line, id = ++next id
 };
 
 constexpr Build kBuilds[] = {
@@ -113,7 +116,7 @@ constexpr Build kBuilds[] = {
      0x5d00fc, 0x3f804c, 0x3f8470, 0x64b450,
      0x514f48, 0x507398, 0x50621c, 0x58fa84,
      0x72b758, 0x1d2f52d, 0x1d7ddf0,
-     0x18e2130},
+     0x18e2130, 0x3f0a04},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -175,6 +178,7 @@ bool init() {
         if (memcmp(b.build_id, note.id, 20) == 0) {
             g_build = &b;
             LOGI("game: build %s recognised", b.name);
+            install_message_hook();
             return true;
         }
     }
@@ -2417,5 +2421,47 @@ void mod_icons_cycle() {
     LOGI("mod icons: %zu (game %d)%s", b->sprites.size(), gcount, ours ? "" : " installed");
     g_icons_prev = std::move(g_icons_built);  // the font may still hold it within this cycle? keep one
     g_icons_built = std::move(b);
+}
+}  // namespace game
+
+// ---- Inventories as of each chat message. Desktop posts events in packet order, so a ChatMessage
+// handler sees the containers before a later UPDATE_INV in the same cycle (Loot Tracker snapshots
+// the reward inventory on the casket message, then diffs on its ItemContainerChanged). Our events
+// are derived after the cycle, so the Message constructor is hooked to copy the inventories at the
+// moment each line is created; client_thread replays the changes in that order.
+namespace game {
+namespace {
+const uint32_t kMessageCtorCode[4] = {0xd102c3ff, 0xa9067bfd, 0xf9003bf9, 0xa9085ff8};
+using MessageCtor = uintptr_t (*)(uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t);
+MessageCtor g_message_ctor = nullptr;
+std::mutex g_msg_inv_mutex;
+std::unordered_map<int, std::vector<Inventory>> g_msg_inv;  // message id -> inventories at creation
+
+uintptr_t hook_message_ctor(uintptr_t self, uintptr_t type, uintptr_t name, uintptr_t sender, uintptr_t text) {
+    int id = next_message_id() + 1;  // the constructor increments the counter first
+    std::vector<Inventory> inv = read_inventories();
+    {
+        std::lock_guard<std::mutex> lock(g_msg_inv_mutex);
+        if (g_msg_inv.size() > 256) g_msg_inv.clear();  // never collected (no cycle hook)
+        g_msg_inv[id] = std::move(inv);
+    }
+    return g_message_ctor(self, type, name, sender, text);
+}
+}  // namespace
+
+void install_message_hook() {
+    if (!g_build || !g_build->message_ctor) return;
+    g_message_ctor = reinterpret_cast<MessageCtor>(
+        inline_hook(g_base + g_build->message_ctor, kMessageCtorCode, reinterpret_cast<void*>(hook_message_ctor)));
+    LOGI("game: message hook %s", g_message_ctor ? "installed" : "FAILED");
+}
+
+bool take_message_inventories(int id, std::vector<Inventory>& out) {
+    std::lock_guard<std::mutex> lock(g_msg_inv_mutex);
+    auto it = g_msg_inv.find(id);
+    if (it == g_msg_inv.end()) return false;
+    out = std::move(it->second);
+    g_msg_inv.erase(it);
+    return true;
 }
 }  // namespace game

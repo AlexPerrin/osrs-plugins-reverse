@@ -156,6 +156,9 @@ struct Inventory {
 };
 // Every inventory the client holds. Game thread only.
 std::vector<Inventory> read_inventories();
+// The inventories as they were when chat message `id` was created (Message constructor hook);
+// each id can be taken once. False if the hook didn't record it.
+bool take_message_inventories(int id, std::vector<Inventory>& out);
 
 struct ChatLine {
     int id = -1, type = 0, cycle = 0;

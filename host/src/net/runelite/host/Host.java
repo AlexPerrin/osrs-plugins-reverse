@@ -323,6 +323,27 @@ public final class Host {
     private static final java.util.List<Integer> pendingStats = new java.util.ArrayList<>();
     private static final java.util.Map<Integer, AndroidNPC> pendingNpcs = new java.util.LinkedHashMap<>();
 
+    private static boolean pendingLoggedIn;
+
+    private static void postLoggedIn(EventBus bus) {
+        pendingLoggedIn = false;
+        postGameState(bus, GameState.LOGGED_IN);
+    }
+
+    private static void postGameState(EventBus bus, GameState s) {
+        GameStateChanged e = new GameStateChanged();
+        // Desktop's ConfigManager switches the RuneScape profile while logging in; plugins
+        // (Quest Helper) wait for that event before their first LOGGED_IN setup.
+        if (s == GameState.LOGIN_SCREEN) { profilePosted = false; pendingNpcs.clear(); }
+        if (s == GameState.LOGGED_IN) ((AndroidClient) client).applyIdleTimeout();
+        if (s == GameState.LOGGED_IN && !profilePosted) {
+            profilePosted = true;
+            bus.post(new net.runelite.client.events.RuneScapeProfileChanged(null, "default"));
+        }
+        e.setGameState(s != null ? s : GameState.UNKNOWN);
+        bus.post(e);
+    }
+
     private static void dispatch(EventBus bus, int type, int a, int b) {
         switch (type) {
             case CLIENT_TICK:
@@ -331,6 +352,7 @@ public final class Host {
                 if (client instanceof AndroidClient) ((AndroidClient) client).syncModIcons();
                 bus.post(clientTick);
                 postActorChanges(bus);
+                if (pendingLoggedIn && localPlayer() != null) postLoggedIn(bus);
                 if (!pendingNpcs.isEmpty() && localPlayer() != null) {
                     java.util.List<AndroidNPC> held = new java.util.ArrayList<>(pendingNpcs.values());
                     pendingNpcs.clear();
@@ -384,18 +406,13 @@ public final class Host {
                 Probe.onGameTick();
                 break;
             case GAME_STATE_CHANGED: {
-                GameStateChanged e = new GameStateChanged();
                 GameState s = GameState.of(a);
-                // Desktop's ConfigManager switches the RuneScape profile while logging in; plugins
-                // (Quest Helper) wait for that event before their first LOGGED_IN setup.
-                if (s == GameState.LOGIN_SCREEN) { profilePosted = false; pendingNpcs.clear(); }
-                if (s == GameState.LOGGED_IN) ((AndroidClient) client).applyIdleTimeout();
-                if (s == GameState.LOGGED_IN && !profilePosted) {
-                    profilePosted = true;
-                    bus.post(new net.runelite.client.events.RuneScapeProfileChanged(null, "default"));
-                }
-                e.setGameState(s != null ? s : GameState.UNKNOWN);
-                bus.post(e);
+                // Desktop has the local player when GameStateChanged(LOGGED_IN) is posted (Spawn
+                // Predictor reads its name there); the game's player list can still be empty on
+                // that cycle, so LOGGED_IN waits for it (flushed on ClientTick, before held spawns).
+                if (pendingLoggedIn) postLoggedIn(bus);
+                if (s == GameState.LOGGED_IN && localPlayer() == null) { pendingLoggedIn = true; break; }
+                postGameState(bus, s);
                 break;
             }
             case NPC_SPAWNED: {

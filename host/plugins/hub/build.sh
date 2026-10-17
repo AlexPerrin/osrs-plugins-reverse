@@ -51,6 +51,11 @@ for name in "$@"; do
     cp -r "$w/classes/." "$w/jar/"
     [[ -d $src/src/main/resources ]] && cp -r "$src/src/main/resources/." "$w/jar/"
     [[ -n $lic ]] && cp "$src/$lic" "$w/jar/LICENSE-$name.txt"
+    # Resources a gradle task generates: version.txt = "version=<project version>" (Bank Tag Layouts).
+    if grep -q 'version.txt").text' "$src"/build.gradle* 2>/dev/null; then
+        v=$(sed -nE "s/^version *= *['\"]([^'\"]+)['\"].*/\1/p" "$src"/build.gradle* | head -1)
+        printf 'version=%s' "$v" > "$w/jar/version.txt"
+    fi
     printf 'Manifest-Version: 1.0\nImplementation-Title: %s\nImplementation-Version: %s\n' "$name" "${commit:0:10}" > "$w/MANIFEST.MF"
     rm -f "$OUT/$name.jar"
     jar cfm "$OUT/$name.jar" "$w/MANIFEST.MF" -C "$w/jar" .

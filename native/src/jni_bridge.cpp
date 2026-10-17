@@ -1041,9 +1041,15 @@ jobjectArray n_players(JNIEnv* env, jclass) {
 
 // {id0, id1, ...} of an inventory's items followed by quantities (2 * slots ints), or null.
 jintArray n_inventory(JNIEnv* env, jclass, jint id) {
-    // On the game thread read the live map: scripts that run while the packets are handled (the
-    // bank's 505 on the cycle inventory 95 arrives) would otherwise see last cycle's snapshot.
-    for (const auto& inv : client_thread::on_client_thread() ? game::read_inventories() : client_thread::inventories()) {
+    // While an event is posted: the inventory as of that event (packet order: a ChatMessage handler
+    // doesn't see an UPDATE_INV that came after it). Otherwise, on the game thread, the live map:
+    // scripts that run while the packets are handled (the bank's 505 on the cycle inventory 95
+    // arrives) would otherwise see last cycle's snapshot.
+    game::Inventory viewed;
+    std::vector<game::Inventory> one;
+    bool in_view = client_thread::inventory_view(id, viewed);
+    if (in_view) one.push_back(std::move(viewed));
+    for (const auto& inv : in_view ? one : client_thread::on_client_thread() ? game::read_inventories() : client_thread::inventories()) {
         if (inv.id != id) continue;
         jsize n = static_cast<jsize>(inv.ids.size());
         jintArray arr = env->NewIntArray(2 * n);

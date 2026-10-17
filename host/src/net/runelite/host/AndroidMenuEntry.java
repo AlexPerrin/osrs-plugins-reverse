@@ -195,7 +195,23 @@ final class AndroidMenuEntry implements MenuEntry {
     @Override public Consumer<MenuEntry> onClick() { return onClick; }
     @Override public boolean isItemOp() { return false; }
     @Override public int getItemOp() { return -1; }
-    @Override public int getItemId() { return itemId; }
+    /**
+     * As desktop for widget ops on an item (CC_OP on an inventory slot: Clue Scroll's "Read"): the
+     * slot's item id. Native entries don't carry it, so it comes from the widget, else from the
+     * inventory (group 149 = inventory 93) slot param0.
+     */
+    @Override public int getItemId() {
+        if (itemId != -1 || targetType() != T_WIDGET || Host.client() == null) return itemId;
+        Widget w = getWidget();
+        int id = w != null ? w.getItemId() : -1;
+        if (id > -1) return id;
+        if (param1 >>> 16 == 149 && param0 >= 0) {
+            net.runelite.api.ItemContainer inv = Host.client().getItemContainer(93);
+            net.runelite.api.Item it = inv != null ? inv.getItem(param0) : null;
+            if (it != null) return it.getId();
+        }
+        return -1;
+    }
     @Override public MenuEntry setItemId(int id) { itemId = id; return this; }
     @Override public Widget getWidget() {
         if (targetType() != T_WIDGET || Host.client() == null) return null;

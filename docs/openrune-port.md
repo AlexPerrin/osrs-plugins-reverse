@@ -1413,3 +1413,52 @@ the wiki (full-text search) nor any RuneLite/hub plugin.
   gameplay (no FRIENDCHAT/CLAN handlers or senders). The Android encoders are bound
   (UPDATE_FRIENDCHAT_CHANNEL_FULL_V2/SINGLEUSER, CLANCHANNEL_FULL/DELTA, CLANSETTINGS_FULL/DELTA,
   MESSAGE_CLANCHANNEL), so the cheapest route is a test command that pushes a fake channel (~1 h).
+
+## Seventeenth server dev (2026-10-17): fake friends chat / clan channel
+
+`::fakeclan` (`content/other/commands/ChatChannelTestCommands.kt`, a test command, so not upstreamed)
+pushes a friends chat and a clan channel to the player's own client, for the plugin host's
+`getFriendsChatManager` / `getClanChannel` / `getGuestClanChannel` readers. No other player sees it and a
+relog drops it (the client forgets both channels on logout; the server keeps per-name state in memory only).
+
+- `::fakeclan [join]`: UPDATE_FRIENDCHAT_CHANNEL_FULL_V2 JoinUpdate (owner = the player, channel "Test FC",
+  kick rank 7) and CLANCHANNEL_FULL type 0 (hash 0x0BADC1A000000001, updateNum 1000, "Test Clan", kick rank
+  100, talk rank -1), both with the player, "Fake Member1" and "Fake Member2" on the server's world.
+- `::fakeclan add|del <name>`: UPDATE_FRIENDCHAT_CHANNEL_SINGLEUSER (added, rank 0 / removed) and
+  CLANCHANNEL_DELTA (AddUserEvent rank 10 / DeleteUserEvent by list index) with the channel's current
+  updateNum, then updateNum + 1 server side. That the client applies a delta only when its updateNum equals
+  the channel's and then increments it is a **guess** from the desktop client's handling.
+- `::fakeclan say <name> <text>`: MESSAGE_FRIENDCHANNEL and MESSAGE_CLANCHANNEL (crown 0); the message
+  counter starts at (hour % 300) * 50000 per boot, as RSProt's notes suggest.
+- `::fakeclan guest`: CLANCHANNEL_FULL type -1 ("Guest Clan", the player as rank -1). `::fakeclan leave`:
+  LeaveUpdate for all.
+- Ranks are **guesses** from RuneLite's `FriendsChatRank` (0 friend, 4 lieutenant, 7 owner) and `ClanRank`
+  (-1 guest, 10 first clan rank, 100 administrator, 126 owner). No CLANSETTINGS_FULL is sent, so clan rank
+  titles (`getClanSettings`) stay empty.
+
+**What real friends chat would cost** (RuneLite's Chat Channel plugin: join/leave messages, member list,
+rank icons; Friends Chat-style hub plugins use the same events). OpenRune has none of it: no handler for
+FRIENDCHAT_JOIN_LEAVE (61), FRIENDCHAT_KICK (51), FRIENDCHAT_SETRANK (88), no channel registry, and
+`MessagePublicHandler` only does public chat. A single-world version: channel registry by owner, join
+rules (owner's friends list ranks from Central, join/talk/kick ranks), full and single-user updates to
+every member, chat lines routed to MESSAGE_FRIENDCHANNEL, kick, the chat-channel setup interface (name and
+rank dropdowns, persisted per owner), rejoin at login and the join/leave/"not in a channel" wording
+(wiki). About 1-1.5 days without the setup interface, 2 with it; across worlds it would need Central
+(OpenRune's Central only carries friends/ignores/PMs). Real clans (creation, CLANSETTINGS full/delta,
+clan hall, guest channels, events) are bigger again (several days).
+
+### Device run 13:42 (c262868) (seventeenth server dev)
+
+- Friends chat **device-checked**: the chat-channel tab (side_channels sub-tab 1) shows "Test Fc", owner Tester,
+  Fake Member1 (friend smiley), Fake Member2 (lieutenant star), tester (owner key), all "W255"; `add` puts a
+  4th member in the list, `del` removes it, and `say` shows "[Test Fc] fake: ..." and "[Test Clan] fake: ...".
+  So UPDATE_FRIENDCHAT_CHANNEL_FULL_V2, UPDATE_FRIENDCHAT_CHANNEL_SINGLEUSER, MESSAGE_FRIENDCHANNEL and
+  MESSAGE_CLANCHANNEL are live-verified on Android.
+- Clan: the channel exists (the clan line arrives), but the "Your Clan" tab (sub-tab 2) stays on
+  "Connecting...", probably waiting for CLANSETTINGS_FULL (**guess**). The clan delta could not be seen in the UI.
+- `::` command args arrive lowercased and split on spaces: names for `add`/`del`/`say` are one lowercase word.
+- Diary B **device-checked**: the Lumbridge Teleport spell (spellbook) and an iron ore from the Al Kharid
+  mine rock at 3295,3311 (`loc.ironrock1`) took Lumbridge & Draynor to 3/41 (with Hans), still 3/41 after an
+  app restart and relog. The sawmill and the other hooks are covered only by the integration tests.
+- Deploy reminder: `docker compose --env-file switch.env up -d --build` (without the env file the game
+  comes up on 40255/8081).

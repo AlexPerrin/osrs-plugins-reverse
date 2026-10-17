@@ -25,8 +25,9 @@ this repo's `rsprot.patch`) all run there.
 
 Protocol unchanged. Details in `docs/openrune-port.md`, "Tenth server dev".
 
-- **Deployed** 86b06e4 (02:54). Built, not deployed: b9001d9 (fairy ring dialog abort), 0b2ddee
-  (essence pouch wording); ask for a restart, then the client dev checks Ess Pouch.
+- **Deployed** 9a73dbe (03:32; includes b9001d9 fairy ring dialog abort and 0b2ddee essence pouch
+  wording, both still to be device-checked: Ess Pouch by the client dev, the fairy ring search input
+  on the next Configure + Teleport).
 - **Easy clues complete except the 2 X Marks the Spot map rows (not easy scrolls):** all 71 loc
   searches (open-then-search), Galahad and N Falador maps, "Alone" unlocks on Ice Mountain
   (new music area), Cecilia success device-checked.
@@ -40,8 +41,14 @@ Protocol unchanged. Details in `docs/openrune-port.md`, "Tenth server dev".
 - **Device tips:** chat commands: tap the keyboard toggle (90,220) until `mInputShown=true`, then
   `input text` and keyevent 66, otherwise the line stays typed but unsent; the music tab is the
   harp (1840,685); long-press NPCs after `::freeze`.
-- **Medium clues** (d8937ea, 4719636): built and tested, not deployed/device-checked yet (restart
-  queued). Medium is complete on the cache data (167 steps); puzzle boxes are a hard-tier feature.
+- **Medium clues** (d8937ea, 4719636, 9a73dbe): complete on the cache data (167 steps; puzzle
+  boxes are hard tier and up). Device-checked with Clue Scroll + Loot Tracker on: anagram read
+  (plugin overlay), Baraek hands out the challenge scroll, its Read shows the question, talking
+  again opens "Enter amount:", 5 is accepted ("Spot on!"), the challenge scroll goes and the scroll
+  swaps to the next step; a coordinate scroll reads "00 degrees 05 minutes south / 01 degrees 13
+  minutes east" and the plugin overlay solves it; digging there gives the casket; the medium casket
+  opens the reward screen with 5 items and "You have completed 1 medium Treasure Trail.". Not tried
+  on the device: double emotes with medium Uri, key steps, map crates, medium STASH.
 - **Candidates for server dev #11** (roughly in value order):
   1. **Hard clues** on the same engine (~1.5-2 days, size first): hard rows in the cluehelper
      tables; puzzle boxes (slide puzzle 306: `trail_puzzleinv`, piece objs from enums 1864/1865

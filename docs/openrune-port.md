@@ -738,6 +738,8 @@ was verified.
   - Music scroll text is now the wiki's "I'd like to hear some music. Come and see me on the bridge
     in Falador Park, and play: <col=ffffff>Track</col> Thanks, Cecilia" (line breaks guessed); the
     plugin keys on the "i'd like to hear some music." prefix.
-  - Not device-checked yet.
+  - Device-checked 9a73dbe (03:32): challenge flow at Baraek end to end, coordinate scroll text
+    parsed by the plugin, dig to casket, medium casket rewards. Not tried: double emotes, keys,
+    map crates, medium STASH.
 - **Upstream:** `23-openable-drawers-chests`, `24-treasure-trails-drawers-and-maps` (needs 21, 23),
   `25-ice-mountain-music-area`, `26-fairy-rings`, `27-essence-pouch-check-wording`.

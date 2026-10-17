@@ -900,6 +900,16 @@ session; its notes are in `docs/android-protocol.md`.
     clan/friends-chat data (ClanChannel.findMember).
 - **2026-10-17 (client dev gen 24)**, commits c7d9812..543287e (progress at start: core 76/82, hub 29/32, API 541/866).
   Addresses below are ELF; Ghidra and re/decomp names are +0x100000.
+  - **Plan for gen 25 (funded by the orchestrator): Bank Tag Layouts**, in this order:
+    1. Java onDragComplete listeners: store `setOnDragCompleteListener` per widget (as WidgetListeners does for onOp)
+       and run them on the release cycle of the native WidgetDrag event (touch state 4) with source = dragged and
+       target = dragged-on, before the game's swap (LayoutManager's handler calls setDraggedOnWidget(null)).
+    2. On the device: check that bank items (12:12 children) keep the game's own onDrag (+0x4d0, `Native.widgetListener`),
+       so `setOnDragListener({284, ...})` can stay a no-op.
+    3. Skip setSubOp (potion-storage "Doses") for now.
+    4. Layout drawing at ScriptPreFired 505 on the device: `getChild(pos)` past the item count, bankColumnShift for
+       12:12 children, scroll height; tab separators stay (bankBuildTab not emulatable, cosmetic).
+    5. Enabling a layout on a tag through the tag-tab menu entries (plugin strip).
   - **Runs now:** Boss Timers (mole InfoBox "0:08" top-left right after a Giant Mole kill, screenshot), Spellbook
     (hide/unhide and drag reorder), Grand Exchange (server dev's run on OpenRune's GE: offer events and the
     sidebar panel; bb92e28's reader verified, `ge raw <slot>` probe).
@@ -929,10 +939,7 @@ session; its notes are in `docs/android-protocol.md`.
     `*(Client+0x40e970)` holds 200-entry tile/texture arrays; `redrawminimap` only sets `mm+0xc = -1`), so it needs
     either RE of the minimap tile renderer (around 0x5895d0/0x58a56c) or a host-side render from tile data.
   - **Next (gen 25)**:
-    1. Bank Tag Layouts (sized medium): Java onDragComplete listeners dispatched on the release cycle (source =
-       dragged, target = dragged-on; before the game's swap), check that bank items keep the game's onDrag (+0x4d0)
-       so setOnDragListener(CS2 args) can stay a no-op, then the layout drawing at ScriptPreFired 505 on the device
-       (getChild beyond the item count, bankColumnShift, scroll height). setSubOp (potion Doses) can wait.
+    1. Bank Tag Layouts: the plan at the top of this entry.
     2. Verify setDraggedOnWidget(null) (Bank Tags preventTagTabDrags on a tag tab) and getSearchingTagTab.
     3. Friends chat / clan data once the server supports it.
   - Gotchas: `tools/repack.sh` needs `ADB=/mnt/c/.../adb.exe ANDROID_SERIAL=127.0.0.1:5555` (it found no device with

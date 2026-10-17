@@ -148,6 +148,26 @@ final class Probe {
                         + " price " + o.getPrice() + " qty " + o.getQuantitySold() + "/" + o.getTotalQuantity() + " spent " + o.getSpent());
                 return;
             }
+            if (a[0].equals("sprite")) {  // "sprite <id> 0": HostSprites.load result (size or null)
+                java.awt.image.BufferedImage im = HostSprites.load(Integer.parseInt(a[1]));
+                Log.i(TAG, "sprite " + a[1] + " " + (im == null ? "null" : im.getWidth() + "x" + im.getHeight()));
+                return;
+            }
+            if (a[0].equals("players")) {  // "players 0 0": names and friends chat / clan membership
+                for (net.runelite.api.Player p : c.getTopLevelWorldView().players())
+                    Log.i(TAG, "player '" + p.getName() + "' fc " + p.isFriendsChatMember() + " clan " + p.isClanMember()
+                        + " friend " + p.isFriend() + (p == c.getLocalPlayer() ? " (local)" : ""));
+                return;
+            }
+            if (a[0].equals("pfield")) {  // "pfield <plugin class simple name> <field>": a plugin field's value (reflection)
+                for (Plugin pl : plugins) {
+                    if (!pl.getClass().getSimpleName().equals(a[1])) continue;
+                    java.lang.reflect.Field f = pl.getClass().getDeclaredField(a[2]);
+                    f.setAccessible(true);
+                    Log.i(TAG, "pfield " + a[1] + "." + a[2] + " = " + f.get(pl));
+                }
+                return;
+            }
             if (a[0].equals("chat")) {  // "chat log 0": friends chat and clan channels as the API returns them
                 net.runelite.api.FriendsChatManager fc = c.getFriendsChatManager();
                 Log.i(TAG, "friends chat " + (fc == null ? "null" : "'" + fc.getName() + "' owner '" + fc.getOwner() + "' my " + fc.getMyRank()

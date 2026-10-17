@@ -4015,6 +4015,112 @@ index 00000000..f6dffc11
 +
 +    public const val MAX_BYTES: Int = 48
 +}
+diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/OutgoingPacketTrace.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/OutgoingPacketTrace.kt
+new file mode 100644
+index 00000000..bef04a87
+--- /dev/null
++++ b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/OutgoingPacketTrace.kt
+@@ -0,0 +1,15 @@
++package net.rsprot.protocol.api
++
++/**
++ * osrs-plugins-reverse (one-off diagnostics): the first [loginPackets] outgoing game packets of
++ * every Android session are logged at INFO as `OUT #n op=.. len=.. Class hexbytes` (payload
++ * before any stream-cipher payload encryption; packet group children are indented). Written for
++ * the mobile friends list ("Loading friends list"): did the login UPDATE_FRIENDLIST go out, and
++ * how. Set [loginPackets] to 0 to turn it off.
++ */
++public object OutgoingPacketTrace {
++    @Volatile
++    public var loginPackets: Int = 700
++
++    public const val MAX_BYTES: Int = 32
++}
+diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/encoder/OutgoingMessageEncoder.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/encoder/OutgoingMessageEncoder.kt
+index 748106ca..33b6ad4b 100644
+--- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/encoder/OutgoingMessageEncoder.kt
++++ b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/encoder/OutgoingMessageEncoder.kt
+@@ -112,6 +112,19 @@ public abstract class OutgoingMessageEncoder : ChannelOutboundHandlerAdapter() {
+         return callback
+     }
+ 
++    /** osrs-plugins-reverse: one-off outgoing packet diagnostics (see OutgoingPacketTrace). */
++    protected open fun traceOutgoing(
++        opcode: Int,
++        messageClass: String,
++        buf: ByteBuf?,
++        payloadStart: Int,
++        payloadSize: Int,
++        child: Boolean,
++    ) {
++    }
++
++    private var groupDepth: Int = 0
++
+     protected open fun mapOpcode(opcode: Int): Int {
+         return opcode
+     }
+@@ -291,6 +304,14 @@ public abstract class OutgoingMessageEncoder : ChannelOutboundHandlerAdapter() {
+                 } else {
+                     null
+                 }
++            traceOutgoing(
++                sourceOpcode,
++                msg.javaClass.simpleName,
++                msg.content(),
++                msg.content().readerIndex(),
++                msg.content().readableBytes(),
++                false,
++            )
+             ctx.write(buf, ctx.voidPromise())
+             buf = null
+             onMessageWritten(ctx, sourceOpcode, bytes)
+@@ -360,6 +381,14 @@ public abstract class OutgoingMessageEncoder : ChannelOutboundHandlerAdapter() {
+         )
+         val endMarker = out.writerIndex()
+         this.payloadEndIndex = endMarker
++        traceOutgoing(
++            sourceOpcode,
++            msg.javaClass.simpleName,
++            out,
++            payloadMarker,
++            endMarker - payloadMarker,
++            groupDepth > 0,
++        )
+         val callback =
+             if (isPacketGroup) {
+                 pushPacketWithCallback(out)
+@@ -435,6 +464,7 @@ public abstract class OutgoingMessageEncoder : ChannelOutboundHandlerAdapter() {
+         // Special exception here, as this packet essentially encodes all the children as well
+         if (isPacketGroup) {
+             msg as PacketGroupStart
++            groupDepth++
+             for (sub in msg.messages) {
+                 try {
+                     if (sub is ByteBufHolder) {
+@@ -446,6 +476,7 @@ public abstract class OutgoingMessageEncoder : ChannelOutboundHandlerAdapter() {
+                     ReferenceCountUtil.release(sub)
+                 }
+             }
++            groupDepth--
+             val finalMarker = out.writerIndex()
+             val written = finalMarker - endMarker
+             if (written > 40000) {
+@@ -510,6 +541,14 @@ public abstract class OutgoingMessageEncoder : ChannelOutboundHandlerAdapter() {
+             encodePayload(message, buf)
+         }
+         this.payloadEndIndex = buf.writerIndex()
++        traceOutgoing(
++            sourceOpcode,
++            message.javaClass.simpleName,
++            buf,
++            payloadStartIndex,
++            payloadEndIndex - payloadStartIndex,
++            true,
++        )
+         pushPacket(buf)
+     }
+ 
 diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageDecoder.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageDecoder.kt
 index 08c7a6cf..13ad7201 100644
 --- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageDecoder.kt
@@ -4049,6 +4155,69 @@ index 08c7a6cf..13ad7201 100644
              val consumerRepository = networkService.gameMessageConsumerRepositoryProvider.provide()
              val consumer = consumerRepository.consumers[messageClass]
              if (consumer == null) {
+diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageEncoder.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageEncoder.kt
+index 72bd2e43..16a03a6b 100644
+--- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageEncoder.kt
++++ b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/game/GameMessageEncoder.kt
+@@ -1,8 +1,12 @@
+ package net.rsprot.protocol.api.game
+ 
++import com.github.michaelbull.logging.InlineLogger
++import io.netty.buffer.ByteBuf
++import io.netty.buffer.ByteBufUtil
+ import io.netty.channel.ChannelHandlerContext
+ import net.rsprot.crypto.cipher.StreamCipher
+ import net.rsprot.protocol.api.NetworkService
++import net.rsprot.protocol.api.OutgoingPacketTrace
+ import net.rsprot.protocol.api.encoder.OutgoingMessageEncoder
+ import net.rsprot.protocol.api.handlers.OutgoingMessageSizeEstimator
+ import net.rsprot.protocol.channel.binaryStreamOrNull
+@@ -16,8 +20,10 @@ import net.rsprot.protocol.message.codec.outgoing.MessageEncoderRepository
+ public class GameMessageEncoder(
+     public val networkService: NetworkService<*>,
+     override val cipher: StreamCipher,
+-    client: OldSchoolClientType,
++    private val client: OldSchoolClientType,
+ ) : OutgoingMessageEncoder() {
++    private var tracedPackets: Int = 0
++
+     override val repository: MessageEncoderRepository<*> =
+         networkService.encoderRepositories.gameMessageEncoderRepositories[client]
+     override val validate: Boolean = true
+@@ -38,8 +44,33 @@ public class GameMessageEncoder(
+             .incrementOutgoingPackets(ctx.hostAddress(), opcode, payloadSize)
+     }
+ 
++    override fun traceOutgoing(
++        opcode: Int,
++        messageClass: String,
++        buf: ByteBuf?,
++        payloadStart: Int,
++        payloadSize: Int,
++        child: Boolean,
++    ) {
++        if (client != OldSchoolClientType.ANDROID) return
++        if (tracedPackets >= OutgoingPacketTrace.loginPackets) return
++        val n = ++tracedPackets
++        val bytes =
++            if (buf == null || payloadSize <= 0) {
++                ""
++            } else {
++                ByteBufUtil.hexDump(buf, payloadStart, minOf(payloadSize, OutgoingPacketTrace.MAX_BYTES))
++            }
++        val indent = if (child) "  " else ""
++        logger.info { "OUT #$n ${indent}op=$opcode len=$payloadSize $messageClass $bytes" }
++    }
++
+     override fun mapOpcode(opcode: Int): Int {
+         val mapper = networkService.serverToClientOpcodeMapper ?: return opcode
+         return mapper.map(opcode)
+     }
++
++    private companion object {
++        private val logger = InlineLogger()
++    }
+ }
 diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/handlers/OutgoingMessageSizeEstimator.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/handlers/OutgoingMessageSizeEstimator.kt
 index 30559afa..44e79e25 100644
 --- a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/handlers/OutgoingMessageSizeEstimator.kt

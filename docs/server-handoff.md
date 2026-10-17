@@ -47,9 +47,15 @@ Details in `docs/openrune-port.md`, "Seventeenth server dev" and the sections af
 - **Desktop client:** an isolated desktop RuneLite ("desktop") runs through RSProx (docs/multi-client.md);
   its own lock is `LOCK_NAME=desktop tools/device-lock.sh take|free server`; after a container restart run
   `tools/multiclient/desktop.sh relogin`. Do not use `desktop_login.py --user desktop` while it is online.
-- Upstream: 51 patches; all `git am` on the pin (scratch clone `pin` in this session's scratchpad, branch
+- **GE tax-exempt list** (upstream 52, wiki, CC BY-NC-SA 3.0 attributed) and **20 more diary task hooks**
+  (upstream 53; list and area boxes in the port doc). Desktop + Android sample checks passed (534b5dd live).
+- **Desktop samples:** `tools/multiclient/desktop-devtools-mcp.sh --tool <name> '<json>'` (get_var varbit,
+  interact_npc with npcIndex, list_npcs, list_ground_items to confirm a death). The desktop account has low
+  combat stats; `::god`/`::maxhit` toggles (turn both off after). If the client process is gone,
+  `desktop.sh stop`, `start`, then `login`.
+- Upstream: 53 patches; all `git am` on the pin (scratch clone `pin` in this session's scratchpad, branch
   `up` with 01-50).
-- **Deployed** 14:56: 620ac7f (live = git; later commits are docs only). Tester LOGGED_IN at Lumbridge on the
+- **Deployed** 17:01: 534b5dd (live = git). Tester LOGGED_IN at Lumbridge, Lumbridge & Draynor 4/41. Tester LOGGED_IN at Lumbridge on the
   normal build, no channel joined; ~100k coins, 40 noted bronze pickaxes, a small pouch, a rune
   pickaxe, an iron ore; the 1 gp lobster buy still open in GE slot 1.
 - **Next candidates** (orchestrator to pick): diary task hooks (list sent), GE tax-exempt list, Sets, custom ±X%;

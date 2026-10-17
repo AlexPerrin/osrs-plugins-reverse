@@ -1565,3 +1565,10 @@ exempt list). Upstream `52`.
   Benny, the dog bone, Haig Halen, the Apothecary, the spirit tree, the digsite pendant, the white tree, the
   balloon, Tolna, the dying tree and the Champions' Guild door.
 - Tests: 7 in `:content:interfaces:achievement-diary:integration`. Upstream `53` (not compiled on its own pin).
+- **Checks:** desktop client ("desktop", 16:45-17:04): Thessalia's Trade (Varrock easy 0 -> 1), pickpocket a
+  Man in Lumbridge (Lumbridge easy 0 -> 1), iron in the SE Varrock mine (Varrock easy 1 -> 2); after 534b5dd
+  (kill hook on `dropCoords` / `npc.type.name`): a Draynor Sewers zombie confirmed dead (gone, Bones at 3120,9654)
+  -> 2, a Cave bug in the swamp caves confirmed dead -> 3. With 92d7e99 the zombie kill did not count; the death
+  was not confirmed then, so the old hook's fault is likely but not proven. Android (17:05): pickpocketing a
+  spawned Man in Lumbridge took the tester's Lumbridge & Draynor from 3/41 to 4/41 in the diary tab.
+- Note: the swamp caves also hold "Cave bug larva" (`npc.cave_littlebug`), which does not count.

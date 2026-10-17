@@ -137,7 +137,7 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Better Teleport Menu | starts | starts (2026-10-17); not checked |
 | Wilderness Player Alarm | runs | Wilderness level 2 (`::tele 3100 3530`, varbit 5963 = 1) with the desktop player 2 tiles away: the screen flashes its yellow wash (2026-10-17) |
 | Hunter Rumours | runs | starts; its sidebar panel lists the 29 creatures with a location picker each (2026-10-17, after the non-null `getAccessibleContext()`); rumours not tried |
-| Ess Pouch | runs | OpenRune 9a73dbe says "There are three essences in this pouch.": Check sets the small pouch's count to 3, and an empty pouch's "There is no essence" sets it to 0 (2026-10-17, gen 19). Fill alone left the count unchanged, but that test used rune essence (1436), and the plugin only counts pure/daeyalt/guardian essence (7936/24704/26879) in its inventory diff. Fill with pure essence not tried yet |
+| Ess Pouch | runs | OpenRune 9a73dbe says "There are three essences in this pouch.": Check sets the small pouch's count to 3, and an empty pouch's "There is no essence" sets it to 0. Fill with pure essence (7936) goes 0 -> 3 from the inventory diff ("SMALL: 3") (2026-10-17, gen 19). The plugin ignores rune essence (1436): only pure/daeyalt/guardian count |
 | Plank Sack | starts | starts (2026-10-17); not checked |
 | KPH Tracker | starts | starts as "Bossing Info"; no errors at login since getUsername (2026-10-17); kills not tried |
 | Thrall Helper | starts | starts as "Spell Reminder" (2026-10-17); not checked |

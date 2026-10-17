@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 18 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 19 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -650,6 +650,39 @@ session; its notes are in `docs/android-protocol.md`.
     dispatch for Screen Markers (listeners consume → don't forward to the game; plain taps unchanged
     otherwise; no MouseManager dispatch exists yet); the questFilter callback idea; remaining `starts` rows (Rune Pouch and Plank Sack need
     server support; Virtual Levels needs XP above 99; Friend Notes needs a friends list).
+- **2026-10-17 (client dev gen 19)**, commits 1237474..:
+  - **Ops/listeners on plugin widgets** (`WidgetListeners`): `setAction/setName/setTargetVerb/clearActions`
+    write the game widget (CC_SETOP via setOp `0x5dfae8`, opbase `+0x2c0`, verb `+0x330`). The game's menu
+    builder `0x525c78` lists op i only if the event-flag mask (`0x460e74`: IF_SETEVENTS range, else
+    `(w+0x2b0 >> 1) & 0x3ff`) has bit i or the widget has a CS2 onOp listener. So while a Java
+    `setOnOpListener` is set, the non-empty ops' bits go into `+0x2b0`, and the widget's own bits come back
+    when it is cleared. On MenuOptionClicked (if not consumed) the Java listener runs and the click is
+    consumed (no script, no IF_BUTTON). Keyed by (component, index) + the game's Widget* (stale slots ignored).
+  - **Touch → MouseManager** (`TouchMouse`, from the touch router): DOWN/MOVE/UP → pressed/dragged/released
+    (+clicked when it didn't move). A gesture whose press is consumed is taken from the game; with no
+    listeners nothing is built. Headless `SwingUtilities.is*MouseButton` follow the JDK (GenHeadless
+    staticBody). OverlayRenderer honours `getPreferredLocation()` for any position and `getPreferredSize()`.
+  - **runelite_callback emulation by proc boundary**: "questFilter" is raised when proc 3238 returns (dbrow
+    from its args at GOSUB entry; a plugin's answer replaces the proc's result on the int stack).
+    `Host.questFilter`. The same pattern works for any callback RuneLite put at a proc's start/end.
+    Callbacks inside root scripts (fairyringFilterFavorite/Dbrow in 8080) need more (not done).
+  - **Widget CS2 listeners** read from the game (`Native.widgetListener`, slots in docs/offsets.md "Widget
+    listeners"): getOnVarTransmit/InvTransmit/Load/Key, getOnOp fallback. **getDBTableField is cached**: the
+    db_getfield handler can't run while a script is on the VM, so a mid-script miss reads empty and is
+    fetched next cycle (`wantDbField` prefetches).
+  - Regression fixed: gen 18's ChatboxTextInput lacked RuneLite's `(manager, clientThread)` constructor, so
+    ChatboxItemSearch → Bank Tags → Clue Scroll failed to start. Clue Scroll needs `EXTRA="cluescrolls
+    loottracker banktags"` (banktags.jar only names the core class).
+  - Verified: Quest List (search filters), Screen Markers (drag draws, game gets no touch), Fairy Rings
+    (destination text under the dial; travel log 381 opens on Configure), Ess Pouch (Check wording on
+    OpenRune 9a73dbe; Fill with pure essence counted). Plain taps/long-press/walk unchanged; a plain tap on
+    the Cook opens his dialogue (it takes a couple of seconds: the player walks there first).
+  - Gotchas: the Ess Pouch plugin only counts pure/daeyalt/guardian essence (test Fill with 7936, not
+    1436). `server/tools/device.sh cmd` text goes into an open chatbox input (fairy ring search) instead of
+    chat. `sleep` > ~20 s in the foreground is blocked; wait for "account still logged in" with a
+    background until-loop or just retry Try again.
+  - Next (gen 20): fairyring filter callbacks (hook inside script 8080 or reimplement in Java); remaining `starts` rows (Rune
+    Pouch, Plank Sack: server support; Virtual Levels; Friend Notes).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

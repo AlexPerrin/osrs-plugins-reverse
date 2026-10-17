@@ -30,6 +30,7 @@ public class AndroidClient extends ClientStub {
 
     @Override
     public GameState getGameState() {
+        if (Host.sceneReloading) return GameState.LOADING;
         GameState s = GameState.of(Native.gameState());
         return s != null ? s : GameState.UNKNOWN;
     }
@@ -289,7 +290,8 @@ public class AndroidClient extends ClientStub {
     /** Map regions spanned by the loaded scene (13 x 13 chunks from the scene base). */
     @Override public int[] getMapRegions() {
         WorldView wv = getTopLevelWorldView();
-        if (wv == null || getGameState().getState() < net.runelite.api.GameState.LOGGED_IN.getState()) return new int[0];
+        // Desktop has the new scene's regions while LOADING (Herbiboar checks them on GameStateChanged(LOADING)).
+        if (wv == null || getGameState().getState() < net.runelite.api.GameState.LOADING.getState()) return new int[0];
         int x0 = wv.getBaseX() >> 6, x1 = (wv.getBaseX() + 96) >> 6, y0 = wv.getBaseY() >> 6, y1 = (wv.getBaseY() + 96) >> 6;
         int[] out = new int[(x1 - x0 + 1) * (y1 - y0 + 1)];
         int i = 0;

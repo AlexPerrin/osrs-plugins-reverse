@@ -361,6 +361,32 @@ public final class Host {
         bus.post(e);
     }
 
+    /** True while the host posts a teleport/region rebuild's GameStateChanged(LOADING): getGameState reads LOADING. */
+    static volatile boolean sceneReloading;
+
+    /**
+     * A scene rebuild while logged in (teleport, region crossing) runs within one cycle, so the
+     * state poll never sees LOADING. Desktop posts GameStateChanged(LOADING), then WorldViewLoaded,
+     * then GameStateChanged(LOGGED_IN) for each one (Herbiboar re-checks its area on LOADING), so
+     * replay that order when the scene base changes.
+     */
+    private static void postSceneReload(EventBus bus) {
+        AndroidWorldView wv = worldView;
+        if (wv == null || client.getTopLevelWorldView() == null) return;
+        long base = ((long) wv.getBaseX() << 32) | (wv.getBaseY() & 0xffffffffL);
+        if (base == loadedBase || base == 0) return;
+        if (loadedBase == Long.MIN_VALUE) { postWorldViewLoaded(bus); return; }  // first scene: LOGGED_IN was just posted
+        GameStateChanged loading = new GameStateChanged();
+        loading.setGameState(GameState.LOADING);
+        sceneReloading = true;
+        try {
+            bus.post(loading);
+        } finally {
+            sceneReloading = false;
+        }
+        postGameState(bus, GameState.LOGGED_IN);  // posts WorldViewLoaded first
+    }
+
     /** Scene base (x << 32 | y) the last WorldViewLoaded was posted for. */
     private static long loadedBase = Long.MIN_VALUE;
 
@@ -389,7 +415,7 @@ public final class Host {
                 postActorChanges(bus);
                 if (pendingLoggedIn && localPlayer() != null) postLoggedIn(bus);
                 if (!pendingLoggedIn && client.getGameState() == GameState.LOGGED_IN && localPlayer() != null) {
-                    postWorldViewLoaded(bus);
+                    postSceneReload(bus);
                 }
                 if (!pendingNpcs.isEmpty() && localPlayer() != null) {
                     java.util.List<AndroidNPC> held = new java.util.ArrayList<>(pendingNpcs.values());

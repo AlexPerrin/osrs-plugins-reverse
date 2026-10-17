@@ -785,3 +785,15 @@ was verified.
   7/8/9/11/14-21/27/29/30, so TRIGGER_ONDIALOGABORT could never close mode 28, in any order. The
   teleport now runs clientscript 101 `meslayer_close(28)` after the IF_CLOSE.
 - **Upstream:** `29-rune-pouch`, `30-plank-sack`; `26-fairy-rings` regenerated.
+- **XP commands** (ours, `TestCommands`): `::setxp <skill> <xp>` sets a stat's xp anywhere in
+  0-200,000,000. Raising it goes through `statAdvance` (rate 1, `XpSource.Manual`); lowering it
+  sets the xp and level directly and sends UPDATE_STAT. `::addxp <skill> <xp>` adds xp, capped at
+  200M. A skill is matched by its stat name or a prefix (`::setxp mining 20000000` = virtual
+  level 105 for Virtual Levels; the level sent stays 99).
+- **Friend add** (`FriendListAddHandler`): OpenRune Central (`dev.or2.central.social.SocialService`,
+  decompiled) adds the friend, then `pushFriendEntryToOwner` pushes an entry only when the friend
+  is online (visible world > 0). Login/logout status already fans out (`onCharacterOnline/
+  Offline`, through `writeCentralFriendPresence`, world name "OpenRune 255"). So adding an
+  offline friend showed nothing until relog. After a successful add, the handler now reads the
+  social snapshot and sends that friend's entry (added = true; world name "OpenRune" from the
+  snapshot path). Not tried on a client yet. Upstream `31-friend-add-update`.

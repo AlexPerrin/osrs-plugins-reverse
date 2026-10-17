@@ -44,6 +44,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 28 | `28-treasure-trails-medium` | `content/other/treasure-trails` (12 files, incl. `MediumCasketTable.kt`, `TrailKeyDropHook.kt` new) | Medium Treasure Trails: challenge scrolls, coordinates, double emotes, keys, maps, music, medium STASH units and casket; integration tests | Needs 21-24; dbtable 60008 (rows 61000-61191), varps 63870-63875; challenge dialogue wording is a best guess |
 | 29 | `29-rune-pouch` | `content/skills/magic/rune-pouch` (new module) | Rune pouches had no Open/Empty/store: the pouch interface (190) with Store/Withdraw quantities, drag reorder and Examine, Empty, rune-on-pouch, on the client-visible `rune_pouch_type_n`/`_quantity_n` varbits spells already read; integration tests | No loadouts (Configure); full/non-rune messages are best guesses |
 | 30 | `30-plank-sack` | `content/other/plank-sack` (new module) | Plank sack Fill/Check/Empty on the `plank_sack_*` varbits, and a storage hook so content can use planks from the sack; integration tests | Fill/full/no-space messages are best guesses; the sawmill does not fill the sack |
+| 31 | `31-friend-add-update` | `api/net/.../central/CentralSocialClientPackets.kt`, `api/net/.../handlers/FriendListAddHandler.kt` | After FRIENDLIST_ADD, OSRS sends the new friend's UPDATE_FRIENDLIST entry; Central pushed one only for online friends, so an offline friend appeared only after relogging | One extra social snapshot round trip per add |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -130,3 +131,6 @@ only; `git apply --check` on the pin passes for each, and `git am` applies all 3
 tested (`RunePouchScriptTest` 5, `PlankSackScriptTest` 3), spotless-checked and boot-checked in our
 tree. Patch 26 was regenerated the same day (the meslayer close on teleport; the module no longer
 needs `libs.rsprot.api`).
+
+Patch 31 (friend add) was added 2026-10-17: `git apply --check` on the pin passes and all 31 apply
+with `git am`. Compiled, `:api:net:test` and spotless pass in our tree; not yet tried on a client.

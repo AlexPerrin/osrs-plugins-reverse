@@ -452,6 +452,88 @@ index 8ab0248dc..2fac25c06 100644
 +        }
 +    }
  }
+diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/central/CentralSocialClientPackets.kt b/api/net/src/main/kotlin/org/rsmod/api/net/central/CentralSocialClientPackets.kt
+index f426d43f6..aa1e21577 100644
+--- a/api/net/src/main/kotlin/org/rsmod/api/net/central/CentralSocialClientPackets.kt
++++ b/api/net/src/main/kotlin/org/rsmod/api/net/central/CentralSocialClientPackets.kt
+@@ -43,32 +43,7 @@ fun Player.writeCentralSocialSnapshot(snapshot: WorldLinkFrameSpecs.CentralSocia
+     client.write(FriendListLoaded)
+     client.write(ChatFilterSettingsPrivateChat(snapshot.privateChat))
+ 
+-    val friendEntries =
+-        snapshot.friends.map { friend ->
+-            if (friend.worldId > 0) {
+-                UpdateFriendList.OnlineFriend(
+-                    added = false,
+-                    name = friend.displayName,
+-                    previousName = friend.previousDisplayName,
+-                    worldId = friend.worldId,
+-                    rank = 0,
+-                    properties = 0,
+-                    notes = "",
+-                    worldName = "OpenRune",
+-                    platform = OSRS_PLATFORM,
+-                    worldFlags = 0,
+-                )
+-            } else {
+-                UpdateFriendList.OfflineFriend(
+-                    added = false,
+-                    name = friend.displayName,
+-                    previousName = friend.previousDisplayName,
+-                    rank = 0,
+-                    properties = 0,
+-                    notes = "",
+-                )
+-            }
+-        }
++    val friendEntries = snapshot.friends.map { it.toFriendEntry(added = false) }
+ 
+     client.write(UpdateFriendList(friendEntries))
+ 
+@@ -85,6 +60,43 @@ fun Player.writeCentralSocialSnapshot(snapshot: WorldLinkFrameSpecs.CentralSocia
+     client.write(UpdateIgnoreList(ignoreEntries))
+ }
+ 
++/**
++ * The friend just added, as OSRS sends it after FRIENDLIST_ADD: one UPDATE_FRIENDLIST entry,
++ * online with its world or offline. Central only pushes an entry for a friend who is online.
++ */
++fun Player.writeCentralAddedFriend(snapshot: WorldLinkFrameSpecs.CentralSocialSnapshot, name: String) {
++    val key = name.socialKey()
++    val friend = snapshot.friends.firstOrNull { it.displayName.socialKey() == key } ?: return
++    client.write(UpdateFriendList(listOf(friend.toFriendEntry(added = true))))
++}
++
++private fun String.socialKey(): String = lowercase().replace('_', ' ').replace('\u00a0', ' ').trim()
++
++private fun WorldLinkFrameSpecs.CentralSocialFriend.toFriendEntry(added: Boolean): UpdateFriendList.Friend =
++    if (worldId > 0) {
++        UpdateFriendList.OnlineFriend(
++            added = added,
++            name = displayName,
++            previousName = previousDisplayName,
++            worldId = worldId,
++            rank = 0,
++            properties = 0,
++            notes = "",
++            worldName = "OpenRune",
++            platform = OSRS_PLATFORM,
++            worldFlags = 0,
++        )
++    } else {
++        UpdateFriendList.OfflineFriend(
++            added = added,
++            name = displayName,
++            previousName = previousDisplayName,
++            rank = 0,
++            properties = 0,
++            notes = "",
++        )
++    }
++
+ fun Player.writeCentralSocialSnapshotEmpty() {
+     client.write(FriendListLoaded)
+     client.write(ChatFilterSettingsPrivateChat(0))
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
 index 5fafd3b35..e4d983716 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
@@ -512,7 +594,7 @@ index 5fafd3b35..e4d983716 100644
  
      private fun OtpAuthenticationType.toAccountLoadAuth(): AccountLoadAuth =
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkFactory.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkFactory.kt
-index 0c3cdf4e5..7b7681c96 100644
+index 0c3cdf4e5..efa4ff754 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkFactory.kt
 +++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkFactory.kt
 @@ -42,7 +42,7 @@ constructor(
@@ -524,6 +606,16 @@ index 0c3cdf4e5..7b7681c96 100644
  
      override fun getExceptionHandlers(): ExceptionHandlers<Player> {
          return ExceptionHandlersProvider.provide()
+@@ -52,8 +52,7 @@ constructor(
+         return connectionHandler
+     }
+ 
+-    override fun getGameMessageConsumerRepositoryProvider():
+-        GameMessageConsumerRepositoryProvider<Player> {
++    override fun getGameMessageConsumerRepositoryProvider(): GameMessageConsumerRepositoryProvider<Player> {
+         return messageConsumerProvider.get()
+     }
+ 
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt
 index 98c922c45..76770d5bd 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkScript.kt
@@ -541,6 +633,52 @@ index 98c922c45..76770d5bd 100644
  
          val client = RspClient(session, infos) as Client<Any, Any>
          val cycle = RspCycle(session, infos, regionReg)
+diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/FriendListAddHandler.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/FriendListAddHandler.kt
+index b6ca51e1b..47005ba48 100644
+--- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/FriendListAddHandler.kt
++++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/FriendListAddHandler.kt
+@@ -6,6 +6,8 @@ import org.rsmod.api.db.gateway.GameDbManager
+ import org.rsmod.api.db.gateway.model.fold
+ import org.rsmod.api.net.central.CentralSocialResult
+ import org.rsmod.api.net.central.CentralSocialService
++import org.rsmod.api.net.central.OpenRuneCentralWorldLink
++import org.rsmod.api.net.central.writeCentralAddedFriend
+ import org.rsmod.api.social.writeSocialMessage
+ import org.rsmod.game.entity.Player
+ import org.rsmod.game.entity.PlayerList
+@@ -40,7 +42,7 @@ constructor(
+                 result.fold(
+                     onOk = { socialResult ->
+                         when (socialResult) {
+-                            CentralSocialResult.Ok -> Unit
++                            CentralSocialResult.Ok -> refreshAddedFriend(current, requestedName)
+ 
+                             CentralSocialResult.Ignored -> Unit
+ 
+@@ -56,4 +58,23 @@ constructor(
+             },
+         )
+     }
++
++    private fun refreshAddedFriend(player: Player, name: String) {
++        val uid = player.uid
++        val characterId = player.characterId
++        db.request(
++            request = { social.socialSnapshot(characterId = characterId) },
++            response = { result ->
++                val current = uid.resolve(playerList) ?: return@request
++                result.fold(
++                    onOk = { sync ->
++                        if (sync is OpenRuneCentralWorldLink.CentralSocialSnapshotResult.Ok) {
++                            current.writeCentralAddedFriend(sync.snapshot, name)
++                        }
++                    },
++                    onErr = {},
++                )
++            },
++        )
++    }
+ }
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandler.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/IdleHandler.kt
 new file mode 100644
 index 000000000..dc9224eca
@@ -564,25 +702,25 @@ index 000000000..dc9224eca
 +    }
 +}
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/provider/MessageConsumerProvider.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/provider/MessageConsumerProvider.kt
-index 443b3146c..7ef2d4945 100644
+index 443b3146c..90eb2dcd1 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/provider/MessageConsumerProvider.kt
 +++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/provider/MessageConsumerProvider.kt
-@@ -18,6 +18,7 @@ import net.rsprot.protocol.game.incoming.misc.client.MapBuildComplete
+@@ -14,6 +14,7 @@ import net.rsprot.protocol.game.incoming.locs.OpLocT
+ import net.rsprot.protocol.game.incoming.locs.OpLocV2
+ import net.rsprot.protocol.game.incoming.messaging.MessagePrivate
+ import net.rsprot.protocol.game.incoming.messaging.MessagePublic
++import net.rsprot.protocol.game.incoming.misc.client.Idle
+ import net.rsprot.protocol.game.incoming.misc.client.MapBuildComplete
  import net.rsprot.protocol.game.incoming.misc.client.WindowStatus
  import net.rsprot.protocol.game.incoming.misc.user.ClickWorldMap
- import net.rsprot.protocol.game.incoming.misc.user.ClientCheat
-+import net.rsprot.protocol.game.incoming.misc.client.Idle
- import net.rsprot.protocol.game.incoming.misc.user.CloseModal
- import net.rsprot.protocol.game.incoming.misc.user.MoveGameClick
- import net.rsprot.protocol.game.incoming.misc.user.MoveMinimapClick
-@@ -44,6 +45,7 @@ import net.rsprot.protocol.message.codec.incoming.provider.DefaultGameMessageCon
- import org.rsmod.api.net.rsprot.handlers.ClickWorldMapHandler
- import org.rsmod.api.net.rsprot.handlers.ClientCheatHandler
+@@ -46,6 +47,7 @@ import org.rsmod.api.net.rsprot.handlers.ClientCheatHandler
  import org.rsmod.api.net.rsprot.handlers.CloseModalHandler
-+import org.rsmod.api.net.rsprot.handlers.IdleHandler
  import org.rsmod.api.net.rsprot.handlers.FriendListAddHandler
  import org.rsmod.api.net.rsprot.handlers.FriendListDeleteHandler
++import org.rsmod.api.net.rsprot.handlers.IdleHandler
  import org.rsmod.api.net.rsprot.handlers.If1ButtonHandler
+ import org.rsmod.api.net.rsprot.handlers.If3ButtonHandler
+ import org.rsmod.api.net.rsprot.handlers.IfButtonDHandler
 @@ -106,6 +108,7 @@ constructor(
      private val if1Button: If1ButtonHandler,
      private val if3Button: If3ButtonHandler,
@@ -2302,22 +2440,34 @@ index a8bc2108d..9cf4c201c 100644
  
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
 new file mode 100644
-index 000000000..772e8a470
+index 000000000..d6181196b
 --- /dev/null
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
-@@ -0,0 +1,102 @@
+@@ -0,0 +1,159 @@
 +package org.rsmod.content.other.commands
 +
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
 +import jakarta.inject.Inject
++import kotlin.math.min
 +import net.rsprot.protocol.api.IncomingPacketTrace
 +import net.rsprot.protocol.game.outgoing.misc.client.UrlOpen
++import org.rsmod.annotations.InternalApi
++import org.rsmod.api.player.output.UpdateStat
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccessLauncher
++import org.rsmod.api.player.stat.PlayerSkillXP
++import org.rsmod.api.player.stat.XpSource
++import org.rsmod.api.player.stat.statAdvance
++import org.rsmod.api.player.ui.PlayerInterfaceUpdates
 +import org.rsmod.api.repo.npc.NpcRepository
 +import org.rsmod.game.cheat.Cheat
 +import org.rsmod.game.debug.TestFlags
 +import org.rsmod.game.entity.Npc
 +import org.rsmod.game.entity.Player
++import org.rsmod.game.stat.PlayerSkillXPTable
 +import org.rsmod.map.zone.ZoneKey
 +import org.rsmod.plugin.scripts.PluginScript
 +import org.rsmod.plugin.scripts.ScriptContext
@@ -2341,6 +2491,12 @@ index 000000000..772e8a470
 +        onCommand("options", "Open a chatmenu with 2-5 options (::options One Two Three)", ::options)
 +        onCommand("url", "Send URL_OPEN (::url https://example.com)", ::url)
 +        onCommand("trace", "Log every incoming game packet (docker logs) on/off", ::trace)
++        onCommand("setxp", "Set a stat's xp, up to 200M (::setxp mining 20000000)", ::setXp) {
++            invalidArgs = "Use as ::setxp skill xp"
++        }
++        onCommand("addxp", "Add xp to a stat, up to 200M (::addxp mining 1000000)", ::addXp) {
++            invalidArgs = "Use as ::addxp skill xp"
++        }
 +    }
 +
 +    private fun freeze(cheat: Cheat) =
@@ -2398,6 +2554,44 @@ index 000000000..772e8a470
 +            player.mes("Incoming packet trace ${if (IncomingPacketTrace.enabled) "on" else "off"}.")
 +        }
 +
++    @OptIn(InternalApi::class)
++    private fun setXp(cheat: Cheat) =
++        with(cheat) {
++            val stat = statArg(args.getOrNull(0)) ?: return player.mes("Unknown skill.")
++            val target = args.getOrNull(1)?.toLongOrNull()?.coerceIn(0, MAX_XP.toLong())?.toInt()
++                ?: return player.mes("Use as ::setxp skill xp")
++            val current = player.statMap.getXP(stat)
++            if (target >= current) {
++                player.statAdvance(stat, (target - current).toDouble(), 1.0, 1.0, XpSource.Manual)
++            } else {
++                val type = checkNotNull(ServerCacheManager.getStats(stat.asRSCM(RSCMType.STAT)))
++                val level = min(PlayerSkillXPTable.getLevelFromXP(target), type.maxLevel)
++                player.statMap.setXP(stat, target)
++                player.statMap.setBaseLevel(stat, level.toByte())
++                player.statMap.setCurrentLevel(stat, level.toByte())
++                UpdateStat.update(player, type, target, level, level)
++                player.appearance.combatLevel = PlayerSkillXP.calculateCombatLevel(player)
++                PlayerInterfaceUpdates.updateCombatLevel(player)
++            }
++            player.mes("${stat.removePrefix("stat.")} xp: ${player.statMap.getXP(stat)}")
++        }
++
++    private fun addXp(cheat: Cheat) =
++        with(cheat) {
++            val stat = statArg(args.getOrNull(0)) ?: return player.mes("Unknown skill.")
++            val amount = args.getOrNull(1)?.toDoubleOrNull()?.takeIf { it > 0 }
++                ?: return player.mes("Use as ::addxp skill xp")
++            player.statAdvance(stat, amount, 1.0, 1.0, XpSource.Manual)
++            player.mes("${stat.removePrefix("stat.")} xp: ${player.statMap.getXP(stat)}")
++        }
++
++    private fun statArg(name: String?): String? {
++        val key = name?.lowercase() ?: return null
++        return ServerCacheManager.getStats().values
++            .map { RSCM.getReverseMapping(RSCMType.STAT, it.id) }
++            .firstOrNull { it == "stat.$key" || it.removePrefix("stat.").startsWith(key) }
++    }
++
 +    private fun nearbyNpcs(player: Player): List<Npc> =
 +        npcRepo.findAll(ZoneKey.from(player.coords), (NEARBY + 7) / 8)
 +            .filter { it.isVisible && it.coords.level == player.coords.level }
@@ -2406,6 +2600,7 @@ index 000000000..772e8a470
 +
 +    private companion object {
 +        const val NEARBY = 16
++        const val MAX_XP = 200_000_000
 +    }
 +}
 diff --git a/content/other/dwarf-multicannon/build.gradle.kts b/content/other/dwarf-multicannon/build.gradle.kts

@@ -482,6 +482,7 @@ was verified.
   RuneLite's FarmingWorld areas (no extra bounds there). Varps 63796-63827. Patch locs: veg 5/6,
   7/8, 10/11, 16/17; flower 3, 4, 5, 8; herb 3, 4, 6, 8. Their varbits are checked by the test;
   which farm each pair sits in follows the id pattern (Falador 1/2, Catherby 3/4, compost bins
-  7836-7839, 27112, 50694) and is NOT yet checked in game: `::tele` to each farm and `list_objects`.
+  7836-7839, 27112, 50694); checked in game 22:43 (deployed with 49a73be): `list_objects` found
+  each farm's own patch ids, and a Rake on each farm's first allotment set 4771 to 3.
   Prifddinas and the Farming Guild are left out (their patches use other varbits: herb/compost
   swapped, 7904-7912). Upstream patch 19 regenerated.

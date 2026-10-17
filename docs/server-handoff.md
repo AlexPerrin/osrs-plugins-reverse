@@ -30,13 +30,14 @@ Tracking, and the bird house device check. Details in `docs/openrune-port.md`, "
   the clock, `::growpatches`, harvest/pick at Catherby, full-inventory stop; bird houses (Build,
   Seeds, `::birdhouses`, Empty, Loot Tracker message) at the southern space.
 - **Farming** (`content/skills/farming`): allotments, flower and herb patches at Catherby, Falador,
-  and (not yet deployed or checked in game) Ardougne, Morytania, Hosidius, Civitas illa Fortis;
+  Ardougne, Morytania, Hosidius and Civitas illa Fortis (all deployed 22:41 and checked in game);
   server-only dbtable `farming_crops`, varps 63780-63795, timer 460, `::growpatches [cycles]`.
   Values checked against client-1.13.1.jar's PatchImplementation by reflection. Tests:
   `:content:skills:farming:integration` (8). Upstream: `openrune/upstream/19-farming-patches.patch`.
 - **Open:** Time Tracking's farming tab kept "Done at 22:30" (the raked-weeds prediction) after
   planting; expected 22:50. Server values were right on the client (`get_var` 4772 = 6, then 7).
-  Handed to the client dev as a host/plugin question. Time Tracking is not in the default plugin
+  The client dev fixed it in 7d1ff62 (the sidebar did not activate the selected panel); not re-checked
+  on the device by the server side. Time Tracking is not in the default plugin
   set: `tools/dex-plugin.sh --core timetracking re/host/plugins-extra/timetracking.jar`, then
   `EXTRA="timetracking" tools/plugin-test.sh` (add `devtools` and the prop for devtools).
 - **Next (approved): C, beginner clue scrolls for the Clue Scroll plugin (~1.5 days).** What the
@@ -58,7 +59,7 @@ Tracking, and the bird house device check. Details in `docs/openrune-port.md`, "
   item, tap "Use ...", then tap the loc. Bird house space 2 is at 3679,3815; stand at 3679,3814.
 - **Next ideas:** farming slice extensions (compost bin 4775, other farms: Ardougne, Morytania,
   Hosidius are just more `Area` rows plus their loc names; tool leprechaun; disease); bird house
-  nest chance fixed (per mille, wiki chart) and bird houses are `upstream/20` (not yet deployed);
+  nest chance fixed (per mille, wiki chart; deployed 22:41) and bird houses are `upstream/20`;
   clue scrolls (beginner/easy slice).
 
 ## Latest state (2026-10-16 late night, sixth server dev, on OpenRune)

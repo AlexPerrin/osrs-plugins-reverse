@@ -1475,7 +1475,10 @@ clan hall, guest channels, events) are bigger again (several days).
   "Fetching data..." (2). The guest panel uses `clan_guest_affinitystatus` (12164) and the listened
   settings. Fixed after the run: `::fakeclan` sets them to 3 (leave: 1), and the login sets both to 1 for
   everyone (no clans here), so the tab says "No current clan" instead of "Connecting..." (1 is a **guess**).
-  Not device-checked yet.
+  **Device-checked 14:09 (e70a4f1):** "No current clan" after login; `::fakeclan` fills "Test Clan" (3/3,
+  Fake Member1, Fake Member2 and tester with key icons for 100/126, W255, Leave/Settings); `add newbie` shows
+  4/3 with newbie, `del newbie` 3/3 again, so CLANCHANNEL_DELTA with the channel's current updateNum is
+  right; `leave` goes back to "No current clan".
 - Friend List **device-checked** with the headless desktop login (`tools/multiclient/desktop_login.py
   --user desktop`): the tester's friends tab shows desktop on "World 255" with "desktop has logged in.",
   then "Offline" with "desktop has logged out." a few seconds after the desktop session ends.

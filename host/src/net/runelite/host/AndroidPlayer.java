@@ -82,8 +82,8 @@ public class AndroidPlayer extends PlayerStub {
         net.runelite.api.Client c = Host.client();
         return this != Host.localPlayer() && c instanceof AndroidClient && ((AndroidClient) c).isFriendCached(name);
     }
-    @Override public boolean isFriendsChatMember() { return false; }
-    @Override public boolean isClanMember() { return false; }
+    @Override public boolean isFriendsChatMember() { return ChatChannels.isFcMember(name); }  // unverified: on the device
+    @Override public boolean isClanMember() { return ChatChannels.isClanMember(name); }  // unverified: on the device
     @Override public int getSkullIcon() { return skull; }
     @Override public net.runelite.api.HeadIcon getOverheadIcon() {
         net.runelite.api.HeadIcon[] v = net.runelite.api.HeadIcon.values();

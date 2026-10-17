@@ -45,8 +45,11 @@ for name in "$@"; do
     # ALLOW_DEPS=1: 'group:artifact:version' dependencies are fetched from Maven Central into
     # re/hub-deps, put on the compile classpath and unpacked into the plugin jar (as the hub's
     # shadow jar does). Their licences must allow it; check each one when adding a plugin.
+    # Transitive runtime dependencies (Gradle resolves them, we don't) are listed per plugin in
+    # host/plugins/hub/deps.txt: "<name> group:artifact:version...".
+    extra=$(sed -n "s/^$name //p" "$ROOT/host/plugins/hub/deps.txt" 2>/dev/null || true)
     depjars=""
-    for gav in $(grep -ohE "['\"][a-zA-Z0-9_.-]+:[a-zA-Z0-9_.-]+:[0-9][a-zA-Z0-9_.-]*['\"]" <<<"$deps" | tr -d "'\""); do
+    for gav in $(grep -ohE "['\"][a-zA-Z0-9_.-]+:[a-zA-Z0-9_.-]+:[0-9][a-zA-Z0-9_.-]*['\"]" <<<"$deps" | tr -d "'\"") $extra; do
         IFS=: read -r g a v <<<"$gav"
         dj=$ROOT/re/hub-deps/$a-$v.jar
         mkdir -p "$ROOT/re/hub-deps"

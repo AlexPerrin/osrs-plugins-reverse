@@ -214,6 +214,25 @@ final class ChatChannels {
         }
     }
 
+    /**
+     * Player.isFriendsChatMember/isClanMember: the name is in the friends chat / the clan channel
+     * (ClanID.CLAN), as desktop's cached player flags. Fresh on the game thread, the last read elsewhere.
+     */
+    static boolean isFcMember(String name) {
+        Fc fc;
+        synchronized (ChatChannels.class) { fc = Host.onGameThread() ? (Fc) friendsChat() : fcCached; }
+        return name != null && fc != null && fc.findByName(name) != null;
+    }
+
+    static boolean isClanMember(String name) {
+        Clan ch;
+        synchronized (ChatChannels.class) {
+            if (Host.onGameThread()) ch = (Clan) clan(0);
+            else { Object[] c = clanCached.get(0); ch = c == null ? null : (Clan) c[1]; }
+        }
+        return name != null && ch != null && ch.findMember(name) != null;
+    }
+
     /** Logged out: forget the channels (desktop clears them; no events). */
     static void reset() {
         lastFc = null;

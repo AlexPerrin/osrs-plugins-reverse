@@ -271,6 +271,7 @@ public final class Host {
 
     /** Called on the game thread after every client cycle and for each derived event. */
     private static volatile Thread gameThread;
+    static boolean onGameThread() { return Thread.currentThread() == gameThread; }
     /** Incremented every client cycle (Java-side caches key on it). */
     static volatile int cycleStamp;
 

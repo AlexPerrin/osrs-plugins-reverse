@@ -22,6 +22,8 @@ import net.runelite.client.util.Filepath;
 @Singleton
 public class AudioPlayer {
     private static final String TAG = "osrsrl-host";
+    /** Players until they complete: an unreferenced MediaPlayer is finalized (and stopped) mid-clip. */
+    private static final java.util.Set<MediaPlayer> PLAYING = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
 
     public void play(File file, float gain) throws IOException {
         start(file, gain, false);
@@ -58,13 +60,22 @@ public class AudioPlayer {
             mp.setDataSource(file.getAbsolutePath());
             mp.setVolume(volume, volume);
             mp.setOnCompletionListener(p -> {
+                PLAYING.remove(p);
                 p.release();
                 if (deleteAfter) file.delete();
             });
+            mp.setOnErrorListener((p, what, extra) -> {
+                PLAYING.remove(p);
+                p.release();
+                if (deleteAfter) file.delete();
+                return true;
+            });
             mp.prepare();
+            PLAYING.add(mp);
             mp.start();
             Log.i(TAG, "audio: " + file.getName() + " volume " + volume);  // unverified: audible on the device
         } catch (IOException | RuntimeException e) {
+            PLAYING.remove(mp);
             mp.release();
             if (deleteAfter) file.delete();
             throw e instanceof IOException ? (IOException) e : new IOException(e);

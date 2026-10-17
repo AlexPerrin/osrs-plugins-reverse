@@ -16,6 +16,7 @@ import net.runelite.client.util.AsyncBufferedImage;
  * Definitions come from the client; prices are store values (no price API); images are the
  * game's own item icons.
  */
+@javax.inject.Singleton
 public class ItemManager {
     private final Client client;
     private final net.runelite.client.callback.ClientThread clientThread;
@@ -74,12 +75,18 @@ public class ItemManager {
         return p.getWikiPrice() > 0 ? p.getWikiPrice() : p.getPrice();
     }
 
-    private volatile List<net.runelite.http.api.item.ItemPrice> priceIndex;
-    private final List<net.runelite.http.api.item.ItemPrice> building = new java.util.ArrayList<>();
-    private int buildNext;
-    private long buildNanos;
+    // Shared by every ItemManager instance (plugins get their own; desktop has one singleton).
+    private static volatile List<net.runelite.http.api.item.ItemPrice> priceIndex;
+    private static boolean indexBuildStarted;
+    private static final List<net.runelite.http.api.item.ItemPrice> building = new java.util.ArrayList<>();
+    private static int buildNext;
+    private static long buildNanos;
 
     private void startIndexBuild() {
+        synchronized (ItemManager.class) {
+            if (indexBuildStarted) return;
+            indexBuildStarted = true;
+        }
         clientThread.invoke(() -> {
             if (priceIndex != null) return true;
             if (client.getGameState() != GameState.LOGGED_IN) return false;

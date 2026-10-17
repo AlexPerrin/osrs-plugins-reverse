@@ -94,10 +94,10 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Ammo | runs | the worn 50 bronze arrows show as a "50" arrow infobox (2026-10-17). It compares `event.getItemContainer() != client.getItemContainer(EQUIPMENT)` by identity, so the host now returns the same container instance while an inventory is unchanged |
 | Metronome | starts | starts; no errors over login and ticks since getPreferences (2026-10-17). Its tick/tock sounds need audio, which the host lacks (no javax.sound) |
 | Hunter | starts | starts (2026-10-17); traps not checked |
-| Quest List | starts | starts (2026-10-17); not checked |
-| Chat Commands | starts | starts; `!price lobster` ran the lookup (ItemManager.search, 2026-10-17) but threw on the missing ItemManager.getWikiPrice (added, not re-run) |
+| Quest List | starts | starts; the mobile quest tab shows its own list with a search icon, no visible plugin change (2026-10-17; the plugin targets desktop's quest list widgets) |
+| Chat Commands | runs | `!price lobster` in public chat: the line becomes "Price of Lobster: GE average 70 HA value 42" (store values; ItemManager.search, 2026-10-17) |
 | Fairy Rings | starts | starts; `::interface 398` opens the ring dial without errors (2026-10-17). Its code list and search live in the travel-log panel the server doesn't open with it, so not checked |
-| Item Prices | starts | starts (2026-10-17). Hover tooltips come from the hover entry; inventory tooltips are off by default (`itemprices.hideInventory`), and a tap on rune essence with them on not yet tried; bank not checked |
+| Item Prices | runs | with `itemprices.hideInventory=false` (default true hides inventory tooltips), a tap on rune essence shows "GE: 4 gp / HA: 2 gp" (hover entry, 2026-10-17). The tooltip is drawn twice, stacked (open). Bank not checked |
 | Screen Markers | starts | starts (2026-10-17); not checked |
 | Friend Notes | starts | starts (2026-10-17); not checked |
 
@@ -137,7 +137,7 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Better Teleport Menu | starts | starts (2026-10-17); not checked |
 | Wilderness Player Alarm | runs | Wilderness level 2 (`::tele 3100 3530`, varbit 5963 = 1) with the desktop player 2 tiles away: the screen flashes its yellow wash (2026-10-17) |
 | Hunter Rumours | runs | starts; its sidebar panel lists the 29 creatures with a location picker each (2026-10-17, after the non-null `getAccessibleContext()`); rumours not tried |
-| Ess Pouch | starts | starts (2026-10-17); pouches not checked |
+| Ess Pouch | starts | Fill on a small pouch reaches the plugin (MenuOptionClicked CC_OP with the slot's item, 2026-10-17), but the pouch stays "?": its Check parser wants OSRS's "There are three essences in this pouch." and OpenRune says "There are 3 rune essence in this pouch." (server wording) |
 | Plank Sack | starts | starts (2026-10-17); not checked |
 | KPH Tracker | starts | starts as "Bossing Info"; no errors at login since getUsername (2026-10-17); kills not tried |
 | Thrall Helper | starts | starts as "Spell Reminder" (2026-10-17); not checked |

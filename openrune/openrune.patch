@@ -1,3 +1,15 @@
+diff --git a/.data/gamevals/area.rscm b/.data/gamevals/area.rscm
+index 21e79845c..bb7e36efc 100644
+--- a/.data/gamevals/area.rscm
++++ b/.data/gamevals/area.rscm
+@@ -64,6 +64,7 @@ ferox_enclave=32758
+ wilderness_dungeons=32759
+ wilderness=32760
+ demonic_ruins=32761
++ice_mountain=32762
+ chaos_temple=32763
+ lumbridge=32764
+ singles_plus=32765
 diff --git a/.data/gamevals/clientscript.rscm b/.data/gamevals/clientscript.rscm
 index bd539bb13..2fc22e88f 100644
 --- a/.data/gamevals/clientscript.rscm
@@ -8,6 +20,82 @@ index bd539bb13..2fc22e88f 100644
  [clientscript,script7920]=7920
 -quest_policy_complete_set=45553
 +quest_policy_complete_set=9974
+diff --git a/.data/gamevals/dbrow.rscm b/.data/gamevals/dbrow.rscm
+index 410bb1dea..be007048e 100644
+--- a/.data/gamevals/dbrow.rscm
++++ b/.data/gamevals/dbrow.rscm
+@@ -1,5 +1,6 @@
+ gameframe_fullscreen=65530
+ music_modern_lumbridge=65531
++music_modern_ice_mountain=60920
+ gameframe_pre_eoc=65532
+ gameframe_osrs_stretch=65533
+ gameframe_toplevel=65534
+diff --git a/.data/raw-cache/map/area/ice_mountain.toml b/.data/raw-cache/map/area/ice_mountain.toml
+new file mode 100644
+index 000000000..555b3f5f1
+--- /dev/null
++++ b/.data/raw-cache/map/area/ice_mountain.toml
+@@ -0,0 +1,59 @@
++# Music area for "Alone" (modern mode), from the OSRS Wiki's Map:Alone polygon.
++# The wiki cuts the Black Knights' Fortress out of it; that hole is not modelled here.
++[[area]]
++name = "Ice Mountain"
++area_id = "area.ice_mountain"
++levels = [0]
++
++[[area.polygons]]
++vertices = [
++    [2994, 3520],
++    [2994, 3524],
++    [2998, 3528],
++    [2998, 3534],
++    [3008, 3544],
++    [3022, 3544],
++    [3029, 3537],
++    [3029, 3532],
++    [3041, 3520],
++    [3041, 3517],
++    [3039, 3515],
++    [3039, 3502],
++    [3028, 3491],
++    [3028, 3483],
++    [3034, 3477],
++    [3034, 3476],
++    [3037, 3473],
++    [3039, 3473],
++    [3039, 3470],
++    [3037, 3470],
++    [3035, 3468],
++    [3035, 3462],
++    [3033, 3460],
++    [3031, 3460],
++    [3031, 3462],
++    [3030, 3462],
++    [3030, 3463],
++    [3029, 3463],
++    [3029, 3464],
++    [3028, 3464],
++    [3028, 3465],
++    [3027, 3465],
++    [3027, 3466],
++    [3026, 3466],
++    [3026, 3467],
++    [3022, 3467],
++    [3021, 3466],
++    [3012, 3466],
++    [3012, 3465],
++    [3009, 3462],
++    [2994, 3462],
++    [2990, 3458],
++    [2988, 3458],
++    [2988, 3454],
++    [2979, 3463],
++    [2979, 3475],
++    [2990, 3486],
++    [2990, 3510],
++    [2994, 3514],
++]
 diff --git a/.data/raw-cache/map/npcs/varrock.toml b/.data/raw-cache/map/npcs/varrock.toml
 index 6de0b2dbf..890b668af 100644
 --- a/.data/raw-cache/map/npcs/varrock.toml
@@ -1327,6 +1415,133 @@ index 91f0017b9..be27eaed8 100644
              mine(rock)
          }
      }
+diff --git a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/chests/PlainChestScript.kt b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/chests/PlainChestScript.kt
+index 5a68a0fee..c6557c978 100644
+--- a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/chests/PlainChestScript.kt
++++ b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/chests/PlainChestScript.kt
+@@ -12,27 +12,32 @@ import org.rsmod.plugin.scripts.ScriptContext
+ 
+ class PlainChestScript @Inject constructor(private val locRepo: LocRepository) : PluginScript() {
+     override fun ScriptContext.startup() {
+-        onOpLoc1(CLOSED) { open(it.loc) }
+-        onOpLoc2(OPENED) { mes(ChestConstants.DEFAULT) }
+-        onOpLoc3(OPENED) { shut(it.loc) }
++        for ((closed, opened) in CHESTS) {
++            onOpLoc1(closed) { open(it.loc, opened) }
++            onOpLoc2(opened) { mes(ChestConstants.DEFAULT) }
++            onOpLoc3(opened) { shut(it.loc, closed) }
++        }
+     }
+ 
+-    private suspend fun ProtectedAccess.open(chest: BoundLocInfo) {
++    private suspend fun ProtectedAccess.open(chest: BoundLocInfo, opened: String) {
+         arriveDelay()
+         anim("seq.human_openchest")
+         soundSynth(OPEN_SOUND)
+-        locRepo.change(chest, OPENED, ChestConstants.DURATION)
++        locRepo.change(chest, opened, ChestConstants.DURATION)
+     }
+ 
+-    private suspend fun ProtectedAccess.shut(chest: BoundLocInfo) {
++    private suspend fun ProtectedAccess.shut(chest: BoundLocInfo, closed: String) {
+         arriveDelay()
+         anim("seq.human_openchest")
+-        locRepo.change(chest, CLOSED, ChestConstants.DURATION)
++        locRepo.change(chest, closed, ChestConstants.DURATION)
+     }
+ 
+     private companion object {
+-        const val CLOSED = "loc.chestclosed"
+-        const val OPENED = "loc.chestopen"
++        val CHESTS =
++            listOf(
++                "loc.chestclosed" to "loc.chestopen",
++                "loc.kr_camelot_chestclosed" to "loc.kr_camelot_chestopen",
++            )
+         const val OPEN_SOUND = 52
+     }
+ }
+diff --git a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/drawers/DrawersScript.kt b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/drawers/DrawersScript.kt
+index b27372c5d..a7bf7550d 100644
+--- a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/drawers/DrawersScript.kt
++++ b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/drawers/DrawersScript.kt
+@@ -10,38 +10,64 @@ import org.rsmod.game.loc.BoundLocInfo
+ import org.rsmod.plugin.scripts.PluginScript
+ import org.rsmod.plugin.scripts.ScriptContext
+ 
++/**
++ * Plain drawers and wardrobes: Open turns the loc into its open variant, which has Search and
++ * Shut/Close. [Furniture.searchOp] is the open variant's Search slot (2 for most, 1 for the Seers'
++ * Village drawers); Shut/Close is the slot after it.
++ */
+ class DrawersScript @Inject constructor(private val locRepo: LocRepository) : PluginScript() {
+     override fun ScriptContext.startup() {
+-        onOpLoc1(CLOSED) { open(it.loc) }
+-        onOpLoc2(OPENED) { search() }
+-        onOpLoc3(OPENED) { shut(it.loc) }
++        for (f in FURNITURE) {
++            onOpLoc1(f.closed) { open(it.loc, f) }
++            if (f.searchOp == 1) {
++                onOpLoc1(f.opened) { search(f) }
++                onOpLoc2(f.opened) { shut(it.loc, f) }
++            } else {
++                onOpLoc2(f.opened) { search(f) }
++                onOpLoc3(f.opened) { shut(it.loc, f) }
++            }
++        }
+     }
+ 
+-    private suspend fun ProtectedAccess.open(drawers: BoundLocInfo) {
++    private suspend fun ProtectedAccess.open(loc: BoundLocInfo, f: Furniture) {
+         arriveDelay()
+         anim(OPEN_SEQ)
+         soundSynth(OPEN_SYNTH)
+         delay(1)
+-        locRepo.change(drawers, OPENED, DURATION)
++        locRepo.change(loc, f.opened, DURATION)
+     }
+ 
+-    private suspend fun ProtectedAccess.search() {
++    private suspend fun ProtectedAccess.search(f: Furniture) {
+         arriveDelay()
+-        mes("You search the drawers but find nothing.")
++        mes("You search the ${f.noun} but find nothing.")
+     }
+ 
+-    private suspend fun ProtectedAccess.shut(drawers: BoundLocInfo) {
++    private suspend fun ProtectedAccess.shut(loc: BoundLocInfo, f: Furniture) {
+         arriveDelay()
+         anim(OPEN_SEQ)
+         delay(1)
+-        locRepo.change(drawers, CLOSED, DURATION)
++        locRepo.change(loc, f.closed, DURATION)
+     }
+ 
+-    private companion object {
+-        const val CLOSED = "loc.drawers2"
+-        const val OPENED = "loc.drawers2open"
++    data class Furniture(val closed: String, val opened: String, val noun: String, val searchOp: Int = 2)
++
++    companion object {
+         const val OPEN_SEQ = "seq.human_openchest"
+         const val OPEN_SYNTH = "synth.drawer_open"
+         const val DURATION = 500
++
++        val FURNITURE =
++            listOf(
++                Furniture("loc.drawers1", "loc.drawers1open", "drawers"),
++                Furniture("loc.drawers2", "loc.drawers2open", "drawers"),
++                Furniture("loc.drawers3", "loc.drawers3open", "drawers"),
++                Furniture("loc.draynor_wardrobe", "loc.draynor_wardrobe_open", "wardrobe"),
++                Furniture(
++                    "loc.kr_seers_village_drawers1",
++                    "loc.kr_seers_village_drawers1open",
++                    "drawers",
++                    searchOp = 1,
++                ),
++            )
+     }
+ }
 diff --git a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
 index d64463d3d..a8ea51729 100644
 --- a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
@@ -3555,10 +3770,10 @@ index 000000000..09e6c3f92
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
 new file mode 100644
-index 000000000..9d8012684
+index 000000000..f9ff854b3
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
-@@ -0,0 +1,101 @@
+@@ -0,0 +1,103 @@
 +package org.rsmod.content.other.treasuretrails.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -3594,6 +3809,8 @@ index 000000000..9d8012684
 +            2231 to "interface.trail_map06",
 +            2233 to "interface.trail_map11",
 +            2228 to "interface.trail_map18",
++            2232 to "interface.trail_map09",
++            2234 to "interface.trail_clue_easy_map006",
 +        )
 +
 +    private val EMOTES =
@@ -3683,10 +3900,10 @@ index 000000000..1be464b2d
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/resources/gamevals.toml b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..ea7c1eac6
+index 000000000..9ca0bc75e
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
-@@ -0,0 +1,349 @@
+@@ -0,0 +1,351 @@
 +[gamevals.dbtable]
 +trail_charlie_tasks = 60003
 +trail_beginner_casket = 60004
@@ -3713,6 +3930,8 @@ index 000000000..ea7c1eac6
 +trail_map_interface_7 = 60217
 +trail_map_interface_8 = 60218
 +trail_map_interface_9 = 60219
++trail_map_interface_10 = 60220
++trail_map_interface_11 = 60221
 +trail_emote_seq_0 = 60320
 +trail_emote_seq_1 = 60321
 +trail_emote_seq_2 = 60322
@@ -4127,10 +4346,10 @@ index 000000000..edb58312b
 +transmit = "Never"
 diff --git a/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
 new file mode 100644
-index 000000000..d5f26a38b
+index 000000000..b200b0106
 --- /dev/null
 +++ b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
-@@ -0,0 +1,283 @@
+@@ -0,0 +1,286 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -4211,7 +4430,10 @@ index 000000000..d5f26a38b
 +        assertEquals(objs.size, objs.toSet().size)
 +        val counts = steps.groupingBy { it::class.simpleName }.eachCount()
 +        println("easy steps by kind: $counts")
-+        assertTrue(steps.any { it is TrailStep.Search })
++        assertEquals(71, counts["Search"])
++        assertEquals(15, counts["Dig"])
++        val drawers = steps.filterIsInstance<TrailStep.Search>().first { "Falador's chain mail shop" in it.text!! }
++        assertEquals(listOf("loc.drawers1open".asRSCM(RSCMType.LOC)), drawers.locs.map { it.first })
 +        val music = steps.filterIsInstance<TrailStep.Music>()
 +        assertEquals(6, music.size)
 +        assertTrue(music.all { Regex("<col=ffffff>[A-Za-z !&',.]+</col>").containsMatchIn(it.text!!) })
@@ -4550,10 +4772,10 @@ index 000000000..b57b481d7
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
 new file mode 100644
-index 000000000..6641bf09c
+index 000000000..f2f0bb9b7
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
-@@ -0,0 +1,195 @@
+@@ -0,0 +1,216 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
@@ -4700,7 +4922,7 @@ index 000000000..6641bf09c
 +                        val loc = CluehelperTargetLocRow.getRow(it.id)
 +                        listOfNotNull(loc.loc.id to loc.coord, loc.fallbackLoc?.let { f -> f.id to loc.coord })
 +                    }
-+                val searchable = locs.filter { searchOp(it.first) != null }
++                val searchable = locs.mapNotNull { (loc, coord) -> searchTarget(loc)?.let { it to coord } }.distinct()
 +                if (searchable.isEmpty()) return null
 +                TrailStep.Search(r.rowId, tier, r.clueText, searchable)
 +            }
@@ -4712,9 +4934,30 @@ index 000000000..6641bf09c
 +        }
 +    }
 +
-+    fun searchOp(loc: Int): InteractionOp? {
++    fun searchOp(loc: Int): InteractionOp? = op(loc, "Search")
++
++    /** The op that completes a search step on [loc]: Search, else Open (the Edgeville coffin). */
++    fun stepOp(loc: Int): InteractionOp? = searchOp(loc) ?: op(loc, "Open")
++
++    /**
++     * The loc a search step is done on: [loc] itself if it has Search, else its open variant
++     * (closed drawers, chests and wardrobes are opened first; the variant is named `<loc>open`,
++     * `<loc>_open` or with `closed` -> `open`), else [loc] if it only opens.
++     */
++    fun searchTarget(loc: Int): Int? {
++        if (searchOp(loc) != null) return loc
++        val name = dev.openrune.rscm.RSCM.getReverseMapping(RSCMType.LOC, loc)
++        val opened =
++            listOf("${name}open", "${name}_open", name.replace("closed", "open"))
++                .filter { it != name }
++                .mapNotNull { runCatching { it.asRSCM(RSCMType.LOC) }.getOrNull() }
++                .firstOrNull { searchOp(it) != null }
++        return opened ?: loc.takeIf { op(it, "Open") != null }
++    }
++
++    private fun op(loc: Int, name: String): InteractionOp? {
 +        val type = ServerCacheManager.getObject(loc) ?: return null
-+        return InteractionOp.entries.firstOrNull { type.actions.getOpOrNull(it.slot - 1) == "Search" }
++        return InteractionOp.entries.firstOrNull { type.actions.getOpOrNull(it.slot - 1) == name }
 +    }
 +
 +    private fun charlieTasks(tier: TrailTier): List<CharlieTask> =
@@ -4812,7 +5055,7 @@ index 000000000..469468835
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
 new file mode 100644
-index 000000000..d43ee6b5a
+index 000000000..8ed0af269
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
 @@ -0,0 +1,667 @@
@@ -4932,7 +5175,7 @@ index 000000000..d43ee6b5a
 +
 +    private fun ScriptContext.registerLocSteps() {
 +        val searches = TrailSteps.ALL.values.flatten().filterIsInstance<TrailStep.Search>()
-+        for ((loc, op) in searches.flatMap { it.locs }.map { it.first }.toSet().mapNotNull { loc -> TrailSteps.searchOp(loc)?.let { loc to it } }) {
++        for ((loc, op) in searches.flatMap { it.locs }.map { it.first }.toSet().mapNotNull { loc -> TrailSteps.stepOp(loc)?.let { loc to it } }) {
 +            locOverrides.register(loc, op) { player, bound -> searchStep(player, loc, bound.coords) != null }
 +            onProtectedEvent<LocOverrideEvents.Op>(LocOverrideEvents.key(loc, op)) {
 +                val step = searchStep(player, loc, it.loc.coords) ?: return@onProtectedEvent
@@ -10201,6 +10444,23 @@ index 0e4a0f17f..5b494bdba 100644
  rsprot-shared = { module = "net.rsprot:osrs-241-shared", version.ref = "rsprot" }
  simmetrics-core = { module = "com.github.mpkorstanje:simmetrics-core", version.ref = "simmetrics" }
  spotless-gradle-plugin = { module = "com.diffplug.spotless:spotless-plugin-gradle", version.ref = "spotless" }
+diff --git a/or-cache/src/main/kotlin/dev/openrune/impl/Music.kt b/or-cache/src/main/kotlin/dev/openrune/impl/Music.kt
+index b5ba8df06..199441c8a 100644
+--- a/or-cache/src/main/kotlin/dev/openrune/impl/Music.kt
++++ b/or-cache/src/main/kotlin/dev/openrune/impl/Music.kt
+@@ -49,6 +49,12 @@ object Music {
+                 )
+                 column(2, true)
+             }
++
++            row("dbrow.music_modern_ice_mountain") {
++                column(0, "ice_mountain")
++                columnRSCM(1, "dbrow.music_alone")
++                column(2, true)
++            }
+         }
+ 
+     fun musicClassic() =
 diff --git a/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt b/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt
 index 9387eba2d..81af92826 100644
 --- a/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt

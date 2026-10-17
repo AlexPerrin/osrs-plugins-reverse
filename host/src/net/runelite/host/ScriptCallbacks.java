@@ -38,9 +38,9 @@ import net.runelite.client.eventbus.EventBus;
  *    Verified on the device 2026-10-17 gen 24 (Spellbook hides Wind Strike).
  *  - musicTrackFilter (proc 9291, music_track_shown(dbrow, ..., unlocked)): the patched script starts
  *    with `iconst -1; iload 0; iload 4; runelite_callback`, and a 0 or 1 left in the -1 slot is
- *    returned at once (the track is hidden or shown). Here the callback is raised before each of
- *    9291's returns with int stack [-1, local 0, local 4], and an answer other than -1 replaces
- *    the returned value. // unverified: that mobile's music list runs proc 9291 with these locals.
+ *    returned at once (the track is hidden or shown). Here the callback is raised as 9291 returns
+ *    (Host.onScript phase 1; its args were taken at the GOSUB) with int stack [-1, local 0, local 4],
+ *    and an answer other than -1 replaces the returned value. // unverified: that mobile's music list runs proc 9291 with these locals.
  * Not emulated: skillTabMaxLevel (next to an iconst, which the opcode hook can't see).
  * // unverified: that the mobile skills tab runs scripts 395/396 (the desktop ids).
  */
@@ -50,7 +50,7 @@ final class ScriptCallbacks {
     static final int SKILL_TAB_BUILDER = 395, SKILL_TAB_TOTAL = 396, FRIEND_UPDATE = 125;
     static final int FAIRY_RINGS_SORT = 8080, ENUM = 3408, DB_GETFIELD = 7502, STRING_INDEXOF_STRING = 4121;
     static final int STAT_BASE = 3306, IF_SETTEXT = 2112, CC_SETTEXT = 1112, CC_SETPOSITION = 1000;
-    static final int MUSIC_TRACK_SHOWN = 9291, RETURN = 21;
+    static final int MUSIC_TRACK_SHOWN = 9291;
 
     static final int ANY = 0xffff;  // reported script id of a wildcard watch
     static final String TOTAL_LEVEL = "Total level: ";
@@ -67,9 +67,8 @@ final class ScriptCallbacks {
         FAIRY_RINGS_SORT, ENUM,
         FAIRY_RINGS_SORT, DB_GETFIELD,
         FAIRY_RINGS_SORT, STRING_INDEXOF_STRING,
-        MUSIC_TRACK_SHOWN, RETURN,
     };
-    private static final String[] PREFIXES = {null, null, null, null, TOTAL_LEVEL, TOTAL_LEVEL, null, null, null, null};
+    private static final String[] PREFIXES = {null, null, null, null, TOTAL_LEVEL, TOTAL_LEVEL, null, null, null};
 
     private static boolean installed;
     private static final java.util.ArrayDeque<Integer> skills = new java.util.ArrayDeque<>();
@@ -90,7 +89,6 @@ final class ScriptCallbacks {
         if (script == SKILL_TAB_BUILDER && opcode == STAT_BASE) skillTabBaseLevel(bus, ac, phase);
         else if (script == FAIRY_RINGS_SORT) fairyRings(bus, ac, phase, opcode);
         else if (phase != 3) return;
-        else if (script == MUSIC_TRACK_SHOWN && opcode == RETURN) musicTrackFilter(bus, ac);
         else if (script == SKILL_TAB_TOTAL && opcode == IF_SETTEXT) raiseOnLive(bus, ac, "skillTabTotalLevel", 1, 1);
         else if (script == ANY && (opcode == IF_SETTEXT || opcode == CC_SETTEXT)) raiseOnLive(bus, ac, "skillTabTotalLevel", 1, 1);
         else if (script == FRIEND_UPDATE && opcode == CC_SETTEXT) raiseOnLive(bus, ac, "friendsChatSetText", 0, 1);
@@ -231,17 +229,31 @@ final class ScriptCallbacks {
     }
 
     private static int musicLogs;
+    private static final java.util.ArrayDeque<int[]> musicArgs = new java.util.ArrayDeque<>();
 
-    private static void musicTrackFilter(EventBus bus, AndroidClient ac) {
+    /** Proc 9291 entered (phase 0, its 5 int args on the stack) or returned (phase 1, the result on top). */
+    static void musicTrackFilter(EventBus bus, AndroidClient ac, int phase) {
         int n = ac.getIntStackSize();
-        int row = Native.scriptIntLocal(false, 0, false, 0), unlocked = Native.scriptIntLocal(false, 4, false, 0);
-        if (n < 1 || row == Integer.MIN_VALUE || unlocked == Integer.MIN_VALUE) return;
-        ac.wantDbField(row, 1, 0);  // the plugin's search reads the track's display name (column 1)
-        int answer = raise(bus, ac, "musicTrackFilter", new int[] {-1, row, unlocked}, new Object[0], 0);
-        if (musicLogs++ < 3) Log.i(TAG, "musicTrackFilter: row " + row + " unlocked " + unlocked + " -> " + answer);
-        if (answer == -1) return;
+        if (phase == 0) {
+            int[] st = ac.getIntStack();
+            int[] args = n >= 5 ? new int[] {st[n - 5], st[n - 1]} : null;  // local 0 (dbrow), local 4 (unlocked)
+            musicArgs.push(args != null ? args : new int[] {-1, 0});
+            if (args != null && args[0] >= 0) ac.wantDbField(args[0], 1, 0);  // the search reads column 1
+            return;
+        }
+        if (phase != 1 || musicArgs.isEmpty()) return;
+        int[] args = musicArgs.pop();
+        if (!installed || args[0] < 0 || n < 1) return;
+        int answer = raise(bus, ac, "musicTrackFilter", new int[] {-1, args[0], args[1]}, new Object[0], 0);
         int[] live = java.util.Arrays.copyOf(ac.getIntStack(), n);
-        live[n - 1] = answer;
+        int result = live[n - 1];
+        if ("1".equals(Native.property("debug.osrsrl.musiclog")) || musicLogs++ < 3)
+            Log.i(TAG, "musicTrackFilter: row " + args[0] + " unlocked " + args[1] + " -> " + answer + " (game " + result + ")");
+        // RuneLite's 9291: 0 returns 0 (hidden); 1 skips the locked/unlocked test (varbit 19733) but
+        // still applies the area filter (varbit 19731), which can't be re-run here, so 1 shows the
+        // track. // unverified: 1 with an area filter set shows tracks desktop would hide
+        if (answer == -1 || answer == result) return;
+        live[n - 1] = answer == 0 ? 0 : 1;
         Native.setScriptIntStack(live, n);
     }
 

@@ -850,7 +850,10 @@ public final class Host {
 
     static void updateScriptEvents() {
         EventBus bus = eventBus;
-        boolean on = bus != null && (bus.hasSubscribers(ScriptPreFired.class) || bus.hasSubscribers(ScriptPostFired.class));
+        // Proc entry/return also drives runelite_callback emulation (questFilter, bankSearchFilter,
+        // musicTrackFilter, spellbookSort), so callback subscribers need the events too.
+        boolean on = bus != null && (bus.hasSubscribers(ScriptPreFired.class) || bus.hasSubscribers(ScriptPostFired.class)
+                || bus.hasSubscribers(net.runelite.api.events.ScriptCallbackEvent.class));
         ScriptCallbacks.update(bus);
         if (on == scriptEventsOn) return;
         scriptEventsOn = on;
@@ -878,6 +881,7 @@ public final class Host {
             }
             if (id == QUEST_FILTER_PROC) questFilter(bus, ac, phase);
             if (id == BANK_SEARCH_FILTER_PROC) bankSearchFilter(bus, ac, phase);
+            if (id == ScriptCallbacks.MUSIC_TRACK_SHOWN) ScriptCallbacks.musicTrackFilter(bus, ac, phase);
             if (phase == 1) {
                 ScriptCallbacks.onReturn(bus, ac, id);
                 ac.beginScriptEvent();  // the callback's fake stacks end here

@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 23 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 24 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -898,6 +898,47 @@ session; its notes are in `docs/android-protocol.md`.
     `drawInstanceMap`; getSearchingTagTab/bankBuildTab (277/276 callbacks; cosmetic); drag (WidgetDrag,
     getDraggedWidget/getDraggedOnWidget from the mobile drag state) if Layouts/Spellbook reorder are funded;
     clan/friends-chat data (ClanChannel.findMember).
+- **2026-10-17 (client dev gen 24)**, commits c7d9812..543287e (progress at start: core 76/82, hub 29/32, API 541/866).
+  Addresses below are ELF; Ghidra and re/decomp names are +0x100000.
+  - **Runs now:** Boss Timers (mole InfoBox "0:08" top-left right after a Giant Mole kill, screenshot), Spellbook
+    (hide/unhide and drag reorder), Grand Exchange (server dev's run on OpenRune's GE: offer events and the
+    sidebar panel; bb92e28's reader verified, `ge raw <slot>` probe).
+  - **Tab-stone aliases** (`AndroidMenu.postDesktopAliases`): CC_OP entries on mobile stones 601:{101,71,102,97,98,99,100,
+    74,76,75,44,77,72,73} are also posted (MenuEntryAdded only) with desktop's 161 stone ids {59..65,43..49}, so
+    MenuManager options keyed to desktop ids reach the plugin strip (Spellbook's "Enable spell reordering" on a
+    magic-stone tap). 12 of 14 tap-checked; clan 601:74 / logout 601:44 are not in the mobile column.
+  - `Widget.get/setClickMask` = game widget flags +0x2b0 (WidgetListeners keeps its op bits apart).
+  - **Widget drag** (docs/offsets.md "Widget drag"): drag state at Client+0x413ad8 (dragged), +0x413b00 (dragged-on),
+    u8 +0x413b20 dragging, +0x413b24 cycles, touch state +0x40e988 (3 held, 4 released). The menu-open check
+    `0x58da0c` (a 4-instruction leaf) is inline-hooked with `FULLHOOK` (script_stubs.S, saves x0-x18/q0-q7/q16-q31/
+    NZCV); called from return address 0x41ffe8 (the drag block of `0x41d0a4`) it posts the native WidgetDrag event
+    before the game processes the release. Host posts `WidgetDrag` while dragging; getMouseCurrentButton is 0 on the
+    release cycle; getDraggedWidget/getDraggedOnWidget/isDraggingWidget/getDragTime; setDraggedOnWidget(null)
+    clears the target (unverified). No fps cost at the GE. `setprop debug.osrsrl.draglog 1` logs each release.
+  - **Canonical widgets**: `AndroidWidget.of(id[, index])` — getWidget and the drag getters return one instance per
+    component/child (plugins compare with ==; Spellbook's drag needed it). Other `new AndroidWidget(...)` sites remain.
+  - getSearchingTagTab emulated at clientscript 276's start (`ScriptCallbacks.onRootStart`; unverified). bankBuildTab
+    cannot be emulated: RuneLite's 277 is restructured (its tag-tab path has no counterpart in the game's 277).
+    Script overrides were declined by the orchestrator (risk). Scratch tools used for this: a JS5 reader for
+    `openrune/src/.data/cache/LIVE` (index 12 = scripts) and a CS2 decoder (RuneLite's `runelite/12/*` in the
+    client jar have the same format); rewrite them if needed (they lived in the session scratchpad).
+  - **Friends chat / clan channels** (`ChatChannels`, docs/offsets.md): getFriendsChatManager, getClanChannel(),
+    getGuestClanChannel, getClanChannel(id) from static RE of the CS2 handlers 0x4ebdb0 / 0x4ecf20. All null for the
+    tester (no FC/clan); unverified. Probe `set 'chat log 0'`. Asked the server dev whether OpenRune supports them.
+  - Parked: Instance Map's drawInstanceMap. The mobile minimap is not a 512x512 software image (Minimap
+    `*(Client+0x40e970)` holds 200-entry tile/texture arrays; `redrawminimap` only sets `mm+0xc = -1`), so it needs
+    either RE of the minimap tile renderer (around 0x5895d0/0x58a56c) or a host-side render from tile data.
+  - **Next (gen 25)**:
+    1. Bank Tag Layouts (sized medium): Java onDragComplete listeners dispatched on the release cycle (source =
+       dragged, target = dragged-on; before the game's swap), check that bank items keep the game's onDrag (+0x4d0)
+       so setOnDragListener(CS2 args) can stay a no-op, then the layout drawing at ScriptPreFired 505 on the device
+       (getChild beyond the item count, bankColumnShift, scroll height). setSubOp (potion Doses) can wait.
+    2. Verify setDraggedOnWidget(null) (Bank Tags preventTagTabDrags on a tag tab) and getSearchingTagTab.
+    3. Friends chat / clan data once the server supports it.
+  - Gotchas: `tools/repack.sh` needs `ADB=/mnt/c/.../adb.exe ANDROID_SERIAL=127.0.0.1:5555` (it found no device with
+    WSL's adb). Mobile drags: `input swipe x1 y1 x2 y2 400` drags; 1500 ms opens the long-press menu instead.
+    Spellbook test keys are `spellbook.spell_pos_book_*` / `spell_hidden_book_*` in settings.properties (remove with
+    the app stopped). The tester has an open 1 gp lobster buy in GE slot 1; leave it.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

@@ -16,7 +16,7 @@ import net.runelite.client.util.Text;
 /**
  * Friends chat and clan channels read from the game (Native.chatChannel, docs/offsets.md "Friends
  * chat / clan channels"). One object per channel state (see friendsChat()).
- * // unverified: on the device (static RE of the CS2 ops; OpenRune's friends chat / clan support unknown).
+ * Verified 2026-10-17 gen 25 with OpenRune's ::fakeclan (friends chat name/owner/ranks/members, clan channel 0).
  */
 final class ChatChannels {
     private ChatChannels() {}
@@ -166,7 +166,7 @@ final class ChatChannels {
     // --- events: desktop posts them from the channel packets; here the channels are diffed once per
     // game tick (before GameTick). Joining posts FriendsChatChanged(true) / ClanChannelChanged, then a
     // joined event per member already there, as the full channel arrives in one update on desktop.
-    // unverified: on the device.
+    // Verified 2026-10-17 gen 25 (Chat Channel's join/leave messages for both).
     private static final int[] CLAN_SLOTS = {-1, 0, 1};  // guest, ClanID.CLAN, ClanID.GROUP_IRONMAN
     private static Fc lastFc;
     private static final Clan[] lastClan = new Clan[CLAN_SLOTS.length];

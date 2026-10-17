@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 24 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 25 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -946,6 +946,47 @@ session; its notes are in `docs/android-protocol.md`.
     WSL's adb). Mobile drags: `input swipe x1 y1 x2 y2 400` drags; 1500 ms opens the long-press menu instead.
     Spellbook test keys are `spellbook.spell_pos_book_*` / `spell_hidden_book_*` in settings.properties (remove with
     the app stopped). The tester has an open 1 gp lobster buy in GE slot 1; leave it.
+- **2026-10-17 (client dev gen 25)**, commits bb9a6e2..(see git log; progress at start: core 79/82, hub 29/32, API 545/866).
+  - **Bank Tags layouts (built-in) verified on the device**: "Enable layout" from the tag tab's long-press menu, the layout
+    drawn in the tag tab (gaps kept), drag swap and drag to an empty slot, the real bank order unchanged
+    (setDraggedOnWidget(null) verified), tagging by dragging an item onto a tag tab.
+    - Java onDragComplete listeners: `WidgetListeners.setOnDragComplete/runDragComplete`, keyed by slot + the game's
+      Widget*, run on the WIDGET_DRAG release cycle (touch state 4) after WidgetDrag, before the game's swap.
+    - Bank items (12:12 children) have no CS2 onDrag/onDragComplete/onOp on mobile and flags 0 (`set 'wlisten 12:12 0'`
+      probe), so plugin `setOnDragListener(284…)` stays a no-op.
+    - Leak fixed: desktop's bank build replaces item drag listeners, the mobile one sets none, so layout listeners ran
+      in the main tab and cancelled real swaps. They are dropped before ScriptPreFired 505 (`Host.onScript`).
+    - Canonical widgets now also for getParent/getStaticChildren/getChild/script widgets/onOp sources
+      (`AndroidWidget.of`; `fresh()` for CC_CREATE). Bank Tags compares `draggedOn.getParent() == parent`.
+    - Mobile drag recipe: `input swipe x1 y1 x2 y2 1000` over ~100-200 px; faster/longer moves scroll the bank.
+    - Bank booth: `::tele 3208 3220 2`, long-press (1120,470), "Bank Bank booth" (1100,562); tag tab column at x 252
+      (first tab y 642); main tab ∞ (335,423). Test tag via `set 'config banktags item_<id>=t25'` + `tagtabs=t25`.
+      Cleanup: remove `banktags.layout_t25/tagtabs/tab/item_*=t25` from settings.properties with the app stopped
+      (pull, edit, push).
+  - **Bank Tag Layouts (hub)**: its "Enable layout (hub)" entry is added in ClientTick from the hover menu
+    (`addTabInterfaceMenuEntries`, menu closed). 8cf3916 posts one ClientTick inside `AndroidMenu.presort` (menu reported
+    closed) as the long-press menu opens. **Verified, row `runs`**: "Enable layout (hub)" in the strip (core's entry renamed
+    "(built-in)"), the hub layout applied, a drag moved coins to an empty slot (mouse position at the release point).
+  - **Friends chat / clan events** (8cf3916, d7fcb7c): per-tick diff in `ChatChannels.postChanges` (FriendsChatChanged,
+    member joined/left, ClanChannelChanged, ClanMemberJoined/Left); channel objects stable while unchanged (Chat
+    Channel compares with ==); getClanSettings = view from the channel (no titles). Chat Channel / Team rows added
+    (jars in re/host/plugins-extra). **Verified with the server's `::fakeclan join|add <n>|del <n>|leave`** (args lowercased;
+    not kept over a relog): `set 'chat log 0'` lists 'Test Fc' (owner Tester, OWNER) and clan 0 'Test Clan' with members;
+    **Chat Channel runs** (join/leave lines for FC and clan after its 10-tick delay; config group is `clanchat`, keys
+    `showJoinLeave`, `clanChatShowJoinLeave`). Team `starts`. Open: the FC name reads "Test Fc" while the server says
+    "Test FC" (the reader may take the game's normalised name; check the field next to +0xa8). The clan tab itself stays
+    "Connecting..." until the server sends CLANSETTINGS_FULL (server dev).
+  - API (546 -> 570): Widget scroll x/y/size, model zoom/rotation, setPos/setSize, setItemQuantityMode (+0x13c, mobile
+    encoding 0 never / 3 always / 1 if >1; unverified), Client getFPS, getCenterX/Y, getVarbitValue(int[],int), desktop
+    defaults for stretched/oculus/camera mode. Use `tools/progress.py --dry-run` (never the full run: it rewrites the
+    orchestrator's progress files). More in gen 25: ParamHolder getLongValue/setValue (item/NPC/loc/struct), Node
+    getHash/next/previous for containers/messages, ItemComposition xan2d/yan2d/zan2d. API 590/866 at the end.
+  - **Project goal (orchestrator, 2026-10-17): all F2P content.** Client work now serves F2P play and verification:
+    Quest Helper per F2P quest (the main end-to-end tool; checklist docs/f2p-content.md by the auditor), core plugins
+    F2P players rely on, host gaps that block F2P checks. No members-only plugin/host work; ask when unsure.
+  - **Next (gen 26)**: take the F2P quest list from docs/f2p-content.md and run Quest Helper through the quests the server
+    supports (done so far: Cook's Assistant, Sheep Shearer, Romeo & Juliet; Demon Slayer started once); fix host gaps QH
+    hits (NpcStep/ObjectStep/item highlights, dialogue options, widget-based steps). FC name field (above).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

@@ -1166,3 +1166,26 @@ was verified.
   (Box Trap), so the rename works. Not checked on the device: butterfly catches, jerboas, the switch
   lines, Verity's back-to-back toggle. Tester back at Lumbridge on the normal build, inventory full
   (one copper ore dropped in the Burrow, a basic loot sack added).
+- **Follower varp after a relog** (client dev: varp 447 = 0 while the kitten follows; Kitten Tracker
+  reads `(npcId << 16) | index`): `PetFollowers.onPostTick` respawns the follower on the login tick
+  and sets `follower_npc`, but `VarPlayerIntMapDelegate.set` sends nothing while
+  `processedMapClock <= 0` (`engineLoggedIn`), after `LoginScript.sendVars` already sent the saved
+  value. Fix: `resyncVar` after every spawn. Reasoned from the code, **device check pending**
+  (relog with the kitten, probe varp 447). Upstream `43-follower-varp-at-login`.
+- **Jewellery teleports** (new module `content/travel/jewellery-teleports`, dbtables
+  `jewellery_teleport_items` 60020 / `jewellery_teleport_dests` 60021, rows 60500-60556): games
+  necklace (8), ring of dueling (8), amulet of glory (6, then uncharged), skills necklace (6, then
+  uncharged), combat bracelet (6, then uncharged). Rub = held op 3 -> `menu()` (interface 187 via
+  script 217 with hotkeys; RuneLite's Better Teleport Menu hooks scripts 217/218/219 and group 187,
+  read from its dex in the previous dev's scratch `gaps/better-teleport-menu`); worn ops 2-7 =
+  destinations in the wiki's worn-option order. Wiki: destinations and tiles, "You rub the
+  necklace..." / "ring...", "Your games necklace has three uses left.", "Your ring of dueling
+  crumbles to dust." (purple). **Guesses:** the menu title "Where would you like to teleport to?",
+  "You rub the amulet/bracelet...", "Your amulet of glory has N charges left." and "You use your
+  amulet's last charge." (also for the skills necklace/combat bracelet), the purple value 7f007f,
+  714/111 + 4-tick teleport, Corporeal Beast and Tears of Guthix on plane 2. Validation (Wilderness
+  20, or 30 for glory/skills/combat) happens before the charge is used. Not done: destination
+  requirements, the wiki's landing radius. Tests: `JewelleryTeleportScriptTest` (charge swaps,
+  crumble, uncharged glory in the worn slot, nothing without the item). Upstream
+  `44-jewellery-teleports`. Device test: `::item necklace_of_minigames_8 1`, Rub, pick Burthorpe;
+  Better Teleport Menu should decorate the menu.

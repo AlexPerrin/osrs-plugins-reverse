@@ -3456,6 +3456,38 @@ index a325cee80..a977ca49b 100644
 +        const val SOCIAL_RESEND_DELAY = 2
      }
  }
+diff --git a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/PetFollowers.kt b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/PetFollowers.kt
+index 51fa26f50..a1b4b6892 100644
+--- a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/PetFollowers.kt
++++ b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/PetFollowers.kt
+@@ -10,6 +10,7 @@ import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.api.player.vars.boolVarBit
+ import org.rsmod.api.player.vars.intVarBit
+ import org.rsmod.api.player.vars.intVarp
++import org.rsmod.api.player.vars.resyncVar
+ import org.rsmod.api.repo.npc.NpcRepository
+ import org.rsmod.content.other.pets.cats.Cats
+ import org.rsmod.content.other.pets.dogs.Dogs
+@@ -88,6 +89,9 @@ constructor(
+             player.faceNpc(npc)
+         }
+         player.followerNpc = npc.uid.packed
++        // A follower respawned on the login tick is set before the engine transmits varps, so the
++        // client would keep the value sent with the login varps (Kitten Tracker reads it).
++        player.resyncVar(FOLLOWER_VARP)
+         player.followerObj = form.objId
+     }
+ 
+@@ -245,6 +249,8 @@ constructor(
+  * Official varp the client reads to render follower-only right-click options. Holds the npc uid,
+  * which packs as `(type shl 16) or slot` — exactly what the client expects.
+  */
+-private var Player.followerNpc: Int by intVarp("varp.follower_npc")
++private const val FOLLOWER_VARP = "varp.follower_npc"
++
++private var Player.followerNpc: Int by intVarp(FOLLOWER_VARP)
+ private var Player.followerStuck: Int by intVarBit("varbit.pet_follower_stuck")
+ private var Player.followerBusy: Boolean by boolVarBit("varbit.pet_follower_busy")
 diff --git a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/cats/CatCare.kt b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/cats/CatCare.kt
 index 35dd61859..90641375b 100644
 --- a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/cats/CatCare.kt
@@ -16977,6 +17009,489 @@ index 000000000..93d62a658
 +        }
 +    }
 +}
+diff --git a/content/travel/jewellery-teleports/build.gradle.kts b/content/travel/jewellery-teleports/build.gradle.kts
+new file mode 100644
+index 000000000..6eb9d5aea
+--- /dev/null
++++ b/content/travel/jewellery-teleports/build.gradle.kts
+@@ -0,0 +1,14 @@
++plugins {
++    id("base-conventions")
++    id("integration-test-suite")
++}
++
++dependencies {
++    implementation(projects.api.pluginCommons)
++}
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.pluginCommons)
++    }
++}
+diff --git a/content/travel/jewellery-teleports/pack/build.gradle.kts b/content/travel/jewellery-teleports/pack/build.gradle.kts
+new file mode 100644
+index 000000000..10c8703c8
+--- /dev/null
++++ b/content/travel/jewellery-teleports/pack/build.gradle.kts
+@@ -0,0 +1,7 @@
++plugins {
++    id("base-conventions")
++}
++
++dependencies {
++    implementation(projects.engine.map)
++}
+diff --git a/content/travel/jewellery-teleports/pack/src/main/kotlin/org/rsmod/content/travel/jewellery/pack/JewelleryTeleportTables.kt b/content/travel/jewellery-teleports/pack/src/main/kotlin/org/rsmod/content/travel/jewellery/pack/JewelleryTeleportTables.kt
+new file mode 100644
+index 000000000..51fc9f2fe
+--- /dev/null
++++ b/content/travel/jewellery-teleports/pack/src/main/kotlin/org/rsmod/content/travel/jewellery/pack/JewelleryTeleportTables.kt
+@@ -0,0 +1,141 @@
++package org.rsmod.content.travel.jewellery.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++import dev.openrune.pack.columnCoord
++import org.rsmod.map.CoordGrid
++
++private const val GAMES = 0
++private const val DUELING = 1
++private const val GLORY = 2
++private const val SKILLS = 3
++private const val COMBAT = 4
++
++/**
++ * Charged teleport jewellery (OSRS Wiki: Games necklace, Ring of dueling, Amulet of glory, Skills
++ * necklace, Combat bracelet). One row
++ * per charge variant: [CHARGES] left before use, [NEXT] the item after one use. [CRUMBLES] is 1 when
++ * the last use destroys it ("Your games necklace crumbles to dust."); the glory's last use leaves an
++ * uncharged amulet. [FAMILY] picks the destinations in [JewelleryTeleportDestsTable].
++ * [WILDERNESS_30] is 1 for the glory, skills necklace and combat bracelet (teleports up to level 30
++ * Wilderness; their messages say "charges" rather than "uses").
++ */
++object JewelleryTeleportItemsTable {
++    const val OBJ = 0
++    const val FAMILY = 1
++    const val CHARGES = 2
++    const val NEXT = 3
++    const val CRUMBLES = 4
++    const val NAME = 5
++    const val RUB_WORD = 6
++    const val WILDERNESS_30 = 7
++
++    private data class Family(
++        val key: String,
++        val id: Int,
++        val prefix: String,
++        val max: Int,
++        val name: String,
++        val rub: String,
++        val spent: String?,
++        val wilderness30: Int,
++    )
++
++    private val FAMILIES =
++        listOf(
++            Family("games_necklace", GAMES, "obj.necklace_of_minigames_", 8, "games necklace", "necklace", null, 0),
++            Family("ring_of_dueling", DUELING, "obj.ring_of_dueling_", 8, "ring of dueling", "ring", null, 0),
++            Family("amulet_of_glory", GLORY, "obj.amulet_of_glory_", 6, "amulet of glory", "amulet", "obj.amulet_of_glory", 1),
++            Family("skills_necklace", SKILLS, "obj.jewl_necklace_of_skills_", 6, "skills necklace", "necklace", "obj.jewl_necklace_of_skills", 1),
++            Family("combat_bracelet", COMBAT, "obj.jewl_bracelet_of_combat_", 6, "combat bracelet", "bracelet", "obj.jewl_bracelet_of_combat", 1),
++        )
++
++    fun items() =
++        dbTable("dbtable.jewellery_teleport_items", serverOnly = true) {
++            column("obj", OBJ, VarType.OBJ)
++            column("family", FAMILY, VarType.INT)
++            column("charges", CHARGES, VarType.INT)
++            column("next", NEXT, VarType.OBJ)
++            column("crumbles", CRUMBLES, VarType.INT)
++            column("name", NAME, VarType.STRING)
++            column("rub_word", RUB_WORD, VarType.STRING)
++            column("wilderness_30", WILDERNESS_30, VarType.INT)
++
++            for (family in FAMILIES) {
++                for (charges in 1..family.max) {
++                    val obj = "${family.prefix}$charges"
++                    val next = if (charges > 1) "${family.prefix}${charges - 1}" else family.spent ?: obj
++                    row("dbrow.jewellery_teleport_${family.key}_$charges") {
++                        columnRSCM(OBJ, obj)
++                        column(FAMILY, family.id)
++                        column(CHARGES, charges)
++                        columnRSCM(NEXT, next)
++                        column(CRUMBLES, if (charges == 1 && family.spent == null) 1 else 0)
++                        column(NAME, family.name)
++                        column(RUB_WORD, family.rub)
++                        column(WILDERNESS_30, family.wilderness30)
++                    }
++                }
++            }
++        }
++}
++
++/**
++ * Destinations in menu order (the item's worn ops after Remove; wiki "Teleportation options").
++ * Tiles are the wiki's centre tiles; the wiki's random radius is not used. Corporeal Beast and Tears
++ * of Guthix are on plane 2 (**guess** from the wiki's separate map ids).
++ */
++object JewelleryTeleportDestsTable {
++    const val FAMILY = 0
++    const val INDEX = 1
++    const val NAME = 2
++    const val COORDS = 3
++
++    private data class Dest(val key: String, val family: Int, val name: String, val coords: CoordGrid)
++
++    private val DESTS =
++        listOf(
++            Dest("games_burthorpe", GAMES, "Burthorpe", CoordGrid(2899, 3553, 0)),
++            Dest("games_barbarian_outpost", GAMES, "Barbarian Outpost", CoordGrid(2520, 3571, 0)),
++            Dest("games_corporeal_beast", GAMES, "Corporeal Beast", CoordGrid(2967, 4254, 2)),
++            Dest("games_tears_of_guthix", GAMES, "Tears of Guthix", CoordGrid(3245, 9500, 2)),
++            Dest("games_wintertodt", GAMES, "Wintertodt Camp", CoordGrid(1631, 3940, 0)),
++            Dest("dueling_emirs_arena", DUELING, "Emir's Arena", CoordGrid(3315, 3235, 0)),
++            Dest("dueling_castle_wars", DUELING, "Castle Wars", CoordGrid(2440, 3090, 0)),
++            Dest("dueling_ferox_enclave", DUELING, "Ferox Enclave", CoordGrid(3151, 3635, 0)),
++            Dest("dueling_fortis_colosseum", DUELING, "Fortis Colosseum", CoordGrid(1793, 3107, 0)),
++            Dest("glory_edgeville", GLORY, "Edgeville", CoordGrid(3087, 3496, 0)),
++            Dest("glory_karamja", GLORY, "Karamja", CoordGrid(2918, 3176, 0)),
++            Dest("glory_draynor_village", GLORY, "Draynor Village", CoordGrid(3105, 3251, 0)),
++            Dest("glory_al_kharid", GLORY, "Al Kharid", CoordGrid(3293, 3163, 0)),
++            Dest("skills_fishing_guild", SKILLS, "Fishing Guild", CoordGrid(2611, 3390, 0)),
++            Dest("skills_mining_guild", SKILLS, "Mining Guild", CoordGrid(3049, 9763, 0)),
++            Dest("skills_crafting_guild", SKILLS, "Crafting Guild", CoordGrid(2933, 3295, 0)),
++            Dest("skills_cooking_guild", SKILLS, "Cooking Guild", CoordGrid(3144, 3438, 0)),
++            Dest("skills_woodcutting_guild", SKILLS, "Woodcutting Guild", CoordGrid(1662, 3505, 0)),
++            Dest("skills_farming_guild", SKILLS, "Farming Guild", CoordGrid(1248, 3719, 0)),
++            Dest("combat_warriors_guild", COMBAT, "Warriors' Guild", CoordGrid(2882, 3547, 0)),
++            Dest("combat_champions_guild", COMBAT, "Champions' Guild", CoordGrid(3192, 3368, 0)),
++            Dest("combat_monastery", COMBAT, "Monastery", CoordGrid(3052, 3490, 0)),
++            Dest("combat_ranging_guild", COMBAT, "Ranging Guild", CoordGrid(2653, 3439, 0)),
++        )
++
++    fun dests() =
++        dbTable("dbtable.jewellery_teleport_dests", serverOnly = true) {
++            column("family", FAMILY, VarType.INT)
++            column("index", INDEX, VarType.INT)
++            column("name", NAME, VarType.STRING)
++            column("coords", COORDS, VarType.COORDGRID)
++
++            val counts = mutableMapOf<Int, Int>()
++            for (dest in DESTS) {
++                val index = counts.merge(dest.family, 1, Int::plus)!! - 1
++                row("dbrow.jewellery_teleport_dest_${dest.key}") {
++                    column(FAMILY, dest.family)
++                    column(INDEX, index)
++                    column(NAME, dest.name)
++                    columnCoord(COORDS, dest.coords)
++                }
++            }
++        }
++}
+diff --git a/content/travel/jewellery-teleports/pack/src/main/kotlin/org/rsmod/content/travel/jewellery/pack/JewelleryTeleportsPluginPack.kt b/content/travel/jewellery-teleports/pack/src/main/kotlin/org/rsmod/content/travel/jewellery/pack/JewelleryTeleportsPluginPack.kt
+new file mode 100644
+index 000000000..e7818ef6d
+--- /dev/null
++++ b/content/travel/jewellery-teleports/pack/src/main/kotlin/org/rsmod/content/travel/jewellery/pack/JewelleryTeleportsPluginPack.kt
+@@ -0,0 +1,9 @@
++package org.rsmod.content.travel.jewellery.pack
++
++import dev.openrune.definition.dbtables.DBTable
++import dev.openrune.pack.PluginPack
++
++class JewelleryTeleportsPluginPack : PluginPack() {
++    override fun dbTables(): List<DBTable> =
++        listOf(JewelleryTeleportItemsTable.items(), JewelleryTeleportDestsTable.dests())
++}
+diff --git a/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt b/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
+new file mode 100644
+index 000000000..b1db0b25c
+--- /dev/null
++++ b/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
+@@ -0,0 +1,81 @@
++package org.rsmod.content.travel.jewellery
++
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.util.UncheckedType
++import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.table.JewelleryTeleportItemsRow
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.api.testing.scope.GameTestScope
++import org.rsmod.game.inv.InvObj
++import org.rsmod.map.CoordGrid
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class JewelleryTeleportScriptTest {
++    @Test
++    fun GameTestState.`a use swaps the necklace for one charge less`() =
++        runInjectedGameTest(JewelleryTeleportScript::class, null, JewelleryTeleportScript::class) { script ->
++            prepare()
++            player.inv[0] = obj("obj.necklace_of_minigames_8")
++            assertTrue(use(script, "dbrow.jewellery_teleport_games_necklace_8", inventory = true))
++            assertEquals(0, player.inv.count("obj.necklace_of_minigames_8"))
++            assertEquals(1, player.inv.count("obj.necklace_of_minigames_7"))
++            val sent = client.mapOf(MessageGame::message)
++            assertTrue("You rub the necklace..." in sent, sent.toString())
++            assertTrue(sent.any { "Your games necklace has seven uses left." in it }, sent.toString())
++        }
++
++    @Test
++    fun GameTestState.`the last ring charge crumbles, the last glory charge leaves the amulet`() =
++        runInjectedGameTest(JewelleryTeleportScript::class, null, JewelleryTeleportScript::class) { script ->
++            prepare()
++            player.inv[0] = obj("obj.ring_of_dueling_1")
++            assertTrue(use(script, "dbrow.jewellery_teleport_ring_of_dueling_1", inventory = true))
++            assertEquals(0, player.inv.count("obj.ring_of_dueling_1"))
++            assertEquals(0, player.inv.occupiedSpace())
++            player.worn[NECK_SLOT] = obj("obj.amulet_of_glory_1")
++            assertTrue(use(script, "dbrow.jewellery_teleport_amulet_of_glory_1", inventory = false))
++            assertEquals(0, player.worn.count("obj.amulet_of_glory_1"))
++            assertEquals(1, player.worn.count("obj.amulet_of_glory"))
++            val sent = client.mapOf(MessageGame::message)
++            assertTrue(sent.any { "Your ring of dueling crumbles to dust." in it }, sent.toString())
++            assertTrue(sent.any { "You use your amulet's last charge." in it }, sent.toString())
++        }
++
++    @Test
++    fun GameTestState.`no item, no charge and no teleport`() =
++        runInjectedGameTest(JewelleryTeleportScript::class, null, JewelleryTeleportScript::class) { script ->
++            prepare()
++            assertFalse(use(script, "dbrow.jewellery_teleport_games_necklace_3", inventory = true))
++            assertEquals(0, player.inv.occupiedSpace())
++        }
++
++    private fun GameTestScope.use(script: JewelleryTeleportScript, row: String, inventory: Boolean): Boolean {
++        var used = false
++        val item = JewelleryTeleportItemsRow.getRow(row)
++        with(script) {
++            player.withProtectedAccess { used = useCharge(item, if (inventory) player.inv else player.worn) }
++        }
++        return used
++    }
++
++    private fun obj(name: String) = InvObj(name.asRSCM(RSCMType.OBJ), 1)
++
++    private fun GameTestScope.prepare() {
++        val center = CoordGrid(0, 50, 50, 20, 20)
++        allocZoneCollision(center)
++        player.teleport(center)
++        player.clearInv()
++    }
++
++    private companion object {
++        const val NECK_SLOT = 2
++    }
++}
+diff --git a/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
+new file mode 100644
+index 000000000..9747a9c3b
+--- /dev/null
++++ b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
+@@ -0,0 +1,127 @@
++package org.rsmod.content.travel.jewellery
++
++import dev.openrune.rscm.RSCM
++import dev.openrune.rscm.RSCMType
++import jakarta.inject.Inject
++import org.rsmod.api.area.checker.AreaChecker
++import org.rsmod.api.player.hook.PlayerTeleportValidator
++import org.rsmod.api.player.hook.TeleportType
++import org.rsmod.api.player.output.ChatType
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.script.onOpHeld3
++import org.rsmod.api.script.onOpWorn2
++import org.rsmod.api.script.onOpWorn3
++import org.rsmod.api.script.onOpWorn4
++import org.rsmod.api.script.onOpWorn5
++import org.rsmod.api.script.onOpWorn6
++import org.rsmod.api.script.onOpWorn7
++import org.rsmod.api.table.JewelleryTeleportDestsRow
++import org.rsmod.api.table.JewelleryTeleportItemsRow
++import org.rsmod.game.inv.Inventory
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Games necklace, ring of dueling, amulet of glory, skills necklace and combat bracelet teleports
++ * (OSRS Wiki item pages). Rub (held
++ * op 3) opens the teleport menu (interface 187 through script 217 with hotkeys, which RuneLite's
++ * Better Teleport Menu decorates); the worn ops after Remove teleport straight to a destination.
++ * Each teleport uses a charge: "You rub the necklace..." then "Your games necklace has three uses
++ * left." or, on the last charge, "Your games necklace crumbles to dust." (wiki; the glory's last
++ * charge leaves an uncharged amulet).
++ *
++ * Guesses: the menu title, the glory/skills/combat charge lines ("...has three charges left.", "You
++ * use your amulet's last charge."), the purple colour value, the teleport timing (the standard 714/111
++ * jewellery animation, 4 ticks), the plane of the Corporeal Beast and Tears of Guthix tiles. Not
++ * done: destination requirements (Tears of Guthix quest, Zeah visit, Colosseum Hero title), the
++ * wiki's random landing radius, the Wilderness 30 glory rule beyond the teleport validator's type.
++ */
++class JewelleryTeleportScript
++@Inject
++constructor(private val validator: PlayerTeleportValidator, private val areaChecker: AreaChecker) :
++    PluginScript() {
++    override fun ScriptContext.startup() {
++        for (item in JewelleryTeleportItemsRow.all()) {
++            val obj = item.obj.internalName
++            onOpHeld3(obj) { rub(item) }
++            destinations(item).forEachIndexed { i, dest ->
++                val go: suspend ProtectedAccess.() -> Unit = { teleport(item, dest, player.worn) }
++                when (i) {
++                    0 -> onOpWorn2(obj) { go() }
++                    1 -> onOpWorn3(obj) { go() }
++                    2 -> onOpWorn4(obj) { go() }
++                    3 -> onOpWorn5(obj) { go() }
++                    4 -> onOpWorn6(obj) { go() }
++                    5 -> onOpWorn7(obj) { go() }
++                }
++            }
++        }
++    }
++
++    suspend fun ProtectedAccess.rub(item: JewelleryTeleportItemsRow) {
++        val dests = destinations(item)
++        val choice = menu(MENU_TITLE, hotkeys = true, choices = dests.map { it.name })
++        val dest = dests.getOrNull(choice) ?: return
++        teleport(item, dest, inv)
++    }
++
++    /** Uses one charge of [item] in [from] and teleports to [dest]; nothing happens when denied. */
++    suspend fun ProtectedAccess.teleport(
++        item: JewelleryTeleportItemsRow,
++        dest: JewelleryTeleportDestsRow,
++        from: Inventory,
++    ) {
++        if (actionDelay > mapClock) return
++        val type = if (item.wilderness30 == 1) TeleportType.MemberLevel30 else TeleportType.Standard
++        val denial = validator.validate(player, type, areaChecker)
++        if (denial != null) {
++            mes(denial, ChatType.Engine)
++            return
++        }
++        if (!useCharge(item, from)) return
++        actionDelay = mapClock + TELEPORT_DELAY + 1
++        anim(TELEPORT_ANIM)
++        spotanim(TELEPORT_SPOTANIM, height = TELEPORT_SPOTANIM_HEIGHT)
++        soundSynth(TELEPORT_SOUND)
++        delay(TELEPORT_DELAY)
++        telejump(dest.coords, type)
++        resetAnim()
++    }
++
++    /** Swaps [item] in [from] for its next charge (or removes it) and sends the charge messages. */
++    fun ProtectedAccess.useCharge(item: JewelleryTeleportItemsRow, from: Inventory): Boolean {
++        val obj = item.obj.internalName
++        val used =
++            if (item.crumbles == 1) invDel(from, obj, 1) else invReplace(from, obj, 1, item.next.internalName)
++        if (used.failure) return false
++        mes("You rub the ${item.rubWord}...")
++        val left = item.charges - 1
++        val line =
++            when {
++                item.crumbles == 1 -> "Your ${item.name} crumbles to dust."
++                left == 0 -> "You use your ${item.rubWord}'s last charge."
++                item.wilderness30 == 1 -> "Your ${item.name} has ${words(left)} charge${plural(left)} left."
++                else -> "Your ${item.name} has ${words(left)} use${plural(left)} left."
++            }
++        mes("<col=$PURPLE>$line</col>")
++        return true
++    }
++
++    private fun destinations(item: JewelleryTeleportItemsRow): List<JewelleryTeleportDestsRow> =
++        JewelleryTeleportDestsRow.all().filter { it.family == item.family }.sortedBy { it.index }
++
++    private fun plural(count: Int): String = if (count == 1) "" else "s"
++
++    private fun words(count: Int): String = NUMBER_WORDS.getOrElse(count) { count.toString() }
++
++    companion object {
++        const val MENU_TITLE = "Where would you like to teleport to?"
++        const val PURPLE = "7f007f"
++        const val TELEPORT_SOUND = "synth.teleport_all"
++        const val TELEPORT_DELAY = 4
++        const val TELEPORT_SPOTANIM_HEIGHT = 92
++        val TELEPORT_ANIM: String = RSCM.getReverseMapping(RSCMType.SEQ, 714)
++        val TELEPORT_SPOTANIM: String = RSCM.getReverseMapping(RSCMType.SPOTANIM, 111)
++        val NUMBER_WORDS = listOf("zero", "one", "two", "three", "four", "five", "six", "seven")
++    }
++}
+diff --git a/content/travel/jewellery-teleports/src/main/resources/gamevals.toml b/content/travel/jewellery-teleports/src/main/resources/gamevals.toml
+new file mode 100644
+index 000000000..d962a9ba2
+--- /dev/null
++++ b/content/travel/jewellery-teleports/src/main/resources/gamevals.toml
+@@ -0,0 +1,62 @@
++[gamevals.dbtable]
++jewellery_teleport_items = 60020
++jewellery_teleport_dests = 60021
++
++[gamevals.dbrow]
++jewellery_teleport_games_necklace_1 = 60500
++jewellery_teleport_games_necklace_2 = 60501
++jewellery_teleport_games_necklace_3 = 60502
++jewellery_teleport_games_necklace_4 = 60503
++jewellery_teleport_games_necklace_5 = 60504
++jewellery_teleport_games_necklace_6 = 60505
++jewellery_teleport_games_necklace_7 = 60506
++jewellery_teleport_games_necklace_8 = 60507
++jewellery_teleport_ring_of_dueling_1 = 60508
++jewellery_teleport_ring_of_dueling_2 = 60509
++jewellery_teleport_ring_of_dueling_3 = 60510
++jewellery_teleport_ring_of_dueling_4 = 60511
++jewellery_teleport_ring_of_dueling_5 = 60512
++jewellery_teleport_ring_of_dueling_6 = 60513
++jewellery_teleport_ring_of_dueling_7 = 60514
++jewellery_teleport_ring_of_dueling_8 = 60515
++jewellery_teleport_amulet_of_glory_1 = 60516
++jewellery_teleport_amulet_of_glory_2 = 60517
++jewellery_teleport_amulet_of_glory_3 = 60518
++jewellery_teleport_amulet_of_glory_4 = 60519
++jewellery_teleport_amulet_of_glory_5 = 60520
++jewellery_teleport_amulet_of_glory_6 = 60521
++jewellery_teleport_dest_games_burthorpe = 60522
++jewellery_teleport_dest_games_barbarian_outpost = 60523
++jewellery_teleport_dest_games_corporeal_beast = 60524
++jewellery_teleport_dest_games_tears_of_guthix = 60525
++jewellery_teleport_dest_games_wintertodt = 60526
++jewellery_teleport_dest_dueling_emirs_arena = 60527
++jewellery_teleport_dest_dueling_castle_wars = 60528
++jewellery_teleport_dest_dueling_ferox_enclave = 60529
++jewellery_teleport_dest_dueling_fortis_colosseum = 60530
++jewellery_teleport_dest_glory_edgeville = 60531
++jewellery_teleport_dest_glory_karamja = 60532
++jewellery_teleport_dest_glory_draynor_village = 60533
++jewellery_teleport_dest_glory_al_kharid = 60534
++jewellery_teleport_skills_necklace_1 = 60535
++jewellery_teleport_skills_necklace_2 = 60536
++jewellery_teleport_skills_necklace_3 = 60537
++jewellery_teleport_skills_necklace_4 = 60538
++jewellery_teleport_skills_necklace_5 = 60539
++jewellery_teleport_skills_necklace_6 = 60540
++jewellery_teleport_combat_bracelet_1 = 60541
++jewellery_teleport_combat_bracelet_2 = 60542
++jewellery_teleport_combat_bracelet_3 = 60543
++jewellery_teleport_combat_bracelet_4 = 60544
++jewellery_teleport_combat_bracelet_5 = 60545
++jewellery_teleport_combat_bracelet_6 = 60546
++jewellery_teleport_dest_skills_fishing_guild = 60547
++jewellery_teleport_dest_skills_mining_guild = 60548
++jewellery_teleport_dest_skills_crafting_guild = 60549
++jewellery_teleport_dest_skills_cooking_guild = 60550
++jewellery_teleport_dest_skills_woodcutting_guild = 60551
++jewellery_teleport_dest_skills_farming_guild = 60552
++jewellery_teleport_dest_combat_warriors_guild = 60553
++jewellery_teleport_dest_combat_champions_guild = 60554
++jewellery_teleport_dest_combat_monastery = 60555
++jewellery_teleport_dest_combat_ranging_guild = 60556
 diff --git a/engine/game/src/main/kotlin/org/rsmod/game/debug/TestFlags.kt b/engine/game/src/main/kotlin/org/rsmod/game/debug/TestFlags.kt
 new file mode 100644
 index 000000000..713d0fe77

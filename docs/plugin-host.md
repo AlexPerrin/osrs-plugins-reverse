@@ -92,11 +92,11 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Rune Pouch | starts | starts (2026-10-17); pouch not checked |
 | Virtual Levels | starts | starts (2026-10-17); not checked |
 | Ammo | runs | the worn 50 bronze arrows show as a "50" arrow infobox (2026-10-17). It compares `event.getItemContainer() != client.getItemContainer(EQUIPMENT)` by identity, so the host now returns the same container instance while an inventory is unchanged |
-| Metronome | starts | starts; its onGameTick threw (Client.getPreferences missing, added 2026-10-17, not re-run: the 2026-10-17 re-run loaded the hub Visual Metronome by mistake) |
+| Metronome | starts | starts; no errors over login and ticks since getPreferences (2026-10-17). Its tick/tock sounds need audio, which the host lacks (no javax.sound) |
 | Hunter | starts | starts (2026-10-17); traps not checked |
 | Quest List | starts | starts (2026-10-17); not checked |
 | Chat Commands | starts | starts (2026-10-17); not checked |
-| Fairy Rings | starts | starts (2026-10-17); not checked |
+| Fairy Rings | starts | starts; `::interface 398` opens the ring dial without errors (2026-10-17). Its code list and search live in the travel-log panel the server doesn't open with it, so not checked |
 | Item Prices | starts | starts (2026-10-17); hover prices don't apply on mobile |
 | Screen Markers | starts | starts (2026-10-17); not checked |
 | Friend Notes | starts | starts (2026-10-17); not checked |
@@ -125,7 +125,7 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Banked Experience | starts | sidebar panel renders; the skill combo shows "Construction" and its Android list the skill names (the renderer's JLabel text, `Sidebar.comboLabel`, verified 2026-10-16); banked XP from a bank not checked |
 | Kitten Tracker | starts | not checked |
 | Large Logout | starts | resizes desktop's logout tab (Logout interface, scripts 2243/892); the mobile UI's logout is elsewhere, not checked |
-| Radius Markers | starts | not checked |
+| Radius Markers | runs | sidebar "+" adds a marker at the player's feet: the spawn tile and the range lines are drawn in the scene (2026-10-17) |
 | Skills Tab Progress Bars | runs | builds its bars with createChild in the game's stats tab (CC_CREATE, default on): after `::reset` and a few hits on a rat, red progress bars on Attack/Strength/Defence/Hitpoints over a dark background bar; 17 dynamic children per tile (game's 12 + its 5) before and after reopening the tab 3x, clean fresh login (verified 2026-10-16). Its ScriptPreFired needed ScriptEvent.getSource() |
 | Tree Despawn Timer | runs | pie timer over a Lumbridge oak while chopping, green to yellow (verified 2026-10-16). Its onGameTick threw on the first ticks of a login (no local player yet), so GameTick now waits for the local player. Needed Java 9 Duration methods (CompatRewrite) |
 | Max Hit | runs | "Max Hit: 11.0" overlay (verified 2026-10-16) |
@@ -135,7 +135,7 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Spawn Predictor | starts | starts; its NPE on GameStateChanged(LOGGED_IN) (no local player yet) is gone since LOGGED_IN waits for the local player (2026-10-17); not checked (Fight Caves) |
 | Barrows Door Highlighter | starts | starts (2026-10-17); not checked (Barrows) |
 | Better Teleport Menu | starts | starts (2026-10-17); not checked |
-| Wilderness Player Alarm | starts | starts (2026-10-17); needs another player in the Wilderness |
+| Wilderness Player Alarm | runs | Wilderness level 2 (`::tele 3100 3530`, varbit 5963 = 1) with the desktop player 2 tiles away: the screen flashes its yellow wash (2026-10-17) |
 | Hunter Rumours | runs | starts; its sidebar panel lists the 29 creatures with a location picker each (2026-10-17, after the non-null `getAccessibleContext()`); rumours not tried |
 | Ess Pouch | starts | starts (2026-10-17); pouches not checked |
 | Plank Sack | starts | starts (2026-10-17); not checked |

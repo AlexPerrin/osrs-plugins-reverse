@@ -5705,10 +5705,10 @@ index a8bc2108d..9cf4c201c 100644
  
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt
 new file mode 100644
-index 000000000..3374fee41
+index 000000000..16e7d2d4f
 --- /dev/null
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt
-@@ -0,0 +1,258 @@
+@@ -0,0 +1,266 @@
 +package org.rsmod.content.other.commands
 +
 +import jakarta.inject.Inject
@@ -5721,6 +5721,7 @@ index 000000000..3374fee41
 +import net.rsprot.protocol.game.outgoing.friendchat.UpdateFriendChatChannelFullV2
 +import net.rsprot.protocol.game.outgoing.friendchat.UpdateFriendChatChannelSingleUser
 +import org.rsmod.api.player.output.mes
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
 +import org.rsmod.api.server.config.ServerConfig
 +import org.rsmod.game.cheat.Cheat
 +import org.rsmod.game.entity.Player
@@ -5742,7 +5743,8 @@ index 000000000..3374fee41
 + * Ranks are guesses from RuneLite's FriendsChatRank / ClanRank: friends chat 7 owner, 0 friend,
 + * 4 lieutenant, kick rank 7; clan 126 owner, 100 administrator, 10 the first clan rank, -1 guest.
 + * CLANSETTINGS_FULL goes with each clan channel (the clan tab waits for it); rune days count from
-+ * 2002-02-27 (guess).
++ * 2002-02-27 (guess). The clan tab (`clan_sidepanel_draw`) also needs varbit clan_affinitystatus 3
++ * ("Connecting..." at 0, "No current clan" at 1).
 + */
 +class ChatChannelTestCommands @Inject constructor(private val config: ServerConfig) :
 +    PluginScript() {
@@ -5809,6 +5811,7 @@ index 000000000..3374fee41
 +        player.client.write(
 +            clanSettings(CLAN_TYPE_MAIN, CLAN_NAME, state.clanMembers.map { it to clanRank(self, it) }),
 +        )
++        VarPlayerIntMapSetter.set(player, "varbit.clan_affinitystatus", AFFINITY_IN_CLAN)
 +        player.mes("Joined friends chat '$FC_NAME' and clan '$CLAN_NAME' (${state.fcMembers.size} members).")
 +    }
 +
@@ -5835,6 +5838,7 @@ index 000000000..3374fee41
 +        player.client.write(
 +            clanSettings(CLAN_TYPE_GUEST, GUEST_NAME, members.map { it to CLAN_RANK_FIRST }),
 +        )
++        VarPlayerIntMapSetter.set(player, "varbit.clan_guest_affinitystatus", AFFINITY_IN_CLAN)
 +        members += player.displayName
 +        player.mes("Joined guest clan channel '$GUEST_NAME' (${members.size} members).")
 +    }
@@ -5903,6 +5907,8 @@ index 000000000..3374fee41
 +            player.client.write(ClanChannelFull(CLAN_TYPE_GUEST, ClanChannelFull.LeaveUpdate))
 +            player.client.write(ClanSettingsFull(CLAN_TYPE_GUEST, ClanSettingsFull.LeaveUpdate))
 +        }
++        VarPlayerIntMapSetter.set(player, "varbit.clan_affinitystatus", AFFINITY_NO_CLAN)
++        VarPlayerIntMapSetter.set(player, "varbit.clan_guest_affinitystatus", AFFINITY_NO_CLAN)
 +        player.mes("Left the fake friends chat and clan channels.")
 +    }
 +
@@ -5964,6 +5970,8 @@ index 000000000..3374fee41
 +        const val CLAN_RANK_FIRST = 10
 +        const val CLAN_RANK_ADMIN = 100
 +        const val CLAN_RANK_OWNER = 126
++        const val AFFINITY_NO_CLAN = 1
++        const val AFFINITY_IN_CLAN = 3
 +        const val RUNE_DAY_EPOCH_MILLIS = 1_014_768_000_000L
 +    }
 +}
@@ -6809,7 +6817,7 @@ index 000000000..724a884e2
 +mcannon_fire = 440
 +mcannon_decay = 441
 diff --git a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
-index a325cee80..a977ca49b 100644
+index a325cee80..55ca53220 100644
 --- a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 +++ b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 @@ -12,6 +12,8 @@ import net.rsprot.protocol.game.outgoing.misc.client.HideObjOps
@@ -6844,7 +6852,7 @@ index a325cee80..a977ca49b 100644
  ) : PluginScript() {
      private val statSyncEntries by lazy { statSyncEntries() }
  
-@@ -56,12 +61,54 @@ constructor(
+@@ -56,12 +61,58 @@ constructor(
  
      override fun ScriptContext.startup() {
          onEvent<SessionStateEvent.EngineLogin>(0L) { player.engineLogin() }
@@ -6879,6 +6887,10 @@ index a325cee80..a977ca49b 100644
          sendHighPriority()
          sendLowPriority()
          VarPlayerIntMapSetter.set(this, "varbit.player_in_instance", 0)
++        // osrs-plugins-reverse: no clans on this server; the clan tabs say "No current clan"
++        // instead of "Connecting..." (clan_sidepanel_draw / script4288). 1 is a guess.
++        VarPlayerIntMapSetter.set(this, "varbit.clan_affinitystatus", 1)
++        VarPlayerIntMapSetter.set(this, "varbit.clan_guest_affinitystatus", 1)
 +        resendSocialWhenLoaded()
 +    }
 +
@@ -6899,7 +6911,7 @@ index a325cee80..a977ca49b 100644
      }
  
      private fun Player.sendHighPriority() {
-@@ -107,10 +154,15 @@ constructor(
+@@ -107,10 +158,15 @@ constructor(
          client.write(HideObjOps(false))
      }
  
@@ -6916,7 +6928,7 @@ index a325cee80..a977ca49b 100644
          }
  
          val broadcast = realm.config.loginBroadcast
-@@ -186,6 +238,8 @@ constructor(
+@@ -186,6 +242,8 @@ constructor(
          }
  
      private companion object {

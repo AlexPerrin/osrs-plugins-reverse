@@ -1466,3 +1466,19 @@ clan hall, guest channels, events) are bigger again (several days).
   app restart and relog. The sawmill and the other hooks are covered only by the integration tests.
 - Deploy with `openrune/scripts/openrune.sh deploy` (= `docker compose --env-file switch.env up -d
   --build`); a bare `docker compose up` comes up on 40255/8081.
+
+### Device run 14:00 (7b070bc) (seventeenth server dev)
+
+- CLANSETTINGS_FULL alone did not fill "Your Clan": `clan_sidepanel_draw` (osrs-dumps rev 241) draws the
+  clan only when varbit `clan_affinitystatus` (933) = 3 and `activeclansettings_find_affined(clan)`;
+  `script4288` maps the status to "Connecting..." (0), "No current clan" (1, 3 without settings),
+  "Fetching data..." (2). The guest panel uses `clan_guest_affinitystatus` (12164) and the listened
+  settings. Fixed after the run: `::fakeclan` sets them to 3 (leave: 1), and the login sets both to 1 for
+  everyone (no clans here), so the tab says "No current clan" instead of "Connecting..." (1 is a **guess**).
+  Not device-checked yet.
+- Friend List **device-checked** with the headless desktop login (`tools/multiclient/desktop_login.py
+  --user desktop`): the tester's friends tab shows desktop on "World 255" with "desktop has logged in.",
+  then "Offline" with "desktop has logged out." a few seconds after the desktop session ends.
+- "Test FC" shows as "Test Fc": the friends chat name travels only as a base37 long
+  (`channelNameBase37`; base37 has no case), and the client formats it itself. The owner is a plain
+  string (shown as sent). Nothing to fix on the server.

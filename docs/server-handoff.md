@@ -25,27 +25,36 @@ this repo's `rsprot.patch`) all run there.
 
 Details in `docs/openrune-port.md`, "Fourteenth server dev". Protocol unchanged.
 
-- **Deployed** 13:01 UTC: everything up to 2c1789e (640abbd Rumours part 1, b4acf3d butterfly
-  netting, 2c1789e guild hunter/Verity dialogues + jerboas). Tester LOGGED_IN at Lumbridge on the
-  normal build; Hunter 14M XP; Rumours unlocked (Verity), one rumour completed, current rumour Gilman's
-  red chinchompa; inventory full (a basic loot sack replaced a copper ore).
-- **Device-checked** with the hub Hunter Rumours plugin: assignment, remind and hand-in by dialogue
-  (plugin infobox follows), "red chinchompa". Not device-checked: butterfly catches, jerboas, switch
-  lines, back-to-back toggle.
-- **Butterfly netting** (`ButterflyScript`, dbtable `hunter_butterflies` 60019): net / magic net /
-  barehanded +10, wiki success charts, jars and Release effects, 5 butterfly/moth rumours.
-- **Guild dialogues** (`HunterGuildScript`): the plugin's matching rules are in the port doc (read
-  from its dex in the previous dev's scratch `gaps/hunter-rumours/classes.dex.txt`).
-- **Embertailed jerboa** in box traps (row 60361) and as a rumour (60496).
-- **Device tip:** Burrow npcs wander; `::npc 500 hg_<name>` spawns one on the player, then long-press
-  the player's position. `::item` with a full inventory says "x 0".
-- **Upstream:** 41 (butterfly netting), 42 (guild dialogues, jerboas); all 42 `git am` on the pin.
-- **Next (orchestrator to rank/approve; nothing started):** follower varp 447 = 0 after a relog
-  (Kitten Tracker; `PetFollowers.spawn` sets `follower_npc` on the post tick, so look at the login
-  varp sync order), jewellery teleport menus (Better Teleport Menu; games necklace says "Nothing
-  interesting happens."), a real Barrows crypt kill on the device, Spawn Predictor (Fight Caves,
-  multi-day). Held by the orchestrator: deadfall/net trap/falconry/pits/tracking. FRIENDLIST_DEL
-  (low priority).
+- **Deployed** 13:37 UTC: everything up to 5e0e648 (Rumours part 1, butterfly netting, guild
+  dialogues + jerboas, the varps-before-first-tick fix, jewellery teleports with Rub on op 4).
+  Tester LOGGED_IN at Lumbridge on the normal build; Hunter 14M XP; Rumours unlocked, one completed,
+  current rumour Gilman's red chinchompa; Ahrim killed in the current Barrows run; inventory full
+  (a basic loot sack and a games necklace(8) replaced two copper ores).
+- **Device-checked:** Hunters' Rumours dialogues with the hub plugin (assign, remind, hand-in, "red
+  chinchompa"); Kitten Tracker after relogs (varp fix); Barrows kill varbits with the Barrows plugin.
+  Not device-checked: butterfly catches, jerboas, rumour switch lines, Verity's back-to-back toggle,
+  worn jewellery destination ops.
+- **Varps set before the first processed tick** (`Player.varpsSetBeforeFirstTick`, flushed in
+  `PlayerMainProcess`): generic fix for varps the setters dropped between the login sync and the
+  first tick (follower_npc was one).
+- **Jewellery teleports** (`content/travel/jewellery-teleports`): games necklace, dueling, glory,
+  skills necklace, combat bracelet. **Open:** on Android the Rub menu (interface 187, script 217,
+  `ProtectedAccess.menu`) shows but a tap selects nothing. The entries are `cc_create` text
+  components with no ops (osrs-dumps `[proc,menu_createentry]`; on mobile script 217 forces
+  hotkeys off), selected through `ifSetEvents(menu:lj_layer1, 0..127, PauseButton)`. Next: a device
+  slot with `LOG_ANDROID_PACKETS=true` to see what a tap sends (nothing, an IF_BUTTON, or a
+  RESUME_PAUSEBUTTON the server drops), and compare with the working chatmenu options. If the
+  mobile client never resumes 187, consider the chatbox `choice` menu for mobile players
+  (`Player.mobileClient`) as a stopgap. Affects every `menu()` user (dog shelter Chase too).
+- **Device tips:** Burrow npcs wander; `::npc 500 hg_<name>` spawns one on the player. `::item` with
+  a full inventory gives "x 0". `server/tools/device.sh login` can hit "Sign out" when the screen is
+  not the one it expects (answer No). Barrows: the Strange Old Man blocks digging until his quest;
+  `::tele 3557 9700 3` lands in Ahrim's crypt.
+- **Upstream:** 41 butterfly netting, 42 guild dialogues, 43 varps before the first tick, 44
+  jewellery teleports; all 44 `git am` on the pin (scratch clone recipe as before).
+- **Next (ranked with the orchestrator):** the jewellery menu tap on Android (above); then
+  orchestrator's choice. Held: deadfall/net trap/falconry/pits/tracking (Rumours), Spawn Predictor.
+  Low priority: FRIENDLIST_DEL.
 
 ## Latest state (2026-10-17, thirteenth server dev, on OpenRune)
 

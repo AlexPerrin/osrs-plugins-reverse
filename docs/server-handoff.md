@@ -21,6 +21,43 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-17, thirteenth server dev, on OpenRune)
+
+Details in `docs/openrune-port.md`, "Thirteenth server dev". Protocol unchanged.
+
+- **Deployed** 12:14 UTC: everything up to 14127aa (424fc37 Varrock platebody smelting, 11ac6d7
+  social resend off by default, e8cc07c + 14127aa Herbiboar). Tester LOGGED_IN at Lumbridge on the
+  normal build with the kitten; wears Varrock armour 1; Hunter and Herblore 14M XP; carries 3 copper
+  ore, a bronze bar, a chinchompa and an unidentified fossil.
+- **Varrock platebody** (`SmeltingScript`): the extra bar smelts the next ore set (its own ores and
+  XP) with the Smelting plugin's spam line "The Varrock platebody enabled you to smelt your next ore
+  simultaneously." ("simultaneously." and the Make-X handling are guesses). Tier caps already in
+  `SmithingBonuses` (steel/mithril/adamant/any by armour 1-4, Edgeville only). The extra bar itself
+  was not seen on the device (10%); a bronze bar and the plugin's "Bars: 1" were.
+- **Box traps device-checked** (chinchompa caught, Check, plugin trap tracking).
+- **Herbiboar** (`HerbiboarScript`, pack `HerbiboarTables`, dbtables 60013-60016, varps 63890-63891):
+  device-checked end to end with the core Herbiboar plugin (start, 3 clue spots, tunnel 8, harvest).
+  The network was dumped from the map with a throwaway test (`MapLocListDecoder` over map squares
+  56-59 x 58-61; a scratch test in a module that has fastutil on its test classpath, e.g. draynor's
+  `src/test`; remove it before `export`). Trail values: dir = hidden next leg, dir+2 revealed,
+  dir+4 faded (confirmed by the plugin on the device).
+- **Client-side gap (relayed to the client dev):** `AndroidClient.getMapRegions()` is empty while
+  LOADING, so region checks done in `GameStateChanged(LOADING)` (Herbiboar plugin) fail after a
+  teleport/login. Device workaround: `adb shell "setprop debug.osrsrl.probe 'HerbiboarPlugin.startUp()'"`
+  then clear it. The probe (`debug.osrsrl.probe <Plugin.field|method()>`) is handy for reading any
+  plugin's state.
+- **Upstream:** 38 (Varrock platebody, needs 09), 39 (Herbiboar, needs 15/20/35); all 39 `git am`
+  on the pin (the scratch clone with 01-39 applied makes the next patch easy: copy files, commit,
+  `format-patch -1`).
+- **`server/tools/device.sh login`** now checks the OpenRune log (`GAME_CONTAINER` overrides).
+- **Next (sized, sent to the orchestrator):**
+  1. Hunter Rumours (~1.5-2 d, +0.5 d for opening loot sacks): plugin reads npc DIALOG chat
+     messages in the Burrow (1549-1565, 9449-9464), the rare-part and whistle game messages and
+     Hunter XP drops. Npcs already spawned (`hunter_guild.toml`). Wiki transcripts have the lines.
+     Only wagtail, grey/red chinchompa and herbiboar are catchable here; assign only those. Risk:
+     the host may not emit DIALOG ChatMessages (ask the client dev).
+  2. FRIENDLIST_DEL on Android (low priority, see the twelfth dev's notes).
+
 ## Latest state (2026-10-17, twelfth server dev, on OpenRune)
 
 Details in `docs/openrune-port.md`, "Twelfth server dev".

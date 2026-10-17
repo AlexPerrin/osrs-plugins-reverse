@@ -755,6 +755,7 @@ public final class Host {
                 return;
             }
             if (id == QUEST_FILTER_PROC) questFilter(bus, ac, phase);
+            if (id == BANK_SEARCH_FILTER_PROC) bankSearchFilter(bus, ac, phase);
             if (phase == 1) {
                 ScriptCallbacks.onReturn(bus, ac, id);
                 ac.beginScriptEvent();  // the callback's fake stacks end here
@@ -790,6 +791,41 @@ public final class Host {
      * questFilter check before the proc's own filters is lost when the answer is -1, which leaves
      * the game's result as is.
      */
+    /**
+     * RuneLite's patched bank search filter proc 279 (BankSearchFilter.rs2asm: args item id, filter
+     * string; returns 1 to show the item) starts with `iconst -1; iload 0; sload 0; runelite_callback
+     * "bankSearchFilter"` and returns the plugin's answer unless it is still -1 (Bank Tags: tag tabs
+     * and "tag:" searches). Raised here when the proc returns, the answer replacing its result.
+     * // unverified: that the mobile bank runs 279 (the desktop id) and with these args.
+     */
+    static final int BANK_SEARCH_FILTER_PROC = 279;
+    private static final java.util.ArrayDeque<Object[]> bankFilterArgs = new java.util.ArrayDeque<>();
+
+    private static void bankSearchFilter(EventBus bus, AndroidClient ac, int phase) {
+        if (phase == 0) {
+            int n = ac.getIntStackSize(), m = ac.getObjectStackSize();
+            Object top = m >= 1 ? ac.getObjectStack()[m - 1] : null;
+            bankFilterArgs.push(new Object[] {n >= 1 ? ac.getIntStack()[n - 1] : -1, top instanceof String ? top : null});
+            return;
+        }
+        if (phase != 1 || bankFilterArgs.isEmpty()) return;
+        Object[] args = bankFilterArgs.pop();
+        if (args[1] == null || !bus.hasSubscribers(net.runelite.api.events.ScriptCallbackEvent.class)) return;
+        int n = ac.getIntStackSize();
+        if (n < 1) return;
+        int[] live = java.util.Arrays.copyOf(ac.getIntStack(), n);
+        ac.fakeStacks(new int[] {-1, (Integer) args[0]}, new Object[] {args[1]});
+        net.runelite.api.events.ScriptCallbackEvent e = new net.runelite.api.events.ScriptCallbackEvent();
+        e.setEventName("bankSearchFilter");
+        bus.post(e);
+        int answer = ac.getIntStack()[0];
+        ac.beginScriptEvent();
+        if (answer != -1 && answer != live[n - 1]) {
+            live[n - 1] = answer;
+            Native.setScriptIntStack(live, n);
+        }
+    }
+
     static final int QUEST_FILTER_PROC = 3238;
     private static final java.util.ArrayDeque<Integer> questFilterRows = new java.util.ArrayDeque<>();
 

@@ -105,7 +105,8 @@ public class AndroidNPC extends NPCStub {
     @Override public int getGraphic() { return -1; }
     @Override public int getHealthRatio() { return healthRatio; }
     @Override public int getHealthScale() { return healthScale; }
-    @Override public boolean isDead() { return false; }
+    /** As desktop after a head bar update to 0 (RuneLite sets the actor dead then). ActorDeath is not posted. */
+    @Override public boolean isDead() { return healthScale > 0 && healthRatio == 0; }
     @Override public int getFootprintSize() {
         net.runelite.api.NPCComposition c = getComposition();
         return c != null ? Math.max(1, c.getSize()) : 1;

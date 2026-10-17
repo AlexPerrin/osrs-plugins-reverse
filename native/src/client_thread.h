@@ -39,7 +39,12 @@ using Listener = std::function<void(const Event&)>;
 // Patches Client vtable slot 5. False if the game build is unknown or the slot looks wrong.
 bool install();
 bool installed();
+// True on the game thread, and on the delegate thread while it holds the game's turn (the host's
+// Swing "EDT" runs plugin UI code while the game thread waits for it at a safe point in the cycle).
 bool on_client_thread();
+// Delegate: on = the calling thread counts as the client thread until set_delegate(false).
+// Only the host's EDT calls it, while the game thread is parked waiting for it.
+void set_delegate(bool on);
 
 // Listeners run on the game thread, after the game's own cycle.
 void subscribe(Listener listener);

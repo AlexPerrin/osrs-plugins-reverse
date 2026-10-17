@@ -389,19 +389,21 @@ bool update_plugin_texture(ContextState& st) {
     return true;
 }
 
-// `setprop debug.osrsrl.overlay 0` hides the debug window (checked about once a second);
-// plugin overlays are still drawn.
-bool debug_window_enabled() {
+// `setprop debug.osrsrl.overlay 0` hides the debug window, `2` shows it in full (NPC list and
+// recent events); otherwise it is a compact status block (checked about once a second).
+// Plugin overlays are still drawn. The window never takes touches (NoInputs, not in the
+// overlay_touch rects), but a full one covers much of the game's left side.
+int debug_window_mode() {
     static std::atomic<int64_t> next_check{0};
-    static std::atomic<bool> enabled{true};
+    static std::atomic<int> mode{1};
     int64_t now = std::chrono::steady_clock::now().time_since_epoch().count();
     if (now >= next_check.load(std::memory_order_relaxed)) {
         char value[PROP_VALUE_MAX] = {};
         __system_property_get("debug.osrsrl.overlay", value);
-        enabled = value[0] != '0';
+        mode = value[0] == '0' ? 0 : value[0] == '2' ? 2 : 1;
         next_check = now + std::chrono::nanoseconds(std::chrono::seconds(1)).count();
     }
-    return enabled;
+    return mode;
 }
 
 ContextState& state_for(EGLContext ctx, int height) {
@@ -540,27 +542,36 @@ void overlay_frame(EGLDisplay display, EGLSurface surface) {
         bg->AddImage(static_cast<ImTextureID>(st.plugin_tex), ImVec2(0, 0), ImVec2((float)w, (float)h));
         bg->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
     }
-    if (!debug_window_enabled() || g_sb_open) goto render;
-    ImGui::SetNextWindowPos(ImVec2(16, 16), ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.6f);
-    ImGui::Begin("osrsrl", nullptr,
-                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs);
-    ImGui::Text("RuneLite host: hooked (build %s)", game::build_name());
-    ImGui::Text("%dx%d  %.0f fps  frame %llu  tid %d", w, h, io.Framerate, (unsigned long long)st.frames, gettid());
-    if (game::available()) {
-        ImGui::Text("gameState %d  cycle %d  server tick %d", game::game_state(), game::cycle(), game::server_tick());
-        if (game::game_state() == 30) {
-            game::Point w = game::player_world(), l = game::player_local_tile(), f = game::player_fine();
-            ImGui::Text("player world %d,%d,%d  scene %d,%d  local %d,%d", w.x, w.y, game::player_plane(), l.x, l.y, f.x, f.y);
-            for (const game::Npc& n : client_thread::npcs())
-                ImGui::Text("npc #%d %s (%d) at %d,%d", n.index, n.name.c_str(), n.id, n.world_x, n.world_y);
+    if (g_sb_open) goto render;
+    if (int mode = debug_window_mode()) {
+        bool full = mode == 2;
+        ImGui::SetNextWindowPos(ImVec2(16, 16), ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(full ? 0.6f : 0.4f);
+        ImGui::Begin("osrsrl", nullptr,
+                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs);
+        if (!full) ImGui::SetWindowFontScale(0.8f);
+        ImGui::Text("RuneLite host: hooked (build %s)", game::build_name());
+        ImGui::Text("%dx%d  %.0f fps  frame %llu  tid %d", w, h, io.Framerate, (unsigned long long)st.frames, gettid());
+        if (game::available()) {
+            ImGui::Text("gameState %d  cycle %d  server tick %d", game::game_state(), game::cycle(), game::server_tick());
+            if (game::game_state() == 30) {
+                game::Point w = game::player_world(), l = game::player_local_tile(), f = game::player_fine();
+                ImGui::Text("player world %d,%d,%d  scene %d,%d  local %d,%d", w.x, w.y, game::player_plane(), l.x, l.y, f.x, f.y);
+                if (full) {
+                    for (const game::Npc& n : client_thread::npcs())
+                        ImGui::Text("npc #%d %s (%d) at %d,%d", n.index, n.name.c_str(), n.id, n.world_x, n.world_y);
+                } else {
+                    ImGui::Text("%zu npcs  (setprop debug.osrsrl.overlay 2: full)", client_thread::npcs().size());
+                }
+            }
+            ImGui::Text("client thread: %s, %llu cycles", client_thread::installed() ? "hooked" : "not hooked",
+                        (unsigned long long)client_thread::cycles());
+            ImGui::Text("plugin host: %s", jni_bridge_status());
+            if (full)
+                for (const std::string& line : client_thread::recent_events()) ImGui::TextUnformatted(line.c_str());
         }
-        ImGui::Text("client thread: %s, %llu cycles", client_thread::installed() ? "hooked" : "not hooked",
-                    (unsigned long long)client_thread::cycles());
-        ImGui::Text("plugin host: %s", jni_bridge_status());
-        for (const std::string& line : client_thread::recent_events()) ImGui::TextUnformatted(line.c_str());
+        ImGui::End();
     }
-    ImGui::End();
 render:
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

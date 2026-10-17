@@ -11,10 +11,12 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * JOptionPane's static dialogs (headless javax.swing.JOptionPane.__dialog) as modal Android
- * dialogs. Swing's dialogs block the caller until answered; so do these: the calling thread (the
- * game thread, from a sidebar tap or a plugin callback) waits while the dialog is up, which
- * freezes the game frames behind it like a modal window. On the Android UI thread they can't
- * block, so they answer at once as cancelled.
+ * dialogs. Swing's dialogs block the caller until answered; so do these. On the EDT (sidebar
+ * taps, invokeLater work) the EDT gives the game its turn back while waiting (Edt.release), so
+ * the game keeps running. On the game thread (a plugin callback) the wait freezes the game, and
+ * the server drops the client after ~35 s, so it is capped at GAME_THREAD_CAP_MS: then the dialog
+ * is dismissed and the answer is Cancel. On the Android UI thread they can't block, so they
+ * answer at once as cancelled.
  *
  * Kinds (the generated JOptionPane passes {message, title, options, initial, optionType}):
  * input (String or null), inputSelect (one of the options or null), confirm (YES 0 / NO 1 /
@@ -24,6 +26,8 @@ import java.util.concurrent.atomic.AtomicReference;
 final class ModalDialogs {
     private static final String TAG = "osrsrl-host";
     private static final long TIMEOUT_MIN = 10;
+    /** Longest a dialog may block the game thread (timeout = Cancel). */
+    static final long GAME_THREAD_CAP_MS = 15000;
 
     private ModalDialogs() {}
 
@@ -38,12 +42,13 @@ final class ModalDialogs {
         int optionType = a[4] instanceof Integer ? (Integer) a[4] : -1;
         Log.i(TAG, "JOptionPane " + kind + ": " + (title != null ? title + ": " : "") + message);
         if ("message".equals(kind)) {
-            post(dialog -> dialog.setPositiveButton("OK", null), title, message, null);
+            post(dialog -> dialog.setPositiveButton("OK", null), title, message, null, null);
             return null;
         }
         if (Looper.myLooper() == Looper.getMainLooper()) return cancelled(kind);
         final AtomicReference<Object> result = new AtomicReference<>(cancelled(kind));
         final CountDownLatch done = new CountDownLatch(1);
+        final AtomicReference<android.app.AlertDialog> shown = new AtomicReference<>();
         switch (kind) {
             case "input": {
                 final android.widget.EditText[] edit = new android.widget.EditText[1];
@@ -55,7 +60,7 @@ final class ModalDialogs {
                     b.setView(edit[0])
                         .setPositiveButton("OK", (d, w) -> result.set(edit[0].getText().toString()))
                         .setNegativeButton("Cancel", null);
-                }, title, message, done);
+                }, title, message, done, shown);
                 break;
             }
             case "inputSelect":
@@ -67,7 +72,7 @@ final class ModalDialogs {
                 // A list dialog can't show a message too: the message becomes the title.
                 String head = message.isEmpty() ? title : title != null ? title + ": " + message : message;
                 post(b -> b.setItems(labels, (d, w) -> result.set(index ? (Object) w : opts[w]))
-                    .setNegativeButton("Cancel", null), head, null, done);
+                    .setNegativeButton("Cancel", null), head, null, done, shown);
                 break;
             }
             case "confirm": {
@@ -79,16 +84,29 @@ final class ModalDialogs {
                         b.setPositiveButton("Yes", (d, w) -> result.set(0)).setNegativeButton("No", (d, w) -> result.set(1));
                         if (optionType != 0) b.setNeutralButton("Cancel", (d, w) -> result.set(2));
                     }
-                }, title, message, done);
+                }, title, message, done, shown);
                 break;
             }
             default:
                 return null;
         }
+        boolean edt = Edt.isEdt(), game = !edt && Native.isClientThread();
+        if (edt) Edt.release();
         try {
-            if (!done.await(TIMEOUT_MIN, TimeUnit.MINUTES)) Log.w(TAG, "JOptionPane " + kind + " timed out");
+            boolean answered = game ? done.await(GAME_THREAD_CAP_MS, TimeUnit.MILLISECONDS) : done.await(TIMEOUT_MIN, TimeUnit.MINUTES);
+            if (!answered) {
+                Log.w(TAG, "JOptionPane " + kind + " timed out" + (game ? " on the game thread (" + GAME_THREAD_CAP_MS + " ms cap): Cancel" : ""));
+                result.set(cancelled(kind));
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    android.app.AlertDialog d = shown.get();
+                    if (d != null) d.dismiss();
+                });
+                return cancelled(kind);
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        } finally {
+            if (edt) Edt.acquire();
         }
         return result.get();
     }
@@ -108,7 +126,7 @@ final class ModalDialogs {
     private interface KeyboardSetup extends Setup {}
 
     /** Shows a dialog on the UI thread; `done` counts down when it goes away (after its button handler). */
-    private static void post(Setup setup, String title, String message, CountDownLatch done) {
+    private static void post(Setup setup, String title, String message, CountDownLatch done, AtomicReference<android.app.AlertDialog> shown) {
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
                 Activity a = Sidebar.currentActivity();
@@ -121,6 +139,7 @@ final class ModalDialogs {
                 if (b.getContext() != null && setup instanceof KeyboardSetup)
                     d.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                 if (done != null) d.setOnDismissListener(x -> done.countDown());
+                if (shown != null) shown.set(d);
                 d.show();
             } catch (Throwable t) {
                 Log.e(TAG, "JOptionPane dialog failed", t);

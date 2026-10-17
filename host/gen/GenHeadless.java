@@ -444,9 +444,11 @@ public class GenHeadless {
                   .append(in).append("/** Host: the card show() selected in parent (default: the first child). */\n")
                   .append(in).append("public java.awt.Component __visibleCard(java.awt.Container p) { Object n = __current.get(p); Object v = n != null ? __cards.get(n) : null; if (v instanceof java.awt.Component) return (java.awt.Component) v; java.awt.Component[] cs = p.getComponents(); return cs.length > 0 ? cs[0] : null; }\n");
             if (c == javax.swing.SwingUtilities.class)
-                sb.append(in).append("/** Runnables posted to the \"EDT\"; the host drains them on the game thread (Sidebar.onCycle). */\n")
-                  .append(in).append("public static final java.util.concurrent.ConcurrentLinkedQueue<Runnable> __queue = new java.util.concurrent.ConcurrentLinkedQueue<Runnable>();\n")
-                  .append(in).append("public static volatile Thread __edt;\n");
+                sb.append(in).append("/** Runnables posted to the \"EDT\"; the host's EDT thread (Edt) runs them while the game thread waits. */\n")
+                  .append(in).append("public static final java.util.concurrent.LinkedBlockingQueue<Runnable> __queue = new java.util.concurrent.LinkedBlockingQueue<Runnable>();\n")
+                  .append(in).append("public static volatile Thread __edt;\n")
+                  .append(in).append("/** Host: runs invokeAndWait's runnable (null: queued without waiting). */\n")
+                  .append(in).append("public static volatile java.util.function.Consumer<Runnable> __invokeAndWait;\n");
             if (c == java.awt.Component.class) sb.append(in).append("java.awt.Container __parent;\n");
             // GroupLayout adds the components its groups name to the host container (Equipment Inspector).
             if (c == javax.swing.GroupLayout.class) sb.append(in).append("public java.awt.Container __host;\n");
@@ -566,14 +568,14 @@ public class GenHeadless {
         return "";
     }
 
-    /** Swing's event-dispatch entry points queue work for the host to run on the game thread. */
+    /** Swing's event-dispatch entry points queue work for the host's EDT (net.runelite.host.Edt). */
     static String staticBody(Class<?> c, Method x) {
         String n = x.getName();
         Class<?>[] ps = x.getParameterTypes();
         String q = "javax.swing.SwingUtilities.__queue";
         if ((c == javax.swing.SwingUtilities.class || c == java.awt.EventQueue.class) && ps.length == 1 && ps[0] == Runnable.class) {
             if (n.equals("invokeLater")) return q + ".add(a0);";
-            if (n.equals("invokeAndWait")) return "if (Thread.currentThread() == javax.swing.SwingUtilities.__edt) a0.run(); else " + q + ".add(a0);";
+            if (n.equals("invokeAndWait")) return "if (Thread.currentThread() == javax.swing.SwingUtilities.__edt) a0.run(); else if (javax.swing.SwingUtilities.__invokeAndWait != null) javax.swing.SwingUtilities.__invokeAndWait.accept(a0); else " + q + ".add(a0);";
         }
         if ((c == javax.swing.SwingUtilities.class || c == java.awt.EventQueue.class) && n.equals("isEventDispatchThread") && ps.length == 0)
             return "return Thread.currentThread() == javax.swing.SwingUtilities.__edt;";
@@ -622,6 +624,10 @@ public class GenHeadless {
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[1] == Object.class) return "if (a1 instanceof String) __cards.put(a1, a0);";
         }
         if (c == javax.swing.JPopupMenu.class && n.equals("show") && ps.length == 3) return "__shown = this;";
+        // Component.getFontMetrics: the shim's Paint-measured metrics (Loot Lookup's Util.truncateToFit
+        // measures labels); a null font measures the default one.
+        if (java.awt.Component.class.isAssignableFrom(c) && n.equals("getFontMetrics") && ps.length == 1 && ps[0] == java.awt.Font.class)
+            return "return java.awt.FontMetrics.of(a0 != null ? a0 : new java.awt.Font(java.awt.Font.DIALOG, java.awt.Font.PLAIN, 12));";
         if (c == javax.swing.JComboBox.class) {
             if (n.equals("addItem") && ps.length == 1) return "__items.add(a0); if (getSelectedItem() == null) setSelectedItem(a0);";
             if (n.equals("removeAllItems") && ps.length == 0) return "__items.clear();";

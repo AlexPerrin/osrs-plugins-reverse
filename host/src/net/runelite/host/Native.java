@@ -99,6 +99,10 @@ final class Native {
     /** {worldX, worldY, sceneX, sceneY, localX, localY, playerPlane, scenePlane}, or null when not logged in. */
     static native int[] playerPosition();
     static native boolean isClientThread();
+    /** Edt only: while on, the calling thread counts as the client thread natively (the game thread is parked). */
+    static native void setClientDelegate(boolean on);
+    /** Client.queueChangedSkill: the game's changed-skills ring (onStatTransmit redraws). Client thread only. */
+    static native boolean queueChangedSkill(int skill);
     /** Turns the script VM callbacks (Host.onScript) on or off. */
     static native void setScriptEvents(boolean on);
     /** The VM's live stacks (game thread): {int[] intStack (size entries), String[] objectStack}. */

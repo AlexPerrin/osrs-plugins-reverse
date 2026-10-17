@@ -34,7 +34,7 @@ import net.runelite.client.ui.NavigationButton;
  * B button, C checkbox (text prefixed with 0/1), T read-only text, A editable text area, X combo box,
  * H clickable panel, I icon-only clickable "<icon id>:<selected>")
  * after a header line "S\tselected\ttooltip...". The overlay sends back taps as (kind, index)
- * pairs, which are dispatched to the Swing listeners on the game thread.
+ * pairs, which are dispatched to the Swing listeners on the EDT (Edt).
  */
 final class Sidebar {
     /** Last touch/key event seen by the touch router (uptime ms), for the idle-tick getters. */
@@ -91,33 +91,53 @@ final class Sidebar {
         installTouchRouter(0);
     }
 
-    /** Game thread, every client cycle. */
+    /** A model build is queued on the EDT (not queued twice while the EDT is busy or in a dialog). */
+    private static final java.util.concurrent.atomic.AtomicBoolean buildQueued = new java.util.concurrent.atomic.AtomicBoolean();
+
+    /**
+     * Game thread, every client cycle: takes the overlay's taps and queues them (and the model
+     * build) for the EDT, then lets the EDT run (Edt.yieldToEdt). Long-press menu entries (kind 3)
+     * are game events and stay on the game thread.
+     */
     static void onCycle() {
-        runSwingQueue();
-        if (toolbar == null) return;
-        int[] ev = Native.sidebarPollEvents();
-        boolean dirty = false;
-        if (ev != null) {
-            for (int i = 0; i + 1 < ev.length; i += 2) {
-                try {
-                    handle(ev[i], ev[i + 1]);
-                } catch (Throwable t) {
-                    Log.e(TAG, "sidebar event failed", t);
+        if (toolbar != null) {
+            int[] ev = Native.sidebarPollEvents();
+            boolean dirty = false;
+            if (ev != null) {
+                for (int i = 0; i + 1 < ev.length; i += 2) {
+                    final int kind = ev[i], index = ev[i + 1];
+                    if (kind == 3) {
+                        try {
+                            AndroidMenu.tapped(index, Host.eventBus());
+                        } catch (Throwable t) {
+                            Log.e(TAG, "sidebar event failed", t);
+                        }
+                    } else {
+                        javax.swing.SwingUtilities.invokeLater(() -> handle(kind, index));
+                    }
+                    dirty = true;
                 }
+            }
+            final NavigationButton req = toolbar.takeRequested();
+            if (req != null) {
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    int i = toolbar.getButtons().indexOf(req);
+                    if (i >= 0) {
+                        selected = i;
+                        Native.sidebarSetOpen(true);
+                    }
+                });
                 dirty = true;
             }
+            boolean due = dirty || (++cycles % 10 == 0 && (Native.sidebarOpen() || cycles % 100 == 0));
+            if (due && buildQueued.compareAndSet(false, true)) javax.swing.SwingUtilities.invokeLater(Sidebar::rebuild);
         }
-        net.runelite.client.ui.NavigationButton req = toolbar.takeRequested();
-        if (req != null) {
-            int i = toolbar.getButtons().indexOf(req);
-            if (i >= 0) {
-                selected = i;
-                Native.sidebarSetOpen(true);
-                dirty = true;
-            }
-        }
-        if (!dirty && ++cycles % 10 != 0) return;
-        if (!Native.sidebarOpen() && !dirty && cycles % 100 != 0) return;
+        Edt.yieldToEdt();
+    }
+
+    /** EDT: rebuilds the model and sends it to the overlay if it changed. */
+    private static void rebuild() {
+        buildQueued.set(false);
         try {
             String model = build();
             autoClick();
@@ -175,7 +195,7 @@ final class Sidebar {
 
     /**
      * Text input: the sidebar has no keyboard of its own, so a tap on a text field opens an
-     * Android dialog (soft keyboard included); OK applies the text on the game thread.
+     * Android dialog (soft keyboard included); OK applies the text on the EDT.
      */
     private static void promptText(JTextComponent field) {
         new Handler(Looper.getMainLooper()).post(() -> {
@@ -244,7 +264,7 @@ final class Sidebar {
         return clean(String.valueOf(item));
     }
 
-    /** Combo box: a tap opens an Android list of its items; the pick is applied on the game thread. */
+    /** Combo box: a tap opens an Android list of its items; the pick is applied on the EDT. */
     private static void promptChoice(JComboBox box) {
         final java.util.List<Object> items = new java.util.ArrayList<Object>(box.__items);
         if (items.isEmpty()) return;
@@ -268,7 +288,7 @@ final class Sidebar {
         });
     }
 
-    /** Selects a combo box item and fires ItemListeners as Swing does (DESELECTED, then SELECTED). Game thread only. */
+    /** Selects a combo box item and fires ItemListeners as Swing does (DESELECTED, then SELECTED). EDT only. */
     static void select(JComboBox box, Object item) {
         Object old = box.getSelectedItem();
         if (item == old) return;
@@ -294,7 +314,7 @@ final class Sidebar {
 
     /**
      * Sets a text field's text and tells its listeners, as typing would: DocumentListeners
-     * (removeUpdate then insertUpdate) and, when `enter`, ActionListeners. Game thread only.
+     * (removeUpdate then insertUpdate) and, when `enter`, ActionListeners. EDT only.
      */
     static void setFieldText(JTextComponent field, String text, boolean enter) {
         String old = field.getText();
@@ -343,25 +363,8 @@ final class Sidebar {
         return java.util.Collections.emptyList();
     }
 
-    /** Runs what plugins posted with SwingUtilities.invokeLater (the game thread acts as the EDT). */
-    static void runSwingQueue() {
-        javax.swing.SwingUtilities.__edt = Thread.currentThread();
-        for (int i = 0; i < 1000; i++) {
-            Runnable r = javax.swing.SwingUtilities.__queue.poll();
-            if (r == null) break;
-            try {
-                r.run();
-            } catch (Throwable t) {
-                Log.e(TAG, "Swing task threw", t);
-            }
-        }
-    }
-
+    /** EDT: a tap on the sidebar (1 = navigation button, 2 = model line). */
     private static void handle(int kind, int index) {
-        if (kind == 3) {  // a plugin entry under the game's long-press menu
-            AndroidMenu.tapped(index, Host.eventBus());
-            return;
-        }
         if (kind == 1) {
             selected = index;
             return;
@@ -402,7 +405,7 @@ final class Sidebar {
         if (popup != null) promptPopup(popup);
     }
 
-    /** A popup menu's enabled JMenuItems in an Android list; the pick fires the item's ActionListeners on the game thread. */
+    /** A popup menu's enabled JMenuItems in an Android list; the pick fires the item's ActionListeners on the EDT. */
     private static void promptPopup(javax.swing.JPopupMenu popup) {
         final java.util.List<javax.swing.JMenuItem> items = new java.util.ArrayList<>();
         for (Component k : popup.getComponents())

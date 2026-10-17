@@ -122,6 +122,7 @@ public final class Host {
     /** Called once on a background thread. `pluginDir` holds plugin jars (classes.dex inside). */
     public static void start(String pluginDir, String cacheDir) {
         ModalDialogs.install();
+        Edt.start();
         Log.i(TAG, "host starting; plugins from " + pluginDir);
         // RuneLite.RUNELITE_DIR/CACHE_DIR come from user.home (empty on Android, so plugins wrote to
         // relative paths that fail: Emojis' cache). Use the app's files dir, before RuneLite loads.

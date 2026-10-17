@@ -25,6 +25,9 @@ int server_varp(int id);  // last value the server sent
 // Calls the game's varbit lookup (definition from the cache + bit extraction). Game thread only:
 // the definition cache isn't thread-safe.
 int varbit(int id);
+// Client.queueChangedSkill: records `skill` in the changed-skills ring as UPDATE_STAT does, so the
+// skill tab's onStatTransmit scripts redraw it. Game thread only.
+bool queue_changed_skill(int skill);
 // The client records each varp id the server changes in a 32-entry ring; `changed_varp_count`
 // is the running total, entry n lives at slot n % 32.
 uint32_t changed_varp_count();

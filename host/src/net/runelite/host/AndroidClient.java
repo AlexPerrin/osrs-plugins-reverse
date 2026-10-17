@@ -635,6 +635,18 @@ public class AndroidClient extends ClientStub {
 
     // Client +0x3174 / +0x2f64 (the CS2 map_world / worldflags handlers).
     @Override public int getWorld() { return Native.world(); }
+    @Override public net.runelite.api.World createWorld() { return new AndroidWorld(); }
+    /**
+     * Desktop sets the world the next login connects to. The mobile client picks its world in its
+     * own world list, so this only logs. // unverified: no world switch is attempted
+     */
+    @Override public void changeWorld(net.runelite.api.World world) {
+        android.util.Log.i(Host.TAG, "changeWorld(" + world + ") ignored: the mobile client picks the world itself");
+    }
+    /** Marks a skill changed (as a stat update does) so the skill tab's onStatTransmit scripts redraw it (Virtual Levels). */
+    @Override public void queueChangedSkill(net.runelite.api.Skill skill) {
+        if (skill != null && isClientThread()) Native.queueChangedSkill(skill.ordinal());
+    }
 
     /**
      * As on desktop, the `tupleIndex`-th field of every tuple in the column (a column of type
@@ -950,7 +962,7 @@ public class AndroidClient extends ClientStub {
 
     /** The game thread (Thread objects compare equal by identity, as plugins use it). */
     @Override public Thread getClientThread() {
-        if (isClientThread()) clientThread = Thread.currentThread();
+        if (isClientThread() && !Edt.isEdt()) clientThread = Thread.currentThread();  // the EDT only stands in for it
         return clientThread;
     }
 

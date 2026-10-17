@@ -464,6 +464,8 @@ jobjectArray n_enum_def(JNIEnv* env, jclass, jint id) {
     return res;
 }
 jboolean n_is_client_thread(JNIEnv*, jclass) { return client_thread::on_client_thread(); }
+void n_set_client_delegate(JNIEnv*, jclass, jboolean on) { client_thread::set_delegate(on); }
+jboolean n_queue_changed_skill(JNIEnv*, jclass, jint skill) { return client_thread::on_client_thread() && game::queue_changed_skill(skill); }
 
 void n_set_script_events(JNIEnv*, jclass, jboolean on) { script_hooks::set_enabled(on); }
 jboolean n_set_script_string(JNIEnv* env, jclass, jint index, jstring text) {
@@ -1272,6 +1274,8 @@ const JNINativeMethod kNatives[] = {
     {"enumDef", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_enum_def)},
     {"runScript", "([Ljava/lang/Object;)[Ljava/lang/Object;", reinterpret_cast<void*>(n_run_script)},
     {"isClientThread", "()Z", reinterpret_cast<void*>(n_is_client_thread)},
+    {"setClientDelegate", "(Z)V", reinterpret_cast<void*>(n_set_client_delegate)},
+    {"queueChangedSkill", "(I)Z", reinterpret_cast<void*>(n_queue_changed_skill)},
     {"setScriptEvents", "(Z)V", reinterpret_cast<void*>(n_set_script_events)},
     {"scriptStacks", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_stacks)},
     {"setScriptIntStack", "([II)Z", reinterpret_cast<void*>(n_set_script_int_stack)},

@@ -101,6 +101,9 @@ struct Build {
     uintptr_t pick_set, pick_ready, pick_mode;
     uintptr_t mod_icons;  // global shared_ptr obj of the font's <img=N> table (setModIcons 0x431a84)
     uintptr_t message_ctor;  // Message(this, type, name*, sender*, text*): every chat line, id = ++next id
+    // Client: int[32] ring of skill ids changed by UPDATE_STAT (case 2 of 0x541dd4: ring[count++ & 31] = skill);
+    // widgets' onStatTransmit listeners run for the skills in it (RuneLite's changedSkills).
+    uint32_t f_changed_skills, f_changed_skill_count;
 };
 
 constexpr Build kBuilds[] = {
@@ -116,7 +119,8 @@ constexpr Build kBuilds[] = {
      0x5d00fc, 0x3f804c, 0x3f8470, 0x64b450,
      0x514f48, 0x507398, 0x50621c, 0x58fa84,
      0x72b758, 0x1d2f52d, 0x1d7ddf0,
-     0x18e2130, 0x3f0a04},
+     0x18e2130, 0x3f0a04,
+     0x413d64, 0x413de4},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -1502,6 +1506,16 @@ bool varbit_def(int id, VarbitDef& out) {
     out.msb = read_at<int32_t>(o + 8);
     release_shared(ctrl);
     return out.varp >= 0 && out.varp < varp_count() && out.lsb >= 0 && out.msb < 32 && out.lsb <= out.msb;
+}
+
+bool queue_changed_skill(int skill) {
+    uintptr_t c = client();
+    if (!c || skill < 0 || skill >= 25) return false;
+    auto* count = reinterpret_cast<uint32_t*>(c + g_build->f_changed_skill_count);
+    uint32_t n = *count;
+    reinterpret_cast<int32_t*>(c + g_build->f_changed_skills)[n & 31] = skill;
+    *count = n + 1;
+    return true;
 }
 
 bool set_varp(int id, int value) {

@@ -19,6 +19,7 @@ namespace {
 using DoCycleFn = void (*)(void*);
 DoCycleFn g_orig = nullptr;
 std::atomic<pid_t> g_tid{0};
+std::atomic<pid_t> g_delegate_tid{0};
 std::atomic<uint64_t> g_cycles{0};
 
 std::mutex g_listeners_mutex;
@@ -469,7 +470,11 @@ bool install() {
 }
 
 bool installed() { return g_orig != nullptr; }
-bool on_client_thread() { return g_tid.load(std::memory_order_relaxed) == gettid(); }
+bool on_client_thread() {
+    pid_t t = gettid();
+    return g_tid.load(std::memory_order_relaxed) == t || g_delegate_tid.load(std::memory_order_acquire) == t;
+}
+void set_delegate(bool on) { g_delegate_tid.store(on ? gettid() : 0, std::memory_order_release); }
 
 void subscribe(Listener listener) {
     std::lock_guard lock(g_listeners_mutex);

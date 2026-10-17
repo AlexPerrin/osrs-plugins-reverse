@@ -795,6 +795,26 @@ public class AndroidClient extends ClientStub {
     }
     private boolean syncedOnce;
 
+    // Preferences (Metronome reads the sound effect volume): the game's own audio settings aren't
+    // read; values a plugin sets are kept.
+    private final net.runelite.api.Preferences preferences = new net.runelite.api.Preferences() {
+        private String remembered = "";
+        private int sfx = 127, areaSfx = 127;
+        @Override public String getRememberedUsername() { return remembered; }
+        @Override public void setRememberedUsername(String u) { remembered = u != null ? u : ""; }
+        @Override public int getSoundEffectVolume() { return sfx; }
+        @Override public void setSoundEffectVolume(int v) { sfx = v; }
+        @Override public int getAreaSoundEffectVolume() { return areaSfx; }
+        @Override public void setAreaSoundEffectVolume(int v) { areaSfx = v; }
+        @Override public boolean getHideUsername() { return false; }
+    };
+    @Override public net.runelite.api.Preferences getPreferences() { return preferences; }
+    /** The login name (KPH Tracker): the local player's name, as the test accounts log in by name. */
+    @Override public String getUsername() {
+        net.runelite.api.Player p = Host.localPlayer();
+        return p != null && p.getName() != null ? p.getName() : "";
+    }
+
     @Override public net.runelite.api.IndexedSprite createIndexedSprite() { return new HostIndexedSprite(); }
 
     /**

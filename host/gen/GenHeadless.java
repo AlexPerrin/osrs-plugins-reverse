@@ -566,6 +566,9 @@ public class GenHeadless {
     static String specialBody(Class<?> c, Method x, Map<String, Class<?>> props, Set<String> listenerKinds) {
         String n = x.getName();
         Class<?>[] ps = x.getParameterTypes();
+        // Plugins set accessible names on their panels (Hunter Rumours); never null, state not kept.
+        if (n.equals("getAccessibleContext") && ps.length == 0 && x.getReturnType() == javax.accessibility.AccessibleContext.class)
+            return "return new javax.accessibility.AccessibleContext() {};";
         if (c == java.awt.CardLayout.class) {
             if (n.equals("show") && ps.length == 2) return "__current.put(a0, a1);";
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[0] == String.class) return "__cards.put(a0, a1);";

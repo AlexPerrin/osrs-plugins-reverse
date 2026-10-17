@@ -11,7 +11,7 @@ NO_TIMEOUT keepalives (every 8 s, so --seconds can exceed RSProt's 15 s idle tim
 changes nothing in the world, and it disconnects at the end.
 
 Usage: desktop_login.py [--host 127.0.0.1] [--port 43594] [--http http://127.0.0.1:8082]
-                        [--user desktop] [--password desktop] [--seconds 8]
+                        [--user desktop] [--password desktop] [--seconds 8] [--cheat 'tele 3222 3218']
 The RSA modulus comes from <http>/rsa. Packet sizes are parsed from RSProt's desktop GameServerProt
 (openrune/rsprot, from `openrune/scripts/openrune.sh init`).
 """
@@ -246,6 +246,7 @@ def main():
     ap.add_argument("--user", default="desktop")
     ap.add_argument("--password", default="desktop")
     ap.add_argument("--seconds", type=float, default=8)
+    ap.add_argument("--cheat", help="one command to send after login, without '::' (e.g. 'tele 3222 3218')")
     args = ap.parse_args()
 
     prots = load_server_prots()
@@ -268,6 +269,9 @@ def main():
     # NO_TIMEOUT (opcode 75, empty; ISAAC-encrypted opcode byte) every 8 s. Never IDLE (logs out).
     out_isaac = Isaac(list(seed))
     next_keepalive = time.time() + 8
+    if args.cheat:  # desktop CLIENT_CHEAT (opcode 84, var-byte): gjstr command, g1 autocomplete
+        body = args.cheat.encode("cp1252") + b"\0\0"
+        c.s.sendall(bytes([(84 + out_isaac.next()) & 255, len(body)]) + body)
     counts, toplevel, messages = {}, None, []
     c.s.settimeout(0.5)
     end = time.time() + args.seconds

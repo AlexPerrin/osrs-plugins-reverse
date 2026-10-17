@@ -106,11 +106,15 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   watering, payments, weed regrowth or tool leprechaun.
 - **Beginner clue scrolls** (`content/other/treasure-trails`, `BeginnerClueScript`): Read opens
   the clue text interface (203) or a beginner map (346-356) with the texts RuneLite's Clue Scroll
-  plugin matches; 21 steps (anagram and cryptic talks, six emotes with Uri, five map digs) in the
+  plugin matches; 34 steps (anagram and cryptic talks, six emotes with Uri, five map digs, Charlie, hot-cold) in the
   server-only dbtable `trail_beginner_steps`; the reward casket rolls the OSRS Wiki table and sends
   the completion message and `trail_rewardinv` the Loot Tracker records. `::clue [step] [left]`.
-  Talk steps on NPCs that already have dialogue go through the new `NpcOpOverrides` API. No
-  hot-cold, Charlie the Tramp, STASH units or scroll cases.
+  Talk steps on NPCs that already have dialogue go through the new `NpcOpOverrides` API. Also
+  Charlie the Tramp's item tasks, Reldo's hot-cold strange device ("The device is ..." readings the
+  plugin's solver parses), Check steps, and the three beginner STASH units (Build, Search). No
+  scroll cases.
+- **New characters** start at Lumbridge (3222, 3218) as in OSRS, not at the database default
+  (3200, 3200).
 - **Random events** (`content/events/random-events`): the Genie, every 1-2 hours of play or with
   `::randomevent`. He appears beside the player, faces them, calls them by name every 12 s,
   follows, and leaves after a minute; Talk-to gives the lamp (Rub: xpreward, 10 x level), Dismiss

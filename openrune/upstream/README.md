@@ -34,7 +34,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 18 | `18-idle-packet-logout` | `api/net/.../handlers/IdleHandler.kt` (new), `MessageConsumerProvider.kt`, `IdleHandlerTest.kt` (new) | The client's IDLE packet logs the player out in OSRS; handled like the logout button | Contains nothing of ours |
 | 19 | `19-farming-patches` | `content/skills/farming` + `farming/pack` (new modules) | OpenRune had no farming: allotment, flower and herb patches at six farms (Catherby, Falador, Ardougne, Morytania, Hosidius, Civitas illa Fortis) with the farming_transmit values RuneLite's Time Tracking reads; integration tests | dbtable 60002 (rows 60160-60187), varps 63780-63827, timer 460; `::growpatches`; no disease/compost/payments |
 | 20 | `20-bird-houses` | `content/skills/hunter`: `BirdHouseScript.kt`, `BirdHouseTypesTable.kt`, `HunterPluginPack.kt`, both `gamevals.toml`, `birdhouse_vars.toml`, `BirdHouseScriptTest.kt` | Bird house trapping on Fossil Island with the varps (1626-1629) Time Tracking reads and the Loot Tracker message | Needs 15 (applies on pin+15 and after 01-19); dbtable 60001 (rows 60140-60148), varps 63760-63767; nest chances from the wiki chart (per mille, half at level 50 and below) |
-| 21 | `21-beginner-clue-scrolls` | `api/player`: `NpcOpOverrides.kt` (new), `NpcEvents.kt`, `NpcInteractions.kt`; `content/other/treasure-trails` + `treasure-trails/pack` (new modules) | New content: beginner Treasure Trails (clue text interface 203, map interfaces 346-356, 21 steps, Uri for emote steps, map digs, the reward casket from the wiki table) with the texts and messages RuneLite's Clue Scroll and Loot Tracker plugins match; a small generic API to let content take an npc op ahead of its handler for the players it claims; integration tests | dbtables 60003/60004 (rows 60200-60313), varps 63840-63842; no hot-cold, Charlie the Tramp, STASH or scroll cases |
+| 21 | `21-beginner-clue-scrolls` | `api/player`: `NpcOpOverrides.kt` (new), `NpcEvents.kt`, `NpcInteractions.kt`; `content/other/treasure-trails` + `treasure-trails/pack` (new modules) | New content: beginner Treasure Trails (clue text interface 203, map interfaces 346-356, 34 steps: talks, emotes with Uri, map digs, Charlie the Tramp, Reldo's hot-cold device; Check steps; the reward casket from the wiki table; beginner STASH units) with the texts and messages RuneLite's Clue Scroll and Loot Tracker plugins match; a small generic API to let content take an npc op ahead of its handler for the players it claims; integration tests | dbtables 60003-60005 (rows 60200-60322), varps 63840-63846; no scroll cases |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -109,5 +109,6 @@ and it was generated on top of 01-19 (`git am`). Device-verified in our tree (Bu
 the Loot Tracker message); the nest-chance fix in it ran only in the integration tests (7).
 
 Patch 21 (beginner clue scrolls) was added afterwards: `git apply --check` on the pin passes on its
-own (one api change in `api/player`, otherwise new files). Compiled, tested (`BeginnerClueScriptTest`,
-6) and spotless-checked in our tree, not on a pin-only clone.
+own (one api change in `api/player`, otherwise new files). Compiled, tested (`BeginnerClueScriptTest`
+10, `StashUnitScriptTest` 2) and spotless-checked in our tree, not on a pin-only clone. Regenerated
+2026-10-17 with Charlie the Tramp, hot-cold, Check steps and STASH units.

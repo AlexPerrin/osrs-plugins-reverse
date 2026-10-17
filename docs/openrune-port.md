@@ -554,3 +554,41 @@ was verified.
   `itemManager.getItemComposition(event.getItemId())` returns null for the inventory CC_OP entry
   (p1=9764864, id=2), so `clueItemId` is never set. The widget path still works, but the plugin
   does not reset when the clue leaves the inventory (the map overlay stayed after the casket).
+
+## Ninth server dev (2026-10-17): rest of the beginner tier
+
+- **Steps (34 rows in `trail_beginner_steps`):** the 21 before, plus 8 Charlie the Tramp rows and 5
+  hot-cold rows. Charlie rows count as ONE choice when a step is picked, and so do the hot-cold rows
+  (`pickStep`: every other row is its own choice, never the same choice twice in a row).
+- **Charlie the Tramp** (`npc.tramppg`, 3209,3390): the scroll reads "Talk to Charlie the Tramp in
+  Varrock." until he asks; Talk-to: "Please, sir/madam, can you help me." / "What can I do for you?" /
+  his request ("I really need a raw herring.", the DIALOG line `SkillChallengeClue.forChatboxText`
+  matches) / "Sure, I'll be glad to help a person in need."; then the scroll reads "I need to give
+  Charlie a raw herring." (the plugin's text). With the item (unnoted, inventory): mesbox "You give
+  Charlie the raw herring.", objbox "Charlie gives you a new clue!/a casket!", "Thank you so much
+  sir." (Transcript via TSPS' dialogue dump). Varp `trail_beginner_charlie_asked` 63844.
+- **Hot-cold** (Reldo, `npc.reldo`): scroll text = the plugin's BEGINNER_CLUE text; Reldo gives the
+  strange device (`obj.beginner_device` 23183) with the transcript dialogue; Feel: "The device is
+  <temp>." then ", and warmer than / but colder than / and the same temperature as last time." by
+  Chebyshev distance (wiki bands: ice cold 500+, very cold 200, cold 150, warm 100, hot 70, very
+  hot 30, incredibly hot 4, visibly shaking 0-3), last distance in varp 63845. Dig within 4 tiles
+  (wiki: a 9x9 square) with the clue. Spots: the plugin's five beginner HotColdLocations.
+- **Check steps** (clue iop2): "You have completed N step(s) on this clue scroll." Wording is a best
+  guess (not on the wiki); varp `trail_beginner_steps_done` 63843.
+- **STASH units** (`StashUnitScript`, dbtable `trail_stash_units` 60005, rows 60320-60322):
+  `loc.hh_beginner001-003` (Aris' tent: gold ring + necklace; Thessalia's: chef's hat + red cape;
+  Bob's axes: bronze axe + leather boots), multilocs on `varbit.hh_constructed_beginner001-003`
+  (0 bush, 1 built). Build: Construction 12, hammer, saw, 2 planks, 10 nails of one metal, 150 XP.
+  Search: deposit the full set from the inventory / withdraw it ("You deposit/withdraw your items
+  into/from the STASH unit.", which the plugin tracks). Filled bits in varp 63846. Device-checked:
+  the plugin's overlay reads the built state through CS2 1479 ("STASH Unit ✗" before building).
+- **Not done:** scroll cases (need the scroll box stack limit; ~2 h, little plugin value), worn
+  items into STASH units, the 10-hour unique rule.
+- **New characters** spawn at 3222,3218 (`CharacterAccountApplier`, `lastLogin == null`); the
+  database default was 3200,3200 (why the desktop test account was out of tester's view).
+- **Answers for the client dev:** own public chat is sent (RSProt writes the CHAT block to the
+  observer itself, Android flag 0x400); the game channel closes after 15 s without inbound packets
+  (RSProt `IdleStateHandlerSuppliers.Game`), so a headless client must send NO_TIMEOUT (desktop
+  opcode 75, empty) every ~10 s, never IDLE.
+- **Device tip:** on the mobile gameframe the yellow smiley tab is the Friends list (as on desktop);
+  emotes are the green dancing figure (about 1840,600).

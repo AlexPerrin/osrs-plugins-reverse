@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "client_thread.h"
+#include "draw_hide.h"
 #include "frame_capture.h"
 #include "game.h"
 #include "log.h"
@@ -465,6 +466,21 @@ jobjectArray n_enum_def(JNIEnv* env, jclass, jint id) {
 }
 jboolean n_is_client_thread(JNIEnv*, jclass) { return client_thread::on_client_thread(); }
 void n_set_client_delegate(JNIEnv*, jclass, jboolean on) { client_thread::set_delegate(on); }
+void n_set_hidden_actors(JNIEnv* env, jclass, jintArray npcs, jintArray players) {
+    if (!client_thread::on_client_thread()) return;
+    std::vector<uintptr_t> ptrs;
+    auto add = [&](jintArray a, uintptr_t (*lookup)(int)) {
+        if (!a) return;
+        jsize n = env->GetArrayLength(a);
+        std::vector<jint> v(n);
+        env->GetIntArrayRegion(a, 0, n, v.data());
+        for (jint i : v)
+            if (uintptr_t p = lookup(i)) ptrs.push_back(p);
+    };
+    add(npcs, game::live_npc);
+    add(players, game::live_player);
+    draw_hide::set_hidden(ptrs);
+}
 jboolean n_queue_changed_skill(JNIEnv*, jclass, jint skill) { return client_thread::on_client_thread() && game::queue_changed_skill(skill); }
 
 void n_set_script_events(JNIEnv*, jclass, jboolean on) { script_hooks::set_enabled(on); }
@@ -1276,6 +1292,7 @@ const JNINativeMethod kNatives[] = {
     {"isClientThread", "()Z", reinterpret_cast<void*>(n_is_client_thread)},
     {"setClientDelegate", "(Z)V", reinterpret_cast<void*>(n_set_client_delegate)},
     {"queueChangedSkill", "(I)Z", reinterpret_cast<void*>(n_queue_changed_skill)},
+    {"setHiddenActors", "([I[I)V", reinterpret_cast<void*>(n_set_hidden_actors)},
     {"setScriptEvents", "(Z)V", reinterpret_cast<void*>(n_set_script_events)},
     {"scriptStacks", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_stacks)},
     {"setScriptIntStack", "([II)Z", reinterpret_cast<void*>(n_set_script_int_stack)},

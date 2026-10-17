@@ -171,7 +171,7 @@ public final class Host {
                         .toInstance(okhttp3.HttpUrl.get("https://api.runelite.net/runelite-1.13.1"));
                 // ItemStatChangesService/XpTrackerService come from their plugins' getPublicModule()
                 // (HostPluginManager installs them for dependents, as RuneLite does).
-                bind(net.runelite.client.callback.Hooks.class).toInstance(new net.runelite.client.callback.Hooks());
+                bind(net.runelite.client.callback.Hooks.class).toInstance(hooks);
                 bind(net.runelite.client.ui.ClientToolbar.class).toInstance(new net.runelite.client.ui.ClientToolbar());
                 bind(net.runelite.client.game.SpriteManager.class).toInstance(new net.runelite.client.game.SpriteManager());
                 bind(net.runelite.client.chat.ChatMessageManager.class).toInstance(new net.runelite.client.chat.ChatMessageManager());
@@ -404,6 +404,7 @@ public final class Host {
                 AndroidMenu.onCycle();
                 ((AndroidClient) client).fetchWantedDbFields();
                 HostSprites.onCycle(client);
+                applyDrawListeners();
                 Sidebar.onCycle();
                 try {
                     DevMenu.onCycle();
@@ -776,6 +777,38 @@ public final class Host {
     /** Runs on the client thread, again each cycle until it returns true. */
     public static void invokeUntil(java.util.function.BooleanSupplier r) {
         clientThread.invoke(r);
+    }
+
+    private static final net.runelite.client.callback.Hooks hooks = new net.runelite.client.callback.Hooks();
+    private static boolean hiding;
+
+    /** Renderable draw listeners (Entity Hider): actors they reject are not drawn by the game this cycle. */
+    private static void applyDrawListeners() {
+        AndroidWorldView wv = worldView();
+        if (!hooks.hasListeners() || wv == null) {
+            if (hiding) Native.setHiddenActors(new int[0], new int[0]);
+            hiding = false;
+            return;
+        }
+        int[] npcs = new int[64], players = new int[64];
+        int n = 0, p = 0;
+        try {
+            for (net.runelite.api.NPC npc : wv.npcs()) {
+                if (npc == null || hooks.draw(npc, false)) continue;
+                if (n == npcs.length) npcs = java.util.Arrays.copyOf(npcs, n * 2);
+                npcs[n++] = npc.getIndex();
+            }
+            for (net.runelite.api.Player pl : wv.players()) {
+                if (pl == null || hooks.draw(pl, false)) continue;
+                if (p == players.length) players = java.util.Arrays.copyOf(players, p * 2);
+                players[p++] = pl.getId();
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "draw listener threw", t);
+        }
+        if (n == 0 && p == 0 && !hiding) return;
+        Native.setHiddenActors(java.util.Arrays.copyOf(npcs, n), java.util.Arrays.copyOf(players, p));
+        hiding = n > 0 || p > 0;
     }
 
     static void runQueued() {

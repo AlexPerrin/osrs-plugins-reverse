@@ -103,6 +103,8 @@ final class Native {
     static native void setClientDelegate(boolean on);
     /** Client.queueChangedSkill: the game's changed-skills ring (onStatTransmit redraws). Client thread only. */
     static native boolean queueChangedSkill(int skill);
+    /** Renderable draw listeners: these NPC / player indices are not drawn (or picked) until the next call. Client thread only. */
+    static native void setHiddenActors(int[] npcs, int[] players);
     /** Turns the script VM callbacks (Host.onScript) on or off. */
     static native void setScriptEvents(boolean on);
     /** The VM's live stacks (game thread): {int[] intStack (size entries), String[] objectStack}. */

@@ -1,6 +1,6 @@
-From 6671af536097c1ba218b8b1e22922852fc541f42 Mon Sep 17 00:00:00 2001
+From 83b5bd737d36ded8fa801d43cd2fe800da1a7ecc Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
-Date: Sat, 17 Oct 2026 01:31:21 -0400
+Date: Sat, 17 Oct 2026 01:36:34 -0400
 Subject: [PATCH] Treasure Trails (beginner and easy) on the cache's cluehelper
  tables
 
@@ -31,9 +31,9 @@ Search on npcs and locs that already have content.
  .../treasure-trails/pack/build.gradle.kts     |   7 +
  .../pack/BeginnerCasketTable.kt               | 140 ++++
  .../treasuretrails/pack/EasyCasketTable.kt    | 255 +++++++
- .../treasuretrails/pack/TrailDataTables.kt    | 100 +++
+ .../treasuretrails/pack/TrailDataTables.kt    | 101 +++
  .../pack/TreasureTrailsPluginPack.kt          |  15 +
- .../pack/src/main/resources/gamevals.toml     | 348 ++++++++++
+ .../pack/src/main/resources/gamevals.toml     | 349 ++++++++++
  .../pack/configs/treasure_trails_vars.toml    |  83 +++
  .../treasuretrails/TreasureTrailScriptTest.kt | 280 ++++++++
  .../other/treasuretrails/StashUnitScript.kt   | 128 ++++
@@ -41,7 +41,7 @@ Search on npcs and locs that already have content.
  .../content/other/treasuretrails/TrailTier.kt |  55 ++
  .../treasuretrails/TreasureTrailScript.kt     | 629 ++++++++++++++++++
  .../treasuretrails/TreasureTrailsModule.kt    |  11 +
- 20 files changed, 2360 insertions(+), 2 deletions(-)
+ 20 files changed, 2362 insertions(+), 2 deletions(-)
  create mode 100644 api/player/src/main/kotlin/org/rsmod/api/player/interact/LocOpOverrides.kt
  create mode 100644 api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcOpOverrides.kt
  create mode 100644 content/other/treasure-trails/build.gradle.kts
@@ -703,10 +703,10 @@ index 000000000..09e6c3f92
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
 new file mode 100644
-index 000000000..005e99e92
+index 000000000..9d8012684
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
-@@ -0,0 +1,100 @@
+@@ -0,0 +1,101 @@
 +package org.rsmod.content.other.treasuretrails.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -741,6 +741,7 @@ index 000000000..005e99e92
 +            2230 to "interface.trail_map02",
 +            2231 to "interface.trail_map06",
 +            2233 to "interface.trail_map11",
++            2228 to "interface.trail_map18",
 +        )
 +
 +    private val EMOTES =
@@ -830,10 +831,10 @@ index 000000000..1be464b2d
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/resources/gamevals.toml b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..0cdb76691
+index 000000000..ea7c1eac6
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
-@@ -0,0 +1,348 @@
+@@ -0,0 +1,349 @@
 +[gamevals.dbtable]
 +trail_charlie_tasks = 60003
 +trail_beginner_casket = 60004
@@ -859,6 +860,7 @@ index 000000000..0cdb76691
 +trail_map_interface_6 = 60216
 +trail_map_interface_7 = 60217
 +trail_map_interface_8 = 60218
++trail_map_interface_9 = 60219
 +trail_emote_seq_0 = 60320
 +trail_emote_seq_1 = 60321
 +trail_emote_seq_2 = 60322

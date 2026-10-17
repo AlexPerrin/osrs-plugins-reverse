@@ -625,3 +625,12 @@ was verified.
 - **Easy step counts as built:** Talk 41, Search 44 (of 71: loc searches whose loc has no "Search"
   op, e.g. closed drawers, are left out for now), Dig 12 (8 coordinate cryptics + 4 maps with a
   known interface), Emote 33. Music steps (6, play a track near Cecilia) not done.
+- **Easy map interfaces:** trail map interfaces are drawn from map-icon models (3386-3401), not
+  sprites. Plotting their components against the wiki's map images identified Al Kharid mine
+  (row 2228) = `trail_map18` (87). Still unknown: Galahad's house (2232), north of Falador (2234),
+  behind Lumbridge castle (2260), south-west of the Draynor wheat field (2261); those steps are left
+  out until mapped. (The plugin identifies easy maps by the scroll's item id, so the interface only
+  matters for what the player sees.)
+- **Music steps (6 easy):** need the music tab's track selection ("Play" on a track), which OpenRune
+  does not implement yet (`MusicTabScript` only handles the Area/Shuffle/Single buttons); ~2 h with
+  the unlock checks. Not done.

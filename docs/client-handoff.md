@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 15 entry (2026-10-16) at the end of "Where things stand".
+> Latest state: see the gen 16 entry (2026-10-16) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -518,6 +518,47 @@ session; its notes are in `docs/android-protocol.md`.
     toString/renderer text, not the class name); Bank Heatmap's created button (long-press showed no menu: plugin
     widgets created with createChild are host-side only); more hub plugins by install count; Player Indicators via
     the desktop login; the impling name label height; devtools left-edge fix unverified.
+- **2026-10-16 (client dev gen 16)**, commits 7855e48..:
+  - **api_gaps.py** resolves calls through the api-versions.xml superclass/interface graph (inherited Java 9+
+    default methods such as `ArrayList.toArray(IntFunction)` -> Collection, API 33), `--own <host dexdump>` for
+    plugin jars, a HIDDEN table for members from non-SDK superclasses (StringBuilder.getChars). All 21 hub jars
+    clean. **CompatRewrite now also runs over the client classes in host/build.sh** (Moonlight potion's toArray,
+    Fairy Ring's static `Collectors.toUnmodifiableMap`). Lesson: the first version rewrote `toArray` on any
+    `java/util/` owner, which caught `Stream.toArray` and broke Slayer's startUp (IncompatibleClassChangeError);
+    it is limited to java.util / java.util.concurrent types now. Check the "compat rewrites: N" count (2 now).
+  - Host: Sidebar combo boxes show the renderer's JLabel text (Banked Experience); `BeforeRender` posted each
+    frame before overlays; GameTick and NpcSpawned wait for the local player (Tree Despawn Timer, Attack Timer
+    NPEs at login); `ScriptEvent.getSource()` from ScriptEvent +0x40 (`Native.scriptEventSource`);
+    `PluginPanel.onActivate/onDeactivate` for the selected sidebar panel (Time Tracking's panel was stale);
+    TOP_RIGHT overlays stack below the minimap block (root child 36), which clipped UNDER_WIDGETS overlays
+    (Customizable XP Drops' drops).
+  - **devtools**: with no menu open the game's entry list holds a lone Cancel, which hid the hover menu
+    (interact_object found only [Cancel]; fixed, verified with Chop down). Widget ops: a virtual mouse over an
+    item slot gets the slot's ops as its hover menu (`AndroidMenu.slotMenu`), and CC_OP/WIDGET_* menuActions
+    long-press the widget (`DevInput.longPress`) and pick the row from the opened menu (item_action Examine
+    verified). Scene picks (`menuBuildAt`) only see the scene under the UI.
+  - **createChild in the game's tree** (CC_CREATE path, docs/offsets.md) behind `setprop debug.osrsrl.createchild 1`,
+    **off by default**. The first build crashed at login (make_shared's out pointer is x0, not x8: check the
+    disassembly, not only Ghidra's signature, before calling a shared_ptr-returning function). After the fix:
+    no crash/errors with Item Stats + Prayer + Skills Tab Progress Bars, tabs toggled 3x, bank 3x, teleport,
+    30 fps. Not yet confirmed: that a created widget is visible (the tester's skills are all 99, so the bars
+    don't show; use an account/skill below 99, e.g. `::varp`/xp commands, or a plugin that draws a created
+    text/graphic), no duplicates after reopen, relog. deleteAllChildren runs CC_DELETEALL. Turn it on by
+    default only after that pass.
+  - Findings: Bank Heatmap's toggles hang off desktop's bank "Show menu" op, which the mobile bank lacks (no
+    long-press menu on its buttons); Large Logout targets desktop's logout tab (mobile logout differs);
+    Charges Improved's daily-reset NFE until the bank was opened once is the plugin's (empty storage_bank).
+  - Verified in gen 16: Charges Improved starts (throws -> starts), Banked Experience combo, Tree Despawn
+    Timer, Customizable XP Drops, Improved Tile Indicators (`improvedtileindicators.customDestinationTile=true`),
+    Time Tracking (core, new row; Catherby with the server's farming varbits, `::growpatches`). All 21 hub
+    plugins + defaults + BeforeRender at 30 fps. Tables: core 50 runs / 2 starts of 52; hub 9 runs / 11 starts /
+    1 untested of 21 (Loot Lookup row completed so progress.py counts it).
+  - Next (gen 17): the createChild visibility/duplicate/relog pass, then default on; Player Indicators with the
+    desktop login (tools/multiclient/desktop_login.py, coordinate with the orchestrator); Emojis (needs the
+    font renderer's `<img=>` sprite array; only the `<img=` builder at 0x43caa8 was found); impling name label
+    height (desktop uses the model height for getLogicalHeight; host returns 200); Large Logout on mobile;
+    devtools `walk_to` args (worldX/worldY threw a null getAsInt: check its schema); more hub plugins by
+    install count.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

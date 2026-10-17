@@ -78,7 +78,7 @@ index 0e61a1db8..bd9af7f5d 100644
  wanderRange = 0
  respawnRate = 50
 diff --git a/api/account/src/main/kotlin/org/rsmod/api/account/character/main/CharacterAccountApplier.kt b/api/account/src/main/kotlin/org/rsmod/api/account/character/main/CharacterAccountApplier.kt
-index 8fa952c42..be66b07ea 100644
+index 8fa952c42..0432db584 100644
 --- a/api/account/src/main/kotlin/org/rsmod/api/account/character/main/CharacterAccountApplier.kt
 +++ b/api/account/src/main/kotlin/org/rsmod/api/account/character/main/CharacterAccountApplier.kt
 @@ -28,7 +28,8 @@ public class CharacterAccountApplier @Inject constructor() :
@@ -91,6 +91,17 @@ index 8fa952c42..be66b07ea 100644
          player.username = d.accountName
          player.displayName = c.displayName ?: ""
          player.previousDisplayName = c.previousDisplayName ?: ""
+@@ -37,7 +38,9 @@ public class CharacterAccountApplier @Inject constructor() :
+         player.coords = CoordGrid(c.coordX, c.coordZ, c.coordLevel)
+         player.createdAt = c.createdAt
+         player.runEnergy = c.runEnergy
+-        player.xpRate = c.xpRate
++        // Test server: OSRS XP rates (1x) whatever the realm's or the account's stored rate (world
++        // 255's realm gives new accounts 150x), so XP-based client plugins see real values.
++        player.xpRate = 1.0
+         player.lastLogin = LocalDateTime.now()
+         player.vars.backing.putAll(c.varps)
+         if (c.attrs.isNotEmpty()) {
 diff --git a/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt b/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt
 index eddd260e2..5509c7c4a 100644
 --- a/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt

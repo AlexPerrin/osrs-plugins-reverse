@@ -76,7 +76,7 @@ for f in config/ConfigManager config/ConfigInvocationHandler callback/ClientThre
          game/ItemManager game/SpriteManager chat/ChatMessageManager game/chatbox/ChatboxPanelManager game/chatbox/ChatboxTextInput game/chatbox/ChatboxTextMenuInput \
          ui/overlay/outline/ModelOutlineRenderer Notifier util/WildcardMatcher util/Text \
          ui/components/colorpicker/RuneliteColorPicker ui/components/colorpicker/ColorPickerManager \
-         account/SessionManager; do
+         account/SessionManager audio/AudioPlayer; do
     rm -f "$OUT"/client-classes/net/runelite/client/$f.class "$OUT"/client-classes/net/runelite/client/$f\$*.class
 done
 (cd "$OUT/client-classes" && jar cf ../client-subset.raw.jar .)

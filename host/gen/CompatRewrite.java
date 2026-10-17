@@ -30,7 +30,9 @@ public class CompatRewrite {
     // Static methods: owner.name+desc -> JdkCompat static method with the same descriptor.
     static final Map<String, String> STATIC = new HashMap<>(Map.of(
         "java/util/stream/Collectors.toUnmodifiableMap(Ljava/util/function/Function;Ljava/util/function/Function;)Ljava/util/stream/Collector;",
-            "toUnmodifiableMap"));
+            "toUnmodifiableMap",
+        "java/nio/file/Path.of(Ljava/lang/String;[Ljava/lang/String;)Ljava/nio/file/Path;", "pathOf",
+        "java/nio/file/Files.readString(Ljava/nio/file/Path;)Ljava/lang/String;", "readString"));
     static final String TO_ARRAY = "(Ljava/util/function/IntFunction;)[Ljava/lang/Object;";
     static final String COMPAT = "net/runelite/host/compat/JdkCompat";
 

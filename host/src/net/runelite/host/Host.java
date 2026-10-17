@@ -187,6 +187,9 @@ public final class Host {
                         .toInstance(okhttp3.HttpUrl.get("https://api.runelite.net/runelite-1.13.1"));
                 // ItemStatChangesService/XpTrackerService come from their plugins' getPublicModule()
                 // (HostPluginManager installs them for dependents, as RuneLite does).
+                // As RuneLiteModule: RuneLite's Gson (Color/Instant adapters); Tile Packs reads
+                // "#AARRGGBB" colours through it. Without the binding Guice made a plain Gson.
+                bind(com.google.gson.Gson.class).toInstance(net.runelite.http.api.RuneLiteAPI.GSON);
                 bind(net.runelite.client.callback.Hooks.class).toInstance(hooks);
                 bind(net.runelite.client.ui.ClientToolbar.class).toInstance(new net.runelite.client.ui.ClientToolbar());
                 bind(net.runelite.client.game.SpriteManager.class).toInstance(new net.runelite.client.game.SpriteManager());
@@ -352,6 +355,9 @@ public final class Host {
     private static final java.util.Map<Integer, AndroidNPC> pendingNpcs = new java.util.LinkedHashMap<>();
 
     private static boolean pendingLoggedIn;
+    /** Cycles a LOGGED_IN after LOADING has waited for the new scene base, or -1. */
+    private static int pendingSceneCycles = -1;
+    private static GameState lastPostedState;
 
     /**
      * Latched with the posted GameStateChanged: false from a posted non-LOGGED_IN state until
@@ -383,6 +389,8 @@ public final class Host {
         else if (s == GameState.LOGIN_SCREEN || s == GameState.HOPPING) loadedBase = Long.MIN_VALUE;
         e.setGameState(s != null ? s : GameState.UNKNOWN);
         loggedInPosted = e.getGameState() == GameState.LOGGED_IN;
+        lastPostedState = e.getGameState();
+        if (e.getGameState() != GameState.LOGGED_IN) pendingSceneCycles = -1;
         Log.i(TAG, "GameStateChanged " + e.getGameState() + " (getGameState " + client.getGameState() + ", local player "
             + (localPlayer() != null) + ")");
         bus.post(e);
@@ -414,6 +422,14 @@ public final class Host {
         postGameState(bus, GameState.LOGGED_IN);  // posts WorldViewLoaded first
     }
 
+    /** The world view shows a scene base other than the last WorldViewLoaded's (and not 0,0 mid-rebuild). */
+    private static boolean sceneBaseChanged() {
+        AndroidWorldView wv = worldView;
+        if (wv == null || client.getTopLevelWorldView() == null) return false;
+        long base = ((long) wv.getBaseX() << 32) | (wv.getBaseY() & 0xffffffffL);
+        return base != 0 && base != loadedBase;
+    }
+
     /** Scene base (x << 32 | y) the last WorldViewLoaded was posted for. */
     private static long loadedBase = Long.MIN_VALUE;
 
@@ -441,6 +457,10 @@ public final class Host {
                 bus.post(clientTick);
                 postActorChanges(bus);
                 if (pendingLoggedIn && localPlayer() != null) postLoggedIn(bus);
+                if (pendingSceneCycles >= 0 && (sceneBaseChanged() || ++pendingSceneCycles > 50)) {
+                    pendingSceneCycles = -1;
+                    postGameState(bus, GameState.LOGGED_IN);  // WorldViewLoaded, then LOGGED_IN
+                }
                 if (!pendingLoggedIn && client.getGameState() == GameState.LOGGED_IN && localPlayer() != null) {
                     postSceneReload(bus);
                     try {
@@ -522,6 +542,14 @@ public final class Host {
                 // that cycle, so LOGGED_IN waits for it (flushed on ClientTick, before held spawns).
                 if (pendingLoggedIn) postLoggedIn(bus);
                 if (s == GameState.LOGGED_IN && localPlayer() == null) { pendingLoggedIn = true; break; }
+                // A rebuild the game reports as 30 -> 25 -> 30 (OpenRune's teleports) can reach 30
+                // before the world view shows the new base; desktop posts WorldViewLoaded and then
+                // LOGGED_IN once, so LOGGED_IN waits for the new base (or 50 cycles: same scene).
+                // Without this, the scene-base replay below posted a second LOADING/LOGGED_IN.
+                if (s == GameState.LOGGED_IN && lastPostedState == GameState.LOADING && !sceneBaseChanged()) {
+                    pendingSceneCycles = 0;
+                    break;
+                }
                 postGameState(bus, s);
                 break;
             }

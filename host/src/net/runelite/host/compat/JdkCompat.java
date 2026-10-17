@@ -71,4 +71,12 @@ public final class JdkCompat {
             java.util.stream.Collectors.toMap(t -> java.util.Objects.requireNonNull(key.apply(t)), t -> java.util.Objects.requireNonNull(value.apply(t))),
             java.util.Collections::unmodifiableMap);
     }
+
+    /** Path.of(String, String...) (Java 11; API 34 on Android). */
+    public static java.nio.file.Path pathOf(String first, String... more) { return java.nio.file.Paths.get(first, more); }
+
+    /** Files.readString(Path) (Java 11), UTF-8 as on the JDK. */
+    public static String readString(java.nio.file.Path p) throws IOException {
+        return new String(java.nio.file.Files.readAllBytes(p), java.nio.charset.StandardCharsets.UTF_8);
+    }
 }

@@ -155,16 +155,29 @@ public class AndroidWidget extends WidgetBag {
 
     @Override
     public boolean isHidden() {
-        return isSelfHidden() || ancestorsHidden(getParentId());
+        if (isSelfHidden()) return true;
+        int parent = getParentId();
+        if (parent == -1) {  // a group's root layer that isn't mounted (closed interface) is hidden
+            int root = Native.rootInterface();
+            return root >= 0 && (id >>> 16) != root;
+        }
+        return ancestorsHidden(parent);
     }
 
     /** Hidden if it or any ancestor is hidden, as in RuneLite. */
     static boolean ancestorsHidden(int start) {
-        int cur = start;
+        int cur = start, last = start;
         for (int depth = 0; cur != -1 && depth < 64; depth++) {
             if (Native.widgetHidden(cur)) return true;
             int[] g = Native.widgetGeometry(cur);
+            last = cur;
             cur = g != null ? g[4] : -1;
+        }
+        // As desktop: a chain that ends outside the root interface belongs to a group that isn't
+        // mounted (a closed interface stays loaded on mobile, e.g. the bank after closing it).
+        if (last != -1 && cur == -1) {
+            int root = Native.rootInterface();
+            if (root >= 0 && (last >>> 16) != root) return true;
         }
         return false;
     }

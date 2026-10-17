@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 20 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 21 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -731,6 +731,43 @@ session; its notes are in `docs/android-protocol.md`.
     `setprop debug.osrsrl.scripts 2` + restart logs every root/gosub (find which scripts a UI runs);
     `setprop debug.osrsrl.wdump <group>` dumps a group's widgets to tag osrsrl-probe; fairy ring
     tags are `fairyrings.fairyringtags.<CODE>=...` in files/settings.properties (read at startup).
+- **2026-10-17 (client dev gen 21)**, commits ec53b85..:
+  - **EDT** (`host/src/net/runelite/host/Edt.java`, plugin-host.md "Sidebar"): "AWT-EventQueue-0" runs
+    invokeLater work, sidebar taps (kind 1/2) and the model build; long-press plugin entries (kind 3) stay
+    on the game thread. Turn-taking: the game thread hands its turn over at the end of `Sidebar.onCycle`
+    when the EDT waits for one, and parks until it comes back; the EDT is the native client thread during
+    its turn (`client_thread::set_delegate`, so `on_client_thread()` and `Native.isClientThread()` are true
+    there). `ModalDialogs` on the EDT releases the turn while waiting; on the game thread it is capped at
+    15 s (Cancel). The generated SwingUtilities queue is a LinkedBlockingQueue; `invokeAndWait` goes through
+    `SwingUtilities.__invokeAndWait` (inline on the game thread / before cycles start, else wait ≤ 60 s).
+  - Verified: Inventory Setups dialog held 70 s connected (setups listed), Banked XP combo on the EDT,
+    Loot Lookup (Cow table), Friend Notes (note icon). One unexplained logout ~39 s into the first dialog
+    (SSO resultCode 1500), not reproduced in two 60–70 s holds; asked the orchestrator about a server
+    restart then.
+  - Headless Swing: `Component.getFontMetrics` (shim metrics), `Toolkit.getDefaultToolkit()` instance
+    (Toolkit's abstract methods get bodies), CompoundBorder/MatteBorder keep their parts,
+    BorderFactory.createCompoundBorder/createMatteBorder build them.
+  - API: `queueChangedSkill` (changed-skills ring, offsets.md; unverified), `createWorld` (AndroidWorld
+    record), `changeWorld` (logs only). Not done: `ClanChannel.findMember` (getClanChannel is null since
+    the host reads no clan data; a real channel needs the game's clan structures), GE search setters,
+    `setDraggedOnWidget`.
+  - Debug overlay: compact by default (`debug.osrsrl.overlay` 0 off / 1 compact / 2 full). It never
+    captured touches (NoInputs, not in `overlay_touch` rects); the "left ~600 px" report matches the RL
+    sidebar's width when open (630 px). unverified: no tap-through test.
+  - Friends list (orchestrator's bug): `native/src/friends_probe.cpp`, `setprop debug.osrsrl.friendprobe 1`
+    + restart. With the server's resend on, login showed LOADED 0->1 (cycle 422), UPDATE_FRIENDLIST len 29
+    1->2 (cycle 424), resend 2->1->2 (cycle 547): no drop on our side in that run. Next: run it with
+    `::socialresend off` (OpenRune a114f17), relog, then `::social update`.
+  - Untested in the last build (committed): client-thread tasks wait for LOGIN_SCREEN (Inventory Setups'
+    startUp item-name NPE); chatbox prompt titles stripped of `<br>/<col>` tags.
+  - Docs: Quest Helper row moved to the hub table; Hunter Rumours runs -> starts. progress.py: core
+    63/65, hub 23/32.
+  - Next (gen 22): friend-list probe run (above); verify the two untested changes; Virtual Levels
+    `queueChangedSkill` (toggle its config while the skills tab is open); Inventory Setups highlighting
+    (then promote); the Friend Notes name shift/world-column clip; GE search setters (banktags, GE,
+    inventory-setups, quest-helper call them).
+  - Gotchas: friends list is the smiley side tab (1843,853), not (1843,768) (that is chat-channel/grouping);
+    an app restart right after a session often shows "account still logged in": wait ~20 s, Try again.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

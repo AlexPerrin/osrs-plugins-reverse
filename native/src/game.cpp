@@ -897,7 +897,8 @@ bool widget_set_field(int component, int index, uint32_t off, int value) {
         {0x150}, {0x18c}, {0x190}, {0x194, true}, {0xb98, true}, {0xb99, true},
         {0xb38}, {0xb3c},  // item id / quantity (as widget_item reads them; Widget.setItemId/Quantity)
         {0x84}, {0x88}, {0x8c}, {0x90},  // scroll x/y, scroll width/height (IF_SETSCROLLPOS / CC_SETSCROLLSIZE fields)
-        {0x128}, {0x11c}, {0x120}, {0x124}};  // model zoom, model angle x/y/z
+        {0x128}, {0x11c}, {0x120}, {0x124},  // model zoom, model angle x/y/z
+        {0x13c}};  // item quantity mode (CC_SETOBJECT* 1200/1205/1212: 1/3, 0, 3)
     uintptr_t slot = widget_slot(component, index);
     uintptr_t w = slot ? read_at<uintptr_t>(slot + 8) : 0;
     if (!w) return false;

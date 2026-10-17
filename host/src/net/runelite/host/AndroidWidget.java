@@ -83,6 +83,19 @@ public class AndroidWidget extends WidgetBag {
     // then draws the item on a graphic widget; the host redraws items over custom sprites anyway.
     @Override public Widget setItemId(int v) { return set(0xb38, v); }
     @Override public Widget setItemQuantity(int v) { return set(0xb3c, v); }
+    /**
+     * Item quantity mode, Widget +0x13c. The mobile client's values (CC_SETOBJECT handler 0x4e06dc):
+     * 1205 setobject_nonum stores 0, 1212 setobject_alwaysnum 3, 1200 setobject 3 for stackable items
+     * and 1 otherwise; so RuneLite's NEVER 0 / ALWAYS 1 / STACKABLE 2 map to 0 / 3 / 1.
+     * // unverified: the drawn number for each value on the device.
+     */
+    @Override public Widget setItemQuantityMode(int mode) { return set(0x13c, mode == 1 ? 3 : mode == 2 ? 1 : 0); }
+
+    // CC_SETPOSITION / CC_SETSIZE fields without the layout pass (as desktop's setters; revalidate() runs it).
+    @Override public Widget setPos(int x, int y) { setOriginalX(x); return setOriginalY(y); }
+    @Override public Widget setPos(int x, int y, int xMode, int yMode) { setXPositionMode(xMode); setYPositionMode(yMode); return setPos(x, y); }
+    @Override public Widget setSize(int w, int h) { setOriginalWidth(w); return setOriginalHeight(h); }
+    @Override public Widget setSize(int w, int h, int wMode, int hMode) { setWidthMode(wMode); setHeightMode(hMode); return setSize(w, h); }
     // Scroll and model view fields (the ones getScroll*/getModelZoom/getRotation* read; widget_props).
     // Written raw as desktop's setters do (no clamping); Bank Tags sets the bank's scroll height/position
     // for its layouts. // unverified: on the device.

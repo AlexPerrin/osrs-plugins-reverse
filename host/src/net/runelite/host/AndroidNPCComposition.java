@@ -15,6 +15,9 @@ final class AndroidNPCComposition extends NPCCompositionStub {
     private final String[] actions = new String[5];
 
     private final int[] transforms;
+    // Models and recolours (NpcType +0x30/+0x48/+0xa8/+0xc0, static RE gen 28)
+    private int[] models = new int[0], chatheadModels = new int[0];
+    private short[] colorFrom, colorTo;
 
     private AndroidNPCComposition(int[] v, String[] s, int[] transforms) {
         this.v = v;
@@ -33,6 +36,13 @@ final class AndroidNPCComposition extends NPCCompositionStub {
         Object[] r = Native.npcDef(id);
         if (r == null) return null;
         AndroidNPCComposition c = new AndroidNPCComposition((int[]) r[0], (String[]) r[1], r.length > 2 ? (int[]) r[2] : null);
+        if (r.length > 4) {
+            int[][] m = (int[][]) r[3];
+            short[][] col = (short[][]) r[4];
+            if (m != null && m[0] != null) c.models = m[0];
+            if (m != null && m[1] != null) c.chatheadModels = m[1];
+            if (col != null) { c.colorFrom = col[0]; c.colorTo = col[1]; }
+        }
         synchronized (cache) {
             if (cache.size() > 4096) cache.clear();
             cache.put(id, c);
@@ -69,15 +79,20 @@ final class AndroidNPCComposition extends NPCCompositionStub {
         return id == -1 ? null : lookup(id);
     }
     @Override public boolean isFollower() { return false; }
-    @Override public int[] getModels() { return new int[0]; }
-    @Override public int[] getChatheadModels() { return new int[0]; }
-    @Override public short[] getColorToReplace() { return null; }
-    @Override public short[] getColorToReplaceWith() { return null; }
-    @Override public int getWidthScale() { return 128; }
-    @Override public int getHeightScale() { return 128; }
+    // unverified: static RE (NpcType decoder, mobile opcodes 61/62/40); probe `set 'npcdef <id> 0'`
+    @Override public int[] getModels() { return models; }
+    @Override public int[] getChatheadModels() { return chatheadModels; }
+    @Override public short[] getColorToReplace() { return colorFrom; }
+    @Override public short[] getColorToReplaceWith() { return colorTo; }
+    // unverified: static RE (NpcType +0x120/+0x124, compared with 128 in NpcType::getModel)
+    @Override public int getWidthScale() { return v.length > 8 ? v[7] : 128; }
+    @Override public int getHeightScale() { return v.length > 8 ? v[8] : 128; }
 
     @Override
     public String toString() {
-        return "NPCComposition[" + v[0] + " '" + name + "' size=" + v[1] + " combat=" + v[2] + " actions=" + java.util.Arrays.toString(actions) + "]";
+        return "NPCComposition[" + v[0] + " '" + name + "' size=" + v[1] + " combat=" + v[2] + " actions=" + java.util.Arrays.toString(actions)
+                + " models=" + java.util.Arrays.toString(models) + " chatheads=" + java.util.Arrays.toString(chatheadModels)
+                + " recolor=" + java.util.Arrays.toString(colorFrom) + "->" + java.util.Arrays.toString(colorTo)
+                + " scale=" + getWidthScale() + "/" + getHeightScale() + "]";
     }
 }

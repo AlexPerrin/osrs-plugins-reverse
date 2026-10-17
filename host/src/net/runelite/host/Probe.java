@@ -280,6 +280,10 @@ final class Probe {
                             + " ambient " + ic.getAmbient() + " contrast " + ic.getContrast());
                     break;
                 }
+                case "npcdef": {  // "npcdef <npc id> 0": the NPCComposition, models and recolours included
+                    Log.i(TAG, "npc " + id + " " + c.getNpcDefinition(id));
+                    break;
+                }
                 case "wlisten": {  // "wlisten <group:child> <index|-1>": the game's onDrag/onDragComplete/onOp listeners
                     int idx = Integer.parseInt(a[2]);
                     int[] slots = {0x4d0, 0x500, 0x698};

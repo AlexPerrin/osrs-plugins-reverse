@@ -2364,6 +2364,27 @@ bool npc_def(int id, NpcDef& out) {
         uintptr_t str = op_text(o + 0x100, i);
         out.actions[i] = str ? read_string(str) : std::string();
     }
+    // Static RE of the inlined decoder (gen 28; unverified live): models {u64 count, int32*} at
+    // +0x30/+0x38 (mobile opcode 61, u8 count then int32s), chathead models +0x48/+0x50 (opcode 62),
+    // recolour find/replace {u64 count, int16*} +0xa8/+0xb0 and +0xc0/+0xc8 (opcode 40); width/height
+    // scale +0x120/+0x124 (NpcType::getModel 0x6380d8 rescales when either isn't 128).
+    auto ints = [&](uintptr_t at, std::vector<int32_t>& v) {
+        auto n = read_at<uint64_t>(at);
+        auto data = read_at<const int32_t*>(at + 8);
+        if (data && n > 0 && n <= 255) v.assign(data, data + n);
+    };
+    auto shorts = [&](uintptr_t at, std::vector<int16_t>& v) {
+        auto n = read_at<uint64_t>(at);
+        auto data = read_at<const int16_t*>(at + 8);
+        if (data && n > 0 && n <= 255) v.assign(data, data + n);
+    };
+    out.models.clear(); out.chathead_models.clear(); out.recolor_from.clear(); out.recolor_to.clear();
+    ints(o + 0x30, out.models);
+    ints(o + 0x48, out.chathead_models);
+    shorts(o + 0xa8, out.recolor_from);
+    shorts(o + 0xc0, out.recolor_to);
+    out.width_scale = read_at<int32_t>(o + 0x120);
+    out.height_scale = read_at<int32_t>(o + 0x124);
     release_shared(ctrl);
     return true;
 }

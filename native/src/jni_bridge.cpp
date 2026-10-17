@@ -427,9 +427,10 @@ jobjectArray n_npc_def(JNIEnv* env, jclass, jint id) {
     }
     game::NpcDef d;
     if (!game::npc_def(id, d)) return nullptr;
-    jint v[7] = {d.id, d.size, d.combat_level, d.minimap_visible, d.interactable, d.varbit, d.varp};
-    jintArray ints = env->NewIntArray(7);
-    env->SetIntArrayRegion(ints, 0, 7, v);
+    jint v[9] = {d.id, d.size, d.combat_level, d.minimap_visible, d.interactable, d.varbit, d.varp,
+                 d.width_scale, d.height_scale};
+    jintArray ints = env->NewIntArray(9);
+    env->SetIntArrayRegion(ints, 0, 9, v);
     jclass string = env->FindClass("java/lang/String");
     jobjectArray strs = env->NewObjectArray(6, string, nullptr);
     for (int i = 0; i < 6; i++) {
@@ -444,10 +445,31 @@ jobjectArray n_npc_def(JNIEnv* env, jclass, jint id) {
         tr = env->NewIntArray(static_cast<jsize>(d.transforms.size()));
         env->SetIntArrayRegion(tr, 0, static_cast<jsize>(d.transforms.size()), d.transforms.data());
     }
-    jobjectArray res = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
+    // int[][2] {models, chathead models}, short[][2] {recolour find, replace}; empty = null.
+    jobjectArray models = env->NewObjectArray(2, env->FindClass("[I"), nullptr);
+    const std::vector<int32_t>* ml[2] = {&d.models, &d.chathead_models};
+    for (int i = 0; i < 2; i++) {
+        if (ml[i]->empty()) continue;
+        jintArray a = env->NewIntArray(static_cast<jsize>(ml[i]->size()));
+        env->SetIntArrayRegion(a, 0, static_cast<jsize>(ml[i]->size()), ml[i]->data());
+        env->SetObjectArrayElement(models, i, a);
+        env->DeleteLocalRef(a);
+    }
+    jobjectArray recol = env->NewObjectArray(2, env->FindClass("[S"), nullptr);
+    const std::vector<int16_t>* rl[2] = {&d.recolor_from, &d.recolor_to};
+    for (int i = 0; i < 2; i++) {
+        if (rl[i]->empty()) continue;
+        jshortArray a = env->NewShortArray(static_cast<jsize>(rl[i]->size()));
+        env->SetShortArrayRegion(a, 0, static_cast<jsize>(rl[i]->size()), rl[i]->data());
+        env->SetObjectArrayElement(recol, i, a);
+        env->DeleteLocalRef(a);
+    }
+    jobjectArray res = env->NewObjectArray(5, env->FindClass("java/lang/Object"), nullptr);
     env->SetObjectArrayElement(res, 0, ints);
     env->SetObjectArrayElement(res, 1, strs);
     env->SetObjectArrayElement(res, 2, tr);
+    env->SetObjectArrayElement(res, 3, models);
+    env->SetObjectArrayElement(res, 4, recol);
     return res;
 }
 // Object[] {int[] {id, sizeX, sizeY, varbit, varp}, String[] {name, 5 actions}, int[] transforms or null}.

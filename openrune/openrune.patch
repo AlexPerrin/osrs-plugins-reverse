@@ -299,7 +299,7 @@ index b6b20f311..c62dc1115 100644
          val enclosed = ArrayList<ZoneProt>()
          for (update in this) {
 diff --git a/api/music-plugin/src/main/kotlin/org/rsmod/api/music/plugin/scripts/MusicTabScript.kt b/api/music-plugin/src/main/kotlin/org/rsmod/api/music/plugin/scripts/MusicTabScript.kt
-index 8ab0248dc..b1025eafc 100644
+index 8ab0248dc..2fac25c06 100644
 --- a/api/music-plugin/src/main/kotlin/org/rsmod/api/music/plugin/scripts/MusicTabScript.kt
 +++ b/api/music-plugin/src/main/kotlin/org/rsmod/api/music/plugin/scripts/MusicTabScript.kt
 @@ -1,17 +1,32 @@
@@ -359,7 +359,7 @@ index 8ab0248dc..b1025eafc 100644
 +                player.playMode = MusicPlayMode.Manual
 +                musicPlayer.play(player, track)
 +            }
-+            IfButtonOp.Op2 -> mes(track.unlockhint)
++            IfButtonOp.Op2 -> mes("This track unlocks ${track.unlockhint}")
 +            else -> Unit
 +        }
 +    }

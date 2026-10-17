@@ -647,3 +647,10 @@ was verified.
   Upstream: `22-music-tab-play` (21 needs it).
 - **Left out for now (orchestrator OK):** the four unidentified easy map interfaces and the 27 loc
   searches whose loc has no "Search" op (closed drawers that open first).
+- **Music check on the device (5684e9e, 02:10-02:16):** the list order is right (Unlock hint on "Al
+  Kharid" printed "in Al Kharid."; the hint column is a suffix, so the message is now "This track
+  unlocks in Al Kharid.", not yet deployed); Play on a locked track says "You have not unlocked this
+  piece of music yet!"; the music step's scroll shows "Alone" in white; Cecilia without the song:
+  "Have you come to play music to me?" / Yes / "Select the song I asked you to play, and speak to me
+  again.". Not tried: the success branch, because "Alone" did not unlock by walking on Ice Mountain
+  (OpenRune's area unlock for it; not looked into).

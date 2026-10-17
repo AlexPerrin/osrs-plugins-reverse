@@ -162,6 +162,11 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | KPH Tracker | runs | as "Bossing Info": `::maxhit`, `::npc 500 mole_giant`, kill: after "Your Giant Mole kill count is: 1" it adds "Giant Mole Fight Duration: 01:11" to the chat and a mole InfoBox with 50.7 kills/hr (OpenRune 5ff197d, verified 2026-10-17 gen 21) |
 | Thrall Helper | runs | runs as "Spell Reminder": `::varbit arceuus_resurrection_cooldown 1`, then magic level + 4 ticks later the red "You need to summon a thrall!" box and its chat notice (verified 2026-10-17 gen 20) |
 | Loot Lookup | runs | built with `ALLOW_DEPS=1 host/plugins/hub/build.sh loot-lookup` (jsoup 1.13.1, MIT, fetched from Maven Central and unpacked into the jar). Sidebar search "Cow": the wiki drop table is listed (Cowhide / Raw beef / Bones Always, Clue scroll (beginner) 1/128) (verified 2026-10-17 gen 21) after `Component.getFontMetrics` returned shim metrics and `Toolkit.getDefaultToolkit()` an instance (SwingUtil.fastRemoveAll) |
+| Tile Packs | untested | `tile-packs` (382k installs, 2026-10-17): collections of ground tile markers; not pinned/built yet |
+| Custom Menu Swaps | untested | `hotkeyable-menu-swaps` (172k): text-based menu swaps with hotkeys; not pinned/built yet |
+| Resource packs | untested | `resource-packs` (143k): UI reskins through sprite/widget overrides (packs are downloaded from GitHub, so NetGuard may block them); not pinned/built yet |
+| C Engineer: Completed | untested | `c-engineer-completed` (126k): sound announcements on level-ups/quests/diaries (downloads its sounds); not pinned/built yet |
+| Runecrafting Utilities | untested | `easy-empty` (133k): runecrafting menu swaps (pouches, essence); not pinned/built yet |
 
 ## Build and run
 

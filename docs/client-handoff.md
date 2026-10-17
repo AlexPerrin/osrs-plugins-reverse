@@ -980,6 +980,15 @@ session; its notes are in `docs/android-protocol.md`.
     defaults for stretched/oculus/camera mode. Use `tools/progress.py --dry-run` (never the full run: it rewrites the
     orchestrator's progress files). More in gen 25: ParamHolder getLongValue/setValue (item/NPC/loc/struct), Node
     getHash/next/previous for containers/messages, ItemComposition xan2d/yan2d/zan2d. API 590/866 at the end.
+  - Later in gen 25: getWidgetConfig (IF_SETEVENTS table walk, as 0x460dac; `wlisten` prints it) and getSubops (null)
+    for Menu Entry Swapper; a bytecode scan of tracked core + hub jars for calls into throwing stubs (scratch script:
+    javap -c per class, match `Method net/runelite/api/X.m` against ApiCoverage's missing list) left only GPU/devtools/
+    camera/login/stretched paths plus: Bank Tag Layouts `ItemComposition.getInventoryModel` (clue scrolls only; the
+    mobile ObjType decoder 0x63bfe8 has no opcode-1 case where expected, not found), Quest Helper's fake-object paths
+    (Scene.removeGameObject, Player.setAnimation, NPC.getModel), Better NPC Highlight `NPC.getModel` for unnamed NPCs
+    (needs face colours), Improved Tile Indicators `getAnimationHeightOffset`. ObjType decoder confirmed: opcodes
+    4/5/6/7/8 -> +0xbc/+0xc0/+0xc4/+0xcc/+0xd0, 11 -> +0xd4, 12 -> +0xd8. Five untested hub rows added (Tile Packs,
+    Custom Menu Swaps, Resource packs, C Engineer: Completed, Runecrafting Utilities; not pinned/built).
   - **Next (gen 26)**: the orchestrator's queue (gen 25's was Bank Tag Layouts, FC/clan readers, API coverage where plugins
     hit stubs). Open items: Team's counts on screen; setItemQuantityMode's
     drawn result; getSearchingTagTab still unverified. (A short-lived F2P goal set during gen 25 was withdrawn, 819f24e.)

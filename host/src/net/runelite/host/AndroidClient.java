@@ -399,7 +399,7 @@ public class AndroidClient extends ClientStub {
     // Widget drag from the game's drag state (docs/offsets.md "Widget drag"); null when nothing is held.
     private static net.runelite.api.widgets.Widget dragWidget(int comp, int index) {
         if (comp < 0) return null;
-        return index >= 0 ? new AndroidWidget.Dynamic(comp, index) : new AndroidWidget(comp);
+        return AndroidWidget.of(comp, index);
     }
     @Override public net.runelite.api.widgets.Widget getDraggedWidget() {
         int[] d = Native.dragState();
@@ -1100,7 +1100,7 @@ public class AndroidClient extends ClientStub {
     @Override
     public net.runelite.api.widgets.Widget getWidget(int componentId) {
         componentId = mapDesktopComponent(componentId);
-        return Native.widgetExists(componentId) ? new AndroidWidget(componentId) : null;
+        return Native.widgetExists(componentId) ? AndroidWidget.of(componentId) : null;
     }
 
     /** Android's root interface (601) has no desktop group ids; route the ones the API needs. */

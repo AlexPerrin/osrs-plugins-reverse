@@ -18,6 +18,22 @@ public class AndroidWidget extends WidgetBag {
         this.id = id;
     }
 
+    /**
+     * One instance per component (and per CC_CREATE child) for what getWidget and the drag getters
+     * return: plugins compare widgets with == (Spellbook's findSpellIdxForComponent matches
+     * getWidget(...) == getDraggedWidget()), as desktop's widgets are long-lived objects.
+     */
+    private static final java.util.concurrent.ConcurrentHashMap<Long, AndroidWidget> CANONICAL = new java.util.concurrent.ConcurrentHashMap<>();
+
+    static AndroidWidget of(int id) {
+        return CANONICAL.computeIfAbsent((long) id << 32 | 0xffffffffL, k -> new AndroidWidget(id));
+    }
+
+    static AndroidWidget of(int id, int index) {
+        if (index < 0) return of(id);
+        return CANONICAL.computeIfAbsent((long) id << 32 | index, k -> new Dynamic(id, index));
+    }
+
     /** Raw geometry {x, y, width, height, parentId} or null. */
     int[] rawGeo() { return Native.widgetGeometry(id); }
 

@@ -73,8 +73,10 @@ final class AndroidMenu implements Menu {
      * 161), by gameval name: stone0..13 -> 601:{101,71,102,97,98,99,100,74,76,75,44,77,72,73} and
      * 161:{59..65,43..49}. Plugins add tab-stone options by desktop id (MenuManager managed menus:
      * Spellbook's "Enable spell reordering" on the magic stone 161:65).
-     * Verified by tap on the device (gen 24): stone5 Prayer, stone6 Magic, stone12 Emotes, stone13 Music.
-     * // unverified: the other stones (same gameval names; not tapped).
+     * Verified by tap on the device (gen 24): stone0 Combat Options, 1 Skills, 2 Achievement Diaries (desktop's quest
+     * tab slot), 3 Inventory, 4 Worn Equipment, 5 Prayer, 6 Magic, 8 Account Management, 9 Friends List,
+     * 11 Settings, 12 Emotes, 13 Music Player (601:103 is the Show More/Less toggle).
+     * // unverified: stone7 (601:74, clan) and stone10 (601:44, logout): not on the mobile tab column.
      */
     private static final int[] MOBILE_STONES = {101, 71, 102, 97, 98, 99, 100, 74, 76, 75, 44, 77, 72, 73};
     private static final int[] DESKTOP_STONES = {59, 60, 61, 62, 63, 64, 65, 43, 44, 45, 46, 47, 48, 49};

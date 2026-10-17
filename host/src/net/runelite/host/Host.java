@@ -649,7 +649,7 @@ public final class Host {
                 // this cycle releases it). As desktop, WidgetDrag is posted while the drag is past its
                 // dead zone/time, including the release cycle, where getMouseCurrentButton reads 0 and
                 // setDraggedOnWidget(null) still cancels the game's swap.
-                // unverified: on the device (static RE of the drag block, docs/offsets.md "Widget drag").
+                // Verified 2026-10-17 (Spellbook reorder, inventory drag).
                 if (!bus.hasSubscribers(net.runelite.api.events.WidgetDrag.class)) break;
                 int[] d = Native.dragState();
                 if (d == null || d[4] == 0) break;

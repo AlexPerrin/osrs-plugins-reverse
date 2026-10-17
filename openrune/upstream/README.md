@@ -32,6 +32,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 16 | `16-genie-random-event` | `content/events/random-events` (new module) | Genie random event; integration tests | Timers 450/451; `::randomevent` summons him (like `::star`) |
 | 17 | `17-slayer-osrs-streak-and-wording` | `content/skills/slayer`: `SlayerTaskManager.kt`, `SlayerContact.kt`, `build.gradle.kts`, `SlayerTaskVarsTest.kt` (new) | Streaks in the client-visible varbits `slayer_tasks_completed`/`slayer_wilderness_tasks_completed`; OSRS gem-check and completion wording RuneLite parses | Existing saves keep their streak in the old server-only varbits (no migration) |
 | 18 | `18-idle-packet-logout` | `api/net/.../handlers/IdleHandler.kt` (new), `MessageConsumerProvider.kt`, `IdleHandlerTest.kt` (new) | The client's IDLE packet logs the player out in OSRS; handled like the logout button | Contains nothing of ours |
+| 19 | `19-farming-patches` | `content/skills/farming` + `farming/pack` (new modules) | OpenRune had no farming: allotment, flower and herb patches at Catherby and Falador with the farming_transmit values RuneLite's Time Tracking reads; integration tests | dbtable 60002 (rows 60160-60187), varps 63780-63795, timer 460; `::growpatches`; no disease/compost/payments |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -96,3 +97,7 @@ with the op fix below is not yet tried in game.
 Patch 15 was updated afterwards (Loot registers on the cache op that carries
 "Loot", which is the third one) and re-checked: apply-check on the pin, hunter
 `spotlessCheck` and the hunter integration suites (10 tests) pass.
+
+Patch 19 (farming) was added afterwards: `git apply --check` on the pin passes; it is new files
+only and was compiled, tested (`FarmingScriptTest`, 8) and spotless-checked in our tree, not on a
+pin-only clone.

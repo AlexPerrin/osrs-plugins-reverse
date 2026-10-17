@@ -413,6 +413,7 @@ upstream later; nobody has contacted upstream.
 | Implings, Genie random event | `content/skills/hunter`, `content/events/random-events` | New content with tests (2026-10-16, fifth server dev) |
 | Impling jar loot, crystal implings, bird houses | `content/skills/hunter` | New content with tests (sixth server dev); jar loot and crystal implings are in `upstream/15-implings.patch`, bird houses not yet |
 | Slayer streak and wording | `content/skills/slayer` | Streaks were server-only varbits; RuneLite reads 4069/5617 (`upstream/17`) |
+| Farming patches (Catherby, Falador) | `content/skills/farming` (new module) | OpenRune had no farming; values RuneLite's Time Tracking decodes (`upstream/19`) |
 
 The split patches are in `openrune/upstream/` (one per fix, with a README); see there for what
 was verified.
@@ -435,3 +436,40 @@ was verified.
   success without packing the new dbtable). Run once with `--no-configuration-cache`.
 - Every `buildCache` changes archive 3's reference table (interface versions), even with no
   interface change. Harmless so far (the client re-syncs that archive).
+
+## Seventh server dev (2026-10-16 late night): farming
+
+- **Module** `content/skills/farming` (+ `farming/pack`): `FarmingScript` and the server-only
+  dbtable `farming_crops` (60002, rows 60160-60187: 8 allotment crops, 6 flowers, 14 herbs; huasca
+  is left out, its chance-to-save constants are not on the wiki). Server varps 63780-63795
+  (`farming_<catherby|falador>_<a-d>_state|time`): state = transmit value | harvest lives << 8,
+  time = UTC minute of the last growth. Timer `farming_transmit` (460) rewrites
+  `farming_transmit_a-e` every 5 ticks for the area the player is in (RuneLite's FarmingWorld
+  bounds: Catherby mapsquares 11062/11061/11318/11317 with its isInBounds, Falador 12083 with
+  z >= 3272), 0 elsewhere.
+- **Patches:** Catherby `farming_veg_patch_3`/`_4` (4771/4772), `farming_flower_patch_2` (4773),
+  `farming_herb_patch_2` (4774); Falador `_veg_patch_1`/`_2`, `_flower_patch_1`, `_herb_patch_1`.
+  Ops register on the base multiloc (OpenRune falls back from the visible variant to the base).
+- **Values:** from PatchImplementation (allotment weeds 0-3 = 3 - weed stage; potato 6-9 then 10
+  harvestable, snape grass 63-69 then 138; herbs plant+0..3 then plant+4; flowers likewise). A
+  reflection check against `re/runelite/client-1.13.1.jar` (scratch Java program, eclipse-temurin
+  in Docker) confirmed every growing and harvest value decodes to the right produce and stage.
+- **Rules:** growth on the UTC clock (minute % 10/5/20 == 0), lazily applied, so offline growth
+  works. Planting XP comes when the patch is emptied (the wiki says so for all three patch types
+  now). Herbs/allotments: 3 harvest lives, chance to save `(1 + floor(low*(99-F)/98 +
+  high*(F-1)/98 + 0.5))/256` with the wiki's per-crop low/high. Flowers: one pick, woad 3 leaves,
+  limpwurt 3 + random(0..F-1)/10.
+- **Device (22:10-22:27):** raked (devtools `interact_object` with `objectId` and "Rake"; the
+  patches' base locs have no name so `nameFilter` does not match), planted potato/marigold/guam
+  with long-press Use + tap, growth at 22:20 seen (varp 529 went 0x04080600 -> 0x05090700),
+  `::growpatches`, Harvest gave 10 potatoes and "The allotment is now empty.", Pick on the flower
+  and herb; a full inventory stopped the herb pick with the herb still there. Time Tracking (core
+  plugin) lists "Catherby (North) Done" and "Catherby (South) Done at 22:30", but 22:30 is the
+  prediction for raked weeds (value 3); after planting (value 6 at 22:17, 7 at 22:20) it should say
+  22:50 and it did not change. Open question for the client dev: does the host re-render the panel
+  after `panel.update()`, or did FarmingTracker not store the new value?
+- **Bird houses verified** (63f453b): the southern space is `birdhouse_2` at 3679,3815 with a wall
+  to its north; stand south of it (`::tele 3679 3814`). Build, Seeds, `::birdhouses`, Empty all
+  worked; the message was "You dismantle and discard the trap, retrieving 6 nests, 10 dead birds,
+  50 feathers and 112 Hunter XP." Six nests from a normal house at 99 looks high: the tier's
+  `nest_chance` (300) is above 256, so every roll succeeds; worth rechecking against the wiki.

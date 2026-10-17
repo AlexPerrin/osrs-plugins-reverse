@@ -1,4 +1,4 @@
-From 6e3ba06cc8a0c3f4d1397a76b8b3bfeb3abdd1f1 Mon Sep 17 00:00:00 2001
+From bfb49f11f46f6c0ceec6665f4d7ead30b9dc731d Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 16:32:43 -0400
 Subject: [PATCH] Achievement diaries: 20 more Lumbridge & Draynor / Varrock
@@ -453,7 +453,7 @@ index 67c0e8918..aced22882 100644
  }
 diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryModule.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryModule.kt
 new file mode 100644
-index 000000000..5eacbf026
+index 000000000..b45905a84
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryModule.kt
 @@ -0,0 +1,17 @@
@@ -471,7 +471,7 @@ index 000000000..5eacbf026
 +
 +internal class DiaryKillHook : NpcDeathKillHook {
 +    override fun onKill(context: NpcDeathKillContext) {
-+        DiaryHooks.npcKilled(context.hero, context.npc.name, context.npc.coords)
++        DiaryHooks.npcKilled(context.hero, context.npc.type.name, context.dropCoords)
 +    }
 +}
 diff --git a/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt b/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt

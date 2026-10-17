@@ -9,10 +9,13 @@ inventory-setups https://github.com/dillydill123/inventory-setups.git 16f2c0a319
 kitten-tracker https://github.com/pieterjanbuntinx/kitten-tracker.git 6672c661be2aceb051059961a6a1781334250741
 large-logout https://github.com/dekvall/runelite-external-plugins.git edcd51ca9e865576ccb91fc75a685de0fd4a3556
 loot-lookup https://github.com/donth77/loot-lookup-plugin.git 58812e18d0f955d597c4894ece0ae23aff1a3a74
+maxhitplugin https://github.com/Seebity/max-hit.git dce258e2d185887de891eec8961c27b5df92a55c
 monster-hp-percentage https://github.com/lejeffe/MonsterHP.git 360f0c84d427010578f4e0de51c48366b3a77524
 radius-markers https://github.com/Skretzo/runelite-plugins.git 02effd4f76fbe8e773da1c604b45bc0be7c9f636
 shortest-path https://github.com/Skretzo/shortest-path.git 37abff3a3345185fc11fccecae04d8170de25a11
 skills-tab-progress-bars https://github.com/m0bilebtw/skills-tab-progress-bars.git c421ff74691c8ccbe35f99e602a32cd94614afbe
+tictac7x-charges https://github.com/TicTac7x/runelite-plugins.git 85bc2cef4245e6394a0404d8c2f0efd12ef9faa5
 tree-despawn-timer https://github.com/CreativeTechGuy/tree-despawn-timer.git 9f9eb2b35db64cb6032d9d3e713afb2a3bd89176
 visual-metronome https://github.com/vincent0955/Visual-metronome.git f2226279d210c1765e876b51f5e1159921695a46
 wasted-bank-space https://github.com/mcgeer/WastedBankSpace.git 1cb3b285c995fb7f4229a172033fcb6020d445cf
+wilderness-multi-lines https://github.com/Nightfirecat/plugin-hub-plugins.git d81bb4c444c3772b1563be8a8fcc2252c84a0a4f

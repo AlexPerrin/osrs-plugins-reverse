@@ -985,3 +985,16 @@ was verified.
   Make-X and is skipped on the last bar of a Make-X (**guess**, inferred from "next ore"). The
   iron 50% failure roll applies to the first bar only (**guess**). Upstream `38-varrock-platebody-smelting`
   (needs 09).
+  Tier caps (checked against the wiki pages for armour 1-4, OpenRune's `SmithingBonuses`, unchanged):
+  the bar's Smithing level must be at most steel 30 / mithril 50 / adamantite 70 / any for armour
+  1/2/3/4, Edgeville furnace only, 10%. Ranking the bars by level (so gold, 40, needs armour 2, and
+  blurite/silver/elemental count under armour 1) is OpenRune's reading of "up to and including"
+  (**guess**).
+- **Device run 2026-10-17 07:41-07:54 EDT** (deployed 424fc37 + 11ac6d7 at 11:42 UTC): box traps
+  with the core Hunter plugin: `::setxp hunter 14000000`, `::item hunting_box_trap 3`, `::npc 500
+  hunting_chinchompa`, Lay at 3224,3220 ("Trap placed by tester" in the plugin log, timer circle),
+  the trap turned into a "Shaking box" (Check/Reset), Check gave "You've caught a chinchompa.", a
+  chinchompa, 198 Hunter XP and the trap back ("Trap removed" in the plugin log). Smelting at the
+  Edgeville furnace (`::tele 3108 3499`): "You retrieve a bar of bronze." and the Smelting overlay
+  "Bars: 1". The 10% Varrock extra bar was not seen (one bar only; full inventory). The tester now
+  wears Varrock armour 1. `server/tools/device.sh login` now checks the OpenRune log.

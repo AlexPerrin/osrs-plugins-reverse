@@ -12,7 +12,7 @@ login)
     $ADB $S shell input tap 958 668; sleep 3     # "Try again" (or no-op on the Play Now screen)
     $ADB $S shell input tap 958 550              # "Play Now"
     for _ in $(seq 1 30); do
-        docker logs --since "$since" osrs-rsps-test 2>&1 | grep -q "logged in as" && { echo "logged in"; exit 0; }
+        docker logs --since "$since" "${GAME_CONTAINER:-osrs-openrune}" 2>&1 | grep -qE "logged in as|Token login .* mapped to local account" && { echo "logged in"; exit 0; }
         sleep 1
     done
     echo "login not seen in server log" >&2; exit 1 ;;

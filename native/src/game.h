@@ -160,6 +160,10 @@ struct SubInterface { int component, group, type; };  // `group` is open inside 
 std::vector<SubInterface> open_sub_interfaces();
 // IF_CLOSESUB for an open sub-interface (`0x462384`); false when it isn't open. Game thread only.
 bool close_sub_interface(int component, int group, bool unload);
+// RuneLite's drawInstanceMap: the game's minimap image of `plane` (desktop layout: 512x512 RGB,
+// 4 px per tile, scene tile (x, y) at (48 + 4x, 48 + 4(103 - y))), resampled when the minimap zoom
+// isn't 4. The game's buffer is restored to the plane it showed. Game thread only.
+bool draw_minimap(int plane, std::vector<int32_t>& out);
 
 constexpr int kSkillCount = 25;
 struct Skills {

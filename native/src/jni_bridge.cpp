@@ -918,6 +918,13 @@ jint n_friend_list_state(JNIEnv*, jclass) { return game::friend_list_state(); }
 jboolean n_close_sub_interface(JNIEnv*, jclass, jint component, jint group, jboolean unload) {
     return client_thread::on_client_thread() && game::close_sub_interface(component, group, unload);
 }
+jintArray n_draw_minimap(JNIEnv* env, jclass, jint plane) {
+    std::vector<int32_t> px;
+    if (!client_thread::on_client_thread() || !game::draw_minimap(plane, px)) return nullptr;
+    jintArray a = env->NewIntArray(static_cast<jsize>(px.size()));
+    env->SetIntArrayRegion(a, 0, static_cast<jsize>(px.size()), px.data());
+    return a;
+}
 jintArray n_sub_interfaces(JNIEnv* env, jclass) {
     std::vector<jint> v;
     for (const auto& s : game::open_sub_interfaces()) v.insert(v.end(), {s.component, s.group, s.type});
@@ -1448,6 +1455,7 @@ const JNINativeMethod kNatives[] = {
     {"friendListState", "()I", reinterpret_cast<void*>(n_friend_list_state)},
     {"reloadScene", "()Z", reinterpret_cast<void*>(n_reload_scene)},
     {"subInterfaces", "()[I", reinterpret_cast<void*>(n_sub_interfaces)},
+    {"drawMinimap", "(I)[I", reinterpret_cast<void*>(n_draw_minimap)},
     {"closeSubInterface", "(IIZ)Z", reinterpret_cast<void*>(n_close_sub_interface)},
     {"typeParam", "(III)Ljava/lang/Object;", reinterpret_cast<void*>(n_type_param)},
     {"overlayBuffer", "(II)Ljava/nio/ByteBuffer;", reinterpret_cast<void*>(n_overlay_buffer)},

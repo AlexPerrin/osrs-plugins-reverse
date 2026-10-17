@@ -1151,6 +1151,43 @@ bool close_sub_interface(int component, int group, bool unload) {
     return true;
 }
 
+// Minimap (`mm = *(Client+0x40e970)`, built by 0x58776c/0x589120): ARGB raster {u64 pixel count
+// +0x6440, int* pixels +0x6450, width/height +0x6458/+0x645c}, zoom (px per tile) +0x6470, image
+// size zoom*104 + 96; +0xc = the plane drawn into it (the cycle redraws when the render world
+// view's plane, Client[+0xc940]+0x18, differs: 0x41f22c). 0x589180(mm, plane, Scene*) clears it to
+// 0xff000000 and draws every tile, wall and map scenery of `plane` (desktop's minimap renderer).
+// Static RE gen 29 (subagent). unverified: on the device (Instance Map).
+bool draw_minimap(int plane, std::vector<int32_t>& out) {
+    uintptr_t c = client();
+    if (!c || plane < 0 || plane > 3) return false;
+    uintptr_t mm = read_at<uintptr_t>(c + 0x40e970);
+    uintptr_t wv = read_at<uintptr_t>(c + 0xc940);
+    uintptr_t scene = wv ? read_at<uintptr_t>(wv + 0x10) : 0;
+    if (!mm || !scene || !read_at<uintptr_t>(mm + 0x65b8)) return false;
+    auto* px = read_at<int32_t*>(mm + 0x6450);
+    uint64_t count = read_at<uint64_t>(mm + 0x6440);
+    int zoom = read_at<int32_t>(mm + 0x6470), w = read_at<int32_t>(mm + 0x6458), h = read_at<int32_t>(mm + 0x645c);
+    int size = zoom * 104 + 96;
+    if (!px || zoom < 2 || zoom > 8 || w != size || h != size || count != static_cast<uint64_t>(size) * size) return false;
+    int shown = read_at<int32_t>(mm + 0xc);
+    using Render = void (*)(uintptr_t, int, uintptr_t);
+    auto render = reinterpret_cast<Render>(g_base + 0x589180);
+    render(mm, plane, scene);
+    out.assign(512 * 512, 0);
+    // Desktop layout: the 104x104 tile area starts at (48, 48), 416 px wide. Nearest-neighbour
+    // when the game's zoom isn't 4 (identity at 4).
+    for (int y = 0; y < 512; y++) {
+        int sy = y < 48 || y >= 464 ? -1 : 48 + (y - 48) * zoom / 4;
+        for (int x = 0; x < 512; x++) {
+            int sx = x < 48 || x >= 464 ? -1 : 48 + (x - 48) * zoom / 4;
+            if (sx >= 0 && sy >= 0 && sx < size && sy < size) out[y * 512 + x] = px[sy * size + sx] & 0xffffff;
+        }
+    }
+    // Put the game's image back (0x589180 doesn't touch +0xc; at -1 the cycle redraws anyway).
+    if (shown >= 0 && shown <= 3) render(mm, shown, scene);
+    return true;
+}
+
 Skills skills() {
     Skills out;
     uintptr_t c = client();

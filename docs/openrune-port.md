@@ -1508,4 +1508,8 @@ clan hall, guest channels, events) are bigger again (several days).
   limits (potion doses etc.).
 - Tests: 10 in `:content:interfaces:grand-exchange:integration` (partial fill + refund, abort after a
   partial fill, the limit window with the rune pickaxe (limit 40), tracker reuse). Upstream `50`.
-- Not device-checked yet.
+- **Device-checked 14:39 (09d83ad, `EXTRA=grandexchange`):** 10 lobsters at guide (70) -> "Grand Exchange:
+  Bought 3 / 10", "6 / 10", "9 / 10" x Lobster, then "Finished buying 10 x Lobster.", with the slot's bar
+  filling and the GE plugin notifying each line ("[RuneLite] Grand Exchange: Bought 3 / 10 x Lobster.").
+  50 bronze pickaxes (limit 40) at 1 gp -> 13, 26, 39, 40 / 50 and then it stays BUYING ("You have bought a
+  total of 40 so far for a total price of 40 coins."); Abort returned 10 coins with the 40 pickaxes.

@@ -501,14 +501,23 @@ session; its notes are in `docs/android-protocol.md`.
     pc/lr/regs of faults in the game lib or ours (chains to the previous handler; not yet exercised).
   - devtools: interact_npc prefers hull points on the canvas and off the UI columns (left-edge fix,
     unverified); select_option, continue_dialogue, item_action (needs the inventory tab open) used for Turael.
-  - Verified in gen 15: Implings (Puro-Puro), Random Events, NPC Aggression Timer (core); Better NPC Highlight,
-    Monster HP %, Visual Metronome, Attack Timer Metronome, Shortest Path (hub). Core 48 runs / 3 starts.
+  - Verified in gen 15: Implings (Puro-Puro), Random Events, NPC Aggression Timer, Slayer (core); Better NPC
+    Highlight, Monster HP %, Visual Metronome, Attack Timer Metronome, Shortest Path, Max Hit (hub). Tables at the
+    end of gen 15: core 49 runs / 2 starts (Emojis, Player Indicators) / 0 throws of 51; hub 21 rows: 6 runs,
+    13 starts, 1 throws (Charges Improved, compat fix for Collection.toArray(IntFunction) built, unverified),
+    1 untested (Loot Lookup, jsoup).
   - Test keys: `randomevents.notifyAll` (not notifyAllEvents), `npcUnaggroArea.npcUnaggroAlwaysActive`,
-    `BetterNpcHighlight.tileHighlight/tileNames`, `MonsterHP.npcShowAll`, `implings.showgourmet`.
-  - Next (gen 16): Slayer with a Turael task (getDBRowsByValue, unverified; tester has 17 Icefiends);
-    the remaining hub `starts` rows (bank ones with ::openbank, Inventory Setups sidebar, Skills Tab Progress
-    Bars, Large Logout, Tree Despawn Timer, Improved Tile Indicators, Customizable XP Drops' drops); more hub
-    plugins; Player Indicators via the desktop login; the impling name label height.
+    `BetterNpcHighlight.tileHighlight/tileNames`, `MonsterHP.npcShowAll`, `implings.showgourmet`. Slayer: tester
+    has Turael's 17 Icefiends; `::varp 394 <n>` changes the count (InfoBox appears on a change, as on desktop).
+    Shortest Path clears targets within 5 tiles at once; pick a far tile. Probe nested fields with
+    `debug.osrsrl.probe Plugin.field.field` (e.g. `ShortestPathPlugin.debugState.search`).
+  - api_gaps.py misses Java 9+ *interface default* methods (Collection.toArray(IntFunction) slipped through);
+    CompatRewrite now rewrites INVOKEINTERFACE too; JdkCompat needs one overload per receiver interface.
+  - Next (gen 16): verify Charges Improved, Customizable XP Drops' drops, Tree Despawn Timer, Improved Tile
+    Indicators, Large Logout, Radius Markers; Banked Experience's JComboBox label (renderer: show the item's
+    toString/renderer text, not the class name); Bank Heatmap's created button (long-press showed no menu: plugin
+    widgets created with createChild are host-side only); more hub plugins by install count; Player Indicators via
+    the desktop login; the impling name label height; devtools left-edge fix unverified.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

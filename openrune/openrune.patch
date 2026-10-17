@@ -2319,6 +2319,58 @@ index 7af3c1d93..953380a8a 100644
          val gameframe = gameframes[gameframeTopLevel]
          if (gameframe != null && gameframe.resizable == ui.frameResizable) {
              ifOpenTop(gameframe.topLevel)
+diff --git a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/SideChannelsScript.kt b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/SideChannelsScript.kt
+new file mode 100644
+index 000000000..8dd884024
+--- /dev/null
++++ b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/SideChannelsScript.kt
+@@ -0,0 +1,46 @@
++package org.rsmod.content.interfaces.gameframe.script
++
++import dev.openrune.types.aconverted.interf.IfSubType
++import jakarta.inject.Inject
++import org.rsmod.api.player.ui.ifOpenSub
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.script.onIfOpen
++import org.rsmod.api.script.onIfOverlayButton
++import org.rsmod.events.EventBus
++import org.rsmod.game.entity.Player
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * The chat-channel side tab (`side_channels`, 707) only draws its four sub-tab buttons; the
++ * server opens the selected panel into `side_channels:contents` and keeps
++ * `side_channels_tab_selected` in step: chat-channel (7), your clan (701), another clan (702),
++ * grouping (76).
++ */
++class SideChannelsScript @Inject constructor(private val eventBus: EventBus) : PluginScript() {
++    override fun ScriptContext.startup() {
++        onIfOpen(SIDE_CHANNELS) { player.openChannelsTab(player.vars[SELECTED_TAB]) }
++        for ((tab, _) in PANELS.withIndex()) {
++            onIfOverlayButton("component.side_channels:tab_$tab") { player.openChannelsTab(tab) }
++        }
++    }
++
++    private fun Player.openChannelsTab(tab: Int) {
++        val panel = PANELS.getOrNull(tab) ?: return
++        VarPlayerIntMapSetter.set(this, SELECTED_TAB, tab)
++        ifOpenSub(panel, CONTENTS, IfSubType.Overlay, eventBus)
++    }
++
++    private companion object {
++        const val SIDE_CHANNELS = "interface.side_channels"
++        const val CONTENTS = "component.side_channels:contents"
++        const val SELECTED_TAB = "varbit.side_channels_tab_selected"
++        val PANELS =
++            listOf(
++                "interface.chatchannel_current",
++                "interface.clans_sidepanel",
++                "interface.clans_guest_sidepanel",
++                "interface.grouping",
++            )
++    }
++}
 diff --git a/content/other/commands/build.gradle.kts b/content/other/commands/build.gradle.kts
 index ea293b6e0..126edec7c 100644
 --- a/content/other/commands/build.gradle.kts
@@ -3270,10 +3322,48 @@ index 000000000..724a884e2
 +mcannon_fire = 440
 +mcannon_decay = 441
 diff --git a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
-index a325cee80..741ff0b66 100644
+index a325cee80..f5b4ed9cc 100644
 --- a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 +++ b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
-@@ -107,10 +107,15 @@ constructor(
+@@ -24,6 +24,7 @@ import org.rsmod.api.player.output.UpdateRun
+ import org.rsmod.api.player.output.UpdateStat
+ import org.rsmod.api.player.output.mes
+ import org.rsmod.api.player.output.runClientScript
++import org.rsmod.api.player.protect.ProtectedAccessLauncher
+ import org.rsmod.api.player.startInvTransmit
+ import org.rsmod.api.player.stat.stat
+ import org.rsmod.api.player.vars.VarPlayerIntMapSetter
+@@ -48,6 +49,7 @@ constructor(
+     private val invisibleLevels: InvisibleLevels,
+     private val config: ServerConfig,
+     private val openRuneCentral: OpenRuneCentralWorldLink,
++    private val protectedAccess: ProtectedAccessLauncher,
+ ) : PluginScript() {
+     private val statSyncEntries by lazy { statSyncEntries() }
+ 
+@@ -62,6 +64,21 @@ constructor(
+         sendHighPriority()
+         sendLowPriority()
+         VarPlayerIntMapSetter.set(this, "varbit.player_in_instance", 0)
++        resendSocialWhenLoaded()
++    }
++
++    /**
++     * osrs-plugins-reverse: the Android client was left with its friend list in the loading
++     * state (friend_count < 0) after the login-time UPDATE_FRIENDLIST; the list is sent again once
++     * the map is built.
++     */
++    private fun Player.resendSocialWhenLoaded() {
++        if (!mobileClient) return
++        protectedAccess.launch(this) {
++            loadDelay()
++            delay(SOCIAL_RESEND_DELAY)
++            player.sendSocial()
++        }
+     }
+ 
+     private fun Player.sendHighPriority() {
+@@ -107,10 +124,15 @@ constructor(
          client.write(HideObjOps(false))
      }
  
@@ -3290,6 +3380,13 @@ index a325cee80..741ff0b66 100644
          }
  
          val broadcast = realm.config.loginBroadcast
+@@ -187,5 +209,6 @@ constructor(
+ 
+     private companion object {
+         const val TUTORIAL_DEFAULT_SETTINGS = "clientscript.[clientscript,tutorial_default_settings]"
++        const val SOCIAL_RESEND_DELAY = 2
+     }
+ }
 diff --git a/content/other/plank-sack/build.gradle.kts b/content/other/plank-sack/build.gradle.kts
 new file mode 100644
 index 000000000..fc1089168

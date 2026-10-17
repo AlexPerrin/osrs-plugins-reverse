@@ -859,3 +859,17 @@ was verified.
   otherwise the emote again brings him (wiki). One foe per player, 500-tick lifetime (our
   choice); despawned on logout. Not device-checked (the integration tests cover it). Upstream
   `34-treasure-trails-hard-foes`.
+- **Mobile social tabs** (client dev's dump on 245ed50: the two-faces tab is `side_channels` 707
+  with four sub-tabs and an empty contents pane; 429 sits in the loading state "Loading friends
+  list", so friend_count < 0):
+  - The Android dispatcher: FRIENDLIST_LOADED (69) sets the friend manager's state (+0x150) to 1;
+    UPDATE_FRIENDLIST (25) reads the list (`FUN_0066e448`) and sets it to 2 (`FUN_004fbd30`).
+    OpenRune sends both at login (desktop order checked with `desktop_login.py`: FRIENDLIST_LOADED
+    3rd, UPDATE_FRIENDLIST/UPDATE_IGNORELIST about 120 packets later, after IF_OPENTOP), so on the
+    device the update apparently doesn't land. Fix to try (`LoginScript.resendSocialWhenLoaded`,
+    mobile only): send the social snapshot again after `loadDelay()` + 2 ticks.
+  - `SideChannelsScript` (gameframe): 707's tabs (transmitop 1) had no handler and nothing was
+    opened into `side_channels:contents`. Now the selected tab (`side_channels_tab_selected`,
+    13071) opens chat-channel `chatchannel_current` (7), `clans_sidepanel` (701),
+    `clans_guest_sidepanel` (702) or `grouping` (76) when 707 opens and on each tab op (the
+    tab->panel order is from OSRS memory: a guess).

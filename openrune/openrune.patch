@@ -298,6 +298,72 @@ index b6b20f311..c62dc1115 100644
      private fun Iterable<ZoneProt>.toPlayerSpecificEnclosed(observerId: Long?): List<ZoneProt> {
          val enclosed = ArrayList<ZoneProt>()
          for (update in this) {
+diff --git a/api/music-plugin/src/main/kotlin/org/rsmod/api/music/plugin/scripts/MusicTabScript.kt b/api/music-plugin/src/main/kotlin/org/rsmod/api/music/plugin/scripts/MusicTabScript.kt
+index 8ab0248dc..b1025eafc 100644
+--- a/api/music-plugin/src/main/kotlin/org/rsmod/api/music/plugin/scripts/MusicTabScript.kt
++++ b/api/music-plugin/src/main/kotlin/org/rsmod/api/music/plugin/scripts/MusicTabScript.kt
+@@ -1,17 +1,32 @@
+ package org.rsmod.api.music.plugin.scripts
+ 
++import dev.openrune.definition.type.widget.IfEvent
++import dev.openrune.types.aconverted.interf.IfButtonOp
++import jakarta.inject.Inject
+ import org.rsmod.api.player.music.MusicPlayMode
++import org.rsmod.api.player.music.MusicPlayer
+ import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.ui.ifSetEvents
+ import org.rsmod.api.player.vars.enumVarp
++import org.rsmod.api.script.onIfOpen
+ import org.rsmod.api.script.onIfOverlayButton
++import org.rsmod.api.table.MusicRow
+ import org.rsmod.game.entity.Player
+ import org.rsmod.plugin.scripts.PluginScript
+ import org.rsmod.plugin.scripts.ScriptContext
+ 
+-public class MusicTabScript : PluginScript() {
++public class MusicTabScript @Inject constructor(private val musicPlayer: MusicPlayer) : PluginScript() {
+     private var Player.playMode by enumVarp<MusicPlayMode>("varp.musicplay")
+ 
++    /** The jukebox list's children: the clientscript makes one per music row that is not hidden. */
++    private val tracks: List<MusicRow> by lazy {
++        MusicRow.all().filter { it.hidden != true }.sortedBy { it.rowId }
++    }
++
+     override fun ScriptContext.startup() {
++        onIfOpen("interface.music") {
++            player.ifSetEvents("component.music:jukebox", tracks.indices, IfEvent.Op1, IfEvent.Op2)
++        }
+         onIfOverlayButton("component.music:area") { selectPlayMode(MusicPlayMode.Area, "area") }
+         onIfOverlayButton("component.music:shuffle") {
+             selectPlayMode(MusicPlayMode.Random, "shuffle")
+@@ -19,10 +34,27 @@ public class MusicTabScript : PluginScript() {
+         onIfOverlayButton("component.music:single") {
+             selectPlayMode(MusicPlayMode.Manual, "single")
+         }
++        onIfOverlayButton("component.music:jukebox") { selectTrack(it.comsub, it.op) }
+     }
+ 
+     private fun ProtectedAccess.selectPlayMode(mode: MusicPlayMode, name: String) {
+         player.playMode = mode
+         mes("You are now using the $name music mode.")
+     }
++
++    private fun ProtectedAccess.selectTrack(index: Int, op: IfButtonOp) {
++        val track = tracks.getOrNull(index) ?: return
++        when (op) {
++            IfButtonOp.Op1 -> {
++                if (!musicPlayer.isUnlocked(player, track)) {
++                    mes("You have not unlocked this piece of music yet!")
++                    return
++                }
++                player.playMode = MusicPlayMode.Manual
++                musicPlayer.play(player, track)
++            }
++            IfButtonOp.Op2 -> mes(track.unlockhint)
++            else -> Unit
++        }
++    }
+ }
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
 index 5fafd3b35..e4d983716 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
@@ -843,6 +909,45 @@ index 000000000..48d1d61cd
 +    private fun key(npcType: Int, op: InteractionOp): Long =
 +        (npcType.toLong() shl 8) or op.ordinal.toLong()
 +}
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/music/MusicPlayer.kt b/api/player/src/main/kotlin/org/rsmod/api/player/music/MusicPlayer.kt
+index b7269da3e..2f90774fe 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/music/MusicPlayer.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/music/MusicPlayer.kt
+@@ -3,7 +3,6 @@ package org.rsmod.api.player.music
+ import dev.openrune.rscm.RSCM
+ import dev.openrune.rscm.RSCM.asRSCM
+ import dev.openrune.rscm.RSCMType
+-import dev.openrune.types.aconverted.AreaType
+ import jakarta.inject.Inject
+ import org.rsmod.api.music.Music
+ import org.rsmod.api.music.MusicRepository
+@@ -121,6 +120,17 @@ internal constructor(private val random: GameRandom, private val repo: MusicRepo
+         VarPlayerIntMapSetter.set(player, varp, unlockValue)
+     }
+ 
++    /** Whether the jukebox may play [musicRow]: tracks with no unlock variable are always open. */
++    public fun isUnlocked(player: Player, musicRow: MusicRow): Boolean {
++        val music = repo.forRow(musicRow) ?: return false
++        return !music.canUnlock || hasUnlocked(player, music)
++    }
++
++    public fun isPlaying(player: Player, musicRow: MusicRow): Boolean {
++        val music = repo.forRow(musicRow) ?: return false
++        return player.currMusicId == music.id
++    }
++
+     public fun hasUnlocked(player: Player, musicRow: MusicRow): Boolean {
+         val music = getOrThrow(musicRow)
+         return hasUnlocked(player, music)
+@@ -168,7 +178,7 @@ internal constructor(private val random: GameRandom, private val repo: MusicRepo
+         if (player.currMusicArea == 0) {
+             return
+         }
+-        val area = RSCM.getReverseMapping(RSCMType.AREA,player.currMusicArea - 1)
++        val area = RSCM.getReverseMapping(RSCMType.AREA, player.currMusicArea - 1)
+         when (player.areaMode) {
+             MusicAreaMode.Modern -> {
+                 val modernMusic = repo.getModernArea(area)
 diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
 index 95ca2cd98..28129d308 100644
 --- a/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
@@ -4022,10 +4127,10 @@ index 000000000..edb58312b
 +transmit = "Never"
 diff --git a/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
 new file mode 100644
-index 000000000..f0dd96d0f
+index 000000000..d5f26a38b
 --- /dev/null
 +++ b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
-@@ -0,0 +1,280 @@
+@@ -0,0 +1,283 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -4107,6 +4212,9 @@ index 000000000..f0dd96d0f
 +        val counts = steps.groupingBy { it::class.simpleName }.eachCount()
 +        println("easy steps by kind: $counts")
 +        assertTrue(steps.any { it is TrailStep.Search })
++        val music = steps.filterIsInstance<TrailStep.Music>()
++        assertEquals(6, music.size)
++        assertTrue(music.all { Regex("<col=ffffff>[A-Za-z !&',.]+</col>").containsMatchIn(it.text!!) })
 +        assertTrue(steps.any { it is TrailStep.Emote && it.stashLoc != null })
 +    }
 +
@@ -4442,10 +4550,10 @@ index 000000000..b57b481d7
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
 new file mode 100644
-index 000000000..8a0526944
+index 000000000..6641bf09c
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
-@@ -0,0 +1,183 @@
+@@ -0,0 +1,195 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
@@ -4454,6 +4562,7 @@ index 000000000..8a0526944
 +import dev.openrune.types.dbcol.DbColumnCodec
 +import dev.openrune.types.dbcol.DbHelper
 +import dev.openrune.types.dbcol.list
++import org.rsmod.api.table.MusicRow
 +import org.rsmod.api.table.TrailCharlieTasksRow
 +import org.rsmod.api.table.TrailEmoteSeqsRow
 +import org.rsmod.api.table.TrailMapInterfacesRow
@@ -4462,6 +4571,7 @@ index 000000000..8a0526944
 +import org.rsmod.api.table.cluehelper.CluehelperClueEmoteRow
 +import org.rsmod.api.table.cluehelper.CluehelperClueHotcoldRow
 +import org.rsmod.api.table.cluehelper.CluehelperClueMapRow
++import org.rsmod.api.table.cluehelper.CluehelperClueMusicRow
 +import org.rsmod.api.table.cluehelper.CluehelperClueSkillchallengeRow
 +import org.rsmod.api.table.cluehelper.CluehelperOutfitRow
 +import org.rsmod.api.table.cluehelper.CluehelperTargetCoordRow
@@ -4502,6 +4612,10 @@ index 000000000..8a0526944
 +        val stashLoc: Int?,
 +    ) : TrailStep(row, tier, text)
 +
++    /** Play [music] and talk to one of [npcs] (Cecilia). */
++    class Music(row: Int, tier: TrailTier, text: String, val npcs: Set<Int>, val music: MusicRow) :
++        TrailStep(row, tier, text)
++
 +    fun covers(coords: CoordGrid, centre: CoordGrid, radius: Int): Boolean =
 +        coords.level == centre.level && coords.chebyshevDistance(centre) <= radius
 +}
@@ -4514,6 +4628,8 @@ index 000000000..8a0526944
 +    const val EMOTE_RADIUS = 5
 +    const val MAP_RADIUS = 1
 +    const val HOT_COLD_RADIUS = 4
++    const val MUSIC_TEXT_START = "Cecilia in Falador Park would like you to play her a song:<br>"
++    const val MUSIC_TEXT_END = ""
 +    private const val TARGET_NPC_TABLE = "dbtable.cluehelper_target_npc"
 +    private const val TARGET_LOC_TABLE = "dbtable.cluehelper_target_loc"
 +    private const val TARGET_COORD_TABLE = "dbtable.cluehelper_target_coord"
@@ -4552,6 +4668,10 @@ index 000000000..8a0526944
 +                    r.outfit,
 +                    r.hideyHoleLoc?.id,
 +                )
++        }
++        for (r in CluehelperClueMusicRow.all().filter { it.difficulty == d }) {
++            val text = "$MUSIC_TEXT_START<col=ffffff>${r.music.displayname}</col>$MUSIC_TEXT_END"
++            steps += TrailStep.Music(r.rowId, tier, text, setOf(r.target.npc.id), r.music)
 +        }
 +        val objs = STEP_OBJS.getValue(tier)
 +        return if (tier.clueObj == null) steps.filter { it.row in objs } else steps
@@ -4692,10 +4812,10 @@ index 000000000..469468835
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
 new file mode 100644
-index 000000000..87a12d0a8
+index 000000000..d43ee6b5a
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
-@@ -0,0 +1,629 @@
+@@ -0,0 +1,667 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
@@ -4715,6 +4835,7 @@ index 000000000..87a12d0a8
 +import org.rsmod.api.player.hook.SpadeDigHook
 +import org.rsmod.api.player.interact.LocOpOverrides
 +import org.rsmod.api.player.interact.NpcOpOverrides
++import org.rsmod.api.player.music.MusicPlayer
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.player.vars.VarPlayerIntMapSetter
@@ -4759,6 +4880,7 @@ index 000000000..87a12d0a8
 +@Inject
 +constructor(
 +    private val npcOverrides: NpcOpOverrides,
++    private val musicPlayer: MusicPlayer,
 +    private val locOverrides: LocOpOverrides,
 +    private val npcRepo: NpcRepository,
 +    private val objRepo: ObjRepository,
@@ -4824,6 +4946,7 @@ index 000000000..87a12d0a8
 +            is TrailStep.Talk -> step.npcs
 +            is TrailStep.Charlie -> step.npcs
 +            is TrailStep.HotCold -> step.npcs
++            is TrailStep.Music -> step.npcs
 +            else -> emptySet()
 +        }
 +
@@ -4884,6 +5007,7 @@ index 000000000..87a12d0a8
 +        when (step) {
 +            is TrailStep.Charlie -> talkToCharlie(npc, step)
 +            is TrailStep.HotCold -> talkToReldo(npc)
++            is TrailStep.Music -> talkToCecilia(npc, step)
 +            else ->
 +                startDialogue(npc) {
 +                    chatNpc(neutral, "Well done.")
@@ -4925,6 +5049,37 @@ index 000000000..87a12d0a8
 +        if (!holdsClue(player, step) || objName(task.obj) !in inv) return Advance.NONE
 +        if (invDel(inv, objName(task.obj)).failure) return Advance.NONE
 +        return advanceTrail(step)
++    }
++
++    private suspend fun ProtectedAccess.talkToCecilia(npc: Npc, step: TrailStep.Music) {
++        if (musicPlayer.isPlaying(player, step.music)) {
++            val result = advanceTrail(step)
++            startDialogue(npc) {
++                chatNpc(happy, "Thank you, I love that song!")
++                when (result) {
++                    Advance.NEXT_CLUE -> {
++                        val obj = objName(TrailSteps.clueObj(checkNotNull(currentStep(player, step.tier))))
++                        objbox(obj, "Cecilia offers you another clue.")
++                    }
++                    Advance.CASKET -> objbox(step.tier.casket, "You've obtained a casket!")
++                    Advance.NONE -> Unit
++                }
++            }
++            return
++        }
++        startDialogue(npc) {
++            chatNpc(quiz, "Have you come to play music to me?")
++            if (choice2("Yes, I have.", true, "No, I'm not interested in that.", false)) {
++                chatPlayer(neutral, "Yes, I have.")
++                chatNpc(neutral, "Select the song I asked you to play, and speak to me again.")
++            } else {
++                chatPlayer(neutral, "No, I'm not interested in that.")
++                chatNpc(
++                    happy,
++                    "Then you must have come to gaze in rapture at the natural beauty of Falador's parkland!",
++                )
++            }
++        }
 +    }
 +
 +    private suspend fun ProtectedAccess.talkToReldo(npc: Npc) {
@@ -5136,7 +5291,9 @@ index 000000000..87a12d0a8
 +        val steps = TrailSteps.ALL.getValue(tier)
 +        val arg = cheat.args.getOrNull(1)
 +        if (arg == "list") {
-+            player.mes("${tier.label} steps: ${steps.joinToString { "${it.row} ${it::class.simpleName}" }}")
++            for (chunk in steps.map { "${it.row} ${it::class.simpleName}" }.chunked(LIST_CHUNK)) {
++                player.mes("${tier.label} steps: ${chunk.joinToString()}")
++            }
 +            return
 +        }
 +        val step = arg?.toIntOrNull()?.let { TrailSteps.byRow(tier, it) } ?: pickStep(tier, null)
@@ -5221,6 +5378,7 @@ index 000000000..87a12d0a8
 +        const val HOT_COLD_SPOT_VARP = "varp.trail_beginner_hot_cold_spot"
 +        const val HOT_COLD_LAST_VARP = "varp.trail_beginner_hot_cold_last"
 +        const val URI_LIFETIME = 100
++        const val LIST_CHUNK = 12
 +        const val BLOCKED_FLAGS = CollisionFlag.BLOCK_WALK or CollisionFlag.BLOCK_PLAYERS
 +        val ADJACENT_OFFSETS =
 +            listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1, -1 to -1, 1 to -1, -1 to 1, 1 to 1)

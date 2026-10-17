@@ -634,3 +634,16 @@ was verified.
 - **Music steps (6 easy):** need the music tab's track selection ("Play" on a track), which OpenRune
   does not implement yet (`MusicTabScript` only handles the Area/Shuffle/Single buttons); ~2 h with
   the unlock checks. Not done.
+- **Music tab Play + music steps (approved after the easy device check):** `MusicTabScript` now sets
+  the jukebox events on tab open and handles Play (unlocked tracks only: "You have not unlocked this
+  piece of music yet!"; switches to manual mode) and Unlock hint. Child index = position among the
+  non-hidden music rows in row order (osrs-dumps `[proc,music_list_setup]`: `db_find(music:hidden,
+  false)` then `db_find_get(i)`); rows with no hidden value are counted as not hidden (to check on
+  the device: the track that plays must be the one tapped). Music steps (`TrailStep.Music`, 6 easy
+  rows): talk to Cecilia while the track plays: "Thank you, I love that song!" then "Cecilia offers
+  you another clue." / "You've obtained a casket!"; otherwise her "Have you come to play music to
+  me?" branch (Transcript:Cecilia). Scroll text is a best guess ("Cecilia in Falador Park would like
+  you to play her a song:<br><col=ffffff>Track</col>"): the plugin only needs the white col tag.
+  Upstream: `22-music-tab-play` (21 needs it).
+- **Left out for now (orchestrator OK):** the four unidentified easy map interfaces and the 27 loc
+  searches whose loc has no "Search" op (closed drawers that open first).

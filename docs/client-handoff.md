@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 22 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 23 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -864,6 +864,40 @@ session; its notes are in `docs/android-protocol.md`.
        game (UPDATE_GE_OFFERS), clan/friends-chat data (ClanChannel.findMember).
   - Gotchas: `debug.osrsrl.set` may hold another agent's leftover ("reload 0 0"): check `getprop` before
     launching. The varp probe sets before it logs the old value (`set varp N v` prints "before").
+- **2026-10-17 (client dev gen 23)**, commits 2e66c74..f3dda4c (progress at start: core 73/82, hub 28/32):
+  - **Bank Heatmap runs**: the host listed bank WidgetItems from 12:13; desktop's item layer is 12:12
+    (Bankmain.ITEMS). WidgetItemOverlays now get only the items under their draw hooks (showOnBank = 12:12,
+    showOnInventory = whole groups incl. bankside 15:3), as desktop.
+  - **Instances verified** (GWD Bandos room: `::varbit godwars_counter_bandos 40`, `::tele 2862 5354 2`, Open
+    the Big door 26503): `*(Client+0x4868)+0x54dd` flag, `+0x38` [4][13][13] template zones (offsets.md
+    "Instances"); isInstance/getInstanceTemplateChunks/instanced getMapRegions. Probe `set 'inst log 1'`.
+  - **getArray + spellbookSort verified**: script int arrays are frame object locals (offsets.md "Script arrays");
+    the RETURN's caller frame is x0 of the locals swap (`script_hooks::return_frame`). Spellbook's callback is
+    raised when proc 2621 returns to 2611 (log "spellbookSort: enum 1982 count 69"). Hiding not exercised.
+  - **GE offers** read from the game (Client+0x4185c0 slot objects, GrandExchangeOfferChanged per change);
+    unverified (OpenRune has no GE).
+  - **isDead** = head bar ratio 0 (Boss Timers creates its Mole timer, DPS Counter "Boss has died!"). Boss Timers
+    stays `starts` until its InfoBox is seen on screen (screenshot right after the kill).
+  - **Bank Tags runs** (basics; drag/Layouts out of scope): mobile bank scripts are desktop's (274/276/277/279
+    per item/505/840). Pieces: bankSearchFilter at proc 279's return (Host.bankSearchFilter; single-slot stack
+    access `Native.scriptIntTop/scriptStringTop` — full stack copies per item had dropped the game to 3-5 fps);
+    `CustomSpriteWidgets` draws graphic widgets with plugin sprite ids (negative, from getSpriteOverrides) on the
+    overlay canvas; plugins see 12:9 shifted below the tab bar 12:10 (`AndroidWidget.bankColumnShift`, live
+    geometry; applies to 12:9's height and its children's y); a desktop-like "Examine" MenuEntryAdded is posted
+    (not shown) for mobile bank item menus, which have none (`AndroidMenu.postMissingExamine`);
+    `Widget.setChildren` truncation via the game's vector resize `0x40a25c`; `setItemId/setItemQuantity`.
+  - Widgets of unmounted groups are hidden (closed interfaces stay loaded on mobile; the heatmap hint stayed drawn).
+  - Install recipe now: `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1 tools/repack.sh --install`
+    (the OPENRUNE defaults 8081/40255 no longer connect; relayed to the server dev, who owns repack.sh).
+    `server/tools/device.sh` is denied to the client agent by the permission classifier; type chat commands with
+    adb (`input tap 90 220` for the keyboard if needed, `input text '::tele%s...'`, `keyevent 66`).
+  - Bank booth recipe: `::tele 3208 3220 2`, long-press (1120,470), "Bank Bank booth" (1100,562); bank wrench
+    (295,343) = settings + Heatmap strip; search (843,962); test tags via `set 'config banktags item_<id>=<tag>'`.
+    Clean up `banktags.tagtabs/tab/icon_<tag>/item_<id>` in settings.properties afterwards (app stopped).
+  - **Next (gen 24)**: Boss Timers InfoBox screenshot; Spellbook hide (reorder mode); Instance Map's
+    `drawInstanceMap`; getSearchingTagTab/bankBuildTab (277/276 callbacks; cosmetic); drag (WidgetDrag,
+    getDraggedWidget/getDraggedOnWidget from the mobile drag state) if Layouts/Spellbook reorder are funded;
+    clan/friends-chat data (ClanChannel.findMember).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

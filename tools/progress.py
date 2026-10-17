@@ -131,6 +131,17 @@ def plugins(section="Core plugin status"):
     return st.count("runs"), st.count("starts"), len(st)
 
 
+def f2p():
+    """Rows of docs/f2p-content.md's checklist tables (Status in the second column), excluding the
+    summary table: (done, partial, total) with `n/a` rows left out of the total."""
+    try:
+        doc = read(os.path.join(ROOT, "docs/f2p-content.md"))
+    except OSError:
+        return 0, 0, 0
+    st = [m.lower() for m in re.findall(r"^\|[^|\n]+\|\s*`?(done|partial|missing|n/a)`?\s*\|", doc, re.M | re.I)]
+    return st.count("done"), st.count("partial"), len(st) - st.count("n/a")
+
+
 def pct(a, b):
     return 100.0 * a / b if b else 0.0
 
@@ -282,6 +293,10 @@ def main():
         ("Zone sub-prots implemented", z_done, ZONE_TOTAL, ", ".join(z_names)),
         ("RuneLite API implemented", api_done, api_total, "abstract methods of the interfaces below"),
     ]
+    f_done, f_partial, f_total = f2p()
+    if f_total:
+        head.insert(0, ("F2P content implemented", f_done, f_total,
+                        f"checklist rows marked `done` (implemented and verified) in docs/f2p-content.md, the project goal ({f_partial} more partial; `n/a` rows excluded)"))
     p_runs, p_starts, p_total = plugins()
     if p_total:
         head.append(("Plugins running on Android", p_runs, p_total,
@@ -331,7 +346,7 @@ def main():
         text = read(readme)
         badges = " ".join(
             f"![{n}](https://img.shields.io/badge/{n.replace(' ', '%20').replace('→', '%E2%86%92')}-{pct(a, b):.1f}%25-blue)"
-            for n, a, b, _ in head if n in ("Mobile packets mapped", "Mobile packets implemented", "RuneLite API implemented", "Plugins running on Android", "Plugin Hub plugins running"))
+            for n, a, b, _ in head if n in ("F2P content implemented", "Mobile packets mapped", "Mobile packets implemented", "RuneLite API implemented", "Plugins running on Android", "Plugin Hub plugins running"))
         block = (f"<!-- progress:start -->\n{badges}\n\n[![Progress map](docs/progress.svg)](docs/progress.md)\n\n"
                  + "\n".join(f"- **{n}**: {a}/{b} ({pct(a, b):.1f}%)" for n, a, b, _ in head)
                  + "\n\n\\* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the"

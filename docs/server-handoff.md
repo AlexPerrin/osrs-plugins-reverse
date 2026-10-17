@@ -40,8 +40,11 @@ Protocol unchanged. Details in `docs/openrune-port.md`, "Tenth server dev".
 - **Device tips:** chat commands: tap the keyboard toggle (90,220) until `mInputShown=true`, then
   `input text` and keyevent 66, otherwise the line stays typed but unsent; the music tab is the
   harp (1840,685); long-press NPCs after `::freeze`.
-- **Next:** medium clues core slice (approved, ~1 day), then puzzle boxes/keys/map crates/encounters;
-  fairy ring favourites and the hideout sequence; more `music_modern` areas.
+- **Medium clues** (d8937ea, 4719636): built and tested, not deployed/device-checked yet (restart
+  queued). Puzzle boxes (11 anagrams) are the remaining medium gap.
+- **Next:** device-check medium (challenge Read + answer at Baraek, a coordinate, a double emote,
+  a casket); puzzle boxes; fairy ring favourites and the hideout sequence; more `music_modern`
+  areas; upstream patch for medium (on top of 24).
 
 ## Latest state (2026-10-17, ninth server dev, on OpenRune)
 

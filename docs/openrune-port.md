@@ -703,10 +703,39 @@ was verified.
   **Open question:** tictac7x Charges' colossal-pouch regex expects "normal" for rune essence
   ("three normal essences"), which Ess Pouch would reject; maybe colossal-only wording. Fill/Empty
   messages are parsed by neither plugin and were left unchanged.
-- **Medium clue sizing (approved, core slice next):** medium rows in the cluehelper tables: 48
-  anagrams (each with a challenge question), 6 ciphers, 44 coordinates, 25 emotes (all double), 12
-  maps, 7 music, 27 cryptics (8 npc, 8 loc, 11 key). Core slice ~1 day: anagram/cipher + challenge
-  answers, coordinate digs, double emotes + medium Uri/STASH, npc/loc cryptics, music, map digs,
-  medium casket. Later ~0.5 day: puzzle boxes, key steps, map crates, coordinate combat encounters.
+- **Medium clues** (d8937ea core slice, 4719636 keys), `TrailTier.Medium` (3-5 steps, 3-5 casket
+  rolls, Uri `npc.trail_medium_uri`, STASH Construction 42 with oak planks, 250 XP; varps
+  63870-63875; no generic drop scroll: a scroll box gives a random step's own scroll). Steps (from
+  the cluehelper tables): 50 talks (44 with challenge scrolls: 37 anagrams, 6 ciphers, 1 cryptic),
+  44 coordinate digs, 25 double emotes, 21 searches (8 crate cryptics, 2 map crates, 11 key steps),
+  10 map digs, 6 music (Subterranea is hard). Left out: the 11 anagrams without a challenge (their
+  npcs give puzzle boxes, `trail_clue_*_puzzlebox` objs + slide puzzle 306; ~3 h, not done).
+  - Challenge scrolls: the challenge obj's param 623 names the clue row whose npc hands it out (not
+    the question row); question/answer from `cluehelper_challenge_question`. Flow: talk with the clue
+    -> the npc adds the challenge scroll; talk again -> count dialog; right answer takes the
+    challenge scroll and moves the trail on. All npc lines are best guesses ("Ah, a clue scroll.
+    Answer my question and I'll give you the next clue.", "<npc> has given you a challenge
+    scroll!", "Please enter the answer to the question.", "That isn't right, keep trying.", "Spot
+    on!"). The clue scroll is kept while the challenge is open (whether OSRS swaps it is unknown).
+    Read on a challenge scroll shows the question in 203 (the plugin matches the question).
+  - Coordinates: Jagex's short text `00.05S 01.13E` becomes "00 degrees 05 minutes south<br>01
+    degrees 13 minutes east" (what the plugin splits into 10 words). No sextant flow; dig with a
+    spade within 1 tile.
+  - Double emotes (wiki, emote clues): Uri comes after the first emote; the second must be done
+    before talking to him, otherwise "I do not believe we have any business, Comrade." and he stays.
+  - Maps: medium map objs `trail_clue_medium_map001-012`; the newer ones use interfaces of the same
+    name (`trail_clue_medium_map008-012`, likewise `trail_clue_easy_map006`), the older ones were
+    matched by rendering: rows 2235 Draynor bank = trail_map03, 2236 W of Crafting Guild = map07, 2237
+    McGrubor's crate = map10, 2238 Tower of Life = map15, 2239 Clock Tower crate = map16, 2240
+    Chemist's house = map17, 2246 Ranging Guild = map04. Crate maps are Search steps with a map.
+  - Keys: killing one of the key row's npcs while on the step drops the key for the killer
+    (`TrailKeyDropHook`, NpcDeathKillHook; every kill drops it, duration 200 ticks: our choices);
+    searching the target loc (its open variant) with the key takes the key and moves on.
+  - Medium casket: `MediumCasketTable` (dbtable 60008, rows 61000-61191), the wiki's 192 rows with
+    exact per-roll rarities over 23,181,180. Not rolled: the 1/30 master clue tertiary.
+  - Music scroll text is now the wiki's "I'd like to hear some music. Come and see me on the bridge
+    in Falador Park, and play: <col=ffffff>Track</col> Thanks, Cecilia" (line breaks guessed); the
+    plugin keys on the "i'd like to hear some music." prefix.
+  - Not device-checked yet.
 - **Upstream:** `23-openable-drawers-chests`, `24-treasure-trails-drawers-and-maps` (needs 21, 23),
   `25-ice-mountain-music-area`, `26-fairy-rings`, `27-essence-pouch-check-wording`.

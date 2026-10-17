@@ -71,8 +71,27 @@ final class OverlayRenderer {
     }
 
     // Item containers whose slots RuneLite reports as WidgetItems (WidgetItemOverlay): the
-    // inventory (149:0), bank items (12:13), equipment slots are not mapped yet.
-    private static final int[] ITEM_CONTAINERS = {149 << 16, 12 << 16 | 13};
+    // inventory (149:0), bank items (12:12 = InterfaceID.Bankmain.ITEMS, as on desktop; gen 8-22 used
+    // 12:13, so no bank WidgetItems existed), the inventory beside the bank (15:3). Equipment slots
+    // are not mapped yet.
+    private static final int[] ITEM_CONTAINERS = {149 << 16, 12 << 16 | 12, 15 << 16 | 3};
+
+    /**
+     * The WidgetItems a WidgetItemOverlay sees, as desktop: only items under one of its draw hooks
+     * (showOnInventory = whole groups, `group << 16 | 0xffff`; showOnBank = the 12:12 layer).
+     */
+    private static List<net.runelite.api.widgets.WidgetItem> forHooks(
+            List<net.runelite.api.widgets.WidgetItem> all, List<Integer> hooks) {
+        List<net.runelite.api.widgets.WidgetItem> out = new ArrayList<>();
+        for (net.runelite.api.widgets.WidgetItem wi : all) {
+            int parent = wi.getWidget().getParentId();
+            for (int h : hooks) {
+                boolean match = (h & 0xffff) == 0xffff ? (parent >>> 16) == (h >>> 16) : parent == h;
+                if (match) { out.add(wi); break; }
+            }
+        }
+        return out;
+    }
 
     private static List<net.runelite.api.widgets.WidgetItem> widgetItems() {
         List<net.runelite.api.widgets.WidgetItem> out = new ArrayList<>();
@@ -92,6 +111,8 @@ final class OverlayRenderer {
         }
         return out;
     }
+
+    private List<net.runelite.api.widgets.WidgetItem> widgetItemsAll;
 
     /** Whether the last render() call skipped the frame (overlays draw every other cycle). */
     boolean skipped;
@@ -116,7 +137,7 @@ final class OverlayRenderer {
             canvas = new Canvas(bitmap);
         }
         bitmap.eraseColor(0);
-        if (overlays.hasWidgetItemOverlays()) overlays.setWidgetItems(widgetItems());
+        widgetItemsAll = overlays.hasWidgetItemOverlays() ? widgetItems() : null;
         List<Rect> under = uiExclusions();
         // The game draws its long-press menu natively on top of everything; no overlay may cover it.
         java.awt.Rectangle menu = AndroidMenu.bounds();
@@ -265,6 +286,8 @@ final class OverlayRenderer {
             }
             if (overlay.getPreferredSize() != null) bounds.setSize(overlay.getPreferredSize());
             bounds.setLocation(at);
+            if (widgetItemsAll != null && overlay instanceof net.runelite.client.ui.overlay.WidgetItemOverlay)
+                overlays.setWidgetItems(forHooks(widgetItemsAll, overlay.getDrawHooks()));
             CanvasGraphics g = (CanvasGraphics) root.create();
             try {
                 g.translate(at.x, at.y);

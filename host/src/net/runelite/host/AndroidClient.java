@@ -1207,6 +1207,22 @@ public class AndroidClient extends ClientStub {
         return Native.rootInterface();
     }
 
+    /** The toplevel interface's root components (layout parent -1), as desktop's getWidgetRoots. */
+    @Override
+    public net.runelite.api.widgets.Widget[] getWidgetRoots() {
+        int group = Native.rootInterface();
+        if (group < 0) return new net.runelite.api.widgets.Widget[0];
+        java.util.List<net.runelite.api.widgets.Widget> out = new java.util.ArrayList<>();
+        for (int c = 0, n = Native.widgetChildCount(group); c < n; c++) {
+            int[] g = Native.widgetGeometry(group << 16 | c);
+            if (g != null && g.length > 4 && g[4] == -1) out.add(getWidget(group << 16 | c));
+        }
+        return out.toArray(new net.runelite.api.widgets.Widget[0]);
+    }
+
+    /** The mobile client's revision (build 241.4). */
+    @Override public int getRevision() { return 241; }
+
     @Override
     public boolean isClientThread() {
         return Native.isClientThread();

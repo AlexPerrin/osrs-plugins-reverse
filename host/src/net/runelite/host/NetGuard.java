@@ -8,7 +8,7 @@ import android.util.Log;
  * upload to RuneLite or third parties is refused by default:
  * - every request that isn't GET/HEAD (loot tracker, GE, chat command and crowdsourcing
  *   submissions are POSTs);
- * - GETs that trigger a remote write: api.runelite.net `xp/update` (XP Tracker asks RuneLite to
+ * - GETs that trigger a remote write: an `xp/update` path on any host (XP Tracker asks RuneLite to
  *   refresh the hiscores of the logged-out player's name).
  * Read-only GETs (static.runelite.net data, prices, hiscore lookups, the wiki) pass.
  * `setprop debug.osrsrl.netwrite 1` (read per request) lets everything through;
@@ -34,10 +34,9 @@ final class NetGuard implements okhttp3.Interceptor {
         if (!"GET".equals(m) && !"HEAD".equals(m)) return "upload " + m;
         okhttp3.HttpUrl u = req.url();
         java.util.List<String> seg = u.pathSegments();
-        if (u.host().endsWith("runelite.net")) {
-            for (int i = 0; i + 1 < seg.size(); i++)
-                if ("xp".equals(seg.get(i)) && "update".equals(seg.get(i + 1))) return "xp update";
-        }
+        // Matched on the path whatever the host (a mirror or proxy of the API would be the same write).
+        for (int i = 0; i + 1 < seg.size(); i++)
+            if ("xp".equals(seg.get(i)) && "update".equals(seg.get(i + 1))) return "xp update";
         return null;
     }
 

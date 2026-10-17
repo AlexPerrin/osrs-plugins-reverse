@@ -65,14 +65,14 @@ final class Probe {
                     Log.i(TAG, "db row " + r + " col " + col + " tuple " + tup + " -> " + java.util.Arrays.toString(c.getDBTableField(r, col, tup)));
                 return;
             }
-            if (a[0].equals("net")) {  // "net get|post|xp": one request through the injected OkHttpClient (NetGuard test)
+            if (a[0].equals("net")) {  // "net get|post|xp": one request through the injected OkHttpClient (NetGuard test; post/xp go to the local test server's HTTP sidecar, never to RuneLite)
                 final String kind = a[1];
                 okhttp3.OkHttpClient http = net.runelite.client.RuneLite.getInjector().getInstance(okhttp3.OkHttpClient.class);
                 okhttp3.Request.Builder rb = new okhttp3.Request.Builder();
                 if (a[1].equals("get")) rb.url("https://static.runelite.net/npcs/npcs.min.json").head();
-                else if (a[1].equals("post")) rb.url("https://api.runelite.net/runelite-1.13.1/loottracker")
+                else if (a[1].equals("post")) rb.url("http://10.0.2.2:8080/netguard-test/runelite-1.13.1/loottracker")
                         .post(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), "[]"));
-                else rb.url("https://api.runelite.net/runelite-1.13.1/xp/update?username=netguard-test");
+                else rb.url("http://10.0.2.2:8080/netguard-test/runelite-1.13.1/xp/update?username=netguard-test");
                 http.newCall(rb.build()).enqueue(new okhttp3.Callback() {
                     @Override public void onFailure(okhttp3.Call call, java.io.IOException e) { Log.i(TAG, "net " + kind + " failed: " + e.getMessage()); }
                     @Override public void onResponse(okhttp3.Call call, okhttp3.Response r) { Log.i(TAG, "net " + kind + " -> HTTP " + r.code()); r.close(); }

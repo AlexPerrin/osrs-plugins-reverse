@@ -222,6 +222,9 @@ bool run_script(const std::vector<ScriptArg>& args, ScriptResult& out, std::stri
 // copied whole (size entries); set_script_int_stack writes values back and sets the size.
 bool script_stacks(ScriptResult& out);
 bool set_script_int_stack(const int32_t* values, int size);
+// One int stack slot (depth 0 = top; writes *set first when non-null) / the top object if a string.
+bool script_int_top(int depth, int32_t& value, const int32_t* set);
+bool script_string_top(std::string& out);
 // Script locals: frame 0 = the running frame, else a saved call frame (script_hooks::return_frame).
 // Int arrays by desktop array id (object local slot); set_script_array keeps the array's length.
 bool script_array(uintptr_t frame, int slot, std::vector<int32_t>& out);

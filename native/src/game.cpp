@@ -1431,6 +1431,30 @@ bool script_int_local(uintptr_t frame, int index, int32_t& value, const int32_t*
     return true;
 }
 
+// Single-slot stack access (callbacks raised per item, e.g. bankSearchFilter: copying whole stacks
+// over JNI each time cost ~25 fps). depth 0 = top. Game thread only.
+bool script_int_top(int depth, int32_t& value, const int32_t* set) {
+    if (!g_build || !g_build->script_vm || depth < 0) return false;
+    uintptr_t vm = g_base + g_build->script_vm;
+    int n = read_at<int32_t>(vm + 0xff0);
+    if (n <= depth || n > 1000) return false;
+    auto* slot = reinterpret_cast<int32_t*>(vm + 0x50 + 4u * static_cast<uintptr_t>(n - 1 - depth));
+    if (set) *slot = *set;
+    value = *slot;
+    return true;
+}
+
+bool script_string_top(std::string& out) {
+    if (!g_build || !g_build->script_vm) return false;
+    uintptr_t vm = g_base + g_build->script_vm;
+    int m = read_at<int32_t>(vm + 0xac38);
+    if (m <= 0 || m > 1000) return false;
+    uintptr_t v = vm + 0xff8 + static_cast<uintptr_t>(m - 1) * 0x28;
+    if (read_at<uint32_t>(v + 0x20) != 2) return false;
+    out = read_string(v);
+    return true;
+}
+
 bool script_top_string_starts_with(const std::string& prefix) {
     if (!g_build || !g_build->script_vm) return false;
     uintptr_t vm = g_base + g_build->script_vm;

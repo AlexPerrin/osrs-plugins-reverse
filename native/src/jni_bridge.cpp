@@ -600,6 +600,17 @@ jint n_script_int_local(JNIEnv*, jclass, jboolean caller, jint index, jboolean w
     return game::script_int_local(frame, index, out, write ? &in : nullptr) ? out : INT32_MIN;
 }
 jint n_current_script(JNIEnv*, jclass) { return script_hooks::current_script(); }
+// Int stack slot `depth` from the top (written first when `write`); Integer.MIN_VALUE if none.
+jint n_script_int_top(JNIEnv*, jclass, jint depth, jboolean write, jint value) {
+    if (!client_thread::on_client_thread()) return INT32_MIN;
+    int32_t out = 0, in = value;
+    return game::script_int_top(depth, out, write ? &in : nullptr) ? out : INT32_MIN;
+}
+jstring n_script_string_top(JNIEnv* env, jclass) {
+    std::string s;
+    if (!client_thread::on_client_thread() || !game::script_string_top(s)) return nullptr;
+    return env->NewStringUTF(s.c_str());
+}
 jboolean n_set_script_int_stack(JNIEnv* env, jclass, jintArray values, jint size) {
     if (!client_thread::on_client_thread() || !values || size < 0 || size > env->GetArrayLength(values)) return false;
     std::vector<int32_t> v(size);
@@ -1393,6 +1404,8 @@ const JNINativeMethod kNatives[] = {
     {"setScriptArray", "(ZI[I)Z", reinterpret_cast<void*>(n_set_script_array)},
     {"scriptIntLocal", "(ZIZI)I", reinterpret_cast<void*>(n_script_int_local)},
     {"currentScript", "()I", reinterpret_cast<void*>(n_current_script)},
+    {"scriptIntTop", "(IZI)I", reinterpret_cast<void*>(n_script_int_top)},
+    {"scriptStringTop", "()Ljava/lang/String;", reinterpret_cast<void*>(n_script_string_top)},
     {"setOpWatches", "([I[Ljava/lang/String;)V", reinterpret_cast<void*>(n_set_op_watches)},
     {"setScriptString", "(ILjava/lang/String;)Z", reinterpret_cast<void*>(n_set_script_string)},
     {"scriptEventArgs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_event_args)},

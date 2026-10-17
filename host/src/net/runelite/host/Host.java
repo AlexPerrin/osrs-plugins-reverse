@@ -802,30 +802,26 @@ public final class Host {
     private static final java.util.ArrayDeque<Object[]> bankFilterArgs = new java.util.ArrayDeque<>();
 
     private static void bankSearchFilter(EventBus bus, AndroidClient ac, int phase) {
+        // Called for every bank item on each rebuild: single-slot reads, no full stack copies.
         if (phase == 0) {
-            int n = ac.getIntStackSize(), m = ac.getObjectStackSize();
-            Object top = m >= 1 ? ac.getObjectStack()[m - 1] : null;
-            // gosub 279(item, int, string) from bankmain_build 277: the item is the second int from the top.
-            bankFilterArgs.push(new Object[] {n >= 2 ? ac.getIntStack()[n - 2] : -1, top instanceof String ? top : null});
+            bankFilterArgs.push(new Object[] {Native.scriptIntTop(1, false, 0), Native.scriptStringTop()});
             return;
         }
         if (phase != 1 || bankFilterArgs.isEmpty()) return;
         Object[] args = bankFilterArgs.pop();
-        if (args[1] == null || !bus.hasSubscribers(net.runelite.api.events.ScriptCallbackEvent.class)) return;
-        int n = ac.getIntStackSize();
-        if (n < 1) return;
-        int[] live = java.util.Arrays.copyOf(ac.getIntStack(), n);
-        ac.fakeStacks(new int[] {-1, (Integer) args[0]}, new Object[] {args[1]});
+        int item = (Integer) args[0];
+        if (args[1] == null || item == Integer.MIN_VALUE || !bus.hasSubscribers(net.runelite.api.events.ScriptCallbackEvent.class)) return;
+        int result = Native.scriptIntTop(0, false, 0);
+        if (result == Integer.MIN_VALUE) return;
+        ac.fakeStacks(new int[] {-1, item}, new Object[] {args[1]});
         net.runelite.api.events.ScriptCallbackEvent e = new net.runelite.api.events.ScriptCallbackEvent();
         e.setEventName("bankSearchFilter");
         bus.post(e);
         int answer = ac.getIntStack()[0];
         ac.beginScriptEvent();
-        if (answer != -1 && answer != live[n - 1]) {
-            live[n - 1] = answer;
-            Native.setScriptIntStack(live, n);
-        }
+        if (answer != -1 && answer != result) Native.scriptIntTop(0, true, answer);
     }
+
 
     static final int QUEST_FILTER_PROC = 3238;
     private static final java.util.ArrayDeque<Integer> questFilterRows = new java.util.ArrayDeque<>();

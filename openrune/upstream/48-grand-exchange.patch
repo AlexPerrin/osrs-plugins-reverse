@@ -1,0 +1,1390 @@
+From 08fcf62906e19e334af04e388c92cfe2d3acdd59 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 11:55:09 -0400
+Subject: [PATCH] Interfaces: a minimal Grand Exchange (offers at the guide
+ price, collection)
+
+---
+ .../grand-exchange/build.gradle.kts           |  16 +
+ .../grand-exchange/pack/build.gradle.kts      |   9 +
+ .../pack/GrandExchangePluginPack.kt           |   5 +
+ .../pack/src/main/resources/gamevals.toml     |  50 ++
+ .../pack/configs/grand_exchange.toml          | 357 +++++++++++++++
+ .../grandexchange/GrandExchangeScriptTest.kt  | 197 ++++++++
+ .../interfaces/grandexchange/GrandExchange.kt | 238 ++++++++++
+ .../grandexchange/GrandExchangeScript.kt      | 432 ++++++++++++++++++
+ .../src/main/resources/gamevals.toml          |   2 +
+ 9 files changed, 1306 insertions(+)
+ create mode 100644 content/interfaces/grand-exchange/build.gradle.kts
+ create mode 100644 content/interfaces/grand-exchange/pack/build.gradle.kts
+ create mode 100644 content/interfaces/grand-exchange/pack/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/pack/GrandExchangePluginPack.kt
+ create mode 100644 content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
+ create mode 100644 content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
+ create mode 100644 content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt
+ create mode 100644 content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
+ create mode 100644 content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
+ create mode 100644 content/interfaces/grand-exchange/src/main/resources/gamevals.toml
+
+diff --git a/content/interfaces/grand-exchange/build.gradle.kts b/content/interfaces/grand-exchange/build.gradle.kts
+new file mode 100644
+index 000000000..dffdf6014
+--- /dev/null
++++ b/content/interfaces/grand-exchange/build.gradle.kts
+@@ -0,0 +1,16 @@
++plugins {
++    id("base-conventions")
++    id("integration-test-suite")
++}
++
++dependencies {
++    implementation(projects.api.pluginCommons)
++    implementation(libs.rsprot.api)
++}
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.pluginCommons)
++        implementation(libs.rsprot.api)
++    }
++}
+diff --git a/content/interfaces/grand-exchange/pack/build.gradle.kts b/content/interfaces/grand-exchange/pack/build.gradle.kts
+new file mode 100644
+index 000000000..2693e4696
+--- /dev/null
++++ b/content/interfaces/grand-exchange/pack/build.gradle.kts
+@@ -0,0 +1,9 @@
++plugins {
++    id("base-conventions")
++}
++
++dependencies {
++    implementation(libs.or2.all.cache)
++    implementation(libs.or2.tools)
++    implementation(libs.or2.definition)
++}
+diff --git a/content/interfaces/grand-exchange/pack/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/pack/GrandExchangePluginPack.kt b/content/interfaces/grand-exchange/pack/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/pack/GrandExchangePluginPack.kt
+new file mode 100644
+index 000000000..8c752b7d7
+--- /dev/null
++++ b/content/interfaces/grand-exchange/pack/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/pack/GrandExchangePluginPack.kt
+@@ -0,0 +1,5 @@
++package org.rsmod.content.interfaces.grandexchange.pack
++
++import dev.openrune.pack.PluginPack
++
++class GrandExchangePluginPack : PluginPack()
+diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
+new file mode 100644
+index 000000000..be6d4b7d1
+--- /dev/null
++++ b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
+@@ -0,0 +1,50 @@
++[gamevals.varp]
++ge_slot0_item = 63920
++ge_slot0_price = 63921
++ge_slot0_count = 63922
++ge_slot0_done = 63923
++ge_slot0_gold = 63924
++ge_slot0_state = 63925
++ge_slot1_item = 63926
++ge_slot1_price = 63927
++ge_slot1_count = 63928
++ge_slot1_done = 63929
++ge_slot1_gold = 63930
++ge_slot1_state = 63931
++ge_slot2_item = 63932
++ge_slot2_price = 63933
++ge_slot2_count = 63934
++ge_slot2_done = 63935
++ge_slot2_gold = 63936
++ge_slot2_state = 63937
++ge_slot3_item = 63938
++ge_slot3_price = 63939
++ge_slot3_count = 63940
++ge_slot3_done = 63941
++ge_slot3_gold = 63942
++ge_slot3_state = 63943
++ge_slot4_item = 63944
++ge_slot4_price = 63945
++ge_slot4_count = 63946
++ge_slot4_done = 63947
++ge_slot4_gold = 63948
++ge_slot4_state = 63949
++ge_slot5_item = 63950
++ge_slot5_price = 63951
++ge_slot5_count = 63952
++ge_slot5_done = 63953
++ge_slot5_gold = 63954
++ge_slot5_state = 63955
++ge_slot6_item = 63956
++ge_slot6_price = 63957
++ge_slot6_count = 63958
++ge_slot6_done = 63959
++ge_slot6_gold = 63960
++ge_slot6_state = 63961
++ge_slot7_item = 63962
++ge_slot7_price = 63963
++ge_slot7_count = 63964
++ge_slot7_done = 63965
++ge_slot7_gold = 63966
++ge_slot7_state = 63967
++ge_setup_price = 63970
+diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
+new file mode 100644
+index 000000000..ee624f52c
+--- /dev/null
++++ b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
+@@ -0,0 +1,357 @@
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot0_item"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot0_price"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot0_count"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot0_done"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot0_gold"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot0_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot1_item"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot1_price"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot1_count"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot1_done"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot1_gold"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot1_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot2_item"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot2_price"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot2_count"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot2_done"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot2_gold"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot2_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot3_item"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot3_price"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot3_count"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot3_done"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot3_gold"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot3_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot4_item"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot4_price"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot4_count"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot4_done"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot4_gold"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot4_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot5_item"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot5_price"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot5_count"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot5_done"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot5_gold"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot5_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot6_item"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot6_price"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot6_count"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot6_done"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot6_gold"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot6_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot7_item"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot7_price"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot7_count"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot7_done"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot7_gold"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_slot7_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.ge_setup_price"
++scope = "Temp"
++transmit = "Never"
++
++[[inventory]]
++isServerOnly = true
++id = "inv.tradingpost_sell_0"
++inherit = "inv.tradingpost_sell_0"
++scope = "Perm"
++stack = "Always"
++protect = false
++
++[[inventory]]
++isServerOnly = true
++id = "inv.tradingpost_sell_1"
++inherit = "inv.tradingpost_sell_1"
++scope = "Perm"
++stack = "Always"
++protect = false
++
++[[inventory]]
++isServerOnly = true
++id = "inv.tradingpost_sell_2"
++inherit = "inv.tradingpost_sell_2"
++scope = "Perm"
++stack = "Always"
++protect = false
++
++[[inventory]]
++isServerOnly = true
++id = "inv.tradingpost_sell_3"
++inherit = "inv.tradingpost_sell_3"
++scope = "Perm"
++stack = "Always"
++protect = false
++
++[[inventory]]
++isServerOnly = true
++id = "inv.tradingpost_sell_4"
++inherit = "inv.tradingpost_sell_4"
++scope = "Perm"
++stack = "Always"
++protect = false
++
++[[inventory]]
++isServerOnly = true
++id = "inv.tradingpost_sell_5"
++inherit = "inv.tradingpost_sell_5"
++scope = "Perm"
++stack = "Always"
++protect = false
++
++[[inventory]]
++isServerOnly = true
++id = "inv.ge_collect_6"
++inherit = "inv.ge_collect_6"
++scope = "Perm"
++stack = "Always"
++protect = false
++
++[[inventory]]
++isServerOnly = true
++id = "inv.ge_collect_7"
++inherit = "inv.ge_collect_7"
++scope = "Perm"
++stack = "Always"
++protect = false
+diff --git a/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt b/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt
+new file mode 100644
+index 000000000..4f0cb6e66
+--- /dev/null
++++ b/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt
+@@ -0,0 +1,197 @@
++package org.rsmod.content.interfaces.grandexchange
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.ItemServerType
++import dev.openrune.types.aconverted.interf.IfButtonOp
++import dev.openrune.types.util.UncheckedType
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertNull
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.api.testing.scope.GameTestScope
++import org.rsmod.game.entity.Player
++import org.rsmod.game.inv.InvObj
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class GrandExchangeScriptTest {
++    private val lobster: ItemServerType
++        get() = checkNotNull(ServerCacheManager.getItem("obj.lobster".asRSCM(RSCMType.OBJ)))
++
++    private val guide: Int
++        get() = lobster.cost.coerceAtLeast(1)
++
++    private fun id(name: String) = name.asRSCM(RSCMType.OBJ)
++
++    private fun ProtectedAccess.setUp(slot: Int, sell: Boolean, item: Int, count: Int, price: Int) {
++        vars["varbit.ge_selectedslot"] = slot + 1
++        vars["varbit.ge_newoffer_type"] = if (sell) 1 else 0
++        vars["varp.tradingpost_search"] = item
++        vars["varbit.ge_newoffer_quantity"] = count
++        GrandExchange.set(player, "varp.ge_setup_price", price)
++    }
++
++    private fun GameTestScope.resetGe(player: Player) {
++        player.clearInv()
++        player.clearInv(player.invMap.getOrPut("inv.bank"))
++        for (slot in 0 until GrandExchange.SLOTS) {
++            GrandExchange.clear(player, slot)
++            player.clearInv(GrandExchange.collectionInv(player, slot))
++        }
++    }
++
++    @Test
++    fun `the lobster is a GE item with a guide price`() {
++        assertTrue(lobster.stockmarket)
++        assertTrue(lobster.canCert)
++    }
++
++    @Test
++    fun GameTestState.`a buy at or above guide fills at guide and refunds the difference`() =
++        runInjectedGameTest(GrandExchangeScript::class, null, GrandExchangeScript::class) { script ->
++            resetGe(player)
++            player.inv[0] = InvObj(id("obj.coins"), 100_000)
++            val price = guide + 5
++            var placed = false
++            with(script) {
++                player.withProtectedAccess {
++                    setUp(slot = 2, sell = false, item = lobster.id, count = 10, price = price)
++                    placed = confirm()
++                }
++            }
++            assertTrue(placed)
++            assertEquals(100_000 - 10 * price, player.inv.count("obj.coins"))
++            val open = GrandExchange.offer(player, 2)
++            assertEquals(GrandExchange.STATE_OPEN, open.status)
++            assertEquals(0, player.vars["varbit.ge_selectedslot"])
++
++            assertEquals(listOf(2), GrandExchange.fillOpenOffers(player) { it.cost })
++            val filled = GrandExchange.offer(player, 2)
++            assertEquals(GrandExchange.STATE_FINISHED, filled.status)
++            assertEquals(10, filled.done)
++            assertEquals(10 * guide, filled.gold)
++            val collection = GrandExchange.collectionInv(player, 2)
++            assertEquals(InvObj(lobster.id, 10), collection[0])
++            assertEquals(InvObj(id("obj.coins"), 50), collection[1])
++
++            with(script) {
++                player.withProtectedAccess {
++                    assertTrue(collect(2, 0, IfButtonOp.Op1))
++                    assertTrue(collect(2, 1, IfButtonOp.Op2))
++                }
++            }
++            assertEquals(10, player.inv.count(GrandExchange.internal(lobster.certlink)))
++            assertEquals(100_000 - 10 * guide, player.inv.count("obj.coins"))
++            assertTrue(GrandExchange.offer(player, 2).empty)
++            assertTrue(collection.isEmpty())
++        }
++
++    @Test
++    fun GameTestState.`a sell at or below guide takes noted and unnoted items and pays less tax`() =
++        runInjectedGameTest(GrandExchangeScript::class, null, GrandExchangeScript::class) { script ->
++            resetGe(player)
++            repeat(3) { player.inv[it] = InvObj(lobster.id, 1) }
++            player.inv[3] = InvObj(lobster.certlink, 2)
++            with(script) {
++                player.withProtectedAccess {
++                    setUp(slot = 0, sell = true, item = lobster.id, count = 5, price = 1)
++                    assertTrue(confirm())
++                }
++            }
++            assertEquals(0, GrandExchange.heldCount(player.inv, lobster.id))
++            assertEquals(GrandExchange.STATE_OPEN or GrandExchange.SELL_BIT, GrandExchange.offer(player, 0).status)
++            GrandExchange.fillOpenOffers(player) { it.cost }
++            val net = 5 * guide - 5 * GrandExchange.taxPerItem(guide)
++            assertEquals(InvObj(id("obj.coins"), net), GrandExchange.collectionInv(player, 0)[1])
++            assertNull(GrandExchange.collectionInv(player, 0)[0])
++            with(script) { player.withProtectedAccess { collectAll(toBank = true) } }
++            assertEquals(net, player.invMap.getOrPut("inv.bank").count("obj.coins"))
++            assertTrue(GrandExchange.offer(player, 0).empty)
++        }
++
++    @Test
++    fun GameTestState.`a buy below guide stays open until aborted and the coins come back`() =
++        runInjectedGameTest(GrandExchangeScript::class, null, GrandExchangeScript::class) { script ->
++            resetGe(player)
++            player.inv[0] = InvObj(id("obj.coins"), 1_000)
++            with(script) {
++                player.withProtectedAccess {
++                    setUp(slot = 1, sell = false, item = lobster.id, count = 3, price = 1)
++                    assertTrue(confirm())
++                }
++            }
++            assertEquals(997, player.inv.count("obj.coins"))
++            assertTrue(GrandExchange.fillOpenOffers(player) { it.cost }.isEmpty())
++            assertTrue(GrandExchange.abort(player, 1))
++            assertFalse(GrandExchange.abort(player, 1))
++            val aborted = GrandExchange.offer(player, 1)
++            assertEquals(GrandExchange.STATE_FINISHED, aborted.state)
++            assertEquals(0, aborted.done)
++            with(script) { player.withProtectedAccess { collectAll(toBank = false) } }
++            assertEquals(1_000, player.inv.count("obj.coins"))
++            assertTrue(GrandExchange.offer(player, 1).empty)
++        }
++
++    @Test
++    fun GameTestState.`offers the player cannot pay for or that overflow change nothing`() =
++        runInjectedGameTest(GrandExchangeScript::class, null, GrandExchangeScript::class) { script ->
++            resetGe(player)
++            player.inv[0] = InvObj(id("obj.coins"), 10)
++            with(script) {
++                player.withProtectedAccess {
++                    setUp(slot = 0, sell = false, item = lobster.id, count = 100, price = guide)
++                    assertFalse(confirm())
++                    setUp(slot = 0, sell = false, item = lobster.id, count = Int.MAX_VALUE, price = 2)
++                    assertFalse(confirm())
++                    setUp(slot = 0, sell = true, item = lobster.id, count = 1, price = 1)
++                    assertFalse(confirm())
++                }
++            }
++            assertEquals(10, player.inv.count("obj.coins"))
++            assertTrue(GrandExchange.offer(player, 0).empty)
++        }
++
++    @Test
++    fun GameTestState.`collecting into a full inventory keeps the items in the collection`() =
++        runInjectedGameTest(GrandExchangeScript::class, null, GrandExchangeScript::class) { script ->
++            resetGe(player)
++            player.inv[0] = InvObj(id("obj.coins"), 10_000)
++            with(script) {
++                player.withProtectedAccess {
++                    setUp(slot = 0, sell = false, item = lobster.id, count = 2, price = guide)
++                    assertTrue(confirm())
++                }
++            }
++            GrandExchange.fillOpenOffers(player) { it.cost }
++            player.fillInv()
++            with(script) {
++                player.withProtectedAccess { assertFalse(collect(0, 0, IfButtonOp.Op2)) }
++            }
++            assertEquals(InvObj(lobster.id, 2), GrandExchange.collectionInv(player, 0)[0])
++            assertEquals(GrandExchange.STATE_FINISHED, GrandExchange.offer(player, 0).state)
++        }
++
++    @Test
++    fun `quantity and price buttons follow the client scripts`() {
++        val q = GrandExchangeScript::changeQuantity
++        assertEquals(10, q(false, 1, 10, 0))
++        assertEquals(1000, q(false, 1, Int.MAX_VALUE, 0))
++        assertEquals(1, q(false, 1, -1, 0))
++        assertEquals(7, q(true, 1, Int.MAX_VALUE, 7))
++        assertEquals(7, q(true, 5, 100, 7))
++        assertEquals(Int.MAX_VALUE, q(false, Int.MAX_VALUE - 3, 100, 0))
++        assertEquals(105, GrandExchangeScript.changePrice(100, 5))
++        assertEquals(1, GrandExchangeScript.changePrice(1, -5))
++        assertEquals(2, GrandExchangeScript.changePrice(1, 1))
++        assertEquals(0, GrandExchange.taxPerItem(49))
++        assertEquals(1, GrandExchange.taxPerItem(50))
++        assertEquals(GrandExchange.TAX_CAP, GrandExchange.taxPerItem(Int.MAX_VALUE))
++    }
++}
+diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
+new file mode 100644
+index 000000000..8b7f11775
+--- /dev/null
++++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
+@@ -0,0 +1,238 @@
++package org.rsmod.content.interfaces.grandexchange
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.ItemServerType
++import dev.openrune.types.util.UncheckedType
++import net.rsprot.protocol.game.outgoing.misc.player.UpdateStockMarketSlotV2
++import net.rsprot.protocol.game.outgoing.varp.VarpLong
++import org.rsmod.api.player.output.mes
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.player.vars.resyncVar
++import org.rsmod.game.entity.Player
++import org.rsmod.game.inv.InvObj
++import org.rsmod.game.inv.Inventory
++import org.rsmod.game.type.uncert
++
++/**
++ * A minimal Grand Exchange. The server is the only counterparty and trades at the guide price
++ * (`MarketPrices`, the obj's store cost):
++ * - a buy offer priced at or above the guide fills at once at the guide price; the overpayment
++ *   comes back as coins in the slot's collection inv;
++ * - a sell offer priced at or below the guide fills at once at the guide price, less the 2% tax
++ *   (floored, capped at 5M per item, nothing below 50 gp);
++ * - any other offer stays open (BUYING/SELLING) until aborted. No partial fills, no buy limits.
++ *
++ * Offer state lives in server varps (`ge_slotN_*`, perm) and goes to the client only through
++ * UPDATE_STOCKMARKET_SLOT; the collected items sit in the slot's inv from enum 150
++ * (`tradingpost_sell_0..5`, `ge_collect_6/7`): slot 0 the obj, slot 1 coins.
++ */
++@OptIn(UncheckedType::class)
++object GrandExchange {
++    const val SLOTS = 8
++    const val MAX_TOTAL = Int.MAX_VALUE
++
++    /** Desktop status values (`UpdateStockMarketSlot`): low 3 bits the state, bit 3 = sell. */
++    const val STATE_EMPTY = 0
++    const val STATE_OPEN = 2
++    const val STATE_FINISHED = 5
++    const val SELL_BIT = 8
++
++    /** Tax rate sent in `varbit.ge_transmit_taxrate` (per 1000, as scripts 779/821 scale it). */
++    const val TAX_RATE_PER_MILLE = 20
++    const val TAX_CAP = 5_000_000
++    const val TAX_MIN_PRICE = 50
++
++    const val FILL_TIMER = "timer.ge_offer_fill"
++    private val newOfferPriceVarp: Int by lazy {
++        "varp.ge_newoffer_price".asRSCM(RSCMType.VARP)
++    }
++
++    val collectionInvs: List<String> =
++        (0..5).map { "inv.tradingpost_sell_$it" } + listOf("inv.ge_collect_6", "inv.ge_collect_7")
++
++    private val coinsId: Int by lazy { "obj.coins".asRSCM(RSCMType.OBJ) }
++
++    data class Offer(
++        val slot: Int,
++        val item: Int,
++        val price: Int,
++        val count: Int,
++        val done: Int,
++        val gold: Int,
++        val status: Int,
++    ) {
++        val sell: Boolean
++            get() = status and SELL_BIT != 0
++
++        val state: Int
++            get() = status and 7
++
++        val empty: Boolean
++            get() = state == STATE_EMPTY
++    }
++
++    private fun varp(slot: Int, field: String) = "varp.ge_slot${slot}_$field"
++
++    fun offer(player: Player, slot: Int): Offer =
++        Offer(
++            slot = slot,
++            item = player.vars[varp(slot, "item")] - 1,
++            price = player.vars[varp(slot, "price")],
++            count = player.vars[varp(slot, "count")],
++            done = player.vars[varp(slot, "done")],
++            gold = player.vars[varp(slot, "gold")],
++            status = player.vars[varp(slot, "state")],
++        )
++
++    fun store(player: Player, offer: Offer) {
++        set(player, varp(offer.slot, "item"), offer.item + 1)
++        set(player, varp(offer.slot, "price"), offer.price)
++        set(player, varp(offer.slot, "count"), offer.count)
++        set(player, varp(offer.slot, "done"), offer.done)
++        set(player, varp(offer.slot, "gold"), offer.gold)
++        set(player, varp(offer.slot, "state"), offer.status)
++    }
++
++    fun clear(player: Player, slot: Int) {
++        store(player, Offer(slot, -1, 0, 0, 0, 0, STATE_EMPTY))
++    }
++
++    fun set(player: Player, name: String, value: Int) {
++        VarPlayerIntMapSetter.set(player, name, value)
++    }
++
++    /** Sets a var the client may already have changed itself, sending it even if unchanged. */
++    fun setClientVar(player: Player, name: String, value: Int) {
++        val before = player.vars[name]
++        set(player, name, value)
++        if (before == value) player.resyncVar(name)
++    }
++
++    fun collectionInv(player: Player, slot: Int): Inventory =
++        player.invMap.getOrPut(collectionInvs[slot])
++
++    fun sendSlot(player: Player, slot: Int) {
++        val offer = offer(player, slot)
++        val update =
++            if (offer.empty) {
++                UpdateStockMarketSlotV2.ResetStockMarketSlot
++            } else {
++                UpdateStockMarketSlotV2.SetStockMarketSlot(
++                    status = offer.status,
++                    obj = offer.item,
++                    price = offer.price.toLong(),
++                    count = offer.count,
++                    completedCount = offer.done,
++                    completedGold = offer.gold.toLong(),
++                )
++            }
++        player.client.write(UpdateStockMarketSlotV2(slot, update))
++    }
++
++    fun sendSetupPrice(player: Player, price: Int) {
++        set(player, "varp.ge_setup_price", price)
++        player.client.write(VarpLong(newOfferPriceVarp, price.toLong()))
++    }
++
++    fun type(id: Int): ItemServerType? = ServerCacheManager.getItem(id)
++
++    fun name(id: Int): String = type(id)?.name ?: "null"
++
++    fun internal(id: Int): String = RSCM.getReverseMapping(RSCMType.OBJ, id)
++
++    /** The tradeable (unnoted) form of [type], or null if the GE does not trade it. */
++    fun tradeable(type: ItemServerType): ItemServerType? {
++        val base = uncert(type)
++        return base.takeIf { it.stockmarket }
++    }
++
++    fun taxPerItem(price: Int): Int =
++        if (price < TAX_MIN_PRICE) 0 else minOf(price / 50, TAX_CAP) // 2%, floored
++
++    /** Held count of [item] including its noted form. */
++    fun heldCount(inv: Inventory, item: Int): Int {
++        val base = type(item) ?: return 0
++        var total = 0L
++        for (obj in inv.objs) {
++            if (obj == null) continue
++            if (obj.id == base.id || (base.canCert && obj.id == base.certlink)) total += obj.count
++        }
++        return total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
++    }
++
++    fun canFill(offer: Offer, guide: Int): Boolean =
++        offer.state == STATE_OPEN && if (offer.sell) offer.price <= guide else offer.price >= guide
++
++    /**
++     * Fills every open offer the market takes (see the class comment). Returns the slots filled.
++     */
++    fun fillOpenOffers(player: Player, guidePrice: (ItemServerType) -> Int): List<Int> {
++        val filled = mutableListOf<Int>()
++        for (slot in 0 until SLOTS) {
++            val offer = offer(player, slot)
++            val type = type(offer.item) ?: continue
++            val guide = guidePrice(type)
++            if (!canFill(offer, guide)) continue
++            val inv = collectionInv(player, slot)
++            val gold = offer.count * guide
++            if (offer.sell) {
++                val net = gold - offer.count * taxPerItem(guide)
++                addTo(inv, 1, coinsId, net)
++            } else {
++                addTo(inv, 0, offer.item, offer.count)
++                val refund = offer.count * (offer.price - guide)
++                if (refund > 0) addTo(inv, 1, coinsId, refund)
++            }
++            store(
++                player,
++                offer.copy(done = offer.count, gold = gold, status = finishedStatus(offer.sell)),
++            )
++            sendSlot(player, slot)
++            val verb = if (offer.sell) "selling" else "buying"
++            player.mes("Grand Exchange: Finished $verb ${offer.count.commas()} x ${type.name}.")
++            filled += slot
++        }
++        return filled
++    }
++
++    /** Aborts an open offer: what was put in waits in the collection inv. */
++    fun abort(player: Player, slot: Int): Boolean {
++        val offer = offer(player, slot)
++        if (offer.state != STATE_OPEN) return false
++        val inv = collectionInv(player, slot)
++        if (offer.sell) {
++            addTo(inv, 0, offer.item, offer.count - offer.done)
++        } else {
++            addTo(inv, 1, coinsId, (offer.count - offer.done) * offer.price)
++        }
++        store(player, offer.copy(status = finishedStatus(offer.sell)))
++        sendSlot(player, slot)
++        return true
++    }
++
++    fun finishedStatus(sell: Boolean): Int = STATE_FINISHED or (if (sell) SELL_BIT else 0)
++
++    fun openStatus(sell: Boolean): Int = STATE_OPEN or (if (sell) SELL_BIT else 0)
++
++    /** Clears a finished slot once its collection inv is empty. */
++    fun clearIfCollected(player: Player, slot: Int): Boolean {
++        val offer = offer(player, slot)
++        if (offer.state != STATE_FINISHED) return false
++        if (!collectionInv(player, slot).isEmpty()) return false
++        clear(player, slot)
++        sendSlot(player, slot)
++        return true
++    }
++
++    private fun addTo(inv: Inventory, slot: Int, id: Int, count: Int) {
++        if (count <= 0) return
++        val current = inv[slot]
++        val total = (current?.count ?: 0).toLong() + count
++        inv[slot] = InvObj(id, total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
++    }
++
++    fun Int.commas(): String = "%,d".format(this)
++}
+diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
+new file mode 100644
+index 000000000..50c9502f3
+--- /dev/null
++++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
+@@ -0,0 +1,432 @@
++package org.rsmod.content.interfaces.grandexchange
++
++import dev.openrune.definition.type.widget.IfEvent
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.ItemServerType
++import dev.openrune.types.aconverted.interf.IfButtonOp
++import dev.openrune.types.util.UncheckedType
++import jakarta.inject.Inject
++import org.rsmod.api.market.MarketPrices
++import org.rsmod.api.player.output.runClientScript
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.startInvTransmit
++import org.rsmod.api.player.ui.ifSetEvents
++import org.rsmod.api.script.onIfClose
++import org.rsmod.api.script.onIfModalButton
++import org.rsmod.api.script.onIfOpen
++import org.rsmod.api.script.onOpNpc3
++import org.rsmod.api.script.onPlayerLogin
++import org.rsmod.api.script.onPlayerSoftTimer
++import org.rsmod.content.interfaces.grandexchange.GrandExchange.commas
++import org.rsmod.game.entity.Player
++import org.rsmod.game.inv.Inventory
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++@OptIn(UncheckedType::class)
++class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPrices) :
++    PluginScript() {
++    private val ItemServerType.guide: Int
++        get() = (marketPrices[this] ?: 1).coerceAtLeast(1)
++
++    override fun ScriptContext.startup() {
++        for (clerk in CLERKS) onOpNpc3(clerk) { openExchange() }
++
++        onPlayerLogin {
++            for (slot in 0 until GrandExchange.SLOTS) {
++                player.startInvTransmit(GrandExchange.collectionInv(player, slot))
++                if (!GrandExchange.offer(player, slot).empty) GrandExchange.sendSlot(player, slot)
++            }
++            resetItemSinkVars(player)
++            if (hasFillable(player)) player.softTimer(GrandExchange.FILL_TIMER, 1)
++        }
++        onPlayerSoftTimer(GrandExchange.FILL_TIMER) {
++            player.clearSoftTimer(GrandExchange.FILL_TIMER)
++            GrandExchange.fillOpenOffers(player) { it.guide }
++        }
++
++        for (slot in 0 until GrandExchange.SLOTS) {
++            onIfModalButton("component.ge_offers:index_$slot") { indexOp(slot, it.comsub) }
++            onIfModalButton("component.ge_collect:collect_$slot") {
++                if (it.comsub in 3..4) collect(slot, it.comsub - 3, it.op)
++            }
++        }
++        onIfModalButton("component.ge_offers:back") { backToIndex() }
++        onIfModalButton("component.ge_offers:setup") { setupOp(it.comsub, it.op) }
++        onIfModalButton("component.ge_offers:setup_confirm") { confirm() }
++        onIfModalButton("component.ge_offers:details_status") {
++            if (it.comsub == 0) abortSelected()
++        }
++        onIfModalButton("component.ge_offers:details_collect") {
++            val slot = selectedSlot() ?: return@onIfModalButton
++            if (it.comsub in 2..3) collect(slot, it.comsub - 2, it.op)
++        }
++        onIfModalButton("component.ge_offers:collectall") {
++            if (it.comsub == 0) collectAll(toBank = it.op == IfButtonOp.Op2)
++        }
++        onIfModalButton("component.ge_offers_side:items") { offerFromInv(it.comsub, it.op) }
++        onIfModalButton("component.ge_collect:collect_inv") { collectAll(toBank = false) }
++        onIfModalButton("component.ge_collect:collect_bank") { collectAll(toBank = true) }
++        onIfClose("interface.ge_offers") { resetSetup(player, slot = 0) }
++        onIfOpen("interface.ge_collect") { setCollectionBoxEvents(player) }
++    }
++
++    private fun hasFillable(player: Player): Boolean =
++        (0 until GrandExchange.SLOTS).any { slot ->
++            val offer = GrandExchange.offer(player, slot)
++            val type = GrandExchange.type(offer.item)
++            type != null && GrandExchange.canFill(offer, type.guide)
++        }
++
++    private fun resetItemSinkVars(player: Player) {
++        for (slot in 0 until GrandExchange.SLOTS) {
++            GrandExchange.set(player, "varp.ge_itemsink_obj_$slot", -1)
++        }
++    }
++
++    private fun resetSetup(player: Player, slot: Int) {
++        GrandExchange.setClientVar(player, "varp.tradingpost_search", -1)
++        GrandExchange.setClientVar(player, "varbit.ge_newoffer_type", 0)
++        GrandExchange.setClientVar(player, "varbit.ge_newoffer_quantity", 0)
++        GrandExchange.sendSetupPrice(player, 0)
++        GrandExchange.setClientVar(player, "varbit.ge_selectedslot", slot)
++    }
++
++    private fun ProtectedAccess.openExchange() {
++        resetItemSinkVars(player)
++        resetSetup(player, slot = 0)
++        vars["varbit.ge_transmit_taxrate"] = GrandExchange.TAX_RATE_PER_MILLE
++        invTransmit(inv)
++        ifOpenMainSidePair(main = "interface.ge_offers", side = "interface.ge_offers_side")
++        for (slot in 0 until GrandExchange.SLOTS) {
++            ifSetEvents("component.ge_offers:index_$slot", 0..4, IfEvent.Op1)
++        }
++        ifSetEvents("component.ge_offers:setup", 0..15, IfEvent.Op1, IfEvent.Op2)
++        ifSetEvents("component.ge_offers:details_status", 0..1, IfEvent.Op1)
++        ifSetEvents(
++            "component.ge_offers:details_collect",
++            2..3,
++            IfEvent.Op1,
++            IfEvent.Op2,
++            IfEvent.Op3,
++            IfEvent.Op10,
++        )
++        ifSetEvents("component.ge_offers:collectall", 0..1, IfEvent.Op1, IfEvent.Op2)
++        ifSetEvents("component.ge_offers_side:items", inv.indices, IfEvent.Op1, IfEvent.Op10)
++    }
++
++    private fun setCollectionBoxEvents(player: Player) {
++        for (slot in 0 until GrandExchange.SLOTS) {
++            player.ifSetEvents(
++                "component.ge_collect:collect_$slot",
++                3..4,
++                IfEvent.Op1,
++                IfEvent.Op2,
++                IfEvent.Op3,
++                IfEvent.Op10,
++            )
++        }
++    }
++
++    private fun ProtectedAccess.selectedSlot(): Int? =
++        (vars["varbit.ge_selectedslot"] - 1).takeIf { it in 0 until GrandExchange.SLOTS }
++
++    private fun ProtectedAccess.backToIndex() {
++        resetSetup(player, slot = 0)
++    }
++
++    private suspend fun ProtectedAccess.indexOp(slot: Int, comsub: Int) {
++        val offer = GrandExchange.offer(player, slot)
++        when {
++            !offer.empty || !GrandExchange.collectionInv(player, slot).isEmpty() ->
++                GrandExchange.setClientVar(player, "varbit.ge_selectedslot", slot + 1)
++            comsub == BUY_BUTTON -> startBuy(slot)
++            comsub == SELL_BUTTON -> startSell(slot)
++        }
++    }
++
++    private suspend fun ProtectedAccess.startBuy(slot: Int) {
++        resetSetup(player, slot + 1)
++        val type = objDialog("What would you like to buy?", showLastSearched = true)
++        if (vars["varbit.ge_selectedslot"] != slot + 1) return
++        val item = GrandExchange.tradeable(type)
++        if (item == null) {
++            mes("You can't buy that item on the Grand Exchange.")
++            return
++        }
++        selectItem(item, quantity = 1)
++    }
++
++    private fun ProtectedAccess.startSell(slot: Int) {
++        resetSetup(player, slot + 1)
++        GrandExchange.setClientVar(player, "varbit.ge_newoffer_type", 1)
++    }
++
++    private fun ProtectedAccess.offerFromInv(invSlot: Int, op: IfButtonOp) {
++        val obj = inv[invSlot] ?: return
++        val type = GrandExchange.type(obj.id) ?: return
++        if (op == IfButtonOp.Op10) {
++            mes(type.examine)
++            return
++        }
++        val item = GrandExchange.tradeable(type)
++        if (item == null) {
++            mes("You can't sell that item on the Grand Exchange.")
++            return
++        }
++        val slot = selectedSlot() ?: firstFreeSlot()
++        if (slot == null) {
++            mes("You have no free offer slots.")
++            return
++        }
++        val offer = GrandExchange.offer(player, slot)
++        if (!offer.empty || !GrandExchange.collectionInv(player, slot).isEmpty()) return
++        if (selectedSlot() != slot) resetSetup(player, slot + 1)
++        GrandExchange.setClientVar(player, "varbit.ge_newoffer_type", 1)
++        selectItem(item, quantity = GrandExchange.heldCount(inv, item.id))
++    }
++
++    private fun ProtectedAccess.firstFreeSlot(): Int? =
++        (0 until GrandExchange.SLOTS).firstOrNull { slot ->
++            GrandExchange.offer(player, slot).empty &&
++                GrandExchange.collectionInv(player, slot).isEmpty()
++        }
++
++    private fun ProtectedAccess.selectItem(item: ItemServerType, quantity: Int) {
++        GrandExchange.setClientVar(player, "varp.tradingpost_search", item.id)
++        GrandExchange.setClientVar(player, "varbit.ge_newoffer_quantity", quantity)
++        GrandExchange.sendSetupPrice(player, item.guide)
++        player.runClientScript(SETDESC_SCRIPT, item.examine, "", SETUP_DESC, SETUP_FEE)
++        ifSetText("component.ge_offers:setup_marketprice", "${item.guide.commas()} coins")
++    }
++
++    private fun ProtectedAccess.setupItem(): ItemServerType? =
++        GrandExchange.type(vars["varp.tradingpost_search"])?.takeIf {
++            vars["varp.tradingpost_search"] >= 0 && selectedSlot() != null
++        }
++
++    private suspend fun ProtectedAccess.setupOp(comsub: Int, op: IfButtonOp) {
++        if (comsub == CHOOSE_ITEM) {
++            val slot = selectedSlot() ?: return
++            if (vars["varbit.ge_newoffer_type"] == 0) startBuy(slot)
++            return
++        }
++        val item = setupItem() ?: return
++        val sell = vars["varbit.ge_newoffer_type"] == 1
++        val quantity = vars["varbit.ge_newoffer_quantity"]
++        val price = vars["varp.ge_setup_price"]
++        when (comsub) {
++            in QUANTITY_DELTAS.keys -> {
++                if (op != IfButtonOp.Op1) return
++                val held = GrandExchange.heldCount(inv, item.id)
++                setQuantity(changeQuantity(sell, quantity, QUANTITY_DELTAS.getValue(comsub), held))
++            }
++            ENTER_QUANTITY -> {
++                if (op == IfButtonOp.Op2 && !sell) {
++                    setQuantity((inv.count("obj.coins") / price.coerceAtLeast(1)).coerceAtLeast(1))
++                    return
++                }
++                val verb = if (sell) "sell" else "buy"
++                val amount = countDialog("How many do you wish to $verb?")
++                if (amount > 0) setQuantity(amount)
++            }
++            in PRICE_DELTAS.keys -> {
++                if (op != IfButtonOp.Op1) return
++                GrandExchange.sendSetupPrice(player, changePrice(price, PRICE_DELTAS.getValue(comsub)))
++            }
++            GUIDE_PRICE -> GrandExchange.sendSetupPrice(player, item.guide)
++            ENTER_PRICE -> {
++                val amount = countDialog("Set a price for each item:")
++                if (amount > 0) GrandExchange.sendSetupPrice(player, amount)
++            }
++            else -> mes("That button is not available on this server.")
++        }
++    }
++
++    private fun ProtectedAccess.setQuantity(quantity: Int) {
++        GrandExchange.setClientVar(player, "varbit.ge_newoffer_quantity", quantity)
++    }
++
++    fun ProtectedAccess.confirm(): Boolean {
++        val slot = selectedSlot() ?: return false
++        val item = setupItem() ?: return false
++        val sell = vars["varbit.ge_newoffer_type"] == 1
++        val quantity = vars["varbit.ge_newoffer_quantity"]
++        val price = vars["varp.ge_setup_price"]
++        if (quantity <= 0 || price <= 0) return false
++        if (!GrandExchange.offer(player, slot).empty) return false
++        if (!GrandExchange.collectionInv(player, slot).isEmpty()) return false
++        val total = quantity.toLong() * price
++        if (total > GrandExchange.MAX_TOTAL) {
++            mes("That offer is worth too much money.")
++            return false
++        }
++        if (sell) {
++            if (GrandExchange.heldCount(inv, item.id) < quantity) {
++                mes("You don't have enough of that item.")
++                return false
++            }
++            if (!takeItems(inv, item, quantity)) return false
++        } else {
++            if (inv.count("obj.coins") < total) {
++                mes("You don't have enough coins.")
++                return false
++            }
++            if (invDel(inv, "obj.coins", total.toInt()).failure) return false
++        }
++        val offer =
++            GrandExchange.Offer(
++                slot = slot,
++                item = item.id,
++                price = price,
++                count = quantity,
++                done = 0,
++                gold = 0,
++                status = GrandExchange.openStatus(sell),
++            )
++        GrandExchange.store(player, offer)
++        GrandExchange.sendSlot(player, slot)
++        resetSetup(player, slot = 0)
++        softTimer(GrandExchange.FILL_TIMER, FILL_DELAY)
++        return true
++    }
++
++    private fun ProtectedAccess.takeItems(inv: Inventory, item: ItemServerType, count: Int): Boolean {
++        val unnoted = GrandExchange.internal(item.id)
++        val held = inv.count(unnoted).coerceAtMost(count)
++        val noted = count - held
++        if (noted > 0 && !item.canCert) return false
++        val notedName = if (item.canCert) GrandExchange.internal(item.certlink) else null
++        val result =
++            if (noted > 0 && held > 0) {
++                invDel(inv, unnoted, held, notedName!!, noted)
++            } else if (noted > 0) {
++                invDel(inv, notedName!!, noted)
++            } else {
++                invDel(inv, unnoted, held)
++            }
++        return result.success
++    }
++
++    private fun ProtectedAccess.abortSelected() {
++        val slot = selectedSlot() ?: return
++        if (GrandExchange.abort(player, slot)) {
++            mes(
++                "Abort request acknowledged. Please be aware that your offer may " +
++                    "have already been completed."
++            )
++        }
++    }
++
++    fun ProtectedAccess.collect(slot: Int, invSlot: Int, op: IfButtonOp): Boolean {
++        val collection = GrandExchange.collectionInv(player, slot)
++        val obj = collection[invSlot] ?: return false
++        if (op == IfButtonOp.Op10) {
++            GrandExchange.type(obj.id)?.let { mes(it.examine) }
++            return false
++        }
++        val type = GrandExchange.type(obj.id) ?: return false
++        val toBank = op == IfButtonOp.Op3
++        val note =
++            when (op) {
++                IfButtonOp.Op1 -> obj.count > 1
++                IfButtonOp.Op2 -> obj.count == 1
++                else -> false
++            } && type.canCert
++        if (!collectInto(collection, invSlot, toBank, note)) return false
++        if (GrandExchange.clearIfCollected(player, slot) && selectedSlot() == slot) {
++            resetSetup(player, slot = 0)
++        }
++        return true
++    }
++
++    fun ProtectedAccess.collectAll(toBank: Boolean) {
++        for (slot in 0 until GrandExchange.SLOTS) {
++            val collection = GrandExchange.collectionInv(player, slot)
++            for (invSlot in 0 until collection.size) {
++                val obj = collection[invSlot] ?: continue
++                val type = GrandExchange.type(obj.id) ?: continue
++                if (!collectInto(collection, invSlot, toBank, note = type.canCert && obj.count > 1)) {
++                    return
++                }
++            }
++            GrandExchange.clearIfCollected(player, slot)
++        }
++        if (selectedSlot()?.let { GrandExchange.offer(player, it).empty } == true) {
++            resetSetup(player, slot = 0)
++        }
++    }
++
++    private fun ProtectedAccess.collectInto(
++        collection: Inventory,
++        invSlot: Int,
++        toBank: Boolean,
++        note: Boolean,
++    ): Boolean {
++        val obj = collection[invSlot] ?: return true
++        val name = GrandExchange.internal(obj.id)
++        val into = if (toBank) bank else inv
++        val added = invAdd(into, name, obj.count, cert = note && !toBank)
++        if (added.failure) {
++            mes(if (toBank) "Your bank is too full." else "You don't have enough inventory space.")
++            return false
++        }
++        collection[invSlot] = null
++        return true
++    }
++
++    companion object {
++        val CLERKS = (1..4).map { "npc.ge_clerk_$it" }
++
++        const val BUY_BUTTON = 3
++        const val SELL_BUTTON = 4
++        const val FILL_DELAY = 2
++
++        const val CHOOSE_ITEM = 0
++        const val ENTER_QUANTITY = 7
++        const val GUIDE_PRICE = 11
++        const val ENTER_PRICE = 12
++        val QUANTITY_DELTAS = mapOf(1 to -1, 2 to 1, 3 to 1, 4 to 10, 5 to 100, 6 to Int.MAX_VALUE)
++        val PRICE_DELTAS = mapOf(8 to -1, 9 to 1, 10 to -5, 13 to 5)
++
++        val SETDESC_SCRIPT: Int by lazy {
++            "clientscript.[clientscript,ge_offers_setdesc]".asRSCM(RSCMType.CLIENTSCRIPT)
++        }
++        val SETUP_DESC: Int by lazy { "component.ge_offers:setup_desc".asRSCM(RSCMType.COMPONENT) }
++        val SETUP_FEE: Int by lazy { "component.ge_offers:setup_fee".asRSCM(RSCMType.COMPONENT) }
++
++        /** Mirrors `ge_offers_setup_changequantity` (script 777), which the client runs too. */
++        fun changeQuantity(sell: Boolean, current: Int, requested: Int, held: Int): Int {
++            var delta = requested
++            if (sell) {
++                if (delta >= Int.MAX_VALUE) return held
++                if (delta > 0) {
++                    if (delta > 1 && current == 1) delta -= 1
++                    return if (held - delta < current) held else current + delta
++                }
++            } else {
++                if (delta >= Int.MAX_VALUE) delta = 1000
++                if (delta > 0) {
++                    if (delta > 1 && current == 1) delta -= 1
++                    return if (Int.MAX_VALUE - delta < current) Int.MAX_VALUE else current + delta
++                }
++            }
++            return if (current <= -delta) 1 else current + delta
++        }
++
++        /** Mirrors `ge_offers_setup_changeprice` (script 778), capped at [Int.MAX_VALUE]. */
++        fun changePrice(current: Int, step: Int): Int {
++            val long = current.toLong()
++            val next =
++                when (step) {
++                    1 -> long + 1
++                    -1 -> long - 1
++                    5 -> long + (long / 20).coerceAtLeast(1)
++                    -5 -> long - (long / 20).coerceAtLeast(1)
++                    else -> long
++                }
++            return next.coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
++        }
++    }
++}
+diff --git a/content/interfaces/grand-exchange/src/main/resources/gamevals.toml b/content/interfaces/grand-exchange/src/main/resources/gamevals.toml
+new file mode 100644
+index 000000000..4308bc7ef
+--- /dev/null
++++ b/content/interfaces/grand-exchange/src/main/resources/gamevals.toml
+@@ -0,0 +1,2 @@
++[gamevals.timer]
++ge_offer_fill = 480
+-- 
+2.43.0
+

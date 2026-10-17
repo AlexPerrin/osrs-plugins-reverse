@@ -61,6 +61,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 45 | `45-jewellery-charge-slot` | `jewellery-teleports`: `JewelleryTeleportScript.kt`, `JewelleryTeleportScriptTest.kt` | A charge swap put the next charge in the first free slot (a worn games necklace moved to the head slot, device-seen); it now replaces in place | Needs 44 |
 | 46 | `46-default-dog-breeds` | `pets/.../dogs/Dogs.kt` | `puppy_colours` rows with `unlock_bit` 0 asked for `varbit.dog_unlock_0`, which does not exist: Chase's Adopt threw and disconnected the player (device-seen) | Reading 0 as "no unlock needed" (the quest's default labrador/pug/spaniel) is inferred from the wiki, not checked row by row |
 | 47 | `47-achievement-diary-journals` | `content/interfaces/achievement-diary` (new module + pack) | Open <area> Journal in the Achievement Diaries tab did nothing; it now opens the journal scroll (741) with the Lumbridge & Draynor and Varrock tasks per tier, word-wrapped by p12 widths, which RuneLite's Diary Requirements plugin annotates (device-checked) | dbtables 60022-60023 (rows 60560-60652); other areas say the journal isn't available; no task progress tracked; title and tier heading wording are best guesses |
+| 48 | `48-grand-exchange` | `content/interfaces/grand-exchange` (new module + pack) | OpenRune had no Grand Exchange: the clerks' Exchange opens `ge_offers` (465) + `ge_offers_side` (467); buy (item search) and sell offers with the setup buttons, Confirm, Abort, Collect / Collect-all, and the banker's Collection Box (402); slot state in UPDATE_STOCKMARKET_SLOT, items in the cache's per-slot invs (enum 150); integration tests | The server is the only counterparty: offers at or better than the guide price (store cost) fill at once at the guide, others stay open until aborted; 2% tax; no partial fills, buy limits, history, sets, custom % buttons or platinum tokens; varps 63920-63970, timer 480 |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -168,3 +169,6 @@ applies. Compiled and tested (hunter integration suite, 41 tests) in our tree.
 
 Patches 43 (varps before the first tick) and 44 (jewellery teleports) were added 2026-10-17: `git am` of all 44 on
 the pin applies. Compiled and tested (`JewelleryTeleportScriptTest` 3) in our tree.
+
+Patch 48 (Grand Exchange) was added 2026-10-17: it applies alone on the pin, and `git am` of all 48 on the pin applies.
+Compiled and tested (`GrandExchangeScriptTest` 7) in our tree.

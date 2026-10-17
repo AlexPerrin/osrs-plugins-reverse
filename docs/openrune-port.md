@@ -1269,3 +1269,55 @@ was verified.
   43594).
 - Build tip again: after adding a pack module, `rm -rf openrune/src/.gradle/configuration-cache`
   before `openrune.sh build`, or the build regenerates `api/generated` without the new dbtables.
+
+## Sixteenth server dev (2026-10-17): Grand Exchange
+
+New module `content/interfaces/grand-exchange` (+ pack). Sized from RuneLite's
+`GrandExchangePlugin` and the rev-241 scripts (osrs-dumps `2026-10-14-rev241`: `ge_offers_init` 803,
+`ge_offers_switchpanel` 806, `script805`, `ge_offers_index_drawslot` 798, `ge_offers_setup_init` 773,
+`ge_offers_setup_changequantity`/`changeprice` 777/778, `script819`/`script821` details,
+`script816`/`script818`/`script9909` collect items, `ge_collect_*` 788-792).
+
+- **Open:** a GE clerk's Exchange (op 3, `npc.ge_clerk_1..4`) opens `ge_offers` 465 + `ge_offers_side`
+  467. The server first sets `ge_itemsink_obj_0..7` = -1 (they default to 0, which is obj 0 and makes
+  `switchpanel` show an empty slot's details), `tradingpost_search` -1, the new-offer vars and
+  `ge_transmit_taxrate` 20 (per 1000, i.e. 2%). The client draws everything itself.
+- **What the client sends** (IF_SETEVENTS by the server): `index_0..7` (465:7-14) sub 2 = the slot
+  box, sub 3 = Buy, sub 4 = Sell; `setup` (465:26) subs: 0 Choose item, 1 -1, 2/3 +1, 4 +10, 5 +100,
+  6 +1K (buy) / All (sell), 7 Enter quantity (op 2 on a buy = all you can afford), 8 -1 price, 9 +1,
+  10 -5%, 11 Guide price, 12 Enter price, 13 +5%, 14/15 custom ±X% (not done); `setup_confirm` 465:30;
+  `details_status` 465:23 sub 0 Abort, sub 1 Modify (not done); `details_collect` 465:24 subs 2/3 =
+  collection slots 0/1 (op 1 Collect-notes or Collect-item, op 2 Collect-items / Collect-note / Collect,
+  op 3 Bank); `collectall` 465:6 sub 0 (op 1 inventory, op 2 bank); 467 items op 1 Offer.
+  The quantity/price buttons change `ge_newoffer_quantity` (varbit 4396) / `ge_newoffer_price` (long
+  varp 5753) on the client too; the server mirrors scripts 777/778 (`changeQuantity`/`changePrice`)
+  and resends the vars (`resyncVar` when unchanged). OpenRune has no long varps: the price is kept in
+  server varp `ge_setup_price` 63970 and sent with VARP_LONG.
+- **Slot state:** server varps `ge_slotN_{item,price,count,done,gold,state}` (63920-63967, perm),
+  sent with UPDATE_STOCKMARKET_SLOT_V2 (desktop status values: 2 open, 5 finished, +8 sell; the mobile
+  client splits state and type itself). Login sends the non-empty slots and starts transmitting the
+  8 collection invs (`tradingpost_sell_0..5`, `ge_collect_6/7`, enum 150; obj in slot 0, coins in slot 1).
+- **Fill rule (ours, documented as such):** the server is the only counterparty, at the guide price
+  (`MarketPrices` = the obj's store cost, the value RuneLite shows on Android). A buy priced at or above
+  the guide fills completely at the guide 2 ticks after Confirm (`timer.ge_offer_fill` 480) and the
+  overpayment is refunded as coins; a sell priced at or below the guide fills at the guide less 2% tax
+  (floored, 5M cap per item, nothing below 50 gp; the wiki's exempt list is not done). Anything else stays
+  open (BUYING/SELLING) until aborted; aborting returns the coins or items to the collection slot.
+  No partial fills, buy limits, matching between players, history, sets, platinum tokens, coins from
+  the bank. Prices and totals are capped at 2,147,483,647.
+- **Collection Box:** the banker's Collect (existing `Banker.kt`) now has its slot events (402:5-12,
+  subs 3/4) and Collect to inventory/bank (402:3/4).
+- **Wording.** RuneLite only matches the prefixes "Grand Exchange: Finished" and "Grand Exchange:".
+  "Grand Exchange: Finished buying N x Item." / "...selling..." and the abort line "Abort request
+  acknowledged. Please be aware that your offer may have already been completed." are from memory
+  (**guess**). The rest are **guesses**: the search title "What would you like to buy?", the count
+  prompts "How many do you wish to buy?" / "Set a price for each item:", "<price> coins" in
+  `setup_marketprice`, and the refusal lines ("You don't have enough coins.", "That offer is worth too
+  much money.", "You can't sell that item on the Grand Exchange.", "You don't have enough inventory
+  space.", "Your bank is too full."). A sell defaults to all of that item you hold (**guess**).
+  `completedGold` for a sell is the gross amount, before tax (**guess**).
+- **Members slots:** the client unlocks slots 4-8 from `%playermember` (varc 103), which the client
+  sets itself; not checked on the device.
+- **Tests:** `:content:interfaces:grand-exchange:integration` (7): fill and refund, a sell of noted and
+  unnoted items with the tax, open + abort + collect-all, refused offers (coins, overflow, missing
+  item), a full inventory keeping the collection, the button maths. Upstream `48-grand-exchange`.

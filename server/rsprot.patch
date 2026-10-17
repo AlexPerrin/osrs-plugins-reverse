@@ -4017,10 +4017,10 @@ index 00000000..f6dffc11
 +}
 diff --git a/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/OutgoingPacketTrace.kt b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/OutgoingPacketTrace.kt
 new file mode 100644
-index 00000000..bef04a87
+index 00000000..174ec62a
 --- /dev/null
 +++ b/protocol/osrs-241/osrs-241-api/src/main/kotlin/net/rsprot/protocol/api/OutgoingPacketTrace.kt
-@@ -0,0 +1,15 @@
+@@ -0,0 +1,16 @@
 +package net.rsprot.protocol.api
 +
 +/**
@@ -4028,11 +4028,12 @@ index 00000000..bef04a87
 + * every Android session are logged at INFO as `OUT #n op=.. len=.. Class hexbytes` (payload
 + * before any stream-cipher payload encryption; packet group children are indented). Written for
 + * the mobile friends list ("Loading friends list"): did the login UPDATE_FRIENDLIST go out, and
-+ * how. Set [loginPackets] to 0 to turn it off.
++ * how. Off by default: set the environment variable `RSPROT_OUT_TRACE` to the number of packets
++ * to log per session (e.g. 700).
 + */
 +public object OutgoingPacketTrace {
 +    @Volatile
-+    public var loginPackets: Int = 700
++    public var loginPackets: Int = System.getenv("RSPROT_OUT_TRACE")?.toIntOrNull() ?: 0
 +
 +    public const val MAX_BYTES: Int = 32
 +}

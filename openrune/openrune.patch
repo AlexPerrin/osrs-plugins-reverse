@@ -2492,10 +2492,10 @@ index a8bc2108d..9cf4c201c 100644
  
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
 new file mode 100644
-index 000000000..d6181196b
+index 000000000..2726d6c1c
 --- /dev/null
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
-@@ -0,0 +1,159 @@
+@@ -0,0 +1,169 @@
 +package org.rsmod.content.other.commands
 +
 +import dev.openrune.ServerCacheManager
@@ -2505,6 +2505,7 @@ index 000000000..d6181196b
 +import jakarta.inject.Inject
 +import kotlin.math.min
 +import net.rsprot.protocol.api.IncomingPacketTrace
++import net.rsprot.protocol.api.OutgoingPacketTrace
 +import net.rsprot.protocol.game.outgoing.misc.client.UrlOpen
 +import org.rsmod.annotations.InternalApi
 +import org.rsmod.api.player.output.UpdateStat
@@ -2543,6 +2544,7 @@ index 000000000..d6181196b
 +        onCommand("options", "Open a chatmenu with 2-5 options (::options One Two Three)", ::options)
 +        onCommand("url", "Send URL_OPEN (::url https://example.com)", ::url)
 +        onCommand("trace", "Log every incoming game packet (docker logs) on/off", ::trace)
++        onCommand("traceout", "Log the first n outgoing packets of new Android sessions (docker logs; 0 = off)", ::traceOut)
 +        onCommand("setxp", "Set a stat's xp, up to 200M (::setxp mining 20000000)", ::setXp) {
 +            invalidArgs = "Use as ::setxp skill xp"
 +        }
@@ -2604,6 +2606,14 @@ index 000000000..d6181196b
 +        with(cheat) {
 +            IncomingPacketTrace.enabled = !IncomingPacketTrace.enabled
 +            player.mes("Incoming packet trace ${if (IncomingPacketTrace.enabled) "on" else "off"}.")
++        }
++
++    /** Logs the first n outgoing packets of the next Android logins (`OUT #..`); 0 turns it off. */
++    private fun traceOut(cheat: Cheat) =
++        with(cheat) {
++            val n = args.firstOrNull()?.toIntOrNull() ?: if (OutgoingPacketTrace.loginPackets > 0) 0 else 700
++            OutgoingPacketTrace.loginPackets = n.coerceAtLeast(0)
++            player.mes("Outgoing packet trace: first ${OutgoingPacketTrace.loginPackets} packets of new Android sessions.")
 +        }
 +
 +    @OptIn(InternalApi::class)
@@ -3322,10 +3332,19 @@ index 000000000..724a884e2
 +mcannon_fire = 440
 +mcannon_decay = 441
 diff --git a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
-index a325cee80..67b599dea 100644
+index a325cee80..da118b091 100644
 --- a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 +++ b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
-@@ -24,6 +24,7 @@ import org.rsmod.api.player.output.UpdateRun
+@@ -12,6 +12,8 @@ import net.rsprot.protocol.game.outgoing.misc.client.HideObjOps
+ import net.rsprot.protocol.game.outgoing.misc.client.MinimapToggle
+ import net.rsprot.protocol.game.outgoing.misc.client.ResetAnims
+ import net.rsprot.protocol.game.outgoing.misc.player.ChatFilterSettings
++import net.rsprot.protocol.game.outgoing.social.FriendListLoaded
++import net.rsprot.protocol.game.outgoing.social.UpdateFriendList
+ import net.rsprot.protocol.game.outgoing.varp.VarpReset
+ import org.rsmod.api.inv.weight.InvWeight
+ import org.rsmod.api.net.central.OpenRuneCentralWorldLink
+@@ -24,12 +26,14 @@ import org.rsmod.api.player.output.UpdateRun
  import org.rsmod.api.player.output.UpdateStat
  import org.rsmod.api.player.output.mes
  import org.rsmod.api.player.output.runClientScript
@@ -3333,7 +3352,14 @@ index a325cee80..67b599dea 100644
  import org.rsmod.api.player.startInvTransmit
  import org.rsmod.api.player.stat.stat
  import org.rsmod.api.player.vars.VarPlayerIntMapSetter
-@@ -48,6 +49,7 @@ constructor(
+ import org.rsmod.api.player.vars.boolVarBit
+ import org.rsmod.api.player.vars.resyncVar
+ import org.rsmod.api.realm.Realm
++import org.rsmod.api.script.onCommand
+ import org.rsmod.api.script.onEvent
+ import org.rsmod.api.server.config.ServerConfig
+ import org.rsmod.api.stats.levelmod.InvisibleLevels
+@@ -48,6 +52,7 @@ constructor(
      private val invisibleLevels: InvisibleLevels,
      private val config: ServerConfig,
      private val openRuneCentral: OpenRuneCentralWorldLink,
@@ -3341,7 +3367,38 @@ index a325cee80..67b599dea 100644
  ) : PluginScript() {
      private val statSyncEntries by lazy { statSyncEntries() }
  
-@@ -62,6 +64,21 @@ constructor(
+@@ -56,12 +61,54 @@ constructor(
+ 
+     override fun ScriptContext.startup() {
+         onEvent<SessionStateEvent.EngineLogin>(0L) { player.engineLogin() }
++        // Friends-list diagnostics (mobile "Loading friends list"): switch the resend off, relog,
++        // then send the pieces by hand to see which one the client needs.
++        onCommand("socialresend") {
++            desc = "Mobile social resend after login on/off (::socialresend on|off)"
++            cheat {
++                socialResend =
++                    when (args.firstOrNull()) {
++                        "on" -> true
++                        "off" -> false
++                        else -> !socialResend
++                    }
++                player.mes("Mobile social resend after login: ${if (socialResend) "on" else "off"}.")
++            }
++        }
++        onCommand("social") {
++            desc = "Send social packets now (::social [both|loaded|update])"
++            cheat {
++                when (args.firstOrNull() ?: "both") {
++                    "loaded" -> player.client.write(FriendListLoaded)
++                    "update" -> player.client.write(UpdateFriendList(emptyList()))
++                    else -> player.sendSocial()
++                }
++                player.mes("Social packets sent (${args.firstOrNull() ?: "both"}).")
++            }
++        }
+     }
+ 
+     private fun Player.engineLogin() {
          sendHighPriority()
          sendLowPriority()
          VarPlayerIntMapSetter.set(this, "varbit.player_in_instance", 0)
@@ -3354,7 +3411,9 @@ index a325cee80..67b599dea 100644
 +     * the map is built.
 +     */
 +    private fun Player.resendSocialWhenLoaded() {
-+        if (!mobileClient) return
++        // unverified: the login burst's UPDATE_FRIENDLIST goes out after FRIENDLIST_LOADED (traced),
++        // but the Android client stays at friend_count -1 without this resend.
++        if (!mobileClient || !socialResend) return
 +        protectedAccess.launch(this) {
 +            loadDelay()
 +            delay(SOCIAL_RESEND_DELAY)
@@ -3363,7 +3422,7 @@ index a325cee80..67b599dea 100644
      }
  
      private fun Player.sendHighPriority() {
-@@ -107,10 +124,15 @@ constructor(
+@@ -107,10 +154,15 @@ constructor(
          client.write(HideObjOps(false))
      }
  
@@ -3380,9 +3439,11 @@ index a325cee80..67b599dea 100644
          }
  
          val broadcast = realm.config.loginBroadcast
-@@ -187,5 +209,6 @@ constructor(
+@@ -186,6 +238,8 @@ constructor(
+         }
  
      private companion object {
++        @Volatile var socialResend: Boolean = true
          const val TUTORIAL_DEFAULT_SETTINGS = "clientscript.[clientscript,tutorial_default_settings]"
 +        const val SOCIAL_RESEND_DELAY = 2
      }

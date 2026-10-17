@@ -873,3 +873,34 @@ was verified.
     13071) opens chat-channel `chatchannel_current` (7), `clans_sidepanel` (701),
     `clans_guest_sidepanel` (702) or `grouping` (76) when 707 opens and on each tab op (the
     tab->panel order is from OSRS memory: a guess).
+
+## Twelfth server dev (2026-10-17)
+
+- **Mobile friends list, outgoing trace** (9747c09, deployed 10:39 UTC with 20d266c): RSProt
+  `OutgoingPacketTrace` logs the first n outgoing packets of each Android session as `OUT #n op=..
+  len=.. Class hex` (payload before payload encryption). Off by default since the next commit: env
+  `RSPROT_OUT_TRACE=<n>` or `::traceout [n]` (applies to the next logins). Login burst on the
+  device (one flush, 10:39:55): `#1 RebuildLoginV2`, `#2 ChatFilterSettings`, `#3 op=69
+  FriendListLoaded len=0`, ..., `#232 IfOpenTop`, `#288 op=25 UpdateFriendList len=0` (empty list,
+  same bytes as desktop), `#289 op=13 UpdateIgnoreList len=0`, first `ServerTickEnd` later. The
+  20d266c resend went out 2 s later: `#367 FriendListLoaded`, `#377 UpdateFriendList len=0`. So the
+  first UPDATE_FRIENDLIST **does go out, after LOADED, correctly encoded**; the client loses its
+  effect. After the resend, 429 shows "You may add friends..." (device-checked), Add Friend for the
+  headless `desktop` account shows "desktop / World 255" (online), and 707's sub-tabs open, in
+  order, Chat-channel (7), Your Clan (701), View another clan (702), Grouping (76): the tab order
+  guess in `SideChannelsScript` is right (device-checked).
+- **Client statics** (re/decomp, Ghidra addresses): dispatcher `0x541dd4` case 0x45 sets the friend
+  manager (`client[0x8d8]`) state +0x150 = 1; case 0x19 calls `FUN_004fbd30` = read list
+  (`FUN_0066e448`, loops while pos < size, so an empty list just sorts) and state = 2, then
+  `FUN_0043aaf0` (change event). No pre-switch filter. friend_count (cs2 3600, `0x5ebdb0`):
+  state 0 -> -2, 1 -> -1, 2 -> count. `FUN_004fc0d8` is the friend system clear (state 0, lists
+  emptied); its only caller is the login-success path in `FUN_0051aa80` ("Login completed"). Only
+  case 0x45 writes state 1. So "-1" after the first burst means the 0x19 handler's state 2 was
+  never in effect after LOADED; a clear afterwards would give -2. **Root cause still open
+  (client side)**; the encoding, ordering and sending are ruled out. Next check (no restart needed,
+  commands in this build): `::socialresend off`, relog, see the loading state, then `::social
+  update` alone (only UPDATE_FRIENDLIST): if the list appears, the first one was dropped or
+  undone by something other than LOADED. A client-dev hook on `0x4fbd30`/case 0x45 logging the
+  cycle and state at login would settle it. Guess: real OSRS sends UPDATE_FRIENDLIST ticks after login
+  (once Central answers), never in the login burst, so the delayed resend matches OSRS timing; it
+  stays (`// unverified`).

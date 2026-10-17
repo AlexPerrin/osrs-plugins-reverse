@@ -1712,3 +1712,17 @@ qhtest1 logged in to an all-black frame, and every later login did the same: the
 - Android is not affected: mobile sessions always open `toplevel_osm` before the fallback.
 - Not changed: opening the fullscreen map still flips the stone-arrangement bit. With the fix, a later mismatched login
   picks pre-EoC ("modern" resizable) instead of classic.
+
+### Quest audit vs Quest Helper 4.18: Children of the Sun, Daddy's Home, His Faithful Servants
+
+Stage keys, varbits and step ids were read from the QH jar's bytecode (`loadSteps`/`setupSteps`).
+- **His Faithful Servants** (varbit `hfs` 14973): the server uses 0, 2 started, 4 icon looted (BarrowsScript),
+  6 icon given, 8 icon destroyed, 10 complete. QH: 0 talk; 2/4 Barrows run; 6/8 "Return to the Strange Old Man".
+  Consistent.
+- **Daddy's Home** (varbit `daddyshome_status` 10570): the server uses 0-5, 10 built, 12 reward pending,
+  13 complete. QH: 2 remove; 3-4 Yarlo; 5-9 "search crate" (build); 10-12 Marlo. The skipped 6-9 share one QH step.
+  Consistent; the build sub-steps are unchecked in game.
+- **Children of the Sun** (varbit `vmq1` 9632; guards `vmq1_guard_1..10`, bandits 1-4, as in QH): QH has a step
+  at 14 ("Report back to Sergeant Tobyn"), which the server never set. **Fixed (upstream 58):** the fourth correct
+  mark sets 14, an unmark goes back to 12, and Tobyn's marking dialogue answers at 14. Setting 14 on the mark rather
+  than on the report talk is a **guess** from QH's step text. Unit tests: `ChildrenOfTheSunInteractionTest` 36.

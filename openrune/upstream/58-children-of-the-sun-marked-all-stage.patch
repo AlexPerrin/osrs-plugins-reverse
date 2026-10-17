@@ -1,0 +1,143 @@
+From eeb02430b90b35f39c8b511764c3fca345607cf1 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 19:54:51 -0400
+Subject: [PATCH] Children of the Sun: varbit vmq1 = 14 once the four bandits
+ are marked
+
+Quest Helper (and so presumably OSRS) has a separate step at vmq1 = 14, "Report
+back to Sergeant Tobyn", between marking the guards (12) and the roof (16). The
+script stayed at 12 until Tobyn's dialogue, so the helper kept showing a marking
+step after the job was done.
+
+Set 14 on the fourth correct mark (an unmark goes back to 12), keep the guards
+markable and visible at 14, and let Tobyn's marking dialogue answer at 14 too.
+That OSRS sets 14 on the mark rather than on the report is a guess from the
+helper's step text.
+---
+ .../childrenofthesun/ChildrenOfTheSun.kt      | 19 +++++++++++-----
+ .../varrock/childrenofthesun/CotsStage.kt     |  3 +++
+ .../ChildrenOfTheSunInteractionTest.kt        | 22 +++++++++++++++++++
+ 3 files changed, 38 insertions(+), 6 deletions(-)
+
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSun.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSun.kt
+index 8a9c3bef4..0ee746517 100644
+--- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSun.kt
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSun.kt
+@@ -90,7 +90,7 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
+                 "I have marked <red>${markedCount(access.player)}</red> of the " +
+                     "<red>$BanditCount</red> bandits so far."
+             ) {
+-                visibleWhen { stage(access.player) == CotsStage.Marking }
++                visibleWhen { stage(access.player) in CotsStage.Marking..CotsStage.MarkedAll }
+             }
+         }
+ 
+@@ -122,7 +122,7 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
+     }
+ 
+     fun syncGuards(player: Player) {
+-        val marking = stage(player) == CotsStage.Marking
++        val marking = stage(player) in CotsStage.Marking..CotsStage.MarkedAll
+         for (guard in 1..CotsNpc.GuardCount) {
+             val varbit = CotsNpc.guardVarbit(guard)
+             val current = player.vars[varbit]
+@@ -148,7 +148,7 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
+         }
+ 
+     private suspend fun ProtectedAccess.markGuard(guard: Int) {
+-        if (stage(player) != CotsStage.Marking) {
++        if (stage(player) !in CotsStage.Marking..CotsStage.MarkedAll) {
+             return
+         }
+         if (markedCount(player) >= CotsNpc.BanditGuards) {
+@@ -157,14 +157,20 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
+         }
+         VarPlayerIntMapSetter.set(player, CotsNpc.guardVarbit(guard), GuardMarked)
+         mes("You mark the guard.")
++        if (markedCount(player) == CotsNpc.BanditGuards && markedCorrectly(player)) {
++            setStage(CotsStage.MarkedAll)
++        }
+     }
+ 
+     private fun ProtectedAccess.unmarkGuard(guard: Int) {
+-        if (stage(player) != CotsStage.Marking) {
++        if (stage(player) !in CotsStage.Marking..CotsStage.MarkedAll) {
+             return
+         }
+         VarPlayerIntMapSetter.set(player, CotsNpc.guardVarbit(guard), GuardUnmarked)
+         mes("You unmark the guard.")
++        if (stage(player) == CotsStage.MarkedAll) {
++            setStage(CotsStage.Marking)
++        }
+     }
+ 
+     internal suspend fun ProtectedAccess.tailTick() {
+@@ -363,7 +369,8 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
+             CotsStage.Tailing,
+             CotsStage.Eavesdropping -> tobyn(neutral, "Move along, citizen.")
+             CotsStage.ReportToTobyn -> reportBandits()
+-            CotsStage.Marking -> markingStage()
++            CotsStage.Marking,
++            CotsStage.MarkedAll -> markingStage()
+             CotsStage.OnRoof,
+             CotsStage.Interrogating,
+             CotsStage.Interrogated,
+@@ -639,7 +646,7 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
+                 ),
+                 JournalStep(
+                     CotsStage.Marking,
+-                    CotsStage.Marking,
++                    CotsStage.MarkedAll,
+                     "<red>Sergeant Tobyn</red> wants me to <red>Mark</red> the four disguised " +
+                         "bandits among the guards in the <red>square</red> and on the " +
+                         "<red>eastern road</red> to the bank. Once I've marked all four, I " +
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/CotsStage.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/CotsStage.kt
+index 0b06d498a..42dad502f 100644
+--- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/CotsStage.kt
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/CotsStage.kt
+@@ -10,6 +10,9 @@ internal object CotsStage {
+     const val Eavesdropping = 8
+     const val ReportToTobyn = 10
+     const val Marking = 12
++
++    /** Quest Helper's "Report back to Sergeant Tobyn" step; set on the fourth correct mark (guess). */
++    const val MarkedAll = 14
+     const val OnRoof = 16
+     const val Interrogating = 18
+     const val Interrogated = 20
+diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSunInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSunInteractionTest.kt
+index 11571e03c..d1ffcd5c6 100644
+--- a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSunInteractionTest.kt
++++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSunInteractionTest.kt
+@@ -216,6 +216,28 @@ class ChildrenOfTheSunInteractionTest {
+         assertTrue(f.output().contains("already marked enough guards"), f.output())
+     }
+ 
++    @Test fun `marking the four bandits moves to the report stage and an unmark moves back`() {
++        val f = Fixture(CotsStage.Marking)
++        f.script.syncGuards(f.player)
++        for (guard in 1..3) f.mark(guard)
++        assertEquals(CotsStage.Marking, f.stage())
++        f.mark(4)
++        assertEquals(CotsStage.MarkedAll, f.stage())
++        assertEquals(2, f.player.vars["varbit.vmq1_guard_4"])
++        f.talk("npc.vmq1_guard_4")
++        f.finish()
++        assertEquals(CotsStage.Marking, f.stage())
++        assertEquals(1, f.player.vars["varbit.vmq1_guard_4"])
++        assertEquals(1, f.player.vars["varbit.vmq1_guard_5"])
++    }
++
++    @Test fun `four marks with an honest guard stay in the marking stage`() {
++        val f = Fixture(CotsStage.Marking)
++        f.script.syncGuards(f.player)
++        for (guard in listOf(1, 2, 3, 5)) f.mark(guard)
++        assertEquals(CotsStage.Marking, f.stage())
++    }
++
+     @Test fun `Tobyn repeats his instructions until four guards are marked`() {
+         val f = Fixture(CotsStage.Marking)
+         f.script.syncGuards(f.player)
+-- 
+2.43.0
+

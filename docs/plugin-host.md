@@ -101,18 +101,18 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Monster HP Percentage | runs | health percentage over NPCs with `MonsterHP.npcShowAll=true` (verified 2026-10-16). Its onNpcSpawned throws for nameless multi-NPCs (null name, also on desktop) |
 | Visual Metronome | runs | tick box alternating each game tick (verified 2026-10-16) |
 | Attack Timer Metronome | runs | attack cooldown count over the player while attacking a Man (verified 2026-10-16) |
-| Customizable XP Drops | starts | XP counter follows the last skill; drops are queued and flown (BeforeRender, now posted each frame) but not drawn (2026-10-16, XpDropOverlay render to check). Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
+| Customizable XP Drops | starts | XP counter follows the last skill; drops are queued and flown (BeforeRender, now posted each frame; XP drops varbit 4702 = 1) but not drawn (2026-10-16, XpDropOverlay render to check). Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
 | Shortest Path | runs | Shift + long-press a tile, "Set Target" in the plugin strip: red path on the scene and the minimap; from Burthorpe it routes via "Lumbridge Home Teleport" (verified 2026-10-16). Targets within its reached distance (default 5 tiles) clear at once. Needed getDBTableRows, getProfile, DB fields with desktop semantics, the menu tile after the menu closes |
 | Improved Tile Indicators | starts | not checked (its overlay threw before login until overlays were limited to LOGGED_IN) |
 | Inventory Setups | starts | sidebar panel renders (version notes, Return to Setups); setups not tried. Needed jopt-simple, headless JPopupMenu children, getItemCount, DB fields |
 | Equipment Inspector | starts | not checked (needs another player). Needed headless GroupLayout builders |
-| Bank Heatmap | starts | `::openbank`: its "Right click this button for Heatmap overlay" hint is drawn by the bank buttons (2026-10-16); the overlay itself not checked |
+| Bank Heatmap | starts | `::openbank`: its "Right click this button for Heatmap overlay" hint is drawn (2026-10-16). Its toggles are added to the bank's desktop "Show menu" op, which the mobile bank lacks: a long-press on the wrench or the bottom-left button gives only Walk here/Cancel (2026-10-16), so the overlay can't be switched on |
 | Wasted Bank Space | starts | sidebar panel: "Number of Items Wasting Space: 0" with a 3-item bank (2026-10-16) |
 | Banked Experience | starts | sidebar panel renders; the skill combo shows "Construction" and its Android list the skill names (the renderer's JLabel text, `Sidebar.comboLabel`, verified 2026-10-16); banked XP from a bank not checked |
 | Kitten Tracker | starts | not checked |
 | Large Logout | starts | not checked |
 | Radius Markers | starts | not checked |
-| Skills Tab Progress Bars | starts | not checked |
+| Skills Tab Progress Bars | starts | builds its bars with createChild: with `debug.osrsrl.createchild 1` they go into the game's stats tab (CC_CREATE), no crash with the tab reopened (2026-10-16); bars not seen on the all-99 test account. Its ScriptPreFired needed ScriptEvent.getSource() |
 | Tree Despawn Timer | runs | pie timer over a Lumbridge oak while chopping, green to yellow (verified 2026-10-16). Its onGameTick threw on the first ticks of a login (no local player yet), so GameTick now waits for the local player. Needed Java 9 Duration methods (CompatRewrite) |
 | Max Hit | runs | "Max Hit: 11.0" overlay (verified 2026-10-16) |
 | Wilderness Multi Lines | starts | starts; not checked (needs the Wilderness) |

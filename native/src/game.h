@@ -130,6 +130,7 @@ bool widget_set_field(int component, int index, uint32_t offset, int value);
 // Re-runs the game's layout for a widget after position/size changes (what CC_SETPOSITION does).
 bool widget_revalidate(int component, int index);
 int widget_create_child(int component, int index, int type);
+bool widget_delete_children(int component);
 void widget_props(uintptr_t widget, int32_t out[kWidgetProps]);  // item set by IF_SETOBJECT / CC_SETOBJECT
 int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colour for text widgets
 void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty

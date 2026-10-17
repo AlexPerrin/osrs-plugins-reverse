@@ -887,6 +887,9 @@ jboolean n_widget_set_field(JNIEnv*, jclass, jint id, jint index, jint offset, j
 jint n_widget_create_child(JNIEnv*, jclass, jint id, jint index, jint type) {
     return client_thread::on_client_thread() ? game::widget_create_child(id, index, type) : -1;
 }
+jboolean n_widget_delete_children(JNIEnv*, jclass, jint id) {
+    return client_thread::on_client_thread() && game::widget_delete_children(id);
+}
 jboolean n_widget_revalidate(JNIEnv*, jclass, jint id, jint index) {
     return client_thread::on_client_thread() && game::widget_revalidate(id, index);
 }
@@ -1036,6 +1039,7 @@ const JNINativeMethod kNatives[] = {
     {"widgetSetField", "(IIII)Z", reinterpret_cast<void*>(n_widget_set_field)},
     {"widgetRevalidate", "(II)Z", reinterpret_cast<void*>(n_widget_revalidate)},
     {"widgetCreateChild", "(III)I", reinterpret_cast<void*>(n_widget_create_child)},
+    {"widgetDeleteChildren", "(I)Z", reinterpret_cast<void*>(n_widget_delete_children)},
     {"widgetStrings", "(II)[Ljava/lang/String;", reinterpret_cast<void*>(n_widget_strings)},
     {"widgetSetColor", "(III)V", reinterpret_cast<void*>(n_widget_set_color)},
     {"widgetSetHidden", "(IIZ)V", reinterpret_cast<void*>(n_widget_set_hidden)},

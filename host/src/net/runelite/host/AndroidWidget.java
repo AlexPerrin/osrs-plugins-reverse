@@ -182,10 +182,15 @@ public class AndroidWidget extends WidgetBag {
     // Children created by plugins: in the game's tree through CC_CREATE (static layer parents, on
     // the game thread), else Java-side only (DetachedWidget, not drawn).
     private final List<Widget> created = new ArrayList<>();
+    /**
+     * `setprop debug.osrsrl.createchild 1` creates plugin children in the game's tree (CC_CREATE).
+     * Off by default: Skills Tab Progress Bars crashed the game at login with it (2026-10-16).
+     */
+    static final boolean CREATE_IN_GAME = "1".equals(Native.property("debug.osrsrl.createchild"));
 
     @Override
     public Widget createChild(int index, int type) {
-        if (childIndex() < 0 && type != 12 && Native.isClientThread()) {
+        if (CREATE_IN_GAME && childIndex() < 0 && type != 12 && Native.isClientThread()) {
             int at = Native.widgetCreateChild(id, index, type);
             if (at >= 0) return new Dynamic(id, at);
         }
@@ -195,7 +200,10 @@ public class AndroidWidget extends WidgetBag {
     }
 
     @Override public Widget createChild(int type) { return createChild(-1, type); }
-    @Override public void deleteAllChildren() { created.clear(); }
+    @Override public void deleteAllChildren() {
+        created.clear();
+        if (CREATE_IN_GAME && childIndex() < 0 && Native.isClientThread()) Native.widgetDeleteChildren(id);
+    }
     /** The game's CC_CREATE children (null slots stay null), then plugin-created ones. */
     @Override public Widget[] getDynamicChildren() {
         Widget[] game = gameChildren();

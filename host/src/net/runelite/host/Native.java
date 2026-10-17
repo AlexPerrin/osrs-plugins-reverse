@@ -87,6 +87,8 @@ final class Native {
     static native int[] scriptEventSource();
     /** CC_CREATE under static layer `id` at `index` (-1 = append); the index, or -1. Game thread. */
     static native int widgetCreateChild(int id, int index, int type);
+    /** CC_DELETEALL on static component `id`. Game thread. */
+    static native boolean widgetDeleteChildren(int id);
     /** {root scripts, gosubs, returns, events delivered, hooks installed (0/1)}. */
     static native long[] scriptStats();
     /**

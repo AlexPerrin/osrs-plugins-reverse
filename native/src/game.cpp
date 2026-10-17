@@ -785,7 +785,7 @@ bool widget_ref(uintptr_t w, int* component, int* index) {
 
 // CC_CREATE (script op 100 in 0x4e06dc) for Widget.createChild: capacity/replace 0x4f2898(parent
 // slot, index, 0) (an existing child at the index is deleted, as CC_CREATE without its 4th arg),
-// make_shared<Widget>(&parent id) 0x4f290c, the same fields the op writes (+0x00 = 1, +0x08 index,
+// make_shared<Widget>(out, &parent id) 0x4f290c, the same fields the op writes (+0x00 = 1, +0x08 index,
 // +0x28 type, +0x74 parent id), then the move-assign 0x44a538 into the parent's +0xb58 slot.
 // Static parents of layer type only; text inputs (type 12) need the op's extra setup. Game thread.
 int widget_create_child(int component, int index, int type) {
@@ -799,7 +799,9 @@ int widget_create_child(int component, int index, int type) {
         uintptr_t ctrl, obj;
         ~SharedPtr() {}
     };
-    SharedPtr sp = reinterpret_cast<SharedPtr (*)(const int32_t*)>(g_base + 0x4f290c)(reinterpret_cast<const int32_t*>(parent + 4));
+    // Not an x8 return: the out pointer is x0 and the id pointer x1 (disassembly at 0x4f290c).
+    SharedPtr sp{0, 0};
+    reinterpret_cast<void (*)(SharedPtr*, const int32_t*)>(g_base + 0x4f290c)(&sp, reinterpret_cast<const int32_t*>(parent + 4));
     if (!sp.obj) return -1;
     *reinterpret_cast<uint8_t*>(sp.obj) = 1;
     *reinterpret_cast<int32_t*>(sp.obj + 8) = index;
@@ -808,6 +810,18 @@ int widget_create_child(int component, int index, int type) {
     uintptr_t dst = read_at<uintptr_t>(parent + 0xb58) + static_cast<size_t>(index) * 0x10;
     reinterpret_cast<void* (*)(uintptr_t, SharedPtr*)>(g_base + 0x44a538)(dst, &sp);  // moves sp out
     return index;
+}
+
+// CC_DELETEALL (script op 101): 0x5df8e0(widget) releases every CC_CREATE child, then
+// 0x44a788(client, slot) as the op does. Game thread.
+bool widget_delete_children(int component) {
+    uintptr_t c = client();
+    uintptr_t slot = widget_slot(component, -1);
+    uintptr_t w = slot ? read_at<uintptr_t>(slot + 8) : 0;
+    if (!c || !w) return false;
+    reinterpret_cast<void (*)(uintptr_t)>(g_base + 0x5df8e0)(w);
+    reinterpret_cast<void (*)(uintptr_t, uintptr_t)>(g_base + 0x44a788)(c, slot);
+    return true;
 }
 
 uintptr_t widget(int component) {

@@ -1321,3 +1321,18 @@ New module `content/interfaces/grand-exchange` (+ pack). Sized from RuneLite's
 - **Tests:** `:content:interfaces:grand-exchange:integration` (7): fill and refund, a sell of noted and
   unnoted items with the tax, open + abort + collect-all, refused offers (coins, overflow, missing
   item), a full inventory keeping the collection, the button maths. Upstream `48-grand-exchange`.
+
+### Diary journals for the other 10 areas (sixteenth server dev)
+
+`achievement-diary` now has journals for all 12 areas (dbrows 61500-61509 for the areas, 61510-61918
+for the tasks). The tasks were generated from the wiki's diary pages (raw wikitext, the numbered rows of
+each `data-diary-tier` table, links and templates stripped, notes dropped); where RuneLite's Diary
+Requirements plugin quotes a task (its `*DiaryRequirement.java`), its text is used instead (matched by
+similarity >= 0.7, every plugin task matched once). Per-area totals: Ardougne 42, Desert 39, Falador
+42, Fremennik 34, Kandarin 43, Karamja 44, Kourend & Kebos 43, Morytania 38, Western 44, Wilderness 40
+(Lumbridge 41 and Varrock 42 kept as they were, which the generator reproduces except three wording
+differences where the plugin's text was used). Headings are the plugin's keys ("Ardougne Area Tasks",
+"Desert Tasks", "Falador Area Tasks", "Fremennik Tasks", "Kandarin Tasks", "Karamja Area Tasks",
+"Kourend & Kebos Tasks", "Morytania Tasks", "Western Area Tasks", "Wilderness Area Tasks"). Wiki-only
+wordings (97 tasks) are **guesses** at the in-game journal text. Deployed 12:01 with the GE build, not
+device-checked yet.

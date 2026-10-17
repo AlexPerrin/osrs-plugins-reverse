@@ -65,6 +65,20 @@ final class Probe {
                     Log.i(TAG, "db row " + r + " col " + col + " tuple " + tup + " -> " + java.util.Arrays.toString(c.getDBTableField(r, col, tup)));
                 return;
             }
+            if (a[0].equals("net")) {  // "net get|post|xp": one request through the injected OkHttpClient (NetGuard test)
+                final String kind = a[1];
+                okhttp3.OkHttpClient http = net.runelite.client.RuneLite.getInjector().getInstance(okhttp3.OkHttpClient.class);
+                okhttp3.Request.Builder rb = new okhttp3.Request.Builder();
+                if (a[1].equals("get")) rb.url("https://static.runelite.net/npcs/npcs.min.json").head();
+                else if (a[1].equals("post")) rb.url("https://api.runelite.net/runelite-1.13.1/loottracker")
+                        .post(okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), "[]"));
+                else rb.url("https://api.runelite.net/runelite-1.13.1/xp/update?username=netguard-test");
+                http.newCall(rb.build()).enqueue(new okhttp3.Callback() {
+                    @Override public void onFailure(okhttp3.Call call, java.io.IOException e) { Log.i(TAG, "net " + kind + " failed: " + e.getMessage()); }
+                    @Override public void onResponse(okhttp3.Call call, okhttp3.Response r) { Log.i(TAG, "net " + kind + " -> HTTP " + r.code()); r.close(); }
+                });
+                return;
+            }
             if (a[0].equals("twidth")) {  // "twidth <font id> <text>": GameFont.getTextWidth (the game's PARAWIDTH measure)
                 int font = Integer.parseInt(a[1]);
                 Log.i(TAG, "twidth font " + font + " '" + a[2] + "' -> " + GameFont.of(font).getTextWidth(a[2]));

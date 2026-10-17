@@ -263,10 +263,17 @@ void sidebar_frame(int w, int h) {
                 clicked = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsMouseReleased(0);
                 break;
             }
-            case 'I': {  // icon-only tab/button: "<icon id>:<selected>"
+            case 'I': {  // icon-only tab/button: "<icon id>:<selected>:<background argb hex>"
                 int iw = 0, ih = 0;
                 GLuint tex = sidebar_icon_texture(atoi(n.text.c_str()), &iw, &ih);
-                bool sel = n.text.size() >= 2 && n.text.back() == '1';
+                size_t c1 = n.text.find(':'), c2 = c1 == std::string::npos ? c1 : n.text.find(':', c1 + 1);
+                bool sel = c1 != std::string::npos && n.text.compare(c1 + 1, 1, "1") == 0;
+                uint32_t bg = c2 != std::string::npos ? static_cast<uint32_t>(strtoul(n.text.c_str() + c2 + 1, nullptr, 16)) : 0;
+                // The component's own background (Inventory Setups' highlighted slots) when it has one.
+                bool has_bg = !sel && (bg >> 24) != 0;
+                if (has_bg)
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(((bg >> 16) & 0xff) / 255.0f, ((bg >> 8) & 0xff) / 255.0f,
+                                                                  (bg & 0xff) / 255.0f, (bg >> 24) / 255.0f));
                 float side = ImGui::GetFrameHeight() * 1.6f;
                 if (same_row) side = ImGui::GetTextLineHeight();  // small icon button after a label (QH's ">")
                 if (!same_row && prev_kind == 'I' && n.depth == prev_depth &&
@@ -281,6 +288,7 @@ void sidebar_frame(int w, int h) {
                     clicked = ImGui::Button(("?" + id).c_str(), ImVec2(side, side));
                 }
                 if (sel) ImGui::PopStyleColor();
+                if (has_bg) ImGui::PopStyleColor();
                 break;
             }
             case 'X': {  // combo box: tap opens an Android list (Sidebar.promptChoice)

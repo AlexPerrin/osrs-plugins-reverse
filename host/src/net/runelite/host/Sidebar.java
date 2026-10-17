@@ -32,7 +32,7 @@ import net.runelite.client.ui.NavigationButton;
  *
  * The panel's component tree is flattened into lines "kind\tdepth\tcolor\ttext" (kinds: L label, E text field,
  * B button, C checkbox (text prefixed with 0/1), T read-only text, A editable text area, X combo box,
- * H clickable panel, I icon-only clickable "<icon id>:<selected>")
+ * H clickable panel, I icon-only clickable "<icon id>:<selected>:<background argb hex>")
  * after a header line "S\tselected\ttooltip...". The overlay sends back taps as (kind, index)
  * pairs, which are dispatched to the Swing listeners on the EDT (Edt).
  */
@@ -562,8 +562,25 @@ final class Sidebar {
             sel = Boolean.TRUE.equals(m.invoke(c));
         } catch (Throwable ignored) {
         }
-        add(sb, 'I', depth, c, id + ":" + (sel ? 1 : 0));
+        add(sb, 'I', depth, c, id + ":" + (sel ? 1 : 0) + ":" + Integer.toHexString(iconBackground(c)));
         return true;
+    }
+
+    /**
+     * ARGB the icon button is drawn on: the background of the icon component or, if it has none
+     * of its own, its parent (Inventory Setups paints a slot's panel in the highlight colour when
+     * the slot differs from the setup). 0 = the overlay's default.
+     */
+    private static int iconBackground(Component c) {
+        for (Component p : new Component[] {c, c.getParent()}) {
+            if (p == null) continue;
+            try {
+                java.awt.Color bg = p.getBackground();
+                if (bg != null && bg.getAlpha() > 0) return bg.getRGB();
+            } catch (Throwable ignored) {
+            }
+        }
+        return 0;
     }
 
     private static void add(StringBuilder sb, char kind, int depth, Component c, String text) {

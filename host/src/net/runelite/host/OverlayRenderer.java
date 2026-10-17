@@ -312,8 +312,12 @@ final class OverlayRenderer {
                 case TOP_LEFT: {
                     // The mobile chatbox and the left button column fill the desktop top-left
                     // corner: stack these down from the chatbox's bottom-left corner instead.
+                    // Start right of the host's RL/Shift toggle (native overlay.cpp: x 0, buttons 56/720
+                    // of the screen height wide plus window padding), which the stack reaches lower down
+                    // (Barrows' brothers panel was under it, gen 22).
                     Rectangle chat = chatBounds();
-                    c = chat != null ? new Point(chat.x + BORDER, chat.y + chat.height + BORDER)
+                    int toggleRight = Math.round(size.height * 56f / 720f) + 8;
+                    c = chat != null ? new Point(Math.max(chat.x, toggleRight) + BORDER, chat.y + chat.height + BORDER)
                         : new Point(LEFT_COLUMN + BORDER, BORDER);
                     break;
                 }

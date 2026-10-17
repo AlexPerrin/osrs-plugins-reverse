@@ -53,9 +53,17 @@ Details in `docs/openrune-port.md`, "Seventeenth server dev" and the sections af
   interact_npc with npcIndex, list_npcs, list_ground_items to confirm a death). The desktop account has low
   combat stats; `::god`/`::maxhit` toggles (turn both off after). If the client process is gone,
   `desktop.sh stop`, `start`, then `login`.
-- Upstream: 53 patches; all `git am` on the pin (scratch clone `pin` in this session's scratchpad, branch
+- **Quest Helper / quests (desktop):** The Restless Ghost, Imp Catcher, Rune Mysteries, Ernest the Chicken
+  complete server-side (varp trails in the port doc). Fixed after the runs: Ernest stage 2 (upstream 54), the
+  Lumbridge/Edgeville general store stock (55), Misthalin Mystery Mandy guards (56) - built, not yet checked in
+  game. Audit of X Marks the Spot / Gertrude's Cat / Misthalin Mystery in the port doc. Desktop: QH must come
+  from the Plugin Hub (a sideloaded QH jar breaks ObjectSteps; docs/multi-client.md). Quest driving tips: a
+  dialogue driver over devtools `get_dialogue`/`select_option`/`continue_dialogue`; `interact_object` by
+  `objectId` for multilocs (name filter fails); `pickup_item` needs `itemId` + `x`/`y`; the desktop account
+  is weak (10 HP), so avoid aggressive monsters or use `::god` (turn it off).
+- Upstream: 56 patches; all `git am` on the pin (scratch clone `pin` in this session's scratchpad, branch
   `up` with 01-50).
-- **Deployed** 17:01: 534b5dd (live = git). Tester LOGGED_IN at Lumbridge, Lumbridge & Draynor 4/41. Tester LOGGED_IN at Lumbridge on the
+- **Deployed** 17:01: 534b5dd. Committed, not deployed: 7c5ec82 (Ernest), 84030f3 (stores, Mandy). Tester LOGGED_IN at Lumbridge, Lumbridge & Draynor 4/41. Tester LOGGED_IN at Lumbridge on the
   normal build, no channel joined; ~100k coins, 40 noted bronze pickaxes, a small pouch, a rune
   pickaxe, an iron ore; the 1 gp lobster buy still open in GE slot 1.
 - **Next candidates** (orchestrator to pick): diary task hooks (list sent), GE tax-exempt list, Sets, custom ±X%;

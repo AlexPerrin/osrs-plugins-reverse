@@ -66,7 +66,7 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Regeneration Meter | runs | HP ring on the HP orb (verified with `regenmeter.showWhenNoChange`); by default it draws only below full HP or spec |
 | Run Energy | runs | orb tooltip (weight, run time, 100% in) on a tap of the run orb (touch-as-mouse + TooltipOverlay, verified 2026-10-16) |
 | Timers & Buffs | runs | stamina timer InfoBox counting down after `::varbit 25 1` + `::varbit 24 20` (verified 2026-10-16); the InfoBox shows the stamina potion icon (ItemManager.getImage → the game's createItemSprite, verified 2026-10-16) |
-| Time Tracking | starts | farming panel shows a Catherby patch prediction from the server's farming_transmit varbits (server dev, 2026-10-16); it stayed stale after planting because the host never called PluginPanel.onActivate (its update() is a no-op while inactive), fixed in the sidebar (unverified) |
+| Time Tracking | runs | farming tab: Catherby (South) went from "Done" to "Done at 23:05" after `::growpatches` (2026-10-16); it stayed stale until the sidebar called PluginPanel.onActivate (its update() is a no-op while inactive). Patch varbits from the server's farming_transmit |
 | Woodcutting | runs | session panel (logs cut 6, 900/hr) while chopping an oak west of Lumbridge (verified 2026-10-16; TOP_LEFT overlays now stack below the chatbox) |
 | XP Tracker | runs | sidebar panel: gained XP, XP/hr, levels per skill after combat (verified 2026-10-16; some rows show twice in the flattened sidebar) |
 | Agility | runs | Gnome Stronghold log balance highlighted green (verified 2026-10-16; needs XP Tracker's module, installed as RuneLite does) |
@@ -102,23 +102,23 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Monster HP Percentage | runs | health percentage over NPCs with `MonsterHP.npcShowAll=true` (verified 2026-10-16). Its onNpcSpawned throws for nameless multi-NPCs (null name, also on desktop) |
 | Visual Metronome | runs | tick box alternating each game tick (verified 2026-10-16) |
 | Attack Timer Metronome | runs | attack cooldown count over the player while attacking a Man (verified 2026-10-16) |
-| Customizable XP Drops | starts | XP counter follows the last skill; drops are queued and flown (BeforeRender, now posted each frame; XP drops varbit 4702 = 1) but not drawn (2026-10-16, XpDropOverlay render to check). Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
+| Customizable XP Drops | runs | skill icons and "36" rise below the minimap and fade on a kill (verified 2026-10-16), after TOP_RIGHT overlays moved below the minimap block (they were clipped under it) and BeforeRender is posted each frame. Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
 | Shortest Path | runs | Shift + long-press a tile, "Set Target" in the plugin strip: red path on the scene and the minimap; from Burthorpe it routes via "Lumbridge Home Teleport" (verified 2026-10-16). Targets within its reached distance (default 5 tiles) clear at once. Needed getDBTableRows, getProfile, DB fields with desktop semantics, the menu tile after the menu closes |
-| Improved Tile Indicators | starts | not checked (its overlay threw before login until overlays were limited to LOGGED_IN) |
+| Improved Tile Indicators | runs | with `improvedtileindicators.customDestinationTile=true`: RS3-style ring and arrow on the tapped destination (verified 2026-10-16) |
 | Inventory Setups | starts | sidebar panel renders (version notes, Return to Setups); setups not tried. Needed jopt-simple, headless JPopupMenu children, getItemCount, DB fields |
 | Equipment Inspector | starts | not checked (needs another player). Needed headless GroupLayout builders |
 | Bank Heatmap | starts | `::openbank`: its "Right click this button for Heatmap overlay" hint is drawn (2026-10-16). Its toggles are added to the bank's desktop "Show menu" op, which the mobile bank lacks: a long-press on the wrench or the bottom-left button gives only Walk here/Cancel (2026-10-16), so the overlay can't be switched on |
 | Wasted Bank Space | starts | sidebar panel: "Number of Items Wasting Space: 0" with a 3-item bank (2026-10-16) |
 | Banked Experience | starts | sidebar panel renders; the skill combo shows "Construction" and its Android list the skill names (the renderer's JLabel text, `Sidebar.comboLabel`, verified 2026-10-16); banked XP from a bank not checked |
 | Kitten Tracker | starts | not checked |
-| Large Logout | starts | not checked |
+| Large Logout | starts | resizes desktop's logout tab (Logout interface, scripts 2243/892); the mobile UI's logout is elsewhere, not checked |
 | Radius Markers | starts | not checked |
 | Skills Tab Progress Bars | starts | builds its bars with createChild: with `debug.osrsrl.createchild 1` they go into the game's stats tab (CC_CREATE), no crash with the tab reopened (2026-10-16); bars not seen on the all-99 test account. Its ScriptPreFired needed ScriptEvent.getSource() |
 | Tree Despawn Timer | runs | pie timer over a Lumbridge oak while chopping, green to yellow (verified 2026-10-16). Its onGameTick threw on the first ticks of a login (no local player yet), so GameTick now waits for the local player. Needed Java 9 Duration methods (CompatRewrite) |
 | Max Hit | runs | "Max Hit: 11.0" overlay (verified 2026-10-16) |
 | Wilderness Multi Lines | starts | starts; not checked (needs the Wilderness) |
 | Charges Improved | starts | starts and posts its update notes to chat (2026-10-16) after the CompatRewrite of `Collection.toArray(IntFunction)` (Java 11); charges not checked. Its daily reset throws NumberFormatException until the bank was opened once (empty `storage_bank`; the same on desktop) |
-| Loot Lookup |
+| Loot Lookup | untested | not built: it needs jsoup, an extra Maven dependency (build.sh stops on those) |
 
 ## Build and run
 

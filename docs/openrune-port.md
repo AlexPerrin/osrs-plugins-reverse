@@ -1513,3 +1513,19 @@ clan hall, guest channels, events) are bigger again (several days).
   filling and the GE plugin notifying each line ("[RuneLite] Grand Exchange: Bought 3 / 10 x Lobster.").
   50 bronze pickaxes (limit 40) at 1 gp -> 13, 26, 39, 40 / 50 and then it stays BUYING ("You have bought a
   total of 40 so far for a total price of 40 coins."); Abort returned 10 coins with the 40 pickaxes.
+
+### GE trade history (seventeenth server dev)
+
+- The clerks' History (op 4, also across the booth) and the GE interface's History button (`ge_offers:history`)
+  open `ge_history` (383), filled by `ge_history_init` (1644), one `ge_history_addline` (1645: index, obj,
+  sold 1/0, count, long gold, long tax) per trade, and `ge_history_finish` (1646, "You have no recorded Grand
+  Exchange trades." when empty). The Exchange button (`ge_history:exchange`) goes back to the offers.
+- History: the last 40 trades, newest first, in perm varps `ge_historyN_obj/count/gold/tax` (63000-63159; obj
+  holds obj + 1 with bit 30 = sold). A trade is recorded when its offer finishes, or when an offer with
+  something traded is aborted (**guess**: when OSRS records it is not checked). Sale tax = done x tax on the
+  average price.
+- History line ops (IF_SETEVENTS on `ge_history:list` subs 0..239; a line's subs are line*6+n): op 1
+  "Buy-offer" opens the Exchange with a buy offer for that item in the first free slot (quantity 1, guide
+  price); op 10 examines.
+- RUNCLIENTSCRIPT with long args ('Ï') is used here for the first time on Android (desktop encoder).
+- Test: 1 more in the GE integration suite (11). Upstream `51`.

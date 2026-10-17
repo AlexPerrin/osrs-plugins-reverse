@@ -1047,7 +1047,9 @@ jintArray n_inventory(JNIEnv* env, jclass, jint id) {
     // arrives) would otherwise see last cycle's snapshot.
     game::Inventory viewed;
     std::vector<game::Inventory> one;
-    bool in_view = client_thread::inventory_view(id, viewed);
+    int view = client_thread::inventory_view(id, viewed);
+    if (view == 0) return nullptr;
+    bool in_view = view == 1;
     if (in_view) one.push_back(std::move(viewed));
     for (const auto& inv : in_view ? one : client_thread::on_client_thread() ? game::read_inventories() : client_thread::inventories()) {
         if (inv.id != id) continue;

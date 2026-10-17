@@ -49,10 +49,10 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Combat Level | runs | precise level in the combat tab ("Combat Lvl: 126.1", verified 2026-10-16) |
 | Cannon | runs | green "30" ball count drawn on the placed cannon after Set-up + Fire on goblins, one "Your cannon is out of ammo!" notification when empty (verified 2026-10-16; the Notifier no longer posts a ChatMessage, which had made the plugin re-notify on its own line). Members items need the client's members flag: a members world started from jav_config skips setWorld, so the host applies the world flags through the game's setMembersWorld `0x642f14` when they disagree (Set-up showed without the world switcher on 2026-10-16, though the host's sync didn't need to run that time) |
 | Daily Task Indicator | runs | "You have battlestaves waiting to be collected from Zaff." on login with `::varbit 4479 1` (verified 2026-10-16) |
-| Emojis | starts | cache dir now under the app's files dir (user.home). Chat emoji need the font's `<img=N>` table (static RE 2026-10-16, docs/offsets.md "Mod icons": swappable, feasible) plus chat line writes; not built yet |
+| Emojis | runs | "hello :) <3 :D" draws smiley, heart and grin over the player (verified 2026-10-17): the font's `<img=N>` table is replaced by ours (`game::mod_icons_cycle`, docs/offsets.md "Mod icons"; log "mod icons: 340 (game 60) installed"). The chatbox line of your own public chat didn't appear at all (with or without emoji; the server sends the chat block to self, so it's client side, open) |
 | Examine | runs | "Price of Salmon: GE average 30 HA value 18" after Examine on an inventory item, one price line after OpenRune dropped its own (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
 | Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Color Tile > Pick opens the Android colour dialog and recolours the tile (verified 2026-10-16) |
-| Implings | runs | Puro-Puro (`::tele 2592 4320`): a gourmet impling outlined and named with `implings.showgourmet=HIGHLIGHT`, and caught with a butterfly net (verified 2026-10-16). getLogicalHeight is now the posed model's height as on desktop (was a fixed 200, label too high); label not re-checked |
+| Implings | runs | Puro-Puro (`::tele 2592 4320`): a gourmet impling outlined and named with `implings.showgourmet=HIGHLIGHT`, and caught with a butterfly net (verified 2026-10-16). Labels sat twice too high: Actor.getCanvas*Location added getLogicalHeight to the plugin's zOffset (fixed 2026-10-17, label height checked with Player Indicators) |
 | Interact Highlight | runs | outline on the hovered NPC (long-press) and red outline on the attacked goblin (long-press + Attack, verified 2026-10-16) |
 | Inventory Tags | runs | green outline on a tagged pot; Shift + long-press an item: "Inventory tag" > Pick sets the tag (verified 2026-10-16; outlines from the game's createItemSprite) |
 | Item Charges | runs | "8" drawn on a Ring of dueling(8) in the inventory (verified 2026-10-16) |
@@ -75,7 +75,7 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Cooking | runs | session panel "Cooked: 11 (660/hr), Burnt: 0" while cooking salmon on the Lumbridge range (verified 2026-10-16) |
 | Idle Notifier | runs | "[RuneLite] You are now idle!" in the game chat after mining/fishing stops (Notifier → game chat, verified 2026-10-16) |
 | Mining | runs | "Mining" / "NOT mining" session panel below the chatbox while mining copper (after OpenRune's OSRS wording fix; TOP_LEFT placement verified 2026-10-16) |
-| Player Indicators | starts | needed protobuf-javalite + RuneLite http-api (PartyService) |
+| Player Indicators | runs | own name "tester" drawn above the player with `playerindicators.highlightSelf=ENABLED` (verified 2026-10-17, after the canvas-location height fix); another player not seen yet (the headless desktop login wasn't in tester's scene). Needed protobuf-javalite + RuneLite http-api (PartyService) |
 | Special Attack Counter | runs | dragon warhammer spec on an imp: "30%" defence-drain and hit-count InfoBoxes (verified 2026-10-16). Needed the desktop event order: a tick's varp/hitsplat events now come before its GameTick (the plugin matches the hitsplat to `getTickCount()` and timed out when GameTick came first) |
 | XP Globes | runs | attack/HP globes over the chat tabs after combat |
 | Bank | runs | `::openbank`: the title shows the bank value, "The Bank of Gielinor (35.9K)" (verified 2026-10-16). Script 505 runs in the cycle inventory 95 arrives, so `getItemContainer` now reads the live inventory map on the game thread (it read last cycle's snapshot) |
@@ -83,11 +83,11 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Slayer | runs | Turael task (17 Icefiends) synced at login ("Sync slayer task: 17x Icefiends"), and the task InfoBox (icefiend icon, count) appears on an amount change, as on desktop (verified 2026-10-16). Needed getDBRowsByValue and DB fields with desktop semantics |
 | NPC Aggression Timer | runs | aggression timer InfoBox counting down (9:04 -> 8:25) after a teleport with `npcUnaggroArea.npcUnaggroAlwaysActive=true` (verified 2026-10-16) |
 | Mouse Tooltips | runs | "Eat Lobster" tooltip while a finger rests on an inventory item and "Remove Dragon dagger" on the worn weapon slot (hover entries, verified 2026-10-16) |
-| Loot Tracker | runs | sidebar: "Goblin (lvl-2) 2 gp, Total count: 1" after killing a goblin (verified 2026-10-16); local only (same-name SessionManager without a runelite.net session) |
+| Loot Tracker | runs | sidebar: "Goblin (lvl-2) 2 gp, Total count: 1" after killing a goblin (verified 2026-10-16); beginner casket: "Inv change: [ItemStack(id=562, quantity=2)]" (verified 2026-10-17) after events were put in packet order (message constructor hook, docs/offsets.md); local only (same-name SessionManager without a runelite.net session) |
 | Hiscore | runs | sidebar lookup of "Lynx Titan" shows the levels from the public hiscores (okhttp, off the game thread; verified 2026-10-16). The player-menu "Lookup" entry is host-side only |
 | Skill Calculator | runs | skill icons drawn as image buttons in the sidebar; picking Woodcutting fills current/target level and XP and lists the log actions (verified 2026-10-16) |
 | Menu Entry Swapper | runs | a plain tap on a banker runs "Bank" instead of "Talk-to", and the long-press menu lists "Bank Banker" first; each row runs the entry it shows (verified 2026-10-16). Taps raise MenuEntryAdded + PostMenuSort over the tapped menu and the game's select runs the entry MES leaves on top. As a menu opens, the host runs desktop's pre-open PostMenuSort (menu reported closed) and reorders the game's top-level menu nodes the way the game's own sort does (`game::menu_reorder`). With MES off, menus and taps are unchanged |
-| Clue Scroll | starts | `EXTRA=cluescrolls` (`--core cluescrolls`): starts cleanly with Quest Helper and others (2026-10-16); clue reading not checked until the server's beginner clues land (interfaces 203, 346-356) |
+| Clue Scroll | runs | beginner map clue (`::clue map_draynor_bank 1`): Read sets the plugin's clue item (23182) and its overlay shows "Map Clue ... South of Draynor Village Bank, Requires Spade!" (verified 2026-10-17). Read needed MenuEntry.getItemId for inventory CC_OP entries |
 
 ## Plugin Hub status
 
@@ -119,6 +119,10 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Max Hit | runs | "Max Hit: 11.0" overlay (verified 2026-10-16) |
 | Wilderness Multi Lines | starts | starts; not checked (needs the Wilderness) |
 | Charges Improved | starts | starts and posts its update notes to chat (2026-10-16) after the CompatRewrite of `Collection.toArray(IntFunction)` (Java 11); charges not checked. Its daily reset throws NumberFormatException until the bank was opened once (empty `storage_bank`; the same on desktop) |
+| Bank Tag Layouts | starts | starts; its version.txt (generated by gradle) is now added by the hub build (was an NPE at login); layouts not checked |
+| Spawn Predictor | starts | starts; its NPE on GameStateChanged(LOGGED_IN) (no local player yet) is gone since LOGGED_IN waits for the local player (2026-10-17); not checked (Fight Caves) |
+| Barrows Door Highlighter | starts | starts (2026-10-17); not checked (Barrows) |
+| Better Teleport Menu | starts | starts (2026-10-17); not checked |
 | Loot Lookup | untested | not built: it needs jsoup, an extra Maven dependency (build.sh stops on those) |
 
 ## Build and run

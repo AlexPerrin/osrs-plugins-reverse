@@ -503,14 +503,14 @@ bool message(int id, game::ChatLine& out) {
     return false;
 }
 
-bool inventory_view(int id, game::Inventory& out) {
-    if (!g_inv_view || !on_client_thread()) return false;
+int inventory_view(int id, game::Inventory& out) {
+    if (!g_inv_view || !on_client_thread()) return -1;
     for (const auto& inv : *g_inv_view)
         if (inv.id == id) {
             out = inv;
-            return true;
+            return 1;
         }
-    return false;
+    return 0;  // didn't exist yet at that point (trail_rewardinv before the casket is opened)
 }
 
 std::vector<game::Inventory> inventories() {

@@ -56,8 +56,9 @@ bool message(int id, game::ChatLine& out);
 
 // Inventories as of the end of the last cycle; safe from any thread.
 std::vector<game::Inventory> inventories();
-// While an event is posted on the game thread: the inventory as of that event (packet order), if any.
-bool inventory_view(int id, game::Inventory& out);
+// While an event is posted on the game thread: 1 = the inventory as of that event (packet order),
+// 0 = it didn't exist then, -1 = no event view (read the live map).
+int inventory_view(int id, game::Inventory& out);
 
 // Players as of the end of the last cycle; safe from any thread.
 std::vector<game::PlayerInfo> players();

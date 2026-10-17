@@ -1589,7 +1589,7 @@ test, 1 TODO), His Faithful Servants (351). The quest list counts 11 quests ("Co
   quest!", "Yes.") -> 2 (Father Urhney: "Father Aereck sent me to talk to you.", "He's got a ghost haunting his
   graveyard."; gives the amulet) -> opening the coffin spawns the ghost (npc 922) at once -> 3 (ghost, wearing the
   amulet: "Yep, now tell me what the problem is.") -> 4 (Search the altar, loc 2146 multi on varbit 2130 = 1;
-  skull taken; "The skeleton in the corner suddently comes to life!", the skeleton attacks) -> 5 (open coffin
+  skull taken; "The skeleton in the corner suddenly comes to life!", the skeleton attacks) -> 5 (open coffin
   2145 -> 15061, Search: "You put the skull in the coffin.", "Release! Thank you stranger.."); the completion
   scroll (1 QP, 1125 Prayer XP, Ghostspeak amulet).
 - **Imp Catcher: complete on the server.** Varp 160: 0 -> 1 (Wizard Mizgog, "Give me a quest!" -> "Give me a

@@ -1,0 +1,105 @@
+From fd6aea9542a6741f0981114a84ffb35049486c67 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 09:44:11 -0400
+Subject: [PATCH] Vars: send varps set before a player's first processed tick
+
+Varps set between the login varp sync and the player's first processed tick
+(EngineLogin handlers after the sync, post-tick hooks on the login tick)
+were stored but never transmitted, because the varp setters skip sending
+while processedMapClock <= 0. The client kept the login value: e.g.
+follower_npc (varp 447) stayed 0 after a relog although the follower
+respawned, so RuneLite's Kitten Tracker saw no follower. Record those varps
+and resend them on the player's first processed tick.
+---
+ .../rsmod/api/game/process/player/PlayerMainProcess.kt |  2 ++
+ .../rsmod/api/player/vars/PlayerCommonVarExtensions.kt | 10 ++++++++++
+ .../rsmod/api/player/vars/VarPlayerIntMapDelegate.kt   |  1 +
+ .../org/rsmod/api/player/vars/VarPlayerIntMapSetter.kt |  1 +
+ .../src/main/kotlin/org/rsmod/game/entity/Player.kt    |  7 +++++++
+ 5 files changed, 21 insertions(+)
+
+diff --git a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerMainProcess.kt b/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerMainProcess.kt
+index 52c2ac1bf..c398d65c3 100644
+--- a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerMainProcess.kt
++++ b/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerMainProcess.kt
+@@ -1,5 +1,6 @@
+ package org.rsmod.api.game.process.player
+ 
++import org.rsmod.api.player.vars.flushVarpsSetBeforeFirstTick
+ import jakarta.inject.Inject
+ import org.rsmod.api.player.forceDisconnect
+ import org.rsmod.api.player.ui.closeSubs
+@@ -37,6 +38,7 @@ constructor(
+                 continue
+             }
+             player.processedMapClock = mapClock.cycle
++            player.flushVarpsSetBeforeFirstTick()
+             PlayerPersistenceHints.enter(player)
+             try {
+                 player.tryOrDisconnect {
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/vars/PlayerCommonVarExtensions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/vars/PlayerCommonVarExtensions.kt
+index 2cf4455f6..9487eccac 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/vars/PlayerCommonVarExtensions.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/vars/PlayerCommonVarExtensions.kt
+@@ -46,6 +46,16 @@ public fun Player.resyncVar(varp: VarpServerType) {
+ 
+ public fun Player.resyncVar(varBit: VarBitType): Unit = resyncVar(varBit.baseVar)
+ 
++/** Sends the varps set before the first processed tick (see [Player.varpsSetBeforeFirstTick]). */
++public fun Player.flushVarpsSetBeforeFirstTick() {
++    if (varpsSetBeforeFirstTick.isEmpty()) return
++    for (id in varpsSetBeforeFirstTick) {
++        val varp = ServerCacheManager.getVarp(id) ?: continue
++        resyncVar(varp)
++    }
++    varpsSetBeforeFirstTick.clear()
++}
++
+ public fun Player.setActiveMoveSpeed(speed: MoveSpeed) {
+     varMoveSpeed = speed
+     moveSpeed = varMoveSpeed
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapDelegate.kt b/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapDelegate.kt
+index 0340d567f..7d60a41cf 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapDelegate.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapDelegate.kt
+@@ -45,6 +45,7 @@ public class VarPlayerIntMapDelegate(
+         }
+ 
+         if (!engineLoggedIn) {
++            if (previous != value) player.varpsSetBeforeFirstTick += varp.id
+             return
+         }
+ 
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapSetter.kt b/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapSetter.kt
+index b3c8a8cad..19b1a0e14 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapSetter.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapSetter.kt
+@@ -56,6 +56,7 @@ public object VarPlayerIntMapSetter {
+         }
+ 
+         if (!engineLoggedIn) {
++            if (previous != value) player.varpsSetBeforeFirstTick += varp.id
+             return
+         }
+ 
+diff --git a/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt b/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt
+index afd1731d5..e198c57df 100644
+--- a/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt
++++ b/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt
+@@ -78,6 +78,13 @@ public class Player(
+     public val options: MutableList<String?> = MutableList(7) { null }
+ 
+     public val vars: VarPlayerIntMap = VarPlayerIntMap()
++
++    /**
++     * Varps changed before this player's first processed tick (login handlers, post-tick hooks on
++     * the login tick). They are not transmitted when set and are flushed on the first processed
++     * tick, after the login varps.
++     */
++    public val varpsSetBeforeFirstTick: MutableSet<Int> = HashSet()
+     public val strVars: VarPlayerStrMap = VarPlayerStrMap()
+ 
+     public val ui: UserInterfaceMap = UserInterfaceMap()
+-- 
+2.43.0
+

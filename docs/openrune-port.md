@@ -1166,12 +1166,16 @@ was verified.
   (Box Trap), so the rename works. Not checked on the device: butterfly catches, jerboas, the switch
   lines, Verity's back-to-back toggle. Tester back at Lumbridge on the normal build, inventory full
   (one copper ore dropped in the Burrow, a basic loot sack added).
-- **Follower varp after a relog** (client dev: varp 447 = 0 while the kitten follows; Kitten Tracker
-  reads `(npcId << 16) | index`): `PetFollowers.onPostTick` respawns the follower on the login tick
-  and sets `follower_npc`, but `VarPlayerIntMapDelegate.set` sends nothing while
-  `processedMapClock <= 0` (`engineLoggedIn`), after `LoginScript.sendVars` already sent the saved
-  value. Fix: `resyncVar` after every spawn. Reasoned from the code, **device check pending**
-  (relog with the kitten, probe varp 447). Upstream `43-follower-varp-at-login`.
+- **Varps set before the first processed tick** (client dev: follower varp 447 = 0 after a relog
+  while the kitten follows; Kitten Tracker reads `(npcId << 16) | index`): `PetFollowers.onPostTick`
+  respawns the follower on the login tick and sets `follower_npc`, but `VarPlayerIntMapDelegate` /
+  `VarPlayerIntMapSetter` send nothing while `processedMapClock <= 0`, after
+  `LoginScript.sendVars` already sent the saved value. Any varp set in that window was lost the same
+  way. Fix (generic, the orchestrator's suggestion): the setters record such varps in
+  `Player.varpsSetBeforeFirstTick`, and `PlayerMainProcess` resends them
+  (`flushVarpsSetBeforeFirstTick`) on the player's first processed tick. Device-checked 09:35 EDT:
+  after two relogs the Kitten Tracker overlay shows the kitten (it did not before). No unit test (no
+  game-test harness in `api/game-process`/`api/player`). Upstream `43-varps-before-first-tick`.
 - **Jewellery teleports** (new module `content/travel/jewellery-teleports`, dbtables
   `jewellery_teleport_items` 60020 / `jewellery_teleport_dests` 60021, rows 60500-60556): games
   necklace (8), ring of dueling (8), amulet of glory (6, then uncharged), skills necklace (6, then
@@ -1189,3 +1193,17 @@ was verified.
   crumble, uncharged glory in the worn slot, nothing without the item). Upstream
   `44-jewellery-teleports`. Device test: `::item necklace_of_minigames_8 1`, Rub, pick Burthorpe;
   Better Teleport Menu should decorate the menu.
+- **Device run 2026-10-17 09:31-09:43 EDT** (deployed 64b76eb + the generic varp fix + Rub on op 4;
+  `EXTRA="hub-better-teleport-menu hub-kitten-tracker barrows"`): (a) after relogs the Kitten Tracker
+  overlay shows "Kitten status / Grown up in" (fixed). (b) Games necklace(8) Rub opens the menu
+  "Where would you like to teleport to?" with the 5 destinations, and Better Teleport Menu adds a
+  submenu arrow to Rub in the long-press menu; **but tapping a destination does nothing** (no
+  teleport, no charge used), and the entries have no "1:" hotkey labels. **Open:** the menu
+  (interface 187, script 217, `ifSetEvents(menu:lj_layer1, 0..127, PauseButton)`) seems not to
+  return a RESUME_PAUSEBUTTON on Android: check with `LOG_ANDROID_PACKETS=true` what a tap sends
+  (perhaps an IF_BUTTON on another component, or the mobile 187 layout differs), and whether
+  `menu()` works anywhere on mobile (dog shelter Chase uses it). The worn destination ops were not
+  tried. (c) Barrows: `::tele 3557 9700 3` (Ahrim's crypt; digging is blocked by the Strange Old Man
+  until his quest), Search sarcophagus -> Ahrim spawned, killed with `::maxhit`; the Barrows plugin
+  showed Ahrim ticked and Potential 9.88% (server-set varbits). Tester back at Lumbridge on the
+  normal build; inventory: a games necklace(8) instead of a copper ore.

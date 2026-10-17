@@ -1,7 +1,7 @@
-From c40b6e9ba4f1ce2baf725570efef71b929e745b5 Mon Sep 17 00:00:00 2001
+From 1586f7bf6d6e57a4d5d36cb0968b5b710c0f36dd Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
-Date: Sat, 17 Oct 2026 09:27:10 -0400
-Subject: [PATCH] Travel: jewellery teleports (games necklace, dueling, glory,
+Date: Sat, 17 Oct 2026 09:44:11 -0400
+Subject: [PATCH] Travel: jewellery teleports (games necklace, dueling, glory, 
  skills, combat)
 
 Rub opens the teleport menu (interface 187 via script 217 with hotkeys, as
@@ -313,7 +313,7 @@ index 000000000..b1db0b25c
 +}
 diff --git a/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
 new file mode 100644
-index 000000000..9747a9c3b
+index 000000000..a62a135cf
 --- /dev/null
 +++ b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
 @@ -0,0 +1,127 @@
@@ -327,7 +327,7 @@ index 000000000..9747a9c3b
 +import org.rsmod.api.player.hook.TeleportType
 +import org.rsmod.api.player.output.ChatType
 +import org.rsmod.api.player.protect.ProtectedAccess
-+import org.rsmod.api.script.onOpHeld3
++import org.rsmod.api.script.onOpHeld4
 +import org.rsmod.api.script.onOpWorn2
 +import org.rsmod.api.script.onOpWorn3
 +import org.rsmod.api.script.onOpWorn4
@@ -343,7 +343,7 @@ index 000000000..9747a9c3b
 +/**
 + * Games necklace, ring of dueling, amulet of glory, skills necklace and combat bracelet teleports
 + * (OSRS Wiki item pages). Rub (held
-+ * op 3) opens the teleport menu (interface 187 through script 217 with hotkeys, which RuneLite's
++ * op 4) opens the teleport menu (interface 187 through script 217 with hotkeys, which RuneLite's
 + * Better Teleport Menu decorates); the worn ops after Remove teleport straight to a destination.
 + * Each teleport uses a charge: "You rub the necklace..." then "Your games necklace has three uses
 + * left." or, on the last charge, "Your games necklace crumbles to dust." (wiki; the glory's last
@@ -362,7 +362,7 @@ index 000000000..9747a9c3b
 +    override fun ScriptContext.startup() {
 +        for (item in JewelleryTeleportItemsRow.all()) {
 +            val obj = item.obj.internalName
-+            onOpHeld3(obj) { rub(item) }
++            onOpHeld4(obj) { rub(item) }
 +            destinations(item).forEachIndexed { i, dest ->
 +                val go: suspend ProtectedAccess.() -> Unit = { teleport(item, dest, player.worn) }
 +                when (i) {

@@ -330,6 +330,25 @@ index cf805f396..849b4ca7d 100644
          val wanderRange = npc.wanderRange
          if (wanderRange > 0) {
              npc.updateIdleCycles()
+diff --git a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerMainProcess.kt b/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerMainProcess.kt
+index 52c2ac1bf..c398d65c3 100644
+--- a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerMainProcess.kt
++++ b/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerMainProcess.kt
+@@ -1,5 +1,6 @@
+ package org.rsmod.api.game.process.player
+ 
++import org.rsmod.api.player.vars.flushVarpsSetBeforeFirstTick
+ import jakarta.inject.Inject
+ import org.rsmod.api.player.forceDisconnect
+ import org.rsmod.api.player.ui.closeSubs
+@@ -37,6 +38,7 @@ constructor(
+                 continue
+             }
+             player.processedMapClock = mapClock.cycle
++            player.flushVarpsSetBeforeFirstTick()
+             PlayerPersistenceHints.enter(player)
+             try {
+                 player.tryOrDisconnect {
 diff --git a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerZoneUpdateProcessor.kt b/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerZoneUpdateProcessor.kt
 index b6b20f311..c62dc1115 100644
 --- a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerZoneUpdateProcessor.kt
@@ -1253,6 +1272,51 @@ index 95ca2cd98..28129d308 100644
  private fun Player.ifSetPauseText(component: String, text: String) {
      if (text.isNotBlank()) {
          ifSetEvents(component, -1..-1, IfEvent.PauseButton)
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/vars/PlayerCommonVarExtensions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/vars/PlayerCommonVarExtensions.kt
+index 2cf4455f6..9487eccac 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/vars/PlayerCommonVarExtensions.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/vars/PlayerCommonVarExtensions.kt
+@@ -46,6 +46,16 @@ public fun Player.resyncVar(varp: VarpServerType) {
+ 
+ public fun Player.resyncVar(varBit: VarBitType): Unit = resyncVar(varBit.baseVar)
+ 
++/** Sends the varps set before the first processed tick (see [Player.varpsSetBeforeFirstTick]). */
++public fun Player.flushVarpsSetBeforeFirstTick() {
++    if (varpsSetBeforeFirstTick.isEmpty()) return
++    for (id in varpsSetBeforeFirstTick) {
++        val varp = ServerCacheManager.getVarp(id) ?: continue
++        resyncVar(varp)
++    }
++    varpsSetBeforeFirstTick.clear()
++}
++
+ public fun Player.setActiveMoveSpeed(speed: MoveSpeed) {
+     varMoveSpeed = speed
+     moveSpeed = varMoveSpeed
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapDelegate.kt b/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapDelegate.kt
+index 0340d567f..7d60a41cf 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapDelegate.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapDelegate.kt
+@@ -45,6 +45,7 @@ public class VarPlayerIntMapDelegate(
+         }
+ 
+         if (!engineLoggedIn) {
++            if (previous != value) player.varpsSetBeforeFirstTick += varp.id
+             return
+         }
+ 
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapSetter.kt b/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapSetter.kt
+index b3c8a8cad..19b1a0e14 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapSetter.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/vars/VarPlayerIntMapSetter.kt
+@@ -56,6 +56,7 @@ public object VarPlayerIntMapSetter {
+         }
+ 
+         if (!engineLoggedIn) {
++            if (previous != value) player.varpsSetBeforeFirstTick += varp.id
+             return
+         }
+ 
 diff --git a/content/areas/city/al-kharid/pack/src/main/resources/pack/configs/al_kharid_npcs.toml b/content/areas/city/al-kharid/pack/src/main/resources/pack/configs/al_kharid_npcs.toml
 index ef0006d83..cfef1fa6d 100644
 --- a/content/areas/city/al-kharid/pack/src/main/resources/pack/configs/al_kharid_npcs.toml
@@ -3456,38 +3520,6 @@ index a325cee80..a977ca49b 100644
 +        const val SOCIAL_RESEND_DELAY = 2
      }
  }
-diff --git a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/PetFollowers.kt b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/PetFollowers.kt
-index 51fa26f50..a1b4b6892 100644
---- a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/PetFollowers.kt
-+++ b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/PetFollowers.kt
-@@ -10,6 +10,7 @@ import org.rsmod.api.player.protect.ProtectedAccess
- import org.rsmod.api.player.vars.boolVarBit
- import org.rsmod.api.player.vars.intVarBit
- import org.rsmod.api.player.vars.intVarp
-+import org.rsmod.api.player.vars.resyncVar
- import org.rsmod.api.repo.npc.NpcRepository
- import org.rsmod.content.other.pets.cats.Cats
- import org.rsmod.content.other.pets.dogs.Dogs
-@@ -88,6 +89,9 @@ constructor(
-             player.faceNpc(npc)
-         }
-         player.followerNpc = npc.uid.packed
-+        // A follower respawned on the login tick is set before the engine transmits varps, so the
-+        // client would keep the value sent with the login varps (Kitten Tracker reads it).
-+        player.resyncVar(FOLLOWER_VARP)
-         player.followerObj = form.objId
-     }
- 
-@@ -245,6 +249,8 @@ constructor(
-  * Official varp the client reads to render follower-only right-click options. Holds the npc uid,
-  * which packs as `(type shl 16) or slot` — exactly what the client expects.
-  */
--private var Player.followerNpc: Int by intVarp("varp.follower_npc")
-+private const val FOLLOWER_VARP = "varp.follower_npc"
-+
-+private var Player.followerNpc: Int by intVarp(FOLLOWER_VARP)
- private var Player.followerStuck: Int by intVarBit("varbit.pet_follower_stuck")
- private var Player.followerBusy: Boolean by boolVarBit("varbit.pet_follower_busy")
 diff --git a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/cats/CatCare.kt b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/cats/CatCare.kt
 index 35dd61859..90641375b 100644
 --- a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/cats/CatCare.kt
@@ -17293,7 +17325,7 @@ index 000000000..b1db0b25c
 +}
 diff --git a/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
 new file mode 100644
-index 000000000..9747a9c3b
+index 000000000..a62a135cf
 --- /dev/null
 +++ b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
 @@ -0,0 +1,127 @@
@@ -17307,7 +17339,7 @@ index 000000000..9747a9c3b
 +import org.rsmod.api.player.hook.TeleportType
 +import org.rsmod.api.player.output.ChatType
 +import org.rsmod.api.player.protect.ProtectedAccess
-+import org.rsmod.api.script.onOpHeld3
++import org.rsmod.api.script.onOpHeld4
 +import org.rsmod.api.script.onOpWorn2
 +import org.rsmod.api.script.onOpWorn3
 +import org.rsmod.api.script.onOpWorn4
@@ -17323,7 +17355,7 @@ index 000000000..9747a9c3b
 +/**
 + * Games necklace, ring of dueling, amulet of glory, skills necklace and combat bracelet teleports
 + * (OSRS Wiki item pages). Rub (held
-+ * op 3) opens the teleport menu (interface 187 through script 217 with hotkeys, which RuneLite's
++ * op 4) opens the teleport menu (interface 187 through script 217 with hotkeys, which RuneLite's
 + * Better Teleport Menu decorates); the worn ops after Remove teleport straight to a destination.
 + * Each teleport uses a charge: "You rub the necklace..." then "Your games necklace has three uses
 + * left." or, on the last charge, "Your games necklace crumbles to dust." (wiki; the glory's last
@@ -17342,7 +17374,7 @@ index 000000000..9747a9c3b
 +    override fun ScriptContext.startup() {
 +        for (item in JewelleryTeleportItemsRow.all()) {
 +            val obj = item.obj.internalName
-+            onOpHeld3(obj) { rub(item) }
++            onOpHeld4(obj) { rub(item) }
 +            destinations(item).forEachIndexed { i, dest ->
 +                val go: suspend ProtectedAccess.() -> Unit = { teleport(item, dest, player.worn) }
 +                when (i) {
@@ -17506,10 +17538,24 @@ index 000000000..713d0fe77
 +    @Volatile public var npcsFrozen: Boolean = false
 +}
 diff --git a/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt b/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt
-index afd1731d5..3cc50543a 100644
+index afd1731d5..32a3ad5c4 100644
 --- a/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt
 +++ b/engine/game/src/main/kotlin/org/rsmod/game/entity/Player.kt
-@@ -181,6 +181,8 @@ public class Player(
+@@ -78,6 +78,13 @@ public class Player(
+     public val options: MutableList<String?> = MutableList(7) { null }
+ 
+     public val vars: VarPlayerIntMap = VarPlayerIntMap()
++
++    /**
++     * Varps changed before this player's first processed tick (login handlers, post-tick hooks on
++     * the login tick). They are not transmitted when set and are flushed on the first processed
++     * tick, after the login varps.
++     */
++    public val varpsSetBeforeFirstTick: MutableSet<Int> = HashSet()
+     public val strVars: VarPlayerStrMap = VarPlayerStrMap()
+ 
+     public val ui: UserInterfaceMap = UserInterfaceMap()
+@@ -181,6 +188,8 @@ public class Player(
      public var userHash: Long by Delegates.notNull()
  
      public var username: String = ""

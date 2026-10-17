@@ -1402,3 +1402,14 @@ the wiki (full-text search) nor any RuneLite/hub plugin.
   content scripts. Area boxes (**guesses**): Lumbridge x 3170-3270, z 3190-3270; Al Kharid mine x
   3280-3310, z 3270-3320.
 - Tests: `:content:interfaces:achievement-diary:integration` (4). Upstream `49-achievement-diary-areas-and-progress`.
+- **Device run 13:10 (efbe8df), `EXTRA=achievementdiary`:** Hans's Age (spawned with `::npc 500 hans`)
+  → the Achievement Diaries tab shows "Lumbridge & Draynor 1/41" (white, bar started) and the journal
+  strikes "Learn your age from Hans in Lumbridge."; every area total in the tab matches the generated
+  task counts (Ardougne 42, Desert 39, Falador 42, Fremennik 34, Kandarin 43, Karamja 44, Kourend &
+  Kebos 43, Morytania 38, Varrock 42, Western 44, Wilderness 40); the Karamja journal ("Karamja Area
+  Tasks") gets the Diary Requirements annotations. Not checked on the device: the teleport-spell,
+  skilling and sawmill hooks, relog (covered by the integration tests and the login sync).
+- **Friends chat / clan channel (for the client dev):** OpenRune has no friends chat or clan
+  gameplay (no FRIENDCHAT/CLAN handlers or senders). The Android encoders are bound
+  (UPDATE_FRIENDCHAT_CHANNEL_FULL_V2/SINGLEUSER, CLANCHANNEL_FULL/DELTA, CLANSETTINGS_FULL/DELTA,
+  MESSAGE_CLANCHANNEL), so the cheapest route is a test command that pushes a fake channel (~1 h).

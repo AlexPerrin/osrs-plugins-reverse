@@ -21,6 +21,38 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-17, sixteenth server dev, on OpenRune)
+
+Details in `docs/openrune-port.md`, "Sixteenth server dev" and the sections after it.
+
+- **Grand Exchange** (`content/interfaces/grand-exchange`, upstream 48): device-checked end to end with
+  the core GE plugin (`EXTRA=grandexchange`). Clerks' Exchange (also across the booth), buy via the
+  mobile item search, sell from the inventory, quantity/price buttons, Enter quantity/price, Confirm,
+  Abort, Collect, Collect-all, the banker's Collection Box, relog persistence. Fill rule: the server is
+  the only counterparty at the guide price (store cost); at-or-better offers fill 2 ticks after Confirm,
+  others stay open until aborted; 2% tax; no partial fills/buy limits/history/sets.
+- **Two bugs found and fixed on the way:** OpenRune's CS2 compiler emits opcodes 1/2 for long varps
+  (Jagex: 64/65), patched after each cache build by `openrune/scripts/fix_long_varps.py` (issue note
+  `openrune/upstream/ISSUE-long-varp-opcodes.md`); RSProt's `UpdateStockMarketSlotV2Encoder` Reset
+  wrote slot 0 (fixed in `server/rsprot.patch`, note `ISSUE-rsprot-stockmarket-reset-slot.md`).
+  VARP_LONG and UPDATE_STOCKMARKET_SLOT_V2 are now live-verified on Android.
+- **Diary journals** for all 12 areas (wiki task lists, plugin wording where it has one).
+- **Diary task progress** (upstream 49): 11 Lumbridge & Draynor / Varrock tasks drive the client's
+  count varbits and strike lines in the journal; no chat message (wording unknown). Device-checked
+  with Hans (tab 1/41, struck line) and the new journals (all 12 tab totals match).
+- **Friends chat / clan:** not in OpenRune; Android encoders are bound, so a `::fakeclan`-style test
+  command pushing UPDATE_FRIENDCHAT_CHANNEL_FULL_V2 / CLANCHANNEL_FULL is the cheap route if the client
+  dev needs one (~1 h, not started).
+- Upstream: 48 GE, 49 diary areas + progress; all 49 `git am` on the pin (scratch clone `up` in this
+  session's scratchpad has 01-49 committed).
+- **Deployed** 13:10: everything up to efbe8df. Tester LOGGED_IN at Lumbridge (3221,3218) on the
+  `EXTRA=achievementdiary` build; ~99.6k coins, 10 noted lobsters, law/air/earth runes; an open 1 gp
+  lobster buy in GE slot 1; Lumbridge diary easy 5 (Hans) done.
+- **Next candidates:** more diary task hooks (the rest of Lumbridge & Draynor / Varrock easy where content
+  exists), GE extras (History via `ge_history_addline`, clerk Talk-to, Sets, custom ±X% buttons),
+  Flipping Utilities if the orchestrator wants it. Held: Music area sounds, deadfall/net
+  trap/falconry/pits/tracking, Spawn Predictor. Low priority: FRIENDLIST_DEL.
+
 ## Latest state (2026-10-17, fifteenth server dev, on OpenRune)
 
 Details in `docs/openrune-port.md`, "Fifteenth server dev". Protocol unchanged.

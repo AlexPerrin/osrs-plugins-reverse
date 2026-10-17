@@ -92,7 +92,7 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Rune Pouch | starts | starts (2026-10-17); pouch not checked |
 | Virtual Levels | starts | starts (2026-10-17); not checked |
 | Ammo | runs | the worn 50 bronze arrows show as a "50" arrow infobox (2026-10-17). It compares `event.getItemContainer() != client.getItemContainer(EQUIPMENT)` by identity, so the host now returns the same container instance while an inventory is unchanged |
-| Metronome | runs | Visual Metronome's tick square flashes on screen, no errors (2026-10-17, after getPreferences) |
+| Metronome | starts | starts; its onGameTick threw (Client.getPreferences missing, added 2026-10-17, not re-run: the 2026-10-17 re-run loaded the hub Visual Metronome by mistake) |
 | Hunter | starts | starts (2026-10-17); traps not checked |
 | Quest List | starts | starts (2026-10-17); not checked |
 | Chat Commands | starts | starts (2026-10-17); not checked |

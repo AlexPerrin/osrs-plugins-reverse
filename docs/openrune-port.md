@@ -706,10 +706,12 @@ was verified.
 - **Medium clues** (d8937ea core slice, 4719636 keys), `TrailTier.Medium` (3-5 steps, 3-5 casket
   rolls, Uri `npc.trail_medium_uri`, STASH Construction 42 with oak planks, 250 XP; varps
   63870-63875; no generic drop scroll: a scroll box gives a random step's own scroll). Steps (from
-  the cluehelper tables): 50 talks (44 with challenge scrolls: 37 anagrams, 6 ciphers, 1 cryptic),
+  the cluehelper tables): 61 talks (44 with challenge scrolls: 37 anagrams, 6 ciphers, 1 cryptic),
   44 coordinate digs, 25 double emotes, 21 searches (8 crate cryptics, 2 map crates, 11 key steps),
-  10 map digs, 6 music (Subterranea is hard). Left out: the 11 anagrams without a challenge (their
-  npcs give puzzle boxes, `trail_clue_*_puzzlebox` objs + slide puzzle 306; ~3 h, not done).
+  10 map digs, 6 music (Subterranea is hard). The 11 anagrams without a challenge are plain talks:
+  the cache has no medium puzzle box (puzzle boxes are hard and up: slide puzzle 306,
+  `trail_puzzleinv`, piece enums 1864/1865 by varp `if1`, client-side moves in
+  `trail_slidepuzzle_op`).
   - Challenge scrolls: the challenge obj's param 623 names the clue row whose npc hands it out (not
     the question row); question/answer from `cluehelper_challenge_question`. Flow: talk with the clue
     -> the npc adds the challenge scroll; talk again -> count dialog; right answer takes the

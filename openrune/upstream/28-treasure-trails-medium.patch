@@ -1,4 +1,4 @@
-From d8d683ecc3684eb30dbf2269de07e8379e7ad5b7 Mon Sep 17 00:00:00 2001
+From 39910c64b0063dd868c62a6de01ceb28555c7d69 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 03:22:09 -0400
 Subject: [PATCH] Treasure Trails: medium clue scrolls
@@ -8,7 +8,7 @@ Medium tier on the cluehelper tables: anagrams, ciphers and npc cryptics with ch
 first emote, the second before talking), npc/loc cryptics, key steps (an NpcDeathKillHook drops the
 key for a player on the step), music, map digs and crates, medium Uri and STASH units (oak planks,
 Construction 42), and the medium casket (the wiki's table, 3-5 rolls). STASH units take the
-tier's plank and XP. Music scroll text now uses the wiki's wording. Puzzle boxes are not done.
+tier's plank and XP. Music scroll text now uses the wiki's wording.
 ---
  .../treasuretrails/pack/MediumCasketTable.kt  | 236 ++++++++++++++++++
  .../treasuretrails/pack/TrailDataTables.kt    |  12 +
@@ -18,11 +18,11 @@ tier's plank and XP. Music scroll text now uses the wiki's wording. Puzzle boxes
  .../treasuretrails/TreasureTrailScriptTest.kt |  53 +++-
  .../other/treasuretrails/StashUnitScript.kt   |  15 +-
  .../other/treasuretrails/TrailKeyDropHook.kt  |  17 ++
- .../other/treasuretrails/TrailSteps.kt        | 110 +++++++-
+ .../other/treasuretrails/TrailSteps.kt        | 107 +++++++-
  .../content/other/treasuretrails/TrailTier.kt |  26 +-
  .../treasuretrails/TreasureTrailScript.kt     | 100 +++++++-
  .../treasuretrails/TreasureTrailsModule.kt    |   2 +
- 12 files changed, 783 insertions(+), 36 deletions(-)
+ 12 files changed, 780 insertions(+), 36 deletions(-)
  create mode 100644 content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/MediumCasketTable.kt
  create mode 100644 content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailKeyDropHook.kt
 
@@ -736,7 +736,7 @@ index 000000000..a620d3ac6
 +    }
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
-index f2f0bb9b7..9fd8d0ee1 100644
+index f2f0bb9b7..756f93bf3 100644
 --- a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
 @@ -5,12 +5,16 @@ import dev.openrune.rscm.RSCM.asRSCM
@@ -837,12 +837,11 @@ index f2f0bb9b7..9fd8d0ee1 100644
      private const val CHARLIE = "npc.tramppg"
      private const val RELDO = "npc.reldo"
  
-@@ -90,24 +111,46 @@ object TrailSteps {
+@@ -90,24 +111,45 @@ object TrailSteps {
          val d = tier.difficulty
          val steps = mutableListOf<TrailStep>()
          for (r in CluehelperClueAnagramRow.all().filter { it.difficulty == d }) {
 +            val challenge = r.challenge?.let { challenge(it.rowId, r.rowId) }
-+            if (d >= MEDIUM && challenge == null) continue
              val text = "The anagram reveals<br>who to speak to next:<br>${r.clueText.uppercase()}"
 -            steps += TrailStep.Talk(r.rowId, tier, text, r.target.map { it.npc.id }.toSet())
 +            steps += TrailStep.Talk(r.rowId, tier, text, r.target.map { it.npc.id }.toSet(), challenge)
@@ -888,7 +887,7 @@ index f2f0bb9b7..9fd8d0ee1 100644
                      r.target.coord,
                      r.outfit,
                      r.hideyHoleLoc?.id,
-@@ -135,7 +178,7 @@ object TrailSteps {
+@@ -135,7 +177,7 @@ object TrailSteps {
                          TrailStep.Charlie(r.rowId, tier, r.clueText, ids, charlieTasks(tier))
                      RELDO.asRSCM(RSCMType.NPC) in ids ->
                          TrailStep.HotCold(r.rowId, tier, r.clueText, ids, hotColdSpots(tier))
@@ -897,7 +896,7 @@ index f2f0bb9b7..9fd8d0ee1 100644
                  }
              }
              TARGET_LOC_TABLE.asRSCM(RSCMType.DBTABLE) -> {
-@@ -148,6 +191,18 @@ object TrailSteps {
+@@ -148,6 +190,18 @@ object TrailSteps {
                  if (searchable.isEmpty()) return null
                  TrailStep.Search(r.rowId, tier, r.clueText, searchable)
              }
@@ -916,12 +915,10 @@ index f2f0bb9b7..9fd8d0ee1 100644
              TARGET_COORD_TABLE.asRSCM(RSCMType.DBTABLE) -> {
                  val coord = CluehelperTargetCoordRow.getRow(targets.first().id).coord
                  TrailStep.Dig(r.rowId, tier, r.clueText, coord, MAP_RADIUS, null)
-@@ -156,6 +211,35 @@ object TrailSteps {
+@@ -156,6 +210,33 @@ object TrailSteps {
          }
      }
  
-+    private const val MEDIUM = 2
-+
 +    /** `00.05S 01.13E` (Jagex's short form) -> the scroll text the Clue Scroll plugin parses. */
 +    fun coordinateText(short: String): String? {
 +        val m = Regex("""(\d+)\.(\d+)([NS]) (\d+)\.(\d+)([EW])""").matchEntire(short.trim()) ?: return null

@@ -5349,10 +5349,10 @@ index 000000000..a620d3ac6
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
 new file mode 100644
-index 000000000..9fd8d0ee1
+index 000000000..756f93bf3
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
-@@ -0,0 +1,300 @@
+@@ -0,0 +1,297 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
@@ -5467,7 +5467,6 @@ index 000000000..9fd8d0ee1
 +        val steps = mutableListOf<TrailStep>()
 +        for (r in CluehelperClueAnagramRow.all().filter { it.difficulty == d }) {
 +            val challenge = r.challenge?.let { challenge(it.rowId, r.rowId) }
-+            if (d >= MEDIUM && challenge == null) continue
 +            val text = "The anagram reveals<br>who to speak to next:<br>${r.clueText.uppercase()}"
 +            steps += TrailStep.Talk(r.rowId, tier, text, r.target.map { it.npc.id }.toSet(), challenge)
 +        }
@@ -5565,8 +5564,6 @@ index 000000000..9fd8d0ee1
 +            else -> null
 +        }
 +    }
-+
-+    private const val MEDIUM = 2
 +
 +    /** `00.05S 01.13E` (Jagex's short form) -> the scroll text the Clue Scroll plugin parses. */
 +    fun coordinateText(short: String): String? {

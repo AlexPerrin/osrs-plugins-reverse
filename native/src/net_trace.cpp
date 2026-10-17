@@ -35,7 +35,11 @@ void log_bytes(const char* dir, int fd, const void* buf, ssize_t n) {
     for (ssize_t i = 0; i < n && i < 160; i++) {
         unsigned char c = p[i];
         if (c >= 0x20 && c < 0x7f && c != '\\') text[o++] = static_cast<char>(c);
-        else o += snprintf(text + o, sizeof text - o, "\\x%02x", c);
+        else {
+            int written = snprintf(text + o, sizeof text - o, "\\x%02x", c);
+            if (written < 0 || static_cast<size_t>(written) >= sizeof text - o) break;
+            o += static_cast<size_t>(written);
+        }
     }
     text[o] = 0;
     LOGI("net: %s fd=%d n=%zd: %s", dir, fd, n, text);

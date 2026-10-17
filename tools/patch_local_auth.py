@@ -36,8 +36,8 @@ def main() -> None:
     builder = find_smali(root, '"only https connections are permitted"')
     text = builder.read_text()
     text, n = re.subn(
-        r'(const-string (v\d+), "only https connections are permitted"\n(?:\s*\.line \d+\n|\s*\n)*)'
-        r"\s*invoke-static \{v\d+, \2\}, L[\w/$]+;->a\(ZLjava/lang/Object;\)V\n",
+        r'(const-string (v\d+), "only https connections are permitted"\n(?:[ \t]*\.line \d+\n|[ \t]*\n)*)'
+        r"[ \t]*invoke-static \{v\d+, \2\}, L[\w/$]+;->a\(ZLjava/lang/Object;\)V\n",
         r"\1",
         text,
     )
@@ -49,10 +49,10 @@ def main() -> None:
     idtoken = find_smali(root, '"Issuer must be an https URL"')
     text = idtoken.read_text()
     text, n = re.subn(
-        r'(const-string (v\d+), "https"\n(?:\s*\.line \d+\n|\s*\n)*'
-        r"\s*invoke-virtual \{(v\d+), \2\}, Ljava/lang/String;->equals\(Ljava/lang/Object;\)Z\n"
-        r"(?:\s*\.line \d+\n|\s*\n)*\s*move-result (v\d+)\n(?:\s*\.line \d+\n|\s*\n)*)"
-        r"\s*if-eqz \4, :cond_\w+\n",
+        r'(const-string (v\d+), "https"\n(?:[ \t]*\.line \d+\n|[ \t]*\n)*'
+        r"[ \t]*invoke-virtual \{(v\d+), \2\}, Ljava/lang/String;->equals\(Ljava/lang/Object;\)Z\n"
+        r"(?:[ \t]*\.line \d+\n|[ \t]*\n)*[ \t]*move-result (v\d+)\n(?:[ \t]*\.line \d+\n|[ \t]*\n)*)"
+        r"[ \t]*if-eqz \4, :cond_\w+\n",
         r"\1",
         text,
     )

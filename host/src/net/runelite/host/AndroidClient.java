@@ -357,7 +357,29 @@ public class AndroidClient extends ClientStub {
 
     // No drag/selection/cursor state on a touch screen (RuneLite returns null when nothing is dragged).
     @Override public net.runelite.api.widgets.Widget getDraggedWidget() { return null; }
-    @Override public net.runelite.api.widgets.Widget getDraggedOnWidget() { return null; }
+    // Drag targets: the mobile client drags through its own touch code; a plugin's write is kept
+    // and read back (Bank Tags / Prayer reorder set it) but not given to the game.
+    private net.runelite.api.widgets.Widget draggedOnWidget;
+    @Override public net.runelite.api.widgets.Widget getDraggedOnWidget() { return draggedOnWidget; }
+    @Override public void setDraggedOnWidget(net.runelite.api.widgets.Widget w) { draggedOnWidget = w; }
+    private boolean widgetSelected;
+    @Override public boolean isWidgetSelected() { return widgetSelected; }
+    /** Kept host-side only; the game's spell/item-use target state is not written. */
+    @Override public void setWidgetSelected(boolean selected) { widgetSelected = selected; }
+    @Override public void setAllWidgetsAreOpTargetable(boolean yes) { }
+    /**
+     * Non-zero = not the live game. The host runs against a private test server, and Loot Tracker
+     * and Grand Exchange skip their runelite.net submissions when this is non-zero, which keeps
+     * test-server data out of RuneLite's datasets.
+     */
+    @Override public int getEnvironment() { return 1; }
+    /** Projectiles aren't read from the game yet: always empty. // unverified: no projectile reader */
+    private final net.runelite.api.Deque<net.runelite.api.Projectile> projectiles = new net.runelite.api.Deque<net.runelite.api.Projectile>() {
+        @Override public void addLast(net.runelite.api.Projectile p) { }
+        @Override public void clear() { }
+        @Override public java.util.Iterator<net.runelite.api.Projectile> iterator() { return java.util.Collections.emptyIterator(); }
+    };
+    @Override public net.runelite.api.Deque<net.runelite.api.Projectile> getProjectiles() { return projectiles; }
     @Override public net.runelite.api.widgets.Widget getSelectedWidget() { return null; }
     /** The script VM's active component (CC_CREATE/CC_FIND), as desktop's scriptActiveWidget. Game thread. */
     @Override public net.runelite.api.widgets.Widget getScriptActiveWidget() { return scriptWidget(false); }
@@ -390,7 +412,6 @@ public class AndroidClient extends ClientStub {
     @Override public net.runelite.api.StructComposition getStructComposition(int id) { return new AndroidStruct(id); }
 
     /** No "Use" / spell target selection is tracked yet. */
-    @Override public boolean isWidgetSelected() { return false; }
 
     /**
      * The touch point stands in for the mouse: while a finger is down and for a few seconds after

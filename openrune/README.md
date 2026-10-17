@@ -104,15 +104,17 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   area for that farm. Crop data in the server-only dbtable `farming_crops`; state in server varps
   63780-63827. `::growpatches [cycles]` grows your crops (fully by default). No disease, compost,
   watering, payments, weed regrowth or tool leprechaun.
-- **Beginner clue scrolls** (`content/other/treasure-trails`, `BeginnerClueScript`): Read opens
-  the clue text interface (203) or a beginner map (346-356) with the texts RuneLite's Clue Scroll
-  plugin matches; 34 steps (anagram and cryptic talks, six emotes with Uri, five map digs, Charlie, hot-cold) in the
-  server-only dbtable `trail_beginner_steps`; the reward casket rolls the OSRS Wiki table and sends
-  the completion message and `trail_rewardinv` the Loot Tracker records. `::clue [step] [left]`.
-  Talk steps on NPCs that already have dialogue go through the new `NpcOpOverrides` API. Also
-  Charlie the Tramp's item tasks, Reldo's hot-cold strange device ("The device is ..." readings the
-  plugin's solver parses), Check steps, and the three beginner STASH units (Build, Search). No
-  scroll cases.
+- **Treasure Trails, beginner and easy** (`content/other/treasure-trails`, `TreasureTrailScript`):
+  driven by the cache's own clue data (Jagex's `cluehelper_*` dbtables: texts, npc/loc/coord
+  targets, emotes, outfits, STASH locs). Read opens the clue text interface (203) or the map
+  interface with the texts RuneLite's Clue Scroll plugin matches; steps are npc talks (anagrams,
+  cryptics), Charlie the Tramp's tasks, Reldo's hot-cold device, loc searches, digs and emotes with
+  Uri; easy scrolls are one item per step (param 623) and are swapped as the trail moves on; STASH
+  units (Build, Search) from the emote rows; Check steps; the beginner casket rolls the OSRS Wiki
+  table and sends the completion message and `trail_rewardinv` the Loot Tracker records.
+  `::clue [beginner|easy] [row|list] [steps left]`. Talk/Search steps on npcs and locs with their own
+  content go through the new `NpcOpOverrides`/`LocOpOverrides` APIs. Not yet: the easy casket, easy
+  music steps, five easy map interfaces, scroll cases.
 - **New characters** start at Lumbridge (3222, 3218) as in OSRS, not at the database default
   (3200, 3200).
 - **Random events** (`content/events/random-events`): the Genie, every 1-2 hours of play or with

@@ -592,3 +592,28 @@ was verified.
   opcode 75, empty) every ~10 s, never IDLE.
 - **Device tip:** on the mobile gameframe the yellow smiley tab is the Friends list (as on desktop);
   emotes are the green dancing figure (about 1840,600).
+- **Rebuilt on Jagex's clue data (after the device check):** the cache ships `cluehelper_*` dbtables
+  (generated rows in `api/generated/.../table/cluehelper`) with every clue's text, difficulty and
+  target for all tiers: anagram/cryptic/map/emote/hot-cold/skill challenge/music/coordinate/cipher
+  rows, targets in `cluehelper_target_npc` (15), `_loc` (16), `_coord` (18), `_key` (19), `_kill`
+  (20), outfits with per-slot item lists, `hidey_hole_loc` = the STASH loc. Counts: beginner 9
+  anagram, 6 cryptic, 5 map, 6 emote, 5 hot-cold, 8 skill challenge (Charlie); easy 120 cryptic
+  (41 npc, 71 loc search, 8 coord dig), 33 emote, 9 map, 6 music. Each easy clue item names its
+  row in param 623 (`Clue scroll (easy)` 2677..); drops give `trail_clue_easy_simple001`, so Read on
+  a fresh one rolls a trail and swaps the item for the step's own scroll.
+  - Code: `TrailTier` (beginner, easy: lengths, objs, varps, Uri npc, STASH level), `TrailSteps`
+    (builds `TrailStep.Talk/Charlie/HotCold/Search/Dig/Emote` from the rows), `TreasureTrailScript`,
+    `StashUnitScript` (units from the emote rows; varbit = the loc's multiloc varbit; stores the
+    first item of each outfit slot). The hand-typed beginner step table is gone; three small
+    server-only tables fill the gaps: `trail_charlie_tasks` (skill challenge row -> item, request
+    line), `trail_map_interfaces` (map row -> trail_mapNN; easy rows 2228/2232/2234/2260/2261 still
+    unknown), `trail_emote_seqs` (emote slot -> seq).
+  - Charlie: the cryptic "Talk to Charlie the Tramp in Varrock." step; he picks a skill challenge row
+    (kept in the tier's aux varp) and the scroll then shows that row's text. Hot-cold: the Reldo
+    cryptic step; the dig spot (a hot-cold row) is rolled when the step is set.
+  - `LocOpOverrides` + `LocOverrideEvents` (api/player): like the npc version; `LocInteractions`
+    checks claims first. Search steps register on the loc op named "Search".
+  - Varps: beginner 63840-63847 (step, left, completed, done, aux, hot-cold last, STASH bits,
+    hot-cold spot), easy 63850-63855. Old beginner saves pointed at rows of the removed table and
+    simply start a new trail.
+  - Tests: `TreasureTrailScriptTest` (11). Boot-checked in a throwaway container.

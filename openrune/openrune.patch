@@ -642,6 +642,28 @@ index 000000000..f5ae65a09
 +        override fun unregister(service: Any, player: Player) {}
 +    }
 +}
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/LocEvents.kt b/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/LocEvents.kt
+index 766a7edad..13bad9717 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/LocEvents.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/LocEvents.kt
+@@ -608,3 +608,17 @@ public class LocUCategoryEvents {
+         category: Int = type.category,
+     ) : ApEvent(EventBus.composeLongKey(category, objType.id))
+ }
++
++/** A loc op taken over through [org.rsmod.api.player.interact.LocOpOverrides]. */
++public class LocOverrideEvents {
++    public class Op(
++        public val loc: BoundLocInfo,
++        public val type: ObjectServerType,
++        public val op: org.rsmod.game.interact.InteractionOp,
++    ) : OpEvent(key(type.id, op))
++
++    public companion object {
++        public fun key(locType: Int, op: org.rsmod.game.interact.InteractionOp): Long =
++            EventBus.composeLongKey(locType, op.slot)
++    }
++}
 diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/NpcEvents.kt b/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/NpcEvents.kt
 index ef93f420a..493c153e6 100644
 --- a/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/NpcEvents.kt
@@ -672,6 +694,80 @@ index ef93f420a..493c153e6 100644
  public sealed class NpcContentEvents {
      public sealed class Op(public val npc: Npc, contentGroup: Int) : OpEvent(contentGroup.toLong())
  
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt
+index 56803cfbc..38bd6305c 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt
+@@ -10,6 +10,7 @@ import org.rsmod.api.player.events.interact.LocCategoryEvents
+ import org.rsmod.api.player.events.interact.LocContentEvents
+ import org.rsmod.api.player.events.interact.LocDefaultEvents
+ import org.rsmod.api.player.events.interact.LocEvents
++import org.rsmod.api.player.events.interact.LocOverrideEvents
+ import org.rsmod.api.player.events.interact.LocUnimplementedEvents
+ import org.rsmod.api.player.events.interact.OpEvent
+ import org.rsmod.api.route.BoundValidator
+@@ -25,7 +26,11 @@ import org.rsmod.utils.bits.getBits
+ 
+ public class LocInteractions
+ @Inject
+-constructor(private val boundValidator: BoundValidator, private val eventBus: EventBus) {
++constructor(
++    private val boundValidator: BoundValidator,
++    private val eventBus: EventBus,
++    private val overrides: LocOpOverrides = LocOpOverrides(),
++) {
+     public fun interact(
+         player: Player,
+         loc: BoundLocInfo,
+@@ -62,6 +67,13 @@ constructor(private val boundValidator: BoundValidator, private val eventBus: Ev
+         type: ObjectServerType = ServerCacheManager.getObject(loc.id)!!,
+         base: BoundLocInfo = loc,
+     ): OpEvent? {
++        if (base === loc && overrides.claims(player, loc, type.id, op)) {
++            val overrideEvent = LocOverrideEvents.Op(loc, type, op)
++            if (eventBus.contains(overrideEvent::class.java, overrideEvent.id)) {
++                return overrideEvent
++            }
++        }
++
+         val multiLoc = multiLoc(loc, type, player.vars)
+         if (multiLoc != null) {
+             val multiLocType = ServerCacheManager.getObject(multiLoc.id)!!
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocOpOverrides.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocOpOverrides.kt
+new file mode 100644
+index 000000000..4fe46d3e4
+--- /dev/null
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocOpOverrides.kt
+@@ -0,0 +1,29 @@
++package org.rsmod.api.player.interact
++
++import jakarta.inject.Singleton
++import org.rsmod.game.entity.Player
++import org.rsmod.game.interact.InteractionOp
++import org.rsmod.game.loc.BoundLocInfo
++
++/**
++ * Lets content take a loc op ahead of that loc's own handler, but only for the players it claims:
++ * a treasure trail step that searches a crate, for example, while everyone else gets the crate's
++ * usual op. A claimed op is published as an [org.rsmod.api.player.events.interact.
++ * LocOverrideEvents.Op] keyed by the loc type.
++ */
++@Singleton
++public class LocOpOverrides {
++    private val claims = HashMap<Long, MutableList<(Player, BoundLocInfo) -> Boolean>>()
++
++    public fun register(locType: Int, op: InteractionOp, claim: (Player, BoundLocInfo) -> Boolean) {
++        claims.getOrPut(key(locType, op)) { mutableListOf() } += claim
++    }
++
++    public fun claims(player: Player, loc: BoundLocInfo, locType: Int, op: InteractionOp): Boolean {
++        val list = claims[key(locType, op)] ?: return false
++        return list.any { it(player, loc) }
++    }
++
++    private fun key(locType: Int, op: InteractionOp): Long =
++        (locType.toLong() shl 8) or op.ordinal.toLong()
++}
 diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcInteractions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcInteractions.kt
 index 3306d3f12..bcbacc71f 100644
 --- a/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcInteractions.kt
@@ -3091,291 +3187,118 @@ index 000000000..8c32fc4b2
 +            }
 +        }
 +}
-diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/BeginnerClueStepsTable.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/BeginnerClueStepsTable.kt
+diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
 new file mode 100644
-index 000000000..f067b2da3
+index 000000000..005e99e92
 --- /dev/null
-+++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/BeginnerClueStepsTable.kt
-@@ -0,0 +1,216 @@
++++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
+@@ -0,0 +1,100 @@
 +package org.rsmod.content.other.treasuretrails.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
 +import dev.openrune.definition.util.VarType
-+import dev.openrune.pack.columnCoord
-+import org.rsmod.map.CoordGrid
 +
 +/**
-+ * Beginner Treasure Trail steps (OSRS Wiki: Treasure Trails/Guide/Beginner; the anagram, cryptic,
-+ * emote and map pages). [TEXT] is what the clue scroll interface shows, in the exact wording
-+ * RuneLite's Clue Scroll plugin matches. Talk steps name the [NPC]; emote steps an [EMOTE] (seq
-+ * symbol) within [RADIUS] of [COORD] while wearing [ITEM_1]/[ITEM_2]; map steps open [MAP] and are
-+ * dug within [RADIUS] of [COORD]. Charlie the Tramp rows are one step together (Charlie picks one
-+ * of them when first asked): [REQUEST] is his line, [ITEM_1] the item, [TEXT] the scroll afterwards.
-+ * Hot-cold rows are one step together too (Reldo's strange device), each a dig spot in [RADIUS].
++ * What the cache's `cluehelper_*` tables (Jagex's clue data: texts, targets, outfits, STASH locs)
++ * leave out: the item Charlie the Tramp asks for in each of his skill challenge rows, the map
++ * interface each map clue row opens, and the emote seq for each emote slot the emote rows name.
 + */
-+object BeginnerClueStepsTable {
-+    const val TYPE = 0
-+    const val TEXT = 1
-+    const val NPC = 2
-+    const val COORD = 3
-+    const val RADIUS = 4
-+    const val EMOTE = 5
-+    const val ITEM_1 = 6
-+    const val ITEM_2 = 7
-+    const val MAP = 8
-+    const val REQUEST = 9
-+
-+    const val TALK = 0
-+    const val EMOTE_STEP = 1
-+    const val MAP_STEP = 2
-+    const val CHARLIE_STEP = 3
-+    const val HOT_COLD_STEP = 4
-+
-+    const val HOT_COLD_TEXT =
-+        "Buried beneath the ground, who knows where it's found. Lucky for you, A man called " +
-+            "Reldo may have a clue."
-+
-+    private data class Step(
-+        val name: String,
-+        val type: Int,
-+        val coord: CoordGrid,
-+        val radius: Int,
-+        val text: String? = null,
-+        val npc: String? = null,
-+        val emote: String? = null,
-+        val items: List<String> = emptyList(),
-+        val map: String? = null,
-+        val request: String? = null,
-+    )
-+
-+    private fun anagram(name: String, letters: String, npc: String, coord: CoordGrid) =
-+        Step(
-+            "anagram_$name",
-+            TALK,
-+            coord,
-+            0,
-+            text = "The anagram reveals<br>who to speak to next:<br>$letters",
-+            npc = npc,
-+        )
-+
-+    private fun cryptic(name: String, text: String, npc: String, coord: CoordGrid) =
-+        Step("cryptic_$name", TALK, coord, 0, text = text, npc = npc)
-+
-+    private fun emote(
-+        name: String,
-+        text: String,
-+        seq: String,
-+        coord: CoordGrid,
-+        radius: Int,
-+        vararg items: String,
-+    ) = Step("emote_$name", EMOTE_STEP, coord, radius, text = text, emote = seq, items = items.toList())
-+
-+    private fun map(name: String, map: String, coord: CoordGrid) =
-+        Step("map_$name", MAP_STEP, coord, 1, map = map)
-+
-+    private fun charlie(name: String, item: String, thing: String, request: String = thing) =
-+        Step(
-+            "charlie_$name",
-+            CHARLIE_STEP,
-+            CoordGrid(3209, 3390, 0),
-+            0,
-+            text = "I need to give Charlie $thing.",
-+            npc = "npc.tramppg",
-+            items = listOf(item),
-+            request = "I really need $request.",
-+        )
-+
-+    private fun hotCold(name: String, coord: CoordGrid) =
-+        Step("hot_cold_$name", HOT_COLD_STEP, coord, 4, text = HOT_COLD_TEXT, npc = "npc.reldo")
-+
-+    private val STEPS =
++object TrailDataTables {
++    private val CHARLIE =
 +        listOf(
-+            anagram("ranael", "AN EARL", "npc.ranael", CoordGrid(3315, 3163, 0)),
-+            anagram("apothecary", "CARPET AHOY", "npc.apothecary", CoordGrid(3195, 3404, 0)),
-+            anagram("doric", "I CORD", "npc.doric", CoordGrid(2951, 3450, 0)),
-+            anagram("brian", "IN BAR", "npc.brian", CoordGrid(3026, 3246, 0)),
-+            anagram("veronica", "RAIN COVE", "npc.veronica", CoordGrid(3110, 3330, 0)),
-+            anagram("gertrude", "RUG DETER", "npc.gertrude", CoordGrid(3151, 3412, 0)),
-+            anagram("hairdresser", "SIR SHARE RED", "npc.hairdresser", CoordGrid(2944, 3381, 0)),
-+            cryptic(
-+                "hans",
-+                "Always walking around the castle grounds and somehow knows everyone's age.",
-+                "npc.hans",
-+                CoordGrid(3221, 3218, 0),
-+            ),
-+            cryptic(
-+                "cook",
-+                "In the place Duke Horacio calls home, talk to a man with a hat dropped by goblins.",
-+                "npc.cook",
-+                CoordGrid(3208, 3213, 0),
-+            ),
-+            cryptic(
-+                "shantay",
-+                "Near the open desert I reside, to get past me you must abide. Go forward if you " +
-+                    "dare, for when you pass me, you'll be sweating by your hair.",
-+                "npc.shantay",
-+                CoordGrid(3303, 3123, 0),
-+            ),
-+            emote(
-+                "aris",
-+                "Blow a raspberry at Aris in her tent. Equip a gold ring and a gold necklace.",
-+                "seq.emote_ya_boo_sucks",
-+                CoordGrid(3203, 3424, 0),
-+                3,
-+                "obj.gold_ring",
-+                "obj.gold_necklace",
-+            ),
-+            emote(
-+                "brugsen",
-+                "Bow to Brugsen Bursen at the Grand Exchange.",
-+                "seq.emote_bow",
-+                CoordGrid(3164, 3477, 0),
-+                5,
-+            ),
-+            emote(
-+                "iffie",
-+                "Cheer at Iffie Nitter. Equip a chef hat and a red cape.",
-+                "seq.emote_cheer",
-+                CoordGrid(3205, 3416, 0),
-+                3,
-+                "obj.chefs_hat",
-+                "obj.red_cape",
-+            ),
-+            emote(
-+                "bob",
-+                "Clap at Bob's Brilliant Axes. Equip a bronze axe and leather boots.",
-+                "seq.emote_clap",
-+                CoordGrid(3231, 3203, 0),
-+                3,
-+                "obj.bronze_axe",
-+                "obj.leather_boots",
-+            ),
-+            emote(
-+                "al_kharid_mine",
-+                "Panic at Al Kharid mine.",
-+                "seq.emote_panic",
-+                CoordGrid(3303, 3271, 0),
-+                12,
-+            ),
-+            emote(
-+                "flynn",
-+                "Spin at Flynn's Mace Shop.",
-+                "seq.emote_dance_spin",
-+                CoordGrid(2950, 3387, 0),
-+                3,
-+            ),
-+            map("champions_guild", "interface.trail_map01", CoordGrid(3167, 3360, 0)),
-+            map("varrock_east_mine", "interface.trail_map02", CoordGrid(3290, 3373, 0)),
-+            map("draynor_bank", "interface.trail_map03", CoordGrid(3092, 3226, 0)),
-+            map("standing_stones", "interface.trail_map06", CoordGrid(3043, 3399, 0)),
-+            map("wizards_tower", "interface.trail_map11", CoordGrid(3109, 3153, 0)),
-+            charlie("cooked_trout", "obj.trout", "a cooked trout"),
-+            charlie("cooked_pike", "obj.pike", "a cooked pike"),
-+            charlie("raw_herring", "obj.raw_herring", "a raw herring"),
-+            charlie("raw_trout", "obj.raw_trout", "a raw trout"),
-+            charlie("leather_chaps", "obj.leather_chaps", "some leather chaps"),
-+            charlie("leather_body", "obj.leather_armour", "a leather body"),
-+            charlie("iron_dagger", "obj.iron_dagger", "one iron dagger", "an iron dagger"),
-+            charlie("iron_ore", "obj.iron_ore", "a piece of iron ore"),
-+            hotCold("draynor_manor_mushrooms", CoordGrid(3096, 3379, 0)),
-+            hotCold("draynor_wheat_field", CoordGrid(3120, 3282, 0)),
-+            hotCold("ice_mountain", CoordGrid(3007, 3475, 0)),
-+            hotCold("lumbridge_cow_field", CoordGrid(3174, 3336, 0)),
-+            hotCold("northeast_of_al_kharid_mine", CoordGrid(3332, 3313, 0)),
++            Triple(1811, "obj.trout", "a cooked trout"),
++            Triple(1812, "obj.pike", "a cooked pike"),
++            Triple(1813, "obj.raw_herring", "a raw herring"),
++            Triple(1814, "obj.raw_trout", "a raw trout"),
++            Triple(1815, "obj.iron_ore", "a piece of iron ore"),
++            Triple(1816, "obj.iron_dagger", "an iron dagger"),
++            Triple(1817, "obj.leather_armour", "a leather body"),
++            Triple(1818, "obj.leather_chaps", "some leather chaps"),
 +        )
 +
-+    fun steps() =
-+        dbTable("dbtable.trail_beginner_steps", serverOnly = true) {
-+            column("type", TYPE, VarType.INT)
-+            column("text", TEXT, VarType.STRING)
-+            column("npc", NPC, VarType.NPC)
-+            column("coord", COORD, VarType.COORDGRID)
-+            column("radius", RADIUS, VarType.INT)
-+            column("emote", EMOTE, VarType.STRING)
-+            column("item_1", ITEM_1, VarType.OBJ)
-+            column("item_2", ITEM_2, VarType.OBJ)
-+            column("map", MAP, VarType.STRING)
-+            column("request", REQUEST, VarType.STRING)
++    private val MAPS =
++        listOf(
++            2223 to "interface.trail_map01",
++            2224 to "interface.trail_map02",
++            2225 to "interface.trail_map03",
++            2226 to "interface.trail_map06",
++            2227 to "interface.trail_map11",
++            2229 to "interface.trail_map01",
++            2230 to "interface.trail_map02",
++            2231 to "interface.trail_map06",
++            2233 to "interface.trail_map11",
++        )
 +
-+            for (s in STEPS) {
-+                row("dbrow.trail_beginner_${s.name}") {
-+                    column(TYPE, s.type)
-+                    s.text?.let { column(TEXT, it) }
-+                    s.npc?.let { columnRSCM(NPC, it) }
-+                    columnCoord(COORD, s.coord)
-+                    column(RADIUS, s.radius)
-+                    s.emote?.let { column(EMOTE, it) }
-+                    s.items.getOrNull(0)?.let { columnRSCM(ITEM_1, it) }
-+                    s.items.getOrNull(1)?.let { columnRSCM(ITEM_2, it) }
-+                    s.map?.let { column(MAP, it) }
-+                    s.request?.let { column(REQUEST, it) }
++    private val EMOTES =
++        listOf(
++            "seq.emote_yes",
++            "seq.emote_no",
++            "seq.emote_bow",
++            "seq.emote_angry",
++            "seq.emote_think",
++            "seq.emote_wave",
++            "seq.emote_shrug",
++            "seq.emote_cheer",
++            "seq.emote_beckon",
++            "seq.emote_laugh",
++            "seq.emote_jump_with_joy",
++            "seq.emote_yawn",
++            "seq.emote_dance",
++            "seq.emote_dance_scottish",
++            "seq.emote_dance_spin",
++            "seq.emote_dance_headbang",
++            "seq.emote_cry",
++            "seq.emote_blow_kiss",
++            "seq.emote_panic",
++            "seq.emote_ya_boo_sucks",
++            "seq.emote_clap",
++            "seq.emote_fremmenik_salute",
++        )
++
++    fun charlie() =
++        dbTable("dbtable.trail_charlie_tasks", serverOnly = true) {
++            column("challenge", 0, VarType.INT)
++            column("obj", 1, VarType.OBJ)
++            column("request", 2, VarType.STRING)
++            for ((i, task) in CHARLIE.withIndex()) {
++                row("dbrow.trail_charlie_task_$i") {
++                    column(0, task.first)
++                    columnRSCM(1, task.second)
++                    column(2, "I really need ${task.third}.")
 +                }
 +            }
 +        }
-+}
-diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/StashUnitsTable.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/StashUnitsTable.kt
-new file mode 100644
-index 000000000..7fd27bd9e
---- /dev/null
-+++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/StashUnitsTable.kt
-@@ -0,0 +1,51 @@
-+package org.rsmod.content.other.treasuretrails.pack
 +
-+import dev.openrune.definition.dbtables.dbTable
-+import dev.openrune.definition.util.VarType
++    fun maps() =
++        dbTable("dbtable.trail_map_interfaces", serverOnly = true) {
++            column("clue", 0, VarType.INT)
++            column("map", 1, VarType.STRING)
++            for ((i, map) in MAPS.withIndex()) {
++                row("dbrow.trail_map_interface_$i") {
++                    column(0, map.first)
++                    column(1, map.second)
++                }
++            }
++        }
 +
-+/**
-+ * The beginner STASH units (OSRS Wiki: STASH). [LOC] is the inconspicuous bush (a multiloc on
-+ * [VARBIT], `hh_constructed_*`: 0 = bush, 1 = built), [ITEM_1]/[ITEM_2] the emote clue items it
-+ * holds and [FILLED_BIT] its bit in the server-only `trail_stash_beginner_filled` varp.
-+ */
-+object StashUnitsTable {
-+    const val LOC = 0
-+    const val VARBIT = 1
-+    const val ITEM_1 = 2
-+    const val ITEM_2 = 3
-+    const val FILLED_BIT = 4
-+    const val LEVEL = 5
-+    const val XP = 6
-+
-+    private data class Unit(val name: String, val number: Int, val item1: String, val item2: String)
-+
-+    private val UNITS =
-+        listOf(
-+            Unit("gypsy_tent_entrance", 1, "obj.gold_ring", "obj.gold_necklace"),
-+            Unit("fine_clothes_entrance", 2, "obj.chefs_hat", "obj.red_cape"),
-+            Unit("bob_axes_entrance", 3, "obj.bronze_axe", "obj.leather_boots"),
-+        )
-+
-+    fun units() =
-+        dbTable("dbtable.trail_stash_units", serverOnly = true) {
-+            column("loc", LOC, VarType.STRING)
-+            column("varbit", VARBIT, VarType.STRING)
-+            column("item_1", ITEM_1, VarType.OBJ)
-+            column("item_2", ITEM_2, VarType.OBJ)
-+            column("filled_bit", FILLED_BIT, VarType.INT)
-+            column("level", LEVEL, VarType.INT)
-+            column("xp", XP, VarType.INT)
-+
-+            for (u in UNITS) {
-+                row("dbrow.trail_stash_${u.name}") {
-+                    column(LOC, "loc.hh_beginner00${u.number}")
-+                    column(VARBIT, "varbit.hh_constructed_beginner00${u.number}")
-+                    columnRSCM(ITEM_1, u.item1)
-+                    columnRSCM(ITEM_2, u.item2)
-+                    column(FILLED_BIT, u.number - 1)
-+                    column(LEVEL, 12)
-+                    column(XP, 150)
++    fun emotes() =
++        dbTable("dbtable.trail_emote_seqs", serverOnly = true) {
++            column("slot", 0, VarType.INT)
++            column("seq", 1, VarType.STRING)
++            for ((slot, seq) in EMOTES.withIndex()) {
++                row("dbrow.trail_emote_seq_$slot") {
++                    column(0, slot)
++                    column(1, seq)
 +                }
 +            }
 +        }
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt
 new file mode 100644
-index 000000000..d69f91c9c
+index 000000000..2ef0efd9a
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt
-@@ -0,0 +1,9 @@
+@@ -0,0 +1,14 @@
 +package org.rsmod.content.other.treasuretrails.pack
 +
 +import dev.openrune.definition.dbtables.DBTable
@@ -3383,54 +3306,65 @@ index 000000000..d69f91c9c
 +
 +class TreasureTrailsPluginPack : PluginPack() {
 +    override fun dbTables(): List<DBTable> =
-+        listOf(BeginnerClueStepsTable.steps(), BeginnerCasketTable.rewards(), StashUnitsTable.units())
++        listOf(
++            TrailDataTables.charlie(),
++            TrailDataTables.maps(),
++            TrailDataTables.emotes(),
++            BeginnerCasketTable.rewards(),
++        )
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/resources/gamevals.toml b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..f7b301c0d
+index 000000000..31a9f08ec
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
-@@ -0,0 +1,127 @@
+@@ -0,0 +1,136 @@
 +[gamevals.dbtable]
-+trail_beginner_steps = 60003
++trail_charlie_tasks = 60003
 +trail_beginner_casket = 60004
-+trail_stash_units = 60005
++trail_map_interfaces = 60005
++trail_emote_seqs = 60006
 +
 +[gamevals.dbrow]
-+trail_beginner_anagram_ranael = 60200
-+trail_beginner_anagram_apothecary = 60201
-+trail_beginner_anagram_doric = 60202
-+trail_beginner_anagram_brian = 60203
-+trail_beginner_anagram_veronica = 60204
-+trail_beginner_anagram_gertrude = 60205
-+trail_beginner_anagram_hairdresser = 60206
-+trail_beginner_cryptic_hans = 60207
-+trail_beginner_cryptic_cook = 60208
-+trail_beginner_cryptic_shantay = 60209
-+trail_beginner_emote_aris = 60210
-+trail_beginner_emote_brugsen = 60211
-+trail_beginner_emote_iffie = 60212
-+trail_beginner_emote_bob = 60213
-+trail_beginner_emote_al_kharid_mine = 60214
-+trail_beginner_emote_flynn = 60215
-+trail_beginner_map_champions_guild = 60216
-+trail_beginner_map_varrock_east_mine = 60217
-+trail_beginner_map_draynor_bank = 60218
-+trail_beginner_map_standing_stones = 60219
-+trail_beginner_map_wizards_tower = 60220
-+trail_beginner_charlie_cooked_trout = 60221
-+trail_beginner_charlie_cooked_pike = 60222
-+trail_beginner_charlie_raw_herring = 60223
-+trail_beginner_charlie_raw_trout = 60224
-+trail_beginner_charlie_leather_chaps = 60225
-+trail_beginner_charlie_leather_body = 60226
-+trail_beginner_charlie_iron_dagger = 60227
-+trail_beginner_charlie_iron_ore = 60228
-+trail_beginner_hot_cold_draynor_manor_mushrooms = 60229
-+trail_beginner_hot_cold_draynor_wheat_field = 60230
-+trail_beginner_hot_cold_ice_mountain = 60231
-+trail_beginner_hot_cold_lumbridge_cow_field = 60232
-+trail_beginner_hot_cold_northeast_of_al_kharid_mine = 60233
++trail_charlie_task_0 = 60200
++trail_charlie_task_1 = 60201
++trail_charlie_task_2 = 60202
++trail_charlie_task_3 = 60203
++trail_charlie_task_4 = 60204
++trail_charlie_task_5 = 60205
++trail_charlie_task_6 = 60206
++trail_charlie_task_7 = 60207
++trail_map_interface_0 = 60210
++trail_map_interface_1 = 60211
++trail_map_interface_2 = 60212
++trail_map_interface_3 = 60213
++trail_map_interface_4 = 60214
++trail_map_interface_5 = 60215
++trail_map_interface_6 = 60216
++trail_map_interface_7 = 60217
++trail_map_interface_8 = 60218
++trail_emote_seq_0 = 60320
++trail_emote_seq_1 = 60321
++trail_emote_seq_2 = 60322
++trail_emote_seq_3 = 60323
++trail_emote_seq_4 = 60324
++trail_emote_seq_5 = 60325
++trail_emote_seq_6 = 60326
++trail_emote_seq_7 = 60327
++trail_emote_seq_8 = 60328
++trail_emote_seq_9 = 60329
++trail_emote_seq_10 = 60330
++trail_emote_seq_11 = 60331
++trail_emote_seq_12 = 60332
++trail_emote_seq_13 = 60333
++trail_emote_seq_14 = 60334
++trail_emote_seq_15 = 60335
++trail_emote_seq_16 = 60336
++trail_emote_seq_17 = 60337
++trail_emote_seq_18 = 60338
++trail_emote_seq_19 = 60339
++trail_emote_seq_20 = 60340
++trail_emote_seq_21 = 60341
 +trail_beginner_casket_mole_slippers = 60240
 +trail_beginner_casket_frog_slippers = 60241
 +trail_beginner_casket_bear_slippers = 60242
@@ -3506,24 +3440,27 @@ index 000000000..f7b301c0d
 +trail_beginner_casket_sardine = 60312
 +trail_beginner_casket_herring = 60313
 +
-+trail_stash_gypsy_tent_entrance = 60320
-+trail_stash_fine_clothes_entrance = 60321
-+trail_stash_bob_axes_entrance = 60322
-+
 +[gamevals.varp]
 +trail_beginner_step = 63840
 +trail_beginner_steps_left = 63841
 +trail_beginner_completed = 63842
 +trail_beginner_steps_done = 63843
-+trail_beginner_charlie_asked = 63844
++trail_beginner_aux = 63844
 +trail_beginner_hot_cold_last = 63845
 +trail_stash_beginner_filled = 63846
++trail_beginner_hot_cold_spot = 63847
++trail_easy_step = 63850
++trail_easy_steps_left = 63851
++trail_easy_completed = 63852
++trail_easy_steps_done = 63853
++trail_easy_aux = 63854
++trail_stash_easy_filled = 63855
 diff --git a/content/other/treasure-trails/pack/src/main/resources/pack/configs/treasure_trails_vars.toml b/content/other/treasure-trails/pack/src/main/resources/pack/configs/treasure_trails_vars.toml
 new file mode 100644
-index 000000000..0ea6901f7
+index 000000000..edb58312b
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/resources/pack/configs/treasure_trails_vars.toml
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,83 @@
 +[[varp]]
 +isServerOnly = true
 +id = "varp.trail_beginner_step"
@@ -3550,7 +3487,7 @@ index 000000000..0ea6901f7
 +
 +[[varp]]
 +isServerOnly = true
-+id = "varp.trail_beginner_charlie_asked"
++id = "varp.trail_beginner_aux"
 +scope = "Perm"
 +transmit = "Never"
 +
@@ -3565,12 +3502,54 @@ index 000000000..0ea6901f7
 +id = "varp.trail_stash_beginner_filled"
 +scope = "Perm"
 +transmit = "Never"
-diff --git a/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScriptTest.kt b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScriptTest.kt
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_beginner_hot_cold_spot"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_easy_step"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_easy_steps_left"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_easy_completed"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_easy_steps_done"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_easy_aux"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_stash_easy_filled"
++scope = "Perm"
++transmit = "Never"
+diff --git a/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
 new file mode 100644
-index 000000000..a30b0abcc
+index 000000000..bd2041daf
 --- /dev/null
-+++ b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScriptTest.kt
-@@ -0,0 +1,256 @@
++++ b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
+@@ -0,0 +1,268 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -3587,225 +3566,159 @@ index 000000000..a30b0abcc
 +import org.rsmod.api.player.vars.VarPlayerIntMapSetter
 +import org.rsmod.api.testing.GameTestState
 +import org.rsmod.api.testing.scope.GameTestScope
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Advance
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.CASKET
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.CASKET_REWARDS
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.CASKET_TOTAL_WEIGHT
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.CHARLIE_ASKED_VARP
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.CLUE
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.COMPLETED_VARP
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.REWARD_INV
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.SCROLL_BOX
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.STEPS
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.STEPS_DONE_VARP
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.STEPS_LEFT_VARP
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.STEP_NAMES
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.currentStep
-+import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.rollRewards
++import org.rsmod.content.other.treasuretrails.StashUnitScript.Companion.UNITS
++import org.rsmod.content.other.treasuretrails.StashUnitScript.Companion.isFilled
++import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Advance
++import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.CASKET_REWARDS
++import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.CASKET_TOTAL_WEIGHT
++import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.REWARD_INV
++import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.currentStep
++import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.rollRewards
 +import org.rsmod.game.cheat.Cheat
 +import org.rsmod.game.inv.InvObj
 +import org.rsmod.map.CoordGrid
 +
 +@OptIn(UncheckedType::class)
 +@Execution(ExecutionMode.SAME_THREAD)
-+class BeginnerClueScriptTest {
-+    private val draynorBankDig = CoordGrid(3092, 3226, 0)
++class TreasureTrailScriptTest {
++    private val beginner = TrailTier.Beginner
++    private val easy = TrailTier.Easy
++    private val start = CoordGrid(3092, 3226, 0)
 +
 +    @Test
-+    fun `casket rolls follow the flattened wiki table`() {
++    fun `beginner casket rolls follow the flattened wiki table`() {
 +        assertEquals(CASKET_TOTAL_WEIGHT, CASKET_REWARDS.sumOf { it.weight })
-+        assertEquals(74, CASKET_REWARDS.size)
-+        val first = rollRewards(1) { 0 }.single()
-+        assertEquals("obj.mole_slippers", first.obj.internalName)
++        assertEquals("obj.mole_slippers", rollRewards(1) { 0 }.single().obj.internalName)
 +        val last = rollRewards(1) { it - 1 }.single()
 +        assertEquals("obj.herring", last.obj.internalName)
-+        assertEquals(9, last.count)
 +        assertTrue(last.noted)
-+        val twice = rollRewards(2) { 0 }.single()
-+        assertEquals(2, twice.count)
++        assertEquals(2, rollRewards(2) { 0 }.single().count)
 +    }
 +
 +    @Test
-+    fun `every step has its text, npc, emote or map`() {
-+        assertEquals(34, STEPS.size)
-+        for ((step, name) in STEPS.zip(STEP_NAMES)) {
-+            when (step.type) {
-+                BeginnerClueScript.TALK_STEP -> assertNotNull(step.npc, name)
-+                BeginnerClueScript.EMOTE_STEP -> assertNotNull(step.emote?.asRSCM(RSCMType.SEQ), name)
-+                BeginnerClueScript.MAP_STEP -> assertNotNull(step.map?.asRSCM(RSCMType.INTERFACE), name)
-+                BeginnerClueScript.CHARLIE_STEP -> {
-+                    assertEquals("npc.tramppg", step.npc?.internalName, name)
-+                    assertNotNull(step.item1, name)
-+                    assertTrue(step.request!!.startsWith("I really need "), name)
-+                }
-+                BeginnerClueScript.HOT_COLD_STEP -> assertEquals("npc.reldo", step.npc?.internalName, name)
-+                else -> error("Unknown step type ${step.type} for $name")
-+            }
-+            if (step.type != BeginnerClueScript.MAP_STEP) assertNotNull(step.text, name)
-+        }
-+        assertTrue(STEP_NAMES.contains("anagram_ranael"))
++    fun `beginner steps come from jagex's clue tables`() {
++        val steps = TrailSteps.ALL.getValue(beginner)
++        assertEquals(26, steps.size)
++        val charlie = steps.filterIsInstance<TrailStep.Charlie>().single()
++        assertEquals(8, charlie.tasks.size)
++        assertTrue(charlie.tasks.all { it.request.startsWith("I really need ") })
++        assertEquals(5, steps.filterIsInstance<TrailStep.HotCold>().single().spots.size)
++        val maps = steps.filterIsInstance<TrailStep.Dig>()
++        assertEquals(5, maps.size)
++        assertTrue(maps.all { it.map != null })
++        assertEquals(6, steps.filterIsInstance<TrailStep.Emote>().size)
++        val ranael = steps.filterIsInstance<TrailStep.Talk>().first { "AN EARL" in it.text!! }
++        assertTrue("npc.ranael".asRSCM(RSCMType.NPC) in ranael.npcs)
++        assertEquals(3, UNITS.count { it.tier == beginner })
 +    }
 +
 +    @Test
-+    fun GameTestState.`a three step trail ends in one casket`() =
-+        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
++    fun `easy steps each have their own scroll`() {
++        val steps = TrailSteps.ALL.getValue(easy)
++        assertTrue(steps.size > 100, "easy steps: ${steps.size}")
++        val objs = steps.map { TrailSteps.clueObj(it) }
++        assertEquals(objs.size, objs.toSet().size)
++        assertTrue(steps.any { it is TrailStep.Search })
++        assertTrue(steps.any { it is TrailStep.Emote && it.stashLoc != null })
++    }
++
++    @Test
++    fun GameTestState.`a three step beginner trail ends in one casket`() =
++        runInjectedGameTest(TreasureTrailScript::class, null, TreasureTrailScript::class) { script ->
 +            prepare()
-+            script.giveClue(Cheat(player, "clue", listOf("map_draynor_bank", "3")))
-+            assertEquals(1, player.inv.count(CLUE))
-+            assertEquals("map_draynor_bank", stepName())
-+            assertTrue(script.claims(player))
++            script.giveClue(Cheat(player, "clue", listOf("beginner", "", "3")))
++            val clue = "obj.trail_clue_beginner"
++            assertEquals(1, player.inv.count(clue))
 +            with(script) {
 +                var result = Advance.NONE
-+                player.withProtectedAccess { result = advanceTrail() }
++                player.withProtectedAccess { result = advanceTrail(checkNotNull(currentStep(player, beginner))) }
 +                assertEquals(Advance.NEXT_CLUE, result)
-+                assertEquals(2, player.vars[STEPS_LEFT_VARP])
-+                player.withProtectedAccess { result = advanceTrail() }
++                assertEquals(1, player.vars[beginner.stepsDoneVarp])
++                player.withProtectedAccess { result = advanceTrail(checkNotNull(currentStep(player, beginner))) }
 +                assertEquals(Advance.NEXT_CLUE, result)
-+                player.withProtectedAccess { result = advanceTrail() }
++                player.withProtectedAccess { result = advanceTrail(checkNotNull(currentStep(player, beginner))) }
 +                assertEquals(Advance.CASKET, result)
-+                assertEquals(0, player.inv.count(CLUE))
-+                assertEquals(1, player.inv.count(CASKET))
-+                assertNull(currentStep(player))
-+                player.withProtectedAccess { result = advanceTrail() }
-+                assertEquals(Advance.NONE, result)
-+                assertEquals(1, player.inv.count(CASKET))
++                assertEquals(0, player.inv.count(clue))
++                assertEquals(1, player.inv.count(beginner.casket))
++                assertNull(currentStep(player, beginner))
++                assertEquals(0, player.vars[beginner.stepsDoneVarp])
 +            }
 +        }
 +
 +    @Test
-+    fun GameTestState.`steps need the clue and the right place or npc`() =
-+        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
++    fun GameTestState.`an easy step swaps the scroll in its slot`() =
++        runInjectedGameTest(TreasureTrailScript::class, null, TreasureTrailScript::class) { script ->
 +            prepare()
-+            script.giveClue(Cheat(player, "clue", listOf("map_draynor_bank")))
-+            val away = CoordGrid(3095, 3226, 0)
-+            allocZoneCollision(away)
-+            player.teleport(away)
-+            assertFalse(script.claims(player))
-+            script.giveClue(Cheat(player, "clue", listOf("anagram_ranael")))
-+            assertEquals("npc.ranael", script.talkStep(player)?.npc?.internalName)
-+            player.clearInv()
-+            assertNull(script.talkStep(player))
-+            script.giveClue(Cheat(player, "clue", listOf("emote_flynn")))
-+            script.emoted(player, "seq.emote_dance_spin".asRSCM(RSCMType.SEQ))
-+            assertNull(script.uriOf(player))
-+        }
-+
-+    @Test
-+    fun GameTestState.`the casket needs space and pays out exactly the reward inv`() =
-+        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
-+            prepare()
-+            for (slot in 0 until player.inv.size) {
-+                player.inv[slot] = InvObj("obj.logs".asRSCM(RSCMType.OBJ), 1)
-+            }
-+            player.inv[0] = InvObj(CASKET.asRSCM(RSCMType.OBJ), 2)
++            player.inv[0] = InvObj("obj.logs".asRSCM(RSCMType.OBJ), 1)
++            script.giveClue(Cheat(player, "clue", listOf("easy", "", "2")))
++            val first = checkNotNull(currentStep(player, easy))
++            assertEquals(TrailSteps.clueObj(first), player.inv[1]?.id)
 +            with(script) {
-+                var rewards: List<BeginnerClueScript.Reward>? = null
-+                player.withProtectedAccess { rewards = openCasket() }
-+                assertNull(rewards)
-+                assertEquals(2, player.inv.count(CASKET))
-+                assertEquals(0, player.vars[COMPLETED_VARP])
-+
-+                player.inv[1] = null
-+                player.inv[2] = null
-+                player.inv[3] = null
-+                val logs = player.inv.count("obj.logs")
-+                player.withProtectedAccess { rewards = openCasket() }
-+                assertEquals(1, player.inv.count(CASKET))
-+                assertEquals(1, player.vars[COMPLETED_VARP])
-+                assertEquals(logs, player.inv.count("obj.logs"))
-+                val rolled = checkNotNull(rewards)
-+                assertTrue(rolled.isNotEmpty() && rolled.size <= 3)
-+                assertTrue(player.invMap.getOrPut(REWARD_INV).objs.all { it == null })
-+                val received = player.inv.objs.filterNotNull().filter {
-+                    it.id != CASKET.asRSCM(RSCMType.OBJ) && it.id != "obj.logs".asRSCM(RSCMType.OBJ)
-+                }
-+                assertEquals(rolled.sumOf { it.count }, received.sumOf { it.count })
++                var result = Advance.NONE
++                player.withProtectedAccess { result = advanceTrail(first) }
++                assertEquals(Advance.NEXT_CLUE, result)
++                val second = checkNotNull(currentStep(player, easy))
++                assertTrue(second.row != first.row)
++                assertEquals(TrailSteps.clueObj(second), player.inv[1]?.id)
++                assertEquals(2, player.inv.objs.count { it != null })
++                player.withProtectedAccess { result = advanceTrail(second) }
++                assertEquals(Advance.CASKET, result)
++                assertEquals(1, player.inv.count(easy.casket))
++                assertEquals(2, player.inv.objs.count { it != null })
 +            }
 +        }
 +
 +    @Test
-+    fun GameTestState.`a scroll box only opens without a clue`() =
-+        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
++    fun GameTestState.`a fresh dropped easy scroll starts a trail on read`() =
++        runInjectedGameTest(TreasureTrailScript::class, null, TreasureTrailScript::class) { script ->
 +            prepare()
-+            player.inv[0] = InvObj(SCROLL_BOX.asRSCM(RSCMType.OBJ), 1)
-+            player.inv[1] = InvObj(CLUE.asRSCM(RSCMType.OBJ), 1)
-+            with(script) {
-+                player.withProtectedAccess { openScrollBox() }
-+                assertEquals(1, player.inv.count(SCROLL_BOX))
-+                assertEquals(1, player.inv.count(CLUE))
-+                player.inv[1] = null
-+                player.withProtectedAccess { openScrollBox() }
-+                assertEquals(0, player.inv.count(SCROLL_BOX))
-+                assertEquals(1, player.inv.count(CLUE))
-+            }
-+        }
-+
-+    @Test
-+    fun GameTestState.`the next step is never from the same group`() =
-+        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
-+            prepare()
-+            val charlie = STEPS.first { it.type == BeginnerClueScript.CHARLIE_STEP }
-+            val hotCold = STEPS.first { it.type == BeginnerClueScript.HOT_COLD_STEP }
-+            repeat(200) {
-+                assertTrue(script.pickStep(charlie).type != BeginnerClueScript.CHARLIE_STEP)
-+                assertTrue(script.pickStep(hotCold).type != BeginnerClueScript.HOT_COLD_STEP)
-+            }
-+        }
-+
-+    @Test
-+    fun GameTestState.`check steps counts the steps done`() =
-+        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
-+            prepare()
-+            script.giveClue(Cheat(player, "clue", listOf("map_draynor_bank", "3")))
-+            with(script) {
-+                assertEquals(0, player.vars[STEPS_DONE_VARP])
-+                player.withProtectedAccess { advanceTrail() }
-+                assertEquals(1, player.vars[STEPS_DONE_VARP])
-+                player.withProtectedAccess { advanceTrail() }
-+                assertEquals(2, player.vars[STEPS_DONE_VARP])
-+                player.withProtectedAccess { advanceTrail() }
-+                assertEquals(0, player.vars[STEPS_DONE_VARP])
-+            }
++            val drop = easy.dropObj.asRSCM(RSCMType.OBJ)
++            player.inv[3] = InvObj(drop, 1)
++            val step = script.stepForRead(player, easy, drop)
++            assertEquals(TrailSteps.clueObj(step), player.inv[3]?.id)
++            assertTrue(player.vars[easy.stepsLeftVarp] in 2..4)
++            assertEquals(step.row, script.stepForRead(player, easy, TrailSteps.clueObj(step)).row)
 +        }
 +
 +    @Test
 +    fun GameTestState.`charlie takes exactly his item once he has asked`() =
-+        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
++        runInjectedGameTest(TreasureTrailScript::class, null, TreasureTrailScript::class) { script ->
 +            prepare()
-+            script.giveClue(Cheat(player, "clue", listOf("charlie_raw_herring", "2")))
-+            val step = checkNotNull(currentStep(player))
-+            val herring = "obj.raw_herring"
-+            player.inv[1] = InvObj(herring.asRSCM(RSCMType.OBJ), 1)
-+            player.inv[2] = InvObj(herring.asRSCM(RSCMType.OBJ), 1)
++            val charlie = TrailSteps.ALL.getValue(beginner).filterIsInstance<TrailStep.Charlie>().single()
++            script.giveClue(Cheat(player, "clue", listOf("beginner", "${charlie.row}", "2")))
++            val herring = charlie.tasks.first { "herring" in it.request }
++            val herringObj = "obj.raw_herring"
++            player.inv[1] = InvObj(herringObj.asRSCM(RSCMType.OBJ), 1)
++            player.inv[2] = InvObj(herringObj.asRSCM(RSCMType.OBJ), 1)
 +            with(script) {
 +                var result = Advance.CASKET
-+                player.withProtectedAccess { result = handInToCharlie(step) }
++                player.withProtectedAccess { result = handInToCharlie(charlie) }
 +                assertEquals(Advance.NONE, result)
-+                assertEquals(2, player.inv.count(herring))
-+                VarPlayerIntMapSetter.set(player, CHARLIE_ASKED_VARP, 1)
-+                player.withProtectedAccess { result = handInToCharlie(step) }
++                assertEquals(2, player.inv.count(herringObj))
++                VarPlayerIntMapSetter.set(player, beginner.auxVarp, herring.row)
++                assertEquals(herring.text, readText(player, charlie))
++                player.withProtectedAccess { result = handInToCharlie(charlie) }
 +                assertEquals(Advance.NEXT_CLUE, result)
-+                assertEquals(1, player.inv.count(herring))
-+                assertEquals(0, player.vars[CHARLIE_ASKED_VARP])
-+                assertEquals(1, player.inv.count(CLUE))
-+                player.withProtectedAccess { result = handInToCharlie(step) }
++                assertEquals(1, player.inv.count(herringObj))
++                assertEquals(0, player.vars[beginner.auxVarp])
++                player.withProtectedAccess { result = handInToCharlie(charlie) }
 +                assertEquals(Advance.NONE, result)
-+                assertEquals(1, player.inv.count(herring))
++                assertEquals(1, player.inv.count(herringObj))
 +            }
 +        }
 +
 +    @Test
 +    fun GameTestState.`the strange device reads the distance to the spot`() =
-+        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
-+            val spot = CoordGrid(3120, 3282, 0)
++        runInjectedGameTest(TreasureTrailScript::class, null, TreasureTrailScript::class) { script ->
 +            prepare()
-+            script.giveClue(Cheat(player, "clue", listOf("hot_cold_draynor_wheat_field")))
-+            val step = checkNotNull(currentStep(player))
++            val hotCold = TrailSteps.ALL.getValue(beginner).filterIsInstance<TrailStep.HotCold>().single()
++            script.giveClue(Cheat(player, "clue", listOf("beginner", "${hotCold.row}")))
++            val spot = checkNotNull(script.hotColdSpot(player, hotCold)).coord
 +            fun feelAt(dx: Int): String {
 +                val tile = spot.translate(dx, 0)
 +                allocZoneCollision(tile)
 +                player.teleport(tile)
-+                return script.deviceMessage(player, step)
++                return script.deviceMessage(player, spot)
 +            }
 +            assertEquals("The device is warm.", feelAt(120))
 +            assertEquals("The device is very hot, and warmer than last time.", feelAt(40))
@@ -3813,125 +3726,495 @@ index 000000000..a30b0abcc
 +            assertEquals("The device is ice cold, but colder than last time.", feelAt(600))
 +            assertEquals("The device is incredibly hot, and warmer than last time.", feelAt(4))
 +            assertEquals("The device is visibly shaking, and warmer than last time.", feelAt(3))
-+            assertTrue(script.claims(player))
++            assertNotNull(script.digStep(player))
 +            feelAt(5)
-+            assertFalse(script.claims(player))
++            assertNull(script.digStep(player))
 +        }
 +
-+    private fun GameTestScope.stepName(): String? =
-+        currentStep(player)?.let { STEP_NAMES[STEPS.indexOf(it)] }
-+
-+    private fun GameTestScope.prepare() {
-+        allocZoneCollision(draynorBankDig)
-+        player.teleport(draynorBankDig)
-+        player.clearInv()
-+    }
-+}
-diff --git a/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScriptTest.kt b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScriptTest.kt
-new file mode 100644
-index 000000000..cd5c08f29
---- /dev/null
-+++ b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScriptTest.kt
-@@ -0,0 +1,78 @@
-+package org.rsmod.content.other.treasuretrails
-+
-+import dev.openrune.rscm.RSCM.asRSCM
-+import dev.openrune.rscm.RSCMType
-+import dev.openrune.types.util.UncheckedType
-+import org.junit.jupiter.api.Assertions.assertEquals
-+import org.junit.jupiter.api.Assertions.assertFalse
-+import org.junit.jupiter.api.Assertions.assertTrue
-+import org.junit.jupiter.api.Test
-+import org.junit.jupiter.api.parallel.Execution
-+import org.junit.jupiter.api.parallel.ExecutionMode
-+import org.rsmod.api.player.vars.VarPlayerIntMapSetter
-+import org.rsmod.api.testing.GameTestState
-+import org.rsmod.api.testing.scope.GameTestScope
-+import org.rsmod.content.other.treasuretrails.StashUnitScript.Companion.UNITS
-+import org.rsmod.content.other.treasuretrails.StashUnitScript.Companion.isFilled
-+import org.rsmod.game.inv.InvObj
-+import org.rsmod.map.CoordGrid
-+
-+@OptIn(UncheckedType::class)
-+@Execution(ExecutionMode.SAME_THREAD)
-+class StashUnitScriptTest {
 +    @Test
-+    fun `three beginner units with two items each`() {
-+        assertEquals(3, UNITS.size)
-+        assertEquals(listOf(0, 1, 2), UNITS.map { it.filledBit })
-+        assertTrue(UNITS.all { it.varbit.startsWith("varbit.hh_constructed_beginner") })
-+    }
++    fun GameTestState.`the casket needs space and pays out exactly the reward inv`() =
++        runInjectedGameTest(TreasureTrailScript::class, null, TreasureTrailScript::class) { script ->
++            prepare()
++            for (slot in 0 until player.inv.size) {
++                player.inv[slot] = InvObj("obj.logs".asRSCM(RSCMType.OBJ), 1)
++            }
++            player.inv[0] = InvObj(beginner.casket.asRSCM(RSCMType.OBJ), 2)
++            with(script) {
++                var rewards: List<TreasureTrailScript.Reward>? = null
++                player.withProtectedAccess { rewards = openCasket() }
++                assertNull(rewards)
++                assertEquals(2, player.inv.count(beginner.casket))
++                player.inv[1] = null
++                player.inv[2] = null
++                player.inv[3] = null
++                val logs = player.inv.count("obj.logs")
++                player.withProtectedAccess { rewards = openCasket() }
++                assertEquals(1, player.inv.count(beginner.casket))
++                assertEquals(1, player.vars[beginner.completedVarp])
++                assertEquals(logs, player.inv.count("obj.logs"))
++                val rolled = checkNotNull(rewards)
++                assertTrue(player.invMap.getOrPut(REWARD_INV).objs.all { it == null })
++                val received =
++                    player.inv.objs.filterNotNull().filter {
++                        it.id != beginner.casket.asRSCM(RSCMType.OBJ) && it.id != "obj.logs".asRSCM(RSCMType.OBJ)
++                    }
++                assertEquals(rolled.sumOf { it.count }, received.sumOf { it.count })
++            }
++        }
 +
 +    @Test
-+    fun GameTestState.`deposit and withdraw move exactly the unit's items`() =
++    fun GameTestState.`a scroll box only opens without a clue of its tier`() =
++        runInjectedGameTest(TreasureTrailScript::class, null, TreasureTrailScript::class) { script ->
++            prepare()
++            player.inv[0] = InvObj(beginner.scrollBox.asRSCM(RSCMType.OBJ), 1)
++            player.inv[1] = InvObj("obj.trail_clue_beginner".asRSCM(RSCMType.OBJ), 1)
++            with(script) {
++                player.withProtectedAccess { openScrollBox(beginner) }
++                assertEquals(1, player.inv.count(beginner.scrollBox))
++                player.inv[1] = null
++                player.withProtectedAccess { openScrollBox(beginner) }
++                assertEquals(0, player.inv.count(beginner.scrollBox))
++                assertEquals(1, player.inv.count("obj.trail_clue_beginner"))
++            }
++        }
++
++    @Test
++    fun GameTestState.`stash deposit and withdraw move exactly the unit's items`() =
 +        runInjectedGameTest(StashUnitScript::class, null, StashUnitScript::class) { script ->
 +            prepare()
-+            val unit = UNITS.first { it.item1.internalName == "obj.gold_ring" }
-+            val ring = unit.item1.internalName
-+            val necklace = unit.item2.internalName
-+            player.inv[0] = InvObj(ring.asRSCM(RSCMType.OBJ), 1)
++            val unit = UNITS.first { it.tier == beginner && "obj.gold_ring" in it.items }
++            assertEquals(listOf("obj.gold_ring", "obj.gold_necklace").sorted(), unit.items.sorted())
++            player.inv[0] = InvObj("obj.gold_ring".asRSCM(RSCMType.OBJ), 1)
 +            with(script) {
 +                player.withProtectedAccess { search(unit) }
-+                assertEquals(1, player.inv.count(ring))
 +                assertFalse(isFilled(player, unit))
-+
 +                VarPlayerIntMapSetter.set(player, unit.varbit, 1)
 +                player.withProtectedAccess { search(unit) }
-+                assertEquals(1, player.inv.count(ring))
 +                assertFalse(isFilled(player, unit))
-+
-+                player.inv[1] = InvObj(necklace.asRSCM(RSCMType.OBJ), 1)
-+                player.inv[2] = InvObj(necklace.asRSCM(RSCMType.OBJ), 1)
++                player.inv[1] = InvObj("obj.gold_necklace".asRSCM(RSCMType.OBJ), 1)
++                player.inv[2] = InvObj("obj.gold_necklace".asRSCM(RSCMType.OBJ), 1)
 +                player.withProtectedAccess { search(unit) }
 +                assertTrue(isFilled(player, unit))
-+                assertEquals(0, player.inv.count(ring))
-+                assertEquals(1, player.inv.count(necklace))
++                assertEquals(0, player.inv.count("obj.gold_ring"))
++                assertEquals(1, player.inv.count("obj.gold_necklace"))
 +                assertTrue(UNITS.filter { it !== unit }.none { isFilled(player, it) })
-+
 +                for (slot in 0 until player.inv.size) {
 +                    if (player.inv[slot] == null) player.inv[slot] = InvObj("obj.logs".asRSCM(RSCMType.OBJ), 1)
 +                }
 +                player.inv[0] = null
 +                player.withProtectedAccess { search(unit) }
 +                assertTrue(isFilled(player, unit))
-+                assertEquals(0, player.inv.count(ring))
-+
 +                player.inv[3] = null
 +                player.withProtectedAccess { search(unit) }
 +                assertFalse(isFilled(player, unit))
-+                assertEquals(1, player.inv.count(ring))
-+                assertEquals(2, player.inv.count(necklace))
++                assertEquals(1, player.inv.count("obj.gold_ring"))
++                assertEquals(2, player.inv.count("obj.gold_necklace"))
 +            }
 +        }
 +
 +    private fun GameTestScope.prepare() {
-+        val tile = CoordGrid(3206, 3423, 0)
-+        allocZoneCollision(tile)
-+        player.teleport(tile)
++        allocZoneCollision(start)
++        player.teleport(start)
 +        player.clearInv()
 +    }
 +}
-diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt
+diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScript.kt
 new file mode 100644
-index 000000000..1eabf2fc7
+index 000000000..b57b481d7
 --- /dev/null
-+++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt
-@@ -0,0 +1,533 @@
++++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScript.kt
+@@ -0,0 +1,128 @@
 +package org.rsmod.content.other.treasuretrails
 +
++import dev.openrune.ServerCacheManager
 +import dev.openrune.rscm.RSCM
++import dev.openrune.rscm.RSCMType
++import org.rsmod.api.player.output.mes
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.script.onOpLoc1
++import org.rsmod.api.script.onOpLoc2
++import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.objName
++import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.outfitSlots
++import org.rsmod.game.entity.Player
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * STASH units (OSRS Wiki: STASH) for the emote steps of the tiers this module runs, from the
++ * `hidey_hole_loc` and outfit of Jagex's emote clue rows. Build (op1) needs the tier's Construction
++ * level, a hammer, a saw, 2 planks and 10 nails of one metal, and sets the loc's multiloc varbit
++ * (`hh_constructed_*`), which RuneLite's Clue Scroll plugin checks (clientscript 1479). Search (op2)
++ * stores the outfit or takes it back, with the messages the plugin tracks.
++ *
++ * Deviations: only the first item listed for each outfit slot is stored, from the inventory.
++ */
++class StashUnitScript : PluginScript() {
++    override fun ScriptContext.startup() {
++        for (unit in UNITS) {
++            val loc = RSCM.getReverseMapping(RSCMType.LOC, unit.loc)
++            onOpLoc1(loc) { build(unit) }
++            onOpLoc2(loc) { search(unit) }
++        }
++    }
++
++    suspend fun ProtectedAccess.build(unit: StashUnit) {
++        if (isBuilt(player, unit)) return
++        if (stat(CONSTRUCTION) < unit.tier.stashLevel) {
++            mes("You need a Construction level of ${unit.tier.stashLevel} to build this STASH unit.")
++            return
++        }
++        val nails = NAILS.firstOrNull { inv.count(it) >= NAILS_NEEDED }
++        if (HAMMER !in inv || SAW !in inv || inv.count(PLANK) < PLANKS_NEEDED || nails == null) {
++            mes("You need a hammer, a saw, $PLANKS_NEEDED planks and $NAILS_NEEDED nails to build this.")
++            return
++        }
++        anim(BUILD_ANIM)
++        delay(BUILD_TICKS)
++        if (invDel(inv, PLANK, PLANKS_NEEDED).failure) return
++        if (invDel(inv, nails, NAILS_NEEDED).failure) return
++        statAdvance(CONSTRUCTION, XP)
++        VarPlayerIntMapSetter.set(player, unit.varbit, 1)
++    }
++
++    fun ProtectedAccess.search(unit: StashUnit) {
++        if (!isBuilt(player, unit)) return
++        if (isFilled(player, unit)) {
++            if (inv.freeSpace() < unit.items.size) {
++                mes("You need ${unit.items.size} free inventory spaces to take your items out.")
++                return
++            }
++            for (item in unit.items) invAdd(inv, item)
++            setFilled(player, unit, false)
++            mes("You withdraw your items from the STASH unit.")
++            return
++        }
++        if (unit.items.any { it !in inv }) {
++            mes("You don't have the items to store in this STASH unit.")
++            return
++        }
++        for (item in unit.items) {
++            if (invDel(inv, item).failure) return
++        }
++        setFilled(player, unit, true)
++        mes("You deposit your items into the STASH unit.")
++    }
++
++    data class StashUnit(val loc: Int, val varbit: String, val tier: TrailTier, val bit: Int, val items: List<String>)
++
++    companion object {
++        const val CONSTRUCTION = "stat.construction"
++        const val HAMMER = "obj.hammer"
++        const val SAW = "obj.poh_saw"
++        const val PLANK = "obj.woodplank"
++        const val PLANKS_NEEDED = 2
++        const val NAILS_NEEDED = 10
++        const val XP = 150.0
++        const val BUILD_ANIM = "seq.human_poh_build"
++        const val BUILD_TICKS = 3
++        val NAILS =
++            listOf(
++                "obj.nails_bronze",
++                "obj.nails_iron",
++                "obj.nails",
++                "obj.nails_black",
++                "obj.nails_mithril",
++                "obj.nails_adamant",
++                "obj.nails_rune",
++            )
++
++        val UNITS: List<StashUnit> by lazy {
++            TrailSteps.ALL.flatMap { (tier, steps) ->
++                steps.filterIsInstance<TrailStep.Emote>()
++                    .filter { it.stashLoc != null && it.outfits.isNotEmpty() }
++                    .distinctBy { it.stashLoc }
++                    .sortedBy { it.stashLoc }
++                    .mapIndexedNotNull { bit, step ->
++                        val loc = step.stashLoc!!
++                        val varbit = ServerCacheManager.getObject(loc)?.multiVarBit ?: return@mapIndexedNotNull null
++                        if (varbit < 0) return@mapIndexedNotNull null
++                        val items = outfitSlots(step.outfits.first()).map { objName(it.first().id) }
++                        StashUnit(loc, RSCM.getReverseMapping(RSCMType.VARBIT, varbit), tier, bit, items)
++                    }
++            }
++        }
++
++        fun isBuilt(player: Player, unit: StashUnit): Boolean = player.vars[unit.varbit] == 1
++
++        fun isFilled(player: Player, unit: StashUnit): Boolean =
++            (player.vars[unit.tier.stashFilledVarp] shr unit.bit) and 1 == 1
++
++        private fun setFilled(player: Player, unit: StashUnit, filled: Boolean) {
++            val bit = 1 shl unit.bit
++            val varp = unit.tier.stashFilledVarp
++            val value = player.vars[varp]
++            VarPlayerIntMapSetter.set(player, varp, if (filled) value or bit else value and bit.inv())
++        }
++    }
++}
+diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
+new file mode 100644
+index 000000000..e122dd62c
+--- /dev/null
++++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
+@@ -0,0 +1,175 @@
++package org.rsmod.content.other.treasuretrails
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.dbcol.DbColumnCodec
++import dev.openrune.types.dbcol.DbHelper
++import dev.openrune.types.dbcol.list
++import org.rsmod.api.table.TrailCharlieTasksRow
++import org.rsmod.api.table.TrailEmoteSeqsRow
++import org.rsmod.api.table.TrailMapInterfacesRow
++import org.rsmod.api.table.cluehelper.CluehelperClueAnagramRow
++import org.rsmod.api.table.cluehelper.CluehelperClueCrypticRow
++import org.rsmod.api.table.cluehelper.CluehelperClueEmoteRow
++import org.rsmod.api.table.cluehelper.CluehelperClueHotcoldRow
++import org.rsmod.api.table.cluehelper.CluehelperClueMapRow
++import org.rsmod.api.table.cluehelper.CluehelperClueSkillchallengeRow
++import org.rsmod.api.table.cluehelper.CluehelperOutfitRow
++import org.rsmod.api.table.cluehelper.CluehelperTargetCoordRow
++import org.rsmod.api.table.cluehelper.CluehelperTargetLocRow
++import org.rsmod.api.table.cluehelper.CluehelperTargetNpcRow
++import org.rsmod.map.CoordGrid
++
++/** One clue step, built from a row of Jagex's `cluehelper_clue_*` tables. */
++sealed class TrailStep(val row: Int, val tier: TrailTier, val text: String?) {
++    /** Talk to one of [npcs] (anagrams and npc cryptics). */
++    class Talk(row: Int, tier: TrailTier, text: String, val npcs: Set<Int>) : TrailStep(row, tier, text)
++
++    /** "Talk to Charlie the Tramp": he picks one of [tasks] and wants its item. */
++    class Charlie(row: Int, tier: TrailTier, text: String, val npcs: Set<Int>, val tasks: List<CharlieTask>) :
++        TrailStep(row, tier, text)
++
++    /** Reldo hands out the strange device; the dig spot is one of [spots]. */
++    class HotCold(row: Int, tier: TrailTier, text: String, val npcs: Set<Int>, val spots: List<HotColdSpot>) :
++        TrailStep(row, tier, text)
++
++    /** Search one of [locs] (cryptics such as "search the crates"). */
++    class Search(row: Int, tier: TrailTier, text: String, val locs: List<Pair<Int, CoordGrid>>) :
++        TrailStep(row, tier, text)
++
++    /** Dig within [radius] of [coord]; map clues open [map]. */
++    class Dig(row: Int, tier: TrailTier, text: String?, val coord: CoordGrid, val radius: Int, val map: String?) :
++        TrailStep(row, tier, text)
++
++    /** Perform [seq] near [coord] in one of [outfits]; Uri then comes. */
++    class Emote(
++        row: Int,
++        tier: TrailTier,
++        text: String,
++        val seq: Int,
++        val coord: CoordGrid,
++        val outfits: List<CluehelperOutfitRow>,
++        val stashLoc: Int?,
++    ) : TrailStep(row, tier, text)
++
++    fun covers(coords: CoordGrid, centre: CoordGrid, radius: Int): Boolean =
++        coords.level == centre.level && coords.chebyshevDistance(centre) <= radius
++}
++
++data class CharlieTask(val row: Int, val text: String, val obj: Int, val request: String)
++
++data class HotColdSpot(val row: Int, val coord: CoordGrid)
++
++object TrailSteps {
++    const val EMOTE_RADIUS = 5
++    const val MAP_RADIUS = 1
++    const val HOT_COLD_RADIUS = 4
++    private const val TARGET_NPC_TABLE = "dbtable.cluehelper_target_npc"
++    private const val TARGET_LOC_TABLE = "dbtable.cluehelper_target_loc"
++    private const val TARGET_COORD_TABLE = "dbtable.cluehelper_target_coord"
++    private const val CHARLIE = "npc.tramppg"
++    private const val RELDO = "npc.reldo"
++
++    val ALL: Map<TrailTier, List<TrailStep>> by lazy {
++        TrailTier.entries.associateWith { tier -> build(tier) }
++    }
++
++    fun byRow(tier: TrailTier, row: Int): TrailStep? = ALL.getValue(tier).firstOrNull { it.row == row }
++
++    private fun build(tier: TrailTier): List<TrailStep> {
++        val d = tier.difficulty
++        val steps = mutableListOf<TrailStep>()
++        for (r in CluehelperClueAnagramRow.all().filter { it.difficulty == d }) {
++            val text = "The anagram reveals<br>who to speak to next:<br>${r.clueText.uppercase()}"
++            steps += TrailStep.Talk(r.rowId, tier, text, r.target.map { it.npc.id }.toSet())
++        }
++        for (r in CluehelperClueCrypticRow.all().filter { it.difficulty == d }) {
++            steps += cryptic(tier, r) ?: continue
++        }
++        for (r in CluehelperClueMapRow.all().filter { it.difficulty == d }) {
++            val map = TrailMapInterfacesRow.all().firstOrNull { it.clue == r.rowId }?.map
++            steps += TrailStep.Dig(r.rowId, tier, r.target.description, r.target.coord, MAP_RADIUS, map)
++        }
++        for (r in CluehelperClueEmoteRow.all().filter { it.difficulty == d && it.emote.size == 1 }) {
++            val seq = TrailEmoteSeqsRow.all().firstOrNull { it.slot == r.emote[0] }?.seq ?: continue
++            steps +=
++                TrailStep.Emote(
++                    r.rowId,
++                    tier,
++                    r.clueText,
++                    seq.asRSCM(RSCMType.SEQ),
++                    r.target.coord,
++                    r.outfit,
++                    r.hideyHoleLoc?.id,
++                )
++        }
++        val objs = STEP_OBJS.getValue(tier)
++        return if (tier.clueObj == null) steps.filter { it.row in objs } else steps
++    }
++
++    private fun cryptic(tier: TrailTier, r: CluehelperClueCrypticRow): TrailStep? {
++        val targets = DbHelper.row(r.rowId).list("dbcol.cluehelper_clue_cryptic:target", DbColumnCodec.DbRowTypeCodec)
++        val tables = targets.map { DbHelper.row(it.id).tableId }.toSet()
++        if (tables.size != 1) return null
++        val table = tables.single()
++        return when (table) {
++            TARGET_NPC_TABLE.asRSCM(RSCMType.DBTABLE) -> {
++                val npcs = targets.map { CluehelperTargetNpcRow.getRow(it.id) }
++                val ids = npcs.flatMap { listOfNotNull(it.npc.id, it.fallbackNpc?.id) }.toSet()
++                when {
++                    CHARLIE.asRSCM(RSCMType.NPC) in ids ->
++                        TrailStep.Charlie(r.rowId, tier, r.clueText, ids, charlieTasks(tier))
++                    RELDO.asRSCM(RSCMType.NPC) in ids ->
++                        TrailStep.HotCold(r.rowId, tier, r.clueText, ids, hotColdSpots(tier))
++                    else -> TrailStep.Talk(r.rowId, tier, r.clueText, ids)
++                }
++            }
++            TARGET_LOC_TABLE.asRSCM(RSCMType.DBTABLE) -> {
++                val locs =
++                    targets.flatMap {
++                        val loc = CluehelperTargetLocRow.getRow(it.id)
++                        listOfNotNull(loc.loc.id to loc.coord, loc.fallbackLoc?.let { f -> f.id to loc.coord })
++                    }
++                TrailStep.Search(r.rowId, tier, r.clueText, locs)
++            }
++            TARGET_COORD_TABLE.asRSCM(RSCMType.DBTABLE) -> {
++                val coord = CluehelperTargetCoordRow.getRow(targets.first().id).coord
++                TrailStep.Dig(r.rowId, tier, r.clueText, coord, MAP_RADIUS, null)
++            }
++            else -> null
++        }
++    }
++
++    private fun charlieTasks(tier: TrailTier): List<CharlieTask> =
++        CluehelperClueSkillchallengeRow.all()
++            .filter { it.difficulty == tier.difficulty }
++            .mapNotNull { r ->
++                val task = TrailCharlieTasksRow.all().firstOrNull { it.challenge == r.rowId } ?: return@mapNotNull null
++                CharlieTask(r.rowId, r.clueText, task.obj.id, task.request)
++            }
++
++    private fun hotColdSpots(tier: TrailTier): List<HotColdSpot> =
++        CluehelperClueHotcoldRow.all()
++            .filter { it.difficulty == tier.difficulty }
++            .map { HotColdSpot(it.rowId, it.target.coord) }
++
++    /** The clue scroll obj that shows [step]: one item per step from easy up (param 623). */
++    fun clueObj(step: TrailStep): Int =
++        step.tier.clueObj?.asRSCM(RSCMType.OBJ) ?: STEP_OBJS.getValue(step.tier).getValue(step.row)
++
++    val STEP_OBJS: Map<TrailTier, Map<Int, Int>> by lazy {
++        TrailTier.entries.associateWith { tier ->
++            if (tier.clueObj != null) return@associateWith emptyMap()
++            ServerCacheManager.getItems()
++                .values
++                .filter { it.name == tier.clueName }
++                .sortedBy { it.id }
++                .mapNotNull { item -> (item.paramsRaw?.get(CLUE_ROW_PARAM) as? Int)?.let { it to item.id } }
++                .distinctBy { it.first }
++                .toMap()
++        }
++    }
++
++    const val CLUE_ROW_PARAM = 623
++}
+diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailTier.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailTier.kt
+new file mode 100644
+index 000000000..aa4a04c16
+--- /dev/null
++++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailTier.kt
+@@ -0,0 +1,52 @@
++package org.rsmod.content.other.treasuretrails
++
++/**
++ * The clue tiers this module runs. [difficulty] is the `difficulty` column of the `cluehelper_*`
++ * tables; [clueObj] is the single scroll obj of tiers whose steps share one, otherwise each step has
++ * its own obj named [clueName]. Trail state lives in the tier's server varps.
++ */
++enum class TrailTier(
++    val difficulty: Int,
++    val clueObj: String?,
++    val clueName: String,
++    val dropObj: String,
++    val casket: String,
++    val scrollBox: String,
++    val lengths: List<Int>,
++    val stashLevel: Int,
++    val varpPrefix: String,
++    val uri: String,
++) {
++    Beginner(
++        difficulty = 0,
++        clueObj = "obj.trail_clue_beginner",
++        clueName = "Clue scroll (beginner)",
++        dropObj = "obj.trail_clue_beginner",
++        casket = "obj.trail_reward_casket_beginner",
++        scrollBox = "obj.league_clue_box_beginner",
++        lengths = List(2) { 1 } + List(9) { 2 } + List(9) { 3 },
++        stashLevel = 12,
++        varpPrefix = "varp.trail_beginner",
++        uri = "npc.trail_beginner_uri",
++    ),
++    Easy(
++        difficulty = 1,
++        clueObj = null,
++        clueName = "Clue scroll (easy)",
++        dropObj = "obj.trail_clue_easy_simple001",
++        casket = "obj.trail_reward_casket_easy",
++        scrollBox = "obj.league_clue_box_easy",
++        lengths = listOf(2, 3, 4),
++        stashLevel = 27,
++        varpPrefix = "varp.trail_easy",
++        uri = "npc.trail_easy_uri",
++    );
++
++    val stepVarp: String get() = "${varpPrefix}_step"
++    val stepsLeftVarp: String get() = "${varpPrefix}_steps_left"
++    val stepsDoneVarp: String get() = "${varpPrefix}_steps_done"
++    val completedVarp: String get() = "${varpPrefix}_completed"
++    val auxVarp: String get() = "${varpPrefix}_aux"
++    val stashFilledVarp: String get() = "varp.trail_stash_${name.lowercase()}_filled"
++    val label: String get() = name.lowercase()
++}
+diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
+new file mode 100644
+index 000000000..06d73eb9f
+--- /dev/null
++++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
+@@ -0,0 +1,626 @@
++package org.rsmod.content.other.treasuretrails
++
++import dev.openrune.ServerCacheManager
 +import dev.openrune.rscm.RSCM.asRSCM
 +import dev.openrune.rscm.RSCMType
 +import dev.openrune.types.ItemServerType
 +import dev.openrune.types.NpcMode
++import dev.openrune.types.util.UncheckedType
 +import jakarta.inject.Inject
 +import jakarta.inject.Singleton
 +import org.rsmod.api.config.Constants
 +import org.rsmod.api.invtx.invAdd
 +import org.rsmod.api.invtx.invClear
 +import org.rsmod.api.npc.owner.assignSpawnOwner
++import org.rsmod.api.player.events.interact.LocOverrideEvents
 +import org.rsmod.api.player.events.interact.NpcOverrideEvents
 +import org.rsmod.api.player.hook.SpadeDigHook
++import org.rsmod.api.player.interact.LocOpOverrides
 +import org.rsmod.api.player.interact.NpcOpOverrides
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccess
@@ -3948,13 +4231,14 @@ index 000000000..1eabf2fc7
 +import org.rsmod.api.script.onPlayerLogout
 +import org.rsmod.api.script.onProtectedEvent
 +import org.rsmod.api.table.TrailBeginnerCasketRow
-+import org.rsmod.api.table.TrailBeginnerStepsRow
++import org.rsmod.api.table.cluehelper.CluehelperOutfitRow
 +import org.rsmod.content.interfaces.emotes.PlayEmote
 +import org.rsmod.game.MapClock
 +import org.rsmod.game.cheat.Cheat
 +import org.rsmod.game.entity.Npc
 +import org.rsmod.game.entity.Player
 +import org.rsmod.game.interact.InteractionOp
++import org.rsmod.game.inv.InvObj
 +import org.rsmod.map.CoordGrid
 +import org.rsmod.plugin.scripts.PluginScript
 +import org.rsmod.plugin.scripts.ScriptContext
@@ -3962,21 +4246,20 @@ index 000000000..1eabf2fc7
 +import org.rsmod.routefinder.flag.CollisionFlag
 +
 +/**
-+ * Beginner Treasure Trails (OSRS Wiki: Clue scroll (beginner), Reward casket (beginner)). A clue
-+ * is 1-3 steps (10/45/45%), each a row of `trail_beginner_steps`: talk to an npc, perform an emote
-+ * at a spot (Uri then appears and hands over the next step), dig at a map spot, bring Charlie the
-+ * Tramp the item he asks for, or find a hot-cold spot with Reldo's strange device. Reading the
-+ * scroll opens `trail_cluetext` (203) with the step's text, or the step's map interface (346-356):
-+ * what RuneLite's Clue Scroll plugin reads. A finished trail leaves a reward casket, whose
-+ * opening message and `trail_rewardinv` (141) contents are what the Loot Tracker records.
-+ *
-+ * Not done: scroll cases (and the scroll box stack limit), the 10-hour unique restriction.
++ * Treasure Trails on Jagex's own clue data (the `cluehelper_*` dbtables, see [TrailSteps]). A
++ * trail is a number of steps ([TrailTier.lengths]); reading the scroll opens `trail_cluetext` (203)
++ * with the step's text or the step's map interface: what RuneLite's Clue Scroll plugin reads. Steps
++ * are npc talks, Charlie the Tramp's tasks, Reldo's hot-cold device, loc searches, digs and emotes
++ * (Uri then appears). Tiers with one scroll obj per step swap the obj as the trail moves on. A
++ * finished trail leaves a reward casket, whose opening message and `trail_rewardinv` (141) are what
++ * the Loot Tracker records.
 + */
 +@Singleton
-+class BeginnerClueScript
++class TreasureTrailScript
 +@Inject
 +constructor(
-+    private val overrides: NpcOpOverrides,
++    private val npcOverrides: NpcOpOverrides,
++    private val locOverrides: LocOpOverrides,
 +    private val npcRepo: NpcRepository,
 +    private val objRepo: ObjRepository,
 +    private val collision: CollisionFlagMap,
@@ -3988,104 +4271,172 @@ index 000000000..1eabf2fc7
 +    fun uriOf(player: Player): Npc? = uris[player]
 +
 +    override fun ScriptContext.startup() {
-+        onOpHeld1(CLUE) { read() }
-+        onOpHeld2(CLUE) { checkSteps() }
-+        onOpHeld1(DEVICE) { feelDevice() }
-+        onOpHeld1(SCROLL_BOX) { openScrollBox() }
-+        onOpHeld1(CASKET) { openCasketAndShow() }
-+        onIfClose(REWARD_INTERFACE) { player.invClear(player.invMap.getOrPut(REWARD_INV)) }
-+        for (npc in STEPS.mapNotNull { it.npc?.id }.toSet()) {
-+            overrides.register(npc, InteractionOp.Op1) { player, _ -> npcStep(player)?.npc?.id == npc }
-+            onProtectedEvent<NpcOverrideEvents.Op>(NpcOverrideEvents.key(npc, InteractionOp.Op1)) {
-+                talkToStepNpc(it.npc)
-+            }
++        for (obj in clueObjs()) {
++            onOpHeld1(obj) { read(it.type) }
++            onOpHeld2(obj) { checkSteps(it.type) }
 +        }
++        for (tier in TrailTier.entries) {
++            onOpHeld1(tier.scrollBox) { openScrollBox(tier) }
++        }
++        onOpHeld1(BEGINNER_CASKET) { openCasketAndShow() }
++        onOpHeld1(DEVICE) { feelDevice() }
++        onIfClose(REWARD_INTERFACE) { player.invClear(player.invMap.getOrPut(REWARD_INV)) }
++        registerNpcSteps()
++        registerLocSteps()
 +        onEvent<PlayEmote> { emoted(player, seq.id) }
-+        onOpNpc1(URI) { talkToUri(it.npc) }
++        for (tier in TrailTier.entries) onOpNpc1(tier.uri) { talkToUri(it.npc) }
 +        onPlayerLogout { uris.remove(player)?.let(::leave) }
 +        onCommand("clue") {
-+            desc = "Get a beginner clue scroll: ::clue [step, e.g. map_draynor_bank] [steps left]"
++            desc = "Get a clue scroll: ::clue [beginner|easy] [step row or 'list'] [steps left]"
 +            cheat(::giveClue)
 +        }
 +    }
 +
-+    private fun ProtectedAccess.read() {
-+        val step = currentStep(player) ?: rollTrail(player)
-+        val map = step.map
++    private fun clueObjs(): Set<String> =
++        TrailTier.entries
++            .flatMap { tier -> tier.clueObj?.let(::listOf) ?: TrailSteps.STEP_OBJS.getValue(tier).values.map(::objName) }
++            .plus(TrailTier.entries.map { it.dropObj })
++            .toSet()
++
++    private fun ScriptContext.registerNpcSteps() {
++        val npcs = TrailSteps.ALL.values.flatten().flatMap { npcsOf(it) }.toSet()
++        for (npc in npcs) {
++            npcOverrides.register(npc, InteractionOp.Op1) { player, _ -> npcStep(player, npc) != null }
++            onProtectedEvent<NpcOverrideEvents.Op>(NpcOverrideEvents.key(npc, InteractionOp.Op1)) {
++                talkToStepNpc(it.npc, npc)
++            }
++        }
++    }
++
++    private fun ScriptContext.registerLocSteps() {
++        val searches = TrailSteps.ALL.values.flatten().filterIsInstance<TrailStep.Search>()
++        for ((loc, op) in searches.flatMap { it.locs }.map { it.first }.toSet().mapNotNull { searchOp(it) }) {
++            locOverrides.register(loc, op) { player, bound -> searchStep(player, loc, bound.coords) != null }
++            onProtectedEvent<LocOverrideEvents.Op>(LocOverrideEvents.key(loc, op)) {
++                val step = searchStep(player, loc, it.loc.coords) ?: return@onProtectedEvent
++                completeStep(step)
++            }
++        }
++    }
++
++    private fun searchOp(loc: Int): Pair<Int, InteractionOp>? {
++        val type = ServerCacheManager.getObject(loc) ?: return null
++        val op = InteractionOp.entries.firstOrNull { type.actions.getOpOrNull(it.slot - 1) == "Search" }
++        return op?.let { loc to it }
++    }
++
++    private fun npcsOf(step: TrailStep): Set<Int> =
++        when (step) {
++            is TrailStep.Talk -> step.npcs
++            is TrailStep.Charlie -> step.npcs
++            is TrailStep.HotCold -> step.npcs
++            else -> emptySet()
++        }
++
++    private fun ProtectedAccess.read(obj: ItemServerType) {
++        val tier = tierOf(obj.id) ?: return
++        val step = stepForRead(player, tier, obj.id)
++        val map = (step as? TrailStep.Dig)?.map
 +        if (map != null) {
 +            ifOpenMainModal(map)
 +            return
 +        }
-+        val text =
-+            if (step.type == CHARLIE_STEP && player.vars[CHARLIE_ASKED_VARP] == 0) {
-+                CHARLIE_START_TEXT
-+            } else {
-+                step.text ?: ""
-+            }
 +        ifOpenMainModal(CLUE_TEXT_INTERFACE)
-+        ifSetText(CLUE_TEXT, text)
++        ifSetText(CLUE_TEXT, readText(player, step))
 +    }
 +
-+    fun ProtectedAccess.checkSteps() {
-+        val done = player.vars[STEPS_DONE_VARP]
++    fun readText(player: Player, step: TrailStep): String {
++        if (step is TrailStep.Charlie) {
++            val task = step.tasks.firstOrNull { it.row == player.vars[step.tier.auxVarp] }
++            if (task != null) return task.text
++        }
++        return step.text ?: ""
++    }
++
++    /** The step the scroll in hand shows; a new scroll (or a dropped generic one) starts a trail. */
++    fun stepForRead(player: Player, tier: TrailTier, obj: Int): TrailStep {
++        val current = currentStep(player, tier)
++        val objRow = TrailSteps.STEP_OBJS.getValue(tier).entries.firstOrNull { it.value == obj }?.key
++        if (current != null && (objRow == null || objRow == current.row)) return current
++        if (current != null && objRow != null && player.vars[tier.stepsLeftVarp] > 0) {
++            TrailSteps.byRow(tier, objRow)?.let {
++                setStep(player, it, player.vars[tier.stepsLeftVarp])
++                return it
++            }
++        }
++        val step = objRow?.let { TrailSteps.byRow(tier, it) } ?: pickStep(tier, null)
++        setStep(player, step, random.pick(tier.lengths))
++        VarPlayerIntMapSetter.set(player, tier.stepsDoneVarp, 0)
++        swapClueObj(player, obj, step)
++        return step
++    }
++
++    @OptIn(UncheckedType::class)
++    private fun swapClueObj(player: Player, from: Int, step: TrailStep) {
++        val to = TrailSteps.clueObj(step)
++        if (from == to) return
++        val slot = player.inv.indexOfFirst { it?.id == from }
++        if (slot >= 0) player.inv[slot] = InvObj(to, 1)
++    }
++
++    fun ProtectedAccess.checkSteps(obj: ItemServerType) {
++        val tier = tierOf(obj.id) ?: return
++        val done = player.vars[tier.stepsDoneVarp]
 +        mes("You have completed $done ${if (done == 1) "step" else "steps"} on this clue scroll.")
 +    }
 +
-+    private suspend fun ProtectedAccess.talkToStepNpc(npc: Npc) {
-+        val step = npcStep(player) ?: return
-+        if (step.npc?.id != npc.visType.id) return
-+        when (step.type) {
-+            CHARLIE_STEP -> talkToCharlie(npc, step)
-+            HOT_COLD_STEP -> talkToReldo(npc)
++    private suspend fun ProtectedAccess.talkToStepNpc(npc: Npc, npcType: Int) {
++        val step = npcStep(player, npcType) ?: return
++        when (step) {
++            is TrailStep.Charlie -> talkToCharlie(npc, step)
++            is TrailStep.HotCold -> talkToReldo(npc)
 +            else ->
 +                startDialogue(npc) {
 +                    chatNpc(neutral, "Well done.")
-+                    access.completeStep()
++                    access.completeStep(step)
 +                }
 +        }
 +    }
 +
-+    private suspend fun ProtectedAccess.talkToCharlie(npc: Npc, step: TrailBeginnerStepsRow) {
-+        val item = step.item1 ?: return
-+        val request = step.request ?: return
++    private suspend fun ProtectedAccess.talkToCharlie(npc: Npc, step: TrailStep.Charlie) {
 +        val title = if (player.appearance.bodyType == Constants.bodytype_a) "sir" else "madam"
-+        if (player.vars[CHARLIE_ASKED_VARP] == 0) {
++        val task = step.tasks.firstOrNull { it.row == player.vars[step.tier.auxVarp] }
++        if (task == null) {
++            val picked = random.pick(step.tasks)
 +            startDialogue(npc) {
 +                chatNpc(neutral, "Please, $title, can you help me.")
 +                chatPlayer(neutral, "What can I do for you?")
-+                chatNpc(neutral, request)
-+                VarPlayerIntMapSetter.set(player, CHARLIE_ASKED_VARP, 1)
++                chatNpc(neutral, picked.request)
++                VarPlayerIntMapSetter.set(player, step.tier.auxVarp, picked.row)
 +                chatPlayer(happy, "Sure, I'll be glad to help a person in need.")
 +            }
 +            return
 +        }
-+        if (item.internalName !in inv) {
-+            startDialogue(npc) { chatNpc(neutral, request) }
++        if (objName(task.obj) !in inv) {
++            startDialogue(npc) { chatNpc(neutral, task.request) }
 +            return
 +        }
 +        val result = handInToCharlie(step)
 +        if (result == Advance.NONE) return
++        val item = ServerCacheManager.getItem(task.obj)?.name?.lowercase() ?: "item"
 +        startDialogue(npc) {
-+            mesbox("You give Charlie the ${item.name.lowercase()}.")
-+            access.showAdvance(result, byWhom = "Charlie gives you")
++            mesbox("You give Charlie the $item.")
++            access.showAdvance(step.tier, result, byWhom = "Charlie gives you")
 +            chatNpc(happy, "Thank you so much $title.")
 +        }
 +    }
 +
-+    fun ProtectedAccess.handInToCharlie(step: TrailBeginnerStepsRow): Advance {
-+        val item = step.item1?.internalName ?: return Advance.NONE
-+        if (player.vars[CHARLIE_ASKED_VARP] == 0 || CLUE !in inv || item !in inv) return Advance.NONE
-+        if (invDel(inv, item).failure) return Advance.NONE
-+        return advanceTrail()
++    fun ProtectedAccess.handInToCharlie(step: TrailStep.Charlie): Advance {
++        val task = step.tasks.firstOrNull { it.row == player.vars[step.tier.auxVarp] } ?: return Advance.NONE
++        if (!holdsClue(player, step) || objName(task.obj) !in inv) return Advance.NONE
++        if (invDel(inv, objName(task.obj)).failure) return Advance.NONE
++        return advanceTrail(step)
 +    }
 +
 +    private suspend fun ProtectedAccess.talkToReldo(npc: Npc) {
 +        if (playerContainsObj(DEVICE)) {
 +            startDialogue(npc) {
-+                chatPlayer(
-+                    neutral,
-+                    "Hey Reldo, I have one of those clue scrolls again, do you have any advice?",
-+                )
++                chatPlayer(neutral, "Hey Reldo, I have one of those clue scrolls again, do you have any advice?")
 +                chatNpc(
 +                    neutral,
 +                    "That strange device will guide you in the same way the key did. Feel it, but " +
@@ -4099,8 +4450,7 @@ index 000000000..1eabf2fc7
 +            chatNpc(neutral, "What can I do for you ${player.displayName}?")
 +            mesbox("You show Reldo your clue scroll.")
 +            chatNpc(quiz, "Ah! Do you know about hot and cold clues?")
-+            val knows = choice2("Yes, I do.", true, "No, I don't.", false)
-+            if (knows) {
++            if (choice2("Yes, I do.", true, "No, I don't.", false)) {
 +                chatPlayer(neutral, "Yes, I do.")
 +            } else {
 +                chatPlayer(neutral, "No, I don't.")
@@ -4120,21 +4470,21 @@ index 000000000..1eabf2fc7
 +    }
 +
 +    fun ProtectedAccess.feelDevice() {
-+        val step = currentStep(player)
-+        if (step?.type != HOT_COLD_STEP || CLUE !in inv) {
++        val step = currentStep(player, TrailTier.Beginner) as? TrailStep.HotCold
++        val spot = step?.let { hotColdSpot(player, it) }
++        if (step == null || spot == null || !holdsClue(player, step)) {
 +            mes("Nothing interesting happens.")
 +            return
 +        }
-+        mes(deviceMessage(player, step))
++        mes(deviceMessage(player, spot.coord))
 +    }
 +
-+    fun deviceMessage(player: Player, step: TrailBeginnerStepsRow): String {
++    fun hotColdSpot(player: Player, step: TrailStep.HotCold): HotColdSpot? =
++        step.spots.firstOrNull { it.row == player.vars[HOT_COLD_SPOT_VARP] }
++
++    fun deviceMessage(player: Player, spot: CoordGrid): String {
 +        val distance =
-+            if (player.coords.level == step.coord.level) {
-+                player.coords.chebyshevDistance(step.coord)
-+            } else {
-+                Int.MAX_VALUE - 1
-+            }
++            if (player.coords.level == spot.level) player.coords.chebyshevDistance(spot) else Int.MAX_VALUE - 1
 +        val last = player.vars[HOT_COLD_LAST_VARP] - 1
 +        VarPlayerIntMapSetter.set(player, HOT_COLD_LAST_VARP, distance + 1)
 +        val temperature = TEMPERATURES.first { distance >= it.first }.second
@@ -4147,11 +4497,13 @@ index 000000000..1eabf2fc7
 +    }
 +
 +    fun emoted(player: Player, seq: Int) {
-+        val step = currentStep(player) ?: return
-+        if (step.type != EMOTE_STEP || step.emote?.asRSCM(RSCMType.SEQ) != seq) return
-+        if (CLUE !in player.inv || !step.covers(player.coords)) return
++        val step =
++            TrailTier.entries
++                .mapNotNull { currentStep(player, it) as? TrailStep.Emote }
++                .firstOrNull { it.seq == seq } ?: return
++        if (!holdsClue(player, step) || !step.covers(player.coords, step.coord, TrailSteps.EMOTE_RADIUS)) return
 +        if (uris[player]?.isSlotAssigned == true) return
-+        val uri = Npc(URI, besideTile(player.coords))
++        val uri = Npc(step.tier.uri, besideTile(player.coords))
 +        uri.mode = NpcMode.None
 +        npcRepo.add(uri, URI_LIFETIME)
 +        uri.assignSpawnOwner(player, mapClock.cycle)
@@ -4160,9 +4512,9 @@ index 000000000..1eabf2fc7
 +    }
 +
 +    private suspend fun ProtectedAccess.talkToUri(uri: Npc) {
-+        val step = currentStep(player)
++        val step = TrailTier.entries.firstNotNullOfOrNull { currentStep(player, it) as? TrailStep.Emote }
 +        val owned = uris[player] === uri
-+        if (!owned || step?.type != EMOTE_STEP || !wearsItems(player, step)) {
++        if (!owned || step == null || !wearsOutfit(player, step.outfits)) {
 +            startDialogue(uri) { chatNpc(neutral, "I do not believe we have any business, Comrade.") }
 +            return
 +        }
@@ -4170,45 +4522,61 @@ index 000000000..1eabf2fc7
 +        startDialogue(uri) {
 +            chatNpc(neutral, random.pick(URI_LINES))
 +            chatPlayer(confused, "What?")
-+            access.completeStep()
++            access.completeStep(step)
 +        }
 +        leave(uri)
 +    }
 +
-+    override fun claims(player: Player): Boolean {
-+        val step = currentStep(player) ?: return false
-+        val digStep = step.type == MAP_STEP || step.type == HOT_COLD_STEP
-+        return digStep && CLUE in player.inv && step.covers(player.coords)
-+    }
++    override fun claims(player: Player): Boolean = digStep(player) != null
 +
 +    override suspend fun ProtectedAccess.dig() {
-+        completeStep()
++        val step = digStep(player) ?: return
++        completeStep(step)
 +    }
 +
-+    private suspend fun ProtectedAccess.completeStep() {
-+        showAdvance(advanceTrail(), byWhom = null)
++    fun digStep(player: Player): TrailStep? =
++        TrailTier.entries.firstNotNullOfOrNull { tier ->
++            when (val step = currentStep(player, tier)) {
++                is TrailStep.Dig -> step.takeIf { it.covers(player.coords, it.coord, it.radius) }
++                is TrailStep.HotCold -> {
++                    val spot = hotColdSpot(player, step)
++                    step.takeIf { spot != null && it.covers(player.coords, spot.coord, TrailSteps.HOT_COLD_RADIUS) }
++                }
++                else -> null
++            }?.takeIf { holdsClue(player, it) }
++        }
++
++    private suspend fun ProtectedAccess.completeStep(step: TrailStep) {
++        showAdvance(step.tier, advanceTrail(step), byWhom = null)
 +    }
 +
-+    private suspend fun ProtectedAccess.showAdvance(result: Advance, byWhom: String?) {
++    private suspend fun ProtectedAccess.showAdvance(tier: TrailTier, result: Advance, byWhom: String?) {
 +        when (result) {
-+            Advance.NEXT_CLUE -> objbox(CLUE, if (byWhom == null) "You've found a new clue!" else "$byWhom a new clue!")
-+            Advance.CASKET -> objbox(CASKET, if (byWhom == null) "You've obtained a casket!" else "$byWhom a casket!")
++            Advance.NEXT_CLUE -> {
++                val obj = objName(TrailSteps.clueObj(checkNotNull(currentStep(player, tier))))
++                objbox(obj, if (byWhom == null) "You've found a new clue!" else "$byWhom a new clue!")
++            }
++            Advance.CASKET -> objbox(tier.casket, if (byWhom == null) "You've obtained a casket!" else "$byWhom a casket!")
 +            Advance.NONE -> Unit
 +        }
 +    }
 +
-+    fun ProtectedAccess.advanceTrail(): Advance {
-+        if (CLUE !in inv) return Advance.NONE
-+        val left = player.vars[STEPS_LEFT_VARP] - 1
++    fun ProtectedAccess.advanceTrail(step: TrailStep): Advance {
++        val tier = step.tier
++        val obj = TrailSteps.clueObj(step)
++        if (player.inv.count(objName(obj)) == 0) return Advance.NONE
++        val left = player.vars[tier.stepsLeftVarp] - 1
 +        if (left > 0) {
-+            val done = player.vars[STEPS_DONE_VARP] + 1
-+            setStep(player, pickStep(currentStep(player)), left)
-+            VarPlayerIntMapSetter.set(player, STEPS_DONE_VARP, done)
++            val done = player.vars[tier.stepsDoneVarp] + 1
++            val next = pickStep(tier, step)
++            setStep(player, next, left)
++            VarPlayerIntMapSetter.set(player, tier.stepsDoneVarp, done)
++            swapClueObj(player, obj, next)
 +            return Advance.NEXT_CLUE
 +        }
-+        if (invDel(inv, CLUE).failure) return Advance.NONE
-+        clearTrail(player)
-+        invAdd(inv, CASKET)
++        if (invDel(inv, objName(obj)).failure) return Advance.NONE
++        clearTrail(player, tier)
++        invAdd(inv, tier.casket)
 +        return Advance.CASKET
 +    }
 +
@@ -4218,13 +4586,19 @@ index 000000000..1eabf2fc7
 +        CASKET,
 +    }
 +
-+    fun ProtectedAccess.openScrollBox() {
-+        if (playerContainsObj(CLUE)) {
++    fun ProtectedAccess.openScrollBox(tier: TrailTier) {
++        if (holdsTierClue(tier)) {
 +            mes("The clue box refuses to open - you already have a clue.")
 +            return
 +        }
-+        if (invDel(inv, SCROLL_BOX).failure) return
-+        invAdd(inv, CLUE)
++        if (invDel(inv, tier.scrollBox).failure) return
++        invAdd(inv, tier.dropObj)
++    }
++
++    private fun ProtectedAccess.holdsTierClue(tier: TrailTier): Boolean {
++        val objs = (tier.clueObj?.let { setOf(it.asRSCM(RSCMType.OBJ)) } ?: TrailSteps.STEP_OBJS.getValue(tier).values.toSet()) +
++            tier.dropObj.asRSCM(RSCMType.OBJ)
++        return objs.any { playerContainsObj(objName(it)) }
 +    }
 +
 +    private fun ProtectedAccess.openCasketAndShow() {
@@ -4239,18 +4613,19 @@ index 000000000..1eabf2fc7
 +    }
 +
 +    fun ProtectedAccess.openCasket(): List<Reward>? {
-+        val freed = if (inv.count(CASKET) == 1) 1 else 0
++        val tier = TrailTier.Beginner
++        val freed = if (inv.count(tier.casket) == 1) 1 else 0
 +        if (inv.freeSpace() + freed < MAX_ROLLS) {
 +            mes("You need at least $MAX_ROLLS free inventory spaces to open the casket.")
 +            return null
 +        }
-+        if (invDel(inv, CASKET).failure) return null
-+        val completed = player.vars[COMPLETED_VARP] + 1
-+        VarPlayerIntMapSetter.set(player, COMPLETED_VARP, completed)
++        if (invDel(inv, tier.casket).failure) return null
++        val completed = player.vars[tier.completedVarp] + 1
++        VarPlayerIntMapSetter.set(player, tier.completedVarp, completed)
 +        invClear(player.invMap.getOrPut(REWARD_INV))
 +        mes("Well done, you've completed the Treasure Trail!")
 +        val plural = if (completed == 1) "" else "s"
-+        mes("You have completed <col=ef1020>$completed</col> beginner Treasure Trail$plural.")
++        mes("You have completed <col=ef1020>$completed</col> ${tier.label} Treasure Trail$plural.")
 +        val rewards = rollRewards(random.of(1, MAX_ROLLS)) { random.of(it) }
 +        for (reward in rewards) {
 +            val obj = reward.obj.internalName
@@ -4263,69 +4638,67 @@ index 000000000..1eabf2fc7
 +
 +    fun giveClue(cheat: Cheat) {
 +        val player = cheat.player
-+        val name = cheat.args.getOrNull(0)
-+        val step =
-+            if (name == null) {
-+                pickStep(null)
-+            } else {
-+                STEPS.firstOrNull { STEP_NAMES[STEPS.indexOf(it)] == name }
-+            }
-+        if (step == null) {
-+            player.mes("Steps: ${STEP_NAMES.joinToString()}")
++        val tier = TrailTier.entries.firstOrNull { it.label == cheat.args.getOrNull(0) } ?: TrailTier.Beginner
++        val steps = TrailSteps.ALL.getValue(tier)
++        val arg = cheat.args.getOrNull(1)
++        if (arg == "list") {
++            player.mes("${tier.label} steps: ${steps.joinToString { "${it.row} ${it::class.simpleName}" }}")
 +            return
 +        }
-+        if (CLUE !in player.inv && player.invAdd(player.inv, CLUE).failure) {
++        val step = arg?.toIntOrNull()?.let { TrailSteps.byRow(tier, it) } ?: pickStep(tier, null)
++        val left = cheat.args.getOrNull(2)?.toIntOrNull()?.coerceIn(1, tier.lengths.max()) ?: 1
++        removeClues(player, tier)
++        if (player.invAdd(player.inv, objName(TrailSteps.clueObj(step))).failure) {
 +            player.mes("You need a free inventory space.")
 +            return
 +        }
-+        val left = cheat.args.getOrNull(1)?.toIntOrNull()?.coerceIn(1, MAX_STEPS) ?: 1
 +        setStep(player, step, left)
-+        VarPlayerIntMapSetter.set(player, STEPS_DONE_VARP, 0)
-+        player.mes("Beginner clue: ${STEP_NAMES[STEPS.indexOf(step)]}, $left step(s) left.")
++        VarPlayerIntMapSetter.set(player, tier.stepsDoneVarp, 0)
++        player.mes("${tier.label} clue: row ${step.row} (${step::class.simpleName}), $left step(s) left.")
 +    }
 +
-+    private fun rollTrail(player: Player): TrailBeginnerStepsRow {
-+        val roll = random.of(100)
-+        val steps = if (roll < 10) 1 else if (roll < 55) 2 else 3
-+        val step = pickStep(null)
-+        setStep(player, step, steps)
-+        VarPlayerIntMapSetter.set(player, STEPS_DONE_VARP, 0)
-+        return step
++    private fun removeClues(player: Player, tier: TrailTier) {
++        val objs = (tier.clueObj?.let { setOf(it.asRSCM(RSCMType.OBJ)) } ?: TrailSteps.STEP_OBJS.getValue(tier).values.toSet()) +
++            tier.dropObj.asRSCM(RSCMType.OBJ)
++        for (slot in player.inv.indices) {
++            if (player.inv[slot]?.id in objs) player.inv[slot] = null
++        }
 +    }
 +
-+    /**
-+     * Picks the next step: every talk, emote and map row is one choice, all Charlie rows together
-+     * are one, and all hot-cold rows together are one. Never the same choice as [previous].
-+     */
-+    fun pickStep(previous: TrailBeginnerStepsRow?): TrailBeginnerStepsRow {
-+        val choices = STEPS.groupBy { stepGroup(it) }.values.toList()
-+        val group = random.pick(choices.filter { previous == null || stepGroup(it[0]) != stepGroup(previous) })
-+        return random.pick(group)
++    /** Any step of [tier] but [previous]. */
++    fun pickStep(tier: TrailTier, previous: TrailStep?): TrailStep =
++        random.pick(TrailSteps.ALL.getValue(tier).filter { previous == null || it.row != previous.row })
++
++    private fun setStep(player: Player, step: TrailStep, left: Int) {
++        val tier = step.tier
++        VarPlayerIntMapSetter.set(player, tier.stepVarp, step.row)
++        VarPlayerIntMapSetter.set(player, tier.stepsLeftVarp, left)
++        VarPlayerIntMapSetter.set(player, tier.auxVarp, 0)
++        if (step is TrailStep.HotCold) {
++            VarPlayerIntMapSetter.set(player, HOT_COLD_SPOT_VARP, random.pick(step.spots).row)
++            VarPlayerIntMapSetter.set(player, HOT_COLD_LAST_VARP, 0)
++        }
 +    }
 +
-+    private fun setStep(player: Player, step: TrailBeginnerStepsRow, left: Int) {
-+        VarPlayerIntMapSetter.set(player, STEP_VARP, step.rowId)
-+        VarPlayerIntMapSetter.set(player, STEPS_LEFT_VARP, left)
-+        VarPlayerIntMapSetter.set(player, CHARLIE_ASKED_VARP, 0)
-+        VarPlayerIntMapSetter.set(player, HOT_COLD_LAST_VARP, 0)
++    private fun clearTrail(player: Player, tier: TrailTier) {
++        for (varp in listOf(tier.stepVarp, tier.stepsLeftVarp, tier.stepsDoneVarp, tier.auxVarp)) {
++            VarPlayerIntMapSetter.set(player, varp, 0)
++        }
 +    }
 +
-+    private fun clearTrail(player: Player) {
-+        VarPlayerIntMapSetter.set(player, STEP_VARP, 0)
-+        VarPlayerIntMapSetter.set(player, STEPS_LEFT_VARP, 0)
-+        VarPlayerIntMapSetter.set(player, STEPS_DONE_VARP, 0)
-+        VarPlayerIntMapSetter.set(player, CHARLIE_ASKED_VARP, 0)
-+        VarPlayerIntMapSetter.set(player, HOT_COLD_LAST_VARP, 0)
-+    }
++    fun npcStep(player: Player, npcType: Int): TrailStep? =
++        TrailTier.entries.firstNotNullOfOrNull { tier ->
++            currentStep(player, tier)?.takeIf { npcType in npcsOf(it) && holdsClue(player, it) }
++        }
 +
-+    /** The current step if it is one that an npc's Talk-to completes or moves on. */
-+    fun npcStep(player: Player): TrailBeginnerStepsRow? =
-+        currentStep(player)?.takeIf { it.npc != null && it.type != EMOTE_STEP && CLUE in player.inv }
++    fun searchStep(player: Player, loc: Int, coords: CoordGrid): TrailStep? =
++        TrailTier.entries.firstNotNullOfOrNull { tier ->
++            (currentStep(player, tier) as? TrailStep.Search)?.takeIf { step ->
++                step.locs.any { it.first == loc && it.second == coords } && holdsClue(player, step)
++            }
++        }
 +
-+    fun talkStep(player: Player): TrailBeginnerStepsRow? = npcStep(player)?.takeIf { it.type == TALK_STEP }
-+
-+    private fun wearsItems(player: Player, step: TrailBeginnerStepsRow): Boolean =
-+        listOfNotNull(step.item1, step.item2).all { it.internalName in player.worn }
++    fun holdsClue(player: Player, step: TrailStep): Boolean = player.inv.count(objName(TrailSteps.clueObj(step))) > 0
 +
 +    private fun leave(npc: Npc) {
 +        if (npc.isSlotAssigned) npcRepo.del(npc, Int.MAX_VALUE)
@@ -4344,27 +4717,20 @@ index 000000000..1eabf2fc7
 +    data class Reward(val obj: ItemServerType, val count: Int, val noted: Boolean)
 +
 +    companion object {
-+        const val CLUE = "obj.trail_clue_beginner"
-+        const val SCROLL_BOX = "obj.league_clue_box_beginner"
 +        const val DEVICE = "obj.beginner_device"
-+        const val CASKET = "obj.trail_reward_casket_beginner"
-+        const val URI = "npc.trail_beginner_uri"
++        const val BEGINNER_CASKET = "obj.trail_reward_casket_beginner"
 +        const val CLUE_TEXT_INTERFACE = "interface.trail_cluetext"
 +        const val CLUE_TEXT = "component.trail_cluetext:text"
 +        const val REWARD_INTERFACE = "interface.trail_rewardscreen"
 +        const val REWARD_INV = "inv.trail_rewardinv"
-+        const val STEP_VARP = "varp.trail_beginner_step"
-+        const val STEPS_LEFT_VARP = "varp.trail_beginner_steps_left"
-+        const val COMPLETED_VARP = "varp.trail_beginner_completed"
-+        const val STEPS_DONE_VARP = "varp.trail_beginner_steps_done"
-+        const val CHARLIE_ASKED_VARP = "varp.trail_beginner_charlie_asked"
++        const val HOT_COLD_SPOT_VARP = "varp.trail_beginner_hot_cold_spot"
 +        const val HOT_COLD_LAST_VARP = "varp.trail_beginner_hot_cold_last"
-+        const val TALK_STEP = 0
-+        const val EMOTE_STEP = 1
-+        const val MAP_STEP = 2
-+        const val CHARLIE_STEP = 3
-+        const val HOT_COLD_STEP = 4
-+        const val CHARLIE_START_TEXT = "Talk to Charlie the Tramp in Varrock."
++        const val MAX_ROLLS = 3
++        const val URI_LIFETIME = 100
++        const val CASKET_TOTAL_WEIGHT = 44280
++        const val BLOCKED_FLAGS = CollisionFlag.BLOCK_WALK or CollisionFlag.BLOCK_PLAYERS
++        val ADJACENT_OFFSETS =
++            listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1, -1 to -1, 1 to -1, -1 to 1, 1 to 1)
 +
 +        /** OSRS Wiki, Strange device: the reading for a Chebyshev distance of at least `first`. */
 +        val TEMPERATURES =
@@ -4379,26 +4745,6 @@ index 000000000..1eabf2fc7
 +                0 to "visibly shaking",
 +            )
 +
-+        private fun stepGroup(step: TrailBeginnerStepsRow): Int =
-+            when (step.type) {
-+                CHARLIE_STEP,
-+                HOT_COLD_STEP -> -step.type
-+                else -> step.rowId
-+            }
-+        const val MAX_STEPS = 3
-+        const val MAX_ROLLS = 3
-+        const val URI_LIFETIME = 100
-+        const val CASKET_TOTAL_WEIGHT = 44280
-+        const val BLOCKED_FLAGS = CollisionFlag.BLOCK_WALK or CollisionFlag.BLOCK_PLAYERS
-+        val ADJACENT_OFFSETS =
-+            listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1, -1 to -1, 1 to -1, -1 to 1, 1 to 1)
-+
-+        val STEPS: List<TrailBeginnerStepsRow> by lazy { TrailBeginnerStepsRow.all() }
-+        val STEP_NAMES: List<String> by lazy {
-+            STEPS.map {
-+                RSCM.getReverseMapping(RSCMType.DBROW, it.rowId).removePrefix("dbrow.trail_beginner_")
-+            }
-+        }
 +        val CASKET_REWARDS: List<TrailBeginnerCasketRow> by lazy { TrailBeginnerCasketRow.all() }
 +
 +        val URI_LINES =
@@ -4416,15 +4762,42 @@ index 000000000..1eabf2fc7
 +                "Would you like to buy a pewter spoon?",
 +            )
 +
-+        fun currentStep(player: Player): TrailBeginnerStepsRow? {
-+            val row = player.vars[STEP_VARP]
-+            return STEPS.firstOrNull { it.rowId == row }
++        fun objName(id: Int): String = dev.openrune.rscm.RSCM.getReverseMapping(RSCMType.OBJ, id)
++
++        fun tierOf(obj: Int): TrailTier? =
++            TrailTier.entries.firstOrNull { tier ->
++                tier.clueObj?.asRSCM(RSCMType.OBJ) == obj ||
++                    tier.dropObj.asRSCM(RSCMType.OBJ) == obj ||
++                    obj in TrailSteps.STEP_OBJS.getValue(tier).values
++            }
++
++        fun currentStep(player: Player, tier: TrailTier): TrailStep? =
++            TrailSteps.byRow(tier, player.vars[tier.stepVarp])
++
++        /** Every outfit slot that lists items needs one of them worn (any outfit row may match). */
++        fun wearsOutfit(player: Player, outfits: List<CluehelperOutfitRow>): Boolean {
++            if (outfits.isEmpty()) return true
++            val worn = player.worn.objs.filterNotNull().map { it.id }.toSet()
++            return outfits.any { outfit -> outfitSlots(outfit).all { slot -> slot.any { it.id in worn } } }
 +        }
 +
-+        fun TrailBeginnerStepsRow.covers(coords: CoordGrid): Boolean =
-+            coords.level == coord.level && coords.chebyshevDistance(coord) <= radius
++        fun outfitSlots(outfit: CluehelperOutfitRow): List<List<ItemServerType>> =
++            listOf(
++                    outfit.wearposHat,
++                    outfit.wearposBack,
++                    outfit.wearposFront,
++                    outfit.wearposRhand,
++                    outfit.wearposTorso,
++                    outfit.wearposLhand,
++                    outfit.wearposLegs,
++                    outfit.wearposHands,
++                    listOfNotNull(outfit.wearposFeet),
++                    outfit.wearposRing,
++                    listOfNotNull(outfit.wearposQuiver),
++                )
++                .filter { it.isNotEmpty() }
 +
-+        /** [rolls] picks from the casket table; [nextInt] returns 0 until its bound (exclusive). */
++        /** [rolls] picks from the beginner casket table; [nextInt] returns 0 until its bound. */
 +        fun rollRewards(rolls: Int, nextInt: (Int) -> Int): List<Reward> {
 +            val rewards = mutableListOf<Reward>()
 +            repeat(rolls) {
@@ -4450,122 +4823,9 @@ index 000000000..1eabf2fc7
 +        }
 +    }
 +}
-diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScript.kt
-new file mode 100644
-index 000000000..43d2f8f63
---- /dev/null
-+++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScript.kt
-@@ -0,0 +1,107 @@
-+package org.rsmod.content.other.treasuretrails
-+
-+import org.rsmod.api.player.output.mes
-+import org.rsmod.api.player.protect.ProtectedAccess
-+import org.rsmod.api.player.vars.VarPlayerIntMapSetter
-+import org.rsmod.api.script.onOpLoc1
-+import org.rsmod.api.script.onOpLoc2
-+import org.rsmod.api.table.TrailStashUnitsRow
-+import org.rsmod.game.entity.Player
-+import org.rsmod.plugin.scripts.PluginScript
-+import org.rsmod.plugin.scripts.ScriptContext
-+
-+/**
-+ * Beginner STASH units (OSRS Wiki: STASH). Build (op1) needs Construction 12, a hammer, a saw, 2
-+ * planks and 10 nails of one metal (not dragon), and sets the unit's `hh_constructed` varbit, which
-+ * turns the bush into the STASH and is what RuneLite's Clue Scroll plugin checks (clientscript
-+ * 1479). Search (op2) stores the unit's full item set or takes it back, with the messages the
-+ * plugin tracks ("You deposit/withdraw your items ... the STASH unit.").
-+ *
-+ * Deviation: only items in the inventory are stored (not worn ones).
-+ */
-+class StashUnitScript : PluginScript() {
-+    override fun ScriptContext.startup() {
-+        for (unit in UNITS) {
-+            onOpLoc1(unit.loc) { build(unit) }
-+            onOpLoc2(unit.loc) { search(unit) }
-+        }
-+    }
-+
-+    suspend fun ProtectedAccess.build(unit: TrailStashUnitsRow) {
-+        if (isBuilt(player, unit)) return
-+        if (stat(CONSTRUCTION) < unit.level) {
-+            mes("You need a Construction level of ${unit.level} to build this STASH unit.")
-+            return
-+        }
-+        val nails = NAILS.firstOrNull { inv.count(it) >= NAILS_NEEDED }
-+        if (HAMMER !in inv || SAW !in inv || inv.count(PLANK) < PLANKS_NEEDED || nails == null) {
-+            mes("You need a hammer, a saw, $PLANKS_NEEDED planks and $NAILS_NEEDED nails to build this.")
-+            return
-+        }
-+        anim(BUILD_ANIM)
-+        delay(BUILD_TICKS)
-+        if (invDel(inv, PLANK, PLANKS_NEEDED).failure) return
-+        if (invDel(inv, nails, NAILS_NEEDED).failure) return
-+        statAdvance(CONSTRUCTION, unit.xp.toDouble())
-+        VarPlayerIntMapSetter.set(player, unit.varbit, 1)
-+    }
-+
-+    fun ProtectedAccess.search(unit: TrailStashUnitsRow) {
-+        if (!isBuilt(player, unit)) return
-+        val items = listOf(unit.item1.internalName, unit.item2.internalName)
-+        if (isFilled(player, unit)) {
-+            if (inv.freeSpace() < items.size) {
-+                mes("You need ${items.size} free inventory spaces to take your items out.")
-+                return
-+            }
-+            for (item in items) invAdd(inv, item)
-+            setFilled(player, unit, false)
-+            mes("You withdraw your items from the STASH unit.")
-+            return
-+        }
-+        if (items.any { it !in inv }) {
-+            mes("You don't have the items to store in this STASH unit.")
-+            return
-+        }
-+        for (item in items) {
-+            if (invDel(inv, item).failure) return
-+        }
-+        setFilled(player, unit, true)
-+        mes("You deposit your items into the STASH unit.")
-+    }
-+
-+    companion object {
-+        const val CONSTRUCTION = "stat.construction"
-+        const val HAMMER = "obj.hammer"
-+        const val SAW = "obj.poh_saw"
-+        const val PLANK = "obj.woodplank"
-+        const val PLANKS_NEEDED = 2
-+        const val NAILS_NEEDED = 10
-+        const val BUILD_ANIM = "seq.human_poh_build"
-+        const val BUILD_TICKS = 3
-+        const val FILLED_VARP = "varp.trail_stash_beginner_filled"
-+        val NAILS =
-+            listOf(
-+                "obj.nails_bronze",
-+                "obj.nails_iron",
-+                "obj.nails",
-+                "obj.nails_black",
-+                "obj.nails_mithril",
-+                "obj.nails_adamant",
-+                "obj.nails_rune",
-+            )
-+
-+        val UNITS: List<TrailStashUnitsRow> by lazy { TrailStashUnitsRow.all() }
-+
-+        fun isBuilt(player: Player, unit: TrailStashUnitsRow): Boolean = player.vars[unit.varbit] == 1
-+
-+        fun isFilled(player: Player, unit: TrailStashUnitsRow): Boolean =
-+            (player.vars[FILLED_VARP] shr unit.filledBit) and 1 == 1
-+
-+        private fun setFilled(player: Player, unit: TrailStashUnitsRow, filled: Boolean) {
-+            val bit = 1 shl unit.filledBit
-+            val value = player.vars[FILLED_VARP]
-+            VarPlayerIntMapSetter.set(player, FILLED_VARP, if (filled) value or bit else value and bit.inv())
-+        }
-+    }
-+}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailsModule.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailsModule.kt
 new file mode 100644
-index 000000000..5a1e9c8b4
+index 000000000..f71271cd3
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailsModule.kt
 @@ -0,0 +1,11 @@
@@ -4576,8 +4836,8 @@ index 000000000..5a1e9c8b4
 +
 +class TreasureTrailsModule : PluginModule() {
 +    override fun bind() {
-+        bindInstance<BeginnerClueScript>()
-+        addSetBinding<SpadeDigHook>(BeginnerClueScript::class.java)
++        bindInstance<TreasureTrailScript>()
++        addSetBinding<SpadeDigHook>(TreasureTrailScript::class.java)
 +    }
 +}
 diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml

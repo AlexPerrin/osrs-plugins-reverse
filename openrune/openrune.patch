@@ -10468,16 +10468,17 @@ index a28095cd2..68553dd32 100644
                      mes("Your Varrock armour helps you smelt an extra $barName.")
 diff --git a/content/travel/fairy-rings/build.gradle.kts b/content/travel/fairy-rings/build.gradle.kts
 new file mode 100644
-index 000000000..6eb9d5aea
+index 000000000..65478ea25
 --- /dev/null
 +++ b/content/travel/fairy-rings/build.gradle.kts
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,15 @@
 +plugins {
 +    id("base-conventions")
 +    id("integration-test-suite")
 +}
 +
 +dependencies {
++    implementation(libs.rsprot.api)
 +    implementation(projects.api.pluginCommons)
 +}
 +
@@ -10578,15 +10579,16 @@ index 000000000..6a9e7a50f
 +}
 diff --git a/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
 new file mode 100644
-index 000000000..06c57b048
+index 000000000..6d286376b
 --- /dev/null
 +++ b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
-@@ -0,0 +1,188 @@
+@@ -0,0 +1,190 @@
 +package org.rsmod.content.travel.fairyrings
 +
 +import dev.openrune.rscm.RSCM.asRSCM
 +import dev.openrune.rscm.RSCMType
 +import dev.openrune.types.aconverted.interf.IfButtonOp
++import net.rsprot.protocol.game.outgoing.misc.player.TriggerOnDialogAbort
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.player.righthand
@@ -10670,6 +10672,7 @@ index 000000000..06c57b048
 +        val id = player.dial1 * 100 + player.dial2 * 10 + player.dial3
 +        val row = FairyringRow.all().firstOrNull { it.id == id }
 +        ifClose()
++        player.client.write(TriggerOnDialogAbort)
 +        travel(row?.takeIf { isDestination(it) })
 +    }
 +

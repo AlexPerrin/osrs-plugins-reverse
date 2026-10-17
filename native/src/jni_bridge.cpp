@@ -736,10 +736,11 @@ jobjectArray n_script_event_args(JNIEnv* env, jclass) {
 
 // A widget's stored CS2 listener (CC_SETON*/IF_SETON* slot, same {+8 count, +0x10 variants} layout
 // as a ScriptEvent, docs/offsets.md) as {scriptId, args...}, or null when none is set. Offsets are
-// whitelisted: onLoad, onVarTransmit, onInvTransmit, onStatTransmit, onTimer, onOp, onKey.
+// whitelisted: onLoad, onDrag, onDragComplete, onVarTransmit, onInvTransmit, onStatTransmit, onTimer,
+// onOp, onKey.
 static uintptr_t widget_or_child(jint id, jint index);
 jobjectArray n_widget_listener(JNIEnv* env, jclass, jint id, jint index, jint offset) {
-    static constexpr int kSlots[] = {0x350, 0x590, 0x5d8, 0x620, 0x668, 0x698, 0x758};
+    static constexpr int kSlots[] = {0x350, 0x4d0, 0x500, 0x590, 0x5d8, 0x620, 0x668, 0x698, 0x758};
     if (!client_thread::on_client_thread()) return nullptr;
     bool ok = false;
     for (int o : kSlots) ok |= o == offset;
@@ -747,6 +748,24 @@ jobjectArray n_widget_listener(JNIEnv* env, jclass, jint id, jint index, jint of
     if (!w || *reinterpret_cast<const uint64_t*>(w + offset + 8) == 0) return nullptr;
     auto args = game::script_event_args(w + offset);
     return args.empty() ? nullptr : script_args_to_java(env, args);
+}
+
+// Clears a widget's CS2 listener slot the way CC_SETON*/IF_SETON* with script -1 does (setter
+// `0x4e4fe0`'s -1 path zeroes the slot's count `+8` and variants `+0x10`). The variants array is
+// leaked, not freed (the game's path runs each variant's destructor, then frees it; a few bytes per
+// plugin clear). Desktop's Widget.setOn*Listener writes the one listener slot, so a plugin's Java
+// listener (or null) replaces the game's script there too.
+// unverified: on the device (QH's bank tab clears 12:42's onTimer)
+jboolean n_widget_clear_listener(JNIEnv*, jclass, jint id, jint index, jint offset) {
+    static constexpr int kSlots[] = {0x4d0, 0x590, 0x668};  // onDrag, onVarTransmit, onTimer
+    if (!client_thread::on_client_thread()) return false;
+    bool ok = false;
+    for (int o : kSlots) ok |= o == offset;
+    uintptr_t w = ok ? widget_or_child(id, index) : 0;
+    if (!w) return false;
+    *reinterpret_cast<uint64_t*>(w + offset + 8) = 0;
+    *reinterpret_cast<uint64_t*>(w + offset + 0x10) = 0;
+    return true;
 }
 
 // A widget's transmit trigger list (the varps/invs/stats its onVarTransmit/onInvTransmit/
@@ -1532,6 +1551,7 @@ const JNINativeMethod kNatives[] = {
     {"scriptActiveWidget", "(Z)[I", reinterpret_cast<void*>(n_script_active_widget)},
     {"textWidth", "(ILjava/lang/String;)I", reinterpret_cast<void*>(n_text_width)},
     {"widgetListener", "(III)[Ljava/lang/Object;", reinterpret_cast<void*>(n_widget_listener)},
+    {"widgetClearListener", "(III)Z", reinterpret_cast<void*>(n_widget_clear_listener)},
     {"widgetTriggers", "(III)[I", reinterpret_cast<void*>(n_widget_triggers)},
     {"scriptStats", "()[J", reinterpret_cast<void*>(n_script_stats)},
 };

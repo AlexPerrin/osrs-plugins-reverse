@@ -92,6 +92,8 @@ final class Native {
     static native long widgetPtr(int id, int index);
     /** A widget's CS2 listener {scriptId, args...} stored at `offset` (0x590 onVarTransmit, ...), or null. */
     static native Object[] widgetListener(int id, int index, int offset);
+    /** Clears the game's CS2 listener at `offset` (0x4d0 onDrag, 0x590 onVarTransmit, 0x668 onTimer), as CC_SETON with -1. Client thread. */
+    static native boolean widgetClearListener(int id, int index, int offset);
     /** A widget's var/inv/stat transmit trigger ids (offset 0x5c0/0x608/0x650), or null. */
     static native int[] widgetTriggers(int id, int index, int offset);
     /**

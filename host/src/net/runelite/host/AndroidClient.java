@@ -1223,6 +1223,15 @@ public class AndroidClient extends ClientStub {
     /** The mobile client's revision (build 241.4). */
     @Override public int getRevision() { return 241; }
 
+    /**
+     * Desktop's IF1 inventory drag delay (5 cycles by default). The mobile drag block
+     * (`0x41d0a4`) only compares each widget's own dead time `+0x324` (all mobile inventories are
+     * IF3 children, which Anti Drag sets directly), so there is no global to write; kept for reads.
+     * // unverified: no IF1 inventory drag path found in the mobile drag block (static RE gen 29)
+     */
+    private volatile int inventoryDragDelay = 5;
+    @Override public void setInventoryDragDelay(int delay) { inventoryDragDelay = delay; }
+
     @Override
     public boolean isClientThread() {
         return Native.isClientThread();

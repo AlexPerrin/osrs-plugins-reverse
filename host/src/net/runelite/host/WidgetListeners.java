@@ -176,6 +176,12 @@ final class WidgetListeners {
         Map<Long, Object[]> m = javaListeners.get(kind);
         if (m == null) javaListeners.put(kind, m = new HashMap<>());
         long k = key(id, index);
+        // Desktop has one slot per listener: a Java callback (or null) replaces the game's CS2 script
+        // there, so the host clears the game's slot. A CS2 listener {scriptId, args...} (Bank Tags'
+        // and QH's onDrag 284 on layout items) isn't written to the game; its own script stays.
+        int slot = kind == TIMER ? 0x668 : kind == DRAG ? 0x4d0 : kind == VAR_TRANSMIT ? 0x590 : -1;
+        boolean cs2 = listener != null && listener.length > 0 && listener[0] instanceof Integer;
+        if (slot >= 0 && !cs2) Native.widgetClearListener(id, index, slot);
         if (listener == null || listener.length == 0 || listener[0] == null) { m.remove(k); return; }
         long ptr = Native.widgetPtr(id, index);
         if (ptr != 0) m.put(k, new Object[] {ptr, listener});

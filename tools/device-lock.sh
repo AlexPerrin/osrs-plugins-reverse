@@ -10,10 +10,15 @@
 #
 # <who> is "client" or "server". Also overwrites (never appends) /tmp/osrs-device-status
 # for anything still reading the old status file.
+#
+# LOCK_NAME=desktop selects the separate lock for the isolated desktop RuneLite
+# (tools/multiclient/desktop.sh); the default is the BlueStacks device.
 set -euo pipefail
-LOCK=/tmp/osrs-device.lock      # directory: mkdir is atomic
-GRANT=/tmp/osrs-device.grant
-STATUS=/tmp/osrs-device-status
+case "${LOCK_NAME:-device}" in
+device)  LOCK=/tmp/osrs-device.lock GRANT=/tmp/osrs-device.grant STATUS=/tmp/osrs-device-status ;;
+desktop) LOCK=/tmp/osrs-desktop.lock GRANT=/tmp/osrs-desktop.grant STATUS=/tmp/osrs-desktop-status ;;
+*) echo "unknown LOCK_NAME=$LOCK_NAME (device|desktop)"; exit 2 ;;
+esac
 
 holder() { cat "$LOCK/owner" 2>/dev/null || echo "(unknown holder)"; }
 

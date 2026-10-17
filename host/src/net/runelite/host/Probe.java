@@ -106,6 +106,9 @@ final class Probe {
                 if (eq > 0) {
                     Host.configManager.setConfiguration(a[1], a[2].substring(0, eq), a[2].substring(eq + 1));
                     Log.i(TAG, "config " + a[1] + "." + a[2]);
+                } else {  // "config <group> <key>": unsetConfiguration (test cleanup)
+                    Host.configManager.unsetConfiguration(a[1], a[2]);
+                    Log.i(TAG, "config unset " + a[1] + "." + a[2]);
                 }
                 return;
             }

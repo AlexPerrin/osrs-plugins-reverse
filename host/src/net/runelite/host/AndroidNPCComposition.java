@@ -79,7 +79,7 @@ final class AndroidNPCComposition extends NPCCompositionStub {
         return id == -1 ? null : lookup(id);
     }
     @Override public boolean isFollower() { return false; }
-    // unverified: static RE (NpcType decoder, mobile opcodes 61/62/40); probe `set 'npcdef <id> 0'`
+    // NpcType decoder, mobile opcodes 61/62/40; verified gen 28 (Man 3108 = cache), probe `set 'npcdef <id> 0'`
     @Override public int[] getModels() { return models; }
     @Override public int[] getChatheadModels() { return chatheadModels; }
     @Override public short[] getColorToReplace() { return colorFrom; }

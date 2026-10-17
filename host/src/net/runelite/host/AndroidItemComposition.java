@@ -80,10 +80,10 @@ final class AndroidItemComposition extends ItemCompositionStub {
     @Override public void setYan2d(int a) { if (v.length > 12) v[12] = a; }
     @Override public void setZan2d(int a) { if (v.length > 13) v[13] = a; }
     @Override public String[] getInventoryActions() { return actions; }
-    // unverified: static RE (ObjType +0x04, mobile opcode 0x2c); check against the cache's model ids
+    // ObjType +0x04 (mobile opcode 0x2c); verified gen 28 (bronze axe 2544, coins 2484 = cache)
     @Override public int getInventoryModel() { return inventoryModel; }
     @Override public void setInventoryModel(int m) { inventoryModel = m; }
-    // unverified: static RE (ObjType recolour/retexture arrays, opcodes 40/41)
+    // ObjType recolour/retexture arrays (opcodes 40/41); recolours verified gen 28 (bronze axe 61->5652)
     @Override public short[] getColorToReplace() { return colorFrom; }
     @Override public void setColorToReplace(short[] c) { colorFrom = c; }
     @Override public short[] getColorToReplaceWith() { return colorTo; }
@@ -92,7 +92,7 @@ final class AndroidItemComposition extends ItemCompositionStub {
     @Override public void setTextureToReplace(short[] t) { textureFrom = t; }
     @Override public short[] getTextureToReplaceWith() { return textureTo; }
     @Override public void setTextureToReplaceWith(short[] t) { textureTo = t; }
-    // unverified: static RE (ObjType +0x2c4 / +0x2c8, opcodes 113/114)
+    // ObjType +0x2c4 / +0x2c8 (opcodes 113/114); read 0/0 for items whose cache value is 0 (gen 28)
     @Override public int getAmbient() { return ambient; }
     @Override public int getContrast() { return contrast; }
     @Override public int getShiftClickActionIndex() { return shiftClickIndex; }

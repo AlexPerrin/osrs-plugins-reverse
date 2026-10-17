@@ -1156,7 +1156,7 @@ bool close_sub_interface(int component, int group, bool unload) {
 // size zoom*104 + 96; +0xc = the plane drawn into it (the cycle redraws when the render world
 // view's plane, Client[+0xc940]+0x18, differs: 0x41f22c). 0x589180(mm, plane, Scene*) clears it to
 // 0xff000000 and draws every tile, wall and map scenery of `plane` (desktop's minimap renderer).
-// Static RE gen 29 (subagent). unverified: on the device (Instance Map).
+// Static RE gen 29 (subagent). Verified 2026-10-17 gen 29 with Instance Map (planes 0 and 2).
 bool draw_minimap(int plane, std::vector<int32_t>& out) {
     uintptr_t c = client();
     if (!c || plane < 0 || plane > 3) return false;

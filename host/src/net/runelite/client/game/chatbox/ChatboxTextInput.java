@@ -23,9 +23,21 @@ public class ChatboxTextInput extends ChatboxInput implements net.runelite.clien
     private int fontID = 495;
     private boolean built;
 
+    protected final net.runelite.client.callback.ClientThread clientThread;
+
     protected ChatboxTextInput(ChatboxPanelManager chatboxPanelManager) {
-        this.chatboxPanelManager = chatboxPanelManager;
+        this(chatboxPanelManager, null);
     }
+
+    /** RuneLite's constructor: subclasses (ChatboxItemSearch, used by Bank Tags) call it. */
+    protected ChatboxTextInput(ChatboxPanelManager chatboxPanelManager, net.runelite.client.callback.ClientThread clientThread) {
+        this.chatboxPanelManager = chatboxPanelManager;
+        this.clientThread = clientThread;
+    }
+
+    /** Desktop redraws the chatbox field here; the Android dialog needs nothing (subclasses call super). */
+    protected void update() {}
+    protected void buildEdit(int x, int y, int w, int h) {}
 
     public ChatboxTextInput addCharValidator(IntPredicate v) { charValidator = charValidator.and(v); return this; }
     public ChatboxTextInput lines(int n) { lines = n; return this; }

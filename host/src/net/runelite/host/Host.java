@@ -184,6 +184,11 @@ public final class Host {
             Log.e(TAG, "could not set RuneLite.injector", t);
         }
         Sidebar.start(injector.getInstance(net.runelite.client.ui.ClientToolbar.class), new File(pluginDir).getParentFile());
+        try {
+            TouchMouse.manager = injector.getInstance(net.runelite.client.input.MouseManager.class);
+        } catch (Throwable t) {
+            Log.e(TAG, "MouseManager failed", t);
+        }
         // RuneLite core overlay (desktop adds it in RuneLite.start): draws TooltipManager's tooltips
         // at the "mouse", which is the touch point here (AndroidClient.getMouseCanvasPosition).
         try {
@@ -564,6 +569,8 @@ public final class Host {
                 Log.i(TAG, "MenuOptionClicked " + es[0]);
                 bus.post(e);
                 if (e.isConsumed()) Native.consumeMenuClick();
+                else if (es[0].targetType() == AndroidMenuEntry.T_WIDGET && WidgetListeners.dispatch(es[0], client))
+                    Native.consumeMenuClick();
                 break;
             }
             case VARBIT_CHANGED: {

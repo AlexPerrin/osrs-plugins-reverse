@@ -244,18 +244,27 @@ final class OverlayRenderer {
             OverlayPosition pos = overlay.getPreferredPosition() != null ? overlay.getPreferredPosition() : overlay.getPosition();
             Rectangle bounds = overlay.getBounds();
             Point at;
-            switch (pos) {
-                case DYNAMIC:
-                case TOOLTIP:
-                    at = new Point(0, 0);
-                    break;
-                case DETACHED:
-                    at = overlay.getPreferredLocation() != null ? overlay.getPreferredLocation() : new Point(BORDER, BORDER);
-                    break;
-                default:
-                    at = snap(cursor, pos, bounds, size);
-                    break;
+            // As RuneLite: a preferred location (Screen Markers, moved overlays) wins for any
+            // position (origins aren't kept: taken as absolute); a preferred size is applied first.
+            Point preferred = overlay.getPreferredLocation();
+            if (preferred != null) {
+                at = new Point(preferred);
+            } else {
+                switch (pos) {
+                    case DYNAMIC:
+                    case TOOLTIP:
+                        at = new Point(0, 0);
+                        break;
+                    case DETACHED:
+                        at = new Point(BORDER, BORDER);
+                        break;
+                    default:
+                        at = snap(cursor, pos, bounds, size);
+                        break;
+                }
             }
+            if (overlay.getPreferredSize() != null) bounds.setSize(overlay.getPreferredSize());
+            bounds.setLocation(at);
             CanvasGraphics g = (CanvasGraphics) root.create();
             try {
                 g.translate(at.x, at.y);

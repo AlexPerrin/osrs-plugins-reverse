@@ -981,6 +981,17 @@ void n_widget_set_text(JNIEnv* env, jclass, jint id, jint index, jstring text) {
     }
     game::widget_set_text(widget_or_child(id, index), latin1);
 }
+void n_widget_set_string(JNIEnv* env, jclass, jint id, jint index, jint which, jstring text) {
+    if (!client_thread::on_client_thread()) return;
+    std::string t;
+    if (text) t = to_latin1(env, text);
+    game::widget_set_string(widget_or_child(id, index), which, t);
+}
+jint n_widget_flags(JNIEnv*, jclass, jint id, jint index) { return game::widget_flags(widget_or_child(id, index)); }
+void n_widget_set_flags(JNIEnv*, jclass, jint id, jint index, jint flags) {
+    if (client_thread::on_client_thread()) game::widget_set_flags(widget_or_child(id, index), flags);
+}
+jlong n_widget_ptr(JNIEnv*, jclass, jint id, jint index) { return static_cast<jlong>(widget_or_child(id, index)); }
 jint n_widget_color(JNIEnv*, jclass, jint id, jint index) { return game::widget_color(widget_or_child(id, index)); }
 void n_widget_set_color(JNIEnv*, jclass, jint id, jint index, jint rgb) {
     if (client_thread::on_client_thread()) game::widget_set_color(widget_or_child(id, index), rgb);
@@ -1107,6 +1118,10 @@ const JNINativeMethod kNatives[] = {
     {"widgetSetColor", "(III)V", reinterpret_cast<void*>(n_widget_set_color)},
     {"widgetSetHidden", "(IIZ)V", reinterpret_cast<void*>(n_widget_set_hidden)},
     {"widgetSetText", "(IILjava/lang/String;)V", reinterpret_cast<void*>(n_widget_set_text)},
+    {"widgetSetString", "(IIILjava/lang/String;)V", reinterpret_cast<void*>(n_widget_set_string)},
+    {"widgetFlags", "(II)I", reinterpret_cast<void*>(n_widget_flags)},
+    {"widgetSetFlags", "(III)V", reinterpret_cast<void*>(n_widget_set_flags)},
+    {"widgetPtr", "(II)J", reinterpret_cast<void*>(n_widget_ptr)},
     {"widgetDynamicText", "(II)Ljava/lang/String;", reinterpret_cast<void*>(n_widget_dynamic_text)},
     {"widgetDynamicGeometry", "(II)[I", reinterpret_cast<void*>(n_widget_dynamic_geometry)},
     {"property", "(Ljava/lang/String;)Ljava/lang/String;", reinterpret_cast<void*>(n_property)},

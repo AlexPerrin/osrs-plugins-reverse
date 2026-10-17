@@ -563,6 +563,12 @@ public class GenHeadless {
         }
         if ((c == javax.swing.SwingUtilities.class || c == java.awt.EventQueue.class) && n.equals("isEventDispatchThread") && ps.length == 0)
             return "return Thread.currentThread() == javax.swing.SwingUtilities.__edt;";
+        // As the JDK: the event's button (press/release/click) or its extended modifiers (drags).
+        if (c == javax.swing.SwingUtilities.class && ps.length == 1 && ps[0] == java.awt.event.MouseEvent.class) {
+            int b = n.equals("isLeftMouseButton") ? 1 : n.equals("isMiddleMouseButton") ? 2 : n.equals("isRightMouseButton") ? 3 : 0;
+            int mask = b == 1 ? 1024 : b == 2 ? 2048 : 4096;
+            if (b != 0) return "return a0.getButton() == " + b + " || (a0.getModifiersEx() & " + mask + ") != 0;";
+        }
         return null;
     }
 

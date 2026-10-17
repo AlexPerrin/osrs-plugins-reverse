@@ -84,6 +84,23 @@ public class AndroidWidget extends WidgetBag {
     private String[] strings() { return Native.widgetStrings(id, childIndex()); }
     @Override public String getName() { String[] s = strings(); return s != null && s[0] != null ? s[0] : ""; }
     @Override public String getTargetVerb() { String[] s = strings(); return s != null && s[1] != null ? s[1] : ""; }
+    // Name/verb/ops written into the game widget (CC_SETOPBASE/CC_SETTARGETVERB/CC_SETOP), so the
+    // game's menu lists them; a Java onOp listener is run by WidgetListeners when one is selected.
+    @Override public Widget setName(String name) { Native.widgetSetString(id, childIndex(), -1, name != null ? name : ""); return this; }
+    @Override public void setTargetVerb(String verb) { Native.widgetSetString(id, childIndex(), -2, verb != null ? verb : ""); }
+    @Override public void setAction(int index, String action) {
+        if (index < 0 || index > 31) return;
+        Native.widgetSetString(id, childIndex(), index, action != null ? action : "");
+        WidgetListeners.syncFlags(id, childIndex());
+    }
+    @Override public void clearActions() {
+        String[] a = getActions();
+        for (int i = 0; a != null && i < a.length; i++) if (a[i] != null) Native.widgetSetString(id, childIndex(), i, "");
+        WidgetListeners.syncFlags(id, childIndex());
+    }
+    @Override public void setOnOpListener(Object... args) { WidgetListeners.setOnOp(id, childIndex(), args); }
+    @Override public Object[] getOnOpListener() { return WidgetListeners.onOp(id, childIndex()); }
+    @Override public Widget setHasListener(boolean v) { return this; }
     @Override public String[] getActions() {
         String[] s = strings();
         return s == null || s.length <= 2 ? null : java.util.Arrays.copyOfRange(s, 2, s.length);
@@ -193,7 +210,7 @@ public class AndroidWidget extends WidgetBag {
     public Widget createChild(int index, int type) {
         if (CREATE_IN_GAME && childIndex() < 0 && type != 12 && Native.isClientThread()) {
             int at = Native.widgetCreateChild(id, index, type);
-            if (at >= 0) return new Dynamic(id, at);
+            if (at >= 0) { WidgetListeners.forget(id, at); return new Dynamic(id, at); }
         }
         DetachedWidget w = new DetachedWidget(this, type);
         if (index >= 0 && index < created.size()) created.set(index, w); else created.add(w);
@@ -203,7 +220,10 @@ public class AndroidWidget extends WidgetBag {
     @Override public Widget createChild(int type) { return createChild(-1, type); }
     @Override public void deleteAllChildren() {
         created.clear();
-        if (CREATE_IN_GAME && childIndex() < 0 && Native.isClientThread()) Native.widgetDeleteChildren(id);
+        if (CREATE_IN_GAME && childIndex() < 0 && Native.isClientThread()) {
+            Native.widgetDeleteChildren(id);
+            WidgetListeners.forget(id, -1);
+        }
     }
     /** The game's CC_CREATE children (null slots stay null), then plugin-created ones. */
     @Override public Widget[] getDynamicChildren() {

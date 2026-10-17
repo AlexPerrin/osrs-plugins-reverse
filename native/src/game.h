@@ -136,6 +136,10 @@ int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colo
 void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty
 void widget_set_hidden(uintptr_t widget, bool hidden);  // game thread only, same
 bool widget_set_text(uintptr_t widget, const std::string& text);  // game thread only, same (latin-1)
+// which: -1 name (opbase), -2 target verb, 0..31 op (0-based; RuneLite setAction index). Game thread.
+bool widget_set_string(uintptr_t widget, int which, const std::string& text);
+int widget_flags(uintptr_t widget);  // +0x2b0: bit i+1 = op i shown (when no IF_SETEVENTS range covers it)
+void widget_set_flags(uintptr_t widget, int flags);  // game thread only
 struct SubInterface { int component, group, type; };  // `group` is open inside `component`; type = IF_OPENSUB modal mode (node +8)
 std::vector<SubInterface> open_sub_interfaces();
 

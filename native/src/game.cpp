@@ -690,6 +690,39 @@ bool widget_set_text(uintptr_t w, const std::string& text) {
     return true;
 }
 
+// Name (CC_SETOPBASE 1305, +0x2c0), target verb (CC_SETTARGETVERB 1306, +0x330) or op `which`
+// (0-based, CC_SETOP 1300). An op past the vector's end is first added through setOp 0x5dfae8(widget,
+// op, string*), which grows the vector (+0x2d8 header, size +0x2e0, data +0x2e8) and swaps the string
+// in (an empty inline one here, so nothing is freed); then the slot is assigned with 0x3f1498 as
+// CC_SETTEXT does. Game thread only.
+bool widget_set_string(uintptr_t w, int which, const std::string& text) {
+    if (!w || which < -2 || which > 31) return false;
+    uintptr_t dst;
+    if (which == -1) dst = w + 0x2c0;
+    else if (which == -2) dst = w + 0x330;
+    else {
+        if (static_cast<uint64_t>(which) >= read_at<uint64_t>(w + 0x2e0)) {
+            if (text.empty()) return true;
+            GameString empty{std::string()};
+            reinterpret_cast<void (*)(uintptr_t, int, void*)>(g_base + 0x5dfae8)(w, which, empty.bytes);
+            if (static_cast<uint64_t>(which) >= read_at<uint64_t>(w + 0x2e0)) return false;
+        }
+        dst = read_at<uintptr_t>(w + 0x2e8) + static_cast<size_t>(which) * 0x18;
+    }
+    GameString s(text);
+    reinterpret_cast<void* (*)(uintptr_t, const void*)>(g_base + 0x3f1498)(dst, s.bytes);
+    return true;
+}
+
+// Event flags kept in the widget (+0x2b0): the fallback of the per-component ranges that
+// IF_SETEVENTS stores (multimap at Client +0x413c30, lookups 0x460dac / 0x460e74). The menu builder
+// 0x525c78 adds op i when bit i+1 is set (0x460e74 returns (flags >> 1) & 0x3ff) or the widget has
+// an onOp listener (+0x6a0 / +0x6b0..+0x6b8).
+int widget_flags(uintptr_t w) { return w ? read_at<int32_t>(w + 0x2b0) : 0; }
+void widget_set_flags(uintptr_t w, int flags) {
+    if (w) *reinterpret_cast<volatile int32_t*>(w + 0x2b0) = flags;
+}
+
 namespace {
 // The {ctrl, Widget*} slot holding a component (group table) or a CC_CREATE child (+0xb58 array).
 uintptr_t widget_slot(int component, int index) {

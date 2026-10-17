@@ -63,6 +63,13 @@ final class Native {
     static native String[] widgetStrings(int id, int index);
     static native void widgetSetHidden(int id, int index, boolean hidden);
     static native void widgetSetText(int id, int index, String text);
+    /** which: -1 name (opbase), -2 target verb, 0..31 op (RuneLite's 0-based action index). Game thread. */
+    static native void widgetSetString(int id, int index, int which, String text);
+    /** Widget event flags (+0x2b0): bit i+1 shows op i in the game's menu. */
+    static native int widgetFlags(int id, int index);
+    static native void widgetSetFlags(int id, int index, int flags);
+    /** The game's Widget* (0 if absent): identifies a CC_CREATE child across re-creations. */
+    static native long widgetPtr(int id, int index);
     static native boolean playSound(int id, int loops, int delay);
     static native int varcInt(int id);
     static native String varcString(int id);

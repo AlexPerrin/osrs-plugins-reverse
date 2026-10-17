@@ -585,6 +585,7 @@ final class Sidebar {
                         MotionEvent e = (MotionEvent) args[0];
                         if (Native.overlayTouch(e.getActionMasked(), e.getX(), e.getY())) return true;
                         noteTouch(e.getActionMasked(), e.getX(), e.getY());
+                        if (TouchMouse.onTouch(e)) return true;
                     }
                     try {
                         return m.invoke(orig, args);

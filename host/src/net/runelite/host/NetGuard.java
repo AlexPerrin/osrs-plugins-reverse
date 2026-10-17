@@ -23,7 +23,8 @@ final class NetGuard implements okhttp3.Interceptor {
         String why = blockReason(req);
         boolean allowAll = "1".equals(prop("debug.osrsrl.netwrite"));
         if ("1".equals(prop("debug.osrsrl.netlog")) || (why != null && !allowAll)) {
-            Log.i(TAG, (why != null && !allowAll ? "blocked (" + why + "): " : "") + req.method() + " " + req.url().host() + req.url().encodedPath());
+            Log.i(TAG, (why != null && !allowAll ? "blocked (" + why + "): " : "") + req.method() + " " + req.url().host() + req.url().encodedPath()
+                    + " headers " + req.headers().names());
         }
         if (why == null || allowAll) return chain.proceed(req);
         throw new java.io.IOException("blocked by the plugin host: " + why + " (setprop debug.osrsrl.netwrite 1 to allow)");

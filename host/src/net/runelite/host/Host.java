@@ -178,7 +178,18 @@ public final class Host {
                 // HTTP for plugin services (NPCManager, HiscoreManager, ...): okhttp 3.14 (pure Java,
                 // API-compatible with the calls RuneLite's client makes).
                 // NetGuard refuses uploads (non-GET, xp/update) by default: the host plays on a test server.
-                bind(okhttp3.OkHttpClient.class).toInstance(new okhttp3.OkHttpClient.Builder().addInterceptor(new NetGuard()).build());
+                // As desktop's base client (RuneLite.buildHttpClient): every request carries
+                // "User-Agent: RuneLite/<version>-<commit>[+]" and nothing else that identifies the player.
+                final String userAgent = "RuneLite/" + net.runelite.client.RuneLiteProperties.getVersion() + "-"
+                        + net.runelite.client.RuneLiteProperties.getCommit() + (net.runelite.client.RuneLiteProperties.isDirty() ? "+" : "");
+                bind(okhttp3.OkHttpClient.class).toInstance(new okhttp3.OkHttpClient.Builder()
+                        .addNetworkInterceptor(chain -> {
+                            okhttp3.Request r = chain.request().newBuilder().header("User-Agent", userAgent).build();
+                            if ("1".equals(Native.property("debug.osrsrl.netlog")))
+                                Log.i(NetGuard.TAG, "sent " + r.method() + " " + r.url() + " " + r.headers().toString().replace('\n', ';'));
+                            return chain.proceed(r);
+                        })
+                        .addInterceptor(new NetGuard()).build());
                 bind(okhttp3.HttpUrl.class).annotatedWith(com.google.inject.name.Names.named("runelite.static.base"))
                         .toInstance(okhttp3.HttpUrl.get("https://static.runelite.net"));
                 bind(okhttp3.HttpUrl.class).annotatedWith(com.google.inject.name.Names.named("runelite.ws"))

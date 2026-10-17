@@ -259,6 +259,9 @@ bool npc_def(int id, NpcDef& out);
 // negative = up) and its height. Game thread only.
 void drawlog_cycle();  // debug.osrsrl.drawlog: which Npc objects the renderer draws (game thread)
 bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height);
+// The posed model's height (max -y over its vertices, as the desktop Model.height that
+// Actor.getLogicalHeight reports), or -1. Game thread only.
+int actor_height(uintptr_t actor);
 // A scene object's model vertices this frame (layer = SceneLayer, tag = the object's tag; same
 // vertex convention as actor_model, wall decoration offsets applied), with its local position,
 // absolute height and orientation. Game thread only.

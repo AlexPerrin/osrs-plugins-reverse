@@ -48,6 +48,8 @@ final class Native {
     static native int runEnergy();
     /** {height, x0, y0, z0, ...}: an NPC's or player's posed model this frame (unrotated); client thread only. */
     static native int[] actorModel(boolean player, int index);
+    /** Posed model height (desktop Model.height), -1 if unknown or off the game thread. */
+    static native int actorHeight(boolean player, int index);
     /** Client varcs (0 / null when unset). */
     /** {x, y, height, orientation, modelHeight, vx, vy, vz...} of a scene object's model this frame, or null. */
     static native int[] objectModel(int plane, int sceneX, int sceneY, int layer, long tag);

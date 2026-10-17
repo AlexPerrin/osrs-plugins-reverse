@@ -1735,6 +1735,17 @@ bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height) {
     return append_model(actor, 0, 0, xyz, height);
 }
 
+int actor_height(uintptr_t actor) {
+    std::vector<int32_t> xyz;
+    int field = 0;
+    if (!append_model(actor, 0, 0, xyz, field)) return -1;
+    int h = 0;
+    for (size_t i = 1; i < xyz.size(); i += 3) h = std::max(h, -xyz[i]);
+    static int logs = 0;
+    if (logs < 3) { logs++; LOGI("actor_height %d (model +0x18 = %d)", h, field); }
+    return h;
+}
+
 // Scene objects (static RE of the tile draw 0x6e1684 and the object constructors; positions are
 // local units, heights absolute). Renderable holders point at {ctrl, obj} pairs.
 //   GameObject: Renderable* +0x230, x +0x1dc, height +0x1d8, y +0x1e0, orientation +0x1e4, tag +0x1f0

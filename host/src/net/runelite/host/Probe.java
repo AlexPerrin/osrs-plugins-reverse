@@ -46,7 +46,8 @@ final class Probe {
                     + " filled " + w.isFilled() + " font " + w.getFontId() + " align " + w.getXTextAlignment() + "/" + w.getYTextAlignment()
                     + " lineh " + w.getLineHeight() + " shadow " + w.getTextShadowed() + " colour " + Integer.toHexString(w.getTextColor())
                     + " item " + w.getItemId() + " orig " + w.getOriginalX() + "," + w.getOriginalY() + " " + w.getOriginalWidth() + "x" + w.getOriginalHeight()
-                    + " modes " + w.getXPositionMode() + w.getYPositionMode() + w.getWidthMode() + w.getHeightMode() + " geo " + w.getRelativeX() + "," + w.getRelativeY() + " " + w.getWidth() + "x" + w.getHeight());
+                    + " modes " + w.getXPositionMode() + w.getYPositionMode() + w.getWidthMode() + w.getHeightMode() + " geo " + w.getRelativeX() + "," + w.getRelativeY() + " " + w.getWidth() + "x" + w.getHeight()
+                    + " dyn " + w.getDynamicChildren().length);
             }
         } catch (Throwable t) {
             Log.w(TAG, "wdump " + arg + " failed: " + t);

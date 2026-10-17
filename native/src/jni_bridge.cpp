@@ -120,6 +120,11 @@ jintArray n_actor_model(JNIEnv* env, jclass, jboolean player, jint index) {
     env->SetIntArrayRegion(arr, 1, static_cast<jsize>(xyz.size()), xyz.data());
     return arr;
 }
+jint n_actor_height(JNIEnv*, jclass, jboolean player, jint index) {
+    if (!client_thread::on_client_thread()) return -1;
+    uintptr_t a = player ? game::live_player(index) : game::live_npc(index);
+    return a ? game::actor_height(a) : -1;
+}
 // {x, y, height, orientation, modelHeight, vx, vy, vz, ...} of a scene object's model, or null.
 jintArray n_object_model(JNIEnv* env, jclass, jint plane, jint sx, jint sy, jint layer, jlong tag) {
     if (!client_thread::on_client_thread()) return nullptr;
@@ -1097,6 +1102,7 @@ const JNINativeMethod kNatives[] = {
     {"dbFieldCount", "(II)I", reinterpret_cast<void*>(n_db_field_count)},
     {"runEnergy", "()I", reinterpret_cast<void*>(n_run_energy)},
     {"actorModel", "(ZI)[I", reinterpret_cast<void*>(n_actor_model)},
+    {"actorHeight", "(ZI)I", reinterpret_cast<void*>(n_actor_height)},
     {"actorSetOverhead", "(ZILjava/lang/String;I)Z", reinterpret_cast<void*>(n_actor_set_overhead)},
     {"objectModel", "(IIIIJ)[I", reinterpret_cast<void*>(n_object_model)},
     {"varcInt", "(I)I", reinterpret_cast<void*>(n_varc_int)},

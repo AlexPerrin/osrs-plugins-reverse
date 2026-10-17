@@ -49,10 +49,10 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Combat Level | runs | precise level in the combat tab ("Combat Lvl: 126.1", verified 2026-10-16) |
 | Cannon | runs | green "30" ball count drawn on the placed cannon after Set-up + Fire on goblins, one "Your cannon is out of ammo!" notification when empty (verified 2026-10-16; the Notifier no longer posts a ChatMessage, which had made the plugin re-notify on its own line). Members items need the client's members flag: a members world started from jav_config skips setWorld, so the host applies the world flags through the game's setMembersWorld `0x642f14` when they disagree (Set-up showed without the world switcher on 2026-10-16, though the host's sync didn't need to run that time) |
 | Daily Task Indicator | runs | "You have battlestaves waiting to be collected from Zaff." on login with `::varbit 4479 1` (verified 2026-10-16) |
-| Emojis | starts | cache dir now under the app's files dir (user.home); emoji rendering in chat not possible (game chat) |
+| Emojis | starts | cache dir now under the app's files dir (user.home). Chat emoji need the font's `<img=N>` table (static RE 2026-10-16, docs/offsets.md "Mod icons": swappable, feasible) plus chat line writes; not built yet |
 | Examine | runs | "Price of Salmon: GE average 30 HA value 18" after Examine on an inventory item, one price line after OpenRune dropped its own (ChatMessageManager.queue → game chat, verified 2026-10-16). GE price is the store value (no price API) |
 | Ground Markers | runs | virtual Shift on + long-press a tile: "Mark Tile" in the plugin strip under the game menu; the tile is drawn (verified 2026-10-16). Color Tile > Pick opens the Android colour dialog and recolours the tile (verified 2026-10-16) |
-| Implings | runs | Puro-Puro (`::tele 2592 4320`): a gourmet impling outlined and named with `implings.showgourmet=HIGHLIGHT`, and caught with a butterfly net (verified 2026-10-16; the name label sits too high) |
+| Implings | runs | Puro-Puro (`::tele 2592 4320`): a gourmet impling outlined and named with `implings.showgourmet=HIGHLIGHT`, and caught with a butterfly net (verified 2026-10-16). getLogicalHeight is now the posed model's height as on desktop (was a fixed 200, label too high); label not re-checked |
 | Interact Highlight | runs | outline on the hovered NPC (long-press) and red outline on the attacked goblin (long-press + Attack, verified 2026-10-16) |
 | Inventory Tags | runs | green outline on a tagged pot; Shift + long-press an item: "Inventory tag" > Pick sets the tag (verified 2026-10-16; outlines from the game's createItemSprite) |
 | Item Charges | runs | "8" drawn on a Ring of dueling(8) in the inventory (verified 2026-10-16) |
@@ -87,6 +87,7 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Hiscore | runs | sidebar lookup of "Lynx Titan" shows the levels from the public hiscores (okhttp, off the game thread; verified 2026-10-16). The player-menu "Lookup" entry is host-side only |
 | Skill Calculator | runs | skill icons drawn as image buttons in the sidebar; picking Woodcutting fills current/target level and XP and lists the log actions (verified 2026-10-16) |
 | Menu Entry Swapper | runs | a plain tap on a banker runs "Bank" instead of "Talk-to", and the long-press menu lists "Bank Banker" first; each row runs the entry it shows (verified 2026-10-16). Taps raise MenuEntryAdded + PostMenuSort over the tapped menu and the game's select runs the entry MES leaves on top. As a menu opens, the host runs desktop's pre-open PostMenuSort (menu reported closed) and reorders the game's top-level menu nodes the way the game's own sort does (`game::menu_reorder`). With MES off, menus and taps are unchanged |
+| Clue Scroll | starts | `EXTRA=cluescrolls` (`--core cluescrolls`): starts cleanly with Quest Helper and others (2026-10-16); clue reading not checked until the server's beginner clues land (interfaces 203, 346-356) |
 
 ## Plugin Hub status
 
@@ -113,7 +114,7 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Kitten Tracker | starts | not checked |
 | Large Logout | starts | resizes desktop's logout tab (Logout interface, scripts 2243/892); the mobile UI's logout is elsewhere, not checked |
 | Radius Markers | starts | not checked |
-| Skills Tab Progress Bars | starts | builds its bars with createChild: with `debug.osrsrl.createchild 1` they go into the game's stats tab (CC_CREATE), no crash with the tab reopened (2026-10-16); bars not seen on the all-99 test account. Its ScriptPreFired needed ScriptEvent.getSource() |
+| Skills Tab Progress Bars | runs | builds its bars with createChild in the game's stats tab (CC_CREATE, default on): after `::reset` and a few hits on a rat, red progress bars on Attack/Strength/Defence/Hitpoints over a dark background bar; 17 dynamic children per tile (game's 12 + its 5) before and after reopening the tab 3x, clean fresh login (verified 2026-10-16). Its ScriptPreFired needed ScriptEvent.getSource() |
 | Tree Despawn Timer | runs | pie timer over a Lumbridge oak while chopping, green to yellow (verified 2026-10-16). Its onGameTick threw on the first ticks of a login (no local player yet), so GameTick now waits for the local player. Needed Java 9 Duration methods (CompatRewrite) |
 | Max Hit | runs | "Max Hit: 11.0" overlay (verified 2026-10-16) |
 | Wilderness Multi Lines | starts | starts; not checked (needs the Wilderness) |
@@ -285,6 +286,9 @@ in the host so agents can drive device tests. Off by default and never in the de
   (`::tele` works), `list_npcs`, `interact_npc` (Talk-to a Man), `get_dialogue` ("Hello, how's it
   going?"), `continue_dialogue`, `click` (walks), `walk_to` (exact tile), `screenshot` (894x503 in
   0.7 s). Seen once: interact_npc on an NPC near the left edge found no point; retry after moving.
+- Argument names follow each tool's schema (`tools/list`): `walk_to` takes world `x`, `y` and optional
+  `plane`, not worldX/worldY (a missing required int fails as a null `getAsInt`); `wait_for` at_tile also
+  uses `x`/`y`.
 - Token: cached per device in `~/.cache/osrs-devtools/` (0600); after a game restart or a cleared
   logcat the bridge makes one unauthenticated request, and the server logs the token again (at most
   once a second).

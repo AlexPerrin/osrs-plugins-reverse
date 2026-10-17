@@ -52,11 +52,11 @@ public class AndroidNPC extends NPCStub {
     }
 
 
-    /** Approximate model height until NPC models are read (most humanoids are ~200 units tall). */
+    /** The posed model's height, as desktop (Implings' labels); a footprint estimate without a model. */
     @Override public int getLogicalHeight() {
         net.runelite.api.NPCComposition c = getComposition();
         int size = c != null ? Math.max(1, c.getSize()) : 1;
-        return size == 1 ? 200 : 160 * size;
+        return ActorHeights.get(false, index, size == 1 ? 200 : 160 * size);
     }
 
     /**

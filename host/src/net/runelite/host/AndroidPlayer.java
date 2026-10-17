@@ -45,7 +45,7 @@ public class AndroidPlayer extends PlayerStub {
     @Override public LocalPoint getCameraFocus() { return getLocalLocation(); }
 
     // Geometry: players are 1x1; models aren't read, so hulls are boxes (as for NPCs).
-    @Override public int getLogicalHeight() { return 200; }
+    @Override public int getLogicalHeight() { return ActorHeights.get(true, index, 200); }
     @Override public int getFootprintSize() { return 1; }
     @Override public java.awt.Shape getConvexHull() {
         if (Hulls.modelHulls() && Native.isClientThread()) {

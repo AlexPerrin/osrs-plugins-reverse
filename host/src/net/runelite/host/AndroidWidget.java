@@ -183,10 +183,11 @@ public class AndroidWidget extends WidgetBag {
     // the game thread), else Java-side only (DetachedWidget, not drawn).
     private final List<Widget> created = new ArrayList<>();
     /**
-     * `setprop debug.osrsrl.createchild 1` creates plugin children in the game's tree (CC_CREATE).
-     * Off by default: Skills Tab Progress Bars crashed the game at login with it (2026-10-16).
+     * Plugin children are created in the game's tree (CC_CREATE); `setprop debug.osrsrl.createchild 0`
+     * keeps them Java-side instead. On by default since 2026-10-16 (Skills Tab Progress Bars' bars
+     * draw and update, no duplicates after reopening the tab, clean login).
      */
-    static final boolean CREATE_IN_GAME = "1".equals(Native.property("debug.osrsrl.createchild"));
+    static final boolean CREATE_IN_GAME = !"0".equals(Native.property("debug.osrsrl.createchild"));
 
     @Override
     public Widget createChild(int index, int type) {

@@ -5705,10 +5705,10 @@ index a8bc2108d..9cf4c201c 100644
  
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt
 new file mode 100644
-index 000000000..a096cccad
+index 000000000..fb9035d2f
 --- /dev/null
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt
-@@ -0,0 +1,222 @@
+@@ -0,0 +1,223 @@
 +package org.rsmod.content.other.commands
 +
 +import jakarta.inject.Inject
@@ -5777,7 +5777,7 @@ index 000000000..a096cccad
 +
 +    private fun join(player: Player) {
 +        val self = player.displayName
-+        val state = State(mutableListOf(self, "Zezima", "Woox"), mutableListOf(self, "Zezima", "Woox"), 1000L)
++        val state = State((listOf(self) + FAKE_MEMBERS).toMutableList(), (listOf(self) + FAKE_MEMBERS).toMutableList(), 1000L)
 +        states[self] = state
 +        player.client.write(
 +            UpdateFriendChatChannelFullV2(
@@ -5808,7 +5808,7 @@ index 000000000..a096cccad
 +
 +    private fun guest(player: Player) {
 +        val state = states[player.displayName] ?: return player.mes("Use ::fakeclan join first.")
-+        val members = mutableListOf("Lynx Titan", "B0aty")
++        val members = mutableListOf("Fake Guest1", "Fake Guest2")
 +        state.guestMembers = members
 +        state.guestUpdateNum = 5000L
 +        player.client.write(
@@ -5903,18 +5903,19 @@ index 000000000..a096cccad
 +    private fun fcRank(owner: String, name: String): Int =
 +        when (name) {
 +            owner -> FC_RANK_OWNER
-+            "Woox" -> FC_RANK_LIEUTENANT
++            "Fake Member2" -> FC_RANK_LIEUTENANT
 +            else -> FC_RANK_FRIEND
 +        }
 +
 +    private fun clanRank(owner: String, name: String): Int =
 +        when (name) {
 +            owner -> CLAN_RANK_OWNER
-+            "Woox" -> CLAN_RANK_ADMIN
++            "Fake Member2" -> CLAN_RANK_ADMIN
 +            else -> CLAN_RANK_FIRST
 +        }
 +
 +    private companion object {
++        val FAKE_MEMBERS = listOf("Fake Member1", "Fake Member2")
 +        const val FC_NAME = "Test FC"
 +        const val CLAN_NAME = "Test Clan"
 +        const val GUEST_NAME = "Guest Clan"

@@ -21,6 +21,36 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-17, seventeenth server dev, on OpenRune)
+
+Details in `docs/openrune-port.md`, "Seventeenth server dev" and the sections after it. Protocol unchanged.
+
+- **Deploy with `openrune/scripts/openrune.sh deploy`** (`docker compose --env-file switch.env up -d
+  --build`). A bare `docker compose up` comes up on 40255/8081 and the app cannot connect.
+- **`::fakeclan`** (test command, `content/other/commands/ChatChannelTestCommands.kt`): a fake friends chat
+  ("Test FC") and clan channel ("Test Clan") pushed to the player's own client, plus `add|del <name>`,
+  `say <name> <text>`, `guest`, `leave`. Device-checked: the chat-channel and "Your Clan" tabs, add/del
+  (single-user update and CLANCHANNEL_DELTA), and chat lines in both. The clan tab needs CLANSETTINGS_FULL
+  and varbit `clan_affinitystatus` = 3; login now sets it (and the guest one) to 1 ("No current clan").
+  The client dev verified its readers and Chat Channel with it. Args arrive lowercased, one word per name.
+  Real friends chat would cost ~1-1.5 d for one world (2 d with Setup); real clans several days.
+- **Friend List** device-checked with `tools/multiclient/desktop_login.py --user desktop` (a friend):
+  "desktop has logged in." / "has logged out." and the world in the friends tab.
+- **Diary B** device-checked: Lumbridge Teleport spell and an Al Kharid iron ore (rock at 3295,3311)
+  -> Lumbridge & Draynor 3/41, persists over a relog.
+- **GE partial fills + buy limits** (upstream 50): fills in up to 4 parts with "Grand Exchange: Bought n /
+  total x Item." lines (wording a guess); buy limits from the wiki (`enum.ge_buy_limits`, CC BY-NC-SA 3.0,
+  attributed in the file header); over-limit offers wait for the 4-hour window. Device-checked (lobsters
+  3/6/9/10, bronze pickaxes stop at 40/50).
+- Upstream: 50 patches; all `git am` on the pin (scratch clone `pin` in this session's scratchpad, branch
+  `up` with 01-50).
+- **Deployed** 14:37: 09d83ad (live = git; later commits are docs only). Tester LOGGED_IN at Lumbridge on the
+  normal build, no channel joined; 98,904 coins, 20 noted lobsters, 40 noted bronze pickaxes, a rune
+  pickaxe, an iron ore; the 1 gp lobster buy still open in GE slot 1.
+- **Next candidates** (orchestrator to pick): GE History (`ge_history_addline`) / Sets / custom ±X%;
+  real friends chat if the fake one is not enough; Better Teleport Menu item families. Held: Music area
+  sounds, remaining hunter methods, Spawn Predictor. Low: FRIENDLIST_DEL.
+
 ## Latest state (2026-10-17, sixteenth server dev, on OpenRune)
 
 Details in `docs/openrune-port.md`, "Sixteenth server dev" and the sections after it.

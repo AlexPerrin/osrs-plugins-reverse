@@ -41,6 +41,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 25 | `25-ice-mountain-music-area` | `or-cache/.../impl/Music.kt`, `.data/gamevals/area.rscm`, `dbrow.rscm`, `.data/raw-cache/map/area/ice_mountain.toml` (new) | Only Lumbridge had a modern music area; Alone (an easy clue music step) never unlocked | Polygon from the OSRS Wiki's Map:Alone; area 32762, dbrow 60920 |
 | 26 | `26-fairy-rings` | `content/travel/fairy-rings` + `fairy-rings/pack` (new modules) | Fairy rings on the cache's `fairyring` dbtable: dial 398 + travel log 381, Zanaris, Last-destination, staff check; integration tests | Server varps 63860-63861 (visited codes); no favourites, hideout sequence or per-ring quest requirements |
 | 27 | `27-essence-pouch-check-wording` | `runecrafting/.../EssencePouchScript.kt` | OSRS Check wording (number words, pure/daeyalt/guardian) that RuneLite's Ess Pouch plugin parses | |
+| 28 | `28-treasure-trails-medium` | `content/other/treasure-trails` (12 files, incl. `MediumCasketTable.kt`, `TrailKeyDropHook.kt` new) | Medium Treasure Trails: challenge scrolls, coordinates, double emotes, keys, maps, music, medium STASH units and casket; integration tests | Needs 21-24; dbtable 60008 (rows 61000-61191), varps 63870-63875; challenge dialogue wording is a best guess; no puzzle boxes |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.

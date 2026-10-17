@@ -217,6 +217,8 @@ struct DbValue {
 bool db_field(int row, int column, int tuple, std::vector<DbValue>& out);
 // The table a DB row belongs to (DBRowType +0x30), or -1 if the row doesn't exist. Game thread.
 int db_row_table(int row);
+// Number of tuples in a DB row column (db_getfieldcount, 7503); -1 if the row/column is missing.
+int db_field_count(int row, int column);
 
 // Item (obj) definitions, from the game's definition cache (loads on demand). Game thread only.
 struct ItemDef {

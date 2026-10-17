@@ -636,12 +636,24 @@ public class AndroidClient extends ClientStub {
     // Client +0x3174 / +0x2f64 (the CS2 map_world / worldflags handlers).
     @Override public int getWorld() { return Native.world(); }
 
-    /** db_getfield through the game's script VM; null off the client thread or for a missing row. */
+    /**
+     * As on desktop, the `tupleIndex`-th field of every tuple in the column (a column of type
+     * (int, string) with three tuples gives three ints for 0, three strings for 1), through the
+     * game's db_getfieldcount and db_getfield. Null off the client thread.
+     */
     @Override
     public Object[] getDBTableField(int rowID, int column, int tupleIndex) {
         if (!isClientThread()) return null;
-        Object[] r = Native.dbField(rowID, column, tupleIndex);
-        return r != null ? r : new Object[0];
+        int n = Native.dbFieldCount(rowID, column);
+        // A row without values in the column reads the table's column default (db_getfield on
+        // tuple 0 returns it), as on desktop.
+        if (n == 0) n = 1;
+        java.util.List<Object> out = new java.util.ArrayList<>();
+        for (int t = 0; t < n && t < 4096; t++) {
+            Object[] r = Native.dbField(rowID, column, t);
+            if (r != null && tupleIndex >= 0 && tupleIndex < r.length) out.add(r[tupleIndex]);
+        }
+        return out.toArray();
     }
 
     // Friends chat / clans: not in a channel (RuneLite returns null then).

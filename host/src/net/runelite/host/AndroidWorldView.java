@@ -159,9 +159,28 @@ public class AndroidWorldView extends WorldViewStub {
      * The tile the open long-press menu is for (desktop: the tile under the mouse): the tile of the
      * menu's "Walk here" entry, else the tile whose polygon contains the long-press point.
      */
+    private net.runelite.api.Tile lastSelected;
+    private long lastSelectedAt;
+
+    /**
+     * The tile the long-press menu is or was just for. While the menu is open it is computed
+     * (selectedTile, also cached when a menu opens); up to 10 s after that the last one is kept, as plugin-strip entries
+     * (Shortest Path's "Set Target") run after the game's menu has gone.
+     */
     @Override
     public net.runelite.api.Tile getSelectedSceneTile() {
-        if (!Native.menuOpen()) return null;
+        if (!Native.menuOpen()) {
+            return System.currentTimeMillis() - lastSelectedAt < 10_000 ? lastSelected : null;
+        }
+        net.runelite.api.Tile t = selectedTile();
+        if (t != null) {
+            lastSelected = t;
+            lastSelectedAt = System.currentTimeMillis();
+        }
+        return t;
+    }
+
+    private net.runelite.api.Tile selectedTile() {
         int plane = getPlane();
         net.runelite.api.Tile[][][] tiles = scene.getTiles();
         if (tiles == null || plane < 0 || plane >= tiles.length) return null;

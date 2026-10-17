@@ -239,6 +239,8 @@ public class ConfigManager {
         if (c == Duration.class) return Duration.ofMillis(Long.parseLong(s));
         if (c == Instant.class) return Instant.parse(s);
         if (c.isEnum()) return Enum.valueOf((Class<? extends Enum>) c, s);
+        Object constant = namedConstant(c, s);  // enum-like classes (FontType: REGULAR, BOLD, SMALL)
+        if (constant != null) return constant;
         return s;
     }
 
@@ -248,6 +250,8 @@ public class ConfigManager {
         // Only on/off is kept (desktop stores the whole object as JSON; sounds/tray don't apply here).
         if (o instanceof Notification) return ((Notification) o).isEnabled() ? "true" : "false";
         if (o instanceof Enum) return ((Enum<?>) o).name();
+        String constant = constantName(o);
+        if (constant != null) return constant;
         if (o instanceof Duration) return Long.toString(((Duration) o).toMillis());
         if (o instanceof Set) {
             StringBuilder sb = new StringBuilder();
@@ -294,5 +298,28 @@ public class ConfigManager {
         }
         items.sort(java.util.Comparator.comparingInt(ConfigItemDescriptor::position).thenComparing(ConfigItemDescriptor::name));
         return new ConfigDescriptor(type.getAnnotation(ConfigGroup.class), sections, items);
+    }
+
+    /** A public static final field of class c, of type c, named `name` (enum-like constant classes). */
+    private static Object namedConstant(Class<?> c, String name) {
+        try {
+            java.lang.reflect.Field f = c.getField(name);
+            int m = f.getModifiers();
+            if (java.lang.reflect.Modifier.isStatic(m) && f.getType() == c) return f.get(null);
+        } catch (ReflectiveOperationException | RuntimeException ignored) { }
+        return null;
+    }
+
+    private static String constantName(Object o) {
+        Class<?> c = o.getClass();
+        if (c.getName().startsWith("java.")) return null;
+        for (java.lang.reflect.Field f : c.getFields()) {
+            int m = f.getModifiers();
+            if (!java.lang.reflect.Modifier.isStatic(m) || f.getType() != c) continue;
+            try {
+                if (f.get(null) == o) return f.getName();
+            } catch (IllegalAccessException ignored) { }
+        }
+        return null;
     }
 }

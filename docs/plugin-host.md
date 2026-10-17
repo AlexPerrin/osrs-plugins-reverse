@@ -57,7 +57,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Object Markers | runs | Shift + long-press an object: "Mark object"; hull drawn on the tree (verified 2026-10-16). Submenus not shown |
 | Poison | runs | HP orb heart turns green when poisoned (`::varp 102 6`) and back to red when cured: Client.getSpriteOverrides writes into the game's cached sprite 1067 (verified 2026-10-16). The infobox (`poison.showInfoboxes`, off by default) threw on BufferedImage.copyData; fixed in the shim, unverified |
 | Prayer | runs | prayer orb tooltip (time remaining, prayer bonus) on a tap of the orb (verified 2026-10-16); dose indicator not checked |
-| Random Events | starts | |
+| Random Events | runs | `::randomevent` (OpenRune Genie): "[RuneLite] Random event spawned: Genie" in the game chat with `randomevents.notifyAll=true` (verified 2026-10-16). An actor that arrives already interacting now gets InteractingChanged; the plugin waits 150 ticks after start before its first notification |
 | Regeneration Meter | runs | HP ring on the HP orb (verified with `regenmeter.showWhenNoChange`); by default it draws only below full HP or spec |
 | Run Energy | runs | orb tooltip (weight, run time, 100% in) on a tap of the run orb (touch-as-mouse + TooltipOverlay, verified 2026-10-16) |
 | Timers & Buffs | runs | stamina timer InfoBox counting down after `::varbit 25 1` + `::varbit 24 20` (verified 2026-10-16); the InfoBox shows the stamina potion icon (ItemManager.getImage → the game's createItemSprite, verified 2026-10-16) |
@@ -81,6 +81,35 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Hiscore | runs | sidebar lookup of "Lynx Titan" shows the levels from the public hiscores (okhttp, off the game thread; verified 2026-10-16). The player-menu "Lookup" entry is host-side only |
 | Skill Calculator | runs | skill icons drawn as image buttons in the sidebar; picking Woodcutting fills current/target level and XP and lists the log actions (verified 2026-10-16) |
 | Menu Entry Swapper | runs | a plain tap on a banker runs "Bank" instead of "Talk-to", and the long-press menu lists "Bank Banker" first; each row runs the entry it shows (verified 2026-10-16). Taps raise MenuEntryAdded + PostMenuSort over the tapped menu and the game's select runs the entry MES leaves on top. As a menu opens, the host runs desktop's pre-open PostMenuSort (menu reported closed) and reorders the game's top-level menu nodes the way the game's own sort does (`game::menu_reorder`). With MES off, menus and taps are unchanged |
+
+## Plugin Hub status
+
+Plugin Hub plugins built from source at the commit the hub pins (`host/plugins/hub/build.sh <name>`,
+pins in `host/plugins/hub/plugins.txt`, all BSD-2 with the LICENSE kept in the jar) and converted to
+`re/host/plugins-extra/hub-<name>.jar`; run with `EXTRA="hub-<name>" tools/plugin-test.sh`. Picked by
+Plugin Hub install count (api.runelite.net `/runelite-1.13.1/pluginhub`), skipping GPU and desktop-only
+ones. Same status words as the core table. 2026-10-16: all 17 built ones start together at 30 fps.
+
+| Plugin | Status | Notes |
+|---|---|---|
+| Better NPC Highlight | runs | tile highlights on Men/Women with `BetterNpcHighlight.tileHighlight=true`, `tileNames=Man,Woman` (verified 2026-10-16) |
+| Monster HP Percentage | runs | health percentage over NPCs with `MonsterHP.npcShowAll=true` (verified 2026-10-16). Its onNpcSpawned throws for nameless multi-NPCs (null name, also on desktop) |
+| Visual Metronome | runs | tick box alternating each game tick (verified 2026-10-16) |
+| Attack Timer Metronome | runs | attack cooldown count over the player while attacking a Man (verified 2026-10-16) |
+| Customizable XP Drops | starts | total XP counter drawn; drops not checked. Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
+| Shortest Path | starts | "Set Target" in the plugin strip (Shift + long-press a tile); no path computed yet (pathfinder not created after the click). Needed getDBTableRows, getProfile, DB fields with desktop semantics, the menu tile after the menu closes |
+| Improved Tile Indicators | starts | not checked (its overlay threw before login until overlays were limited to LOGGED_IN) |
+| Inventory Setups | starts | not checked (sidebar panel). Needed jopt-simple, headless JPopupMenu children, getItemCount, DB fields |
+| Equipment Inspector | starts | not checked (needs another player). Needed headless GroupLayout builders |
+| Bank Heatmap | starts | not checked |
+| Wasted Bank Space | starts | not checked |
+| Banked Experience | starts | not checked |
+| Kitten Tracker | starts | not checked |
+| Large Logout | starts | not checked |
+| Radius Markers | starts | not checked |
+| Skills Tab Progress Bars | starts | not checked |
+| Tree Despawn Timer | starts | not checked (needed Java 9 Duration methods, CompatRewrite) |
+| Loot Lookup | untested | needs jsoup (wiki scraping); not built |
 
 ## Build and run
 

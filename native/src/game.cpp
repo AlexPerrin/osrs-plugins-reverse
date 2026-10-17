@@ -1238,6 +1238,36 @@ int db_row_table(int row) {
     return table;
 }
 
+int db_field_count(int row, int column) {
+    if (!g_build || !g_build->script_vm || row < 0 || column < 0 || column > 255) return -1;
+    uintptr_t vm = g_base + g_build->script_vm;
+    if (read_at<uint8_t>(vm + 4)) return -1;
+    int table = db_row_table(row);
+    if (table < 0) return -1;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    // The column must exist (the handler reads its type list).
+    SharedPtr t = reinterpret_cast<SharedPtr (*)(int)>(g_base + 0x5eb2c4)(table);
+    if (!t.obj) { release_shared_ptr(t.ctrl); return -1; }
+    uintptr_t types = reinterpret_cast<uintptr_t (*)(uintptr_t, int)>(g_base + 0x5ec320)(t.obj, column);
+    uint64_t ntypes = types ? read_at<uint64_t>(types + 8) : 0;
+    release_shared_ptr(t.ctrl);
+    if (ntypes == 0) return -1;
+    auto* ints = reinterpret_cast<int32_t*>(vm + 0x50);
+    *reinterpret_cast<int32_t*>(vm + 0xff0) = 2;
+    ints[0] = row;
+    ints[1] = (table << 12) | (column << 4);
+    int ok = reinterpret_cast<int (*)(uintptr_t, int)>(g_base + 0x4cd7f4)(vm, 7503);
+    int n = read_at<int32_t>(vm + 0xff0);
+    int count = ok == 1 && n == 1 ? ints[0] : -1;
+    *reinterpret_cast<int32_t*>(vm + 0xff0) = 0;
+    *reinterpret_cast<int32_t*>(vm + 0xac38) = 0;
+    *reinterpret_cast<int32_t*>(vm + 0xcb80) = 0;
+    return count;
+}
+
 bool db_field(int row, int column, int tuple, std::vector<DbValue>& out) {
     out.clear();
     if (!g_build || !g_build->script_vm || row < 0 || column < 0 || column > 255 || tuple < 0) return false;

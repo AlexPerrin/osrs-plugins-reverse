@@ -349,6 +349,22 @@ void install_menu_hook() {
     }
 }
 
+// Login screens: post despawns for what was there, without reading game memory.
+void clear_actors() {
+    std::vector<game::Npc> npcs;
+    std::vector<game::PlayerInfo> players;
+    {
+        std::lock_guard lock(g_npcs_mutex);
+        npcs.swap(g_npcs);
+    }
+    {
+        std::lock_guard lock(g_players_mutex);
+        players.swap(g_players);
+    }
+    for (const auto& o : npcs) post({EventType::NpcDespawned, o.index, o.id});
+    for (const auto& o : players) post({EventType::PlayerDespawned, o.index});
+}
+
 void after_cycle() {
     g_cycles++;
 
@@ -358,14 +374,25 @@ void after_cycle() {
         g_last_state = state;
     }
     diff_varps();
-    diff_npcs();
-    diff_players();
-    diff_inventories();
+    // Actor/inventory/menu structures are read only while the world is up (LOADING, LOGGED_IN).
+    // During CONNECTION_LOST/HOPPING (40/45) the game may be tearing them down (a session drop
+    // after a desynced packet crashed here), so nothing is read and the last lists stand; on the
+    // login screens they are empty, as on desktop.
+    bool world_up = state == 25 || state == 30;
+    if (world_up || state < 25) {
+        if (world_up) {
+            diff_npcs();
+            diff_players();
+            diff_inventories();
+        } else {
+            clear_actors();
+        }
+    }
     diff_skills();
     game::sync_members_world();
     poll_messages();
     diff_interfaces();
-    diff_menu();
+    if (world_up) diff_menu();
     game::drawlog_cycle();
     // As on desktop, the events of a tick's packets (varps, hitsplats, spawns) come before that
     // tick's GameTick, then ClientTick. Special Attack Counter matches a hitsplat to the tick

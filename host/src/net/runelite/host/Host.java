@@ -465,6 +465,11 @@ public final class Host {
                 break;
             case MENU_OPENED: {
                 AndroidClient.MENU.clearAdded();
+                // Remember the menu's tile for entries that run after the menu closes.
+                try {
+                    net.runelite.api.WorldView wv = client.getTopLevelWorldView();
+                    if (wv != null) wv.getSelectedSceneTile();
+                } catch (RuntimeException ignored) { }
                 // The game builds the whole menu at once; RuneLite posts MenuEntryAdded as each entry
                 // is inserted (bottom first), so post them now in that order, then PostMenuSort as on
                 // the frame before the menu opened (Menu Entry Swapper's order is shown), and write

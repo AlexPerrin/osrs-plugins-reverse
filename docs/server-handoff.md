@@ -39,6 +39,20 @@ Tracking, and the bird house device check. Details in `docs/openrune-port.md`, "
   Handed to the client dev as a host/plugin question. Time Tracking is not in the default plugin
   set: `tools/dex-plugin.sh --core timetracking re/host/plugins-extra/timetracking.jar`, then
   `EXTRA="timetracking" tools/plugin-test.sh` (add `devtools` and the prop for devtools).
+- **Next (approved): C, beginner clue scrolls for the Clue Scroll plugin (~1.5 days).** What the
+  plugin keys on (`re/rlsrc/.../cluescrolls/ClueScrollPlugin.java`): a "Read" menu click on an item
+  whose name starts with "Clue scroll" (beginner = obj 23182, `trail_clue_beginner`), then
+  `WidgetLoaded` of group 203 with the clue text in component 203:2 (13303810), matched against the
+  plugin's text tables (AnagramClue, CrypticClue, EmoteClue, ... beginner entries); beginner map
+  clues are whole interfaces 346-356 (`BeginnerMapClue.forWidgetID`); NPC steps use DIALOG chat
+  ("sender|message"); a chatbox item widget 12648449 showing 23182/19835 resets the clue. Plan:
+  (1) clue item + Read opening 203 with one beginner text, and one map clue interface; ask for a
+  device slot right away to settle the mobile layout of 203 and 346-356 (the main risk);
+  (2) steps: a few beginner anagram/cryptic NPC talks, an emote step, a map dig with a spade, a
+  coordinate-free dig; step state in server varps, step data in a dbtable; (3) reward casket
+  (beginner) from the wiki table, the "You have completed N beginner Treasure Trails." message;
+  (4) a drop source (implings already roll clue tertiaries; also `::clue`). Not the hot-cold
+  device, not STASH units.
 - **Device tips:** devtools `interact_object` works with `objectId` (farming patch and bird house
   base locs have no name, so `nameFilter` fails); inventory "Use" works with a long-press on the
   item, tap "Use ...", then tap the loc. Bird house space 2 is at 3679,3815; stand at 3679,3814.

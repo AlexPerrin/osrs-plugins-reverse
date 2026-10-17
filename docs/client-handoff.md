@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 28 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 29 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1088,6 +1088,35 @@ session; its notes are in `docs/android-protocol.md`.
   - **Next (gen 29)**: Chat Commands `!price` didn't rewrite on the device (probably not in the default plugin set); check with
     EXTRA=chatcommands. Device-verify the gen 28 widget listeners (Anti Drag's dead time; QH bank tab onTimer/onDrag).
     Then the remaining stub hits above, in tracked-plugin order.
+- **2026-10-17 (client dev gen 29)**, commits 2e80692..ab94e59 (progress at start: core 82/84, hub 34/37, API 640/866; end: core 84/85, hub 34/37, API 643/866).
+  - **Verified on the device**: Chat Commands `!price lobster` = "GE average 100" (RuneLite wikiPrice; needed f1b2a58: the
+    price index build threw on items without an ItemMapping, and the lookup now follows desktop's mapping-first order);
+    **Anti Drag** (new core row, runs): widget dead time `+0x324` (game's own 6), `Client.setInventoryDragDelay` stored only;
+    caveat: delays past the ~1 s long-press open the long-press menu instead (its release picked Drop once);
+    **Quest Helper bank tab** ("Tab Rune Mysteries" via the icon in the bank header, 12:1 children);
+    **SoundEffectPlayed** (inline hook at `0x4ae510` inside the sound queue `0x4ae508`; consume() drops the sound; Music's
+    mutePrayerSounds verified, `debug.osrsrl.soundlog 1`); **Client.closeInterface** (IF_CLOSESUB function `0x462384`;
+    probe `set 'wclose <group> 0'`; client-only like desktop: the server keeps the interface open until the player walks);
+    **Instance Map runs** (`drawInstanceMap` = the game's minimap renderer `0x589180` into its raster, copied into desktop's
+    736 px extended-scene layout; offsets.md "Minimap image"; static RE by a subagent).
+  - Host fixes: a Java onTimer/onDrag/onVarTransmit callback (or null) clears the game's CS2 slot (`Native.widgetClearListener`;
+    CS2 `{scriptId,...}` listeners such as Bank Tags' onDrag 284 leave the game's script; slot clearing itself unverified);
+    BufferedImage TYPE_INT_RGB starts black and stores opaque (Instance Map's image drew transparent); probe `wlisten` also
+    prints onTimer and the drag dead time/zone.
+  - Music stays starts: its buttons in 239:2 are overlapped by the track-name text 239:4 (a tap runs the game's op; long-press
+    lists "Open Search"); the search dialog opens but the list isn't filtered (needs the musicTrackFilter callback: the same
+    opcode-hook pattern as fairyringFilter in ScriptCallbacks). Not done: AreaSoundEffectPlayed (SOUND_AREA zone prot 13,
+    actor sounds), getFocusedInputFieldWidget, Widget.isIf3/setSubOp, the QH A/B on more quests (waiting for the desktop).
+  - Gotchas: after a force-stop the relaunch shows "account still logged in": wait ~20 s, Try again (958,668), Play Now.
+    Typing into chat while the QH sidebar is open goes to a sidebar text dialog (Cancel it, close the sidebar first).
+    The world map orb's long-press strip lists plugin entries twice (two orb aliases). The machine rebooted mid-gen
+    (scratchpad wiped, locks reset).
+  - **Next (gen 30)**: Instance Map inside a real instance (GWD Bandos: check and restore `godwars_counter_bandos` first);
+    the QH desktop-vs-Android A/B (Rune Mysteries 63: 1->2->3->5->6, Ernest 32) when the orchestrator frees the desktop;
+    Music's musicTrackFilter callback and its button hit-testing; AreaSoundEffectPlayed; remaining tracked stub hits:
+    Widget.setType (QH chat boxes, Resource packs), getRasterizer (Better Teleport Menu), Widget.setSubOp (Bank Tags potion
+    doses), Widget.isIf3 (Inventory Grid, assertion only), getFocusedInputFieldWidget (Key Remapping), Roof Removal, World
+    Hopper, getMapElementConfig (World Map).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

@@ -1179,7 +1179,7 @@ was verified.
 - **Jewellery teleports** (new module `content/travel/jewellery-teleports`, dbtables
   `jewellery_teleport_items` 60020 / `jewellery_teleport_dests` 60021, rows 60500-60556): games
   necklace (8), ring of dueling (8), amulet of glory (6, then uncharged), skills necklace (6, then
-  uncharged), combat bracelet (6, then uncharged). Rub = held op 3 -> `menu()` (interface 187 via
+  uncharged), combat bracelet (6, then uncharged). Rub = held op 4 (iop `[null, Wear, null, Rub, Drop]`) -> `menu()` (interface 187 via
   script 217 with hotkeys; RuneLite's Better Teleport Menu hooks scripts 217/218/219 and group 187,
   read from its dex in the previous dev's scratch `gaps/better-teleport-menu`); worn ops 2-7 =
   destinations in the wiki's worn-option order. Wiki: destinations and tiles, "You rub the

@@ -865,6 +865,27 @@ public class AndroidClient extends ClientStub {
         }
     }
 
+    /**
+     * Rows of `table` whose `column` holds `value` in field `tupleIndex` of any tuple (desktop
+     * uses the cache's DB index; this scans the table's rows). Client thread only.
+     */
+    @Override public java.util.List<Integer> getDBRowsByValue(int table, int column, int tupleIndex, Object value) {
+        if (!isClientThread() || value == null) return java.util.Collections.emptyList();
+        java.util.List<Integer> out = new java.util.ArrayList<>();
+        for (int row : getDBTableRows(table)) {
+            Object[] vals = getDBTableField(row, column, tupleIndex);
+            if (vals == null) continue;
+            for (Object v : vals) {
+                if (value.equals(v) || (value instanceof Number && v instanceof Number
+                        && ((Number) value).longValue() == ((Number) v).longValue())) {
+                    out.add(row);
+                    break;
+                }
+            }
+        }
+        return out;
+    }
+
     /** Number of item definitions: one past the highest id the game's obj cache resolves. */
     @Override public int getItemCount() {
         if (itemCount >= 0 || !isClientThread()) return Math.max(itemCount, 0);

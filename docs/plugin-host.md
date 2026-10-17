@@ -75,7 +75,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | Bank | runs | `::openbank`: the title shows the bank value, "The Bank of Gielinor (35.9K)" (verified 2026-10-16). Script 505 runs in the cycle inventory 95 arrives, so `getItemContainer` now reads the live inventory map on the game thread (it read last cycle's snapshot) |
 | Notes | runs | tap the note in the sidebar: multi-line Android prompt; OK saves it (`notes.notesData=Buy feathers`, verified 2026-10-16). Headless documents hold their text, and the prompt raises focusLost, where Notes saves |
 | Slayer | starts | task InfoBox drawn (enchanted gem "?" icon from the game's sprites) with no task |
-| NPC Aggression Timer | starts | not checked |
+| NPC Aggression Timer | runs | aggression timer InfoBox counting down (9:04 -> 8:25) after a teleport with `npcUnaggroArea.npcUnaggroAlwaysActive=true` (verified 2026-10-16) |
 | Mouse Tooltips | runs | "Eat Lobster" tooltip while a finger rests on an inventory item and "Remove Dragon dagger" on the worn weapon slot (hover entries, verified 2026-10-16) |
 | Loot Tracker | runs | sidebar: "Goblin (lvl-2) 2 gp, Total count: 1" after killing a goblin (verified 2026-10-16); local only (same-name SessionManager without a runelite.net session) |
 | Hiscore | runs | sidebar lookup of "Lynx Titan" shows the levels from the public hiscores (okhttp, off the game thread; verified 2026-10-16). The player-menu "Lookup" entry is host-side only |
@@ -97,11 +97,11 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Visual Metronome | runs | tick box alternating each game tick (verified 2026-10-16) |
 | Attack Timer Metronome | runs | attack cooldown count over the player while attacking a Man (verified 2026-10-16) |
 | Customizable XP Drops | starts | total XP counter drawn; drops not checked. Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
-| Shortest Path | starts | "Set Target" in the plugin strip (Shift + long-press a tile); no path computed yet (pathfinder not created after the click). Needed getDBTableRows, getProfile, DB fields with desktop semantics, the menu tile after the menu closes |
+| Shortest Path | runs | Shift + long-press a tile, "Set Target" in the plugin strip: red path on the scene and the minimap; from Burthorpe it routes via "Lumbridge Home Teleport" (verified 2026-10-16). Targets within its reached distance (default 5 tiles) clear at once. Needed getDBTableRows, getProfile, DB fields with desktop semantics, the menu tile after the menu closes |
 | Improved Tile Indicators | starts | not checked (its overlay threw before login until overlays were limited to LOGGED_IN) |
 | Inventory Setups | starts | not checked (sidebar panel). Needed jopt-simple, headless JPopupMenu children, getItemCount, DB fields |
 | Equipment Inspector | starts | not checked (needs another player). Needed headless GroupLayout builders |
-| Bank Heatmap | starts | not checked |
+| Bank Heatmap | starts | `::openbank`: its "Right click this button for Heatmap overlay" hint is drawn by the bank buttons (2026-10-16); the overlay itself not checked |
 | Wasted Bank Space | starts | not checked |
 | Banked Experience | starts | not checked |
 | Kitten Tracker | starts | not checked |

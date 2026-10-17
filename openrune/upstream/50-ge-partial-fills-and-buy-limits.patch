@@ -1,21 +1,27 @@
-From 5f684185a76b3455efe17f9b03ec939e94581e98 Mon Sep 17 00:00:00 2001
+From c9e8b04dca692a09bc5245187f5a74060b494267 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 14:17:03 -0400
 Subject: [PATCH] Grand Exchange: partial fills and 4-hour buy limits
 
 Fills come in up to four parts (2 ticks after Confirm, then every 5 ticks), each sent
 as a partial UPDATE_STOCKMARKET_SLOT with a "Grand Exchange: Bought/Sold n / total"
-line. Buys count against the item's buy limit (enum ge_buy_limits, generated from the
-OSRS Wiki's GELimits data); an offer over the limit stays open until the 4-hour window
-that began with the first buy ends. Limits are tracked in 16 per-player entries.
+line. Buys count against the item's buy limit (enum ge_buy_limits); an offer over the
+limit stays open until the 4-hour window that began with the first buy ends. Limits
+are tracked in 16 per-player entries.
+
+Licence note: ge_buy_limits.toml is generated from the Old School RuneScape Wiki's
+"Module:GELimits/data.json" (https://oldschool.runescape.wiki/w/Module:GELimits/data.json,
+17 October 2026), by the wiki's contributors, licensed CC BY-NC-SA 3.0
+(https://creativecommons.org/licenses/by-nc-sa/3.0/). That file stays under CC BY-NC-SA,
+which differs from OpenRune's licence; upstream may prefer to source the limits elsewhere.
 ---
  .../pack/src/main/resources/gamevals.toml     |   51 +
- .../resources/pack/configs/ge_buy_limits.toml | 4195 +++++++++++++++++
+ .../resources/pack/configs/ge_buy_limits.toml | 4199 +++++++++++++++++
  .../pack/configs/grand_exchange.toml          |  240 +
  .../grandexchange/GrandExchangeScriptTest.kt  |  109 +-
  .../interfaces/grandexchange/GrandExchange.kt |  143 +-
  .../grandexchange/GrandExchangeScript.kt      |   18 +-
- 6 files changed, 4721 insertions(+), 35 deletions(-)
+ 6 files changed, 4725 insertions(+), 35 deletions(-)
  create mode 100644 content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_buy_limits.toml
 
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
@@ -79,12 +85,16 @@ index be6d4b7d1..63e1de86e 100644
 +ge_buy_limits = 65380
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_buy_limits.toml b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_buy_limits.toml
 new file mode 100644
-index 000000000..17ffce4ed
+index 000000000..bbb8cc3c1
 --- /dev/null
 +++ b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_buy_limits.toml
-@@ -0,0 +1,4195 @@
-+# GE buy limits (4 hours) by obj, generated from the OSRS Wiki's Module:GELimits/data.json
-+# (17 October 2026 16:05:19 (UTC); wiki content, CC BY-NC-SA). Unlisted tradeables have no limit.
+@@ -0,0 +1,4199 @@
++# GE buy limits (4 hours) by obj.
++# Source: Old School RuneScape Wiki, "Module:GELimits/data.json"
++# (https://oldschool.runescape.wiki/w/Module:GELimits/data.json, data as of 17 October 2026 16:05 UTC),
++# by the wiki's contributors, licensed CC BY-NC-SA 3.0 (https://creativecommons.org/licenses/by-nc-sa/3.0/).
++# Changes: item names matched to tradeable unnoted obj symbols ("Name (qualifier)" falls back to "Name").
++# This file is under CC BY-NC-SA 3.0, not the project licence. Unlisted tradeables have no limit.
 +[[enum]]
 +isServerOnly = true
 +id = "enum.ge_buy_limits"

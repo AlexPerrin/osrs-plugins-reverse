@@ -4370,12 +4370,16 @@ index 000000000..63e1de86e
 +ge_buy_limits = 65380
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_buy_limits.toml b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_buy_limits.toml
 new file mode 100644
-index 000000000..17ffce4ed
+index 000000000..bbb8cc3c1
 --- /dev/null
 +++ b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_buy_limits.toml
-@@ -0,0 +1,4195 @@
-+# GE buy limits (4 hours) by obj, generated from the OSRS Wiki's Module:GELimits/data.json
-+# (17 October 2026 16:05:19 (UTC); wiki content, CC BY-NC-SA). Unlisted tradeables have no limit.
+@@ -0,0 +1,4199 @@
++# GE buy limits (4 hours) by obj.
++# Source: Old School RuneScape Wiki, "Module:GELimits/data.json"
++# (https://oldschool.runescape.wiki/w/Module:GELimits/data.json, data as of 17 October 2026 16:05 UTC),
++# by the wiki's contributors, licensed CC BY-NC-SA 3.0 (https://creativecommons.org/licenses/by-nc-sa/3.0/).
++# Changes: item names matched to tradeable unnoted obj symbols ("Name (qualifier)" falls back to "Name").
++# This file is under CC BY-NC-SA 3.0, not the project licence. Unlisted tradeables have no limit.
 +[[enum]]
 +isServerOnly = true
 +id = "enum.ge_buy_limits"

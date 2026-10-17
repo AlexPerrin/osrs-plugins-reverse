@@ -1498,7 +1498,10 @@ clan hall, guest channels, events) are bigger again (several days).
 - **Buy limits:** `enum.ge_buy_limits` (65380, obj -> int, pack `ge_buy_limits.toml`) generated from
   the OSRS Wiki's `Module:GELimits/data.json` (17 Oct 2026; names matched to tradeable unnoted objs, with
   "Name (qualifier)" falling back to "Name"; 4186 objs; 776 tradeable names have no wiki entry and no
-  limit). A buy counts against the limit when it fills; the 4-hour window starts at the first buy and
+  limit). **Licence:** that file is wiki content by the wiki's contributors under CC BY-NC-SA 3.0
+  (source URL, date and licence in its header and in upstream patch 50's description); OpenRune's own
+  licence is ISC-style, so the data file keeps its own licence and upstream may prefer another source.
+  A buy counts against the limit when it fills; the 4-hour window starts at the first buy and
   does not roll (as the wiki describes it). An offer over the limit stays BUYING and is looked at again
   every 100 ticks and at login. Per-player trackers: 16 entries in perm varps `ge_limitN_item/start/bought`
   (63985-64032; start in epoch minutes); with all 16 active, the oldest is reused (lenient). No connected

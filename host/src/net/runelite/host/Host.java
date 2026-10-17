@@ -163,7 +163,8 @@ public final class Host {
                                 java.util.concurrent.Executors.newSingleThreadScheduledExecutor()));
                 // HTTP for plugin services (NPCManager, HiscoreManager, ...): okhttp 3.14 (pure Java,
                 // API-compatible with the calls RuneLite's client makes).
-                bind(okhttp3.OkHttpClient.class).toInstance(new okhttp3.OkHttpClient());
+                // NetGuard refuses uploads (non-GET, xp/update) by default: the host plays on a test server.
+                bind(okhttp3.OkHttpClient.class).toInstance(new okhttp3.OkHttpClient.Builder().addInterceptor(new NetGuard()).build());
                 bind(okhttp3.HttpUrl.class).annotatedWith(com.google.inject.name.Names.named("runelite.static.base"))
                         .toInstance(okhttp3.HttpUrl.get("https://static.runelite.net"));
                 bind(okhttp3.HttpUrl.class).annotatedWith(com.google.inject.name.Names.named("runelite.ws"))

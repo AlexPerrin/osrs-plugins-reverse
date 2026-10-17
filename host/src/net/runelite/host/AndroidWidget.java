@@ -49,7 +49,7 @@ public class AndroidWidget extends WidgetBag {
     @Override public Widget setWidthMode(int v) { return set(0x44, v); }
     @Override public Widget setHeightMode(int v) { return set(0x48, v); }
     @Override public Widget setOriginalX(int v) { return set(0x4c, v); }
-    @Override public Widget setOriginalY(int v) { return set(0x50, v); }
+    @Override public Widget setOriginalY(int v) { return set(0x50, v + childYShift()); }
     @Override public Widget setOriginalWidth(int v) { return set(0x54, v); }
     @Override public Widget setOriginalHeight(int v) { return set(0x58, v); }
     @Override public Widget setFilled(boolean v) { return set(0xa8, v ? 1 : 0); }
@@ -142,7 +142,7 @@ public class AndroidWidget extends WidgetBag {
         return id < 0 ? null : GameFont.of(id);
     }
     @Override public int getOriginalX() { return prop(24, 0); }
-    @Override public int getOriginalY() { return prop(25, 0); }
+    @Override public int getOriginalY() { return prop(25, 0) - childYShift(); }
     @Override public int getXPositionMode() { return prop(26, 0); }
     @Override public int getYPositionMode() { return prop(27, 0); }
     @Override public int getOriginalWidth() { return prop(28, 0); }
@@ -185,7 +185,40 @@ public class AndroidWidget extends WidgetBag {
     @Override public int getRelativeX() { return geo()[0]; }
     @Override public int getRelativeY() { return geo()[1]; }
     @Override public int getWidth() { return geo()[2]; }
-    @Override public int getHeight() { return geo()[3]; }
+    @Override public int getHeight() { return geo()[3] - (this.getClass() == AndroidWidget.class && id == BANK_ITEMS_CONTAINER ? bankColumnShift() : 0); }
+
+    /**
+     * Mobile bank layout vs desktop: desktop's 12:9 (Bankmain.ITEMS_CONTAINER, where Bank Tags builds
+     * its tag-tab column) starts below the tab bar 12:10; the mobile 12:9 also spans the tab bar.
+     * Plugins see 12:9 as desktop does: its children's original y is shifted down by the overlap
+     * (bottom of 12:10 minus top of 12:9, from live geometry) and its height is reduced by it.
+     * // unverified: on the device.
+     */
+    static final int BANK_ITEMS_CONTAINER = 12 << 16 | 9, BANK_TABS = 12 << 16 | 10;
+    private static int shiftStamp = -1, shiftCache;
+
+    static int bankColumnShift() {
+        if (shiftStamp == Host.cycleStamp) return shiftCache;
+        shiftStamp = Host.cycleStamp;
+        shiftCache = 0;
+        if (!Native.widgetExists(BANK_ITEMS_CONTAINER) || !Native.widgetExists(BANK_TABS)) return 0;
+        AndroidWidget c = new AndroidWidget(BANK_ITEMS_CONTAINER), t = new AndroidWidget(BANK_TABS);
+        if (c.isHidden() || t.isHidden()) return 0;
+        Rectangle cb = c.getBoundsRaw(), tb = t.getBoundsRaw();
+        boolean overlapX = tb.x < cb.x + cb.width && cb.x < tb.x + tb.width;
+        int shift = tb.y + tb.height - cb.y;
+        if (overlapX && shift > 0 && shift < cb.height / 2) shiftCache = shift;
+        return shiftCache;
+    }
+
+    /** Dynamic children of the mobile bank's 12:9 get the desktop y shift. */
+    int childYShift() { return 0; }
+
+    Rectangle getBoundsRaw() {
+        Point p = getCanvasLocation();
+        int[] g = geo();
+        return new Rectangle(p.getX(), p.getY(), g[2], g[3]);
+    }
     @Override public int getParentId() { return geo()[4]; }
 
     @Override
@@ -345,6 +378,7 @@ public class AndroidWidget extends WidgetBag {
 
         @Override int[] rawGeo() { return Native.widgetDynamicGeometry(id, index); }
         @Override public int getIndex() { return index; }
+        @Override int childYShift() { return id == BANK_ITEMS_CONTAINER ? bankColumnShift() : 0; }
         @Override int childIndex() { return index; }
         @Override public String getText() { String t = Native.widgetDynamicText(id, index); return t != null ? t : ""; }
         @Override public boolean isSelfHidden() { return Native.widgetDynamicHidden(id, index); }

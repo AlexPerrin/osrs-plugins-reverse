@@ -1380,3 +1380,25 @@ device-checked yet.
   1"; after an app restart and relog the plugin gets BOUGHT (slot 0) and BUYING (slot 1) again (state
   persisted); the banker's Collect opens the Collection Box with both slots, and Inventory collects slot 0
   (the reset now hits the right slot). Left open: the 1 gp lobster buy in slot 1 (abort to clear).
+
+### Diary task progress (sixteenth server dev, diary B)
+
+`DiaryTasks` (achievement-diary module) keeps done tasks as bits in server varps
+`diary_tasks_<lumbridge|varrock>_<tier>` (63976-63983; the real per-task bits of
+`lumb_dray_achievement_diary` / `varrock_achievement_diary` are not mapped, **guess**) and drives
+what the client reads: `<area>_<easy|med|hard|elite>_count`, `started_<area>_diary`, and
+`<area>_diary_<tier>_complete` once a tier is full (re-sent at login). The journal strikes done
+tasks line by line (`<str>`). **Known gap:** no task-complete chat message; its wording is in neither
+the wiki (full-text search) nor any RuneLite/hub plugin.
+
+`DiaryHooks` calls, task numbers in journal order:
+- Lumbridge & Draynor easy 3 Sedridor's essence teleport, 4 water runes (not Ourania), 5 Hans's age,
+  7 oak logs cut and burned in Lumbridge (`diary_progress_lumbridge` 63984 bit 0 = cut), 10 bread on the
+  Lumbridge range (`content.cooking_range_lumbridge`), 11 iron ore in the Al Kharid mine; medium 5
+  Teleport to Lumbridge.
+- Varrock easy 2 Aubury's essence teleport, 4 a plank at the sawmill, 12 earth runes; medium 8 Teleport
+  to Varrock.
+- Mining and woodcutting come from `SkillingActionCompleteEvent`; the rest are one-line calls in the
+  content scripts. Area boxes (**guesses**): Lumbridge x 3170-3270, z 3190-3270; Al Kharid mine x
+  3280-3310, z 3270-3320.
+- Tests: `:content:interfaces:achievement-diary:integration` (4). Upstream `49-achievement-diary-areas-and-progress`.

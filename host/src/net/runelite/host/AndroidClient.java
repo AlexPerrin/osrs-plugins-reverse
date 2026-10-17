@@ -463,7 +463,7 @@ public class AndroidClient extends ClientStub {
     private static net.runelite.api.widgets.Widget scriptWidget(boolean dot) {
         int[] w = Native.scriptActiveWidget(dot);
         if (w == null) return null;
-        return w[1] >= 0 ? new AndroidWidget.Dynamic(w[0], w[1]) : new AndroidWidget(w[0]);
+        return AndroidWidget.of(w[0], w[1]);
     }
     /** The game redraws its chat itself; nothing to rebuild. */
     private static void removeFromGame(int type, int id) {

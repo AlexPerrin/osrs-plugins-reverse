@@ -230,6 +230,17 @@ final class Probe {
                     Log.i(TAG, "item " + id + " param " + key + " int " + ic.getIntValue(key) + " string '" + ic.getStringValue(key) + "'");
                     break;
                 }
+                case "wlisten": {  // "wlisten <group:child> <index|-1>": the game's onDrag/onDragComplete/onOp listeners
+                    int idx = Integer.parseInt(a[2]);
+                    int[] slots = {0x4d0, 0x500, 0x698};
+                    String[] names = {"onDrag", "onDragComplete", "onOp"};
+                    StringBuilder sb = new StringBuilder();
+                    for (int k = 0; k < slots.length; k++)
+                        sb.append(' ').append(names[k]).append('=').append(java.util.Arrays.toString(Native.widgetListener(id, idx, slots[k])));
+                    Log.i(TAG, "wlisten " + a[1] + "[" + idx + "] flags 0x" + Integer.toHexString(Native.widgetFlags(id, idx)) + sb
+                            + " java onDragComplete " + (WidgetListeners.onDragComplete(id, idx) != null));
+                    break;
+                }
                 case "wmove": {  // "wmove <group:child> <dx>": setOriginalX(+dx) + revalidate()
                     net.runelite.api.widgets.Widget w = c.getWidget(id);
                     if (w == null) { Log.w(TAG, "wmove: no widget " + a[1]); break; }

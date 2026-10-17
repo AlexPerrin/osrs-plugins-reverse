@@ -100,10 +100,50 @@ final class WidgetListeners {
         return v != null && v[0] == Native.widgetPtr(id, index) && op >= 0 && op < 64 && (v[1] & 1L << op) != 0;
     }
 
+    /**
+     * Java onDragComplete listeners (Widget.setOnDragCompleteListener with a JavaScriptCallback: Bank
+     * Tags' layouts, Bank Tag Layouts), keyed as onOp entries by slot and the game's Widget*. Run on
+     * the release cycle of a widget drag (Host's WIDGET_DRAG, touch state 4), before the game
+     * processes the release, so a listener's setDraggedOnWidget(null) still cancels the game's swap.
+     * The event's source is the dragged widget, its target the dragged-on widget (as desktop's
+     * onDragComplete event). // unverified: on the device (Bank Tag Layouts).
+     */
+    private static final Map<Long, Object[]> dragComplete = new HashMap<>();  // {Long ptr, Object[] listener}
+
+    static synchronized void setOnDragComplete(int id, int index, Object[] listener) {
+        long k = key(id, index);
+        boolean set = listener != null && listener.length > 0 && listener[0] != null;
+        if (!set) { dragComplete.remove(k); return; }
+        long ptr = Native.widgetPtr(id, index);
+        if (ptr == 0) return;
+        dragComplete.put(k, new Object[] {ptr, listener});
+    }
+
+    static synchronized Object[] onDragComplete(int id, int index) {
+        Object[] v = dragComplete.get(key(id, index));
+        return v != null && (Long) v[0] == Native.widgetPtr(id, index) ? (Object[]) v[1] : null;
+    }
+
+    static synchronized boolean hasDragComplete() { return !dragComplete.isEmpty(); }
+
+    /** Release cycle of a drag of `src` (component, index) onto `tgt` (component < 0: none). Game thread. */
+    static void runDragComplete(net.runelite.api.Client client, int srcId, int srcIndex, int tgtId, int tgtIndex) {
+        Object[] l = onDragComplete(srcId, srcIndex);
+        if (l == null || !(l[0] instanceof JavaScriptCallback)) return;
+        AndroidScriptEvent ev = new AndroidScriptEvent(client, l);
+        ev.setSource(AndroidWidget.of(srcId, srcIndex));
+        ev.setTarget(tgtId >= 0 ? AndroidWidget.of(tgtId, tgtIndex) : null);
+        if ("1".equals(Native.property("debug.osrsrl.draglog")))
+            android.util.Log.i(Host.TAG, "onDragComplete listener: " + (srcId >>> 16) + ":" + (srcId & 0xffff) + "[" + srcIndex + "] on "
+                    + (tgtId >= 0 ? (tgtId >>> 16) + ":" + (tgtId & 0xffff) + "[" + tgtIndex + "]" : "none"));
+        ((JavaScriptCallback) l[0]).run(ev);
+    }
+
     /** Created children of `id` were deleted (or one is re-created at `index`; -1 = all). */
     static synchronized void forget(int id, int index) {
-        if (index >= 0) { entries.remove(key(id, index)); return; }
+        if (index >= 0) { entries.remove(key(id, index)); dragComplete.remove(key(id, index)); return; }
         entries.keySet().removeIf(k -> (int) (k >>> 32) == id && (int) (long) k >= 0);
+        dragComplete.keySet().removeIf(k -> (int) (k >>> 32) == id && (int) (long) k >= 0);
     }
 
     /**
@@ -124,7 +164,7 @@ final class WidgetListeners {
         }
         Object[] l = e != null ? e.onOp : null;
         if (l == null || !(l[0] instanceof JavaScriptCallback)) return false;
-        Widget source = index >= 0 ? new AndroidWidget.Dynamic(id, index) : new AndroidWidget(id);
+        Widget source = AndroidWidget.of(id, index);
         AndroidScriptEvent ev = new AndroidScriptEvent(client, l);
         ev.setSource(source);
         ev.setOp(entry.getIdentifier());

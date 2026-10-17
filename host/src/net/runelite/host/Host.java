@@ -650,7 +650,10 @@ public final class Host {
                 // dead zone/time, including the release cycle, where getMouseCurrentButton reads 0 and
                 // setDraggedOnWidget(null) still cancels the game's swap.
                 // Verified 2026-10-17 (Spellbook reorder, inventory drag).
-                if (!bus.hasSubscribers(net.runelite.api.events.WidgetDrag.class)) break;
+                // On the release cycle the dragged widget's Java onDragComplete listener runs after
+                // WidgetDrag, still before the game's swap (WidgetListeners.runDragComplete).
+                boolean dragSubs = bus.hasSubscribers(net.runelite.api.events.WidgetDrag.class);
+                if (!dragSubs && !(a == 4 && WidgetListeners.hasDragComplete())) break;
                 int[] d = Native.dragState();
                 if (d == null || d[4] == 0) break;
                 AndroidClient ac = (AndroidClient) client;
@@ -658,7 +661,13 @@ public final class Host {
                     Log.i(TAG, "WidgetDrag release: " + d[0] + "/" + d[1] + " on " + d[2] + "/" + d[3] + " cycles " + d[5]);
                 ac.dragEventTouch = a;
                 try {
-                    bus.post(new net.runelite.api.events.WidgetDrag());
+                    if (dragSubs) bus.post(new net.runelite.api.events.WidgetDrag());
+                    if (a == 4) {
+                        int[] r = Native.dragState();  // the target as WidgetDrag subscribers left it
+                        if (r != null) WidgetListeners.runDragComplete(client, r[0], r[1], r[2], r[3]);
+                    }
+                } catch (RuntimeException ex) {
+                    Log.w(TAG, "drag handler", ex);
                 } finally {
                     ac.dragEventTouch = -1;
                 }
@@ -792,7 +801,7 @@ public final class Host {
                     if (args != null) {
                         AndroidScriptEvent ev = new AndroidScriptEvent(client, args);
                         int[] src = Native.scriptEventSource();
-                        if (src != null) ev.setSource(src[1] >= 0 ? new AndroidWidget.Dynamic(src[0], src[1]) : new AndroidWidget(src[0]));
+                        if (src != null) ev.setSource(AndroidWidget.of(src[0], src[1]));
                         e.setScriptEvent(ev);
                     }
                 }

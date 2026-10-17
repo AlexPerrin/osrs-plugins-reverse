@@ -34,6 +34,13 @@ public class AndroidWidget extends WidgetBag {
         return CANONICAL.computeIfAbsent((long) id << 32 | index, k -> new Dynamic(id, index));
     }
 
+    /** A child the game just (re)created at `index`: a new canonical instance, as desktop's new Widget. */
+    static AndroidWidget fresh(int id, int index) {
+        AndroidWidget w = new Dynamic(id, index);
+        CANONICAL.put((long) id << 32 | index, w);
+        return w;
+    }
+
     /** Raw geometry {x, y, width, height, parentId} or null. */
     int[] rawGeo() { return Native.widgetGeometry(id); }
 
@@ -133,6 +140,10 @@ public class AndroidWidget extends WidgetBag {
     }
     // The game's CS2 listeners (CC_SETON*/IF_SETON* slots; magic args such as event_opbase come
     // back as stored, as on desktop). Quest List reruns 399:2's onVarTransmit to redraw the list.
+    // onDragComplete: Java listeners run on the drag's release (WidgetListeners.runDragComplete).
+    // onDrag: CS2 listeners from plugins are not written to the game (Bank Tags sets 284, the
+    // bank's drag-scroll script); the game's own stays (+0x4d0, `set 'wlisten <g:c> [index]'`).
+    @Override public void setOnDragCompleteListener(Object... args) { WidgetListeners.setOnDragComplete(id, childIndex(), args); }
     @Override public Object[] getOnVarTransmitListener() { return Native.widgetListener(id, childIndex(), 0x590); }
     @Override public Object[] getOnInvTransmitListener() { return Native.widgetListener(id, childIndex(), 0x5d8); }
     // Read from the game; an empty array (not null) when unreadable, since plugins stream it
@@ -249,7 +260,7 @@ public class AndroidWidget extends WidgetBag {
     @Override
     public Widget getParent() {
         int p = getParentId();
-        return p == -1 ? null : new AndroidWidget(p);
+        return p == -1 ? null : of(p);
     }
 
     /** Position on the game's UI canvas, which is also the overlay canvas. */
@@ -287,7 +298,7 @@ public class AndroidWidget extends WidgetBag {
         for (int child = 0; child < n; child++) {
             int cid = group << 16 | child;
             int[] g = Native.widgetGeometry(cid);
-            if (g != null && g[4] == id) out.add(new AndroidWidget(cid));
+            if (g != null && g[4] == id) out.add(of(cid));
         }
         return out.toArray(new Widget[0]);
     }
@@ -306,7 +317,7 @@ public class AndroidWidget extends WidgetBag {
     public Widget createChild(int index, int type) {
         if (CREATE_IN_GAME && childIndex() < 0 && type != 12 && Native.isClientThread()) {
             int at = Native.widgetCreateChild(id, index, type);
-            if (at >= 0) { WidgetListeners.forget(id, at); return new Dynamic(id, at); }
+            if (at >= 0) { WidgetListeners.forget(id, at); return fresh(id, at); }
         }
         DetachedWidget w = new DetachedWidget(this, type);
         if (index >= 0 && index < created.size()) created.set(index, w); else created.add(w);
@@ -404,7 +415,7 @@ public class AndroidWidget extends WidgetBag {
         int n = Native.widgetDynamicCount(id);
         Widget[] out = new Widget[n];
         for (int i = 0; i < n; i++)
-            if (Native.widgetDynamicGeometry(id, i) != null) out[i] = new Dynamic(id, i);
+            if (Native.widgetDynamicGeometry(id, i) != null) out[i] = of(id, i);
         return out;
     }
 
@@ -424,7 +435,7 @@ public class AndroidWidget extends WidgetBag {
         @Override public String getText() { String t = Native.widgetDynamicText(id, index); return t != null ? t : ""; }
         @Override public boolean isSelfHidden() { return Native.widgetDynamicHidden(id, index); }
         @Override public boolean isHidden() { return isSelfHidden() || ancestorsHidden(id); }
-        @Override public Widget getParent() { return new AndroidWidget(id); }
+        @Override public Widget getParent() { return of(id); }
         @Override public Widget[] getStaticChildren() { return new Widget[0]; }
         @Override Widget[] gameChildren() { return new Widget[0]; }
         @Override public boolean equals(Object o) { return o instanceof Dynamic && ((Dynamic) o).id == id && ((Dynamic) o).index == index; }

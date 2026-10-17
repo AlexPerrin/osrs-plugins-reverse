@@ -143,6 +143,8 @@ final class Native {
     static native int widgetCreateChild(int id, int index, int type);
     /** CC_DELETEALL on static component `id`. Game thread. */
     static native boolean widgetDeleteChildren(int id);
+    /** Drops the game children of `id` from index `count` on (setChildren truncation). Game thread. */
+    static native boolean widgetTruncateChildren(int id, int count);
     /** {root scripts, gosubs, returns, events delivered, hooks installed (0/1)}. */
     static native long[] scriptStats();
     /**

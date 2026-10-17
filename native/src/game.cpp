@@ -910,6 +910,20 @@ int widget_create_child(int component, int index, int type) {
     return index;
 }
 
+// Widget.setChildren(Arrays.copyOf(children, n)) (Bank Tags' rebuildTabs): the CC_CREATE child
+// vector {?, u64 count +0xb50, data +0xb58} is resized with the game's own resize 0x40a25c(vec, n, 3)
+// (flag 2 moves the first n shared_ptrs into the new storage, the rest are released; the same call
+// the capacity check 0x4f2898 makes to grow it). Shrinks only. Game thread.
+bool widget_truncate_children(int component, int count) {
+    uintptr_t slot = widget_slot(component, -1);
+    uintptr_t w = slot ? read_at<uintptr_t>(slot + 8) : 0;
+    if (!client() || !w || count < 0) return false;
+    int n = widget_dynamic_count(w);
+    if (count >= n) return count == n;
+    reinterpret_cast<void (*)(uintptr_t, uint64_t, uint32_t)>(g_base + 0x40a25c)(w + 0xb48, static_cast<uint64_t>(count), 3);
+    return true;
+}
+
 // CC_DELETEALL (script op 101): 0x5df8e0(widget) releases every CC_CREATE child, then
 // 0x44a788(client, slot) as the op does. Game thread.
 bool widget_delete_children(int component) {

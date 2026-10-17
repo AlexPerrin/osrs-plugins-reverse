@@ -304,6 +304,22 @@ public class AndroidWidget extends WidgetBag {
         all.addAll(created);
         return all.toArray(new Widget[0]);
     }
+    /**
+     * As desktop's children array assignment, for the common use: truncation of the game's
+     * CC_CREATE children (Bank Tags' rebuildTabs keeps its first 4). Slots set to null are hidden
+     * (as applyChildEdits does); other rearrangements are not modelled.
+     */
+    @Override public void setChildren(Widget[] children) {
+        if (childIndex() >= 0 || children == null) return;
+        Widget[] cur = gameChildren();
+        int n = Math.min(children.length, cur.length);
+        for (int i = 0; i < n; i++)
+            if (children[i] == null && cur[i] instanceof Dynamic) cur[i].setHidden(true);
+        if (children.length < cur.length && Native.isClientThread()) {
+            Native.widgetTruncateChildren(id, children.length);
+            for (int i = children.length; i < cur.length; i++) WidgetListeners.forget(id, i);
+        }
+    }
     @Override public Widget[] getChildren() {
         Widget[] d = getDynamicChildren();
         if (d.length == 0) return null;

@@ -28,7 +28,7 @@ final class CustomSpriteWidgets {
     // Widget (static or dynamic child) -> sprite id it was given.
     private static final Map<AndroidWidget, Integer> tracked = new LinkedHashMap<>();
     private static final Map<Integer, BufferedImage> images = new HashMap<>();
-    private static int logs;
+    private static int logs, redrawLogs;
 
     static synchronized void note(AndroidWidget w, int spriteId) {
         if (spriteId < 0 && spriteId != -1) tracked.put(w, spriteId);
@@ -92,6 +92,7 @@ final class CustomSpriteWidgets {
             Rectangle sb = s.getBounds();
             if (!sb.intersects(b)) continue;
             BufferedImage icon = items.getImage(s.getItemId(), Math.max(1, s.getItemQuantity()), false);
+            if (redrawLogs++ < 3) Log.i(TAG, "custom sprite: item " + s.getItemId() + " redrawn over " + w + " at " + sb + " (" + icon.getWidth() + "x" + icon.getHeight() + ")");
             g.drawImage(icon, sb.x + (sb.width - icon.getWidth()) / 2, sb.y + (sb.height - icon.getHeight()) / 2, null);
         }
     }

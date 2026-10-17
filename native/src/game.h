@@ -141,6 +141,8 @@ bool widget_set_field(int component, int index, uint32_t offset, int value);
 bool widget_revalidate(int component, int index);
 int widget_create_child(int component, int index, int type);
 bool widget_delete_children(int component);
+// Drops CC_CREATE children from index `count` on (Widget.setChildren truncation). Game thread.
+bool widget_truncate_children(int component, int count);
 void widget_props(uintptr_t widget, int32_t out[kWidgetProps]);  // item set by IF_SETOBJECT / CC_SETOBJECT
 int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colour for text widgets
 void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty

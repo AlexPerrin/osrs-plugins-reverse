@@ -100,6 +100,12 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Item Prices | runs | with `itemprices.hideInventory=false` (default true hides inventory tooltips), a tap on rune essence shows one "GE: 4 gp / HA: 2 gp" tooltip (hover entry, 2026-10-17). Bank not checked |
 | Screen Markers | runs | "+" in its sidebar panel, then a drag on the game view draws the green rectangle, the game gets none of that touch (no walk), and after confirm "Marker 1" stays drawn at that spot (2026-10-17, gen 19: touches go to MouseManager listeners through `TouchMouse`, and the renderer honours preferred location/size) |
 | Friend Notes | runs | friends tab (smiley side tab, 1843,853) with "desktop" on the list (`tools/multiclient/desktop_login.py`, OpenRune 20d266c friend-list resend): long-press desktop, "Add Note desktop" in the plugin strip, the chatbox prompt opens as an Android dialog, and after OK the note icon is drawn after the name (verified 2026-10-17 gen 21). The name shifts right and the world column is clipped ("World 2"); the icon callbacks are emulated by `ScriptCallbacks` (script 125). The prompt title showed raw `<br><col=...>` tags; titles are cleaned now (unverified) |
+| Barrows Brothers | untested | converted (`re/host/plugins-extra/barrows.jar`), not run on the device yet (gen 21 added the row) |
+| Entity Hider | untested | converted (`entityhider.jar`), not run yet; check with the desktop player hidden (`tools/multiclient/desktop_login.py`) |
+| Herbiboar | untested | converted (`herbiboars.jar`), not run yet; needs Fossil Island herbiboar tracks on the server |
+| Minimap | untested | converted (`minimap.jar`), not run yet (dot colours / hide minimap) |
+| Mouse Highlight | untested | converted (`mousehighlight.jar`), not run yet (hover tooltips; the touch hover point stands in for the mouse) |
+| Smelting | untested | converted (`smelting.jar`), not run yet (session panel while smelting) |
 
 ## Plugin Hub status
 

@@ -1485,3 +1485,24 @@ clan hall, guest channels, events) are bigger again (several days).
 - "Test FC" shows as "Test Fc": the friends chat name travels only as a base37 long
   (`channelNameBase37`; base37 has no case), and the client formats it itself. The owner is a plain
   string (shown as sent). Nothing to fix on the server.
+
+### GE partial fills and buy limits (seventeenth server dev)
+
+- **Partial fills (our rule):** an offer the market takes (see the GE section above) fills in up to 4
+  parts of `ceil(count / 4)`: 2 ticks after Confirm, then every 5 ticks (`GrandExchange.FILL_*`). Each
+  part updates the slot (state stays BUYING/SELLING with completedCount/completedGold, so plugins get
+  GrandExchangeOfferChanged with a growing quantitySold), moves its items/coins (and the buy refund) into
+  the collection inv, and sends "Grand Exchange: Bought 3 / 10 x Lobster." / "Sold ..." (**guess** at the
+  wording; RuneLite only matches the "Grand Exchange:" prefix). The last part sends the "Finished" line.
+  Abort after a partial fill returns the unfilled part.
+- **Buy limits:** `enum.ge_buy_limits` (65380, obj -> int, pack `ge_buy_limits.toml`) generated from
+  the OSRS Wiki's `Module:GELimits/data.json` (17 Oct 2026; names matched to tradeable unnoted objs, with
+  "Name (qualifier)" falling back to "Name"; 4186 objs; 776 tradeable names have no wiki entry and no
+  limit). A buy counts against the limit when it fills; the 4-hour window starts at the first buy and
+  does not roll (as the wiki describes it). An offer over the limit stays BUYING and is looked at again
+  every 100 ticks and at login. Per-player trackers: 16 entries in perm varps `ge_limitN_item/start/bought`
+  (63985-64032; start in epoch minutes); with all 16 active, the oldest is reused (lenient). No connected
+  limits (potion doses etc.).
+- Tests: 10 in `:content:interfaces:grand-exchange:integration` (partial fill + refund, abort after a
+  partial fill, the limit window with the rune pickaxe (limit 40), tracker reuse). Upstream `50`.
+- Not device-checked yet.

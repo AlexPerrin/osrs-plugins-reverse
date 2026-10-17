@@ -1642,3 +1642,23 @@ Read-only audit of the three quests (stage tables per quest are in the session r
   knife; it opened the Al Kharid stock) and Edgeville `inv.generalshop2`; Mandy outside completes Misthalin
   Mystery only at stage 130 (`MandyWaiting`) and with 3 free slots for the gems ("You need 3 free inventory spaces
   to take the gems." is a **guess**). Not checked in game yet.
+
+### Desktop quest runs after 84030f3 (seventeenth server dev, 18:00-18:12)
+
+- **Lumbridge General Store** now sells the spade and knife (stock checked in the shop interface).
+- **X Marks the Spot: complete.** Varbit 8063: Veos (Lumbridge, "I'm looking for a quest.") -> 2 (clue; Veos says the
+  general store has a spade), digs at (3230,3209) -> 3, (3203,3212) -> 4, (3109,3264) -> 5, (3078,3259) -> 6
+  (Ancient casket), Port Sarim Veos (3055,3248) -> 8 (scroll: 1 QP, 200 coins, antique lamp, beginner scroll box).
+- **Gertrude's Cat: complete** (milk and seasoned sardine from `::item`; the doogle/sardine seasoning is covered by
+  the varrock tests). Varp 180: Gertrude -> 1, Shilop "What will make you tell me?" -> "Okay then, I'll pay." (100
+  coins) -> 2, milk on Fluffs (lumber yard 1st floor) -> 3, seasoned sardine -> 4, the 4th crate (3303,3506) held
+  the kitten, kitten on Fluffs -> 5 ("Fluffs has run off home with her kitten."), Gertrude -> 6 (scroll: 1 QP, 1525
+  Cooking XP, chocolate cake, stew, a kitten).
+- **Misthalin Mystery Mandy guards checked:** at stage 130 (set with `::quest misthalin 130`) and 2 free slots Mandy
+  says her lines and then "You need 3 free inventory spaces to take the gems." (stage stays 130); with room she
+  completes the quest (135; uncut ruby, emerald, sapphire). The full quest was not played (time).
+- **Ernest stage 2:** after `::quest ernest reset` the first Oddenstein talk went straight to the hand-in (the reset
+  leaves the quest's "found Ernest" attribute and `varbit.ernesthandin_complete` set; debug-command only), so the
+  stage-2 fix could not be seen; it was widened to set 2 on any Oddenstein talk once Ernest is found (built, not
+  deployed). Tip: the Mandy npc is only reachable from (1637,4816); interact from other tiles says "I can't reach
+  that!".

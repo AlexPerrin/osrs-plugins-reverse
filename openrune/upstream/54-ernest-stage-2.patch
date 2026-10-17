@@ -1,30 +1,44 @@
-From 3068603e194e24e914af8f8d7992d6be360ce0e5 Mon Sep 17 00:00:00 2001
+From 874c854d11d0e71d97bd16e3526a8f0c5af41ecc Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
-Date: Sat, 17 Oct 2026 17:46:55 -0400
-Subject: [PATCH] Ernest the Chicken: varp haunted = 2 after Professor
- Oddenstein's first talk
+Date: Sat, 17 Oct 2026 18:13:43 -0400
+Subject: [PATCH 1/3] Ernest the Chicken: varp haunted = 2 after talking to
+ Professor Oddenstein
 
 OSRS moves the quest to stage 2 once Oddenstein has explained the machine (Quest Helper's
-stage 2, 'talk to Oddenstein again'); the server stayed at 1 until completion.
+stage 2, 'talk to Oddenstein again'); the server stayed at 1 until completion. Any
+conversation with him while stage < 2 and Ernest found now sets it.
 ---
- .../org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt | 5 +++++
- 1 file changed, 5 insertions(+)
+ .../content/quest/area/draynor/ErnestTheChicken.kt    | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
-index 8fba8cb4d..d3a99291f 100644
+index 8fba8cb4d..a8e9c8029 100644
 --- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
-@@ -238,6 +238,9 @@ constructor(
+@@ -153,6 +153,7 @@ constructor(
+             introduceErnest()
+             return
+         }
++        markTalkedToOddenstein()
+ 
+         if (progress.hasReceivedParts(player) || progress.hasAllParts(player)) {
+             handIn(npc)
+@@ -238,6 +239,14 @@ constructor(
                  "which I'm going to need to get this thing started again.",
          )
          progress.foundErnest.set(player, true)
-+        if (quest.getQuestStage(player) < STAGE_TALKED_TO_ODDENSTEIN) {
-+            quest.advanceQuestStage(access, STAGE_TALKED_TO_ODDENSTEIN - quest.getQuestStage(player))
++        markTalkedToOddenstein()
++    }
++
++    private fun Dialogue.markTalkedToOddenstein() {
++        val stage = quest.getQuestStage(player)
++        if (stage < STAGE_TALKED_TO_ODDENSTEIN) {
++            quest.advanceQuestStage(access, STAGE_TALKED_TO_ODDENSTEIN - stage)
 +        }
      }
  
      private suspend fun Dialogue.handIn(npc: Npc) {
-@@ -341,6 +344,8 @@ constructor(
+@@ -341,6 +350,8 @@ constructor(
      }
  
      private companion object {

@@ -18082,20 +18082,33 @@ index 39d0d5701..7f910453c 100644
 +9973	[clientscript,quest_available_set]
 +9974	[clientscript,quest_policy_complete_set]
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
-index 8fba8cb4d..d3a99291f 100644
+index 8fba8cb4d..a8e9c8029 100644
 --- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
-@@ -238,6 +238,9 @@ constructor(
+@@ -153,6 +153,7 @@ constructor(
+             introduceErnest()
+             return
+         }
++        markTalkedToOddenstein()
+ 
+         if (progress.hasReceivedParts(player) || progress.hasAllParts(player)) {
+             handIn(npc)
+@@ -238,6 +239,14 @@ constructor(
                  "which I'm going to need to get this thing started again.",
          )
          progress.foundErnest.set(player, true)
-+        if (quest.getQuestStage(player) < STAGE_TALKED_TO_ODDENSTEIN) {
-+            quest.advanceQuestStage(access, STAGE_TALKED_TO_ODDENSTEIN - quest.getQuestStage(player))
++        markTalkedToOddenstein()
++    }
++
++    private fun Dialogue.markTalkedToOddenstein() {
++        val stage = quest.getQuestStage(player)
++        if (stage < STAGE_TALKED_TO_ODDENSTEIN) {
++            quest.advanceQuestStage(access, STAGE_TALKED_TO_ODDENSTEIN - stage)
 +        }
      }
  
      private suspend fun Dialogue.handIn(npc: Npc) {
-@@ -341,6 +344,8 @@ constructor(
+@@ -341,6 +350,8 @@ constructor(
      }
  
      private companion object {

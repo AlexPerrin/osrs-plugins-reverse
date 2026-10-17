@@ -1,7 +1,7 @@
-From e24ad92e6f13d6840be8e8b35e193fd723a55728 Mon Sep 17 00:00:00 2001
+From 69568a55abe1fcf14b430d6c19773f2b03191153 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 17:58:51 -0400
-Subject: [PATCH 1/2] Lumbridge and Edgeville general stores open their own
+Subject: [PATCH 2/3] Lumbridge and Edgeville general stores open their own
  stock
 
 Lumbridge's shopkeeper opened inv.generalshop1 (the Al Kharid stock, no spade or knife)

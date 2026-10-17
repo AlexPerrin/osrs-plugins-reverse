@@ -1,7 +1,7 @@
-From 02b46625ca3e86f60abf5a7bf7ba37ace7703486 Mon Sep 17 00:00:00 2001
+From 80606f42351e6792e67dd3682ba03d72556ac4df Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 17:58:51 -0400
-Subject: [PATCH 2/2] Misthalin Mystery: Mandy completes the quest only at its
+Subject: [PATCH 3/3] Misthalin Mystery: Mandy completes the quest only at its
  last stage, with room for the gems
 
 mandyOutside() completed the quest for any unfinished player (the multinpc falls back to

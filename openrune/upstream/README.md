@@ -47,6 +47,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 31 | `31-friend-add-update` | `api/net/.../central/CentralSocialClientPackets.kt`, `api/net/.../handlers/FriendListAddHandler.kt` | After FRIENDLIST_ADD, OSRS sends the new friend's UPDATE_FRIENDLIST entry; Central pushed one only for online friends, so an offline friend appeared only after relogging | One extra social snapshot round trip per add |
 | 32 | `32-treasure-trails-hard` | `content/other/treasure-trails` (TrailTier, TrailSteps, TreasureTrailScript, pack: `HardCasketTable.kt` new, maps, gamevals, vars, test) | Hard Treasure Trails on the cache's clue rows: challenge talks, cryptics, coordinates, the 7 hard maps, emotes + Uri, music, hard STASH, the hard casket | Needs 21-28; dbtable 60009 (rows 61200-61433), map rows 61440-61446, varps 63880-63885; no puzzle boxes, wizards or Double agent yet |
 | 33 | `33-treasure-trails-puzzle-boxes` | `treasure-trails`: `TrailPuzzle.kt` (new), `TrailSteps.kt`, `TreasureTrailScript.kt`, pack `TrailDataTables.kt`, gamevals, test | Hard puzzle-box steps: scrambled box, slide puzzle 306 with server-side move mirroring, solved check | Needs 32; dbtable 60010 (rows 61450-61470); npc lines are best guesses |
+| 34 | `34-treasure-trails-hard-foes` | `treasure-trails`: `TrailFoeHook.kt` (new), `TrailSteps.kt`, `TreasureTrailScript.kt`, `TreasureTrailsModule.kt`, test | Hard coordinate wizards and the Double agent (kill before the dig / Uri); `::clue solve` | Needs 33; foe lifetime 500 ticks and the wilderness box are our choices |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -142,3 +143,6 @@ all 32, applies. Compiled, tested (`TreasureTrailScriptTest`, 18) and spotless-c
 
 Patch 33 (puzzle boxes) was added 2026-10-17: `git am` of all 33 on the pin applies. Compiled,
 tested (`TreasureTrailScriptTest`, 21), spotless- and boot-checked in our tree.
+
+Patch 34 (wizards, Double agent) was added 2026-10-17: `git am` of all 34 on the pin applies.
+Compiled, tested (`TreasureTrailScriptTest`, 23), spotless- and boot-checked in our tree.

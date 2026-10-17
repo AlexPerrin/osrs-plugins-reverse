@@ -841,3 +841,21 @@ was verified.
   persistence; Open re-scrambles when it does not hold the box's pieces. RuneLite's Puzzle Solver
   reads inv 140 and widget 306:4 (20054020). Not device-checked yet. Upstream
   `33-treasure-trails-puzzle-boxes`.
+- **Puzzle boxes device-checked** (deploy at 08:55 UTC, with stage 3): `::clue hard 1554` (BLUE GRIM
+  GUIDED, Lumbridge Guide): the guide gives the box ("...Solve this puzzle and I'll give you the next
+  clue."), Open shows the tree picture in 306 on mobile, "Move Sliding piece" on long-press, a tap
+  next to the gap moves the piece and the server mirror keeps inv 140 in step (RuneLite's Puzzle
+  Solver, from inv 140, redrew its path and moves-left after the move; its dots sit on the mobile
+  cell centres). `::clue solve` then Open shows the solved picture ("Solved!" in the plugin);
+  talking to the guide: "Well done, you solved it!", the box goes and the next clue scroll comes.
+  The host's debug panel covers the puzzle's left column on the device (taps there do nothing).
+- **Hard clues, stage 3: wizards and the Double agent** (`summonFoe`, `TrailFoeHook`): a hard
+  coordinate row's `combatEncounter` npc (54 rows: `npc.trail_hard2` Saradomin wizard 2955, or
+  `npc.trail_hard` Zamorak wizard 2954) appears beside the player on the first dig, says "For
+  Saradomin!" / "Die, human!" (wiki), and attacks (`opPlayer2`); the dig pays only after the kill
+  (aux varp = 3). Hard emote steps after the first (wiki: none on the first step) summon
+  `npc.double_agent_2` (108; `double_agent_1`, 65, inside x 2944-3391, z 3520-3967 = our wilderness
+  box) with "I expect you to die!"; killing it while wearing the clue's outfit brings Uri at once,
+  otherwise the emote again brings him (wiki). One foe per player, 500-tick lifetime (our
+  choice); despawned on logout. Not device-checked (the integration tests cover it). Upstream
+  `34-treasure-trails-hard-foes`.

@@ -1433,8 +1433,12 @@ relog drops it (the client forgets both channels on logout; the server keeps per
 - `::fakeclan guest`: CLANCHANNEL_FULL type -1 ("Guest Clan", the player as rank -1). `::fakeclan leave`:
   LeaveUpdate for all.
 - Ranks are **guesses** from RuneLite's `FriendsChatRank` (0 friend, 4 lieutenant, 7 owner) and `ClanRank`
-  (-1 guest, 10 first clan rank, 100 administrator, 126 owner). No CLANSETTINGS_FULL is sent, so clan rank
-  titles (`getClanSettings`) stay empty.
+  (-1 guest, 10 first clan rank, 100 administrator, 126 owner).
+- CLANSETTINGS_FULL (added after the 13:42 run, which showed "Connecting..." in the clan tab without it)
+  goes with each clan channel: same name, the channel's members as affined members with their ranks,
+  talk rank -1, kick rank 100, guests allowed, no banned members, no settings (so rank titles are the
+  defaults), creation time = epoch minutes, join rune day = days since 2002-02-27 (**guess**). Leave
+  sends its LeaveUpdate too.
 
 **What real friends chat would cost** (RuneLite's Chat Channel plugin: join/leave messages, member list,
 rank icons; Friends Chat-style hub plugins use the same events). OpenRune has none of it: no handler for
@@ -1460,5 +1464,5 @@ clan hall, guest channels, events) are bigger again (several days).
 - Diary B **device-checked**: the Lumbridge Teleport spell (spellbook) and an iron ore from the Al Kharid
   mine rock at 3295,3311 (`loc.ironrock1`) took Lumbridge & Draynor to 3/41 (with Hans), still 3/41 after an
   app restart and relog. The sawmill and the other hooks are covered only by the integration tests.
-- Deploy reminder: `docker compose --env-file switch.env up -d --build` (without the env file the game
-  comes up on 40255/8081).
+- Deploy with `openrune/scripts/openrune.sh deploy` (= `docker compose --env-file switch.env up -d
+  --build`); a bare `docker compose up` comes up on 40255/8081.

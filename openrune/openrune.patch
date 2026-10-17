@@ -5705,15 +5705,16 @@ index a8bc2108d..9cf4c201c 100644
  
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt
 new file mode 100644
-index 000000000..fb9035d2f
+index 000000000..3374fee41
 --- /dev/null
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt
-@@ -0,0 +1,223 @@
+@@ -0,0 +1,258 @@
 +package org.rsmod.content.other.commands
 +
 +import jakarta.inject.Inject
 +import net.rsprot.protocol.game.outgoing.clan.ClanChannelDelta
 +import net.rsprot.protocol.game.outgoing.clan.ClanChannelFull
++import net.rsprot.protocol.game.outgoing.clan.ClanSettingsFull
 +import net.rsprot.protocol.game.outgoing.clan.MessageClanChannel
 +import net.rsprot.protocol.game.outgoing.friendchat.MessageFriendChannel
 +import net.rsprot.protocol.game.outgoing.friendchat.UpdateFriendChatChannelFull.FriendChatEntry
@@ -5740,6 +5741,8 @@ index 000000000..fb9035d2f
 + *
 + * Ranks are guesses from RuneLite's FriendsChatRank / ClanRank: friends chat 7 owner, 0 friend,
 + * 4 lieutenant, kick rank 7; clan 126 owner, 100 administrator, 10 the first clan rank, -1 guest.
++ * CLANSETTINGS_FULL goes with each clan channel (the clan tab waits for it); rune days count from
++ * 2002-02-27 (guess).
 + */
 +class ChatChannelTestCommands @Inject constructor(private val config: ServerConfig) :
 +    PluginScript() {
@@ -5803,6 +5806,9 @@ index 000000000..fb9035d2f
 +                ),
 +            ),
 +        )
++        player.client.write(
++            clanSettings(CLAN_TYPE_MAIN, CLAN_NAME, state.clanMembers.map { it to clanRank(self, it) }),
++        )
 +        player.mes("Joined friends chat '$FC_NAME' and clan '$CLAN_NAME' (${state.fcMembers.size} members).")
 +    }
 +
@@ -5825,6 +5831,9 @@ index 000000000..fb9035d2f
 +                        ClanChannelFull.ClanMember(player.displayName, CLAN_RANK_GUEST, config.world),
 +                ),
 +            ),
++        )
++        player.client.write(
++            clanSettings(CLAN_TYPE_GUEST, GUEST_NAME, members.map { it to CLAN_RANK_FIRST }),
 +        )
 +        members += player.displayName
 +        player.mes("Joined guest clan channel '$GUEST_NAME' (${members.size} members).")
@@ -5889,10 +5898,35 @@ index 000000000..fb9035d2f
 +        val state = states.remove(player.displayName)
 +        player.client.write(UpdateFriendChatChannelFullV2(UpdateFriendChatChannelFullV2.LeaveUpdate))
 +        player.client.write(ClanChannelFull(CLAN_TYPE_MAIN, ClanChannelFull.LeaveUpdate))
++        player.client.write(ClanSettingsFull(CLAN_TYPE_MAIN, ClanSettingsFull.LeaveUpdate))
 +        if (state?.guestMembers != null) {
 +            player.client.write(ClanChannelFull(CLAN_TYPE_GUEST, ClanChannelFull.LeaveUpdate))
++            player.client.write(ClanSettingsFull(CLAN_TYPE_GUEST, ClanSettingsFull.LeaveUpdate))
 +        }
 +        player.mes("Left the fake friends chat and clan channels.")
++    }
++
++    private fun clanSettings(clanType: Int, name: String, affined: List<Pair<String, Int>>): ClanSettingsFull {
++        val runeDay = ((System.currentTimeMillis() - RUNE_DAY_EPOCH_MILLIS) / 86_400_000L).toInt()
++        return ClanSettingsFull(
++            clanType,
++            ClanSettingsFull.JoinUpdate(
++                updateNum = 1,
++                creationTime = (System.currentTimeMillis() / 60_000L).toInt(),
++                clanName = name,
++                allowUnaffined = true,
++                talkRank = CLAN_RANK_GUEST,
++                kickRank = CLAN_RANK_ADMIN,
++                lootshareRank = 0,
++                coinshareRank = 0,
++                affinedMembers =
++                    affined.map { (member, rank) ->
++                        ClanSettingsFull.AffinedClanMember(member, rank, 0, runeDay, false)
++                    },
++                bannedMembers = emptyList(),
++                settings = emptyList(),
++            ),
++        )
 +    }
 +
 +    private fun nextCounter(): Int {
@@ -5930,6 +5964,7 @@ index 000000000..fb9035d2f
 +        const val CLAN_RANK_FIRST = 10
 +        const val CLAN_RANK_ADMIN = 100
 +        const val CLAN_RANK_OWNER = 126
++        const val RUNE_DAY_EPOCH_MILLIS = 1_014_768_000_000L
 +    }
 +}
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt

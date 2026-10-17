@@ -11,6 +11,8 @@
 #                                 run OpenRune's Gradle wrapper in Docker (uid 1000)
 #   scripts/openrune.sh build     rsprot (if missing) + cache (first time: download + build; later:
 #                                 incremental rebuild) + RSA keys + installDist
+#   scripts/openrune.sh deploy    (re)start the containers on the default ports (switch.env: 43594/8080);
+#                                 logs the player out, so it needs the orchestrator's OK restart
 #   scripts/openrune.sh modulus   print the login RSA modulus (hex) for tools/repack.sh
 #   scripts/openrune.sh shared-key
 #                                 use our own server's login key (server/data/rsa.properties)
@@ -80,6 +82,9 @@ rsprot)
 gradle)
     shift
     gradle "$@"
+    ;;
+deploy)
+    docker compose --env-file switch.env up -d --build
     ;;
 build)
     [ -d src/.m2-rsprot/net/rsprot/osrs-241-android/$RSPROT_VERSION ] || "$0" rsprot

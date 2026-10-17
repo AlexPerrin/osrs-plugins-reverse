@@ -42,6 +42,10 @@ final class AndroidNPCComposition extends NPCCompositionStub {
 
     @Override public int getIntValue(int param) { return Params.intValue(Params.NPC, v[0], param); }
     @Override public String getStringValue(int param) { return Params.stringValue(Params.NPC, v[0], param); }
+    @Override public long getLongValue(int param) { return Params.longValue(Params.NPC, v[0], param); }
+    @Override public void setValue(int param, int value) { Params.set(Params.NPC, v[0], param, value); }
+    @Override public void setValue(int param, String value) { Params.set(Params.NPC, v[0], param, value); }
+    @Override public void setValue(int param, long value) { Params.set(Params.NPC, v[0], param, value); }
     @Override public int getId() { return v[0]; }
     @Override public String getName() { return name; }
     @Override public int getSize() { return v[1]; }

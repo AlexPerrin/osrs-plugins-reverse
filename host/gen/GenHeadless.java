@@ -412,6 +412,8 @@ public class GenHeadless {
                 sb.append(superCall(c));
                 sb.append(ctorProperties(c, k.getParameterTypes()));
                 if (c == javax.swing.GroupLayout.class && k.getParameterCount() == 1) sb.append(" __host = a0;");
+                if (c == javax.swing.border.CompoundBorder.class && k.getParameterCount() == 2) sb.append(" __outside = a0; __inside = a1;");
+                if (c == javax.swing.border.MatteBorder.class && k.getParameterCount() == 5 && k.getParameterTypes()[4] == java.awt.Color.class) sb.append(" __matte = a4;");
                 sb.append(" }\n");
             }
         }
@@ -456,6 +458,14 @@ public class GenHeadless {
             if (c == javax.swing.text.AbstractDocument.class)
                 sb.append(in).append("/** Host: the document's text (JTextComponent.get/setText read and write it, as in Swing). */\n")
                   .append(in).append("public final java.lang.StringBuilder __content = new java.lang.StringBuilder();\n");
+            // Borders keep their parts (Inventory Setups reads CompoundBorder.getInsideBorder().getMatteColor()).
+            if (c == javax.swing.border.CompoundBorder.class)
+                sb.append(in).append("public javax.swing.border.Border __outside, __inside;\n");
+            if (c == javax.swing.border.MatteBorder.class)
+                sb.append(in).append("public java.awt.Color __matte;\n");
+            if (c == java.awt.Toolkit.class)
+                sb.append(in).append("/** Host: getDefaultToolkit's instance (RuneLite's SwingUtil.pumpPendingEvents peeks its event queue). */\n")
+                  .append(in).append("public static final java.awt.Toolkit __default = new java.awt.Toolkit() {};\n");
             if (c == javax.swing.JOptionPane.class)
                 sb.append(in).append("/** Host: answers the static show*Dialog calls (kind, {message, title, options, initial, optionType}); null = none. */\n")
                   .append(in).append("public static volatile java.util.function.BiFunction<String, Object[], Object> __dialog;\n");
@@ -491,10 +501,11 @@ public class GenHeadless {
             } else {
                 sb.append(Modifier.isProtected(xm) ? "protected " : "public ");
                 if (isStatic) sb.append("static ");
-                if (Modifier.isAbstract(xm) && Modifier.isAbstract(c.getModifiers())) sb.append("abstract ");
+                // Toolkit's abstract methods get default bodies so getDefaultToolkit can return an instance.
+                if (Modifier.isAbstract(xm) && Modifier.isAbstract(c.getModifiers()) && c != java.awt.Toolkit.class) sb.append("abstract ");
             }
             sb.append(typeName(ret)).append(" ").append(x.getName()).append("(").append(params(x.getParameterTypes())).append(")");
-            boolean body = iface ? (isStatic || !Modifier.isAbstract(xm)) : !(Modifier.isAbstract(xm) && Modifier.isAbstract(c.getModifiers()));
+            boolean body = iface ? (isStatic || !Modifier.isAbstract(xm)) : !(Modifier.isAbstract(xm) && Modifier.isAbstract(c.getModifiers()) && c != java.awt.Toolkit.class);
             if (!body) { sb.append(";\n"); continue; }
             String dv = ret == void.class ? null : returnValue(ret);
             // add(x) style methods hand their argument back, as Swing does.
@@ -577,6 +588,9 @@ public class GenHeadless {
             if (n.equals("invokeLater")) return q + ".add(a0);";
             if (n.equals("invokeAndWait")) return "if (Thread.currentThread() == javax.swing.SwingUtilities.__edt) a0.run(); else if (javax.swing.SwingUtilities.__invokeAndWait != null) javax.swing.SwingUtilities.__invokeAndWait.accept(a0); else " + q + ".add(a0);";
         }
+        if (c == java.awt.Toolkit.class && n.equals("getDefaultToolkit") && ps.length == 0) return "return __default;";
+        if (c == javax.swing.BorderFactory.class && n.equals("createCompoundBorder") && ps.length == 2) return "return new javax.swing.border.CompoundBorder(a0, a1);";
+        if (c == javax.swing.BorderFactory.class && n.equals("createMatteBorder") && ps.length == 5 && ps[4] == java.awt.Color.class) return "return new javax.swing.border.MatteBorder(a0, a1, a2, a3, a4);";
         if ((c == javax.swing.SwingUtilities.class || c == java.awt.EventQueue.class) && n.equals("isEventDispatchThread") && ps.length == 0)
             return "return Thread.currentThread() == javax.swing.SwingUtilities.__edt;";
         // JOptionPane dialogs go to the host (modal Android dialogs); without one: cancelled/closed.
@@ -624,6 +638,9 @@ public class GenHeadless {
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[1] == Object.class) return "if (a1 instanceof String) __cards.put(a1, a0);";
         }
         if (c == javax.swing.JPopupMenu.class && n.equals("show") && ps.length == 3) return "__shown = this;";
+        if (c == javax.swing.border.CompoundBorder.class && n.equals("getInsideBorder") && ps.length == 0) return "return __inside;";
+        if (c == javax.swing.border.CompoundBorder.class && n.equals("getOutsideBorder") && ps.length == 0) return "return __outside;";
+        if (c == javax.swing.border.MatteBorder.class && n.equals("getMatteColor") && ps.length == 0) return "return __matte != null ? __matte : java.awt.Color.BLACK;";
         // Component.getFontMetrics: the shim's Paint-measured metrics (Loot Lookup's Util.truncateToFit
         // measures labels); a null font measures the default one.
         if (java.awt.Component.class.isAssignableFrom(c) && n.equals("getFontMetrics") && ps.length == 1 && ps[0] == java.awt.Font.class)

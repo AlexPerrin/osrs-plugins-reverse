@@ -51,7 +51,7 @@ public final class AndroidPrompts {
                     });
                 }
                 android.app.AlertDialog d = new android.app.AlertDialog.Builder(a)
-                    .setTitle(prompt)
+                    .setTitle(Sidebar.clean(prompt))  // chatbox prompts carry <br>/<col> tags (Friend Notes)
                     .setView(edit)
                     .setPositiveButton("OK", (dlg, w) -> {
                         String t = edit.getText().toString();
@@ -79,7 +79,7 @@ public final class AndroidPrompts {
                     return;
                 }
                 android.app.AlertDialog d = new android.app.AlertDialog.Builder(a)
-                    .setTitle(title)
+                    .setTitle(Sidebar.clean(title))
                     .setItems(options, (dlg, which) -> onGame(() -> onPick.accept(which)))
                     .setNegativeButton("Cancel", null)
                     .create();

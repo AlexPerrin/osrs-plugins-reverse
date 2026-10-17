@@ -17,6 +17,8 @@ readelf/objdump). The Ghidra project in `re/ghidra` loads the library at image b
 | server varps table | `0x1127c60` | Same layout; `setVarp` writes it first |
 | `Client::serverTickCount` | `+0x3058` | Incremented by dispatcher case 55 (SERVER_TICK_END) |
 | `Client::changedVarps[32]` / count | `+0x413c5c` / `+0x413cdc` | Ring of varp ids written by VARP_SMALL/LARGE (index = count & 31) |
+| `Client::changedSkills[32]` / count | `+0x413d64` / `+0x413de4` | Ring of skill ids written by UPDATE_STAT (case 2 of the dispatcher: `ring[count++ & 31] = skill`); `Client.queueChangedSkill` writes it the same way (gen 21; unverified on device: Virtual Levels' config toggle not exercised) |
+| Friends list (probe) | dispatcher `0x441dd4`, UPDATE_FRIENDLIST reader `0x3fbd30(FriendSystem*, buf, len, ...)`, clear `0x3fc0d8(FriendSystem*)` (ELF; the decomp files are named by Ghidra address +0x100000: `00541dd4.c`, `004fbd30.c`) | FriendSystem = `*(Client +0x46c0)`, state `+0x150`: case 0x45 (FRIENDLIST_LOADED) sets 1, the reader sets 2, clear sets 0. `setprop debug.osrsrl.friendprobe 1` + restart logs state changes per dispatcher call and each reader/clear call (`friends_probe.cpp`; verified installing 2026-10-17) |
 | walk destination tile x, y | `+0xecdc`, `+0xece0` | Walk diff; -1 when there is no destination (at first it was mistaken for the player position) |
 | `Client::worldView` (top-level WorldView*) | `+0xc950` | Passed to the NPC_INFO reader by dispatcher cases 0x91/0x96 (`Client[0x192a]`) |
 | WorldView plane, scene size x, y | `wv+0x18`, `wv+0x1c`, `wv+0x20` | Plane follows `::tele … 1/2/0`; size 104 × 104 |

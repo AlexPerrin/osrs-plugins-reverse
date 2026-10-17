@@ -35,7 +35,6 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 
 | Plugin | Status | Notes |
 |---|---|---|
-| Quest Helper (hub) | runs | Cook's Assistant, Sheep Shearer, Romeo & Juliet end to end |
 | Ground Items | runs | labels, prices, menu recolouring |
 | Opponent Information | runs | name + health over the target (NPC max HP over okhttp) |
 | Boosts Information | runs | boosted stats overlay and boost InfoBox (InfoBoxes render, verified 2026-10-16) |
@@ -100,7 +99,7 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Puzzle Solver | runs | `EXTRA=puzzlesolver` (core classes are in host.jar). Server dev's check on OpenRune 5715c80 (2026-10-17): the puzzle box from the Lumbridge Guide (inventory 140, interface 306:4) shows "Moves left", the path and dots aligned on the cells (~107 px pitch), redrawn as pieces move, and "Solved!" after `::clue solve`. The host debug overlay (left ~600 px) covered the puzzle's left column and swallowed taps there (open) |
 | Item Prices | runs | with `itemprices.hideInventory=false` (default true hides inventory tooltips), a tap on rune essence shows one "GE: 4 gp / HA: 2 gp" tooltip (hover entry, 2026-10-17). Bank not checked |
 | Screen Markers | runs | "+" in its sidebar panel, then a drag on the game view draws the green rectangle, the game gets none of that touch (no walk), and after confirm "Marker 1" stays drawn at that spot (2026-10-17, gen 19: touches go to MouseManager listeners through `TouchMouse`, and the renderer honours preferred location/size) |
-| Friend Notes | starts | its icon callbacks friendsChatSetText/SetPosition (script 125, before cc_settext/cc_setposition) are emulated by `ScriptCallbacks` (not exercised). On OpenRune 5fd6087 the mobile friends tab shows only the "00:00 UTC" clock, no list or Add button, so no friend could be added (2026-10-17 gen 20) |
+| Friend Notes | runs | friends tab (smiley side tab, 1843,853) with "desktop" on the list (`tools/multiclient/desktop_login.py`, OpenRune 20d266c friend-list resend): long-press desktop, "Add Note desktop" in the plugin strip, the chatbox prompt opens as an Android dialog, and after OK the note icon is drawn after the name (verified 2026-10-17 gen 21). The name shifts right and the world column is clipped ("World 2"); the icon callbacks are emulated by `ScriptCallbacks` (script 125). The prompt title showed raw `<br><col=...>` tags; titles are cleaned now (unverified) |
 
 ## Plugin Hub status
 
@@ -112,6 +111,7 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 
 | Plugin | Status | Notes |
 |---|---|---|
+| Quest Helper | runs | real Plugin Hub jar (`re/hub/quest-helper.jar`, not built from a pin): Cook's Assistant, Sheep Shearer, Romeo & Juliet end to end. Was listed in the core table until gen 21 |
 | Better NPC Highlight | runs | tile highlights on Men/Women with `BetterNpcHighlight.tileHighlight=true`, `tileNames=Man,Woman` (verified 2026-10-16) |
 | Monster HP Percentage | runs | health percentage over NPCs with `MonsterHP.npcShowAll=true` (verified 2026-10-16). Its onNpcSpawned throws for nameless multi-NPCs (null name, also on desktop) |
 | Visual Metronome | runs | tick box alternating each game tick (verified 2026-10-16) |
@@ -119,7 +119,7 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Customizable XP Drops | runs | skill icons and "36" rise below the minimap and fade on a kill (verified 2026-10-16), after TOP_RIGHT overlays moved below the minimap block (they were clipped under it) and BeforeRender is posted each frame. Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
 | Shortest Path | runs | Shift + long-press a tile, "Set Target" in the plugin strip: red path on the scene and the minimap; from Burthorpe it routes via "Lumbridge Home Teleport" (verified 2026-10-16). Targets within its reached distance (default 5 tiles) clear at once. Needed getDBTableRows, getProfile, DB fields with desktop semantics, the menu tile after the menu closes |
 | Improved Tile Indicators | runs | with `improvedtileindicators.customDestinationTile=true`: RS3-style ring and arrow on the tapped destination (verified 2026-10-16) |
-| Inventory Setups | starts | sidebar panel renders; "+" opens an Android picker (Add new setup.. / Add new section..), and Add new setup opens the "Add New Setup" name dialog (`ModalDialogs`, verified 2026-10-17 gen 20). But JOptionPane blocks the game thread while the dialog is up, and holding it ~35 s disconnected the client ("Unexpected server response"), so no setup was added yet. Fix: run Swing listeners on a real EDT thread (docs/client-handoff.md, gen 20). Gen 20 also fixed its start (gen 18's chatbox inputs lacked `@Inject` constructors). Needed jopt-simple, headless JPopupMenu children, getItemCount, DB fields |
+| Inventory Setups | starts | "+" > Add new setup: the name dialog stayed open 70 s with the game running and connected (JOptionPane on the EDT, gen 21), and the setups list shows "Gen20", "Gen21 Setup", "Gen21 B" with their button rows (verified 2026-10-17 gen 21). Needed headless CompoundBorder/MatteBorder that keep their parts. Highlighting not checked. At startup its item-name task threw (null ItemComposition, cache not loaded); client-thread tasks now wait for the login screen (unverified) |
 | Equipment Inspector | runs | its "Equipment" player option (MenuManager.addPlayerMenuItem, RUNELITE_PLAYER) shows in the plugin strip under the long-press menu of the desktop player; tapping it opens the sidebar on its panel with "Player: desktop" and the (empty) gear total (2026-10-17). Needed headless GroupLayout builders that add their components to the host container, `ClientToolbar.openPanel` |
 | Bank Heatmap | starts | `::openbank`: its "Right click this button for Heatmap overlay" hint is drawn (2026-10-16). Its toggles are added to the bank's desktop "Show menu" op, which the mobile bank lacks: a long-press on the wrench or the bottom-left button gives only Walk here/Cancel (2026-10-16), so the overlay can't be switched on |
 | Wasted Bank Space | runs | ancient ceremonial boots (26229) in the bank: "Number of Items Wasting Space: 1" (verified 2026-10-17 gen 20). Items its config marks best-in-slot (ancestral hat) are skipped by its default BiS filter |
@@ -137,12 +137,12 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Barrows Door Highlighter | runs | `::tele 3551 9694 0` (Barrows chest room): the tunnel doors are outlined in green (2026-10-17) |
 | Better Teleport Menu | starts | starts (2026-10-17); not checked |
 | Wilderness Player Alarm | runs | Wilderness level 2 (`::tele 3100 3530`, varbit 5963 = 1) with the desktop player 2 tiles away: the screen flashes its yellow wash (2026-10-17) |
-| Hunter Rumours | runs | starts; its sidebar panel lists the 29 creatures with a location picker each (2026-10-17, after the non-null `getAccessibleContext()`); rumours not tried |
+| Hunter Rumours | starts | starts; its sidebar panel lists the 29 creatures with a location picker each (2026-10-17, after the non-null `getAccessibleContext()`); rumours not tried |
 | Ess Pouch | runs | OpenRune 9a73dbe says "There are three essences in this pouch.": Check sets the small pouch's count to 3, and an empty pouch's "There is no essence" sets it to 0. Fill with pure essence (7936) goes 0 -> 3 from the inventory diff ("SMALL: 3") (2026-10-17, gen 19). The plugin ignores rune essence (1436): only pure/daeyalt/guardian count |
 | Plank Sack | runs | Fill with 2 planks + 3 oak planks: "P: 2 O: 3" on the sack and a "2 Basic planks / 3 Oak planks" tooltip (OpenRune 3935505 plank_sack_* varbits, verified 2026-10-17 gen 20) |
 | KPH Tracker | starts | starts as "Bossing Info"; no errors at login since getUsername (2026-10-17); kills not tried |
 | Thrall Helper | runs | runs as "Spell Reminder": `::varbit arceuus_resurrection_cooldown 1`, then magic level + 4 ticks later the red "You need to summon a thrall!" box and its chat notice (verified 2026-10-17 gen 20) |
-| Loot Lookup | starts | built with `ALLOW_DEPS=1 host/plugins/hub/build.sh loot-lookup` (jsoup 1.13.1, MIT, fetched from Maven Central and unpacked into the jar). Sidebar search "Goblin" fetches the wiki drop table, then building the table throws: headless `Component.getFontMetrics` returns null (`Util.truncateToFit`) (2026-10-17 gen 20) |
+| Loot Lookup | runs | built with `ALLOW_DEPS=1 host/plugins/hub/build.sh loot-lookup` (jsoup 1.13.1, MIT, fetched from Maven Central and unpacked into the jar). Sidebar search "Cow": the wiki drop table is listed (Cowhide / Raw beef / Bones Always, Clue scroll (beginner) 1/128) (verified 2026-10-17 gen 21) after `Component.getFontMetrics` returned shim metrics and `Toolkit.getDefaultToolkit()` an instance (SwingUtil.fastRemoveAll) |
 
 ## Build and run
 
@@ -250,18 +250,32 @@ An "RL" button at the left edge of the screen opens an ImGui window (overlay.cpp
 per `NavigationButton` and the selected panel's Swing tree, flattened by `Sidebar.java` every 10
 cycles into lines `kind\tdepth\tcolor\ttext` (L label, B button, C checkbox, T text component,
 X combo box, H panel with mouse listeners). Taps come back as (kind, index) and are dispatched
-on the game thread: buttons fire their ActionListeners (toggles flip first), H panels get
+on the EDT: buttons fire their ActionListeners (toggles flip first), H panels get
 pressed/released/clicked MouseEvents. Drag scrolls. Touches are routed by a `Window.Callback`
 proxy on the game Activity: a touch that starts inside the sidebar (or the RL button) goes to
 ImGui and is hidden from the game. The headless Swing honours what panels need for this:
 constructor text/icon/layout, CardLayout.show, visibility, and `SwingUtilities.invokeLater`
-(queued, run on the game thread, which acts as the EDT).
+(queued for the EDT).
+
+**EDT (gen 21, `Edt.java`)**: a dedicated "AWT-EventQueue-0" thread runs invokeLater work, sidebar
+taps and the model build. It takes turns with the game thread: once per cycle (end of
+`Sidebar.onCycle`) the game thread hands its turn over if the EDT has work and waits until it is
+handed back, so plugin code never runs on both at once. While it holds the turn the EDT counts as the
+client thread natively (`Native.setClientDelegate`, `client_thread::set_delegate`), so client
+getters called from Swing listeners work (Banked XP's skill combo shows level 99 / 13,034,431 xp,
+verified gen 21); `getClientThread()` still returns the game thread. A JOptionPane on the EDT
+(`ModalDialogs`) hands the turn back while the dialog is up, so the game keeps running (Inventory
+Setups' name dialog held 70 s, still connected); on the game thread a dialog is capped at 15 s
+(timeout = Cancel). `invokeAndWait` runs inline on the game thread (and on the host start thread
+before cycles reach the host), and waits up to 60 s on other threads. A game-thread wait over
+3 s logs the EDT's stack ("game thread waiting on the EDT"). An EDT task that blocks on the game
+thread (e.g. a Future from clientThread) would deadlock both; none seen so far.
 
 Test hooks: `setprop debug.osrsrl.sbclick "<text>"` taps the first button with that text or
 following a label with that text (e.g. `"Demon Slayer"` starts that quest in Quest Helper);
 `setprop debug.osrsrl.sbdump 1` writes the model to `files/sidebar-model.txt` on change.
 Text fields (`JTextField`, kind E) show as an input box; a tap opens an Android dialog with an
-EditText (soft keyboard), and OK sets the text on the game thread and fires the field's
+EditText (soft keyboard), and OK sets the text on the EDT and fires the field's
 DocumentListeners and ActionListeners (Quest Helper's search filters the quest list, verified
 2026-10-15). Test hook: `setprop debug.osrsrl.sbtext "<text>"` types into the first text field
 (`-` clears it). Combo boxes open an Android picker (verified 2026-10-16: QH's Difficulty filter). Buttons with no

@@ -275,7 +275,13 @@ final class OverlayRenderer {
         Point c = cursor.get(pos);
         if (c == null) {
             switch (pos) {
-                case TOP_RIGHT:
+                case TOP_RIGHT: {
+                    // As desktop resizable: below the minimap block (root child 36, orbs included), which
+                    // is opaque UI that clips UNDER_WIDGETS overlays (Customizable XP Drops' drops).
+                    Rectangle mm = rootChildBounds(36);
+                    c = new Point(size.width - BORDER, mm != null ? mm.y + mm.height + BORDER : BORDER);
+                    break;
+                }
                 case CANVAS_TOP_RIGHT: c = new Point(size.width - BORDER, BORDER); break;
                 case TOP_CENTER: c = new Point(size.width / 2, BORDER); break;
                 case BOTTOM_LEFT: c = new Point(BORDER, size.height - BORDER); break;
@@ -316,6 +322,15 @@ final class OverlayRenderer {
     private static final int LEFT_COLUMN = 75;
 
     /** The chatbox (162:0) in UI-canvas coordinates, or null when it isn't open. */
+    private static Rectangle rootChildBounds(int child) {
+        int root = Native.rootInterface();
+        if (root < 0) return null;
+        AndroidWidget w = new AndroidWidget(root << 16 | child);
+        if (w.rawGeo() == null || w.isHidden() || w.getWidth() <= 0) return null;
+        java.awt.Rectangle b = w.getBounds();
+        return new Rectangle(b.x, b.y, b.width, b.height);
+    }
+
     private static Rectangle chatBounds() {
         net.runelite.api.Client client = Host.client();
         net.runelite.api.widgets.Widget w = client != null ? client.getWidget(162, 0) : null;

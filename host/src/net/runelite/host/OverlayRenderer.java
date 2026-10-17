@@ -300,7 +300,16 @@ final class OverlayRenderer {
                 // The mobile HUD's bottom-left button (the chat/pop-out toggle, screen x 28..152 of
                 // 1920) covers the desktop corner: start right of it. // unverified: proportion from one 1920x1080 screenshot
                 case BOTTOM_LEFT: c = new Point(BORDER + Math.round(size.width * 0.085f), size.height - BORDER); break;
-                case BOTTOM_RIGHT: c = new Point(size.width - BORDER, size.height - BORDER); break;
+                case BOTTOM_RIGHT: {
+                    // Left of the mobile tab stones (root child 50) and, when open, the side panel (111):
+                    // both are opaque UI in the desktop corner (Inventory Viewer was half under the stones).
+                    int right = size.width;
+                    Rectangle tabs = rootChildBounds(50), panel = rootChildBounds(111);
+                    if (tabs != null) right = Math.min(right, tabs.x);
+                    if (panel != null) right = Math.min(right, panel.x);
+                    c = new Point(right - BORDER, size.height - BORDER);
+                    break;
+                }
                 case ABOVE_CHATBOX_RIGHT: {
                     // The mobile chatbox is at the top left: stack these down from its bottom-right
                     // corner (the desktop spot, above the chatbox at the bottom, is under the tab stones).

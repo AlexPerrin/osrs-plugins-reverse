@@ -617,6 +617,19 @@ public final class Host {
                         Log.i(TAG, "tap: " + top + " moved to the top by a plugin");
                         Native.redirectMenuTap(((AndroidMenuEntry) top).nativeIndex);
                     }
+                    // Plugin entries created for a widget tap (right-click options on desktop) get the strip.
+                    // Only for single-op buttons (one game entry besides Cancel/Walk): those have no long-press
+                    // menu to carry the entries, unlike items (Bank Tags' entries would pop up on every bank tap).
+                    int gameOps = 0;
+                    for (net.runelite.api.MenuEntry m : entries) {
+                        if (!(m instanceof AndroidMenuEntry) || ((AndroidMenuEntry) m).synthetic) continue;
+                        int tt = ((AndroidMenuEntry) m).targetType();
+                        if (tt != AndroidMenuEntry.T_CANCEL && tt != AndroidMenuEntry.T_WALK) gameOps++;
+                    }
+                    if (gameOps == 1 && top instanceof AndroidMenuEntry && ((AndroidMenuEntry) top).targetType() == AndroidMenuEntry.T_WIDGET) {
+                        net.runelite.api.Point p = client.getMouseCanvasPosition();
+                        if (p != null && p.getX() >= 0) menu.publishTapEntries(p.getX(), p.getY());
+                    }
                 } finally {
                     menu.endSession();
                     menu.clearAdded();

@@ -262,9 +262,30 @@ final class AndroidMenu implements Menu {
         show(l);
     }
 
+    /** Uptime (ms) until which a strip shown for a plain tap stays up (no game menu is open then). */
+    private static long tapStripUntil;
+
+    /**
+     * Game thread, during a plain tap on a widget op: entries plugins created while the tap's
+     * MenuEntryAdded pass ran would be right-click options on desktop (Bank Heatmap's toggles on
+     * the bank menu button). The tap still runs as usual; these are shown as the plugin strip at
+     * the tap point for a few seconds.
+     */
+    void publishTapEntries(int x, int y) {
+        List<AndroidMenuEntry> l = new ArrayList<>(added);
+        if (l.isEmpty()) return;
+        java.util.Collections.reverse(l);
+        tapStripUntil = android.os.SystemClock.uptimeMillis() + 6000;
+        show(l, new java.awt.Rectangle(Math.max(0, x - MIN_WIDTH / 2), y, MIN_WIDTH, 0));
+    }
+
     private static void show(List<AndroidMenuEntry> entries) {
+        tapStripUntil = 0;
+        show(entries, bounds());
+    }
+
+    private static void show(List<AndroidMenuEntry> entries, java.awt.Rectangle r) {
         shown = entries;
-        java.awt.Rectangle r = bounds();
         if (shown.isEmpty() || r == null) {
             Native.pluginMenu(null, 0, 0, 0, 0);
             return;
@@ -285,7 +306,7 @@ final class AndroidMenu implements Menu {
 
     /** Game thread, every cycle: hides the strip once the game's menu has closed. */
     static void onCycle() {
-        if (!shown.isEmpty() && !Native.menuOpen()) {
+        if (!shown.isEmpty() && !Native.menuOpen() && android.os.SystemClock.uptimeMillis() > tapStripUntil) {
             shown = new ArrayList<>();
             Native.pluginMenu(null, 0, 0, 0, 0);
         }
@@ -304,13 +325,15 @@ final class AndroidMenu implements Menu {
             return;
         }
         shown = new ArrayList<>();
+        boolean fromTap = tapStripUntil != 0;
+        tapStripUntil = 0;
         Native.pluginMenu(null, 0, 0, 0, 0);
         Log.i(Host.TAG, "plugin menu entry tapped: " + e);
         try {
             if (e.onClick != null) e.onClick.accept(e);
             if (bus != null) bus.post(new net.runelite.api.events.MenuOptionClicked(e));
         } finally {
-            Log.i(Host.TAG, "menu close: " + Native.menuClose());
+            if (!fromTap) Log.i(Host.TAG, "menu close: " + Native.menuClose());  // a tap strip has no game menu
         }
     }
 

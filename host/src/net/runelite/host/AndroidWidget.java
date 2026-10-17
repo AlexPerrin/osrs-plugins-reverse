@@ -56,6 +56,10 @@ public class AndroidWidget extends WidgetBag {
     @Override public Widget setOpacity(int v) { return set(0xb0, v); }
     @Override public Widget setSpriteId(int v) { CustomSpriteWidgets.note(this, v); return set(0xc8, v); }
     @Override public Widget setSpriteTiling(boolean v) { return set(0xec, v ? 1 : 0); }
+    // Widget +0xb38/+0xb3c (what getItemId/getItemQuantity read). // unverified: whether the game
+    // then draws the item on a graphic widget; the host redraws items over custom sprites anyway.
+    @Override public Widget setItemId(int v) { return set(0xb38, v); }
+    @Override public Widget setItemQuantity(int v) { return set(0xb3c, v); }
     @Override public void setBorderType(int v) { set(0xf0, v); }
     @Override public void setFlippedVertically(boolean v) { set(0xf8, v ? 1 : 0); }
     @Override public void setFlippedHorizontally(boolean v) { set(0xf9, v ? 1 : 0); }
@@ -183,7 +187,7 @@ public class AndroidWidget extends WidgetBag {
     }
 
     @Override public int getRelativeX() { return geo()[0]; }
-    @Override public int getRelativeY() { return geo()[1]; }
+    @Override public int getRelativeY() { return geo()[1] - childYShift(); }
     @Override public int getWidth() { return geo()[2]; }
     @Override public int getHeight() { return geo()[3] - (this.getClass() == AndroidWidget.class && id == BANK_ITEMS_CONTAINER ? bankColumnShift() : 0); }
 
@@ -211,8 +215,9 @@ public class AndroidWidget extends WidgetBag {
         return shiftCache;
     }
 
-    /** Dynamic children of the mobile bank's 12:9 get the desktop y shift. */
-    int childYShift() { return 0; }
+    /** Children of the mobile bank's 12:9 (static, e.g. the potion-store button 12:52, or dynamic) get the desktop y shift. */
+    int childYShift() { return (id >>> 16) == 12 && id != BANK_ITEMS_CONTAINER && getParentIdRaw() == BANK_ITEMS_CONTAINER ? bankColumnShift() : 0; }
+    int getParentIdRaw() { return geo()[4]; }
 
     Rectangle getBoundsRaw() {
         Point p = getCanvasLocation();

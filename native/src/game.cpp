@@ -809,7 +809,8 @@ bool widget_set_field(int component, int index, uint32_t off, int value) {
     static constexpr struct { uint32_t off; bool byte; } kFields[] = {
         {0x3c}, {0x40}, {0x44}, {0x48}, {0x4c}, {0x50}, {0x54}, {0x58},  // modes, original x/y/w/h
         {0xa8, true}, {0xb0}, {0xc8}, {0xec, true}, {0xf0}, {0xf4}, {0xf8, true}, {0xf9, true},
-        {0x150}, {0x18c}, {0x190}, {0x194, true}, {0xb98, true}, {0xb99, true}};
+        {0x150}, {0x18c}, {0x190}, {0x194, true}, {0xb98, true}, {0xb99, true},
+        {0xb38}, {0xb3c}};  // item id / quantity (as widget_item reads them; Widget.setItemId/Quantity)
     uintptr_t slot = widget_slot(component, index);
     uintptr_t w = slot ? read_at<uintptr_t>(slot + 8) : 0;
     if (!w) return false;

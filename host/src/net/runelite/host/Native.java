@@ -34,6 +34,8 @@ final class Native {
     static native int[] varps();
     static native int weight();
     static native int world();
+    /** [0] = 1 if the scene is an instance, then [level][x][z] packed template chunks (-1 none); null before login. */
+    static native int[] instanceTemplates();
     static native int worldFlags();
     /** {zoom, x, y, width, height} of the 3D viewport in UI canvas pixels, or null. */
     static native int[] viewportZoom();

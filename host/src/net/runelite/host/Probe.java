@@ -65,6 +65,23 @@ final class Probe {
                     Log.i(TAG, "db row " + r + " col " + col + " tuple " + tup + " -> " + java.util.Arrays.toString(c.getDBTableField(r, col, tup)));
                 return;
             }
+            if (a[0].equals("inst")) {  // "inst log 1": instance state, regions, used template chunks, the player's template point
+                Log.i(TAG, "inst " + c.isInInstancedRegion() + " regions " + java.util.Arrays.toString(c.getMapRegions()));
+                int[][][] t = c.getInstanceTemplateChunks();
+                int shown = 0;
+                for (int l = 0; l < 4; l++)
+                    for (int x = 0; x < 13; x++)
+                        for (int z = 0; z < 13; z++) {
+                            int v = t[l][x][z];
+                            if (v == -1 || shown++ >= 40) continue;
+                            Log.i(TAG, "inst chunk " + l + "/" + x + "/" + z + " -> zone " + (v >> 14 & 1023) + "," + (v >> 3 & 2047)
+                                + " level " + (v >> 24 & 3) + " rot " + (v >> 1 & 3));
+                        }
+                net.runelite.api.Player me = c.getLocalPlayer();
+                if (me != null) Log.i(TAG, "inst me " + me.getWorldLocation() + " template "
+                    + net.runelite.api.coords.WorldPoint.fromLocalInstance(c, me.getLocalLocation()) + " used " + shown);
+                return;
+            }
             if (a[0].equals("net")) {  // "net get|post|xp": one request through the injected OkHttpClient (NetGuard test; post/xp go to the local test server's HTTP sidecar, never to RuneLite)
                 final String kind = a[1];
                 okhttp3.OkHttpClient http = net.runelite.client.RuneLite.getInjector().getInstance(okhttp3.OkHttpClient.class);

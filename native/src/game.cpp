@@ -233,6 +233,26 @@ bool viewport_zoom(int out[5]) {
     return out[0] > 0 && out[0] < 100000 && out[3] > 0 && out[4] > 0;
 }
 int world_flags() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x2f64) : 0; }
+
+// Instances (REBUILD_REGION). The scene loader manager is *(Client+0x4868) (passed to both rebuild
+// handlers from the packet dispatcher, 0x442610). REBUILD_REGION (0x555510) sets byte +0x54dd to 1,
+// both normal rebuild paths (0x5551dc, 0x5555xx) clear it. The region parser (0x5580e4) fills
+// [4 levels][13 x][13 z] entries of 16 bytes at manager +0x38: int zoneX (ref >> 14 & 1023), zoneZ
+// (ref >> 3 & 2047), level (ref >> 24 & 3), rotation (ref >> 1 & 3); absent zones are all -1.
+// The array is not cleared by a normal rebuild (desktop keeps stale chunks too).
+bool instance_templates(bool& instanced, int32_t out[4 * 13 * 13]) {
+    uintptr_t c = client();
+    if (!c) return false;
+    uintptr_t mgr = read_at<uintptr_t>(c + 0x4868);
+    if (!mgr) return false;
+    instanced = read_at<uint8_t>(mgr + 0x54dd) != 0;
+    for (int i = 0; i < 4 * 13 * 13; i++) {
+        const uintptr_t e = mgr + 0x38 + 16 * static_cast<uintptr_t>(i);
+        int32_t x = read_at<int32_t>(e), z = read_at<int32_t>(e + 4), lvl = read_at<int32_t>(e + 8), rot = read_at<int32_t>(e + 12);
+        out[i] = (x < 0 || z < 0 || lvl < 0 || rot < 0) ? -1 : (lvl << 24 | x << 14 | z << 3 | rot << 1);
+    }
+    return true;
+}
 int weight() { uintptr_t c = client(); return c ? read_at<int16_t>(c + 0x33a4) : 0; }
 int run_energy() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x33a0) : 0; }
 

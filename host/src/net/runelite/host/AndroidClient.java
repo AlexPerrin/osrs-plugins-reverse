@@ -292,6 +292,7 @@ public class AndroidClient extends ClientStub {
         WorldView wv = getTopLevelWorldView();
         // Desktop has the new scene's regions while LOADING (Herbiboar checks them on GameStateChanged(LOADING)).
         if (wv == null || getGameState().getState() < net.runelite.api.GameState.LOADING.getState()) return new int[0];
+        if (AndroidWorldView.instanced()) return AndroidWorldView.instanceRegions();
         int x0 = wv.getBaseX() >> 6, x1 = (wv.getBaseX() + 96) >> 6, y0 = wv.getBaseY() >> 6, y1 = (wv.getBaseY() + 96) >> 6;
         int[] out = new int[(x1 - x0 + 1) * (y1 - y0 + 1)];
         int i = 0;
@@ -747,7 +748,7 @@ public class AndroidClient extends ClientStub {
 
     // --- regions (no instances yet) ---
 
-    @Override public boolean isInInstancedRegion() { return false; }
+    @Override public boolean isInInstancedRegion() { return AndroidWorldView.instanced(); }
 
     @Override
     public java.util.EnumSet<net.runelite.api.WorldType> getWorldType() {
@@ -1018,7 +1019,7 @@ public class AndroidClient extends ClientStub {
         return n == null ? -1 : (n.toLowerCase().hashCode() & 0xffffffffL);
     }
     // No instances yet: an empty template table.
-    @Override public int[][][] getInstanceTemplateChunks() { return new int[4][13][13]; }
+    @Override public int[][][] getInstanceTemplateChunks() { return AndroidWorldView.templateChunks(); }
 
     // --- inventories ---
 

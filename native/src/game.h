@@ -361,6 +361,9 @@ std::vector<int32_t> varps();
 int weight();      // kg (UPDATE_RUNWEIGHT)
 int world();       // Client +0x3174 (CS2 map_world 3318; jav_config param 12)
 int world_flags(); // Client +0x2f64 (CS2 worldflags 3324)
+// REBUILD_REGION state: whether the scene is an instance, and the [level][x][z] template chunks
+// packed as desktop (level << 24 | zoneX << 14 | zoneZ << 3 | rotation << 1; -1 = none).
+bool instance_templates(bool& instanced, int32_t out[4 * 13 * 13]);
 // 3D viewport projection: {zoom, x, y, width, height} in UI canvas pixels (Client +0x46d4, +0x46e0..+0x46ec,
 // computed by 0x5561e8 from the CS2 viewport zoom/fov settings; RuneLite's getScale/viewport).
 bool viewport_zoom(int out[5]);

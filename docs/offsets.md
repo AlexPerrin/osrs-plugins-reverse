@@ -128,6 +128,7 @@ rewriting vtable slot 5 (`0xa6a008`, in .data.rel.ro) after checking that it hol
 | DB fields | DBRowType `0x64f824` (table `+0x30`), DBTableType `0x5eb2c4`, column types `0x5ec320`, VM op handler `0x4cd7f4(vm, 7502)` | gen 7 used the Ghidra addresses (+0x100000) and crashed; verified after the fix |
 | FriendSystem | `*(Client+0x46c0)`: state `+0x150` (0/1 loaded/2 list), friends container `+0x08`, ignores `+0xb8`; container: count `+0xc`, Element** `+0x20`; element name `+0x08`, previous `+0x38`, world `+0x68`, rank `+0x88` | static RE of CS2 ops `0x4ebdb0`, parsers `0x56e448`/`0x56ee54` |
 | Scene reload | `0x429900(client)`: when state is 30, sets 25 and rebuilds | used for setGameState(LOADING); verified |
+| Instances (REBUILD_REGION) | Scene loader manager `*(Client+0x4868)` (the dispatcher passes it to both rebuild handlers, `0x442610`). Instance flag byte `+0x54dd`: 1 from REBUILD_REGION `0x555510`, 0 from the normal rebuild paths `0x5551dc` / `0x55560c..0x555710`. Templates `+0x38`: [4 levels][13 x][13 z] x 16 bytes = int zoneX (ref >> 14 & 1023), zoneZ (ref >> 3 & 2047), level (ref >> 24 & 3), rotation (ref >> 1 & 3), all -1 when absent (parser `0x5580e4`, shift/mask vectors at `0xeadc0`/`0xec880`) | `isInstance`, `getInstanceTemplateChunks` (repacked as desktop), instanced `getMapRegions`; static RE, unverified on the device |
 | Sub-interface node | `+0` component, `+4` group, `+8` modal mode | IF_OPENSUB helper `0x462640` |
 
 ## Added 2026-10-16 (client dev gen 12)

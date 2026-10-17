@@ -31,7 +31,50 @@ public class AndroidWorldView extends WorldViewStub {
 
     @Override public int getId() { return net.runelite.api.WorldView.TOPLEVEL; }  // 0 in API 1.13
     @Override public boolean isTopLevel() { return true; }
-    @Override public boolean isInstance() { return false; }
+    // REBUILD_REGION templates (Native.instanceTemplates), read once per cycle.
+    private static int instStamp = -1;
+    private static int[] instRaw;
+
+    static int[] instanceRaw() {
+        if (instStamp != Host.cycleStamp || instRaw == null) {
+            int[] r = Native.instanceTemplates();
+            instRaw = r != null && r.length == 1 + 4 * 13 * 13 ? r : new int[1 + 4 * 13 * 13];
+            instStamp = Host.cycleStamp;
+        }
+        return instRaw;
+    }
+
+    static boolean instanced() { return instanceRaw()[0] == 1; }
+
+    /** [level][x][z] packed as desktop (level << 24 | zoneX << 14 | zoneZ << 3 | rotation << 1), -1 = none. */
+    static int[][][] templateChunks() {
+        int[] r = instanceRaw();
+        int[][][] out = new int[4][13][13];
+        int i = 1;
+        for (int l = 0; l < 4; l++)
+            for (int x = 0; x < 13; x++)
+                for (int z = 0; z < 13; z++) out[l][x][z] = r[i++];
+        return out;
+    }
+
+    /** The distinct mapsquares an instance's templates come from (desktop's region list for REBUILD_REGION). */
+    static int[] instanceRegions() {
+        int[] r = instanceRaw();
+        java.util.LinkedHashSet<Integer> ids = new java.util.LinkedHashSet<>();
+        for (int i = 1; i < r.length; i++) {
+            int v = r[i];
+            if (v == -1) continue;
+            int zx = v >> 14 & 1023, zz = v >> 3 & 2047;
+            ids.add((zx >> 3) << 8 | (zz >> 3));
+        }
+        int[] out = new int[ids.size()];
+        int k = 0;
+        for (int id : ids) out[k++] = id;
+        return out;
+    }
+
+    @Override public boolean isInstance() { return instanced(); }
+    @Override public int[][][] getInstanceTemplateChunks() { return templateChunks(); }
     @Override public int getSizeX() { return 104; }
     @Override public int getSizeY() { return 104; }
 
@@ -48,6 +91,7 @@ public class AndroidWorldView extends WorldViewStub {
 
     @Override
     public int[] getMapRegions() {
+        if (instanced()) return instanceRegions();
         // The 104x104 scene spans up to 4x4 64-tile regions around its base.
         int bx = getBaseX(), by = getBaseY();
         java.util.LinkedHashSet<Integer> ids = new java.util.LinkedHashSet<>();

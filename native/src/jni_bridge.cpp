@@ -71,6 +71,16 @@ jint n_server_tick(JNIEnv*, jclass) { return game::server_tick(); }
 jint n_varp(JNIEnv*, jclass, jint id) { return game::varp(id); }
 jint n_weight(JNIEnv*, jclass) { return game::weight(); }
 jint n_world(JNIEnv*, jclass) { return game::world(); }
+// int[1 + 4*13*13]: [0] = 1 if instanced, then the packed template chunks; null before login.
+jintArray n_instance_templates(JNIEnv* env, jclass) {
+    bool inst = false;
+    int32_t t[1 + 4 * 13 * 13];
+    if (!game::instance_templates(inst, t + 1)) return nullptr;
+    t[0] = inst ? 1 : 0;
+    jintArray out = env->NewIntArray(1 + 4 * 13 * 13);
+    if (out) env->SetIntArrayRegion(out, 0, 1 + 4 * 13 * 13, t);
+    return out;
+}
 jint n_world_flags(JNIEnv*, jclass) { return game::world_flags(); }
 jintArray n_viewport_zoom(JNIEnv* env, jclass) {
     int v[5];
@@ -1290,6 +1300,7 @@ const JNINativeMethod kNatives[] = {
     {"varps", "()[I", reinterpret_cast<void*>(n_varps)},
     {"weight", "()I", reinterpret_cast<void*>(n_weight)},
     {"world", "()I", reinterpret_cast<void*>(n_world)},
+    {"instanceTemplates", "()[I", reinterpret_cast<void*>(n_instance_templates)},
     {"worldFlags", "()I", reinterpret_cast<void*>(n_world_flags)},
     {"viewportZoom", "()[I", reinterpret_cast<void*>(n_viewport_zoom)},
     {"viewTransforms", "()[F", reinterpret_cast<void*>(n_view_transforms)},

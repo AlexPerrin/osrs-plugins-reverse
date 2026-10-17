@@ -59,7 +59,8 @@ final class AndroidScene extends SceneStub {
     @Override public int getBaseX() { return wv.getBaseX(); }
     @Override public int getBaseY() { return wv.getBaseY(); }
     @Override public int getWorldViewId() { return -1; }
-    @Override public boolean isInstance() { return false; }
+    @Override public boolean isInstance() { return AndroidWorldView.instanced(); }
+    @Override public int[][][] getInstanceTemplateChunks() { return AndroidWorldView.templateChunks(); }
 
     final class Tile extends TileStub {
         private final int x, y, z;

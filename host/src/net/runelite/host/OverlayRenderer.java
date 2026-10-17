@@ -93,9 +93,13 @@ final class OverlayRenderer {
         return out;
     }
 
+    /** Whether the last render() call skipped the frame (overlays draw every other cycle). */
+    boolean skipped;
+
     void render() {
         // 25 Hz is plenty for overlays and halves the copy cost.
-        if ((frame++ & 1) != 0) return;
+        skipped = (frame++ & 1) != 0;
+        if (skipped) return;
         // As on desktop, overlays are only drawn while logged in (plugins assume a local player).
         net.runelite.api.Client client = Host.client();
         boolean loggedIn = client != null && client.getGameState() == net.runelite.api.GameState.LOGGED_IN

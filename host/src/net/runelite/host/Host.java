@@ -94,6 +94,7 @@ public final class Host {
     private static final net.runelite.client.ui.overlay.OverlayManager overlayManager =
             new net.runelite.client.ui.overlay.OverlayManager();
     private static final OverlayRenderer overlayRenderer = new OverlayRenderer(overlayManager);
+    private static net.runelite.client.ui.overlay.tooltip.TooltipManager tooltipManager;
     private static final GameTick gameTick = new GameTick();
     private static final HostDrawManager drawManager = new HostDrawManager();
 
@@ -187,6 +188,7 @@ public final class Host {
         // at the "mouse", which is the touch point here (AndroidClient.getMouseCanvasPosition).
         try {
             overlayManager.add(injector.getInstance(net.runelite.client.ui.overlay.tooltip.TooltipOverlay.class));
+            tooltipManager = injector.getInstance(net.runelite.client.ui.overlay.tooltip.TooltipManager.class);
         } catch (Throwable t) {
             Log.e(TAG, "tooltip overlay failed", t);
         }
@@ -382,6 +384,9 @@ public final class Host {
                 bus.post(beforeRender);
                 try {
                     overlayRenderer.render();
+                    // Tooltips added in BeforeRender are drawn and cleared by TooltipOverlay; on the
+                    // cycles overlays skip, drop them, or the next frame shows them twice (Item Prices).
+                    if (overlayRenderer.skipped && tooltipManager != null) tooltipManager.clear();
                 } catch (Throwable t) {
                     Log.e(TAG, "overlay rendering failed", t);
                 }

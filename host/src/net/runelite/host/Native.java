@@ -27,6 +27,8 @@ final class Native {
     static native Object typeParam(int kind, int id, int key);
     /** Writes a whitelisted widget field (CC_SET* offset); index >= 0 = CC_CREATE child. */
     static native boolean widgetSetField(int id, int index, int offset, int value);
+    /** One widget field (+0x320/+0x324/+0x13c int, +0x348 byte); Integer.MIN_VALUE if unreadable. */
+    static native int widgetGetField(int id, int index, int offset);
     /** Re-runs the game's layout for the widget (CC_SETPOSITION/SETSIZE follow-up). */
     static native boolean widgetRevalidate(int id, int index);
     static native int serverTick();

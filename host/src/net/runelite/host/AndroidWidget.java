@@ -91,6 +91,30 @@ public class AndroidWidget extends WidgetBag {
      * "100K", ALWAYS drew "1" on a single log, STACKABLE drew "100K" and hid the log's "1".
      */
     @Override public Widget setItemQuantityMode(int mode) { return set(0x13c, mode == 1 ? 3 : mode == 2 ? 1 : 0); }
+    private int field(int offset, int dflt) { int v = Native.widgetGetField(id, childIndex(), offset); return v == Integer.MIN_VALUE ? dflt : v; }
+    /** Inverse of setItemQuantityMode's mapping (game 0 → NEVER, 3 → ALWAYS, 1 → STACKABLE). */
+    @Override public int getItemQuantityMode() { int m = field(0x13c, 0); return m == 3 ? 1 : m == 1 ? 2 : 0; }
+    // Drag dead zone / dead time (+0x320/+0x324, ints the drag block compares; static RE gen 28).
+    // unverified: on the device (Anti Drag, Quest Helper's bank tab)
+    @Override public int getDragDeadZone() { return field(0x320, 0); }
+    @Override public void setDragDeadZone(int v) { set(0x320, v); }
+    @Override public int getDragDeadTime() { return field(0x324, 0); }
+    @Override public void setDragDeadTime(int v) { set(0x324, v); }
+    // The game sets +0x348 once any CC_SETON or IF_SETON listener is stored; Java onOp listeners count too.
+    @Override public boolean hasListener() { return field(0x348, 0) != 0 || WidgetListeners.onOp(id, childIndex()) != null; }
+    // Model / animation fields (CC_SETMODEL 1108 type+id, CC_SETMODELANIM 1110; getModelType/Id/
+    // getAnimationId read the same). // unverified: whether the game redraws the model from them
+    @Override public Widget setModelType(int v) { return set(0xfc, v); }
+    @Override public Widget setModelId(int v) { return set(0x100, v); }
+    @Override public Widget setAnimationId(int v) { return set(0x10c, v); }
+    /** Line height +0x188 (type 12 keeps it elsewhere; not written there). */
+    @Override public Widget setLineHeight(int v) { return getType() == 12 ? this : set(0x188, v); }
+    // Laid-out position/size (+0x5c..+0x68, what getRelativeX/Y/getWidth/getHeight read); the next
+    // layout pass recomputes them, as on desktop.
+    @Override public void setRelativeX(int v) { set(0x5c, v); }
+    @Override public void setRelativeY(int v) { set(0x60, v + childYShift()); }
+    @Override public void setWidth(int v) { set(0x64, v); }
+    @Override public void setHeight(int v) { set(0x68, v); }
 
     // CC_SETPOSITION / CC_SETSIZE fields without the layout pass (as desktop's setters; revalidate() runs it).
     @Override public Widget setPos(int x, int y) { setOriginalX(x); return setOriginalY(y); }
@@ -169,6 +193,23 @@ public class AndroidWidget extends WidgetBag {
     // onDrag: CS2 listeners from plugins are not written to the game (Bank Tags sets 284, the
     // bank's drag-scroll script); the game's own stays (+0x4d0, `set 'wlisten <g:c> [index]'`).
     @Override public void setOnDragCompleteListener(Object... args) { WidgetListeners.setOnDragComplete(id, childIndex(), args); }
+    // Java listeners fired by the host (WidgetListeners: timer, drag, var transmit) or stored only.
+    @Override public void setOnTimerListener(Object... a) { WidgetListeners.setListener(WidgetListeners.TIMER, id, childIndex(), a); }
+    @Override public void setOnDragListener(Object... a) { WidgetListeners.setListener(WidgetListeners.DRAG, id, childIndex(), a); }
+    @Override public void setOnVarTransmitListener(Object... a) { WidgetListeners.setListener(WidgetListeners.VAR_TRANSMIT, id, childIndex(), a); }
+    @Override public void setVarTransmitTrigger(int... t) { WidgetListeners.setVarTransmitTrigger(id, childIndex(), t); }
+    private void stored(Object[] a) { WidgetListeners.setListener(WidgetListeners.STORED, id, childIndex(), a); }
+    @Override public void setOnClickListener(Object... a) { stored(a); }
+    @Override public void setOnHoldListener(Object... a) { stored(a); }
+    @Override public void setOnReleaseListener(Object... a) { stored(a); }
+    @Override public void setOnMouseOverListener(Object... a) { stored(a); }
+    @Override public void setOnMouseLeaveListener(Object... a) { stored(a); }
+    @Override public void setOnMouseRepeatListener(Object... a) { stored(a); }
+    @Override public void setOnScrollWheelListener(Object... a) { stored(a); }
+    @Override public void setOnKeyListener(Object... a) { stored(a); }
+    @Override public void setOnDialogAbortListener(Object... a) { stored(a); }
+    @Override public void setOnTargetEnterListener(Object... a) { stored(a); }
+    @Override public void setOnTargetLeaveListener(Object... a) { stored(a); }
     @Override public Object[] getOnVarTransmitListener() { return Native.widgetListener(id, childIndex(), 0x590); }
     @Override public Object[] getOnInvTransmitListener() { return Native.widgetListener(id, childIndex(), 0x5d8); }
     // Read from the game; an empty array (not null) when unreadable, since plugins stream it

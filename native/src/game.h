@@ -137,6 +137,7 @@ constexpr int kWidgetProps = 35;
 // Writes a whitelisted int/bool widget field (CC_SET* offsets) and marks the widget dirty;
 // index >= 0 addresses a CC_CREATE child. Game thread only.
 bool widget_set_field(int component, int index, uint32_t offset, int value);
+int widget_get_field(int component, int index, uint32_t offset);  // INT32_MIN if not readable
 // Re-runs the game's layout for a widget after position/size changes (what CC_SETPOSITION does).
 bool widget_revalidate(int component, int index);
 int widget_create_child(int component, int index, int type);

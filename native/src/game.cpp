@@ -921,7 +921,11 @@ bool widget_set_field(int component, int index, uint32_t off, int value) {
         {0xb38}, {0xb3c},  // item id / quantity (as widget_item reads them; Widget.setItemId/Quantity)
         {0x84}, {0x88}, {0x8c}, {0x90},  // scroll x/y, scroll width/height (IF_SETSCROLLPOS / CC_SETSCROLLSIZE fields)
         {0x128}, {0x11c}, {0x120}, {0x124},  // model zoom, model angle x/y/z
-        {0x13c}};  // item quantity mode (CC_SETOBJECT* 1200/1205/1212: 1/3, 0, 3)
+        {0x13c},  // item quantity mode (CC_SETOBJECT* 1200/1205/1212: 1/3, 0, 3)
+        {0x320}, {0x324},  // drag dead zone / dead time (ints, read by the drag block of 0x41d0a4)
+        {0xfc}, {0x100}, {0x10c},  // model type / id, animation (CC_SETMODEL* 1108, 1110)
+        {0x188},  // line height (CC_SETTEXTALIGN 1114; type 12 keeps it in its +0xba8 object instead)
+        {0x5c}, {0x60}, {0x64}, {0x68}};  // laid-out x/y/width/height (what layout writes; desktop's setRelativeX..)
     uintptr_t slot = widget_slot(component, index);
     uintptr_t w = slot ? read_at<uintptr_t>(slot + 8) : 0;
     if (!w) return false;
@@ -937,6 +941,19 @@ bool widget_set_field(int component, int index, uint32_t off, int value) {
         return true;
     }
     return false;
+}
+
+// Reads one int field of a widget (or a byte for +0x348, the "has a listener" flag the CC_SETON*
+// setter 0x4e4fe0 sets); the offsets widget_set_field allows plus +0x348. INT32_MIN if unknown.
+int widget_get_field(int component, int index, uint32_t off) {
+    uintptr_t slot = widget_slot(component, index);
+    uintptr_t w = slot ? read_at<uintptr_t>(slot + 8) : 0;
+    if (!w) return INT32_MIN;
+    switch (off) {
+        case 0x348: return read_at<uint8_t>(w + off);
+        case 0x320: case 0x324: case 0x13c: return read_at<int32_t>(w + off);
+        default: return INT32_MIN;
+    }
 }
 
 // What CC_SETPOSITION/CC_SETSIZE run after storing (0x4e06dc ops 1000/1001): 0x44a788(client, slot),

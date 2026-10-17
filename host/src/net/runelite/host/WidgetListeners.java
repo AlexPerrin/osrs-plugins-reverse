@@ -147,9 +147,109 @@ final class WidgetListeners {
 
     /** Created children of `id` were deleted (or one is re-created at `index`; -1 = all). */
     static synchronized void forget(int id, int index) {
-        if (index >= 0) { entries.remove(key(id, index)); dragComplete.remove(key(id, index)); return; }
+        if (index >= 0) {
+            entries.remove(key(id, index));
+            dragComplete.remove(key(id, index));
+            for (Map<Long, Object[]> m : javaListeners.values()) m.remove(key(id, index));
+            return;
+        }
         entries.keySet().removeIf(k -> (int) (k >>> 32) == id && (int) (long) k >= 0);
         dragComplete.keySet().removeIf(k -> (int) (k >>> 32) == id && (int) (long) k >= 0);
+        for (Map<Long, Object[]> m : javaListeners.values())
+            m.keySet().removeIf(k -> (int) (k >>> 32) == id && (int) (long) k >= 0);
+    }
+
+    // --- Other Java listeners (gen 28), keyed like onOp by slot and the game's Widget* ---
+    // Fired by the host: TIMER every client cycle while the widget exists and isn't hidden (as the
+    // game's onTimer runs for open interfaces); DRAG each cycle the widget is being dragged, before
+    // the release cycle (which runs onDragComplete); VAR_TRANSMIT at the next client cycle after a
+    // varp transmit, when the widget's host-side trigger list is null or contains a changed varp.
+    // The rest are stored only (a touch client has no hover/mouse-repeat/scroll-wheel/key events for
+    // them, and click/hold/release/target/dialog-abort aren't hooked): set/clear works, nothing fires.
+    // unverified: on the device.
+    static final int TIMER = 0, DRAG = 1, VAR_TRANSMIT = 2, STORED = 3;
+    private static final Map<Integer, Map<Long, Object[]>> javaListeners = new HashMap<>();  // kind -> key -> {Long ptr, Object[] listener}
+    private static final Map<Long, Object[]> varTriggers = new HashMap<>();  // key -> {Long ptr, int[] triggers}
+    private static final java.util.Set<Integer> changedVarps = new java.util.HashSet<>();
+
+    static synchronized void setListener(int kind, int id, int index, Object[] listener) {
+        Map<Long, Object[]> m = javaListeners.get(kind);
+        if (m == null) javaListeners.put(kind, m = new HashMap<>());
+        long k = key(id, index);
+        if (listener == null || listener.length == 0 || listener[0] == null) { m.remove(k); return; }
+        long ptr = Native.widgetPtr(id, index);
+        if (ptr != 0) m.put(k, new Object[] {ptr, listener});
+    }
+
+    static synchronized void setVarTransmitTrigger(int id, int index, int[] triggers) {
+        long ptr = Native.widgetPtr(id, index);
+        if (ptr != 0) varTriggers.put(key(id, index), new Object[] {ptr, triggers});
+    }
+
+    static synchronized void varpTransmitted(int varp) {
+        Map<Long, Object[]> m = javaListeners.get(VAR_TRANSMIT);
+        if (m != null && !m.isEmpty()) changedVarps.add(varp);
+    }
+
+    /** {id, index, listener} of live entries of `kind`; stale ones (the game freed the widget) dropped. */
+    private static synchronized java.util.List<Object[]> live(int kind) {
+        Map<Long, Object[]> m = javaListeners.get(kind);
+        java.util.List<Object[]> out = new java.util.ArrayList<>();
+        if (m == null || m.isEmpty()) return out;
+        for (java.util.Iterator<Map.Entry<Long, Object[]>> it = m.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<Long, Object[]> e = it.next();
+            int id = (int) (e.getKey() >>> 32), index = (int) (long) e.getKey();
+            if ((Long) e.getValue()[0] != Native.widgetPtr(id, index)) { it.remove(); continue; }
+            out.add(new Object[] {id, index, e.getValue()[1]});
+        }
+        return out;
+    }
+
+    private static void run(net.runelite.api.Client client, Object[] l, int id, int index) {
+        Object[] args = (Object[]) l[2];
+        if (!(args[0] instanceof JavaScriptCallback)) return;
+        AndroidScriptEvent ev = new AndroidScriptEvent(client, args);
+        ev.setSource(AndroidWidget.of(id, index));
+        try {
+            ((JavaScriptCallback) args[0]).run(ev);
+        } catch (RuntimeException ex) {
+            android.util.Log.w(Host.TAG, "widget listener " + (id >>> 16) + ":" + (id & 0xffff) + "[" + index + "]", ex);
+        }
+    }
+
+    /** Each client cycle (game thread): onTimer listeners, then onVarTransmit for varps sent since. */
+    static void runCycle(net.runelite.api.Client client) {
+        for (Object[] l : live(TIMER)) {
+            int id = (Integer) l[0], index = (Integer) l[1];
+            Widget w = AndroidWidget.of(id, index);
+            if (w != null && !w.isHidden()) run(client, l, id, index);
+        }
+        java.util.Set<Integer> changed;
+        synchronized (WidgetListeners.class) {
+            if (changedVarps.isEmpty()) return;
+            changed = new java.util.HashSet<>(changedVarps);
+            changedVarps.clear();
+        }
+        for (Object[] l : live(VAR_TRANSMIT)) {
+            int id = (Integer) l[0], index = (Integer) l[1];
+            Object[] t;
+            synchronized (WidgetListeners.class) { t = varTriggers.get(key(id, index)); }
+            int[] triggers = t != null && (Long) t[0] == Native.widgetPtr(id, index) ? (int[]) t[1] : null;
+            boolean fire = triggers == null;
+            for (int i = 0; triggers != null && i < triggers.length && !fire; i++) fire = changed.contains(triggers[i]);
+            if (fire) run(client, l, id, index);
+        }
+    }
+
+    /** A drag cycle of `src` before release (game thread): its Java onDrag listener. */
+    static void runDrag(net.runelite.api.Client client, int srcId, int srcIndex) {
+        for (Object[] l : live(DRAG))
+            if ((Integer) l[0] == srcId && (Integer) l[1] == srcIndex) run(client, l, srcId, srcIndex);
+    }
+
+    static synchronized boolean hasListeners(int kind) {
+        Map<Long, Object[]> m = javaListeners.get(kind);
+        return m != null && !m.isEmpty();
     }
 
     /**

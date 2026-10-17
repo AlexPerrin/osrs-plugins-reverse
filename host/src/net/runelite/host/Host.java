@@ -455,6 +455,7 @@ public final class Host {
                 AndroidWidget.reapplyHidden();
                 if (client instanceof AndroidClient) ((AndroidClient) client).syncModIcons();
                 bus.post(clientTick);
+                WidgetListeners.runCycle(client);
                 postActorChanges(bus);
                 if (pendingLoggedIn && localPlayer() != null) postLoggedIn(bus);
                 if (pendingSceneCycles >= 0 && (sceneBaseChanged() || ++pendingSceneCycles > 50)) {
@@ -713,7 +714,8 @@ public final class Host {
                 // On the release cycle the dragged widget's Java onDragComplete listener runs after
                 // WidgetDrag, still before the game's swap (WidgetListeners.runDragComplete).
                 boolean dragSubs = bus.hasSubscribers(net.runelite.api.events.WidgetDrag.class);
-                if (!dragSubs && !(a == 4 && WidgetListeners.hasDragComplete())) break;
+                boolean dragListeners = a != 4 && WidgetListeners.hasListeners(WidgetListeners.DRAG);
+                if (!dragSubs && !dragListeners && !(a == 4 && WidgetListeners.hasDragComplete())) break;
                 int[] d = Native.dragState();
                 if (d == null || d[4] == 0) break;
                 AndroidClient ac = (AndroidClient) client;
@@ -722,6 +724,7 @@ public final class Host {
                 ac.dragEventTouch = a;
                 try {
                     if (dragSubs) bus.post(new net.runelite.api.events.WidgetDrag());
+                    if (dragListeners) WidgetListeners.runDrag(client, d[0], d[1]);  // Java onDrag
                     if (a == 4) {
                         int[] r = Native.dragState();  // the target as WidgetDrag subscribers left it
                         if (r != null) WidgetListeners.runDragComplete(client, r[0], r[1], r[2], r[3]);
@@ -747,6 +750,7 @@ public final class Host {
             case VARBIT_CHANGED: {
                 if ("1".equals(Native.property("debug.osrsrl.varlog")))
                     Log.i(TAG, "VarbitChanged varp " + a + " = " + b + " state " + client.getGameState());
+                WidgetListeners.varpTransmitted(a);
                 Integer prev = varpValues.put(a, b);
                 int old = prev != null ? prev : 0;
                 VarbitChanged e = new VarbitChanged();

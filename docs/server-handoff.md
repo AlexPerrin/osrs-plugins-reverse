@@ -61,9 +61,16 @@ Details in `docs/openrune-port.md`, "Seventeenth server dev" and the sections af
   dialogue driver over devtools `get_dialogue`/`select_option`/`continue_dialogue`; `interact_object` by
   `objectId` for multilocs (name filter fails); `pickup_item` needs `itemId` + `x`/`y`; the desktop account
   is weak (10 HP), so avoid aggressive monsters or use `::god` (turn it off).
+- **More quests (desktop, 18:00-18:12):** X Marks the Spot and Gertrude's Cat complete; Lumbridge store spade
+  checked; Misthalin Mystery Mandy guards checked (full playthrough not done). 90247ad widens the Ernest stage-2
+  fix (any Oddenstein talk once Ernest is found) - **built, NOT deployed** (needs a restart).
+- **Next candidates:** deploy 90247ad and check Ernest stage 2 on a fresh account (`::quest ernest reset` keeps the
+  quest's internal flags, so use an account that never did it); a full Misthalin Mystery run; Gertrude's Cat
+  open gaps (shared Fluffs hidden for 100 ticks for everyone, Stroke = Pick-up); remaining quests (Children of
+  the Sun, Daddy's Home, His Faithful Servants) for Quest Helper.
 - Upstream: 56 patches; all `git am` on the pin (scratch clone `pin` in this session's scratchpad, branch
   `up` with 01-50).
-- **Deployed** 17:01: 534b5dd. Committed, not deployed: 7c5ec82 (Ernest), 84030f3 (stores, Mandy). Tester LOGGED_IN at Lumbridge, Lumbridge & Draynor 4/41. Tester LOGGED_IN at Lumbridge on the
+- **Deployed** 18:00: 84030f3. Committed, not deployed: 90247ad (Ernest widening; image prebuilt). Tester LOGGED_IN at Lumbridge, Lumbridge & Draynor 4/41. Tester LOGGED_IN at Lumbridge on the
   normal build, no channel joined; ~100k coins, 40 noted bronze pickaxes, a small pouch, a rune
   pickaxe, an iron ore; the 1 gp lobster buy still open in GE slot 1.
 - **Next candidates** (orchestrator to pick): diary task hooks (list sent), GE tax-exempt list, Sets, custom ±X%;

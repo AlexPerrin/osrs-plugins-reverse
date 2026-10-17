@@ -88,6 +88,18 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Skill Calculator | runs | skill icons drawn as image buttons in the sidebar; picking Woodcutting fills current/target level and XP and lists the log actions (verified 2026-10-16) |
 | Menu Entry Swapper | runs | a plain tap on a banker runs "Bank" instead of "Talk-to", and the long-press menu lists "Bank Banker" first; each row runs the entry it shows (verified 2026-10-16). Taps raise MenuEntryAdded + PostMenuSort over the tapped menu and the game's select runs the entry MES leaves on top. As a menu opens, the host runs desktop's pre-open PostMenuSort (menu reported closed) and reorders the game's top-level menu nodes the way the game's own sort does (`game::menu_reorder`). With MES off, menus and taps are unchanged |
 | Clue Scroll | runs | beginner map clue (`::clue map_draynor_bank 1`): Read sets the plugin's clue item (23182) and its overlay shows "Map Clue ... South of Draynor Village Bank, Requires Spade!" (verified 2026-10-17). Read needed MenuEntry.getItemId for inventory CC_OP entries |
+| Item Identification | untested | `EXTRA=itemidentification` converted 2026-10-17; herb/seed/ore labels on inventory items (`itemidentification.showHerbs=true`) |
+| Rune Pouch | untested | `EXTRA=runepouch` converted 2026-10-17; rune pouch contents overlay |
+| Virtual Levels | untested | `EXTRA=virtuallevels` converted 2026-10-17; levels above 99 in the skills tab |
+| Ammo | untested | `EXTRA=ammo` converted 2026-10-17; equipped ammo infobox |
+| Metronome | untested | `EXTRA=metronome` converted 2026-10-17; tick sounds/visual |
+| Hunter | untested | `EXTRA=hunter` converted 2026-10-17; trap timers (box traps, bird snares) |
+| Quest List | untested | `EXTRA=questlist` converted 2026-10-17; quest tab search/filter |
+| Chat Commands | untested | `EXTRA=chatcommands` converted 2026-10-17; !lvl and friends (hiscore lookups are network; must fail quietly) |
+| Fairy Rings | untested | `EXTRA=fairyring` converted 2026-10-17; fairy ring code list |
+| Item Prices | untested | `EXTRA=itemprices` converted 2026-10-17; prices on hover (no hover on mobile) |
+| Screen Markers | untested | `EXTRA=screenmarkers` converted 2026-10-17; sidebar-drawn rectangles |
+| Friend Notes | untested | `EXTRA=friendnotes` converted 2026-10-17; notes on friends list entries |
 
 ## Plugin Hub status
 

@@ -3768,12 +3768,254 @@ index 000000000..09e6c3f92
 +            }
 +        }
 +}
+diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/MediumCasketTable.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/MediumCasketTable.kt
+new file mode 100644
+index 000000000..4fb4759ef
+--- /dev/null
++++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/MediumCasketTable.kt
+@@ -0,0 +1,236 @@
++package org.rsmod.content.other.treasuretrails.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++
++/**
++ * One roll of the medium reward casket (OSRS Wiki: Reward casket (medium), rates from Mod Tide),
++ * flattened to a single weighted table out of [TOTAL_WEIGHT] = 23,181,180 (the wiki's per-roll
++ * rarities sum to exactly 1): the medium uniques, the standard table and the shared treasure trail
++ * items. A casket makes 3-5 rolls. The master clue tertiary is not rolled here.
++ */
++object MediumCasketTable {
++    const val TOTAL_WEIGHT = 23181180
++
++    private data class Reward(
++        val obj: String,
++        val weight: Int,
++        val min: Int = 1,
++        val max: Int = min,
++        val noted: Boolean = false,
++    )
++
++    private val REWARDS =
++        listOf(
++            Reward("obj.gnomish_firelighter", 67980),
++            Reward("obj.trail_composite_bow_yew", 67980),
++            Reward("obj.trail_amulet_of_strength", 67980),
++            Reward("obj.boots_ranger", 20460),
++            Reward("obj.boots_wizard", 20460),
++            Reward("obj.holy_sandals", 20460),
++            Reward("obj.spiked_manacles", 20460),
++            Reward("obj.climbing_boots_g", 20460),
++            Reward("obj.adamant_full_helm_trim", 20460),
++            Reward("obj.adamant_platebody_trim", 20460),
++            Reward("obj.adamant_platelegs_trim", 20460),
++            Reward("obj.adamant_plateskirt_trim", 20460),
++            Reward("obj.adamant_kiteshield_trim", 20460),
++            Reward("obj.adamant_full_helm_gold", 20460),
++            Reward("obj.adamant_platebody_gold", 20460),
++            Reward("obj.adamant_platelegs_gold", 20460),
++            Reward("obj.adamant_plateskirt_gold", 20460),
++            Reward("obj.adamant_kiteshield_gold", 20460),
++            Reward("obj.adamant_heraldic_kiteshield1", 20460),
++            Reward("obj.adamant_heraldic_kiteshield2", 20460),
++            Reward("obj.adamant_heraldic_kiteshield3", 20460),
++            Reward("obj.adamant_heraldic_kiteshield4", 20460),
++            Reward("obj.adamant_heraldic_kiteshield5", 20460),
++            Reward("obj.trail_heraldic_helm_1_adamant", 20460),
++            Reward("obj.trail_heraldic_helm_2_adamant", 20460),
++            Reward("obj.trail_heraldic_helm_3_adamant", 20460),
++            Reward("obj.trail_heraldic_helm_4_adamant", 20460),
++            Reward("obj.trail_heraldic_helm_5_adamant", 20460),
++            Reward("obj.adamant_platebody_h1", 20460),
++            Reward("obj.adamant_platebody_h2", 20460),
++            Reward("obj.adamant_platebody_h3", 20460),
++            Reward("obj.adamant_platebody_h4", 20460),
++            Reward("obj.adamant_platebody_h5", 20460),
++            Reward("obj.mithril_full_helm_gold", 20460),
++            Reward("obj.mithril_platebody_gold", 20460),
++            Reward("obj.mithril_platelegs_gold", 20460),
++            Reward("obj.mithril_plateskirt_gold", 20460),
++            Reward("obj.mithril_kiteshield_gold", 20460),
++            Reward("obj.mithril_full_helm_trim", 20460),
++            Reward("obj.mithril_platebody_trim", 20460),
++            Reward("obj.mithril_platelegs_trim", 20460),
++            Reward("obj.mithril_plateskirt_trim", 20460),
++            Reward("obj.mithril_kiteshield_trim", 20460),
++            Reward("obj.dragonhide_body_trim_gold", 20460),
++            Reward("obj.dragonhide_body_trim", 20460),
++            Reward("obj.dragonhide_chaps_trim_gold", 20460),
++            Reward("obj.dragonhide_chaps_trim", 20460),
++            Reward("obj.trail_saradomin_mitre", 20460),
++            Reward("obj.trail_saradomin_cloak", 20460),
++            Reward("obj.trail_guthix_mitre", 20460),
++            Reward("obj.trail_guthix_cloak", 20460),
++            Reward("obj.trail_zamorak_mitre", 20460),
++            Reward("obj.trail_zamorak_cloak", 20460),
++            Reward("obj.trail_ancient_mitre", 20460),
++            Reward("obj.trail_ancient_cloak", 20460),
++            Reward("obj.trail_ancient_scarf", 20460),
++            Reward("obj.trail_ancient_staff", 20460),
++            Reward("obj.trail_armadyl_mitre", 20460),
++            Reward("obj.trail_armadyl_cloak", 20460),
++            Reward("obj.trail_armadyl_scarf", 20460),
++            Reward("obj.trail_armadyl_staff", 20460),
++            Reward("obj.trail_bandos_mitre", 20460),
++            Reward("obj.trail_bandos_cloak", 20460),
++            Reward("obj.trail_bandos_scarf", 20460),
++            Reward("obj.trail_bandos_staff", 20460),
++            Reward("obj.strawboater_red", 20460),
++            Reward("obj.strawboater_green", 20460),
++            Reward("obj.strawboater_orange", 20460),
++            Reward("obj.strawboater_black", 20460),
++            Reward("obj.strawboater_blue", 20460),
++            Reward("obj.strawboater_pink", 20460),
++            Reward("obj.strawboater_purple", 20460),
++            Reward("obj.strawboater_white", 20460),
++            Reward("obj.headband_red", 20460),
++            Reward("obj.headband_black", 20460),
++            Reward("obj.headband_brown", 20460),
++            Reward("obj.headband_white", 20460),
++            Reward("obj.headband_blue", 20460),
++            Reward("obj.headband_gold", 20460),
++            Reward("obj.headband_pink", 20460),
++            Reward("obj.headband_green", 20460),
++            Reward("obj.trail_crier_hat", 20460),
++            Reward("obj.town_crier_coat", 20460),
++            Reward("obj.town_crier_bell", 20460),
++            Reward("obj.adamant_cane", 20460),
++            Reward("obj.arceuus_banner", 20460),
++            Reward("obj.piscarilius_banner", 20460),
++            Reward("obj.hosidius_banner", 20460),
++            Reward("obj.shayzien_banner", 20460),
++            Reward("obj.lovakengj_banner", 20460),
++            Reward("obj.cabbage_shield", 20460),
++            Reward("obj.black_unicorn_mask", 10230),
++            Reward("obj.white_unicorn_mask", 10230),
++            Reward("obj.cat_mask", 20460),
++            Reward("obj.penguin_mask", 20460),
++            Reward("obj.leprechaun_hat", 20460),
++            Reward("obj.black_leprechaun_hat", 20460),
++            Reward("obj.wolf_mask", 20460),
++            Reward("obj.wolf_cloak", 20460),
++            Reward("obj.trail_elegant_shirt_male_p", 10230),
++            Reward("obj.trail_elegant_shirt_female_p", 10230),
++            Reward("obj.trail_elegant_pants_male_p", 10230),
++            Reward("obj.trail_elegant_pants_female_p", 10230),
++            Reward("obj.trail_elegant_shirt_male", 10230),
++            Reward("obj.trail_elegant_shirt_female", 10230),
++            Reward("obj.trail_elegant_pants_male", 10230),
++            Reward("obj.trail_elegant_pants_female", 10230),
++            Reward("obj.trail_elegant_shirt_male_pink", 10230),
++            Reward("obj.trail_elegant_shirt_female_pink", 10230),
++            Reward("obj.trail_elegant_pants_male_pink", 10230),
++            Reward("obj.trail_elegant_pants_female_pink", 10230),
++            Reward("obj.trail_elegant_shirt_male_gold", 10230),
++            Reward("obj.trail_elegant_shirt_female_gold", 10230),
++            Reward("obj.trail_elegant_pants_male_gold", 10230),
++            Reward("obj.trail_elegant_pants_female_gold", 10230),
++            Reward("obj.adamant_full_helm", 679800),
++            Reward("obj.adamant_platebody", 679800),
++            Reward("obj.adamant_platelegs", 679800),
++            Reward("obj.adamant_longsword", 679800),
++            Reward("obj.adamant_dagger", 679800),
++            Reward("obj.adamant_battleaxe", 679800),
++            Reward("obj.adamant_axe", 679800),
++            Reward("obj.adamant_pickaxe", 679800),
++            Reward("obj.dragonhide_body", 679800),
++            Reward("obj.dragonhide_chaps", 679800),
++            Reward("obj.yew_shortbow", 679800),
++            Reward("obj.yew_longbow", 611820),
++            Reward("obj.fire_battlestaff", 679800),
++            Reward("obj.amulet_of_power", 611820),
++            Reward("obj.airrune", 679800, min = 50, max = 100),
++            Reward("obj.mindrune", 679800, min = 50, max = 100),
++            Reward("obj.waterrune", 679800, min = 50, max = 100),
++            Reward("obj.earthrune", 679800, min = 50, max = 100),
++            Reward("obj.firerune", 679800, min = 50, max = 100),
++            Reward("obj.chaosrune", 679800, min = 10, max = 20),
++            Reward("obj.naturerune", 679800, min = 10, max = 20),
++            Reward("obj.lawrune", 679800, min = 10, max = 20),
++            Reward("obj.deathrune", 679800, min = 10, max = 20),
++            Reward("obj.lobster", 679800, min = 8, max = 12, noted = true),
++            Reward("obj.swordfish", 679800, min = 8, max = 12, noted = true),
++            Reward("obj.coins", 679800, min = 200, max = 1000),
++            Reward("obj.coins", 237930, min = 10000, max = 15000),
++            Reward("obj.trail_sweets", 679800, min = 5, max = 10),
++            Reward("obj.trail_sweets", 237930, min = 8, max = 12),
++            Reward("obj.gnomish_firelighter_red", 122364, min = 4, max = 10),
++            Reward("obj.gnomish_firelighter_green", 122364, min = 4, max = 10),
++            Reward("obj.gnomish_firelighter_blue", 122364, min = 4, max = 10),
++            Reward("obj.trail_gnomish_firelighter_purple", 122364, min = 4, max = 10),
++            Reward("obj.trail_gnomish_firelighter_white", 122364, min = 4, max = 10),
++            Reward("obj.blessing_saradomin", 33990),
++            Reward("obj.blessing_zamorak", 33990),
++            Reward("obj.blessing_guthix", 33990),
++            Reward("obj.blessing_bandos", 33990),
++            Reward("obj.blessing_armadyl", 33990),
++            Reward("obj.blessing_zaros", 33990),
++            Reward("obj.scroll_charge_dragonstone", 54075, min = 5, max = 15),
++            Reward("obj.teleportscroll_nardah", 54075, min = 5, max = 15),
++            Reward("obj.teleportscroll_mosles", 54075, min = 5, max = 15),
++            Reward("obj.teleportscroll_mortton", 54075, min = 5, max = 15),
++            Reward("obj.teleportscroll_feldip", 54075, min = 5, max = 15),
++            Reward("obj.teleportscroll_lunarisle", 54075, min = 5, max = 15),
++            Reward("obj.teleportscroll_digsite", 54075, min = 5, max = 15),
++            Reward("obj.teleportscroll_piscatoris", 54075, min = 5, max = 15),
++            Reward("obj.teleportscroll_pestcontrol", 54075, min = 5, max = 15),
++            Reward("obj.teleportscroll_taibwo", 54075, min = 5, max = 15),
++            Reward("obj.teleportscroll_lumberyard", 54075, min = 5, max = 15),
++            Reward("obj.teleportscroll_elf", 54075, min = 5, max = 15),
++            Reward("obj.bookofscrolls_empty", 30900),
++            Reward("obj.holy_book_s_page1", 28325),
++            Reward("obj.holy_book_s_page2", 28325),
++            Reward("obj.holy_book_s_page3", 28325),
++            Reward("obj.holy_book_s_page4", 28325),
++            Reward("obj.holy_book_z_page1", 28325),
++            Reward("obj.holy_book_z_page2", 28325),
++            Reward("obj.holy_book_z_page3", 28325),
++            Reward("obj.holy_book_z_page4", 28325),
++            Reward("obj.holy_book_g_page1", 28325),
++            Reward("obj.holy_book_g_page2", 28325),
++            Reward("obj.holy_book_g_page3", 28325),
++            Reward("obj.holy_book_g_page4", 28325),
++            Reward("obj.bandos_page1", 28325),
++            Reward("obj.bandos_page2", 28325),
++            Reward("obj.bandos_page3", 28325),
++            Reward("obj.bandos_page4", 28325),
++            Reward("obj.armadyl_page1", 28325),
++            Reward("obj.armadyl_page2", 28325),
++            Reward("obj.armadyl_page3", 28325),
++            Reward("obj.armadyl_page4", 28325),
++            Reward("obj.zaros_page1", 28325),
++            Reward("obj.zaros_page2", 28325),
++            Reward("obj.zaros_page3", 28325),
++            Reward("obj.zaros_page4", 28325),
++        )
++
++    fun rewards() =
++        dbTable("dbtable.trail_medium_casket", serverOnly = true) {
++            column("obj", 0, VarType.OBJ)
++            column("min", 1, VarType.INT)
++            column("max", 2, VarType.INT)
++            column("weight", 3, VarType.INT)
++            column("noted", 4, VarType.BOOLEAN)
++            for ((i, reward) in REWARDS.withIndex()) {
++                row("dbrow.trail_medium_casket_$i") {
++                    columnRSCM(0, reward.obj)
++                    column(1, reward.min)
++                    column(2, reward.max)
++                    column(3, reward.weight)
++                    column(4, reward.noted)
++                }
++            }
++        }
++}
 diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
 new file mode 100644
-index 000000000..f9ff854b3
+index 000000000..3ddaeadb8
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
-@@ -0,0 +1,103 @@
+@@ -0,0 +1,115 @@
 +package org.rsmod.content.other.treasuretrails.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -3811,6 +4053,18 @@ index 000000000..f9ff854b3
 +            2228 to "interface.trail_map18",
 +            2232 to "interface.trail_map09",
 +            2234 to "interface.trail_clue_easy_map006",
++            2235 to "interface.trail_map03",
++            2236 to "interface.trail_map07",
++            2237 to "interface.trail_map10",
++            2238 to "interface.trail_map15",
++            2239 to "interface.trail_map16",
++            2240 to "interface.trail_map17",
++            2241 to "interface.trail_clue_medium_map008",
++            2242 to "interface.trail_clue_medium_map009",
++            2243 to "interface.trail_clue_medium_map010",
++            2244 to "interface.trail_clue_medium_map011",
++            2245 to "interface.trail_clue_medium_map012",
++            2246 to "interface.trail_map04",
 +        )
 +
 +    private val EMOTES =
@@ -3879,10 +4133,10 @@ index 000000000..f9ff854b3
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt
 new file mode 100644
-index 000000000..1be464b2d
+index 000000000..be171023f
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt
-@@ -0,0 +1,15 @@
+@@ -0,0 +1,16 @@
 +package org.rsmod.content.other.treasuretrails.pack
 +
 +import dev.openrune.definition.dbtables.DBTable
@@ -3896,20 +4150,22 @@ index 000000000..1be464b2d
 +            TrailDataTables.emotes(),
 +            BeginnerCasketTable.rewards(),
 +            EasyCasketTable.rewards(),
++            MediumCasketTable.rewards(),
 +        )
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/resources/gamevals.toml b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..9ca0bc75e
+index 000000000..7af6c9841
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
-@@ -0,0 +1,351 @@
+@@ -0,0 +1,562 @@
 +[gamevals.dbtable]
 +trail_charlie_tasks = 60003
 +trail_beginner_casket = 60004
 +trail_map_interfaces = 60005
 +trail_emote_seqs = 60006
 +trail_easy_casket = 60007
++trail_medium_casket = 60008
 +
 +[gamevals.dbrow]
 +trail_charlie_task_0 = 60200
@@ -3932,6 +4188,18 @@ index 000000000..9ca0bc75e
 +trail_map_interface_9 = 60219
 +trail_map_interface_10 = 60220
 +trail_map_interface_11 = 60221
++trail_map_interface_12 = 60222
++trail_map_interface_13 = 60223
++trail_map_interface_14 = 60224
++trail_map_interface_15 = 60225
++trail_map_interface_16 = 60226
++trail_map_interface_17 = 60227
++trail_map_interface_18 = 60228
++trail_map_interface_19 = 60229
++trail_map_interface_20 = 60230
++trail_map_interface_21 = 60231
++trail_map_interface_22 = 60232
++trail_map_interface_23 = 60233
 +trail_emote_seq_0 = 60320
 +trail_emote_seq_1 = 60321
 +trail_emote_seq_2 = 60322
@@ -4239,6 +4507,198 @@ index 000000000..9ca0bc75e
 +trail_easy_casket_208 = 60908
 +trail_easy_casket_209 = 60909
 +trail_easy_casket_210 = 60910
++trail_medium_casket_0 = 61000
++trail_medium_casket_1 = 61001
++trail_medium_casket_2 = 61002
++trail_medium_casket_3 = 61003
++trail_medium_casket_4 = 61004
++trail_medium_casket_5 = 61005
++trail_medium_casket_6 = 61006
++trail_medium_casket_7 = 61007
++trail_medium_casket_8 = 61008
++trail_medium_casket_9 = 61009
++trail_medium_casket_10 = 61010
++trail_medium_casket_11 = 61011
++trail_medium_casket_12 = 61012
++trail_medium_casket_13 = 61013
++trail_medium_casket_14 = 61014
++trail_medium_casket_15 = 61015
++trail_medium_casket_16 = 61016
++trail_medium_casket_17 = 61017
++trail_medium_casket_18 = 61018
++trail_medium_casket_19 = 61019
++trail_medium_casket_20 = 61020
++trail_medium_casket_21 = 61021
++trail_medium_casket_22 = 61022
++trail_medium_casket_23 = 61023
++trail_medium_casket_24 = 61024
++trail_medium_casket_25 = 61025
++trail_medium_casket_26 = 61026
++trail_medium_casket_27 = 61027
++trail_medium_casket_28 = 61028
++trail_medium_casket_29 = 61029
++trail_medium_casket_30 = 61030
++trail_medium_casket_31 = 61031
++trail_medium_casket_32 = 61032
++trail_medium_casket_33 = 61033
++trail_medium_casket_34 = 61034
++trail_medium_casket_35 = 61035
++trail_medium_casket_36 = 61036
++trail_medium_casket_37 = 61037
++trail_medium_casket_38 = 61038
++trail_medium_casket_39 = 61039
++trail_medium_casket_40 = 61040
++trail_medium_casket_41 = 61041
++trail_medium_casket_42 = 61042
++trail_medium_casket_43 = 61043
++trail_medium_casket_44 = 61044
++trail_medium_casket_45 = 61045
++trail_medium_casket_46 = 61046
++trail_medium_casket_47 = 61047
++trail_medium_casket_48 = 61048
++trail_medium_casket_49 = 61049
++trail_medium_casket_50 = 61050
++trail_medium_casket_51 = 61051
++trail_medium_casket_52 = 61052
++trail_medium_casket_53 = 61053
++trail_medium_casket_54 = 61054
++trail_medium_casket_55 = 61055
++trail_medium_casket_56 = 61056
++trail_medium_casket_57 = 61057
++trail_medium_casket_58 = 61058
++trail_medium_casket_59 = 61059
++trail_medium_casket_60 = 61060
++trail_medium_casket_61 = 61061
++trail_medium_casket_62 = 61062
++trail_medium_casket_63 = 61063
++trail_medium_casket_64 = 61064
++trail_medium_casket_65 = 61065
++trail_medium_casket_66 = 61066
++trail_medium_casket_67 = 61067
++trail_medium_casket_68 = 61068
++trail_medium_casket_69 = 61069
++trail_medium_casket_70 = 61070
++trail_medium_casket_71 = 61071
++trail_medium_casket_72 = 61072
++trail_medium_casket_73 = 61073
++trail_medium_casket_74 = 61074
++trail_medium_casket_75 = 61075
++trail_medium_casket_76 = 61076
++trail_medium_casket_77 = 61077
++trail_medium_casket_78 = 61078
++trail_medium_casket_79 = 61079
++trail_medium_casket_80 = 61080
++trail_medium_casket_81 = 61081
++trail_medium_casket_82 = 61082
++trail_medium_casket_83 = 61083
++trail_medium_casket_84 = 61084
++trail_medium_casket_85 = 61085
++trail_medium_casket_86 = 61086
++trail_medium_casket_87 = 61087
++trail_medium_casket_88 = 61088
++trail_medium_casket_89 = 61089
++trail_medium_casket_90 = 61090
++trail_medium_casket_91 = 61091
++trail_medium_casket_92 = 61092
++trail_medium_casket_93 = 61093
++trail_medium_casket_94 = 61094
++trail_medium_casket_95 = 61095
++trail_medium_casket_96 = 61096
++trail_medium_casket_97 = 61097
++trail_medium_casket_98 = 61098
++trail_medium_casket_99 = 61099
++trail_medium_casket_100 = 61100
++trail_medium_casket_101 = 61101
++trail_medium_casket_102 = 61102
++trail_medium_casket_103 = 61103
++trail_medium_casket_104 = 61104
++trail_medium_casket_105 = 61105
++trail_medium_casket_106 = 61106
++trail_medium_casket_107 = 61107
++trail_medium_casket_108 = 61108
++trail_medium_casket_109 = 61109
++trail_medium_casket_110 = 61110
++trail_medium_casket_111 = 61111
++trail_medium_casket_112 = 61112
++trail_medium_casket_113 = 61113
++trail_medium_casket_114 = 61114
++trail_medium_casket_115 = 61115
++trail_medium_casket_116 = 61116
++trail_medium_casket_117 = 61117
++trail_medium_casket_118 = 61118
++trail_medium_casket_119 = 61119
++trail_medium_casket_120 = 61120
++trail_medium_casket_121 = 61121
++trail_medium_casket_122 = 61122
++trail_medium_casket_123 = 61123
++trail_medium_casket_124 = 61124
++trail_medium_casket_125 = 61125
++trail_medium_casket_126 = 61126
++trail_medium_casket_127 = 61127
++trail_medium_casket_128 = 61128
++trail_medium_casket_129 = 61129
++trail_medium_casket_130 = 61130
++trail_medium_casket_131 = 61131
++trail_medium_casket_132 = 61132
++trail_medium_casket_133 = 61133
++trail_medium_casket_134 = 61134
++trail_medium_casket_135 = 61135
++trail_medium_casket_136 = 61136
++trail_medium_casket_137 = 61137
++trail_medium_casket_138 = 61138
++trail_medium_casket_139 = 61139
++trail_medium_casket_140 = 61140
++trail_medium_casket_141 = 61141
++trail_medium_casket_142 = 61142
++trail_medium_casket_143 = 61143
++trail_medium_casket_144 = 61144
++trail_medium_casket_145 = 61145
++trail_medium_casket_146 = 61146
++trail_medium_casket_147 = 61147
++trail_medium_casket_148 = 61148
++trail_medium_casket_149 = 61149
++trail_medium_casket_150 = 61150
++trail_medium_casket_151 = 61151
++trail_medium_casket_152 = 61152
++trail_medium_casket_153 = 61153
++trail_medium_casket_154 = 61154
++trail_medium_casket_155 = 61155
++trail_medium_casket_156 = 61156
++trail_medium_casket_157 = 61157
++trail_medium_casket_158 = 61158
++trail_medium_casket_159 = 61159
++trail_medium_casket_160 = 61160
++trail_medium_casket_161 = 61161
++trail_medium_casket_162 = 61162
++trail_medium_casket_163 = 61163
++trail_medium_casket_164 = 61164
++trail_medium_casket_165 = 61165
++trail_medium_casket_166 = 61166
++trail_medium_casket_167 = 61167
++trail_medium_casket_168 = 61168
++trail_medium_casket_169 = 61169
++trail_medium_casket_170 = 61170
++trail_medium_casket_171 = 61171
++trail_medium_casket_172 = 61172
++trail_medium_casket_173 = 61173
++trail_medium_casket_174 = 61174
++trail_medium_casket_175 = 61175
++trail_medium_casket_176 = 61176
++trail_medium_casket_177 = 61177
++trail_medium_casket_178 = 61178
++trail_medium_casket_179 = 61179
++trail_medium_casket_180 = 61180
++trail_medium_casket_181 = 61181
++trail_medium_casket_182 = 61182
++trail_medium_casket_183 = 61183
++trail_medium_casket_184 = 61184
++trail_medium_casket_185 = 61185
++trail_medium_casket_186 = 61186
++trail_medium_casket_187 = 61187
++trail_medium_casket_188 = 61188
++trail_medium_casket_189 = 61189
++trail_medium_casket_190 = 61190
++trail_medium_casket_191 = 61191
 +
 +[gamevals.varp]
 +trail_beginner_step = 63840
@@ -4255,12 +4715,18 @@ index 000000000..9ca0bc75e
 +trail_easy_steps_done = 63853
 +trail_easy_aux = 63854
 +trail_stash_easy_filled = 63855
++trail_medium_step = 63870
++trail_medium_steps_left = 63871
++trail_medium_completed = 63872
++trail_medium_steps_done = 63873
++trail_medium_aux = 63874
++trail_stash_medium_filled = 63875
 diff --git a/content/other/treasure-trails/pack/src/main/resources/pack/configs/treasure_trails_vars.toml b/content/other/treasure-trails/pack/src/main/resources/pack/configs/treasure_trails_vars.toml
 new file mode 100644
-index 000000000..edb58312b
+index 000000000..7ff829b56
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/resources/pack/configs/treasure_trails_vars.toml
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,119 @@
 +[[varp]]
 +isServerOnly = true
 +id = "varp.trail_beginner_step"
@@ -4344,12 +4810,48 @@ index 000000000..edb58312b
 +id = "varp.trail_stash_easy_filled"
 +scope = "Perm"
 +transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_medium_step"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_medium_steps_left"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_medium_completed"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_medium_steps_done"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_medium_aux"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_stash_medium_filled"
++scope = "Perm"
++transmit = "Never"
 diff --git a/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
 new file mode 100644
-index 000000000..b200b0106
+index 000000000..a7bd1c075
 --- /dev/null
 +++ b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
-@@ -0,0 +1,286 @@
+@@ -0,0 +1,320 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -4441,6 +4943,40 @@ index 000000000..b200b0106
 +    }
 +
 +    @Test
++    fun `medium casket rolls follow the wiki table`() {
++        val table = CASKETS.getValue(TrailTier.Medium)
++        assertEquals(23181180, table.sumOf { it.weight })
++        assertEquals(192, table.size)
++    }
++
++    @Test
++    fun `medium steps come from jagex's clue tables`() {
++        val steps = TrailSteps.ALL.getValue(TrailTier.Medium)
++        val counts = steps.groupingBy { it::class.simpleName }.eachCount()
++        println("medium steps by kind: $counts")
++        val talks = steps.filterIsInstance<TrailStep.Talk>()
++        assertEquals(44, talks.count { it.challenge != null })
++        val baraek = talks.single { "A BAKER" in it.text!! }
++        assertEquals(5, baraek.challenge?.answer)
++        assertTrue(TreasureTrailScript.objName(baraek.challenge!!.obj).endsWith("_challenge"))
++        assertEquals(44, steps.count { it is TrailStep.Dig && it.map == null })
++        assertEquals(12, steps.count { (it as? TrailStep.Dig)?.map != null || (it as? TrailStep.Search)?.map != null })
++        assertEquals(25, steps.count { it is TrailStep.Emote && it.seq2 != null })
++        assertEquals(6, steps.count { it is TrailStep.Music })
++        val objs = steps.map { TrailSteps.clueObj(it) }
++        assertEquals(objs.size, objs.toSet().size)
++        assertTrue(UNITS.count { it.tier == TrailTier.Medium } > 20)
++    }
++
++    @Test
++    fun `coordinate clue text is what the plugin parses`() {
++        assertEquals(
++            "00 degrees 05 minutes south<br>01 degrees 13 minutes east",
++            TrailSteps.coordinateText("00.05S 01.13E"),
++        )
++    }
++
++    @Test
 +    fun GameTestState.`a three step beginner trail ends in one casket`() =
 +        runInjectedGameTest(TreasureTrailScript::class, null, TreasureTrailScript::class) { script ->
 +            prepare()
@@ -4490,7 +5026,7 @@ index 000000000..b200b0106
 +    fun GameTestState.`a fresh dropped easy scroll starts a trail on read`() =
 +        runInjectedGameTest(TreasureTrailScript::class, null, TreasureTrailScript::class) { script ->
 +            prepare()
-+            val drop = easy.dropObj.asRSCM(RSCMType.OBJ)
++            val drop = checkNotNull(easy.dropObj).asRSCM(RSCMType.OBJ)
 +            player.inv[3] = InvObj(drop, 1)
 +            val step = script.stepForRead(player, easy, drop)
 +            assertEquals(TrailSteps.clueObj(step), player.inv[3]?.id)
@@ -4638,14 +5174,15 @@ index 000000000..b200b0106
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScript.kt
 new file mode 100644
-index 000000000..b57b481d7
+index 000000000..81901ddc0
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/StashUnitScript.kt
-@@ -0,0 +1,128 @@
+@@ -0,0 +1,129 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
 +import dev.openrune.rscm.RSCM
++import dev.openrune.rscm.RSCM.asRSCM
 +import dev.openrune.rscm.RSCMType
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccess
@@ -4661,7 +5198,7 @@ index 000000000..b57b481d7
 +/**
 + * STASH units (OSRS Wiki: STASH) for the emote steps of the tiers this module runs, from the
 + * `hidey_hole_loc` and outfit of Jagex's emote clue rows. Build (op1) needs the tier's Construction
-+ * level, a hammer, a saw, 2 planks and 10 nails of one metal, and sets the loc's multiloc varbit
++ * level, a hammer, a saw, 2 of the tier's planks and 10 nails of one metal, and sets the loc's multiloc varbit
 + * (`hh_constructed_*`), which RuneLite's Clue Scroll plugin checks (clientscript 1479). Search (op2)
 + * stores the outfit or takes it back, with the messages the plugin tracks.
 + *
@@ -4682,16 +5219,18 @@ index 000000000..b57b481d7
 +            mes("You need a Construction level of ${unit.tier.stashLevel} to build this STASH unit.")
 +            return
 +        }
++        val plank = unit.tier.stashPlank
 +        val nails = NAILS.firstOrNull { inv.count(it) >= NAILS_NEEDED }
-+        if (HAMMER !in inv || SAW !in inv || inv.count(PLANK) < PLANKS_NEEDED || nails == null) {
-+            mes("You need a hammer, a saw, $PLANKS_NEEDED planks and $NAILS_NEEDED nails to build this.")
++        if (HAMMER !in inv || SAW !in inv || inv.count(plank) < PLANKS_NEEDED || nails == null) {
++            val planks = ServerCacheManager.getItem(plank.asRSCM(RSCMType.OBJ))?.name?.lowercase() ?: "plank"
++            mes("You need a hammer, a saw, $PLANKS_NEEDED ${planks}s and $NAILS_NEEDED nails to build this.")
 +            return
 +        }
 +        anim(BUILD_ANIM)
 +        delay(BUILD_TICKS)
-+        if (invDel(inv, PLANK, PLANKS_NEEDED).failure) return
++        if (invDel(inv, plank, PLANKS_NEEDED).failure) return
 +        if (invDel(inv, nails, NAILS_NEEDED).failure) return
-+        statAdvance(CONSTRUCTION, XP)
++        statAdvance(CONSTRUCTION, unit.tier.stashXp)
 +        VarPlayerIntMapSetter.set(player, unit.varbit, 1)
 +    }
 +
@@ -4724,10 +5263,8 @@ index 000000000..b57b481d7
 +        const val CONSTRUCTION = "stat.construction"
 +        const val HAMMER = "obj.hammer"
 +        const val SAW = "obj.poh_saw"
-+        const val PLANK = "obj.woodplank"
 +        const val PLANKS_NEEDED = 2
 +        const val NAILS_NEEDED = 10
-+        const val XP = 150.0
 +        const val BUILD_ANIM = "seq.human_poh_build"
 +        const val BUILD_TICKS = 3
 +        val NAILS =
@@ -4772,10 +5309,10 @@ index 000000000..b57b481d7
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
 new file mode 100644
-index 000000000..f2f0bb9b7
+index 000000000..849c6ab88
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
-@@ -0,0 +1,216 @@
+@@ -0,0 +1,281 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
@@ -4783,12 +5320,16 @@ index 000000000..f2f0bb9b7
 +import dev.openrune.rscm.RSCMType
 +import dev.openrune.types.dbcol.DbColumnCodec
 +import dev.openrune.types.dbcol.DbHelper
++import dev.openrune.types.dbcol.dbRow
 +import dev.openrune.types.dbcol.list
 +import org.rsmod.api.table.MusicRow
 +import org.rsmod.api.table.TrailCharlieTasksRow
 +import org.rsmod.api.table.TrailEmoteSeqsRow
 +import org.rsmod.api.table.TrailMapInterfacesRow
++import org.rsmod.api.table.cluehelper.CluehelperChallengeQuestionRow
 +import org.rsmod.api.table.cluehelper.CluehelperClueAnagramRow
++import org.rsmod.api.table.cluehelper.CluehelperClueCipherRow
++import org.rsmod.api.table.cluehelper.CluehelperClueCoordinateRow
 +import org.rsmod.api.table.cluehelper.CluehelperClueCrypticRow
 +import org.rsmod.api.table.cluehelper.CluehelperClueEmoteRow
 +import org.rsmod.api.table.cluehelper.CluehelperClueHotcoldRow
@@ -4804,8 +5345,9 @@ index 000000000..f2f0bb9b7
 +
 +/** One clue step, built from a row of Jagex's `cluehelper_clue_*` tables. */
 +sealed class TrailStep(val row: Int, val tier: TrailTier, val text: String?) {
-+    /** Talk to one of [npcs] (anagrams and npc cryptics). */
-+    class Talk(row: Int, tier: TrailTier, text: String, val npcs: Set<Int>) : TrailStep(row, tier, text)
++    /** Talk to one of [npcs] (anagrams, ciphers, npc cryptics); from medium up some ask [challenge]. */
++    class Talk(row: Int, tier: TrailTier, text: String, val npcs: Set<Int>, val challenge: Challenge? = null) :
++        TrailStep(row, tier, text)
 +
 +    /** "Talk to Charlie the Tramp": he picks one of [tasks] and wants its item. */
 +    class Charlie(row: Int, tier: TrailTier, text: String, val npcs: Set<Int>, val tasks: List<CharlieTask>) :
@@ -4815,20 +5357,26 @@ index 000000000..f2f0bb9b7
 +    class HotCold(row: Int, tier: TrailTier, text: String, val npcs: Set<Int>, val spots: List<HotColdSpot>) :
 +        TrailStep(row, tier, text)
 +
-+    /** Search one of [locs] (cryptics such as "search the crates"). */
-+    class Search(row: Int, tier: TrailTier, text: String, val locs: List<Pair<Int, CoordGrid>>) :
-+        TrailStep(row, tier, text)
++    /** Search one of [locs] (cryptics such as "search the crates", map clues that show a crate). */
++    class Search(
++        row: Int,
++        tier: TrailTier,
++        text: String?,
++        val locs: List<Pair<Int, CoordGrid>>,
++        val map: String? = null,
++    ) : TrailStep(row, tier, text)
 +
 +    /** Dig within [radius] of [coord]; map clues open [map]. */
 +    class Dig(row: Int, tier: TrailTier, text: String?, val coord: CoordGrid, val radius: Int, val map: String?) :
 +        TrailStep(row, tier, text)
 +
-+    /** Perform [seq] near [coord] in one of [outfits]; Uri then comes. */
++    /** Perform [seq] near [coord] in one of [outfits]; Uri then comes ([seq2]: then do that one too). */
 +    class Emote(
 +        row: Int,
 +        tier: TrailTier,
 +        text: String,
 +        val seq: Int,
++        val seq2: Int?,
 +        val coord: CoordGrid,
 +        val outfits: List<CluehelperOutfitRow>,
 +        val stashLoc: Int?,
@@ -4842,6 +5390,9 @@ index 000000000..f2f0bb9b7
 +        coords.level == centre.level && coords.chebyshevDistance(centre) <= radius
 +}
 +
++/** A challenge scroll question ([row] in `cluehelper_challenge_question`) and its scroll [obj]. */
++data class Challenge(val row: Int, val question: String, val answer: Int, val obj: Int)
++
 +data class CharlieTask(val row: Int, val text: String, val obj: Int, val request: String)
 +
 +data class HotColdSpot(val row: Int, val coord: CoordGrid)
@@ -4850,8 +5401,8 @@ index 000000000..f2f0bb9b7
 +    const val EMOTE_RADIUS = 5
 +    const val MAP_RADIUS = 1
 +    const val HOT_COLD_RADIUS = 4
-+    const val MUSIC_TEXT_START = "Cecilia in Falador Park would like you to play her a song:<br>"
-+    const val MUSIC_TEXT_END = ""
++    const val MUSIC_TEXT_START = "I'd like to hear some music.<br>Come and see me on the bridge in<br>Falador Park, and play:<br>"
++    const val MUSIC_TEXT_END = "<br>Thanks, Cecilia"
 +    private const val TARGET_NPC_TABLE = "dbtable.cluehelper_target_npc"
 +    private const val TARGET_LOC_TABLE = "dbtable.cluehelper_target_loc"
 +    private const val TARGET_COORD_TABLE = "dbtable.cluehelper_target_coord"
@@ -4868,24 +5419,46 @@ index 000000000..f2f0bb9b7
 +        val d = tier.difficulty
 +        val steps = mutableListOf<TrailStep>()
 +        for (r in CluehelperClueAnagramRow.all().filter { it.difficulty == d }) {
++            val challenge = r.challenge?.let { challenge(it.rowId, r.rowId) }
++            if (d >= MEDIUM && challenge == null) continue
 +            val text = "The anagram reveals<br>who to speak to next:<br>${r.clueText.uppercase()}"
-+            steps += TrailStep.Talk(r.rowId, tier, text, r.target.map { it.npc.id }.toSet())
++            steps += TrailStep.Talk(r.rowId, tier, text, r.target.map { it.npc.id }.toSet(), challenge)
++        }
++        for (r in CluehelperClueCipherRow.all().filter { it.difficulty == d }) {
++            val challenge = r.challenge?.let { challenge(it.rowId, r.rowId) } ?: continue
++            val text = "The cipher reveals<br>who to speak to next:<br>${r.clueText}"
++            steps += TrailStep.Talk(r.rowId, tier, text, r.target.map { it.npc.id }.toSet(), challenge)
++        }
++        for (r in CluehelperClueCoordinateRow.all().filter { it.difficulty == d && it.combatEncounter.isEmpty() }) {
++            val text = coordinateText(r.clueText) ?: continue
++            steps += TrailStep.Dig(r.rowId, tier, text, r.target.coord, MAP_RADIUS, null)
 +        }
 +        for (r in CluehelperClueCrypticRow.all().filter { it.difficulty == d }) {
 +            steps += cryptic(tier, r) ?: continue
 +        }
 +        for (r in CluehelperClueMapRow.all().filter { it.difficulty == d }) {
 +            val map = TrailMapInterfacesRow.all().firstOrNull { it.clue == r.rowId }?.map ?: continue
-+            steps += TrailStep.Dig(r.rowId, tier, r.target.description, r.target.coord, MAP_RADIUS, map)
++            val target = DbHelper.row(r.rowId).dbRow("dbcol.cluehelper_clue_map:target").id
++            if (DbHelper.row(target).tableId == TARGET_LOC_TABLE.asRSCM(RSCMType.DBTABLE)) {
++                val loc = CluehelperTargetLocRow.getRow(target)
++                val searchable = listOf(loc.loc.id to loc.coord).mapNotNull { (l, c) -> searchTarget(l)?.let { it to c } }
++                if (searchable.isNotEmpty()) steps += TrailStep.Search(r.rowId, tier, null, searchable, map)
++                continue
++            }
++            val coord = CluehelperTargetCoordRow.getRow(target)
++            steps += TrailStep.Dig(r.rowId, tier, coord.description, coord.coord, MAP_RADIUS, map)
 +        }
-+        for (r in CluehelperClueEmoteRow.all().filter { it.difficulty == d && it.emote.size == 1 }) {
-+            val seq = TrailEmoteSeqsRow.all().firstOrNull { it.slot == r.emote[0] }?.seq ?: continue
++        for (r in CluehelperClueEmoteRow.all().filter { it.difficulty == d && it.emote.size in 1..2 }) {
++            val seqs = r.emote.map { slot -> TrailEmoteSeqsRow.all().firstOrNull { it.slot == slot }?.seq }
++            if (seqs.any { it == null }) continue
++            val seq = seqs[0]!!
 +            steps +=
 +                TrailStep.Emote(
 +                    r.rowId,
 +                    tier,
 +                    r.clueText,
 +                    seq.asRSCM(RSCMType.SEQ),
++                    seqs.getOrNull(1)?.asRSCM(RSCMType.SEQ),
 +                    r.target.coord,
 +                    r.outfit,
 +                    r.hideyHoleLoc?.id,
@@ -4913,7 +5486,7 @@ index 000000000..f2f0bb9b7
 +                        TrailStep.Charlie(r.rowId, tier, r.clueText, ids, charlieTasks(tier))
 +                    RELDO.asRSCM(RSCMType.NPC) in ids ->
 +                        TrailStep.HotCold(r.rowId, tier, r.clueText, ids, hotColdSpots(tier))
-+                    else -> TrailStep.Talk(r.rowId, tier, r.clueText, ids)
++                    else -> TrailStep.Talk(r.rowId, tier, r.clueText, ids, r.challenge?.let { challenge(it.rowId, r.rowId) })
 +                }
 +            }
 +            TARGET_LOC_TABLE.asRSCM(RSCMType.DBTABLE) -> {
@@ -4932,6 +5505,35 @@ index 000000000..f2f0bb9b7
 +            }
 +            else -> null
 +        }
++    }
++
++    private const val MEDIUM = 2
++
++    /** `00.05S 01.13E` (Jagex's short form) -> the scroll text the Clue Scroll plugin parses. */
++    fun coordinateText(short: String): String? {
++        val m = Regex("""(\d+)\.(\d+)([NS]) (\d+)\.(\d+)([EW])""").matchEntire(short.trim()) ?: return null
++        val (degY, minY, ns, degX, minX, ew) = m.destructured
++        val lat = if (ns == "N") "north" else "south"
++        val lon = if (ew == "E") "east" else "west"
++        return "$degY degrees $minY minutes $lat<br>$degX degrees $minX minutes $lon"
++    }
++
++    /** The challenge scroll obj names the clue row whose npc hands it out (param 623). */
++    private fun challenge(row: Int, clueRow: Int): Challenge? {
++        val question = CluehelperChallengeQuestionRow.getRow(row).question.firstOrNull() ?: return null
++        val obj = CHALLENGE_OBJS[clueRow] ?: return null
++        return Challenge(row, question.t0, question.t1, obj)
++    }
++
++    /** Challenge scroll objs by the clue row they belong to (item param 623). */
++    private val CHALLENGE_OBJS: Map<Int, Int> by lazy {
++        ServerCacheManager.getItems()
++            .values
++            .filter { it.name.startsWith("Challenge scroll") }
++            .sortedBy { it.id }
++            .mapNotNull { item -> (item.paramsRaw?.get(CLUE_ROW_PARAM) as? Int)?.let { it to item.id } }
++            .distinctBy { it.first }
++            .toMap()
 +    }
 +
 +    fun searchOp(loc: Int): InteractionOp? = op(loc, "Search")
@@ -4994,27 +5596,30 @@ index 000000000..f2f0bb9b7
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailTier.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailTier.kt
 new file mode 100644
-index 000000000..469468835
+index 000000000..017b2d3d7
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailTier.kt
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,77 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +/**
 + * The clue tiers this module runs. [difficulty] is the `difficulty` column of the `cluehelper_*`
 + * tables; [clueObj] is the single scroll obj of tiers whose steps share one, otherwise each step has
-+ * its own obj named [clueName]. Trail state lives in the tier's server varps.
++ * its own obj named [clueName]; [dropObj] is the generic scroll a fresh trail starts from (none for
++ * medium: a new medium scroll is any step's own scroll). Trail state lives in the tier's server varps.
 + */
 +enum class TrailTier(
 +    val difficulty: Int,
 +    val clueObj: String?,
 +    val clueName: String,
-+    val dropObj: String,
++    val dropObj: String?,
 +    val casket: String,
 +    val scrollBox: String,
 +    val lengths: List<Int>,
 +    val rolls: IntRange,
 +    val stashLevel: Int,
++    val stashPlank: String,
++    val stashXp: Double,
 +    val varpPrefix: String,
 +    val uri: String,
 +) {
@@ -5028,6 +5633,8 @@ index 000000000..469468835
 +        lengths = List(2) { 1 } + List(9) { 2 } + List(9) { 3 },
 +        rolls = 1..3,
 +        stashLevel = 12,
++        stashPlank = "obj.woodplank",
++        stashXp = 150.0,
 +        varpPrefix = "varp.trail_beginner",
 +        uri = "npc.trail_beginner_uri",
 +    ),
@@ -5041,8 +5648,25 @@ index 000000000..469468835
 +        lengths = listOf(2, 3, 4),
 +        rolls = 2..4,
 +        stashLevel = 27,
++        stashPlank = "obj.woodplank",
++        stashXp = 150.0,
 +        varpPrefix = "varp.trail_easy",
 +        uri = "npc.trail_easy_uri",
++    ),
++    Medium(
++        difficulty = 2,
++        clueObj = null,
++        clueName = "Clue scroll (medium)",
++        dropObj = null,
++        casket = "obj.trail_reward_casket_medium",
++        scrollBox = "obj.league_clue_box_medium",
++        lengths = listOf(3, 4, 5),
++        rolls = 3..5,
++        stashLevel = 42,
++        stashPlank = "obj.plank_oak",
++        stashXp = 250.0,
++        varpPrefix = "varp.trail_medium",
++        uri = "npc.trail_medium_uri",
 +    );
 +
 +    val stepVarp: String get() = "${varpPrefix}_step"
@@ -5055,10 +5679,10 @@ index 000000000..469468835
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
 new file mode 100644
-index 000000000..8ed0af269
+index 000000000..59dd230d5
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
-@@ -0,0 +1,667 @@
+@@ -0,0 +1,723 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
@@ -5095,6 +5719,7 @@ index 000000000..8ed0af269
 +import org.rsmod.api.script.onProtectedEvent
 +import org.rsmod.api.table.TrailBeginnerCasketRow
 +import org.rsmod.api.table.TrailEasyCasketRow
++import org.rsmod.api.table.TrailMediumCasketRow
 +import org.rsmod.api.table.cluehelper.CluehelperOutfitRow
 +import org.rsmod.content.interfaces.emotes.PlayEmote
 +import org.rsmod.game.MapClock
@@ -5140,6 +5765,9 @@ index 000000000..8ed0af269
 +            onOpHeld1(obj) { read(it.type) }
 +            onOpHeld2(obj) { checkSteps(it.type) }
 +        }
++        for (challenge in challenges()) {
++            onOpHeld1(objName(challenge.obj)) { readChallenge(challenge) }
++        }
 +        for (tier in TrailTier.entries) {
 +            onOpHeld1(tier.scrollBox) { openScrollBox(tier) }
 +        }
@@ -5160,8 +5788,16 @@ index 000000000..8ed0af269
 +    private fun clueObjs(): Set<String> =
 +        TrailTier.entries
 +            .flatMap { tier -> tier.clueObj?.let(::listOf) ?: TrailSteps.STEP_OBJS.getValue(tier).values.map(::objName) }
-+            .plus(TrailTier.entries.map { it.dropObj })
++            .plus(TrailTier.entries.mapNotNull { it.dropObj })
 +            .toSet()
++
++    private fun challenges(): List<Challenge> =
++        TrailSteps.ALL.values.flatten().filterIsInstance<TrailStep.Talk>().mapNotNull { it.challenge }.distinctBy { it.obj }
++
++    private fun ProtectedAccess.readChallenge(challenge: Challenge) {
++        ifOpenMainModal(CLUE_TEXT_INTERFACE)
++        ifSetText(CLUE_TEXT, challenge.question)
++    }
 +
 +    private fun ScriptContext.registerNpcSteps() {
 +        val npcs = TrailSteps.ALL.values.flatten().flatMap { npcsOf(it) }.toSet()
@@ -5196,7 +5832,7 @@ index 000000000..8ed0af269
 +    private fun ProtectedAccess.read(obj: ItemServerType) {
 +        val tier = tierOf(obj.id) ?: return
 +        val step = stepForRead(player, tier, obj.id)
-+        val map = (step as? TrailStep.Dig)?.map
++        val map = (step as? TrailStep.Dig)?.map ?: (step as? TrailStep.Search)?.map
 +        if (map != null) {
 +            ifOpenMainModal(map)
 +            return
@@ -5247,6 +5883,11 @@ index 000000000..8ed0af269
 +
 +    private suspend fun ProtectedAccess.talkToStepNpc(npc: Npc, npcType: Int) {
 +        val step = npcStep(player, npcType) ?: return
++        val challenge = (step as? TrailStep.Talk)?.challenge
++        if (challenge != null) {
++            talkWithChallenge(npc, step as TrailStep.Talk, challenge)
++            return
++        }
 +        when (step) {
 +            is TrailStep.Charlie -> talkToCharlie(npc, step)
 +            is TrailStep.HotCold -> talkToReldo(npc)
@@ -5256,6 +5897,38 @@ index 000000000..8ed0af269
 +                    chatNpc(neutral, "Well done.")
 +                    access.completeStep(step)
 +                }
++        }
++    }
++
++    /**
++     * Medium and up: the npc hands out the challenge scroll, then asks for the answer (count
++     * dialog); a right answer takes the challenge scroll and moves the trail on. The dialogue
++     * wording is a best guess (OSRS Wiki: Challenge scroll; no transcript).
++     */
++    private suspend fun ProtectedAccess.talkWithChallenge(npc: Npc, step: TrailStep.Talk, challenge: Challenge) {
++        val scroll = objName(challenge.obj)
++        if (!playerContainsObj(scroll)) {
++            if (inv.freeSpace() == 0) {
++                startDialogue(npc) { chatNpc(neutral, "You'll need some space in your inventory for my question.") }
++                return
++            }
++            invAdd(inv, scroll)
++            startDialogue(npc) {
++                chatNpc(neutral, "Ah, a clue scroll. Answer my question and I'll give you the next clue.")
++                objbox(scroll, "${npc.name} has given you a challenge scroll!")
++            }
++            return
++        }
++        startDialogue(npc) { chatNpc(quiz, "Please enter the answer to the question.") }
++        val answer = countDialog("Enter amount:")
++        if (answer != challenge.answer) {
++            startDialogue(npc) { chatNpc(sad, "That isn't right, keep trying.") }
++            return
++        }
++        if (!holdsClue(player, step) || invDel(inv, scroll).failure) return
++        startDialogue(npc) {
++            chatNpc(happy, "Spot on!")
++            access.completeStep(step)
 +        }
 +    }
 +
@@ -5389,10 +6062,13 @@ index 000000000..8ed0af269
 +    }
 +
 +    fun emoted(player: Player, seq: Int) {
-+        val step =
-+            TrailTier.entries
-+                .mapNotNull { currentStep(player, it) as? TrailStep.Emote }
-+                .firstOrNull { it.seq == seq } ?: return
++        val steps = TrailTier.entries.mapNotNull { currentStep(player, it) as? TrailStep.Emote }
++        val second = steps.firstOrNull { it.seq2 == seq && uris[player]?.isSlotAssigned == true }
++        if (second != null) {
++            if (holdsClue(player, second)) VarPlayerIntMapSetter.set(player, second.tier.auxVarp, SECOND_EMOTE_DONE)
++            return
++        }
++        val step = steps.firstOrNull { it.seq == seq } ?: return
 +        if (!holdsClue(player, step) || !step.covers(player.coords, step.coord, TrailSteps.EMOTE_RADIUS)) return
 +        if (uris[player]?.isSlotAssigned == true) return
 +        val uri = Npc(step.tier.uri, besideTile(player.coords))
@@ -5406,7 +6082,8 @@ index 000000000..8ed0af269
 +    private suspend fun ProtectedAccess.talkToUri(uri: Npc) {
 +        val step = TrailTier.entries.firstNotNullOfOrNull { currentStep(player, it) as? TrailStep.Emote }
 +        val owned = uris[player] === uri
-+        if (!owned || step == null || !wearsOutfit(player, step.outfits)) {
++        val secondDone = step?.seq2 == null || player.vars[step.tier.auxVarp] == SECOND_EMOTE_DONE
++        if (!owned || step == null || !wearsOutfit(player, step.outfits) || !secondDone) {
 +            startDialogue(uri) { chatNpc(neutral, "I do not believe we have any business, Comrade.") }
 +            return
 +        }
@@ -5484,12 +6161,12 @@ index 000000000..8ed0af269
 +            return
 +        }
 +        if (invDel(inv, tier.scrollBox).failure) return
-+        invAdd(inv, tier.dropObj)
++        invAdd(inv, tier.dropObj ?: objName(TrailSteps.clueObj(pickStep(tier, null))))
 +    }
 +
 +    private fun ProtectedAccess.holdsTierClue(tier: TrailTier): Boolean {
 +        val objs = (tier.clueObj?.let { setOf(it.asRSCM(RSCMType.OBJ)) } ?: TrailSteps.STEP_OBJS.getValue(tier).values.toSet()) +
-+            tier.dropObj.asRSCM(RSCMType.OBJ)
++            listOfNotNull(tier.dropObj?.asRSCM(RSCMType.OBJ))
 +        return objs.any { playerContainsObj(objName(it)) }
 +    }
 +
@@ -5553,7 +6230,7 @@ index 000000000..8ed0af269
 +
 +    private fun removeClues(player: Player, tier: TrailTier) {
 +        val objs = (tier.clueObj?.let { setOf(it.asRSCM(RSCMType.OBJ)) } ?: TrailSteps.STEP_OBJS.getValue(tier).values.toSet()) +
-+            tier.dropObj.asRSCM(RSCMType.OBJ)
++            listOfNotNull(tier.dropObj?.asRSCM(RSCMType.OBJ)) + challenges().map { it.obj }
 +        for (slot in player.inv.indices) {
 +            if (player.inv[slot]?.id in objs) player.inv[slot] = null
 +        }
@@ -5621,6 +6298,7 @@ index 000000000..8ed0af269
 +        const val HOT_COLD_SPOT_VARP = "varp.trail_beginner_hot_cold_spot"
 +        const val HOT_COLD_LAST_VARP = "varp.trail_beginner_hot_cold_last"
 +        const val URI_LIFETIME = 100
++        const val SECOND_EMOTE_DONE = 1
 +        const val LIST_CHUNK = 12
 +        const val BLOCKED_FLAGS = CollisionFlag.BLOCK_WALK or CollisionFlag.BLOCK_PLAYERS
 +        val ADJACENT_OFFSETS =
@@ -5645,6 +6323,8 @@ index 000000000..8ed0af269
 +                    TrailBeginnerCasketRow.all().map { CasketRow(it.obj, it.min, it.max, it.weight, it.noted) },
 +                TrailTier.Easy to
 +                    TrailEasyCasketRow.all().map { CasketRow(it.obj, it.min, it.max, it.weight, it.noted) },
++                TrailTier.Medium to
++                    TrailMediumCasketRow.all().map { CasketRow(it.obj, it.min, it.max, it.weight, it.noted) },
 +            )
 +        }
 +
@@ -5668,7 +6348,7 @@ index 000000000..8ed0af269
 +        fun tierOf(obj: Int): TrailTier? =
 +            TrailTier.entries.firstOrNull { tier ->
 +                tier.clueObj?.asRSCM(RSCMType.OBJ) == obj ||
-+                    tier.dropObj.asRSCM(RSCMType.OBJ) == obj ||
++                    tier.dropObj?.asRSCM(RSCMType.OBJ) == obj ||
 +                    obj in TrailSteps.STEP_OBJS.getValue(tier).values
 +            }
 +

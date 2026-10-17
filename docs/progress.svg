@@ -281,8 +281,8 @@
 <rect x="943.14" y="31.00" width="55.86" height="150.00" fill="none" stroke="#0d1117" stroke-width="2"/>
 <text x="948.14" y="47.00" font-family="sans-serif" font-size="12" fill="#ffffff" stroke="#0d1117" stroke-width="3" paint-order="stroke">Zone</text>
 </g>
-<text x="4" y="210" font-family="sans-serif" font-size="16" fill="#ffffff">RuneLite API*: 61.66% (534/866)</text>
-<g><title>Client: 194/325 (60%)</title>
+<text x="4" y="210" font-family="sans-serif" font-size="16" fill="#ffffff">RuneLite API*: 62.12% (538/866)</text>
+<g><title>Client: 196/325 (60%)</title>
 <rect x="2.00" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="18.20" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="34.39" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -477,8 +477,8 @@
 <rect x="115.38" y="342.60" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="131.58" y="342.60" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="147.78" y="342.60" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="163.97" y="342.60" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="180.17" y="342.60" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="163.97" y="342.60" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="180.17" y="342.60" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="196.37" y="342.60" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="212.57" y="342.60" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="228.76" y="342.60" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
@@ -988,7 +988,7 @@
 <rect x="744.16" y="328.79" width="14.84" height="15.40" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="743.16" y="220.00" width="91.04" height="125.19" fill="none" stroke="#0d1117" stroke-width="2"/>
 </g>
-<g><title>Scene: 8/36 (22%)</title>
+<g><title>Scene: 9/36 (25%)</title>
 <rect x="744.16" y="346.19" width="14.84" height="17.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="759.00" y="346.19" width="14.84" height="17.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="773.84" y="346.19" width="14.84" height="17.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -997,7 +997,7 @@
 <rect x="818.36" y="346.19" width="14.84" height="17.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="744.16" y="363.32" width="14.84" height="17.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="759.00" y="363.32" width="14.84" height="17.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="773.84" y="363.32" width="14.84" height="17.14" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="773.84" y="363.32" width="14.84" height="17.14" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="788.68" y="363.32" width="14.84" height="17.14" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="803.52" y="363.32" width="14.84" height="17.14" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="818.36" y="363.32" width="14.84" height="17.14" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
@@ -1063,7 +1063,7 @@
 <rect x="834.20" y="220.00" width="88.08" height="93.29" fill="none" stroke="#0d1117" stroke-width="2"/>
 <text x="839.20" y="236.00" font-family="sans-serif" font-size="12" fill="#ffffff" stroke="#0d1117" stroke-width="3" paint-order="stroke">MenuEntry</text>
 </g>
-<g><title>WorldView: 21/27 (78%)</title>
+<g><title>WorldView: 22/27 (81%)</title>
 <rect x="923.28" y="221.00" width="14.94" height="15.21" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="938.23" y="221.00" width="14.94" height="15.21" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="953.17" y="221.00" width="14.94" height="15.21" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -1085,7 +1085,7 @@
 <rect x="968.11" y="266.64" width="14.94" height="15.21" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="983.06" y="266.64" width="14.94" height="15.21" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="923.28" y="281.86" width="14.94" height="15.21" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="938.23" y="281.86" width="14.94" height="15.21" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="938.23" y="281.86" width="14.94" height="15.21" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="953.17" y="281.86" width="14.94" height="15.21" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="968.11" y="281.86" width="14.94" height="15.21" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="983.06" y="281.86" width="14.94" height="15.21" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>

@@ -1,4 +1,4 @@
-From 08fcf62906e19e334af04e388c92cfe2d3acdd59 Mon Sep 17 00:00:00 2001
+From 7fa2312d96df4da2c918315be5dd89c9a9da2eca Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 11:55:09 -0400
 Subject: [PATCH] Interfaces: a minimal Grand Exchange (offers at the guide
@@ -9,12 +9,12 @@ Subject: [PATCH] Interfaces: a minimal Grand Exchange (offers at the guide
  .../grand-exchange/pack/build.gradle.kts      |   9 +
  .../pack/GrandExchangePluginPack.kt           |   5 +
  .../pack/src/main/resources/gamevals.toml     |  50 ++
- .../pack/configs/grand_exchange.toml          | 357 +++++++++++++++
+ .../pack/configs/grand_exchange.toml          | 357 ++++++++++++++
  .../grandexchange/GrandExchangeScriptTest.kt  | 197 ++++++++
  .../interfaces/grandexchange/GrandExchange.kt | 238 ++++++++++
- .../grandexchange/GrandExchangeScript.kt      | 432 ++++++++++++++++++
+ .../grandexchange/GrandExchangeScript.kt      | 436 ++++++++++++++++++
  .../src/main/resources/gamevals.toml          |   2 +
- 9 files changed, 1306 insertions(+)
+ 9 files changed, 1310 insertions(+)
  create mode 100644 content/interfaces/grand-exchange/build.gradle.kts
  create mode 100644 content/interfaces/grand-exchange/pack/build.gradle.kts
  create mode 100644 content/interfaces/grand-exchange/pack/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/pack/GrandExchangePluginPack.kt
@@ -941,10 +941,10 @@ index 000000000..8b7f11775
 +}
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 new file mode 100644
-index 000000000..50c9502f3
+index 000000000..43be0de20
 --- /dev/null
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
-@@ -0,0 +1,432 @@
+@@ -0,0 +1,436 @@
 +package org.rsmod.content.interfaces.grandexchange
 +
 +import dev.openrune.definition.type.widget.IfEvent
@@ -962,6 +962,7 @@ index 000000000..50c9502f3
 +import org.rsmod.api.script.onIfClose
 +import org.rsmod.api.script.onIfModalButton
 +import org.rsmod.api.script.onIfOpen
++import org.rsmod.api.script.onApNpc3
 +import org.rsmod.api.script.onOpNpc3
 +import org.rsmod.api.script.onPlayerLogin
 +import org.rsmod.api.script.onPlayerSoftTimer
@@ -978,12 +979,15 @@ index 000000000..50c9502f3
 +        get() = (marketPrices[this] ?: 1).coerceAtLeast(1)
 +
 +    override fun ScriptContext.startup() {
-+        for (clerk in CLERKS) onOpNpc3(clerk) { openExchange() }
++        for (clerk in CLERKS) {
++            onOpNpc3(clerk) { openExchange() }
++            onApNpc3(clerk) { if (isWithinApRange(it.npc, distance = 2)) openExchange() }
++        }
 +
 +        onPlayerLogin {
 +            for (slot in 0 until GrandExchange.SLOTS) {
 +                player.startInvTransmit(GrandExchange.collectionInv(player, slot))
-+                if (!GrandExchange.offer(player, slot).empty) GrandExchange.sendSlot(player, slot)
++                GrandExchange.sendSlot(player, slot)
 +            }
 +            resetItemSinkVars(player)
 +            if (hasFillable(player)) player.softTimer(GrandExchange.FILL_TIMER, 1)

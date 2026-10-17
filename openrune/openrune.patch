@@ -4758,10 +4758,10 @@ index 000000000..8b7f11775
 +}
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 new file mode 100644
-index 000000000..50c9502f3
+index 000000000..43be0de20
 --- /dev/null
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
-@@ -0,0 +1,432 @@
+@@ -0,0 +1,436 @@
 +package org.rsmod.content.interfaces.grandexchange
 +
 +import dev.openrune.definition.type.widget.IfEvent
@@ -4779,6 +4779,7 @@ index 000000000..50c9502f3
 +import org.rsmod.api.script.onIfClose
 +import org.rsmod.api.script.onIfModalButton
 +import org.rsmod.api.script.onIfOpen
++import org.rsmod.api.script.onApNpc3
 +import org.rsmod.api.script.onOpNpc3
 +import org.rsmod.api.script.onPlayerLogin
 +import org.rsmod.api.script.onPlayerSoftTimer
@@ -4795,12 +4796,15 @@ index 000000000..50c9502f3
 +        get() = (marketPrices[this] ?: 1).coerceAtLeast(1)
 +
 +    override fun ScriptContext.startup() {
-+        for (clerk in CLERKS) onOpNpc3(clerk) { openExchange() }
++        for (clerk in CLERKS) {
++            onOpNpc3(clerk) { openExchange() }
++            onApNpc3(clerk) { if (isWithinApRange(it.npc, distance = 2)) openExchange() }
++        }
 +
 +        onPlayerLogin {
 +            for (slot in 0 until GrandExchange.SLOTS) {
 +                player.startInvTransmit(GrandExchange.collectionInv(player, slot))
-+                if (!GrandExchange.offer(player, slot).empty) GrandExchange.sendSlot(player, slot)
++                GrandExchange.sendSlot(player, slot)
 +            }
 +            resetItemSinkVars(player)
 +            if (hasFillable(player)) player.softTimer(GrandExchange.FILL_TIMER, 1)

@@ -83,6 +83,10 @@ final class Native {
     static native boolean setScriptIntStack(int[] values, int size);
     /** Arguments of the root script being started (inside Host.onScript phase 2), or null. */
     static native Object[] scriptEventArgs();
+    /** {component id, CC_CREATE index or -1} of the running ScriptEvent's source widget, or null. */
+    static native int[] scriptEventSource();
+    /** CC_CREATE under static layer `id` at `index` (-1 = append); the index, or -1. Game thread. */
+    static native int widgetCreateChild(int id, int index, int type);
     /** {root scripts, gosubs, returns, events delivered, hooks installed (0/1)}. */
     static native long[] scriptStats();
     /**

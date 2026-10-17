@@ -466,6 +466,16 @@ jobjectArray n_script_event_args(JNIEnv* env, jclass) {
     return res;
 }
 
+jintArray n_script_event_source(JNIEnv* env, jclass) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    int id, index;
+    if (!game::script_event_source(script_hooks::current_event(), &id, &index)) return nullptr;
+    jint v[2] = {id, index};
+    jintArray a = env->NewIntArray(2);
+    env->SetIntArrayRegion(a, 0, 2, v);
+    return a;
+}
+
 jlongArray n_script_stats(JNIEnv* env, jclass) {
     auto st = script_hooks::stats();
     jlong v[5] = {(jlong)st.roots, (jlong)st.gosubs, (jlong)st.returns, (jlong)st.delivered, script_hooks::installed()};
@@ -874,6 +884,9 @@ static uintptr_t widget_or_child(jint id, jint index) {
 jboolean n_widget_set_field(JNIEnv*, jclass, jint id, jint index, jint offset, jint value) {
     return client_thread::on_client_thread() && game::widget_set_field(id, index, static_cast<uint32_t>(offset), value);
 }
+jint n_widget_create_child(JNIEnv*, jclass, jint id, jint index, jint type) {
+    return client_thread::on_client_thread() ? game::widget_create_child(id, index, type) : -1;
+}
 jboolean n_widget_revalidate(JNIEnv*, jclass, jint id, jint index) {
     return client_thread::on_client_thread() && game::widget_revalidate(id, index);
 }
@@ -1022,6 +1035,7 @@ const JNINativeMethod kNatives[] = {
     {"widgetProps", "(II)[I", reinterpret_cast<void*>(n_widget_props)},
     {"widgetSetField", "(IIII)Z", reinterpret_cast<void*>(n_widget_set_field)},
     {"widgetRevalidate", "(II)Z", reinterpret_cast<void*>(n_widget_revalidate)},
+    {"widgetCreateChild", "(III)I", reinterpret_cast<void*>(n_widget_create_child)},
     {"widgetStrings", "(II)[Ljava/lang/String;", reinterpret_cast<void*>(n_widget_strings)},
     {"widgetSetColor", "(III)V", reinterpret_cast<void*>(n_widget_set_color)},
     {"widgetSetHidden", "(IIZ)V", reinterpret_cast<void*>(n_widget_set_hidden)},
@@ -1116,6 +1130,7 @@ const JNINativeMethod kNatives[] = {
     {"scriptStacks", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_stacks)},
     {"setScriptIntStack", "([II)Z", reinterpret_cast<void*>(n_set_script_int_stack)},
     {"scriptEventArgs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_event_args)},
+    {"scriptEventSource", "()[I", reinterpret_cast<void*>(n_script_event_source)},
     {"scriptStats", "()[J", reinterpret_cast<void*>(n_script_stats)},
 };
 

@@ -321,6 +321,7 @@ public final class Host {
     }
 
     private static final java.util.List<Integer> pendingStats = new java.util.ArrayList<>();
+    private static final java.util.Map<Integer, AndroidNPC> pendingNpcs = new java.util.LinkedHashMap<>();
 
     private static void dispatch(EventBus bus, int type, int a, int b) {
         switch (type) {
@@ -329,6 +330,11 @@ public final class Host {
                 AndroidWidget.reapplyHidden();
                 bus.post(clientTick);
                 postActorChanges(bus);
+                if (!pendingNpcs.isEmpty() && localPlayer() != null) {
+                    java.util.List<AndroidNPC> held = new java.util.ArrayList<>(pendingNpcs.values());
+                    pendingNpcs.clear();
+                    for (AndroidNPC npc : held) bus.post(new NpcSpawned(npc));
+                }
                 if (!pendingStats.isEmpty() && localPlayer() != null) {
                     java.util.List<Integer> held = new java.util.ArrayList<>(new java.util.LinkedHashSet<>(pendingStats));
                     pendingStats.clear();
@@ -381,7 +387,7 @@ public final class Host {
                 GameState s = GameState.of(a);
                 // Desktop's ConfigManager switches the RuneScape profile while logging in; plugins
                 // (Quest Helper) wait for that event before their first LOGGED_IN setup.
-                if (s == GameState.LOGIN_SCREEN) profilePosted = false;
+                if (s == GameState.LOGIN_SCREEN) { profilePosted = false; pendingNpcs.clear(); }
                 if (s == GameState.LOGGED_IN) ((AndroidClient) client).applyIdleTimeout();
                 if (s == GameState.LOGGED_IN && !profilePosted) {
                     profilePosted = true;
@@ -400,10 +406,15 @@ public final class Host {
                         + " world " + npc.getWorldLocation() + " fromLocalInstance " + net.runelite.api.coords.WorldPoint.fromLocalInstance(client, lp)
                         + " base " + worldView.getBaseX() + "," + worldView.getBaseY() + " state " + client.getGameState());
                 }
-                if (npc != null) bus.post(new NpcSpawned(npc));
+                if (npc == null) break;
+                // Desktop reads the local player before the NPCs of the same update; plugins
+                // (Attack Timer Metronome) read it in onNpcSpawned. Held until it exists.
+                if (localPlayer() == null) { pendingNpcs.put(a, npc); break; }
+                bus.post(new NpcSpawned(npc));
                 break;
             }
             case NPC_DESPAWNED: {
+                if (pendingNpcs.remove(a) != null) { npcCache.despawned(a); break; }
                 AndroidNPC npc = npcCache.cached(a);
                 npcCache.despawned(a);
                 if (npc != null) bus.post(new NpcDespawned(npc));
@@ -625,7 +636,12 @@ public final class Host {
                 ScriptPreFired e = new ScriptPreFired(id);
                 if (phase == 2) {
                     Object[] args = Native.scriptEventArgs();
-                    if (args != null) e.setScriptEvent(new AndroidScriptEvent(client, args));
+                    if (args != null) {
+                        AndroidScriptEvent ev = new AndroidScriptEvent(client, args);
+                        int[] src = Native.scriptEventSource();
+                        if (src != null) ev.setSource(src[1] >= 0 ? new AndroidWidget.Dynamic(src[0], src[1]) : new AndroidWidget(src[0]));
+                        e.setScriptEvent(ev);
+                    }
                 }
                 bus.post(e);
             }

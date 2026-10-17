@@ -179,11 +179,16 @@ public class AndroidWidget extends WidgetBag {
         return out.toArray(new Widget[0]);
     }
 
-    // Children created by plugins live only on the Java side until widget writes exist.
+    // Children created by plugins: in the game's tree through CC_CREATE (static layer parents, on
+    // the game thread), else Java-side only (DetachedWidget, not drawn).
     private final List<Widget> created = new ArrayList<>();
 
     @Override
     public Widget createChild(int index, int type) {
+        if (childIndex() < 0 && type != 12 && Native.isClientThread()) {
+            int at = Native.widgetCreateChild(id, index, type);
+            if (at >= 0) return new Dynamic(id, at);
+        }
         DetachedWidget w = new DetachedWidget(this, type);
         if (index >= 0 && index < created.size()) created.set(index, w); else created.add(w);
         return w;

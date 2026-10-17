@@ -129,6 +129,7 @@ constexpr int kWidgetProps = 35;
 bool widget_set_field(int component, int index, uint32_t offset, int value);
 // Re-runs the game's layout for a widget after position/size changes (what CC_SETPOSITION does).
 bool widget_revalidate(int component, int index);
+int widget_create_child(int component, int index, int type);
 void widget_props(uintptr_t widget, int32_t out[kWidgetProps]);  // item set by IF_SETOBJECT / CC_SETOBJECT
 int widget_color(uintptr_t widget);        // 0xRRGGBB (IF_SETCOLOUR), text colour for text widgets
 void widget_set_color(uintptr_t widget, int rgb);  // game thread only; marks the widget's area dirty
@@ -206,6 +207,8 @@ bool set_script_int_stack(const int32_t* values, int size);
 // A ScriptEvent's arguments (+0x08 argc, +0x10 0x28-byte variants); non-int/string args come
 // back as an empty string with is_string = false and i = -1.
 std::vector<ScriptArg> script_event_args(uintptr_t ev);
+bool script_event_source(uintptr_t ev, int* component, int* index);
+bool widget_ref(uintptr_t w, int* component, int* index);
 
 // One tuple of a DB row's column, through the script VM's db_getfield (7502): values in column-type
 // order, each an int (kind 0), long (1) or string (2). False if the row/column doesn't exist.

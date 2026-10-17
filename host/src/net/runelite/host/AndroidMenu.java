@@ -119,6 +119,21 @@ final class AndroidMenu implements Menu {
         if (Host.client() == null) return null;
         net.runelite.api.Point m = Host.client().getMouseCanvasPosition();
         if (m.getX() < 0) return null;
+        Slot s = slotAt(m);
+        if (s != null) hover = entry(s.widget, s.param0, s.param1, s.itemId);
+        return hover;
+    }
+
+    /** An item slot under a canvas point: the widget holding its ops, menu params and item id. */
+    static final class Slot {
+        final net.runelite.api.widgets.Widget widget;
+        final int param0, param1, itemId;
+        Slot(net.runelite.api.widgets.Widget widget, int param0, int param1, int itemId) {
+            this.widget = widget; this.param0 = param0; this.param1 = param1; this.itemId = itemId;
+        }
+    }
+
+    static Slot slotAt(net.runelite.api.Point m) {
         // Item containers whose slots are dynamic children: inventory, bank items, the inventory beside the bank.
         for (int container : ITEM_CONTAINERS) {
             AndroidWidget c = new AndroidWidget(container);
@@ -126,8 +141,7 @@ final class AndroidMenu implements Menu {
             net.runelite.api.widgets.Widget[] slots = c.getDynamicChildren();
             for (net.runelite.api.widgets.Widget w : slots) {
                 if (w == null || w.getItemId() < 0 || w.isSelfHidden() || !w.contains(m)) continue;
-                hover = entry(w, w.getIndex(), container, w.getItemId());
-                return hover;
+                return new Slot(w, w.getIndex(), container, w.getItemId());
             }
         }
         // Worn equipment: static slot components of 387 whose child 1 holds the item.
@@ -137,11 +151,38 @@ final class AndroidMenu implements Menu {
                 if (w.isSelfHidden() || !w.contains(m)) continue;
                 net.runelite.api.widgets.Widget item = w.getChild(1);
                 if (item == null || item.getItemId() < 0 || w.isHidden()) continue;
-                hover = entry(w, -1, w.getId(), item.getItemId());
-                return hover;
+                return new Slot(w, -1, w.getId(), item.getItemId());
             }
         }
         return null;
+    }
+
+    /**
+     * The menu an item slot under the point has, top first, as desktop builds it from the widget's
+     * ops (CC_OP identifier = op index + 1, ops past 5 low priority) with Cancel last; null if no
+     * item slot is there. For a driving plugin's virtual mouse over the game UI, where the scene
+     * pick only finds what lies beneath.
+     */
+    static AndroidMenuEntry[] slotMenu(java.awt.Point p) {
+        Slot s = slotAt(new net.runelite.api.Point(p.x, p.y));
+        if (s == null) return null;
+        List<AndroidMenuEntry> out = new ArrayList<>();
+        String[] actions = s.widget.getActions();
+        if (actions != null)
+            for (int i = 0; i < actions.length; i++) {
+                if (actions[i] == null || actions[i].isEmpty()) continue;
+                AndroidMenuEntry e = entry(s.widget, s.param0, s.param1, s.itemId);
+                e.option = actions[i];
+                e.identifier = i + 1;
+                e.type = i + 1 > 5 ? net.runelite.api.MenuAction.CC_OP_LOW_PRIORITY : net.runelite.api.MenuAction.CC_OP;
+                out.add(e);
+            }
+        AndroidMenuEntry cancel = new AndroidMenuEntry();
+        cancel.option = "Cancel";
+        cancel.target = "";
+        cancel.type = net.runelite.api.MenuAction.CANCEL;
+        out.add(cancel);
+        return out.toArray(new AndroidMenuEntry[0]);
     }
 
     static final int EQUIPMENT = 387;

@@ -753,6 +753,63 @@ bool widget_revalidate(int component, int index) {
     return true;
 }
 
+// Component id and CC_CREATE index (-1 static) of a Widget*: a created child keeps its index at
+// +0x08 and its parent component at +0x74; a static one only its group (+0x06), so its slot is
+// looked up in the group table. Confirmed against the slot, so a bad pointer gives false.
+bool widget_ref(uintptr_t w, int* component, int* index) {
+    if (!w || !client()) return false;
+    int idx = read_at<int32_t>(w + 8);
+    if (idx != -1) {
+        int parent = read_at<int32_t>(w + 0x74);
+        uintptr_t slot = widget_slot(parent, idx);
+        if (!slot || read_at<uintptr_t>(slot + 8) != w) return false;
+        *component = parent;
+        *index = idx;
+        return true;
+    }
+    int group = read_at<uint16_t>(w + 6);
+    auto im = read_at<uintptr_t>(client() + g_build->f_interfaces);
+    if (!im || static_cast<uint64_t>(group) >= read_at<uint64_t>(im + 0x6888)) return false;
+    uintptr_t g = read_at<uintptr_t>(im + 0x6890) + static_cast<uint64_t>(group) * 0x18;
+    uint64_t n = read_at<uint64_t>(g + 8);
+    auto slots = read_at<uintptr_t>(g + 0x10);
+    if (!slots || n > 0x10000) return false;
+    for (uint64_t i = 0; i < n; i++)
+        if (read_at<uintptr_t>(slots + i * 0x10 + 8) == w) {
+            *component = group << 16 | static_cast<int>(i);
+            *index = -1;
+            return true;
+        }
+    return false;
+}
+
+// CC_CREATE (script op 100 in 0x4e06dc) for Widget.createChild: capacity/replace 0x4f2898(parent
+// slot, index, 0) (an existing child at the index is deleted, as CC_CREATE without its 4th arg),
+// make_shared<Widget>(&parent id) 0x4f290c, the same fields the op writes (+0x00 = 1, +0x08 index,
+// +0x28 type, +0x74 parent id), then the move-assign 0x44a538 into the parent's +0xb58 slot.
+// Static parents of layer type only; text inputs (type 12) need the op's extra setup. Game thread.
+int widget_create_child(int component, int index, int type) {
+    if (!client() || type < 0 || type > 11 || index > 4095) return -1;
+    uintptr_t slot = widget_slot(component, -1);
+    uintptr_t parent = slot ? read_at<uintptr_t>(slot + 8) : 0;
+    if (!parent || read_at<int32_t>(parent + 0x28) != 0) return -1;
+    if (index < 0) index = widget_dynamic_count(parent);
+    if (!(reinterpret_cast<uint64_t (*)(uintptr_t, int, bool)>(g_base + 0x4f2898)(slot, index, false) & 1)) return -1;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    SharedPtr sp = reinterpret_cast<SharedPtr (*)(const int32_t*)>(g_base + 0x4f290c)(reinterpret_cast<const int32_t*>(parent + 4));
+    if (!sp.obj) return -1;
+    *reinterpret_cast<uint8_t*>(sp.obj) = 1;
+    *reinterpret_cast<int32_t*>(sp.obj + 8) = index;
+    *reinterpret_cast<int32_t*>(sp.obj + 0x28) = type;
+    *reinterpret_cast<int32_t*>(sp.obj + 0x74) = read_at<int32_t>(parent + 4);
+    uintptr_t dst = read_at<uintptr_t>(parent + 0xb58) + static_cast<size_t>(index) * 0x10;
+    reinterpret_cast<void* (*)(uintptr_t, SharedPtr*)>(g_base + 0x44a538)(dst, &sp);  // moves sp out
+    return index;
+}
+
 uintptr_t widget(int component) {
     uintptr_t c = client();
     if (!c || component < 0) return 0;
@@ -1196,6 +1253,11 @@ bool set_script_int_stack(const int32_t* values, int size) {
     if (size) memcpy(reinterpret_cast<void*>(vm + 0x50), values, size * 4u);
     *reinterpret_cast<int32_t*>(vm + 0xff0) = size;
     return true;
+}
+
+// ScriptEvent +0x40: the source widget (Widget*), null for scripts not run from a widget hook.
+bool script_event_source(uintptr_t ev, int* component, int* index) {
+    return ev && widget_ref(read_at<uintptr_t>(ev + 0x40), component, index);
 }
 
 std::vector<ScriptArg> script_event_args(uintptr_t ev) {

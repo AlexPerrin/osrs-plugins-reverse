@@ -148,6 +148,19 @@ final class DevInput {
         });
     }
 
+    /** A long-press at canvas (x, y), asynchronous: the game opens the menu there. */
+    static void longPress(int x, int y) {
+        if (!inputAllowed()) return;
+        final float[] p = toScreen(x, y);
+        if (p == null) return;
+        INPUT.execute(() -> {
+            long d = SystemClock.uptimeMillis();
+            touch(MotionEvent.ACTION_DOWN, d, p);
+            SystemClock.sleep(LONG_PRESS_MS);
+            touch(MotionEvent.ACTION_UP, d, p);
+        });
+    }
+
     private static void key(java.awt.event.KeyEvent e) {
         int id = e.getID();
         char c = e.getKeyChar();

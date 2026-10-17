@@ -61,6 +61,9 @@ final class DevMenu {
         java.awt.Point m = DevInput.virtualMouse();
         if (m == null || !Native.isClientThread()) return null;
         if (m.equals(hoverPoint) && hoverStamp >= 0) return hover;
+        // Over an item slot: the scene pick only sees what lies beneath the UI.
+        AndroidMenuEntry[] slot = AndroidMenu.slotMenu(m);
+        if (slot != null) return slot;
         if (!m.equals(picked)) {
             pick(m);
             return new AndroidMenuEntry[0];
@@ -89,7 +92,19 @@ final class DevMenu {
         final MenuAction type;
         final String option;
         final List<java.awt.Point> points;
+        final boolean longPress;  // widget op: wait for the menu a long-press opens
         int index, cycles;
+
+        Pending(int p0, int p1, MenuAction type, int id, String option, java.awt.Point widget) {
+            this.p0 = p0;
+            this.p1 = p1;
+            this.type = type;
+            this.id = id;
+            this.option = option;
+            this.points = java.util.Collections.singletonList(widget);
+            this.longPress = true;
+            DevInput.longPress(widget.x, widget.y);
+        }
 
         Pending(int p0, int p1, MenuAction type, int id, String option, List<java.awt.Point> points) {
             this.p0 = p0;
@@ -98,6 +113,7 @@ final class DevMenu {
             this.id = id;
             this.option = option;
             this.points = points;
+            this.longPress = false;
             pick(points.get(0));
         }
 
@@ -105,6 +121,19 @@ final class DevMenu {
             if (++cycles > PENDING_CYCLES) {
                 Log.w(TAG, "menuAction " + type + " id " + id + ": timed out");
                 pending = null;
+                return;
+            }
+            if (longPress) {
+                if (!Native.menuOpen()) return;
+                pending = null;
+                AndroidMenuEntry[] es = AndroidMenuEntry.fromNative(Native.menuEntries());
+                AndroidMenuEntry e = find(es, p0, p1, type, id, option);
+                if (e == null) Log.w(TAG, "menuAction: no entry " + type + " id " + id + " '" + option + "' in the widget's menu:" + describe(es));
+                else {
+                    Log.i(TAG, "menuAction -> " + e);
+                    Native.menuSelect(e.nativeIndex);
+                }
+                Native.menuClose();
                 return;
             }
             java.awt.Point p = points.get(index);
@@ -168,6 +197,20 @@ final class DevMenu {
             if (e != null) Native.menuSelect(e.nativeIndex);
             else Log.w(TAG, "menuAction: no entry " + type + " in the open menu");
             Native.menuClose();
+            return;
+        }
+        if (type == MenuAction.CC_OP || type == MenuAction.CC_OP_LOW_PRIORITY || type == MenuAction.WIDGET_TARGET
+                || type == MenuAction.WIDGET_FIRST_OPTION || type == MenuAction.WIDGET_SECOND_OPTION
+                || type == MenuAction.WIDGET_THIRD_OPTION || type == MenuAction.WIDGET_FOURTH_OPTION
+                || type == MenuAction.WIDGET_FIFTH_OPTION) {
+            // A widget op: long-press the widget (the game opens its menu), then pick the row.
+            java.awt.Point c = widgetPoint(p0, p1);
+            if (c == null) {
+                Log.w(TAG, "menuAction: widget " + (p1 >>> 16) + ":" + (p1 & 0xffff) + "[" + p0 + "] not visible");
+                return;
+            }
+            if (pending != null) Log.w(TAG, "menuAction: replacing pending " + pending.type);
+            pending = new Pending(p0, p1, type, id, option, c);
             return;
         }
         java.awt.Point m = DevInput.virtualMouse();

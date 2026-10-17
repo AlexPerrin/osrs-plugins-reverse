@@ -42,9 +42,23 @@ Protocol unchanged. Details in `docs/openrune-port.md`, "Tenth server dev".
   harp (1840,685); long-press NPCs after `::freeze`.
 - **Medium clues** (d8937ea, 4719636): built and tested, not deployed/device-checked yet (restart
   queued). Medium is complete on the cache data (167 steps); puzzle boxes are a hard-tier feature.
-- **Next:** device-check medium (challenge Read + answer at Baraek, a coordinate, a double emote,
-  a casket); hard clues (puzzle boxes, light boxes, Double Agent/wizard encounters); fairy ring favourites and the hideout sequence; more `music_modern`
-  areas; upstream patch for medium (on top of 24).
+- **Candidates for server dev #11** (roughly in value order):
+  1. **Hard clues** on the same engine (~1.5-2 days, size first): hard rows in the cluehelper
+     tables; puzzle boxes (slide puzzle 306: `trail_puzzleinv`, piece objs from enums 1864/1865
+     keyed by varp `if1` 1-6, moves are client-side in `trail_slidepuzzle_op` and transmit op1 with
+     the slot; the server should mirror the move and check the solved order), light boxes, coordinate
+     wizard encounters and the Double Agent for emote steps, hard map interfaces (single-model maps
+     20-24 and `trail_clue_hard_map006/007`; the renderer approach works), hard casket from the wiki
+     (same parser: DropsLineReward rarities with `{{#expr:}}`).
+  2. **Pouch/sack item support** for plugin rows: Rune Pouch (inv + varbits the Rune Pouch plugin
+     reads), Plank Sack (hub plugin; check its message regexes first), verify Ess Pouch on the
+     device with the client dev after 0b2ddee is deployed.
+  3. **Fairy ring extras:** favourites (varbits `fairyring_fave_*`, Favourites op, log fave icons),
+     the AIR-DLR-DJQ-AJS hideout sequence, per-ring quest requirements (wiki page lists them).
+  4. **Music areas:** only Lumbridge and Ice Mountain have `music_modern` rows; the wiki's
+     `Map:<track>` pages give modern-mode polygons (the Alone one was copied by hand); a small
+     importer could add many areas (area ids from 32762 down, dbrows near 60920).
+  5. Beginner/easy leftovers: scroll cases, the master clue tertiary, worn items into STASH units.
 
 ## Latest state (2026-10-17, ninth server dev, on OpenRune)
 

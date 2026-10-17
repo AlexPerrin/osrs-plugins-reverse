@@ -74,7 +74,7 @@ use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
 | XP Globes | runs | attack/HP globes over the chat tabs after combat |
 | Bank | runs | `::openbank`: the title shows the bank value, "The Bank of Gielinor (35.9K)" (verified 2026-10-16). Script 505 runs in the cycle inventory 95 arrives, so `getItemContainer` now reads the live inventory map on the game thread (it read last cycle's snapshot) |
 | Notes | runs | tap the note in the sidebar: multi-line Android prompt; OK saves it (`notes.notesData=Buy feathers`, verified 2026-10-16). Headless documents hold their text, and the prompt raises focusLost, where Notes saves |
-| Slayer | starts | task InfoBox drawn (enchanted gem "?" icon from the game's sprites) with no task |
+| Slayer | runs | Turael task (17 Icefiends) synced at login ("Sync slayer task: 17x Icefiends"), and the task InfoBox (icefiend icon, count) appears on an amount change, as on desktop (verified 2026-10-16). Needed getDBRowsByValue and DB fields with desktop semantics |
 | NPC Aggression Timer | runs | aggression timer InfoBox counting down (9:04 -> 8:25) after a teleport with `npcUnaggroArea.npcUnaggroAlwaysActive=true` (verified 2026-10-16) |
 | Mouse Tooltips | runs | "Eat Lobster" tooltip while a finger rests on an inventory item and "Remove Dragon dagger" on the worn weapon slot (hover entries, verified 2026-10-16) |
 | Loot Tracker | runs | sidebar: "Goblin (lvl-2) 2 gp, Total count: 1" after killing a goblin (verified 2026-10-16); local only (same-name SessionManager without a runelite.net session) |
@@ -99,17 +99,20 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Customizable XP Drops | starts | total XP counter drawn; drops not checked. Needed ConfigManager.getConfigDescriptor and enum-like config classes (FontType) |
 | Shortest Path | runs | Shift + long-press a tile, "Set Target" in the plugin strip: red path on the scene and the minimap; from Burthorpe it routes via "Lumbridge Home Teleport" (verified 2026-10-16). Targets within its reached distance (default 5 tiles) clear at once. Needed getDBTableRows, getProfile, DB fields with desktop semantics, the menu tile after the menu closes |
 | Improved Tile Indicators | starts | not checked (its overlay threw before login until overlays were limited to LOGGED_IN) |
-| Inventory Setups | starts | not checked (sidebar panel). Needed jopt-simple, headless JPopupMenu children, getItemCount, DB fields |
+| Inventory Setups | starts | sidebar panel renders (version notes, Return to Setups); setups not tried. Needed jopt-simple, headless JPopupMenu children, getItemCount, DB fields |
 | Equipment Inspector | starts | not checked (needs another player). Needed headless GroupLayout builders |
 | Bank Heatmap | starts | `::openbank`: its "Right click this button for Heatmap overlay" hint is drawn by the bank buttons (2026-10-16); the overlay itself not checked |
-| Wasted Bank Space | starts | not checked |
-| Banked Experience | starts | not checked |
+| Wasted Bank Space | starts | sidebar panel: "Number of Items Wasting Space: 0" with a 3-item bank (2026-10-16) |
+| Banked Experience | starts | sidebar panel renders; its skill combo box shows the class name instead of the skill (headless JComboBox renderer) |
 | Kitten Tracker | starts | not checked |
 | Large Logout | starts | not checked |
 | Radius Markers | starts | not checked |
 | Skills Tab Progress Bars | starts | not checked |
 | Tree Despawn Timer | starts | not checked (needed Java 9 Duration methods, CompatRewrite) |
-| Loot Lookup | untested | needs jsoup (wiki scraping); not built |
+| Max Hit | runs | "Max Hit: 11.0" overlay (verified 2026-10-16) |
+| Wilderness Multi Lines | starts | starts; not checked (needs the Wilderness) |
+| Charges Improved | throws | startUp called `Collection.toArray(IntFunction)` (Java 11); CompatRewrite now rewrites interface calls too (fix unverified) |
+| Loot Lookup |
 
 ## Build and run
 

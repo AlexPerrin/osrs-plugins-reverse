@@ -53,4 +53,14 @@ public final class JdkCompat {
             .divideToIntegralValue(java.math.BigDecimal.valueOf(divisor.getSeconds()).movePointRight(9)
                 .add(java.math.BigDecimal.valueOf(divisor.getNano()))).longValueExact();
     }
+
+    /** Collection.toArray(IntFunction) (Java 11). */
+    public static Object[] toArray(java.util.Collection<?> c, java.util.function.IntFunction<Object[]> generator) {
+        return c.toArray(generator.apply(0));
+    }
+    // Rewritten call sites keep their receiver type, so one overload per collection interface.
+    public static Object[] toArray(java.util.List<?> c, java.util.function.IntFunction<Object[]> g) { return c.toArray(g.apply(0)); }
+    public static Object[] toArray(java.util.Set<?> c, java.util.function.IntFunction<Object[]> g) { return c.toArray(g.apply(0)); }
+    public static Object[] toArray(java.util.Queue<?> c, java.util.function.IntFunction<Object[]> g) { return c.toArray(g.apply(0)); }
+    public static Object[] toArray(java.util.Deque<?> c, java.util.function.IntFunction<Object[]> g) { return c.toArray(g.apply(0)); }
 }

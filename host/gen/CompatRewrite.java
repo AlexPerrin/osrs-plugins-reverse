@@ -10,7 +10,7 @@ import org.objectweb.asm.*;
  */
 public class CompatRewrite {
     // owner.name+desc of an instance method -> JdkCompat static method (receiver becomes arg 0)
-    static final Map<String, String> TABLE = Map.of(
+    static final Map<String, String> TABLE = new HashMap<>(Map.of(
         "java/io/InputStream.readAllBytes()[B", "readAllBytes",
         "java/io/InputStream.transferTo(Ljava/io/OutputStream;)J", "transferTo",
         "java/lang/Package.getImplementationVersion()Ljava/lang/String;", "implementationVersion",
@@ -20,7 +20,12 @@ public class CompatRewrite {
         "java/time/Duration.toMinutesPart()I", "toMinutesPart",
         "java/time/Duration.toSecondsPart()I", "toSecondsPart",
         "java/time/Duration.toMillisPart()I", "toMillisPart",
-        "java/time/Duration.dividedBy(Ljava/time/Duration;)J", "dividedBy");
+        "java/time/Duration.dividedBy(Ljava/time/Duration;)J", "dividedBy"));
+    static {
+        // Collection.toArray(IntFunction) (Java 11), called through any collection interface.
+        for (String c : new String[] {"java/util/Collection", "java/util/List", "java/util/Set", "java/util/Queue", "java/util/Deque"})
+            TABLE.put(c + ".toArray(Ljava/util/function/IntFunction;)[Ljava/lang/Object;", "toArray");
+    }
     static final String COMPAT = "net/runelite/host/compat/JdkCompat";
     static int rewritten;
 
@@ -47,7 +52,7 @@ public class CompatRewrite {
                 return new MethodVisitor(Opcodes.ASM9, super.visitMethod(acc, name, desc, sig, ex)) {
                     @Override
                     public void visitMethodInsn(int op, String owner, String n, String d, boolean itf) {
-                        String target = op == Opcodes.INVOKEVIRTUAL ? TABLE.get(owner + "." + n + d) : null;
+                        String target = op == Opcodes.INVOKEVIRTUAL || op == Opcodes.INVOKEINTERFACE ? TABLE.get(owner + "." + n + d) : null;
                         if (target != null) {
                             rewritten++;
                             super.visitMethodInsn(Opcodes.INVOKESTATIC, COMPAT, target, "(L" + owner + ";" + d.substring(1), false);

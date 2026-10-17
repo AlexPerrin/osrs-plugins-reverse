@@ -1337,6 +1337,19 @@ index ef0006d83..cfef1fa6d 100644
  moveRestrict = "NoMove"
  wanderRange = 0
  respawnDir = "East"
+diff --git a/content/areas/city/edgeville/src/main/kotlin/org/rsmod/content/areas/city/edgeville/npcs/EdgevilleGeneralStore.kt b/content/areas/city/edgeville/src/main/kotlin/org/rsmod/content/areas/city/edgeville/npcs/EdgevilleGeneralStore.kt
+index 25affa4d8..f90630a2e 100644
+--- a/content/areas/city/edgeville/src/main/kotlin/org/rsmod/content/areas/city/edgeville/npcs/EdgevilleGeneralStore.kt
++++ b/content/areas/city/edgeville/src/main/kotlin/org/rsmod/content/areas/city/edgeville/npcs/EdgevilleGeneralStore.kt
+@@ -30,7 +30,7 @@ class EdgevilleGeneralStore @Inject constructor(private val shops: Shops) : Plug
+     }
+ 
+     private fun Player.openGeneralStore(npc: Npc) {
+-        shops.open(this, npc, "Edgeville General Store", "inv.generalshop5")
++        shops.open(this, npc, "Edgeville General Store", "inv.generalshop2")
+     }
+ 
+     private companion object {
 diff --git a/content/areas/city/lumbridge/build.gradle.kts b/content/areas/city/lumbridge/build.gradle.kts
 index fc0645dfe..83857982d 100644
 --- a/content/areas/city/lumbridge/build.gradle.kts
@@ -1349,6 +1362,19 @@ index fc0645dfe..83857982d 100644
      implementation(projects.api.scriptAdvanced)
      implementation(projects.content.quest)
  }
+diff --git a/content/areas/city/lumbridge/src/main/kotlin/org/rsmod/content/areas/city/lumbridge/npcs/GeneralStore.kt b/content/areas/city/lumbridge/src/main/kotlin/org/rsmod/content/areas/city/lumbridge/npcs/GeneralStore.kt
+index fe28669ce..abdd237e2 100644
+--- a/content/areas/city/lumbridge/src/main/kotlin/org/rsmod/content/areas/city/lumbridge/npcs/GeneralStore.kt
++++ b/content/areas/city/lumbridge/src/main/kotlin/org/rsmod/content/areas/city/lumbridge/npcs/GeneralStore.kt
+@@ -20,7 +20,7 @@ class GeneralStore @Inject constructor(private val shops: Shops) : PluginScript(
+     }
+ 
+     private fun Player.openGeneralStore(npc: Npc) {
+-        shops.open(this, npc, "Lumbridge General Store", "inv.generalshop1")
++        shops.open(this, npc, "Lumbridge General Store", "inv.generalshop5")
+     }
+ 
+     private suspend fun ProtectedAccess.shopDialogue(npc: Npc) =
 diff --git a/content/areas/city/lumbridge/src/main/kotlin/org/rsmod/content/areas/city/lumbridge/npcs/Hans.kt b/content/areas/city/lumbridge/src/main/kotlin/org/rsmod/content/areas/city/lumbridge/npcs/Hans.kt
 index 21e4bd7c4..a292950bf 100644
 --- a/content/areas/city/lumbridge/src/main/kotlin/org/rsmod/content/areas/city/lumbridge/npcs/Hans.kt
@@ -18371,6 +18397,41 @@ index 000000000..7e6ad371d
 +        const val BALL_OF_WOOL = "obj.ball_of_wool"
 +    }
 +}
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/misthalin/MisthalinMystery.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/misthalin/MisthalinMystery.kt
+index 3aa651706..64507bba1 100644
+--- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/misthalin/MisthalinMystery.kt
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/misthalin/MisthalinMystery.kt
+@@ -331,6 +331,10 @@ constructor(
+             return
+         }
+ 
++        if (quest.getQuestStage(player) != MisthalinStage.MandyWaiting) {
++            return
++        }
++
+         chatNpc(happy, "Oh hi, ${player.displayName}.")
+         chatPlayer(happy, "Hi Mandy. How are you feeling now?")
+         chatNpc(happy, "Much better thanks, and lucky to be alive, thanks to you in no small part.")
+@@ -341,12 +345,19 @@ constructor(
+                 "so please, take them...",
+         )
+ 
++        if (access.inv.freeSpace() < RewardSlots) {
++            access.mes("You need $RewardSlots free inventory spaces to take the gems.")
++            return
++        }
++
+         access.mistmystXpAwarded = true
+ 
+         quest.completeQuest(access)
+     }
+ 
+     private companion object {
++        /** The uncut ruby, emerald and sapphire. */
++        private const val RewardSlots = 3
+         private const val BoatFadeDelay = 1
+         private const val BoatCrossingTicks = 2
+         private const val BoatFadeInDelay = 1
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJuliet.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJuliet.kt
 new file mode 100644
 index 000000000..c3a81b04d

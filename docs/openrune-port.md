@@ -1597,7 +1597,7 @@ test, 1 TODO), His Faithful Servants (351). The quest list counts 11 quests ("Co
   beads to Wizard Mizgog.", scroll (1 QP, 875 Magic XP, amulet of accuracy).
 - **Rune Mysteries:** started only (varp 63 = 1 after Duke Horacio: "Have you any quests for me?", "Sure, no
   problem."; talisman given). Not finished (slot time).
-- **Quest Helper on the desktop:** the overlay box showed the right step right after "Start Quest Helper" (Restless
+- **Quest Helper on the desktop** (cause found by the orchestrator/client dev: the *sideloaded* QH jar cannot reach RuneLite's client resources (clue_arrow.png), so every ObjectStep threw; with QH from the Plugin Hub (4.18.0) the desktop matches Android; see docs/multi-client.md, f41e558). Original observation: the overlay box showed the right step right after "Start Quest Helper" (Restless
   Ghost stage 1: "Talk to Father Urhney, west of the Lumbridge Swamp."; Imp Catcher: "Collect one of each bead..."
   with the four beads in red), but disappeared after the next change (stage 1 -> 2; beads added to the
   inventory) and did not come back, although the quest list menu still offers "Stop Quest Helper". No highlights
@@ -1622,3 +1622,23 @@ test, 1 TODO), His Faithful Servants (351). The quest list counts 11 quests ("Co
   steps, so this only changes its last step's wording. **Fixed** after the run: the first Oddenstein talk now sets 2 (upstream `54`; not checked in game yet).
 - The desktop session logged out between 17:25 and 17:31 with no input (desktop.sh shows the login screen),
   consistent with the client's AFK IDLE packet, which OpenRune honours (patch 18).
+
+### Quest code audit: X Marks the Spot, Gertrude's Cat, Misthalin Mystery (seventeenth server dev)
+
+Read-only audit of the three quests (stage tables per quest are in the session report; summary here):
+- **X Marks the Spot** (varbit 8063, 0-8): Veos (Lumbridge) 1-2, digs 3-6 at (3230,3209), (3203,3212), within 3 of
+  (3109,3264) and the Draynor pig pen (3078,3259), Port Sarim Veos 7-8; rewards match. 9 tests. ~95%: the
+  Lumbridge General Store had no spade (fixed below; Veos says the general store has one). The orb dig accepts any
+  tile within 3 (Quest Helper uses the exact tile; low risk); Bob's clue text is paraphrased.
+- **Gertrude's Cat** (varp 180 via `varbit.gertrudes_cat_progress`, 0-6): Gertrude 1, Shilop/Wilough 100 coins 2,
+  milk on Fluffs 3, seasoned sardine 4 (random kitten crate of 6), kitten on Fluffs 5, Gertrude 6. 22 tests (varrock
+  module). ~95%. **Open:** returning the kitten hides the shared Fluffs npc for 100 ticks for every player
+  (Fluffs.kt:164-173); Fluffs' Stroke op runs the pick-up handler; Gertrude repeats "What about Shilop?" after the
+  boys are paid but before Fluffs is found.
+- **Misthalin Mystery** (varbit 3468, 5..135 in steps of 5 plus 111): all steps, puzzles (piano DEAD, gem panel,
+  fireplace) and the boss fight exist; 22 + 1 tests. ~90% before the fixes below. The stage values could not be
+  checked one by one against Quest Helper (**uncertain**).
+- **Fixed** (upstream 55, 56): the Lumbridge General Store opens `inv.generalshop5` (its own stock with the spade and
+  knife; it opened the Al Kharid stock) and Edgeville `inv.generalshop2`; Mandy outside completes Misthalin
+  Mystery only at stage 130 (`MandyWaiting`) and with 3 free slots for the gems ("You need 3 free inventory spaces
+  to take the gems." is a **guess**). Not checked in game yet.

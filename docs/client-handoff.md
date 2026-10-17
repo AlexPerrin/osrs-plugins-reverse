@@ -578,12 +578,30 @@ session; its notes are in `docs/android-protocol.md`.
   - Clue Scroll (core) starts: `re/host/plugins-extra/cluescrolls.jar`, `EXTRA=cluescrolls`.
   - Hub: built bank-tag-layouts, barrows-door-highlighter, spawnpredictor, better-teleport-menu (no API gaps;
     collection-log skipped: built against a newer API, `getStringStack`).
-  - Next: a device slot for (a) Emojis: run `EXTRA=emojis`, type ":)" in public chat; look for "mod icons: N
-    (game M) installed" in logcat and the emoji drawn in chat and overhead; size may need tuning; (b) Player
-    Indicators with `tools/multiclient/desktop_login.py --seconds 240` (desktop/desktop stands in Lumbridge) and
-    `playerindicators.highlightOthers=ENABLED`, `drawTiles=true` in settings.properties; (c) the impling label;
-    (d) the four new hub jars (add their rows to the Plugin Hub table after the run); (e) in-process relog with
-    createChild on.
+  - **Second half (2026-10-17)**, commits 90bf48f..2f5627c:
+    - **Events in packet order**: the Message constructor `0x3f0a04` is inline-hooked
+      (`game::install_message_hook`) to copy the inventories when each chat line is made. `poll_messages`
+      posts the inventory changes made before each message, then the ChatMessage; `n_inventory` reads the
+      state as of the event being posted (`client_thread::inventory_view`). An inventory that didn't exist
+      yet reads as absent. Verified: Loot Tracker records a beginner casket (`::item 23245`, Open).
+    - `MenuEntry.getItemId` for widget ops on items (Clue Scroll's Read); `Actor.getCanvas*Location` no
+      longer adds getLogicalHeight (labels were twice too high); LOGGED_IN waits for the local player;
+      `getPreferences`, `getUsername`; the headless shim covers javax.accessibility with a non-null
+      `getAccessibleContext()`.
+    - Emojis run in overhead text. Your own public chat line isn't in the chatbox: static RE (subagent)
+      says the decoder always adds the line with the overhead text and the wire layout matches RSProt.
+      Our admin account's chat is type 1 MODCHAT with `<img=1>`, so check whether the line is stored
+      but not displayed (log the Message constructor's type).
+    - Desktop second player: `tools/multiclient/desktop_login.py --seconds 360 --cheat 'tele 3223 3218'`
+      (NO_TIMEOUT keepalive every 8 s; CLIENT_CHEAT op 84). Player Indicators verified with it.
+    - Verified: Player Indicators, Item Identification (`itemidentification.showHerbs=true`), Charges
+      Improved, Clue Scroll, Loot Tracker casket. Converted 12 more core plugins and 10 more hub plugins
+      (rows in docs/plugin-host.md, mostly `starts`).
+  - Next (gen 18): re-run Metronome, KPH Tracker, Hunter Rumours (fixed, not re-run); own public chat
+    line; Ammo infobox (no infobox after wielding arrows); player menu items
+    (`MenuManager.addPlayerMenuItem` / RUNELITE_PLAYER, Equipment Inspector); `Client.getItemContainers`
+    (devtools list_inventories); in-process relog with createChild on; promote the hub `starts` rows by
+    checking each feature; Large Logout on mobile.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

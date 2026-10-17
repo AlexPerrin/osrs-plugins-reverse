@@ -94,6 +94,16 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   1626-1629 are the values RuneLite's Time Tracking reads, and the collect message is the one
   its Loot Tracker parses. Tier data in the server-only dbtable `birdhouse_types`. `::birdhouses`
   makes seeded houses full now. Crafting bird houses was already in OpenRune.
+- **Farming** (`content/skills/farming`, `FarmingScript`): the allotment, flower and herb patches
+  at Catherby and Falador. Rake (rake), plant with a seed dibber (3 seeds per allotment), growth
+  on the farming clock (allotments every 10 minutes of UTC time, flowers 5, herbs 20, also while
+  logged out), harvest with a spade (flowers by hand) with the wiki's harvest lives and
+  chance-to-save, OSRS XP (planting XP comes when the patch is emptied, as on the wiki). Each patch's
+  value is the one RuneLite's Time Tracking decodes (checked against PatchImplementation in
+  client-1.13.1.jar) and is written to `farming_transmit_a-d` while the player is in RuneLite's
+  area for that farm. Crop data in the server-only dbtable `farming_crops`; state in server varps
+  63780-63795. `::growpatches [cycles]` grows your crops (fully by default). No disease, compost,
+  watering, payments, weed regrowth or tool leprechaun.
 - **Random events** (`content/events/random-events`): the Genie, every 1-2 hours of play or with
   `::randomevent`. He appears beside the player, faces them, calls them by name every 12 s,
   follows, and leaves after a minute; Talk-to gives the lamp (Rub: xpreward, 10 x level), Dismiss

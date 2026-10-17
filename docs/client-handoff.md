@@ -1111,7 +1111,15 @@ session; its notes are in `docs/android-protocol.md`.
     Typing into chat while the QH sidebar is open goes to a sidebar text dialog (Cancel it, close the sidebar first).
     The world map orb's long-press strip lists plugin entries twice (two orb aliases). The machine rebooted mid-gen
     (scratchpad wiped, locks reset).
-  - **Next (gen 30)**: Instance Map inside a real instance (GWD Bandos: check and restore `godwars_counter_bandos` first);
+  - musicTrackFilter (7f6a5d5, d1f8c95; unverified): proc 9291 (one call per music-list track; seen in the scripts log on
+    the device) takes its args at the GOSUB and raises the callback as it returns (as questFilter); the opcode watch can't
+    see RETURN. RuneLite's patched 9291 (decoded from client-1.13.1.jar `runelite/12/9291`): override 0 returns 0
+    (hidden), 1 skips the varbit 19733 locked/unlocked test but still applies the varbit 19731 area filter. On the device
+    the search ("alo") did not filter; the first 3 calls are logged at login only, so check with `setprop
+    debug.osrsrl.musiclog 1` whether the callback runs on the redraw (Music redraws by runScript of 239:8's
+    onVarTransmit listener) and what the game returned. Script events are now on whenever ScriptCallbackEvent has
+    subscribers (proc entry/return drive the callback emulation). The installed build lacks only d1f8c95's last edit.
+  - **Next (gen 30)**: finish musicTrackFilter (promotes Music); Instance Map inside a real instance (GWD Bandos: check and restore `godwars_counter_bandos` first);
     the QH desktop-vs-Android A/B (Rune Mysteries 63: 1->2->3->5->6, Ernest 32) when the orchestrator frees the desktop;
     Music's musicTrackFilter callback and its button hit-testing; AreaSoundEffectPlayed; remaining tracked stub hits:
     Widget.setType (QH chat boxes, Resource packs), getRasterizer (Better Teleport Menu), Widget.setSubOp (Bank Tags potion

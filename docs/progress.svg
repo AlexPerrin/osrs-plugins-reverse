@@ -281,8 +281,8 @@
 <rect x="943.14" y="31.00" width="55.86" height="150.00" fill="none" stroke="#0d1117" stroke-width="2"/>
 <text x="948.14" y="47.00" font-family="sans-serif" font-size="12" fill="#ffffff" stroke="#0d1117" stroke-width="3" paint-order="stroke">Zone</text>
 </g>
-<text x="4" y="210" font-family="sans-serif" font-size="16" fill="#ffffff">RuneLite API*: 68.13% (590/866)</text>
-<g><title>Client: 209/325 (64%)</title>
+<text x="4" y="210" font-family="sans-serif" font-size="16" fill="#ffffff">RuneLite API*: 68.36% (592/866)</text>
+<g><title>Client: 210/325 (65%)</title>
 <rect x="2.00" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="18.20" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="34.39" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -492,7 +492,7 @@
 <rect x="358.34" y="342.60" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="2.00" y="357.80" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="18.20" y="357.80" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="34.39" y="357.80" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="34.39" y="357.80" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="50.59" y="357.80" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="66.79" y="357.80" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="82.99" y="357.80" width="16.20" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
@@ -942,7 +942,7 @@
 <rect x="559.93" y="335.72" width="183.24" height="114.28" fill="none" stroke="#0d1117" stroke-width="2"/>
 <text x="564.93" y="351.72" font-family="sans-serif" font-size="12" fill="#ffffff" stroke="#0d1117" stroke-width="3" paint-order="stroke">NPC</text>
 </g>
-<g><title>ItemComposition: 29/43 (67%)</title>
+<g><title>ItemComposition: 30/43 (70%)</title>
 <rect x="744.16" y="221.00" width="14.84" height="15.40" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="759.00" y="221.00" width="14.84" height="15.40" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="773.84" y="221.00" width="14.84" height="15.40" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -972,7 +972,7 @@
 <rect x="773.84" y="282.59" width="14.84" height="15.40" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="788.68" y="282.59" width="14.84" height="15.40" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="803.52" y="282.59" width="14.84" height="15.40" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="818.36" y="282.59" width="14.84" height="15.40" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="818.36" y="282.59" width="14.84" height="15.40" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="744.16" y="297.99" width="14.84" height="15.40" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="759.00" y="297.99" width="14.84" height="15.40" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="773.84" y="297.99" width="14.84" height="15.40" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>

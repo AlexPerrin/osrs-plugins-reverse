@@ -42,8 +42,8 @@ Tracking, and the bird house device check. Details in `docs/openrune-port.md`, "
   base locs have no name, so `nameFilter` fails); inventory "Use" works with a long-press on the
   item, tap "Use ...", then tap the loc. Bird house space 2 is at 3679,3815; stand at 3679,3814.
 - **Next ideas:** farming slice extensions (compost bin 4775, other farms: Ardougne, Morytania,
-  Hosidius are just more `Area` rows plus their loc names; tool leprechaun; disease); recheck the
-  bird house nest chance (a normal house at 99 gave 6 nests); bird houses in `upstream/` (not yet);
+  Hosidius are just more `Area` rows plus their loc names; tool leprechaun; disease); bird house
+  nest chance fixed (per mille, wiki chart) and bird houses are `upstream/20` (not yet deployed);
   clue scrolls (beginner/easy slice).
 
 ## Latest state (2026-10-16 late night, sixth server dev, on OpenRune)

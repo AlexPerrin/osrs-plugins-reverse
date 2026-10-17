@@ -5271,7 +5271,7 @@ index 000000000..92f804a7e
 +}
 diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHouseTypesTable.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHouseTypesTable.kt
 new file mode 100644
-index 000000000..e6d5a35a4
+index 000000000..155016bf0
 --- /dev/null
 +++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHouseTypesTable.kt
 @@ -0,0 +1,57 @@
@@ -5282,7 +5282,7 @@ index 000000000..e6d5a35a4
 +
 +/**
 + * Bird houses, from the OSRS Wiki (Bird house trapping): the item, the Hunter level to place it
-+ * and XP when it is emptied, and the top of the wiki's nest-roll chart (out of 256 at level 99).
++ * and XP when it is emptied, and the top of the wiki's nest-roll chart (per mille at level 99, half that at 50).
 + * [TIER] is the tier index in the space's varp value.
 + */
 +object BirdHouseTypesTable {
@@ -5562,10 +5562,10 @@ index 000000000..1b8d0d8a7
 +transmit = "Never"
 diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/BirdHouseScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/BirdHouseScriptTest.kt
 new file mode 100644
-index 000000000..4749db85f
+index 000000000..b5b114f63
 --- /dev/null
 +++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/BirdHouseScriptTest.kt
-@@ -0,0 +1,143 @@
+@@ -0,0 +1,153 @@
 +package org.rsmod.content.skills.hunter
 +
 +import dev.openrune.ServerCacheManager
@@ -5626,6 +5626,16 @@ index 000000000..4749db85f
 +        assertEquals(9, TIERS.size)
 +        assertEquals("obj.birdhouse_normal", TIERS.first().item.internalName)
 +        assertEquals((0..8).toList(), TIERS.map { it.tier })
++    }
++
++    @Test
++    fun `nest chances follow the wiki's chart`() {
++        assertEquals(300, BirdHouseScript.nestChance(99, 300))
++        assertEquals(150, BirdHouseScript.nestChance(50, 300))
++        assertEquals(150, BirdHouseScript.nestChance(5, 300))
++        assertEquals(525, BirdHouseScript.nestChance(99, TIERS.last().nestChance))
++        val loot = rollLoot(TIERS.first(), 99) { bound -> if (bound == 1000) 300 else 0 }
++        assertEquals(1, loot.nests.size)
 +    }
 +
 +    @Test
@@ -5939,10 +5949,10 @@ index 000000000..d2c61d6fe
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/BirdHouseScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/BirdHouseScript.kt
 new file mode 100644
-index 000000000..60afdac08
+index 000000000..ed11a889d
 --- /dev/null
 +++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/BirdHouseScript.kt
-@@ -0,0 +1,279 @@
+@@ -0,0 +1,284 @@
 +package org.rsmod.content.skills.hunter
 +
 +import jakarta.inject.Inject
@@ -6188,13 +6198,19 @@ index 000000000..60afdac08
 +        fun chance(level: Int, low: Int, high: Int): Int =
 +            low + (high - low) * (level.coerceIn(1, 99) - 1) / 98
 +
++        /**
++         * Per mille: [high] at level 99, scaling linearly down to half at level 50 and flat below
++         * (OSRS Wiki, Bird house trapping: the nest chart's birdhouse mode).
++         */
++        fun nestChance(level: Int, high: Int): Int = high * (level.coerceIn(50, 99) - 1) / 98
++
 +        /** [nextInt] returns 0 until its bound (exclusive). */
 +        fun rollLoot(tier: BirdhouseTypesRow, level: Int, nextInt: (Int) -> Int): Loot {
 +            val feathers = listOf(30, 40, 50, 60)[nextInt(4)]
 +            val nests = mutableListOf<String>()
 +            if (nextInt(256) < chance(level, 0, 200)) nests += SEED_NEST
 +            repeat(NEST_ROLLS) {
-+                if (nextInt(256) < chance(level, 0, tier.nestChance)) {
++                if (nextInt(1000) < nestChance(level, tier.nestChance)) {
 +                    val r = nextInt(100)
 +                    nests +=
 +                        when {
@@ -6219,7 +6235,6 @@ index 000000000..60afdac08
 +            return "You dismantle and discard the trap, retrieving ${nestText}10 dead birds, " +
 +                "$feathers feathers and $xpText Hunter XP."
 +        }
-+
 +    }
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScript.kt

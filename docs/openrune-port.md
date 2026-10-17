@@ -411,7 +411,7 @@ upstream later; nobody has contacted upstream.
 | Quest scripts: Sheep Shearer, Romeo & Juliet | `content/quest/...` (+ `QuestTalkFixture` tests) | New content on OpenRune's quest framework |
 | Dwarf multicannon, dragon dagger/warhammer specs | `content/other/dwarf-multicannon`, `content/other/special-attacks` | New content with tests |
 | Implings, Genie random event | `content/skills/hunter`, `content/events/random-events` | New content with tests (2026-10-16, fifth server dev) |
-| Impling jar loot, crystal implings, bird houses | `content/skills/hunter` | New content with tests (sixth server dev); jar loot and crystal implings are in `upstream/15-implings.patch`, bird houses not yet |
+| Impling jar loot, crystal implings, bird houses | `content/skills/hunter` | New content with tests (sixth server dev); jar loot and crystal implings are in `upstream/15-implings.patch`, bird houses in `upstream/20-bird-houses.patch` |
 | Slayer streak and wording | `content/skills/slayer` | Streaks were server-only varbits; RuneLite reads 4069/5617 (`upstream/17`) |
 | Farming patches (Catherby, Falador) | `content/skills/farming` (new module) | OpenRune had no farming; values RuneLite's Time Tracking decodes (`upstream/19`) |
 
@@ -473,3 +473,7 @@ was verified.
   worked; the message was "You dismantle and discard the trap, retrieving 6 nests, 10 dead birds,
   50 feathers and 112 Hunter XP." Six nests from a normal house at 99 looks high: the tier's
   `nest_chance` (300) is above 256, so every roll succeeds; worth rechecking against the wiki.
+- **Bird house nest fix:** the wiki's chart for the 5 nest-table rolls is in birdhouse mode:
+  `floor(high * (max(50, level) - 1) / 98) / 1000` (normal 30% at 99, 15% at 50 and below; redwood
+  52.5%). The code used it as /256, so every roll succeeded for every tier. Now `nestChance()` per
+  mille, with a test. The seed nest (0-200 out of 256) was right. Upstream patch 20 = bird houses.

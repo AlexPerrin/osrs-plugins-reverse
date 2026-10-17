@@ -33,6 +33,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 17 | `17-slayer-osrs-streak-and-wording` | `content/skills/slayer`: `SlayerTaskManager.kt`, `SlayerContact.kt`, `build.gradle.kts`, `SlayerTaskVarsTest.kt` (new) | Streaks in the client-visible varbits `slayer_tasks_completed`/`slayer_wilderness_tasks_completed`; OSRS gem-check and completion wording RuneLite parses | Existing saves keep their streak in the old server-only varbits (no migration) |
 | 18 | `18-idle-packet-logout` | `api/net/.../handlers/IdleHandler.kt` (new), `MessageConsumerProvider.kt`, `IdleHandlerTest.kt` (new) | The client's IDLE packet logs the player out in OSRS; handled like the logout button | Contains nothing of ours |
 | 19 | `19-farming-patches` | `content/skills/farming` + `farming/pack` (new modules) | OpenRune had no farming: allotment, flower and herb patches at Catherby and Falador with the farming_transmit values RuneLite's Time Tracking reads; integration tests | dbtable 60002 (rows 60160-60187), varps 63780-63795, timer 460; `::growpatches`; no disease/compost/payments |
+| 20 | `20-bird-houses` | `content/skills/hunter`: `BirdHouseScript.kt`, `BirdHouseTypesTable.kt`, `HunterPluginPack.kt`, both `gamevals.toml`, `birdhouse_vars.toml`, `BirdHouseScriptTest.kt` | Bird house trapping on Fossil Island with the varps (1626-1629) Time Tracking reads and the Loot Tracker message | Needs 15 (applies on pin+15 and after 01-19); dbtable 60001 (rows 60140-60148), varps 63760-63767; nest chances from the wiki chart (per mille, half at level 50 and below) |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -101,3 +102,7 @@ Patch 15 was updated afterwards (Loot registers on the cache op that carries
 Patch 19 (farming) was added afterwards: `git apply --check` on the pin passes; it is new files
 only and was compiled, tested (`FarmingScriptTest`, 8) and spotless-checked in our tree, not on a
 pin-only clone.
+
+Patch 20 (bird houses) was added afterwards: `git apply --check` passes on the pin with 15 applied,
+and it was generated on top of 01-19 (`git am`). Device-verified in our tree (Build, Seeds, Empty,
+the Loot Tracker message); the nest-chance fix in it ran only in the integration tests (7).

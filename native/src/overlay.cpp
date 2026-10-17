@@ -76,6 +76,7 @@ std::atomic<float> g_pm_rect[4];
 struct SidebarIcon { int w, h; std::vector<uint8_t> rgba; };
 std::unordered_map<int, SidebarIcon> g_sb_icons;
 std::unordered_map<EGLContext, std::unordered_map<int, GLuint>> g_sb_icon_tex;
+std::unordered_map<EGLContext, std::vector<GLuint>> g_sb_icon_dead;  // replaced icon textures, deleted on their context
 
 // Texture for an icon id in the current context (0 if unknown). Render thread, g_sb_mutex not held.
 GLuint sidebar_icon_texture(int id, int* w, int* h) {
@@ -86,6 +87,11 @@ GLuint sidebar_icon_texture(int id, int* w, int* h) {
         if (it == g_sb_icons.end()) return 0;
         *w = it->second.w;
         *h = it->second.h;
+        auto dead = g_sb_icon_dead.find(eglGetCurrentContext());
+        if (dead != g_sb_icon_dead.end() && !dead->second.empty()) {
+            glDeleteTextures(static_cast<GLsizei>(dead->second.size()), dead->second.data());
+            dead->second.clear();
+        }
         auto& texs = g_sb_icon_tex[eglGetCurrentContext()];
         auto t = texs.find(id);
         if (t != texs.end()) return t->second;
@@ -487,7 +493,14 @@ void sidebar_set_icon(int id, int w, int h, const std::vector<uint32_t>& argb) {
     }
     std::lock_guard lock(g_sb_mutex);
     g_sb_icons[id] = std::move(icon);
-    for (auto& [ctx, texs] : g_sb_icon_tex) texs.erase(id);  // ids are not reused, but stay safe (leaks a texture)
+    // An icon is re-sent when its pixels change (item images load after first use); its old
+    // textures are deleted on the render thread of their context (sidebar_icon_texture).
+    for (auto& [ctx, texs] : g_sb_icon_tex) {
+        auto t = texs.find(id);
+        if (t == texs.end()) continue;
+        g_sb_icon_dead[ctx].push_back(t->second);
+        texs.erase(t);
+    }
 }
 bool virtual_shift() { return g_shift; }
 

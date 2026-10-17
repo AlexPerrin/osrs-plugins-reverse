@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 21 entries (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 22 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -796,6 +796,43 @@ session; its notes are in `docs/android-protocol.md`.
     a friend for the host since `Player.isFriend` is false); remaining `starts` rows (Bank Heatmap, Bank Tag
     Layouts, Spawn Predictor, Better Teleport Menu, Large Logout, Hunter Rumours, Inventory Setups
     highlighting, Metronome, Barrows, Herbiboar); scene hover entries for Mouse Highlight.
+- **2026-10-17 (client dev gen 22)**, commits 17030de..:
+  - **Minimap runs**: the plugin's keys are `minimap.item/npc/player/friend/team/clan/clanchat` (gen 21 used
+    a wrong key). The mobile minimap orders its dot categories differently: items 5, NPCs 6, players 4,
+    friend 0, team 1, friends chat 2, clan 3 (from the dot draw `0x58cab4`'s callers; the game's default
+    colour per category matches desktop's role). **Crash lesson:** setDotStyle before the minimap's base
+    dot exists (`*(mm+0x6610)`, null before login) faulted at 0x88 and killed the game at startup; the
+    native side now refuses until it exists and Java applies only while LOGGED_IN.
+  - **Scene rebuilds now post LOADING**: teleports/region crossings rebuild within one cycle, so the state
+    poll never saw LOADING. On a scene-base change while logged in the host posts GameStateChanged(LOADING)
+    (getGameState reads LOADING meanwhile), WorldViewLoaded, GameStateChanged(LOGGED_IN), as desktop.
+    getMapRegions answers from LOADING on. Herbiboar's area check works after a plain teleport.
+  - `Player.isFriend` from the friends list (Entity Hider hideFriends verified with the desktop player);
+    `getScriptActiveWidget/DotWidget` (vm +0xded8/+0xdee8, unverified); `Widget.getFont().getTextWidth`
+    through the game's PARAWIDTH measure (verified values); `getEnvironment` = 1 (not live);
+    drag/selection setters, empty projectiles; playSoundEffect reports whether the game queued it.
+  - **NetGuard** (`host/src/net/runelite/host/NetGuard.java`): the injected OkHttpClient refuses every
+    non-GET/HEAD request and any `xp/update` path; read-only GETs pass. `debug.osrsrl.netwrite 1` allows all,
+    `netlog 1` logs requests (tag osrsrl-net). Audit: Loot Tracker's upload threw at the getEnvironment stub
+    before 5e04bdf; Chat Commands' submits need ChatInput (never posted); XP Tracker's `xp/update?username=`
+    GET on logout (> 10k XP change) could have gone out in earlier relog sessions. Probe:
+    `debug.osrsrl.set "net get|post|xp"` (post/xp go to the local sidecar, never RuneLite).
+  - Sidebar icon nodes carry the background of the icon or its slot panel (`I` text `<id>:<sel>:<argb>`;
+    the headless `getBackground()` is BLACK when unset, so only set backgrounds count, via the generated
+    `__BackgroundSet`), and icon pixels are re-sent when they change (item images load after first use;
+    replaced textures are deleted on their render thread). Inventory Setups highlighting verified.
+    TOP_LEFT overlays start right of the RL/Shift toggle (verified at Barrows).
+  - Second slot (09:14-09:29): NetGuard verified (`net get 1` -> HTTP 200, `net post 1` and `net xp 1`
+    blocked; the probe needs three words). Metronome promoted (track frames advance while the tick is
+    queued). Hunter Rumours promoted on the server dev's device run.
+  - Verified: Minimap, Entity Hider players, Kitten BOTTOM_LEFT, Herbiboar, Barrows (client-side varbit),
+    Large Logout (mobile logout is interface 182 with desktop's layout), NPC dialogue arrives as ChatMessage
+    DIALOG "Name|text". Tables at the end of gen 22: core 71/71, hub 28/32, API 531/866.
+  - Server gaps relayed: follower varp 447 is 0 after a relog (Kitten Tracker expects (npc id << 16) |
+    index); games necklace Rub has no teleport menu (Better Teleport Menu untestable); Hunter Rumours needs
+    the guild dialogue or the whistle message.
+  - Gotchas: `debug.osrsrl.set` may hold another agent's leftover ("reload 0 0"): check `getprop` before
+    launching. The varp probe sets before it logs the old value (`set varp N v` prints "before").
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

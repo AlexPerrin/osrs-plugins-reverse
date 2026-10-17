@@ -538,6 +538,7 @@ final class Sidebar {
     // Icons sent to the overlay (id per image; pixels are pushed once).
     private static final Map<java.awt.Image, Integer> iconIds = new java.util.WeakHashMap<>();
     private static int nextIconId = 1;
+    private static final Map<Integer, Integer> iconHashes = new java.util.HashMap<>();
 
     /**
      * Icon-only clickable (kind I): text is "<icon id>:<selected 0/1>". Pixels go to the overlay
@@ -547,14 +548,22 @@ final class Sidebar {
         if (!(icon instanceof javax.swing.ImageIcon)) return false;
         java.awt.Image img = ((javax.swing.ImageIcon) icon).getImage();
         if (!(img instanceof java.awt.image.BufferedImage)) return false;
+        java.awt.image.BufferedImage b = (java.awt.image.BufferedImage) img;
+        int w = b.getWidth(), h = b.getHeight();
+        if (w <= 0 || h <= 0 || w > 256 || h > 256) return false;
+        // Pixels are re-sent when they change: item images (AsyncBufferedImage) are blank until
+        // the game renders them, and the first push used to stick (Inventory Setups' empty slots).
+        int[] px = b.getRGB(0, 0, w, h, null, 0, w);
+        int hash = java.util.Arrays.hashCode(px);
         Integer id = iconIds.get(img);
+        Integer seen = id != null ? iconHashes.get(id) : null;
         if (id == null) {
-            java.awt.image.BufferedImage b = (java.awt.image.BufferedImage) img;
-            int w = b.getWidth(), h = b.getHeight();
-            if (w <= 0 || h <= 0 || w > 256 || h > 256) return false;
             id = nextIconId++;
             iconIds.put(img, id);
-            Native.sidebarIcon(id, w, h, b.getRGB(0, 0, w, h, null, 0, w));
+        }
+        if (seen == null || seen != hash) {
+            iconHashes.put(id, hash);
+            Native.sidebarIcon(id, w, h, px);
         }
         boolean sel = false;
         try {
@@ -575,12 +584,28 @@ final class Sidebar {
         for (Component p : new Component[] {c, c.getParent()}) {
             if (p == null) continue;
             try {
+                if (!backgroundSet(p)) continue;  // the headless getBackground() is BLACK when unset
                 java.awt.Color bg = p.getBackground();
                 if (bg != null && bg.getAlpha() > 0) return bg.getRGB();
             } catch (Throwable ignored) {
             }
         }
         return 0;
+    }
+
+    private static java.lang.reflect.Field bgSetField;
+
+    /** AWT's isBackgroundSet(): the generated headless Component keeps it in __BackgroundSet. */
+    private static boolean backgroundSet(Component p) {
+        try {
+            if (bgSetField == null) {
+                bgSetField = Component.class.getDeclaredField("__BackgroundSet");
+                bgSetField.setAccessible(true);
+            }
+            return bgSetField.getBoolean(p);
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     private static void add(StringBuilder sb, char kind, int depth, Component c, String text) {

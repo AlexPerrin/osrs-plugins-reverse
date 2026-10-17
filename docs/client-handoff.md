@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 19 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 20 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -683,6 +683,54 @@ session; its notes are in `docs/android-protocol.md`.
     background until-loop or just retry Try again.
   - Next (gen 20): fairyring filter callbacks (hook inside script 8080 or reimplement in Java); remaining `starts` rows (Rune
     Pouch, Plank Sack: server support; Virtual Levels; Friend Notes).
+- **2026-10-17 (client dev gen 20)**, commits 2f19007..22335d7:
+  - **Opcode-level runelite_callback emulation** (`ScriptCallbacks`, `script_hooks` opcode wrapper): the
+    CS2 handler for opcodes >= 100 (`0x4e06dc(vm, opcode, script, isLong)`, called from the interpreter
+    loop for every opcode >= 100) is inline-hooked. Java watches (script, opcode) pairs
+    (`Native.setOpWatches`); Host.onScript gets phase 3 before / 4 after the instruction with
+    id = opcode << 16 | script. Script -1 = any script whose object-stack top starts with a prefix
+    (filtered natively). Callbacks see the live stack tops (`raiseOnLive`); changed ints go back with
+    setScriptIntStack, changed strings with `Native.setScriptString` (game string assign `0x3f1498`).
+    Opcode numbers are RuneLite's `cache/.../script/Opcodes.java` (CC_SETTEXT 1112, IF_SETTEXT 2112,
+    STAT_BASE 3306, ENUM 3408, STRING_INDEXOF_STRING 4121, DB_GETFIELD 7502). Emulated: skillTabBaseLevel
+    (395 after stat_base), skillTabTotalLevel (any settext of "Total level: "; mobile never runs 396),
+    friendsChatSetText/SetPosition (125, not exercised), fairyringFilterFavorite/Dbrow (8080: rewrites
+    the string_indexof_string result; keyed by enum 1298's result / db_getfield 364608's row). RuneLite's
+    patched scripts: sparse clone of runelite/runelite `runelite-client/src/main/scripts`.
+  - Also: rectilinear `java.awt.geom.Area` (host/awt), WorldViewLoaded on scene base change (teleport
+    rebuilds never show LOADING to the state poll; base 0,0 skipped), GeneralPath float iterator fix,
+    `Widget.getVarTransmitTrigger` (+0x5c0 vector), headless JSpinner/SpinnerNumberModel keep values,
+    chatbox inputs `@Inject` constructors, sidebar JPopupMenu picker, plugin executor logs task
+    exceptions, `JOptionPane` → `ModalDialogs` (blocking Android dialogs), hub build `ALLOW_DEPS=1`
+    fetches Maven deps (Loot Lookup / jsoup).
+  - Verified (rows promoted): Rune Pouch, Plank Sack (OpenRune 3935505), Thrall Helper (`::varbit
+    arceuus_resurrection_cooldown 1`), Banked Experience, Wilderness Multi Lines, Wasted Bank Space
+    (non-BiS item 26229; BiS items are filtered by default), Virtual Levels (99/103 and total 2380 with
+    `::setxp mining 20000000`), Fairy Rings log filter (custom tag), Puzzle Solver (server dev's check).
+  - **Dialog timeout result**: JOptionPane blocks the game thread; holding Inventory Setups' name dialog
+    ~35 s disconnected the client ("Unexpected server response"). Do not leave ModalDialogs blocking.
+  - Next (gen 21):
+    1. **EDT move** (agreed with the orchestrator): run SwingUtilities' queue, sidebar listener dispatch
+       and the sidebar model build on a dedicated "AWT-EventQueue" thread instead of the game thread, so
+       JOptionPane can block there. Needed: AndroidClient getters called off the game thread must
+       marshal to it (invoke on the game thread and wait, ≤ 1 cycle) since native reads are game-thread
+       only; plugins' Swing code (Banked XP's combo listener reads skills) relies on that. Until then,
+       cap ModalDialogs (e.g. 15 s, timeout = Cancel) or refuse to block on the game thread.
+    2. **Debug overlay tap pass-through**: the ImGui debug panel (left ~600 px, on by default) swallows
+       taps over the game (it covered Puzzle Solver's left column). Pass touches through outside its
+       real content, or let it collapse (native/src/overlay.cpp, touch router).
+    3. Loot Lookup: headless `Component.getFontMetrics` returns null (`Util.truncateToFit`); return the
+       shim FontMetrics for the component's font.
+    4. Friend Notes: the mobile friends list stays "Loading friends list" (429:13) on OpenRune 245ed50;
+       server dev is checking FRIENDLIST_LOADED / UPDATE_FRIENDLIST order. Then add a friend, "Add Note",
+       and check the icon (callbacks in script 125 are ready).
+    5. Inventory Setups: add a setup once dialogs don't block (EDT move).
+    6. API stubs plugins hit (`host/tools/rank_api.py`): ClanChannel.findMember, World setters/createWorld,
+       Client.queueChangedSkill (Virtual Levels calls it on config change; stub throws), GE search setters.
+  - Gotchas: the friends side tab is (1843,768) and shows interface 707 (sub-tabs + "00:00 UTC");
+    `setprop debug.osrsrl.scripts 2` + restart logs every root/gosub (find which scripts a UI runs);
+    `setprop debug.osrsrl.wdump <group>` dumps a group's widgets to tag osrsrl-probe; fairy ring
+    tags are `fairyrings.fairyringtags.<CODE>=...` in files/settings.properties (read at startup).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

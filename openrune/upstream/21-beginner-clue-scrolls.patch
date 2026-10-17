@@ -1,6 +1,6 @@
-From aff75808fff4aa21183f34715d5b78ca51a9edaf Mon Sep 17 00:00:00 2001
+From aff89ee4285636eebf94670d1e9dadbc0993ae8c Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
-Date: Fri, 16 Oct 2026 23:15:08 -0400
+Date: Sat, 17 Oct 2026 00:11:15 -0400
 Subject: [PATCH] Beginner clue scrolls
 
 Beginner Treasure Trails: Read opens trail_cluetext (or the beginner map
@@ -22,12 +22,12 @@ have dialogue (Cook, Hans, Doric, ...).
  .../pack/BeginnerCasketTable.kt               | 140 +++++++
  .../pack/BeginnerClueStepsTable.kt            | 177 +++++++++
  .../pack/TreasureTrailsPluginPack.kt          |   9 +
- .../pack/src/main/resources/gamevals.toml     | 105 ++++++
+ .../pack/src/main/resources/gamevals.toml     | 105 +++++
  .../pack/configs/treasure_trails_vars.toml    |  17 +
- .../treasuretrails/BeginnerClueScriptTest.kt  | 165 +++++++++
- .../treasuretrails/BeginnerClueScript.kt      | 347 ++++++++++++++++++
+ .../treasuretrails/BeginnerClueScriptTest.kt  | 168 ++++++++
+ .../treasuretrails/BeginnerClueScript.kt      | 362 ++++++++++++++++++
  .../treasuretrails/TreasureTrailsModule.kt    |  11 +
- 13 files changed, 1048 insertions(+), 1 deletion(-)
+ 13 files changed, 1066 insertions(+), 1 deletion(-)
  create mode 100644 api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcOpOverrides.kt
  create mode 100644 content/other/treasure-trails/build.gradle.kts
  create mode 100644 content/other/treasure-trails/pack/build.gradle.kts
@@ -659,10 +659,10 @@ index 000000000..fbc4a42ee
 +transmit = "Never"
 diff --git a/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScriptTest.kt b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScriptTest.kt
 new file mode 100644
-index 000000000..1f802f9af
+index 000000000..e522f96e9
 --- /dev/null
 +++ b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScriptTest.kt
-@@ -0,0 +1,165 @@
+@@ -0,0 +1,168 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -781,7 +781,9 @@ index 000000000..1f802f9af
 +            }
 +            player.inv[0] = InvObj(CASKET.asRSCM(RSCMType.OBJ), 2)
 +            with(script) {
-+                player.withProtectedAccess { openCasket() }
++                var rewards: List<BeginnerClueScript.Reward>? = null
++                player.withProtectedAccess { rewards = openCasket() }
++                assertNull(rewards)
 +                assertEquals(2, player.inv.count(CASKET))
 +                assertEquals(0, player.vars[COMPLETED_VARP])
 +
@@ -789,16 +791,17 @@ index 000000000..1f802f9af
 +                player.inv[2] = null
 +                player.inv[3] = null
 +                val logs = player.inv.count("obj.logs")
-+                player.withProtectedAccess { openCasket() }
++                player.withProtectedAccess { rewards = openCasket() }
 +                assertEquals(1, player.inv.count(CASKET))
 +                assertEquals(1, player.vars[COMPLETED_VARP])
 +                assertEquals(logs, player.inv.count("obj.logs"))
-+                val rewards = player.invMap.getOrPut(REWARD_INV).objs.filterNotNull()
-+                assertTrue(rewards.isNotEmpty() && rewards.size <= 3)
++                val rolled = checkNotNull(rewards)
++                assertTrue(rolled.isNotEmpty() && rolled.size <= 3)
++                assertTrue(player.invMap.getOrPut(REWARD_INV).objs.all { it == null })
 +                val received = player.inv.objs.filterNotNull().filter {
 +                    it.id != CASKET.asRSCM(RSCMType.OBJ) && it.id != "obj.logs".asRSCM(RSCMType.OBJ)
 +                }
-+                assertEquals(rewards.sumOf { it.count }, received.sumOf { it.count })
++                assertEquals(rolled.sumOf { it.count }, received.sumOf { it.count })
 +            }
 +        }
 +
@@ -830,10 +833,10 @@ index 000000000..1f802f9af
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt
 new file mode 100644
-index 000000000..0ce00ff7f
+index 000000000..26df57405
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt
-@@ -0,0 +1,347 @@
+@@ -0,0 +1,362 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.rscm.RSCM
@@ -905,7 +908,7 @@ index 000000000..0ce00ff7f
 +    override fun ScriptContext.startup() {
 +        onOpHeld1(CLUE) { read() }
 +        onOpHeld1(SCROLL_BOX) { openScrollBox() }
-+        onOpHeld1(CASKET) { openCasket() }
++        onOpHeld1(CASKET) { openCasketAndShow() }
 +        onIfClose(REWARD_INTERFACE) { player.invClear(player.invMap.getOrPut(REWARD_INV)) }
 +        for (npc in STEPS.mapNotNull { it.npc?.id }.toSet()) {
 +            overrides.register(npc, InteractionOp.Op1) { player, _ -> talkStep(player)?.npc?.id == npc }
@@ -1017,29 +1020,44 @@ index 000000000..0ce00ff7f
 +        invAdd(inv, CLUE)
 +    }
 +
-+    fun ProtectedAccess.openCasket() {
++    private suspend fun ProtectedAccess.openCasketAndShow() {
++        val rewards = openCasket() ?: return
++        delay(1)
++        val rewardInv = player.invMap.getOrPut(REWARD_INV)
++        invClear(rewardInv)
++        for (reward in rewards) {
++            invAdd(rewardInv, reward.obj.internalName, reward.count, cert = reward.noted, strict = false)
++        }
++        invTransmit(rewardInv)
++        ifOpenMainModal(REWARD_INTERFACE)
++    }
++
++    /**
++     * Pays the casket out at once; the caller shows the rewards in `trail_rewardinv` a tick after
++     * the completion message, so the Loot Tracker's snapshot of that inv (taken on the message)
++     * is still the empty one.
++     */
++    fun ProtectedAccess.openCasket(): List<Reward>? {
 +        val freed = if (inv.count(CASKET) == 1) 1 else 0
 +        if (inv.freeSpace() + freed < MAX_ROLLS) {
 +            mes("You need at least $MAX_ROLLS free inventory spaces to open the casket.")
-+            return
++            return null
 +        }
-+        if (invDel(inv, CASKET).failure) return
++        if (invDel(inv, CASKET).failure) return null
 +        val completed = player.vars[COMPLETED_VARP] + 1
 +        VarPlayerIntMapSetter.set(player, COMPLETED_VARP, completed)
-+        val rewardInv = player.invMap.getOrPut(REWARD_INV)
-+        invClear(rewardInv)
++        invClear(player.invMap.getOrPut(REWARD_INV))
 +        mes("Well done, you've completed the Treasure Trail!")
 +        val plural = if (completed == 1) "" else "s"
 +        mes("You have completed <col=ef1020>$completed</col> beginner Treasure Trail$plural.")
-+        for (reward in rollRewards(random.of(1, MAX_ROLLS)) { random.of(it) }) {
++        val rewards = rollRewards(random.of(1, MAX_ROLLS)) { random.of(it) }
++        for (reward in rewards) {
 +            val obj = reward.obj.internalName
-+            invAdd(rewardInv, obj, reward.count, cert = reward.noted, strict = false)
 +            if (invAdd(inv, obj, reward.count, cert = reward.noted).failure) {
 +                invAddOrDrop(objRepo, obj, reward.count)
 +            }
 +        }
-+        invTransmit(rewardInv)
-+        ifOpenMainModal(REWARD_INTERFACE)
++        return rewards
 +    }
 +
 +    fun giveClue(cheat: Cheat) {

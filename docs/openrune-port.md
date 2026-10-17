@@ -536,4 +536,20 @@ was verified.
 - **Tests:** `:content:other:treasure-trails:integration` (6: casket table maths, step data, a 3-step
   trail ending in exactly one casket, place/npc checks, casket space and payout, scroll box).
   Upstream: `openrune/upstream/21-beginner-clue-scrolls.patch`.
-- **Device:** pending (203 and map layout on mobile, plugin overlay, Loot Tracker entry).
+- **Device (2026-10-17 00:02-00:09, deployed 35d27b9, EXTRA="cluescrolls devtools loottracker"):**
+  203 lays out fine on mobile (266x256 text component, "The anagram reveals / who to speak to
+  next: / AN EARL"); the plugin's overlay showed "Anagram Clue, NPC Ranael, Location Al Kharid
+  skirt shop" and the clue icon above Ranael. Talk-to Ranael: "Well done." then the objbox with
+  23182 "You've found a new clue!". Map 348 renders on mobile and the plugin showed "Map Clue,
+  South of Draynor Village Bank, Requires Spade!"; Dig gave "You've obtained a casket!"; Open
+  showed interface 73 with the rewards (8 noted cabbage, staff of air), the items reached the
+  inventory, and the message read "You have completed 1 beginner Treasure Trail." Emote/Uri not
+  tried on the device.
+- **Loot Tracker recorded nothing.** The host dispatches queued native events and reads
+  containers live, so on the ChatMessage the plugin's snapshot of inv 141 already held the
+  rewards (diff empty). Fix (after the device run, not yet deployed): items are paid out at
+  once, and `trail_rewardinv` is filled one tick after the message (`openCasketAndShow`).
+- **Client gap (for the client dev):** ClueScrollPlugin.onMenuOptionClicked NPEs on "Read":
+  `itemManager.getItemComposition(event.getItemId())` returns null for the inventory CC_OP entry
+  (p1=9764864, id=2), so `clueItemId` is never set. The widget path still works, but the plugin
+  does not reset when the clue leaves the inventory (the map overlay stayed after the casket).

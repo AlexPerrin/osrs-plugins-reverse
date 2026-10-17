@@ -1,0 +1,29 @@
+From 5d5ef130b9ed532e27f6babacc153b221a9b32da Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Fri, 16 Oct 2026 20:33:37 -0400
+Subject: [PATCH] Spawn only one Juliet
+
+The plain npc.juliet spawned on the same floor beside the multinpc
+juliet_multi_visible, so two Juliets stood in her house. Keep the multinpc.
+---
+ .data/raw-cache/map/npcs/varrock.toml | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/.data/raw-cache/map/npcs/varrock.toml b/.data/raw-cache/map/npcs/varrock.toml
+index 6de0b2dbf..890b668af 100644
+--- a/.data/raw-cache/map/npcs/varrock.toml
++++ b/.data/raw-cache/map/npcs/varrock.toml
+@@ -258,10 +258,6 @@ coords = "0_50_54_46_2"
+ npc = "npc.imp"
+ coords = "0_50_54_61_58"
+ 
+-[[spawn]]
+-npc = "npc.juliet"
+-coords = "1_49_53_23_34"
+-
+ [[spawn]]
+ npc = "npc.juliet_multi_visible"
+ coords = "1_49_53_22_33"
+-- 
+2.43.0
+

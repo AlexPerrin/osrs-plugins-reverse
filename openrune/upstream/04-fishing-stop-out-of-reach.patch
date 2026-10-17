@@ -1,0 +1,41 @@
+From ca2c4849c9a312b75bc159433ee1ca313f284523 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Fri, 16 Oct 2026 20:33:37 -0400
+Subject: [PATCH] Stop fishing when the player is no longer beside the spot
+
+The catch cycle only checked that the spot npc still existed, so fishing went
+on after a teleport (or any other move away). Stop when the player is not on a
+tile next to the spot (Chebyshev distance 1, same level).
+---
+ .../org/rsmod/content/skills/fishing/scripts/Fishing.kt   | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt b/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt
+index 09ea6418a..dc0fc3c97 100644
+--- a/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt
++++ b/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt
+@@ -139,7 +139,7 @@ constructor(
+ 
+     private suspend fun ProtectedAccess.attemptCatch(task: FishTask) {
+         // The spot can despawn or hop to another tile while the cycle is running.
+-        if (task.npc.uid != task.uid) {
++        if (task.npc.uid != task.uid || !isBesideSpot(task.npc)) {
+             return
+         }
+         val attempt = prepare(task.spot, task.method, verbose = false) ?: return
+@@ -148,6 +148,12 @@ constructor(
+         weakQueue(CATCH_QUEUE, rollDelay(attempt.bait), task)
+     }
+ 
++    private fun ProtectedAccess.isBesideSpot(npc: Npc): Boolean {
++        val dx = kotlin.math.abs(player.coords.x - npc.coords.x)
++        val dz = kotlin.math.abs(player.coords.z - npc.coords.z)
++        return player.coords.level == npc.coords.level && maxOf(dx, dz) <= 1
++    }
++
+     private fun ProtectedAccess.startAnim(attempt: FishAttempt) {
+         skillAnimDelay = mapClock + ANIM_REFRESH
+         anim(attempt.active.anim)
+-- 
+2.43.0
+

@@ -1,0 +1,27 @@
+From 3b5a5f58875a84b191525453b66ed41d3f7f1006 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Fri, 16 Oct 2026 20:33:37 -0400
+Subject: [PATCH] Handle the tall stairs in Juliet's house
+
+fai_varrock_stairs_taller and fai_varrock_stairs_top (Juliet's house, Varrock)
+had no handler.
+---
+ .../content/generic/locs/staircase/StraightStaircaseScript.kt   | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
+index d64463d3d..a8ea51729 100644
+--- a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
++++ b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
+@@ -19,6 +19,8 @@ private enum class StraightStairs(val loc: String, val dx: Int, val dz: Int, val
+     Down("loc.stairstop", 1, -2, -1),
+     NarrowWoodenUp("loc.narrowstairs_wooden_bottom", 0, -1, 1),
+     NarrowWoodenDown("loc.narrowstairs_wooden_top", 0, 3, -1),
++    VarrockTallUp("loc.fai_varrock_stairs_taller", 1, 3, 1),
++    VarrockTallDown("loc.fai_varrock_stairs_top", 1, -2, -1),
+ }
+ 
+ class StraightStaircaseScript : PluginScript() {
+-- 
+2.43.0
+

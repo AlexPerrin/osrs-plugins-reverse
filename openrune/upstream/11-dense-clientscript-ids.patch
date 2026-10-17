@@ -1,0 +1,181 @@
+From 176252158d595604e3ed0b1755508ee95d218820 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Fri, 16 Oct 2026 20:35:03 -0400
+Subject: [PATCH] Number custom clientscripts right after the stock range and
+ guard it
+
+The spawn menu and quest pack clientscripts used ids 45500-45553. Some clients
+size their clientscript table from the archive and crash at cache sync on group
+ids far above the stock maximum (9972 in rev 241); the official Android client
+(241.4) does. Renumber the custom scripts to 9973-9985 and fail the cache build
+when a custom clientscript id is above 9999 (OPENRUNE_MAX_CLIENTSCRIPT_ID
+overrides the limit).
+---
+ .data/gamevals/clientscript.rscm              |  2 +-
+ .../pack/cs2/symbols/clientscript.sym         | 22 ++++++-------
+ .../spawn/src/main/resources/gamevals.toml    |  8 ++---
+ .../pack/cs2/symbols/clientscript.sym         |  4 +--
+ .../quest/src/main/resources/gamevals.toml    |  2 +-
+ .../manager/QuestPolicySyncScriptTest.kt      |  2 +-
+ .../kotlin/dev/openrune/pack/PluginPacks.kt   | 32 ++++++++++++++++---
+ 7 files changed, 47 insertions(+), 25 deletions(-)
+
+diff --git a/.data/gamevals/clientscript.rscm b/.data/gamevals/clientscript.rscm
+index bd539bb13..2fc22e88f 100644
+--- a/.data/gamevals/clientscript.rscm
++++ b/.data/gamevals/clientscript.rscm
+@@ -7917,4 +7917,4 @@
+ [clientscript,script7918]=7918
+ [clientscript,script7919]=7919
+ [clientscript,script7920]=7920
+-quest_policy_complete_set=45553
++quest_policy_complete_set=9974
+diff --git a/content/other/spawn/pack/src/main/resources/pack/cs2/symbols/clientscript.sym b/content/other/spawn/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
+index d71a51d5f..2df561e5d 100644
+--- a/content/other/spawn/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
++++ b/content/other/spawn/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
+@@ -1,11 +1,11 @@
+-45500	[clientscript,spawn_menu_init]
+-45503	[clientscript,spawn_menu_draw]
+-45506	[proc,spawn_menu_search_idle]
+-45509	[clientscript,spawn_menu_search_op]
+-45512	[clientscript,spawn_menu_search_key]
+-45515	[clientscript,spawn_menu_card_op]
+-45518	[clientscript,spawn_menu_buttons]
+-45521	[clientscript,spawn_menu_search_tick]
+-45524	[clientscript,spawn_menu_labels]
+-45527	[proc,spawn_menu_fit]
+-45530	[clientscript,spawn_menu_search_stop]
++9975	[clientscript,spawn_menu_init]
++9976	[clientscript,spawn_menu_draw]
++9977	[proc,spawn_menu_search_idle]
++9978	[clientscript,spawn_menu_search_op]
++9979	[clientscript,spawn_menu_search_key]
++9980	[clientscript,spawn_menu_card_op]
++9981	[clientscript,spawn_menu_buttons]
++9982	[clientscript,spawn_menu_search_tick]
++9983	[clientscript,spawn_menu_labels]
++9984	[proc,spawn_menu_fit]
++9985	[clientscript,spawn_menu_search_stop]
+diff --git a/content/other/spawn/src/main/resources/gamevals.toml b/content/other/spawn/src/main/resources/gamevals.toml
+index 83435d83b..6d8e37a98 100644
+--- a/content/other/spawn/src/main/resources/gamevals.toml
++++ b/content/other/spawn/src/main/resources/gamevals.toml
+@@ -2,10 +2,10 @@
+ spawn_menu = 1099
+ 
+ [gamevals.clientscript]
+-spawn_menu_init = 45500
+-spawn_menu_buttons = 45518
+-spawn_menu_labels = 45524
+-spawn_menu_search_stop = 45530
++spawn_menu_init = 9975
++spawn_menu_buttons = 9981
++spawn_menu_labels = 9983
++spawn_menu_search_stop = 9985
+ 
+ [gamevals.inv]
+ spawn_results = 1100
+diff --git a/content/quest/pack/src/main/resources/pack/cs2/symbols/clientscript.sym b/content/quest/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
+index 39d0d5701..7f910453c 100644
+--- a/content/quest/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
++++ b/content/quest/pack/src/main/resources/pack/cs2/symbols/clientscript.sym
+@@ -1,2 +1,2 @@
+-45550	[clientscript,quest_available_set]
+-45553	[clientscript,quest_policy_complete_set]
++9973	[clientscript,quest_available_set]
++9974	[clientscript,quest_policy_complete_set]
+diff --git a/content/quest/src/main/resources/gamevals.toml b/content/quest/src/main/resources/gamevals.toml
+index 8f3ee7093..bd809341a 100644
+--- a/content/quest/src/main/resources/gamevals.toml
++++ b/content/quest/src/main/resources/gamevals.toml
+@@ -1,5 +1,5 @@
+ [gamevals.clientscript]
+-quest_available_set = 45550
++quest_available_set = 9973
+ 
+ [gamevals.timer]
+ quest_scroll_close = 402
+diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/manager/QuestPolicySyncScriptTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/manager/QuestPolicySyncScriptTest.kt
+index 39f1247cd..30566f2dc 100644
+--- a/content/quest/src/test/kotlin/org/rsmod/content/quest/manager/QuestPolicySyncScriptTest.kt
++++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/manager/QuestPolicySyncScriptTest.kt
+@@ -25,7 +25,7 @@ class QuestPolicySyncScriptTest {
+     fun `clientscript symbol resolves`() {
+         GameValProvider.load()
+         val id = "clientscript.quest_policy_complete_set".asRSCM(RSCMType.CLIENTSCRIPT)
+-        assertEquals(45553, id)
++        assertEquals(9974, id)
+     }
+ 
+     @Test
+diff --git a/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt b/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt
+index 9387eba2d..c6f991317 100644
+--- a/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt
++++ b/or-cache/src/main/kotlin/dev/openrune/pack/PluginPacks.kt
+@@ -1,22 +1,21 @@
+ package dev.openrune.pack
+ 
+ import dev.openrune.DirectoryConstants
++import dev.openrune.cache.tools.cs2.Cs2Overrides
+ import dev.openrune.cache.tools.cs2.PackCs2
++import dev.openrune.cache.tools.cs2.UnpackDefaultCs2
+ import dev.openrune.cache.tools.iftype.PackIfType
+ import dev.openrune.cache.tools.tasks.CacheTask
+ import dev.openrune.cache.tools.tasks.impl.PackDBTables
+-import dev.openrune.cache.tools.tasks.impl.PackWorldMap
+ import dev.openrune.cache.tools.tasks.impl.PackModels
++import dev.openrune.cache.tools.tasks.impl.PackSprites
++import dev.openrune.cache.tools.tasks.impl.PackWorldMap
+ import dev.openrune.cache.tools.tasks.impl.defs.PackConfig
+ import dev.openrune.definition.dbtables.DBTable
+ import dev.openrune.gamevals.GameValProvider
+-import dev.openrune.cache.tools.cs2.Cs2Overrides
+-import dev.openrune.cache.tools.cs2.UnpackDefaultCs2
+-import dev.openrune.cache.tools.tasks.impl.PackSprites
+ import io.github.classgraph.ClassGraph
+ import java.io.File
+ 
+-
+ class PluginPacks(val projectRoot: File, val all: List<PluginPack>) {
+     val active: List<PluginPack> = all.filter { it.shouldPack(projectRoot) }
+ 
+@@ -118,12 +117,35 @@ class PluginPacks(val projectRoot: File, val all: List<PluginPack>) {
+             }
+         }
+ 
++        checkClientScriptIds(symbols["clientscript"].orEmpty().values)
++
+         return Cs2Overrides(sources, symbols.mapValues { (_, byName) -> byName.values.toList() })
+     }
+ 
++    /**
++     * Custom clientscripts must take the ids right after the stock maximum (9972 in rev 241): some
++     * clients (the official Android client among them) size their script table from the archive
++     * and crash at cache sync on groups far above the stock range. Fails the cache build otherwise.
++     * `OPENRUNE_MAX_CLIENTSCRIPT_ID` overrides the limit.
++     */
++    private fun checkClientScriptIds(lines: Collection<String>) {
++        val limit = System.getenv("OPENRUNE_MAX_CLIENTSCRIPT_ID")?.toIntOrNull() ?: MAX_CLIENTSCRIPT_ID
++        val bad = lines.mapNotNull { line ->
++            val id = line.substringBefore('\t').toIntOrNull() ?: return@mapNotNull null
++            if (id > limit) line else null
++        }
++        check(bad.isEmpty()) {
++            "Custom clientscript ids above $limit can crash clients at cache sync; renumber them " +
++                "to follow the stock maximum: $bad"
++        }
++    }
++
+     companion object {
+         private val SCANNED_PACKAGES = arrayOf("dev.openrune.pack", "org.rsmod.content")
+ 
++        /** Stock rev-241 clientscripts end at 9972; custom ones follow densely (9973-9985). */
++        private const val MAX_CLIENTSCRIPT_ID = 9999
++
+         private val SYMBOL_LINE = Regex("""^\s*(\S+)\s+(.+?)\s*$""")
+ 
+         /**
+-- 
+2.43.0
+

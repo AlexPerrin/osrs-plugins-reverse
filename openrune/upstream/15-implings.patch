@@ -1,0 +1,1171 @@
+From de12a27f370402a0f8aac63fe801b334097e4edf Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Fri, 16 Oct 2026 20:36:47 -0400
+Subject: [PATCH] Add implings: catching, jar loot and crystal implings
+
+Catching implings in Puro-Puro and Gielinor with a wielded butterfly net (or
+10 extra Hunter levels barehanded) and an impling jar. Impling data is a
+server-only dbtable impling_types (60000, rows 60124-60134) in the new
+content/skills/hunter pack: npc, Puro-Puro npc, jar, level, Puro-Puro and
+Gielinor XP, respawn ticks.
+
+Looting a caught impling jar rolls the jar's loot table (from the OSRS Wiki
+impling jar pages; the lucky impling's clue table is not covered).
+
+Crystal implings: one per world in Prifddinas, at one of 12 spots as one of
+the 17 named implings, a new one 3 minutes after each :00 and :30 (UTC) and
+one at server start; Hunter 80 (90 barehanded), 280 XP. The catch chance
+uses the generic impling curve.
+
+Integration tests: ImplingScriptTest, ImplingLootScriptTest,
+CrystalImplingScriptTest.
+---
+ content/skills/hunter/build.gradle.kts        |  14 +
+ content/skills/hunter/pack/build.gradle.kts   |   3 +
+ .../skills/hunter/pack/HunterPluginPack.kt    |   8 +
+ .../skills/hunter/pack/ImplingTypesTable.kt   | 140 ++++++++
+ .../skills/hunter/CrystalImplingScriptTest.kt |  40 +++
+ .../skills/hunter/ImplingLootScriptTest.kt    |  61 ++++
+ .../skills/hunter/ImplingScriptTest.kt        | 109 ++++++
+ .../skills/hunter/CrystalImplingScript.kt     | 101 ++++++
+ .../skills/hunter/ImplingLootScript.kt        | 125 +++++++
+ .../skills/hunter/ImplingLootTables.kt        | 323 ++++++++++++++++++
+ .../content/skills/hunter/ImplingScript.kt    | 109 ++++++
+ .../hunter/src/main/resources/gamevals.toml   |  15 +
+ 12 files changed, 1048 insertions(+)
+ create mode 100644 content/skills/hunter/build.gradle.kts
+ create mode 100644 content/skills/hunter/pack/build.gradle.kts
+ create mode 100644 content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
+ create mode 100644 content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/ImplingTypesTable.kt
+ create mode 100644 content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScriptTest.kt
+ create mode 100644 content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingLootScriptTest.kt
+ create mode 100644 content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingScriptTest.kt
+ create mode 100644 content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScript.kt
+ create mode 100644 content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootScript.kt
+ create mode 100644 content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootTables.kt
+ create mode 100644 content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingScript.kt
+ create mode 100644 content/skills/hunter/src/main/resources/gamevals.toml
+
+diff --git a/content/skills/hunter/build.gradle.kts b/content/skills/hunter/build.gradle.kts
+new file mode 100644
+index 000000000..6eb9d5aea
+--- /dev/null
++++ b/content/skills/hunter/build.gradle.kts
+@@ -0,0 +1,14 @@
++plugins {
++    id("base-conventions")
++    id("integration-test-suite")
++}
++
++dependencies {
++    implementation(projects.api.pluginCommons)
++}
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.pluginCommons)
++    }
++}
+diff --git a/content/skills/hunter/pack/build.gradle.kts b/content/skills/hunter/pack/build.gradle.kts
+new file mode 100644
+index 000000000..92f804a7e
+--- /dev/null
++++ b/content/skills/hunter/pack/build.gradle.kts
+@@ -0,0 +1,3 @@
++plugins {
++    id("base-conventions")
++}
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
+new file mode 100644
+index 000000000..f3397313a
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
+@@ -0,0 +1,8 @@
++package org.rsmod.content.skills.hunter.pack
++
++import dev.openrune.definition.dbtables.DBTable
++import dev.openrune.pack.PluginPack
++
++class HunterPluginPack : PluginPack() {
++    override fun dbTables(): List<DBTable> = listOf(ImplingTypesTable.implingTypes())
++}
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/ImplingTypesTable.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/ImplingTypesTable.kt
+new file mode 100644
+index 000000000..ad4b48ccf
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/ImplingTypesTable.kt
+@@ -0,0 +1,140 @@
++package org.rsmod.content.skills.hunter.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++
++/**
++ * Implings, from the OSRS Wiki's Impling table: Hunter level (net), XP in Puro-Puro and in
++ * Gielinor, the jar a catch goes into, and the respawn of Puro-Puro's fixed spawns (50 ticks for
++ * earth and essence, 7 for the rest).
++ */
++object ImplingTypesTable {
++    const val NPC = 0
++    const val NPC_PURO_PURO = 1
++    const val JAR = 2
++    const val LEVEL = 3
++    const val XP_PURO_PURO = 4
++    const val XP_GIELINOR = 5
++    const val RESPAWN_TICKS = 6
++
++    fun implingTypes() =
++        dbTable("dbtable.impling_types", serverOnly = true) {
++            column("npc", NPC, VarType.NPC)
++            column("npc_puro_puro", NPC_PURO_PURO, VarType.NPC)
++            column("jar", JAR, VarType.OBJ)
++            column("level", LEVEL, VarType.INT)
++            column("xp_puro_puro", XP_PURO_PURO, VarType.INT)
++            column("xp_gielinor", XP_GIELINOR, VarType.INT)
++            column("respawn_ticks", RESPAWN_TICKS, VarType.INT)
++
++            row("dbrow.impling_type_baby") {
++                columnRSCM(NPC, "npc.ii_impling_type_1")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_1_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_1")
++                column(LEVEL, 17)
++                column(XP_PURO_PURO, 18)
++                column(XP_GIELINOR, 20)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_young") {
++                columnRSCM(NPC, "npc.ii_impling_type_2")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_2_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_2")
++                column(LEVEL, 22)
++                column(XP_PURO_PURO, 20)
++                column(XP_GIELINOR, 22)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_gourmet") {
++                columnRSCM(NPC, "npc.ii_impling_type_3")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_3_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_3")
++                column(LEVEL, 28)
++                column(XP_PURO_PURO, 22)
++                column(XP_GIELINOR, 24)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_earth") {
++                columnRSCM(NPC, "npc.ii_impling_type_4")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_4_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_4")
++                column(LEVEL, 36)
++                column(XP_PURO_PURO, 25)
++                column(XP_GIELINOR, 27)
++                column(RESPAWN_TICKS, 50)
++            }
++
++            row("dbrow.impling_type_essence") {
++                columnRSCM(NPC, "npc.ii_impling_type_5")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_5_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_5")
++                column(LEVEL, 42)
++                column(XP_PURO_PURO, 27)
++                column(XP_GIELINOR, 29)
++                column(RESPAWN_TICKS, 50)
++            }
++
++            row("dbrow.impling_type_eclectic") {
++                columnRSCM(NPC, "npc.ii_impling_type_6")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_6_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_6")
++                column(LEVEL, 50)
++                column(XP_PURO_PURO, 30)
++                column(XP_GIELINOR, 32)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_nature") {
++                columnRSCM(NPC, "npc.ii_impling_type_7")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_7_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_7")
++                column(LEVEL, 58)
++                column(XP_PURO_PURO, 34)
++                column(XP_GIELINOR, 36)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_magpie") {
++                columnRSCM(NPC, "npc.ii_impling_type_8")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_8_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_8")
++                column(LEVEL, 65)
++                column(XP_PURO_PURO, 44)
++                column(XP_GIELINOR, 216)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_ninja") {
++                columnRSCM(NPC, "npc.ii_impling_type_9")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_9_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_9")
++                column(LEVEL, 74)
++                column(XP_PURO_PURO, 50)
++                column(XP_GIELINOR, 240)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_dragon") {
++                columnRSCM(NPC, "npc.ii_impling_type_10")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_10_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_10")
++                column(LEVEL, 83)
++                column(XP_PURO_PURO, 65)
++                column(XP_GIELINOR, 300)
++                column(RESPAWN_TICKS, 7)
++            }
++
++            row("dbrow.impling_type_lucky") {
++                columnRSCM(NPC, "npc.ii_impling_type_11")
++                columnRSCM(NPC_PURO_PURO, "npc.ii_impling_type_11_maze")
++                columnRSCM(JAR, "obj.ii_captured_impling_11")
++                column(LEVEL, 89)
++                column(XP_PURO_PURO, 80)
++                column(XP_GIELINOR, 380)
++                column(RESPAWN_TICKS, 7)
++            }
++        }
++}
+diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScriptTest.kt
+new file mode 100644
+index 000000000..e6b5cdcda
+--- /dev/null
++++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScriptTest.kt
+@@ -0,0 +1,40 @@
++package org.rsmod.content.skills.hunter
++
++import java.time.LocalTime
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertNotEquals
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.content.skills.hunter.CrystalImplingScript.Companion.halfHourSlot
++import org.rsmod.content.skills.hunter.CrystalImplingScript.Companion.isVisibleTime
++
++@Execution(ExecutionMode.SAME_THREAD)
++class CrystalImplingScriptTest {
++    @Test
++    fun `a new half hour starts three minutes past`() {
++        assertEquals(halfHourSlot(LocalTime.of(10, 3)), halfHourSlot(LocalTime.of(10, 32)))
++        assertNotEquals(halfHourSlot(LocalTime.of(10, 32)), halfHourSlot(LocalTime.of(10, 33)))
++        assertFalse(isVisibleTime(LocalTime.of(10, 31)))
++        assertTrue(isVisibleTime(LocalTime.of(10, 33)))
++    }
++
++    @Test
++    fun GameTestState.`one crystal impling at a time, on a wiki spot`() =
++        runInjectedGameTest(CrystalImplingScript::class, null, CrystalImplingScript::class) {
++            script ->
++            for (spot in CrystalImplingScript.SPOTS) allocZoneCollision(spot)
++            val first = checkNotNull(script.spawn())
++            assertTrue(first.coords in CrystalImplingScript.SPOTS)
++            val second = checkNotNull(script.spawn())
++            assertEquals(second, script.current())
++            // The first game tick also spawns one (server start), replacing the second.
++            advance(ticks = 1)
++            assertFalse(first.isSlotAssigned)
++            assertFalse(second.isSlotAssigned)
++            assertTrue(checkNotNull(script.current()).coords in CrystalImplingScript.SPOTS)
++        }
++}
+diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingLootScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingLootScriptTest.kt
+new file mode 100644
+index 000000000..0c04742d7
+--- /dev/null
++++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingLootScriptTest.kt
+@@ -0,0 +1,61 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.util.UncheckedType
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.table.ImplingTypesRow
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.content.skills.hunter.ImplingScript.Companion.IMPLING_JAR
++import org.rsmod.game.inv.InvObj
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class ImplingLootScriptTest {
++    @Test
++    fun `every caught jar has a loot table whose main table sums to one`() {
++        for (row in ImplingTypesRow.all()) {
++            if (row.jar.internalName == "obj.ii_captured_impling_11") continue // lucky: clue tables
++            val table = ImplingLootTables.tables[row.jar.id]
++            checkNotNull(table) { "no loot for ${row.jar.internalName}" }
++            val sum = table.main.sumOf { it.num.toDouble() / it.den }
++            assertEquals(1.0, sum, 1e-9, row.jar.internalName)
++        }
++    }
++
++    @Test
++    fun `loot is the jars' third inventory op, which the client sends as op 3`() {
++        val type = checkNotNull(ServerCacheManager.getItem(11256))
++        assertEquals(2, type.interfaceOptions.indexOfFirst { it == "Loot" })
++    }
++
++    @Test
++    fun `the first main-table line comes out when every roll is zero`() {
++        val baby = checkNotNull(ImplingLootTables.tables[11238])
++        // Zero hits every tertiary drop too (clue scrolls).
++        val drops = ImplingLootScript.roll(baby) { 0 }
++        assertEquals(1755, drops.first().obj) // Chisel
++        assertEquals(1 + baby.tertiary.size, drops.size)
++    }
++
++    @Test
++    fun GameTestState.`looting swaps the jar for loot`() =
++        runInjectedGameTest(ImplingLootScript::class, null, ImplingLootScript::class) { script ->
++            val jar = "obj.ii_captured_impling_10" // dragon: no "nothing" line
++            player.clearInv()
++            player.inv[0] = InvObj(jar.asRSCM(RSCMType.OBJ), 1)
++            with(script) { player.withProtectedAccess { loot(0, jar) } }
++            advance(ticks = 1)
++            assertEquals(0, player.inv.count("obj.ii_captured_impling_10"))
++            val others = player.inv.objs.filterNotNull().filter {
++                it.id != IMPLING_JAR.asRSCM(RSCMType.OBJ)
++            }
++            assertTrue(others.isNotEmpty(), player.inv.objs.toList().toString())
++            assertTrue(player.inv.count(IMPLING_JAR) <= 1)
++        }
++}
+diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingScriptTest.kt
+new file mode 100644
+index 000000000..d2c61d6fe
+--- /dev/null
++++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/ImplingScriptTest.kt
+@@ -0,0 +1,109 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.util.UncheckedType
++import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.player.righthand
++import org.rsmod.api.table.ImplingTypesRow
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.api.testing.scope.GameTestScope
++import org.rsmod.content.skills.hunter.ImplingScript.Companion.HUNTER
++import org.rsmod.content.skills.hunter.ImplingScript.Companion.IMPLING_JAR
++import org.rsmod.content.skills.hunter.ImplingScript.Companion.MAGIC_NET
++import org.rsmod.content.skills.hunter.ImplingScript.Companion.NET
++import org.rsmod.content.skills.hunter.ImplingScript.Companion.catchChance
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.inv.InvObj
++import org.rsmod.map.CoordGrid
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class ImplingScriptTest {
++    @Test
++    fun `catch chance runs from 12 to 98 percent, plus 8 with a magic net`() {
++        assertEquals(12, catchChance(1, bonus = false))
++        assertEquals(98, catchChance(99, bonus = false))
++        assertEquals(55, catchChance(50, bonus = false))
++        assertEquals(106, catchChance(99, bonus = true))
++    }
++
++    @Test
++    fun GameTestState.`a catch swaps one jar for the impling jar and gives hunter xp`() =
++        runInjectedGameTest(ImplingScript::class, null, ImplingScript::class) { script ->
++            val baby = row("dbrow.impling_type_baby")
++            val impling = prepare(baby, net = MAGIC_NET, jars = 2, level = 99)
++            val xpBefore = player.statMap.getXP(HUNTER)
++            with(script) { player.withProtectedAccess { catch(impling, baby, puroPuro = true) } }
++            val sent = client.mapOf(MessageGame::message).toMutableList()
++            repeat(4) {
++                advance(ticks = 1)
++                sent += client.mapOf(MessageGame::message)
++            }
++            assertEquals(1, player.inv.count(IMPLING_JAR))
++            assertEquals(1, player.inv.count(baby.jar.internalName))
++            assertTrue(player.statMap.getXP(HUNTER) > xpBefore)
++            assertFalse(impling.isSlotAssigned && impling.isVisible)
++            val expected = "You manage to catch the impling and squeeze it into a jar."
++            assertTrue(expected in sent, sent.toString())
++        }
++
++    @Test
++    fun GameTestState.`no jar, nothing moves`() =
++        runInjectedGameTest(ImplingScript::class, null, ImplingScript::class) { script ->
++            val baby = row("dbrow.impling_type_baby")
++            val impling = prepare(baby, net = NET, jars = 0, level = 99)
++            with(script) { player.withProtectedAccess { catch(impling, baby, puroPuro = false) } }
++            val sent = client.mapOf(MessageGame::message).toMutableList()
++            repeat(4) {
++                advance(ticks = 1)
++                sent += client.mapOf(MessageGame::message)
++            }
++            val expected = "You need an empty impling jar to keep the impling in."
++            assertTrue(expected in sent, sent.toString())
++            assertEquals(0, player.inv.count(baby.jar.internalName))
++            assertTrue(impling.isSlotAssigned && impling.isVisible)
++        }
++
++    @Test
++    fun GameTestState.`barehanded needs ten more levels`() =
++        runInjectedGameTest(ImplingScript::class, null, ImplingScript::class) { script ->
++            val dragon = row("dbrow.impling_type_dragon")
++            val impling = prepare(dragon, net = null, jars = 1, level = dragon.level + 9)
++            with(script) { player.withProtectedAccess { catch(impling, dragon, puroPuro = false) } }
++            val sent = client.mapOf(MessageGame::message).toMutableList()
++            repeat(4) {
++                advance(ticks = 1)
++                sent += client.mapOf(MessageGame::message)
++            }
++            val expected =
++                "You need a Hunter level of ${dragon.level + 10} to catch this impling barehanded."
++            assertTrue(expected in sent, sent.toString())
++            assertEquals(1, player.inv.count(IMPLING_JAR))
++        }
++
++    private fun row(name: String) = ImplingTypesRow.getRow(name)
++
++    private fun GameTestScope.prepare(
++        impling: ImplingTypesRow,
++        net: String?,
++        jars: Int,
++        level: Int,
++    ): Npc {
++        val center = CoordGrid(0, 50, 50, 20, 20)
++        allocZoneCollision(center)
++        player.teleport(center)
++        player.clearInv()
++        player.righthand = net?.let { InvObj(it.asRSCM(RSCMType.OBJ), 1) }
++        repeat(jars) { player.inv[it] = InvObj(IMPLING_JAR.asRSCM(RSCMType.OBJ), 1) }
++        player.setBaseLevel(HUNTER, level)
++        player.setCurrentLevel(HUNTER, level)
++        return spawnNpc(center.translate(1, 0), impling.npc)
++    }
++}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScript.kt
+new file mode 100644
+index 000000000..ab6ab0bb5
+--- /dev/null
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/CrystalImplingScript.kt
+@@ -0,0 +1,101 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import jakarta.inject.Inject
++import jakarta.inject.Singleton
++import java.time.Clock
++import java.time.LocalTime
++import org.rsmod.api.game.process.GameLifecycle
++import org.rsmod.api.random.GameRandom
++import org.rsmod.api.repo.npc.NpcRepository
++import org.rsmod.api.script.onEvent
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.game.entity.Npc
++import org.rsmod.map.CoordGrid
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Crystal implings (OSRS Wiki, Crystal impling): one per world in Prifddinas, at one of 12 spawn
++ * spots as one of 17 named implings. A new one appears 3 minutes after each :00 and :30 (UTC here)
++ * and one at server start. Hunter 80 (90 barehanded), 280 XP, into a crystal impling jar.
++ * Deviation: the catch chance is the generic impling curve, not the crystal one.
++ */
++@Singleton
++class CrystalImplingScript
++@Inject
++constructor(
++    private val npcRepo: NpcRepository,
++    private val random: GameRandom,
++    private val implings: ImplingScript,
++) : PluginScript() {
++    private var current: Npc? = null
++    private var lastSlot: Int = -1
++    var clock: Clock = Clock.systemUTC()
++
++    override fun ScriptContext.startup() {
++        for (name in NAMES) {
++            onOpNpc1(name) {
++                with(implings) {
++                    catch(it.npc, LEVEL, JAR, XP) { remove(it.npc) }
++                }
++            }
++        }
++        onEvent<GameLifecycle.LateCycle> { tick() }
++    }
++
++    fun tick() {
++        val slot = halfHourSlot(LocalTime.now(clock))
++        if (slot == lastSlot) return
++        if (lastSlot != -1 && !isVisibleTime(LocalTime.now(clock))) return
++        lastSlot = slot
++        spawn()
++    }
++
++    fun spawn(): Npc? {
++        current?.let { remove(it) }
++        val type =
++            ServerCacheManager.getNpc(NAMES[random.of(NAMES.size)].asRSCM(RSCMType.NPC))
++                ?: return null
++        val npc = Npc(type, SPOTS[random.of(SPOTS.size)])
++        npcRepo.add(npc, Int.MAX_VALUE)
++        current = npc
++        return npc
++    }
++
++    fun current(): Npc? = current?.takeIf { it.isSlotAssigned }
++
++    private fun remove(npc: Npc) {
++        if (npc.isSlotAssigned) npcRepo.del(npc, Int.MAX_VALUE)
++        if (current === npc) current = null
++    }
++
++    companion object {
++        const val LEVEL = 80
++        const val XP = 280
++        const val JAR = "obj.ii_captured_impling_12"
++        const val VISIBLE_AFTER_MINUTES = 3
++
++        val NAMES =
++            listOf(
++                "johnny", "junior", "andy", "joey", "trouble", "hingy", "zolty", "neil", "yanny",
++                "matty", "stace", "ian", "jamie", "damo", "xander", "steveo", "stewie",
++            ).map { "npc.ii_impling_type_12_$it" }
++
++        /** The wiki's spawn map for Prifddinas. */
++        val SPOTS =
++            listOf(
++                3290 to 6117, 3307 to 6041, 3210 to 6110, 3213 to 6049, 3237 to 6102,
++                3308 to 6117, 3240 to 6046, 3214 to 6113, 3290 to 6049, 3234 to 6072,
++                3240 to 6120, 3234 to 6129,
++            ).map { (x, z) -> CoordGrid(x, z, 0) }
++
++        /** Which half hour of the day [time] falls in, counting from 3 minutes past. */
++        fun halfHourSlot(time: LocalTime): Int =
++            ((time.toSecondOfDay() / 60 - VISIBLE_AFTER_MINUTES + 1440) % 1440) / 30
++
++        fun isVisibleTime(time: LocalTime): Boolean = time.minute % 30 >= VISIBLE_AFTER_MINUTES
++    }
++}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootScript.kt
+new file mode 100644
+index 000000000..35fd6ef33
+--- /dev/null
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootScript.kt
+@@ -0,0 +1,125 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import jakarta.inject.Inject
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.script.onOpHeld1
++import org.rsmod.api.script.onOpHeld2
++import org.rsmod.api.script.onOpHeld3
++import org.rsmod.api.script.onOpHeld4
++import org.rsmod.api.table.ImplingTypesRow
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/** One line of an impling jar's loot: [count] from [min] to [max], chance [num]/[den]. */
++data class ImplingDrop(
++    val obj: Int,
++    val min: Int,
++    val max: Int,
++    val noted: Boolean,
++    val num: Int,
++    val den: Int,
++) {
++    val isNothing: Boolean get() = obj == -1
++
++    companion object {
++        fun nothing(num: Int, den: Int): ImplingDrop = ImplingDrop(-1, 0, 0, false, num, den)
++    }
++}
++
++/**
++ * An impling jar's loot (OSRS Wiki): an optional pre-roll (gourmet: grubby key), one roll on the
++ * main table, then each tertiary drop (clue scrolls) rolled on its own.
++ */
++data class ImplingLootTable(
++    val preRoll: List<ImplingDrop>,
++    val main: List<ImplingDrop>,
++    val tertiary: List<ImplingDrop>,
++)
++
++/**
++ * Loot on a caught impling jar: the loot goes to the inventory and the empty impling jar comes back
++ * into the same slot, except for a 10% chance that it breaks (Mod Ash). Needs one free slot.
++ */
++class ImplingLootScript @Inject constructor() : PluginScript() {
++    override fun ScriptContext.startup() {
++        val jars = ImplingTypesRow.all().map { it.jar.internalName } + CRYSTAL_JAR
++        for (jar in jars.distinct()) {
++            // "Loot" is the jars' third inventory op in the cache (the client sends op 3), not the
++            // first: register on whichever op carries it.
++            val type = ServerCacheManager.getItem(jar.asRSCM(RSCMType.OBJ))
++            when (type?.interfaceOptions?.indexOfFirst { it.equals(LOOT, ignoreCase = true) }) {
++                0 -> onOpHeld1(jar) { loot(it.slot, jar) }
++                1 -> onOpHeld2(jar) { loot(it.slot, jar) }
++                3 -> onOpHeld4(jar) { loot(it.slot, jar) }
++                else -> onOpHeld3(jar) { loot(it.slot, jar) }
++            }
++        }
++    }
++
++    suspend fun ProtectedAccess.loot(slot: Int, jar: String) {
++        val table = ImplingLootTables.tables[jar.asRSCM(RSCMType.OBJ)]
++        if (table == null) {
++            mes("Nothing interesting happens.")
++            return
++        }
++        if (inv.freeSpace() < 1) {
++            mes("You need some free inventory space to loot the jar.")
++            return
++        }
++        val drops = roll(table) { bound -> random.of(bound) }
++        if (invDel(inv, jar, slot = slot).failure) return
++        if (random.of(JAR_BREAK_DEN) >= JAR_BREAK_NUM) {
++            invAdd(inv, ImplingScript.IMPLING_JAR, slot = slot)
++        }
++        for (drop in drops) {
++            val count = if (drop.max > drop.min) random.of(drop.min, drop.max) else drop.min
++            if (invAdd(inv, RSCM.getReverseMapping(RSCMType.OBJ, drop.obj), count, cert = drop.noted).failure) {
++                // Full inventory (several drops at once): the rest is lost rather than dropped.
++                break
++            }
++        }
++    }
++
++    companion object {
++        const val CRYSTAL_JAR = "obj.ii_captured_impling_12"
++        const val LOOT = "Loot"
++        const val JAR_BREAK_NUM = 1
++        const val JAR_BREAK_DEN = 10
++
++        /** The drops of one loot: [nextInt] returns 0 until its bound (exclusive). */
++        fun roll(table: ImplingLootTable, nextInt: (Int) -> Int): List<ImplingDrop> {
++            val drops = mutableListOf<ImplingDrop>()
++            val pre = table.preRoll.firstOrNull { hits(it, nextInt) }
++            if (pre != null) {
++                drops += pre
++            } else {
++                pick(table.main, nextInt)?.let { drops += it }
++            }
++            drops += table.tertiary.filter { hits(it, nextInt) }
++            return drops.filterNot(ImplingDrop::isNothing)
++        }
++
++        private fun hits(drop: ImplingDrop, nextInt: (Int) -> Int): Boolean =
++            nextInt(drop.den) < drop.num
++
++        private fun pick(drops: List<ImplingDrop>, nextInt: (Int) -> Int): ImplingDrop? {
++            if (drops.isEmpty()) return null
++            val den = drops.fold(1L) { acc, d -> lcm(acc, d.den.toLong()) }
++            val weights = drops.map { it.num * (den / it.den) }
++            var r = nextInt(weights.sum().toInt()).toLong()
++            for ((i, w) in weights.withIndex()) {
++                if (r < w) return drops[i]
++                r -= w
++            }
++            return null
++        }
++
++        private fun gcd(a: Long, b: Long): Long = if (b == 0L) a else gcd(b, a % b)
++
++        private fun lcm(a: Long, b: Long): Long = a / gcd(a, b) * b
++    }
++}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootTables.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootTables.kt
+new file mode 100644
+index 000000000..90d166d4c
+--- /dev/null
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingLootTables.kt
+@@ -0,0 +1,323 @@
++package org.rsmod.content.skills.hunter
++
++// Generated from the OSRS Wiki's impling jar pages (DropsLineReward, ?action=raw), 2026-10-16.
++// Item ids are OSRS obj ids; names are the wiki's. Main tables sum to 1 ("Nothing" included).
++// The lucky impling (a roll on a clue reward table) is not covered.
++
++object ImplingLootTables {
++    val tables: Map<Int, ImplingLootTable> =
++        mapOf(
++            // Baby impling jar; main table total 1
++            11238 to ImplingLootTable(
++                preRoll = emptyList(),
++                main = listOf(
++                    ImplingDrop(1755, 1, 1, false, 1, 10), // Chisel
++                    ImplingDrop(1734, 1, 1, false, 1, 10), // Thread
++                    ImplingDrop(1733, 1, 1, false, 1, 10), // Needle
++                    ImplingDrop(946, 1, 1, false, 1, 10), // Knife
++                    ImplingDrop(1985, 1, 1, false, 1, 10), // Cheese
++                    ImplingDrop(2347, 1, 1, false, 1, 10), // Hammer
++                    ImplingDrop(1759, 1, 1, false, 1, 10), // Ball of wool
++                    ImplingDrop(319, 1, 1, false, 1, 10), // Anchovies
++                    ImplingDrop.nothing(1, 10),
++                    ImplingDrop(2007, 1, 1, false, 1, 100), // Spice
++                    ImplingDrop(1779, 1, 1, false, 1, 100), // Flax
++                    ImplingDrop(7170, 1, 1, false, 1, 100), // Mud pie
++                    ImplingDrop(401, 1, 1, false, 1, 100), // Seaweed
++                    ImplingDrop(1438, 1, 1, false, 1, 100), // Air talisman
++                    ImplingDrop(2355, 1, 1, false, 1, 100), // Silver bar
++                    ImplingDrop(1607, 1, 1, false, 1, 100), // Sapphire
++                    ImplingDrop(1743, 1, 1, false, 1, 100), // Hard leather
++                    ImplingDrop(379, 1, 1, false, 1, 100), // Lobster
++                    ImplingDrop(1761, 1, 1, false, 1, 100), // Soft clay
++                ),
++                tertiary = listOf(
++                    ImplingDrop(23182, 1, 1, false, 1, 50), // Clue scroll (beginner)
++                    ImplingDrop(2677, 1, 1, false, 1, 100), // Clue scroll (easy)
++                ),
++            ),
++            // Young impling jar; main table total 1
++            11240 to ImplingLootTable(
++                preRoll = emptyList(),
++                main = listOf(
++                    ImplingDrop(1539, 5, 5, false, 1, 10), // Steel nails
++                    ImplingDrop(1523, 1, 1, false, 1, 10), // Lockpick
++                    ImplingDrop(7936, 1, 1, false, 1, 10), // Pure essence
++                    ImplingDrop(361, 1, 1, false, 1, 10), // Tuna
++                    ImplingDrop(1901, 1, 1, false, 1, 10), // Chocolate slice
++                    ImplingDrop(1353, 1, 1, false, 1, 10), // Steel axe
++                    ImplingDrop(2293, 1, 1, false, 1, 10), // Meat pizza
++                    ImplingDrop(453, 1, 1, false, 1, 10), // Coal
++                    ImplingDrop(1777, 1, 1, false, 1, 10), // Bow string
++                    ImplingDrop(231, 1, 1, false, 1, 100), // Snape grass
++                    ImplingDrop(1761, 1, 1, false, 1, 100), // Soft clay
++                    ImplingDrop(1097, 1, 1, false, 1, 100), // Studded chaps
++                    ImplingDrop(1157, 1, 1, false, 1, 100), // Steel full helm
++                    ImplingDrop(8778, 1, 1, false, 1, 100), // Oak plank
++                    ImplingDrop(133, 1, 1, false, 1, 100), // Defence potion(3)
++                    ImplingDrop(2359, 1, 1, false, 1, 100), // Mithril bar
++                    ImplingDrop(855, 1, 1, false, 1, 100), // Yew longbow
++                    ImplingDrop(7178, 1, 1, false, 1, 100), // Garden pie
++                    ImplingDrop(247, 1, 1, false, 1, 100), // Jangerberries
++                ),
++                tertiary = listOf(
++                    ImplingDrop(23182, 1, 1, false, 1, 25), // Clue scroll (beginner)
++                    ImplingDrop(2677, 1, 1, false, 1, 50), // Clue scroll (easy)
++                ),
++            ),
++            // Gourmet impling jar; main table total 1
++            11242 to ImplingLootTable(
++                preRoll = listOf(
++                    ImplingDrop(23499, 1, 1, false, 1, 500), // Grubby key
++                ),
++                main = listOf(
++                    ImplingDrop(361, 1, 1, false, 1, 5), // Tuna
++                    ImplingDrop(365, 1, 1, false, 1, 10), // Bass
++                    ImplingDrop(2011, 1, 1, false, 1, 10), // Curry
++                    ImplingDrop(2327, 1, 1, false, 1, 10), // Meat pie
++                    ImplingDrop(1897, 1, 1, false, 1, 10), // Chocolate cake
++                    ImplingDrop(5004, 1, 1, false, 1, 10), // Frog spawn
++                    ImplingDrop(2007, 1, 1, false, 1, 10), // Spice
++                    ImplingDrop(5970, 1, 1, false, 1, 10), // Curry leaf
++                    ImplingDrop(1885, 1, 1, false, 1, 100), // Ugthanki kebab
++                    ImplingDrop(379, 4, 4, true, 1, 100), // Lobster
++                    ImplingDrop(385, 3, 3, true, 1, 100), // Shark
++                    ImplingDrop(7188, 1, 1, false, 1, 100), // Fish pie
++                    ImplingDrop(5755, 1, 1, false, 1, 100), // Chef's delight
++                    ImplingDrop(10136, 5, 5, true, 1, 100), // Rainbow fish
++                    ImplingDrop(7178, 6, 6, true, 1, 100), // Garden pie
++                    ImplingDrop(373, 3, 3, true, 1, 100), // Swordfish
++                    ImplingDrop(5406, 1, 1, false, 1, 100), // Strawberries(5)
++                    ImplingDrop(3144, 2, 2, true, 1, 100), // Cooked karambwan
++                ),
++                tertiary = listOf(
++                    ImplingDrop(2677, 1, 1, false, 1, 25), // Clue scroll (easy)
++                ),
++            ),
++            // Earth impling jar; main table total 1
++            11244 to ImplingLootTable(
++                preRoll = emptyList(),
++                main = listOf(
++                    ImplingDrop(1442, 1, 1, false, 1, 10), // Fire talisman
++                    ImplingDrop(1440, 1, 1, false, 1, 10), // Earth talisman
++                    ImplingDrop(5535, 1, 1, false, 1, 10), // Earth tiara
++                    ImplingDrop(557, 32, 32, false, 1, 10), // Earth rune
++                    ImplingDrop(447, 1, 1, false, 1, 10), // Mithril ore
++                    ImplingDrop(1783, 4, 4, true, 1, 10), // Bucket of sand
++                    ImplingDrop(237, 1, 1, false, 1, 10), // Unicorn horn
++                    ImplingDrop(6032, 6, 6, true, 1, 10), // Compost
++                    ImplingDrop(444, 1, 1, false, 1, 10), // Gold ore
++                    ImplingDrop(2353, 1, 1, false, 1, 100), // Steel bar
++                    ImplingDrop(1273, 1, 1, false, 1, 100), // Mithril pickaxe
++                    ImplingDrop(5311, 2, 2, false, 1, 100), // Wildblood seed
++                    ImplingDrop(5104, 2, 2, false, 1, 100), // Jangerberry seed
++                    ImplingDrop(6034, 2, 2, true, 1, 100), // Supercompost
++                    ImplingDrop(447, 3, 3, true, 1, 100), // Mithril ore
++                    ImplingDrop(5294, 2, 2, false, 1, 100), // Harralander seed
++                    ImplingDrop(453, 6, 6, true, 1, 100), // Coal
++                    ImplingDrop(1605, 2, 2, true, 1, 100), // Emerald
++                    ImplingDrop(1603, 1, 1, false, 1, 100), // Ruby
++                ),
++                tertiary = listOf(
++                    ImplingDrop(2801, 1, 1, false, 1, 100), // Clue scroll (medium)
++                ),
++            ),
++            // Essence impling jar; main table total 1
++            11246 to ImplingLootTable(
++                preRoll = emptyList(),
++                main = listOf(
++                    ImplingDrop(7936, 20, 20, true, 1, 10), // Pure essence
++                    ImplingDrop(555, 30, 30, false, 1, 10), // Water rune
++                    ImplingDrop(556, 30, 30, false, 1, 10), // Air rune
++                    ImplingDrop(554, 50, 50, false, 1, 10), // Fire rune
++                    ImplingDrop(558, 25, 25, false, 1, 10), // Mind rune
++                    ImplingDrop(559, 28, 28, false, 1, 10), // Body rune
++                    ImplingDrop(562, 4, 4, false, 1, 10), // Chaos rune
++                    ImplingDrop(564, 4, 4, false, 1, 10), // Cosmic rune
++                    ImplingDrop(1448, 1, 1, false, 1, 10), // Mind talisman
++                    ImplingDrop(7936, 35, 35, true, 1, 100), // Pure essence
++                    ImplingDrop(4699, 4, 4, false, 1, 100), // Lava rune
++                    ImplingDrop(4698, 4, 4, false, 1, 100), // Mud rune
++                    ImplingDrop(4697, 4, 4, false, 1, 100), // Smoke rune
++                    ImplingDrop(4694, 4, 4, false, 1, 100), // Steam rune
++                    ImplingDrop(560, 13, 13, false, 1, 100), // Death rune
++                    ImplingDrop(563, 13, 13, false, 1, 100), // Law rune
++                    ImplingDrop(565, 7, 7, false, 1, 100), // Blood rune
++                    ImplingDrop(566, 11, 11, false, 1, 100), // Soul rune
++                    ImplingDrop(561, 13, 13, false, 1, 100), // Nature rune
++                ),
++                tertiary = listOf(
++                    ImplingDrop(2801, 1, 1, false, 1, 50), // Clue scroll (medium)
++                ),
++            ),
++            // Eclectic impling jar; main table total 1
++            11248 to ImplingLootTable(
++                preRoll = emptyList(),
++                main = listOf(
++                    ImplingDrop(1273, 1, 1, false, 1, 10), // Mithril pickaxe
++                    ImplingDrop(5970, 1, 1, false, 1, 10), // Curry leaf
++                    ImplingDrop(231, 1, 1, false, 1, 10), // Snape grass
++                    ImplingDrop(556, 30, 58, false, 1, 10), // Air rune
++                    ImplingDrop(8778, 4, 4, true, 1, 10), // Oak plank
++                    ImplingDrop(4527, 1, 1, false, 1, 10), // Empty candle lantern
++                    ImplingDrop(444, 1, 1, false, 1, 10), // Gold ore
++                    ImplingDrop(2357, 5, 5, true, 1, 10), // Gold bar
++                    ImplingDrop(237, 1, 1, false, 1, 10), // Unicorn horn
++                    ImplingDrop(1199, 1, 1, false, 1, 100), // Adamant kiteshield
++                    ImplingDrop(2493, 1, 1, false, 1, 100), // Blue d'hide chaps
++                    ImplingDrop(10083, 1, 1, false, 1, 100), // Red spiky vambraces
++                    ImplingDrop(1213, 1, 1, false, 1, 100), // Rune dagger
++                    ImplingDrop(1391, 1, 1, false, 1, 100), // Battlestaff
++                    ImplingDrop(449, 10, 10, true, 1, 100), // Adamantite ore
++                    ImplingDrop(5759, 2, 2, true, 1, 100), // Slayer's respite
++                    ImplingDrop(7208, 1, 1, false, 1, 100), // Wild pie
++                    ImplingDrop(5321, 3, 3, false, 1, 100), // Watermelon seed
++                    ImplingDrop(1601, 1, 1, false, 1, 100), // Diamond
++                ),
++                tertiary = listOf(
++                    ImplingDrop(2801, 1, 1, false, 1, 25), // Clue scroll (medium)
++                ),
++            ),
++            // Nature impling jar; main table total 1
++            11250 to ImplingLootTable(
++                preRoll = emptyList(),
++                main = listOf(
++                    ImplingDrop(5100, 1, 1, false, 1, 10), // Limpwurt seed
++                    ImplingDrop(5104, 1, 1, false, 1, 10), // Jangerberry seed
++                    ImplingDrop(5281, 1, 1, false, 1, 10), // Belladonna seed
++                    ImplingDrop(5294, 1, 1, false, 1, 10), // Harralander seed
++                    ImplingDrop(6016, 1, 1, false, 1, 10), // Cactus spine
++                    ImplingDrop(1513, 1, 1, false, 1, 10), // Magic logs
++                    ImplingDrop(253, 4, 4, true, 1, 10), // Tarromin
++                    ImplingDrop(5974, 1, 1, false, 1, 10), // Coconut
++                    ImplingDrop(5297, 1, 1, false, 1, 10), // Irit seed
++                    ImplingDrop(5286, 1, 1, false, 1, 100), // Curry tree seed
++                    ImplingDrop(5285, 1, 1, false, 1, 100), // Orange tree seed
++                    ImplingDrop(3000, 1, 1, false, 1, 100), // Snapdragon
++                    ImplingDrop(5299, 1, 1, false, 1, 100), // Kwuarm seed
++                    ImplingDrop(5298, 5, 5, false, 1, 100), // Avantoe seed
++                    ImplingDrop(5313, 1, 1, false, 1, 100), // Willow seed
++                    ImplingDrop(5304, 1, 1, false, 1, 100), // Torstol seed
++                    ImplingDrop(5295, 1, 1, false, 1, 100), // Ranarr seed
++                    ImplingDrop(269, 2, 2, true, 1, 100), // Torstol
++                    ImplingDrop(5303, 1, 1, false, 1, 100), // Dwarf weed seed
++                ),
++                tertiary = listOf(
++                    ImplingDrop(2722, 1, 1, false, 1, 100), // Clue scroll (hard)
++                ),
++            ),
++            // Magpie impling jar; main table total 1
++            11252 to ImplingLootTable(
++                preRoll = emptyList(),
++                main = listOf(
++                    ImplingDrop(1747, 6, 6, true, 2, 21), // Black dragonhide
++                    ImplingDrop(1700, 3, 3, true, 1, 21), // Diamond amulet
++                    ImplingDrop(1731, 3, 3, true, 1, 21), // Amulet of power
++                    ImplingDrop(2568, 3, 3, true, 1, 21), // Ring of forging
++                    ImplingDrop(3391, 1, 1, false, 1, 21), // Splitbark gauntlets
++                    ImplingDrop(4097, 1, 1, false, 1, 21), // Mystic boots
++                    ImplingDrop(4095, 1, 1, false, 1, 21), // Mystic gloves
++                    ImplingDrop(1347, 1, 1, false, 1, 21), // Rune warhammer
++                    ImplingDrop(2570, 4, 4, true, 1, 21), // Ring of life
++                    ImplingDrop(1185, 1, 1, false, 1, 21), // Rune sq shield
++                    ImplingDrop(1215, 1, 1, false, 1, 21), // Dragon dagger
++                    ImplingDrop(5541, 1, 1, false, 1, 21), // Nature tiara
++                    ImplingDrop(2363, 2, 2, true, 1, 21), // Runite bar
++                    ImplingDrop(1601, 4, 4, true, 1, 21), // Diamond
++                    ImplingDrop(5287, 1, 1, false, 1, 21), // Pineapple seed
++                    ImplingDrop(2550, 3, 3, true, 1, 21), // Ring of recoil
++                    ImplingDrop(987, 1, 1, false, 1, 21), // Loop half of key
++                    ImplingDrop(985, 1, 1, false, 1, 21), // Tooth half of key
++                    ImplingDrop(5300, 1, 1, false, 1, 21), // Snapdragon seed
++                    ImplingDrop(993, 1, 1, false, 1, 21), // Sinister key
++                ),
++                tertiary = listOf(
++                    ImplingDrop(2722, 1, 1, false, 1, 50), // Clue scroll (hard)
++                ),
++            ),
++            // Ninja impling jar; main table total 1
++            11254 to ImplingLootTable(
++                preRoll = emptyList(),
++                main = listOf(
++                    ImplingDrop(6328, 1, 1, false, 1, 19), // Snakeskin boots
++                    ImplingDrop(3385, 1, 1, false, 1, 19), // Splitbark helm
++                    ImplingDrop(4097, 1, 1, false, 1, 19), // Mystic boots
++                    ImplingDrop(1113, 1, 1, false, 1, 19), // Rune chainbody
++                    ImplingDrop(4095, 1, 1, false, 1, 19), // Mystic gloves
++                    ImplingDrop(6313, 1, 1, false, 1, 19), // Opal machete
++                    ImplingDrop(3101, 1, 1, false, 1, 19), // Rune claws
++                    ImplingDrop(1333, 1, 1, false, 1, 19), // Rune scimitar
++                    ImplingDrop(5680, 1, 1, false, 1, 19), // Dragon dagger(p+)
++                    ImplingDrop(892, 70, 70, false, 1, 19), // Rune arrow
++                    ImplingDrop(811, 70, 70, false, 1, 19), // Rune dart
++                    ImplingDrop(868, 40, 40, false, 1, 19), // Rune knife
++                    ImplingDrop(805, 50, 50, false, 1, 19), // Rune thrownaxe
++                    ImplingDrop(9342, 2, 2, false, 1, 19), // Onyx bolts
++                    ImplingDrop(9194, 4, 4, false, 1, 19), // Onyx bolt tips
++                    ImplingDrop(1747, 10, 10, true, 1, 19), // Black dragonhide
++                    ImplingDrop(139, 4, 4, true, 1, 19), // Prayer potion(3)
++                    ImplingDrop(5937, 4, 4, true, 1, 19), // Weapon poison(+)
++                    ImplingDrop(6155, 3, 3, true, 1, 19), // Dagannoth hide
++                ),
++                tertiary = listOf(
++                    ImplingDrop(2722, 1, 1, false, 1, 25), // Clue scroll (hard)
++                ),
++            ),
++            // Dragon impling jar; main table total 1
++            11256 to ImplingLootTable(
++                preRoll = emptyList(),
++                main = listOf(
++                    ImplingDrop(9193, 10, 30, false, 1, 19), // Dragonstone bolt tips
++                    ImplingDrop(9193, 36, 36, false, 1, 19), // Dragonstone bolt tips
++                    ImplingDrop(4093, 1, 1, false, 1, 19), // Mystic robe bottom
++                    ImplingDrop(1704, 3, 3, true, 1, 19), // Amulet of glory
++                    ImplingDrop(1702, 2, 2, true, 1, 19), // Dragonstone amulet
++                    ImplingDrop(11212, 100, 250, false, 1, 19), // Dragon arrow
++                    ImplingDrop(9341, 10, 40, false, 1, 19), // Dragonstone bolts
++                    ImplingDrop(1305, 1, 1, false, 1, 19), // Dragon longsword
++                    ImplingDrop(5698, 3, 3, true, 1, 19), // Dragon dagger(p++)
++                    ImplingDrop(11230, 100, 250, false, 1, 19), // Dragon dart
++                    ImplingDrop(1615, 3, 3, true, 1, 19), // Dragonstone
++                    ImplingDrop(11232, 100, 350, false, 1, 19), // Dragon dart tip
++                    ImplingDrop(11237, 100, 350, false, 1, 19), // Dragon arrowtips
++                    ImplingDrop(19582, 25, 35, false, 1, 19), // Dragon javelin tips
++                    ImplingDrop(534, 100, 300, true, 1, 19), // Babydragon bones
++                    ImplingDrop(536, 50, 100, true, 1, 19), // Dragon bones
++                    ImplingDrop(5316, 1, 1, false, 1, 19), // Magic seed
++                    ImplingDrop(5300, 6, 6, false, 1, 19), // Snapdragon seed
++                    ImplingDrop(7218, 15, 15, true, 1, 19), // Summer pie
++                ),
++                tertiary = listOf(
++                    ImplingDrop(12073, 1, 1, false, 1, 50), // Clue scroll (elite)
++                ),
++            ),
++            // Crystal impling jar; main table total 1
++            23768 to ImplingLootTable(
++                preRoll = emptyList(),
++                main = listOf(
++                    ImplingDrop(1731, 5, 7, true, 1, 18), // Amulet of power
++                    ImplingDrop(23661, 1, 1, false, 1, 18), // Crystal acorn
++                    ImplingDrop(23962, 30, 40, false, 1, 18), // Crystal shard
++                    ImplingDrop(1702, 1, 1, false, 1, 18), // Dragonstone amulet
++                    ImplingDrop(1615, 2, 2, true, 1, 18), // Dragonstone
++                    ImplingDrop(9191, 50, 125, false, 1, 18), // Ruby bolt tips
++                    ImplingDrop(9194, 6, 10, false, 1, 18), // Onyx bolt tips
++                    ImplingDrop(44, 150, 250, false, 1, 18), // Rune arrowtips
++                    ImplingDrop(892, 400, 750, false, 1, 18), // Rune arrow
++                    ImplingDrop(19580, 20, 60, false, 1, 18), // Rune javelin tips
++                    ImplingDrop(824, 25, 75, false, 1, 18), // Rune dart tip
++                    ImplingDrop(811, 50, 100, false, 1, 18), // Rune dart
++                    ImplingDrop(11232, 10, 15, false, 1, 18), // Dragon dart tip
++                    ImplingDrop(1215, 2, 2, true, 1, 18), // Dragon dagger
++                    ImplingDrop(1333, 3, 6, true, 1, 18), // Rune scimitar
++                    ImplingDrop(534, 75, 125, true, 1, 18), // Babydragon bones
++                    ImplingDrop(5295, 3, 8, false, 1, 18), // Ranarr seed
++                    ImplingDrop(5315, 1, 1, false, 1, 18), // Yew seed
++                ),
++                tertiary = listOf(
++                    ImplingDrop(12073, 1, 1, false, 1, 50), // Clue scroll (elite)
++                    ImplingDrop(23943, 1, 1, false, 1, 128), // Elven signet
++                ),
++            ),
++        )
++}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingScript.kt
+new file mode 100644
+index 000000000..8227019c6
+--- /dev/null
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/ImplingScript.kt
+@@ -0,0 +1,109 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import jakarta.inject.Inject
++import org.rsmod.api.player.output.ChatType
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.righthand
++import org.rsmod.api.repo.npc.NpcRepository
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.api.table.ImplingTypesRow
++import org.rsmod.game.entity.Npc
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Catching implings in Puro-Puro and Gielinor (OSRS Wiki, Impling): a wielded butterfly net, or
++ * 10 extra Hunter levels barehanded. A jar is required everywhere: looting an impling caught
++ * without one, which OSRS allows outside Puro-Puro, is not implemented. Misses repeat while the
++ * impling stays.
++ */
++class ImplingScript @Inject constructor(private val npcRepo: NpcRepository) : PluginScript() {
++    override fun ScriptContext.startup() {
++        for (impling in ImplingTypesRow.all()) {
++            onOpNpc1(impling.npc) { catch(it.npc, impling, puroPuro = false) }
++            onOpNpc1(impling.npcPuroPuro) { catch(it.npc, impling, puroPuro = true) }
++        }
++    }
++
++    suspend fun ProtectedAccess.catch(
++        npc: Npc,
++        impling: ImplingTypesRow,
++        puroPuro: Boolean,
++    ) {
++        val xp = if (puroPuro) impling.xpPuroPuro else impling.xpGielinor
++        catch(npc, impling.level, impling.jar.internalName, xp) { removeCaught(npc, impling) }
++    }
++
++    /** Catches [npc] into [jar] at Hunter [level] for [xp]; [onCaught] removes the npc. */
++    suspend fun ProtectedAccess.catch(
++        npc: Npc,
++        level: Int,
++        jar: String,
++        xp: Int,
++        onCaught: () -> Unit,
++    ) {
++        val net = wieldedNet()
++        val required = if (net == null) level + BAREHANDED_EXTRA_LEVELS else level
++        if (stat(HUNTER) < required) {
++            val barehanded = if (net == null) " barehanded" else ""
++            mes("You need a Hunter level of $required to catch this impling$barehanded.")
++            return
++        }
++        if (IMPLING_JAR !in inv) {
++            mes("You need an empty impling jar to keep the impling in.")
++            return
++        }
++        val chance = catchChance(stat(HUNTER), bonus = net != NET)
++        repeat(MAX_ATTEMPTS) {
++            if (!npc.isCatchable()) return
++            faceEntitySquare(npc)
++            anim(CATCH_SEQ)
++            delay(ATTEMPT_TICKS)
++            if (!npc.isCatchable()) return
++            if (random.of(100) >= chance) return@repeat
++            val slot = (0 until inv.size).firstOrNull { inv[it]?.id == jarId } ?: return
++            if (invDel(inv, IMPLING_JAR, slot = slot).failure) return
++            invAdd(inv, jar, slot = slot)
++            statAdvance(HUNTER, xp.toDouble())
++            onCaught()
++            mes("You manage to catch the impling and squeeze it into a jar.", ChatType.Spam)
++            return
++        }
++    }
++
++    private fun Npc.isCatchable(): Boolean = isSlotAssigned && isVisible
++
++    private fun ProtectedAccess.wieldedNet(): String? {
++        val held = player.righthand ?: return null
++        return listOf(NET, MAGIC_NET).firstOrNull { it.asRSCM(RSCMType.OBJ) == held.id }
++    }
++
++    private fun removeCaught(npc: Npc, impling: ImplingTypesRow) {
++        if (npc.respawns) {
++            npcRepo.despawn(npc, impling.respawnTicks)
++        } else {
++            npcRepo.del(npc, Int.MAX_VALUE)
++        }
++    }
++
++    private val jarId: Int by lazy { IMPLING_JAR.asRSCM(RSCMType.OBJ) }
++
++    companion object {
++        const val HUNTER = "stat.hunter"
++        const val NET = "obj.hunting_butterfly_net"
++        const val MAGIC_NET = "obj.ii_magic_butterfly_net"
++        const val IMPLING_JAR = "obj.ii_impling_jar"
++        const val CATCH_SEQ = "seq.hunting_impling_catch"
++        const val BAREHANDED_EXTRA_LEVELS = 10
++        const val ATTEMPT_TICKS = 2
++        const val MAX_ATTEMPTS = 20
++
++        /** Mod Ash: 12% at level 1 to 98% at 99, linear; +8 barehanded or with a magic net. */
++        fun catchChance(level: Int, bonus: Boolean): Int {
++            val base = 12 + (98 - 12) * (level.coerceIn(1, 99) - 1) / 98
++            return base + if (bonus) 8 else 0
++        }
++    }
++}
+diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
+new file mode 100644
+index 000000000..77a8628d3
+--- /dev/null
++++ b/content/skills/hunter/src/main/resources/gamevals.toml
+@@ -0,0 +1,15 @@
++[gamevals.dbtable]
++impling_types = 60000
++
++[gamevals.dbrow]
++impling_type_baby = 60124
++impling_type_young = 60125
++impling_type_gourmet = 60126
++impling_type_earth = 60127
++impling_type_essence = 60128
++impling_type_eclectic = 60129
++impling_type_nature = 60130
++impling_type_magpie = 60131
++impling_type_ninja = 60132
++impling_type_dragon = 60133
++impling_type_lucky = 60134
+-- 
+2.43.0
+

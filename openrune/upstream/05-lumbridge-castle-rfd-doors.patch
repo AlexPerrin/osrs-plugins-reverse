@@ -1,0 +1,53 @@
+From 62288e4892aef114537669e6d6895e03477cc3c9 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Fri, 16 Oct 2026 20:33:37 -0400
+Subject: [PATCH] Make the Lumbridge castle Recipe for Disaster doors open
+
+The map places the kitchen to dining room door (3207,3217) and the hallway to
+dining room double doors (3213,3221-3222) as their Recipe for Disaster
+(hundred_) variants, which had no door content group ("Nothing interesting
+happens"). They share models with elfdoor and castledoubledoor*, so they open
+into those doors' open states, which close back to the plain variants.
+---
+ .../loc/misthalin/lumbridge-castle.toml       | 29 +++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+ create mode 100644 .data/raw-cache/server/loc/misthalin/lumbridge-castle.toml
+
+diff --git a/.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml b/.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml
+new file mode 100644
+index 000000000..4c7054b46
+--- /dev/null
++++ b/.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml
+@@ -0,0 +1,29 @@
++# Lumbridge castle doors the map places as their Recipe for Disaster
++# ("hundred_") variants, which had no door tag ("Nothing interesting happens"): the kitchen to
++# dining room door (3207,3217) and the hallway to dining room double doors (3213,3221-3222).
++# They share models with elfdoor and castledoubledoor*, so they open into those doors' open states
++# (which close back to the plain variants).
++
++[[object]]
++id = "loc.hundred_lumbridge_door"
++inherit = "loc.hundred_lumbridge_door"
++contentGroup = "content.closed_single_door"
++
++[object.params]
++"param.next_loc_stage" = "loc.elfdooropen"
++
++[[object]]
++id = "loc.hundred_lumbridge_doubledoorl"
++inherit = "loc.hundred_lumbridge_doubledoorl"
++contentGroup = "content.closed_left_door"
++
++[object.params]
++"param.next_loc_stage" = "loc.opencastledoubledoorl"
++
++[[object]]
++id = "loc.hundred_lumbridge_doubledoorr"
++inherit = "loc.hundred_lumbridge_doubledoorr"
++contentGroup = "content.closed_right_door"
++
++[object.params]
++"param.next_loc_stage" = "loc.opencastledoubledoorr"
+-- 
+2.43.0
+

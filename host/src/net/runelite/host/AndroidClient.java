@@ -762,6 +762,29 @@ public class AndroidClient extends ClientStub {
     @Override public int getViewportYOffset() { int[] z = gameViewport(); return z != null ? z[2] : 0; }
     @Override public int getViewportWidth() { int[] z = gameViewport(); return z != null ? z[3] : OverlayRenderer.canvasSize().width; }
     @Override public int getViewportHeight() { int[] z = gameViewport(); return z != null ? z[4] : OverlayRenderer.canvasSize().height; }
+    /** Centre of the 3D viewport on the canvas. */
+    @Override public int getCenterX() { return getViewportXOffset() + getViewportWidth() / 2; }
+    @Override public int getCenterY() { return getViewportYOffset() + getViewportHeight() / 2; }
+    /** Frames per second the game draws (BeforeRender counted per second; the ImGui overlay shows the same rate). */
+    @Override public int getFPS() { return Host.fps; }
+    // The mobile client has no stretched mode, minimap ctrl-zoom, free camera / oculus orb or camera
+    // shake toggle; these report desktop's defaults. No Jagex launcher either (null display name, as
+    // RuneLite started without it).
+    @Override public boolean isStretchedEnabled() { return false; }
+    @Override public boolean isStretchedFast() { return false; }
+    @Override public boolean isMinimapZoom() { return false; }
+    @Override public int getCameraMode() { return 0; }
+    @Override public int getOculusOrbState() { return 0; }
+    @Override public boolean isCameraShakeDisabled() { return false; }
+    @Override public String getLauncherDisplayName() { return null; }
+    /** A varbit's value within a given varp array (as getVarbitValue reads the live one). */
+    @Override public int getVarbitValue(int[] varps, int varbit) {
+        int[] d = Native.varbitDef(varbit);
+        if (d == null || varps == null || d[0] < 0 || d[0] >= varps.length) return 0;
+        int bits = d[2] - d[1] + 1;
+        int mask = bits >= 32 ? -1 : (1 << bits) - 1;
+        return (varps[d[0]] >>> d[1]) & mask;
+    }
     @Override public int getCanvasWidth() { return OverlayRenderer.canvasSize().width; }
     @Override public int getCanvasHeight() { return OverlayRenderer.canvasSize().height; }
 

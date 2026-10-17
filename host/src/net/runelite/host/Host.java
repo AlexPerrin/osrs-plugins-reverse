@@ -91,6 +91,20 @@ public final class Host {
     private static final AndroidWorldView worldView = new AndroidWorldView(npcCache, playerCache);
     private static final ClientTick clientTick = new ClientTick();
     private static final net.runelite.api.events.BeforeRender beforeRender = new net.runelite.api.events.BeforeRender();
+    // Client.getFPS: frames (BeforeRender) counted over the last whole second.
+    private static long fpsWindowStart;
+    private static int fpsFrames;
+    static volatile int fps;
+    private static void noteFrame() {
+        long now = android.os.SystemClock.uptimeMillis();
+        if (fpsWindowStart == 0) fpsWindowStart = now;
+        fpsFrames++;
+        if (now - fpsWindowStart >= 1000) {
+            fps = Math.round(fpsFrames * 1000f / (now - fpsWindowStart));
+            fpsFrames = 0;
+            fpsWindowStart = now;
+        }
+    }
     private static final net.runelite.client.ui.overlay.OverlayManager overlayManager =
             new net.runelite.client.ui.overlay.OverlayManager();
     private static final OverlayRenderer overlayRenderer = new OverlayRenderer(overlayManager);
@@ -454,6 +468,7 @@ public final class Host {
                 }
                 // Desktop posts BeforeRender once per frame before drawing (Customizable XP Drops
                 // advances its drops there); here one cycle is one rendered frame.
+                noteFrame();
                 bus.post(beforeRender);
                 try {
                     overlayRenderer.render();

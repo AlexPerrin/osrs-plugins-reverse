@@ -1111,3 +1111,44 @@ was verified.
   pity). Upstream `41-butterfly-netting`.
 - Device test: `::item hunting_butterfly_net`, wield, `::item butterfly_jar 5`, `::npc
   butterfly_warlock` (or `::tele 2551 2915`, Feldip), Catch; `::rumour cervus black_warlock`.
+- **Guild hunter dialogues** (`HunterGuildScript`; wiki transcripts for Huntmaster Gilman (Novice),
+  Guild Hunter Cervus/Ornus (Adept), Aco/Teco (Expert), Wolf (Master), Guild Scribe Verity). The
+  orchestrator confirmed the Android host emits DIALOG ChatMessages ("Name|text"). The hub plugin
+  (dex read): in the Burrow, a DIALOG line from a hunter (prefix = the npc's cache name + "|")
+  containing "would you like another rumour?", "here's your reward." or "another one done?" clears
+  the current hunter's rumour; otherwise a line naming a rumour (its display names, so the
+  carnivorous chinchompa rumour is now "red chinchompa", as in OSRS) or another hunter sets that
+  speaker's rumour, and sets the current hunter unless the line has "would you prefer that one, or
+  a new one entirely". Verity's "Would you like me to filter the rumour information a little
+  more/less" toggles its back-to-back state.
+  - Talk-to (op1): greeting and chat branch per hunter, then the rumour section; Rumour (op3) is the
+    wiki's Quick-Rumour (straight to it; hand-in line "Thanks for that. I'll mark off that report
+    for you. Would you like another rumour?"). Rumour section: not unlocked -> "talk to Verity"
+    line (Wolf: "My apologies, but I don't have time to chat right now."); below the tier level ->
+    "You need N Hunter to take on tier T Hunters' Rumours." (the wiki's Wolf box; for the others a
+    **guess**); carrying the part -> hand in (`turnIn`) with the hunter's reward lines and "Get
+    another rumour?"; own rumour current (or none current) -> the remind line; another hunter's
+    rumour current -> the wiki's switch lines (Gilman: old one / brand new one / No; others: Yes/No,
+    then the hunter's "I asked you to hunt..." line or a new one); else a new rumour with one of the
+    5 (Teco 6) random wiki lines. `assign` returning nothing: "I don't have any rumours for you at the
+    moment." (**guess**). Gilman with no old rumour while following another's: plain Yes/No
+    (**guess**).
+  - "[rare parts]" is always "some of its <part>" (**deviation**: the wiki's "one of its" needs
+    singular part names).
+  - Verity: first talk explains and sets `hunter_rumour_unlocked`; then "Nilsal, hunter. Anything to
+    report?", "What does a scribe do?", "How many rumours have I completed?" (the count), "I have
+    to go."; Rumour-settings (op3) toggles back-to-back (`hunter_rumour_back_to_back` 1 = off; new
+    varp `hunter_rumour_last` 63903: the rumour last handed in is not offered while off). The
+    "Repeat rumours will (no longer|now) be offered." boxes are from the wiki's notes (**guess** that
+    they are message boxes). Not done: spare hunter gear trade, the "intel reshuffle" lines,
+    Wolf's At First Light requirement.
+  - Gilman's Trapper's Tipple (3 coins) and stew (20 coins), with the wiki's no-space lines.
+- **Embertailed jerboa** (box trap row 60361, rumour row 60496): `npc.varlamore_hunterjerboa01`
+  (the wiki's 13139), Hunter 39, 137 XP, a jerboa tail, Check message "You've caught an embertailed
+  jerboa... or maybe not." (wiki); rumour for Gilman and Ornus (1/50, pity 100, part
+  `hg_jerboatail_large`, "some of its tail" **guess**). The Eagles' Peak requirement is not checked.
+- Tests: `HunterGuildScriptTest` (Gilman's sales: coins/space), `HunterRumoursTest` back-to-back.
+  Upstream `42-hunter-guild-dialogues`.
+- Device test (after a deploy): `::tele 1560 9450` is the Burrow (`0_24_147`; **check** the exact
+  tile), `::setxp hunter 14000000`; Talk to Verity, then Gilman "Can we talk about rumours?" and
+  watch the plugin's infobox; `::rumour turnin` is no longer needed (carry the part and talk).

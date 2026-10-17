@@ -11418,10 +11418,10 @@ index 000000000..2ed34b0d4
 +}
 diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterRumourTables.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterRumourTables.kt
 new file mode 100644
-index 000000000..49e7e5251
+index 000000000..d7b9c76cc
 --- /dev/null
 +++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterRumourTables.kt
-@@ -0,0 +1,140 @@
+@@ -0,0 +1,143 @@
 +package org.rsmod.content.skills.hunter.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -11480,7 +11480,9 @@ index 000000000..49e7e5251
 + * [HunterRumourHuntersTable]) gives this rumour. [PART_TEXT] is the "bring back some of its ..."
 + * wording (a guess except grey chinchompa "fur", from the wiki's whistle example). Butterflies and
 + * moths: 1/40, pity 80 (wiki, since the 2024 change); moths only from the level they can be caught
-+ * barehanded (75 sunlight, 85 moonlight, wiki), which is the [LEVEL] here.
++ * barehanded (75 sunlight, 85 moonlight, wiki), which is the [LEVEL] here. [NAME] is the wiki's
++ * rumour name (the carnivorous chinchompa is the "red chinchompa"), which the dialogues say and the
++ * Hunter Rumours plugin looks for.
 + */
 +object HunterRumoursTable {
 +    const val INDEX = 0
@@ -11518,7 +11520,7 @@ index 000000000..49e7e5251
 +            Rumour("grey_chinchompa", "grey chinchompa", "npc.hunting_chinchompa", 53, "obj.hg_chinchompatuft", "fur", 50, 100, GILMAN or CERVUS or ACO or TECO),
 +            Rumour(
 +                "carnivorous_chinchompa",
-+                "carnivorous chinchompa",
++                "red chinchompa",
 +                "npc.hunting_chinchompa_big",
 +                63,
 +                "obj.hg_chinchompatuft_red",
@@ -11532,6 +11534,7 @@ index 000000000..49e7e5251
 +            Rumour("snowy_knight", "snowy knight", "npc.butterfly_snowy", 35, "obj.hg_butterflywing_white", "wings", 40, 80, GILMAN or ORNUS),
 +            Rumour("black_warlock", "black warlock", "npc.butterfly_warlock", 45, "obj.hg_butterflywing_black", "wings", 40, 80, GILMAN or CERVUS),
 +            Rumour("sunlight_moth", "sunlight moth", "npc.moth_sunlight", 75, "obj.hg_mothwing_sun", "wings", 40, 80, GILMAN or CERVUS or TECO),
++            Rumour("embertailed_jerboa", "embertailed jerboa", "npc.varlamore_hunterjerboa01", 39, "obj.hg_jerboatail_large", "tail", 50, 100, GILMAN or ORNUS),
 +            Rumour("moonlight_moth", "moonlight moth", "npc.moth_moonlight", 85, "obj.hg_mothwing_moon", "wings", 40, 80, GILMAN or ACO or WOLF),
 +        )
 +
@@ -11564,10 +11567,10 @@ index 000000000..49e7e5251
 +}
 diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapTables.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapTables.kt
 new file mode 100644
-index 000000000..d053182ba
+index 000000000..a045d68ee
 --- /dev/null
 +++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapTables.kt
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,153 @@
 +package org.rsmod.content.skills.hunter.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -11686,6 +11689,7 @@ index 000000000..d053182ba
 +            bird("cerulean_twitch", "cerulean twitch", "npc.hunting_bird_polar", 11, 646, "polar", "obj.hunting_polar_feather"),
 +            bird("tropical_wagtail", "tropical wagtail", "npc.multicoloured_bird", 19, 950, "coloured", "obj.hunting_stripy_bird_feather"),
 +            boxed("ferret", "ferret", "npc.hunting_ferret", 27, 1150, "obj.hunting_ferret"),
++            boxed("jerboa", "embertailed jerboa", "npc.varlamore_hunterjerboa01", 39, 1370, "obj.hunting_jerboa_tail"),
 +            boxed("chinchompa", "chinchompa", "npc.hunting_chinchompa", 53, 1984, "obj.chinchompa_captured"),
 +            boxed("chinchompa_big", "carnivorous chinchompa", "npc.hunting_chinchompa_big", 63, 2650, "obj.chinchompa_big_captured"),
 +            boxed("chinchompa_black", "black chinchompa", "npc.hunting_chinchompa_black", 73, 3150, "obj.chinchompa_black"),
@@ -11868,10 +11872,10 @@ index 000000000..ad4b48ccf
 +}
 diff --git a/content/skills/hunter/pack/src/main/resources/gamevals.toml b/content/skills/hunter/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..e82d7f469
+index 000000000..8fb23cbc8
 --- /dev/null
 +++ b/content/skills/hunter/pack/src/main/resources/gamevals.toml
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,23 @@
 +[gamevals.varp]
 +birdhouse_seeded_a = 63760
 +birdhouse_seeded_b = 63761
@@ -11894,6 +11898,7 @@ index 000000000..e82d7f469
 +hunter_rumour_unlocked = 63900
 +hunter_rumours_completed = 63901
 +hunter_rumour_back_to_back = 63902
++hunter_rumour_last = 63903
 diff --git a/content/skills/hunter/pack/src/main/resources/pack/configs/birdhouse_vars.toml b/content/skills/hunter/pack/src/main/resources/pack/configs/birdhouse_vars.toml
 new file mode 100644
 index 000000000..1b8d0d8a7
@@ -11966,10 +11971,10 @@ index 000000000..8d58a42d7
 +transmit = "Never"
 diff --git a/content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml b/content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml
 new file mode 100644
-index 000000000..5082a7317
+index 000000000..e4cca3045
 --- /dev/null
 +++ b/content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,71 @@
 +[[varp]]
 +isServerOnly = true
 +id = "varp.hunter_rumour_gilman"
@@ -12033,6 +12038,12 @@ index 000000000..5082a7317
 +[[varp]]
 +isServerOnly = true
 +id = "varp.hunter_rumour_back_to_back"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.hunter_rumour_last"
 +scope = "Perm"
 +transmit = "Never"
 diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/BirdHouseScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/BirdHouseScriptTest.kt
@@ -12522,12 +12533,84 @@ index 000000000..ab966e359
 +        player.setCurrentLevel(HERBLORE, 99)
 +    }
 +}
+diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterGuildScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterGuildScriptTest.kt
+new file mode 100644
+index 000000000..587e9db6b
+--- /dev/null
++++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterGuildScriptTest.kt
+@@ -0,0 +1,66 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.util.UncheckedType
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.api.testing.scope.GameTestScope
++import org.rsmod.content.skills.hunter.HunterGuildScript.Companion.COINS
++import org.rsmod.content.skills.hunter.HunterGuildScript.Companion.STEW
++import org.rsmod.game.inv.InvObj
++import org.rsmod.map.CoordGrid
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class HunterGuildScriptTest {
++    @Test
++    fun GameTestState.`buying a stew swaps exactly 20 coins for one stew`() =
++        runInjectedGameTest(HunterGuildScript::class, null, HunterGuildScript::class) { script ->
++            prepare(coins = 25)
++            assertTrue(buy(script))
++            assertEquals(5, player.inv.count(COINS))
++            assertEquals(1, player.inv.count(STEW))
++        }
++
++    @Test
++    fun GameTestState.`too few coins moves nothing`() =
++        runInjectedGameTest(HunterGuildScript::class, null, HunterGuildScript::class) { script ->
++            prepare(coins = 19)
++            assertFalse(buy(script))
++            assertEquals(19, player.inv.count(COINS))
++            assertEquals(0, player.inv.count(STEW))
++        }
++
++    @Test
++    fun GameTestState.`a full inventory with coins left over moves nothing, exact coins free their slot`() =
++        runInjectedGameTest(HunterGuildScript::class, null, HunterGuildScript::class) { script ->
++            prepare(coins = 30)
++            for (slot in 1 until player.inv.size) player.inv[slot] = InvObj("obj.logs".asRSCM(RSCMType.OBJ), 1)
++            assertFalse(buy(script))
++            assertEquals(30, player.inv.count(COINS))
++            player.inv[0] = InvObj(COINS.asRSCM(RSCMType.OBJ), 20)
++            assertTrue(buy(script))
++            assertEquals(0, player.inv.count(COINS))
++            assertEquals(1, player.inv.count(STEW))
++        }
++
++    private fun GameTestScope.buy(script: HunterGuildScript): Boolean {
++        var bought = false
++        with(script) { player.withProtectedAccess { bought = buy(STEW, 20) } }
++        return bought
++    }
++
++    private fun GameTestScope.prepare(coins: Int) {
++        val center = CoordGrid(0, 24, 147, 20, 50)
++        allocZoneCollision(center)
++        player.teleport(center)
++        player.clearInv()
++        player.inv[0] = InvObj(COINS.asRSCM(RSCMType.OBJ), coins)
++    }
++}
 diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterRumoursTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterRumoursTest.kt
 new file mode 100644
-index 000000000..1b7f1c235
+index 000000000..76bae97ba
 --- /dev/null
 +++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterRumoursTest.kt
-@@ -0,0 +1,131 @@
+@@ -0,0 +1,150 @@
 +package org.rsmod.content.skills.hunter
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -12569,7 +12652,8 @@ index 000000000..1b7f1c235
 +            val cervus = rumours.hunters.first { it.name == "Cervus" }
 +            assertNull(rumours.assign(player, ornus))
 +            val first = checkNotNull(rumours.assign(player, gilman))
-+            val novice53 = setOf("tropical wagtail", "sapphire glacialis", "snowy knight", "black warlock", "grey chinchompa")
++            val novice53 =
++                setOf("tropical wagtail", "sapphire glacialis", "snowy knight", "embertailed jerboa", "black warlock", "grey chinchompa")
 +            assertTrue(first.name in novice53, first.name)
 +            val grey = rumours.rumours.first { it.name == "grey chinchompa" }
 +            rumours.assign(player, gilman, grey)
@@ -12624,7 +12708,7 @@ index 000000000..1b7f1c235
 +        runInjectedGameTest(HunterRumours::class) { rumours ->
 +            prepare(level = 99)
 +            val wolf = rumours.hunters.first { it.name == "Wolf" }
-+            val red = rumours.rumours.first { it.name == "carnivorous chinchompa" }
++            val red = rumours.rumours.first { it.name == "red chinchompa" }
 +            rumours.assign(player, wolf, red)
 +            assertFalse(rumours.turnIn(player, wolf), "no part yet")
 +            fillInventory()
@@ -12637,6 +12721,24 @@ index 000000000..1b7f1c235
 +            assertFalse(rumours.turnIn(player, wolf))
 +            assertEquals(1, player.inv.count("obj.hg_lootsack_t3"))
 +            assertNull(rumours.rumourOf(player, wolf))
++        }
++
++    @Test
++    fun GameTestState.`with back-to-back off the rumour just handed in is not offered again`() =
++        runInjectedGameTest(HunterRumours::class) { rumours ->
++            prepare(level = 99)
++            val wolf = rumours.hunters.first { it.name == "Wolf" }
++            val red = rumours.rumours.first { it.name == "red chinchompa" }
++            org.rsmod.api.player.vars.VarPlayerIntMapSetter.set(player, HunterRumours.BACK_TO_BACK, HunterRumours.BACK_TO_BACK_OFF)
++            rumours.assign(player, wolf, red)
++            player.inv[0] = InvObj(RED_PART.asRSCM(RSCMType.OBJ), 1)
++            assertTrue(rumours.turnIn(player, wolf))
++            repeat(20) {
++                val next = checkNotNull(rumours.assign(player, wolf))
++                assertTrue(next != red, next.name)
++            }
++            org.rsmod.api.player.vars.VarPlayerIntMapSetter.set(player, HunterRumours.BACK_TO_BACK, 0)
++            assertEquals(red, rumours.assign(player, wolf, red))
 +        }
 +
 +    private fun GameTestScope.fillInventory() {
@@ -13801,6 +13903,546 @@ index 000000000..cf99ba11f
 +        }
 +    }
 +}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterGuildScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterGuildScript.kt
+new file mode 100644
+index 000000000..cda48b8ef
+--- /dev/null
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterGuildScript.kt
+@@ -0,0 +1,534 @@
++package org.rsmod.content.skills.hunter
++
++import jakarta.inject.Inject
++import org.rsmod.api.player.dialogue.Dialogue
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.stat.statBase
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.random.GameRandom
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.api.script.onOpNpc3
++import org.rsmod.api.table.hunter.HunterRumourHuntersRow
++import org.rsmod.api.table.hunter.HunterRumoursRow
++import org.rsmod.content.skills.hunter.HunterRumours.Companion.BACK_TO_BACK
++import org.rsmod.content.skills.hunter.HunterRumours.Companion.BACK_TO_BACK_OFF
++import org.rsmod.content.skills.hunter.HunterRumours.Companion.COMPLETED
++import org.rsmod.content.skills.hunter.HunterRumours.Companion.UNLOCKED
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * The Burrow's guild hunters and Guild Scribe Verity (OSRS Wiki transcripts: Huntmaster Gilman
++ * (Novice), Guild Hunter Cervus/Ornus (Adept), Aco/Teco (Expert), Wolf (Master), Guild Scribe
++ * Verity). Talk-to and the Rumour op (the wiki's Quick-Rumour) assign, remind, switch and hand in
++ * rumours through [HunterRumours]; Verity unlocks rumours, counts them and toggles back-to-back
++ * rumours. The Hunter Rumours plugin reads these npc lines (rumour names, "Here's your reward.",
++ * "Another one done?", "Would you like another rumour?", "would you prefer that one, or a new one
++ * entirely").
++ *
++ * Deviations and guesses: "[rare parts]" is always "some of its <part>" (the wiki's "one of its"
++ * needs singular part names we don't have); the level line for hunters other than Wolf, the line
++ * when a hunter has nothing to offer, and the plain Yes/No switch with Gilman when he has no old
++ * rumour are guesses. Not done: Verity's spare hunter gear trade, the "intel reshuffle" lines after
++ * Gilman's brand new rumour, Wolf's At First Light requirement.
++ */
++class HunterGuildScript @Inject constructor(private val rumours: HunterRumours, private val random: GameRandom) :
++    PluginScript() {
++    override fun ScriptContext.startup() {
++        for (hunter in rumours.hunters) {
++            onOpNpc1(hunter.npc) { startDialogue(it.npc) { talk(hunter) } }
++            onOpNpc3(hunter.npc.internalName) { startDialogue(it.npc) { rumourTalk(hunter, quick = true) } }
++        }
++        onOpNpc1(VERITY) { startDialogue(it.npc) { verity() } }
++        onOpNpc3(VERITY) { startDialogue(it.npc) { veritySettings() } }
++    }
++
++    private val HunterRumourHuntersRow.lines: HunterLines
++        get() = LINES.getValue(name)
++
++    private suspend fun Dialogue.talk(hunter: HunterRumourHuntersRow) {
++        val lines = hunter.lines
++        if (hunter.name == "Wolf" && vars[UNLOCKED] == 0) {
++            chatNpc(neutral, "My apologies, but I don't have time to chat right now.")
++            return
++        }
++        for (line in lines.greeting) say(line)
++        if (hunter.name == "Gilman") return gilmanMenu(hunter)
++        val choice = choice3(lines.chatOption, 1, lines.rumourOption, 2, lines.leaveOption, 3)
++        when (choice) {
++            1 -> {
++                for (line in lines.chat) say(line)
++                if (choice2(lines.rumourOption, true, "See you later.", false)) {
++                    chatPlayer(neutral, lines.rumourOption)
++                    rumourTalk(hunter, quick = false)
++                } else {
++                    chatPlayer(neutral, "See you later.")
++                }
++            }
++            2 -> {
++                chatPlayer(neutral, lines.rumourOption)
++                rumourTalk(hunter, quick = false)
++            }
++            else -> chatPlayer(neutral, lines.leaveOption)
++        }
++    }
++
++    private suspend fun Dialogue.gilmanMenu(gilman: HunterRumourHuntersRow) {
++        val choice =
++            choice3(
++                "What kinds of food and drink do you serve?", 1,
++                "Can we talk about rumours?", 2,
++                "I'm good, thanks.", 3,
++            )
++        when (choice) {
++            1 -> gilmanFood()
++            2 -> {
++                chatPlayer(neutral, "Can we talk about rumours?")
++                if (vars[UNLOCKED] == 0) {
++                    chatNpc(neutral, gilman.lines.notVerity)
++                    return
++                }
++                chatNpc(neutral, "Yes, yes. How can I help you on that front?")
++                rumourTalk(gilman, quick = false, asked = true)
++            }
++            else -> chatPlayer(neutral, "I'm good, thanks.")
++        }
++    }
++
++    private suspend fun Dialogue.gilmanFood() {
++        chatPlayer(quiz, "What kinds of food and drink do you serve?")
++        chatNpc(neutral, "In terms of drinks, we've got a Trapper's Tipple, and for food, a simple hearty stew.")
++        if (player.inv.freeSpace() == 0) {
++            chatNpc(neutral, "But you don't have room to hold either of them, so you'll have to come back later.")
++            chatPlayer(quiz, "Couldn't you just leave it on the ground for me?")
++            chatNpc(neutral, "We don't tend to just... leave things like that around here.")
++            return
++        }
++        val choice = choice3("I'd love a Trapper's Tipple!", 1, "Could I grab a stew?", 2, "I'll pass, thanks.", 3)
++        when (choice) {
++            1 -> {
++                chatPlayer(happy, "I'd love a Trapper's Tipple!")
++                chatNpc(neutral, "That'll be three coins then.")
++                if (access.buy(TIPPLE, TIPPLE_PRICE)) mesbox("You buy a pint of Trapper's Tipple.")
++                else chatPlayer(sad, "Oh, I can't afford one right now.")
++            }
++            2 -> {
++                chatPlayer(quiz, "Could I grab a stew?")
++                chatNpc(happy, "Absolutely! They're 20 coins these days.")
++                if (access.buy(STEW, STEW_PRICE)) mesbox("You buy some stew.")
++                else chatPlayer(sad, "Oh, I can't afford that right now.")
++            }
++            else -> chatPlayer(neutral, "I'll pass, thanks.")
++        }
++    }
++
++    /** Takes [price] coins for one [obj]; nothing moves unless both sides fit. */
++    fun ProtectedAccess.buy(obj: String, price: Int): Boolean {
++        if (inv.count(COINS) < price) return false
++        if (inv.count(COINS) > price && inv.freeSpace() == 0) return false
++        if (invDel(inv, COINS, price).failure) return false
++        if (invAdd(inv, obj).failure) {
++            invAdd(inv, COINS, price)
++            return false
++        }
++        return true
++    }
++
++    private suspend fun Dialogue.rumourTalk(hunter: HunterRumourHuntersRow, quick: Boolean, asked: Boolean = false) {
++        val lines = hunter.lines
++        if (vars[UNLOCKED] == 0) {
++            if (hunter.name == "Wolf") chatNpc(neutral, "My apologies, but I don't have time to chat right now.")
++            else chatNpc(neutral, lines.notVerity)
++            return
++        }
++        if (player.statBase(HunterRumours.HUNTER) < hunter.level) {
++            if (hunter.name == "Wolf") {
++                chatNpc(neutral, "There's an extra seat at this table. I suppose you'd be interested in claiming it one day?")
++            }
++            mesbox("You need ${hunter.level} Hunter to take on tier ${tier(hunter)} Hunters' Rumours.")
++            return
++        }
++        if (rumours.hasPart(player, hunter)) return handIn(hunter, quick)
++        val own = rumours.rumourOf(player, hunter)
++        val current = rumours.currentHunter(player)
++        val currentRumour = current?.let { rumours.rumourOf(player, it) }
++        when {
++            own != null && (current == hunter || currentRumour == null) -> {
++                rumours.resume(player, hunter)
++                if (hunter.name == "Gilman") {
++                    chatPlayer(quiz, "Can you remind me which rumour I'm chasing right now?")
++                }
++                chatNpc(
++                    neutral,
++                    "You're hunting for me at the moment. This rumour was about ${a(own)}. You'll need to bring " +
++                        "back ${parts(own)}.",
++                )
++            }
++            current != null && current != hunter && currentRumour != null ->
++                otherHuntersRumour(hunter, current, currentRumour, own)
++            else -> {
++                if (asked) chatPlayer(quiz, "Do you have any new ones for me?")
++                newRumour(hunter)
++            }
++        }
++    }
++
++    private suspend fun Dialogue.otherHuntersRumour(
++        hunter: HunterRumourHuntersRow,
++        other: HunterRumourHuntersRow,
++        otherRumour: HunterRumoursRow,
++        own: HunterRumoursRow?,
++    ) {
++        val lines = hunter.lines
++        val title = "Switch to ${npcName(hunter)}'s rumour?"
++        if (hunter.name == "Gilman") {
++            chatNpc(
++                neutral,
++                "I can see you're following ${other.name}'s rumour looking for ${a(otherRumour)} at the moment. " +
++                    "You'll need to bring back ${parts(otherRumour)}.",
++            )
++            if (own == null) {
++                if (choice2("Yes.", true, "No.", false, title)) newRumour(hunter)
++                return
++            }
++            chatNpc(
++                neutral,
++                "I seem to remember sending you off to hunt ${a(own)} and bring back ${parts(own)}. Would you " +
++                    "prefer that one, or a new one entirely?",
++            )
++            val choice = choice3("Yes, go back to his old one.", 1, "Yes, but with a brand new one.", 2, "No.", 3, title)
++            when (choice) {
++                1 -> {
++                    rumours.resume(player, hunter)
++                    chatNpc(neutral, "That was it. I asked you to hunt ${a(own)} and bring back ${parts(own)}. Best of luck.")
++                }
++                2 -> newRumour(hunter)
++            }
++            return
++        }
++        chatNpc(
++            neutral,
++            "I hear you're hunting for ${other.name}. Aren't you looking for ${a(otherRumour)} at the moment? " +
++                "You'll need to bring back ${parts(otherRumour)}.",
++        )
++        chatNpc(neutral, "Unless you fancy hunting for me instead?")
++        if (!choice2("Yes.", true, "No.", false, title)) return
++        if (own != null) {
++            rumours.resume(player, hunter)
++            chatNpc(neutral, lines.remember.format(a(own), parts(own)))
++        } else {
++            newRumour(hunter)
++        }
++    }
++
++    private suspend fun Dialogue.newRumour(hunter: HunterRumourHuntersRow) {
++        val rumour = rumours.assign(player, hunter)
++        if (rumour == null) {
++            chatNpc(neutral, "I don't have any rumours for you at the moment.")
++            return
++        }
++        val offers = ASSIGN_LINES + hunter.lines.extraAssign
++        chatNpc(neutral, offers[random.of(offers.size)].format(rumour.name, parts(rumour)))
++    }
++
++    private suspend fun Dialogue.handIn(hunter: HunterRumourHuntersRow, quick: Boolean) {
++        if (!rumours.turnIn(player, hunter)) return
++        if (quick) {
++            chatNpc(neutral, "Thanks for that. I'll mark off that report for you. Would you like another rumour?")
++        } else {
++            chatNpc(happy, hunter.lines.done)
++            chatNpc(quiz, hunter.lines.another)
++        }
++        if (choice2("Yes.", true, "No.", false, "Get another rumour?")) newRumour(hunter)
++    }
++
++    private suspend fun Dialogue.verity() {
++        if (vars[UNLOCKED] == 0) {
++            chatNpc(
++                neutral,
++                "Oh, hello there newcomer. I'm Guild Scribe Verity. Do you need me to explain the work we do here?",
++            )
++            chatPlayer(neutral, "Yes please.")
++            chatNpc(
++                neutral,
++                "So it's nice and simple. Just chat to any of the hunters in here to help them out. They're all " +
++                    "following reports that I've split up amongst them.",
++            )
++            chatPlayer(quiz, "Reports?")
++            chatNpc(
++                neutral,
++                "Indeed. There are all sorts of interesting creatures to hunt out there. Sometimes we get reports of " +
++                    "a particularly unique example. When that happens, one of the hunters will set out to find it.",
++            )
++            chatNpc(
++                neutral,
++                "If you do decide to take a job from any of the hunters, they'll tell you what type of creature " +
++                    "they're looking into. Hunt that creature until you encounter the unique specimen.",
++            )
++            chatNpc(
++                neutral,
++                "Once you've caught it, bring some proof back to the hunter that sent you out in the first place. " +
++                    "I'm sure they'll reward you for your time.",
++            )
++            VarPlayerIntMapSetter.set(player, UNLOCKED, 1)
++            chatPlayer(neutral, "I see. Thanks for the information.")
++            return
++        }
++        chatNpc(neutral, "Nilsal, hunter. Anything to report?")
++        chatPlayer(neutral, "Nothing abnormal today.")
++        verityMenu()
++    }
++
++    private suspend fun Dialogue.verityMenu() {
++        val choice =
++            choice3("What does a scribe do?", 1, "How many rumours have I completed?", 2, "I have to go.", 3)
++        when (choice) {
++            1 -> {
++                chatPlayer(quiz, "What does a scribe do?")
++                chatNpc(
++                    neutral,
++                    "I'm the primary record-keeper here. I organise all of our reports and write up anything " +
++                        "important to be sent back to the city.",
++                )
++                chatPlayer(quiz, "Do you go out on any hunts with the others?")
++                chatNpc(
++                    neutral,
++                    "I wouldn't know what to do with myself out there, so I like to stay back here with my scrolls.",
++                )
++                verityMenu()
++            }
++            2 -> {
++                chatPlayer(quiz, "How many rumours have I completed?")
++                chatNpc(
++                    happy,
++                    "Our records suggest you've managed to complete ${vars[COMPLETED]} rumours for us!",
++                )
++            }
++            else -> chatPlayer(neutral, "I have to go.")
++        }
++    }
++
++    private suspend fun Dialogue.veritySettings() {
++        val on = vars[BACK_TO_BACK] != BACK_TO_BACK_OFF
++        val amount = if (on) "more" else "less"
++        chatNpc(
++            quiz,
++            "Would you like me to filter the rumour information a little $amount than I am right now?",
++        )
++        val title = if (on) "Disable back-to-back rumours?" else "Enable back-to-back rumours?"
++        if (!choice2("Yes", true, "No", false, title)) return
++        VarPlayerIntMapSetter.set(player, BACK_TO_BACK, if (on) BACK_TO_BACK_OFF else 0)
++        mesbox(if (on) "Repeat rumours will no longer be offered." else "Repeat rumours will now be offered.")
++    }
++
++    private suspend fun Dialogue.say(line: Line) {
++        if (line.player) chatPlayer(neutral, line.text.replace("[player name]", player.displayName))
++        else chatNpc(neutral, line.text)
++    }
++
++    private fun npcName(hunter: HunterRumourHuntersRow): String = hunter.npc.name
++
++    private fun tier(hunter: HunterRumourHuntersRow): Int =
++        when {
++            hunter.level >= 91 -> 4
++            hunter.level >= 72 -> 3
++            hunter.level >= 57 -> 2
++            else -> 1
++        }
++
++    private fun a(rumour: HunterRumoursRow): String = "${HunterRumours.article(rumour.name)} ${rumour.name}"
++
++    private fun parts(rumour: HunterRumoursRow): String = "some of its ${rumour.partText}"
++
++    class Line(val player: Boolean, val text: String)
++
++    class HunterLines(
++        val greeting: List<Line>,
++        val chatOption: String,
++        val chat: List<Line>,
++        val rumourOption: String,
++        val leaveOption: String,
++        val notVerity: String,
++        val done: String,
++        val another: String,
++        val remember: String,
++        val extraAssign: List<String> = emptyList(),
++    )
++
++    companion object {
++        const val VERITY = "npc.hg_verity"
++        const val COINS = "obj.coins"
++        const val TIPPLE = "obj.trappers_tipple"
++        const val STEW = "obj.stew"
++        const val TIPPLE_PRICE = 3
++        const val STEW_PRICE = 20
++
++        fun npc(text: String) = Line(false, text)
++
++        fun player(text: String) = Line(true, text)
++
++        const val NEW_HERE = "You're new here, aren't you? You might want to talk to Verity before you get started."
++
++        /** %1$s the creature, %2$s "some of its <part>". */
++        val ASSIGN_LINES =
++            listOf(
++                "Could you check out the validity of this report for me? Someone thinks they've seen a %1\$s. Once " +
++                    "you find it, bring back %2\$s.",
++                "There's been rumours of a rare %1\$s coming in. Once you find it, bring back %2\$s.",
++                "We've got reports of a slightly different %1\$s in the local population. Once you find it, bring " +
++                    "back %2\$s.",
++                "Looks like we need some information on a unique specimen amongst the local %1\$s population. Once " +
++                    "you find it, bring back %2\$s.",
++                "I've heard rumours of a strange %1\$s that you could check out for me. Once you find it, bring " +
++                    "back %2\$s.",
++            )
++
++        val LINES =
++            mapOf(
++                "Gilman" to
++                    HunterLines(
++                        greeting = listOf(npc("Greetings, fellow hunter. How can I be of help?")),
++                        chatOption = "",
++                        chat = emptyList(),
++                        rumourOption = "Can we talk about rumours?",
++                        leaveOption = "I'm good, thanks.",
++                        notVerity =
++                            "Looks like you could do with talking to Verity first, given you're new to this whole " +
++                                "business.",
++                        done = "Another one done? You're really doing a lot for the guild.",
++                        another = "Are you up for another?",
++                        remember = "That was it. I asked you to hunt %1\$s and bring back %2\$s. Best of luck.",
++                    ),
++                "Cervus" to
++                    HunterLines(
++                        greeting =
++                            listOf(npc("Good day, hunter."), player("Good day."), npc("What's brought you in here today?")),
++                        chatOption = "Just looking for something to do.",
++                        chat =
++                            listOf(
++                                player("Just looking for something to do."),
++                                npc("Ah, that's the same thing that brought me here."),
++                                player("Are you not a hunter by trade?"),
++                                npc("Only by interest at the moment, although the gang here are trying their best to train me."),
++                                player("Are you enjoying it?"),
++                                npc("Well it's less boring than what I've done before, so I can't complain!"),
++                                player("What were you doing before this then?"),
++                                npc(
++                                    "Well, my parents wanted me to go into the whole wine growing business, but farming " +
++                                        "was a bit too slow-paced for me.",
++                                ),
++                            ),
++                        rumourOption = "Can I get a rumour?",
++                        leaveOption = "Never mind.",
++                        notVerity = NEW_HERE,
++                        done = "Excellent! Thanks for getting that done. Here's your reward.",
++                        another = "Are you interested in taking on another one for me?",
++                        remember = "Ah, yes. I asked you to hunt %1\$s and bring back %2\$s. Hope it's not too boring for you!",
++                    ),
++                "Ornus" to
++                    HunterLines(
++                        greeting =
++                            listOf(
++                                npc("Welcome to the Burrow, hunter."),
++                                player("Thanks! It's nice and homely in here, isn't it?"),
++                                npc("Quite! It's a good break from the city."),
++                            ),
++                        chatOption = "How long have you been around here?",
++                        chat =
++                            listOf(
++                                player("How long have you been around here?"),
++                                npc("Not too long, in fact. Gilman invited me to join the guild a short while ago."),
++                                player("What were you up to before that?"),
++                                npc("Oh... A little bit of this and that."),
++                                player("Nothing particularly interesting?"),
++                                npc("You could say that... I'm definitely not proud of it."),
++                            ),
++                        rumourOption = "Can I get a rumour?",
++                        leaveOption = "Never mind.",
++                        notVerity = NEW_HERE,
++                        done = "Verity will be glad to have another one ticked off. Thanks. Here's your reward.",
++                        another = "Fancy taking on another?",
++                        remember = "Oh, I remember! I asked you to hunt %1\$s and bring back %2\$s. I hope it's going okay!",
++                    ),
++                "Aco" to
++                    HunterLines(
++                        greeting =
++                            listOf(
++                                npc("Hunter Aco reporting for duty!"),
++                                player("[player name] reporting for... nothing in particular, really."),
++                                npc("What can I do for you?"),
++                            ),
++                        chatOption = "What do you do here?",
++                        chat =
++                            listOf(
++                                player("What do you do here?"),
++                                npc("Hunting, mostly."),
++                                player("Hmm, I probably could've guessed that."),
++                                npc("Perhaps you confused me for Teco over there? He's more into plants and all that."),
++                                player("What got you into hunting then?"),
++                                npc("Don't tell too many people, but it's much nicer here than wearing a uniform and marching around!"),
++                                npc(
++                                    "I'm still not sure how I feel about having Teco around the whole time though. People " +
++                                        "confuse us too often for my liking.",
++                                ),
++                            ),
++                        rumourOption = "Can I get a rumour?",
++                        leaveOption = "Never mind.",
++                        notVerity = NEW_HERE,
++                        done = "Thanks for doing that for me. Here's your reward.",
++                        another = "Would you like another rumour?",
++                        remember = "Now then... I asked you to hunt %1\$s for me and bring back %2\$s.",
++                    ),
++                "Teco" to
++                    HunterLines(
++                        greeting =
++                            listOf(
++                                npc("Oh, what corner have you grown from then?"),
++                                player("The upstairs corner!"),
++                                npc("That would explain why I didn't see you coming."),
++                            ),
++                        chatOption = "What are you up to?",
++                        chat =
++                            listOf(
++                                player("What are you up to?"),
++                                npc("Same thing I'm always up to: studying the plants."),
++                                player("That's an odd thing for a hunter to do, no?"),
++                                npc("The plants make me happy! Not to mention, many of them are excellent for healing injuries."),
++                                player("Yes! I happened to use a couple of them lately to help out Fox."),
++                                npc("It's worth also being aware of which ones may be dangerous, but that lesson is best learned through practice."),
++                                player("Practice?"),
++                                npc("Yes, by frequent exposure! You start to recognise them very quickly after that."),
++                            ),
++                        rumourOption = "Can I get a rumour?",
++                        leaveOption = "Never mind.",
++                        notVerity = NEW_HERE,
++                        done = "All done? That's great! I'll make sure the report is submitted. Here's your reward.",
++                        another = "Dare to take on another rumour?",
++                        remember = "I asked you to hunt %1\$s for me and bring back %2\$s. Thanks!",
++                        extraAssign =
++                            listOf(
++                                "We've got rumours circling about an odd %1\$s. You can follow up on that if you'd like? " +
++                                    "Once you find it, bring back %2\$s.",
++                            ),
++                    ),
++                "Wolf" to
++                    HunterLines(
++                        greeting = listOf(npc("Nilsal, hunter."), player("Hello there."), npc("Can I help you out?")),
++                        chatOption = "Can we talk about Fox?",
++                        chat =
++                            listOf(
++                                player("Can we talk about Fox?"),
++                                npc("I'm so glad you managed to find and help him. I've read his report and you feature quite heavily."),
++                                player("Oh, he did most of it himself. I was just running errands, really!"),
++                                npc("Oi - don't sell yourself short. More importantly, don't give Fox too much credit."),
++                            ),
++                        rumourOption = "Can I get a rumour?",
++                        leaveOption = "See you later.",
++                        notVerity = NEW_HERE,
++                        done = "You're quite the talented hunter! I'll have to keep you around. Here's your reward.",
++                        another = "Want to test your skills again?",
++                        remember = "If I'm remembering correctly, I asked you to hunt %1\$s and bring back %2\$s.",
++                    ),
++            )
++    }
++}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumourScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumourScript.kt
 new file mode 100644
 index 000000000..51bb17ff5
@@ -13869,10 +14511,10 @@ index 000000000..51bb17ff5
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumours.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumours.kt
 new file mode 100644
-index 000000000..50ddfc78d
+index 000000000..ac9899389
 --- /dev/null
 +++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterRumours.kt
-@@ -0,0 +1,113 @@
+@@ -0,0 +1,131 @@
 +package org.rsmod.content.skills.hunter
 +
 +import jakarta.inject.Inject
@@ -13898,6 +14540,8 @@ index 000000000..50ddfc78d
 + *   pity threshold. No part while any rare part is held. A full inventory drops a rolled part and
 + *   destroys a pity part (wiki).
 + * - Turning in takes the part and gives (Hunter level + 5) * modifier XP and the tier's loot sack.
++ * - With back-to-back rumours off (Verity's Rumour-settings; `hunter_rumour_back_to_back` = 1) the
++ *   rumour last handed in (`hunter_rumour_last`) is not offered again.
 + *
 + * Deviation: only creatures this server can catch are assigned (wagtail, grey and carnivorous
 + * chinchompas, herbiboar, and the net-caught sapphire glacialis, snowy knight, black warlock,
@@ -13923,9 +14567,11 @@ index 000000000..50ddfc78d
 +        val level = player.statBase(HUNTER)
 +        if (level < hunter.level) return null
 +        val taken = hunters.filter { it != hunter }.mapNotNull { rumourOf(player, it)?.index }.toSet()
++        val repeat = if (player.vars[BACK_TO_BACK] == BACK_TO_BACK_OFF) player.vars[LAST] else -1
 +        val options =
 +            rumours.filter {
-+                it.hunters and (1 shl hunter.index) != 0 && level >= it.level && it.index !in taken
++                it.hunters and (1 shl hunter.index) != 0 && level >= it.level && it.index !in taken &&
++                    it.index != repeat
 +            }
 +        val rumour = forced?.takeIf { it in options } ?: options.randomOrNull() ?: return null
 +        VarPlayerIntMapSetter.set(player, hunterVarp(hunter), rumour.index)
@@ -13933,6 +14579,15 @@ index 000000000..50ddfc78d
 +        VarPlayerIntMapSetter.set(player, PITY, 0)
 +        return rumour
 +    }
++
++    /** Makes [hunter] the current hunter again, for their unfinished rumour. */
++    fun resume(player: Player, hunter: HunterRumourHuntersRow) {
++        if (rumourOf(player, hunter) == null) return
++        VarPlayerIntMapSetter.set(player, CURRENT, hunter.index + 1)
++    }
++
++    fun hasPart(player: Player, hunter: HunterRumourHuntersRow): Boolean =
++        rumourOf(player, hunter)?.let { it.part.internalName in player.inv } ?: false
 +
 +    /** Called for every successful catch of [creature] (a creature npc's internal name). */
 +    fun onCatch(player: Player, creature: String) {
@@ -13956,6 +14611,7 @@ index 000000000..50ddfc78d
 +        VarPlayerIntMapSetter.set(player, hunterVarp(hunter), 0)
 +        if (player.vars[CURRENT] == hunter.index + 1) VarPlayerIntMapSetter.set(player, CURRENT, 0)
 +        VarPlayerIntMapSetter.set(player, COMPLETED, player.vars[COMPLETED] + 1)
++        VarPlayerIntMapSetter.set(player, LAST, rumour.index)
 +        player.statAdvance(HUNTER, turnInXp(player.statBase(HUNTER), hunter.modifier).toDouble())
 +        player.invAddOrDrop(objRepo, hunter.lootSack.internalName)
 +        return true
@@ -13976,6 +14632,10 @@ index 000000000..50ddfc78d
 +        const val CURRENT = "varp.hunter_rumour_current"
 +        const val PITY = "varp.hunter_rumour_pity"
 +        const val COMPLETED = "varp.hunter_rumours_completed"
++        const val UNLOCKED = "varp.hunter_rumour_unlocked"
++        const val BACK_TO_BACK = "varp.hunter_rumour_back_to_back"
++        const val BACK_TO_BACK_OFF = 1
++        const val LAST = "varp.hunter_rumour_last"
 +        const val FOUND_MESSAGE =
 +            "<col=229628>You find a rare piece of the creature! You should take it back to the Hunter Guild.</col>"
 +        const val NO_RUMOUR_MESSAGE = "You don't have a rumour to investigate at the moment."
@@ -13988,10 +14648,10 @@ index 000000000..50ddfc78d
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
 new file mode 100644
-index 000000000..892091ff5
+index 000000000..7a2c4f8f2
 --- /dev/null
 +++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
-@@ -0,0 +1,387 @@
+@@ -0,0 +1,389 @@
 +package org.rsmod.content.skills.hunter
 +
 +import dev.openrune.rscm.RSCM
@@ -14153,7 +14813,8 @@ index 000000000..892091ff5
 +            invAdd(inv, drop.obj, random.of(drop.min, drop.max))
 +        }
 +        statAdvance(HUNTER, creature.xp)
-+        mes("You've caught ${creature.article} ${creature.name}.")
++        val caught = "You've caught ${creature.article} ${creature.name}"
++        mes(if (creature.npc == JERBOA) "$caught... or maybe not." else "$caught.")
 +        rumours.onCatch(player, creature.npc)
 +        return true
 +    }
@@ -14350,6 +15011,7 @@ index 000000000..892091ff5
 +    companion object {
 +        const val HUNTER = "stat.hunter"
 +        const val TIMER = "timer.hunter_traps"
++        const val JERBOA = "npc.varlamore_hunterjerboa01"
 +        const val LAY_SEQ = "seq.hunting_setting_trap_small"
 +        const val LAY_TICKS = 3
 +        const val ATTEMPT_TICKS = 3
@@ -14956,10 +15618,10 @@ index 000000000..8227019c6
 +}
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..eaffc4892
+index 000000000..dbbd7ad4b
 --- /dev/null
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
-@@ -0,0 +1,157 @@
+@@ -0,0 +1,159 @@
 +[gamevals.dbtable]
 +impling_types = 60000
 +birdhouse_types = 60001
@@ -15005,6 +15667,7 @@ index 000000000..eaffc4892
 +hunter_trap_creature_chinchompa = 60358
 +hunter_trap_creature_chinchompa_big = 60359
 +hunter_trap_creature_chinchompa_black = 60360
++hunter_trap_creature_jerboa = 60361
 +herbiboar_leg_0 = 60370
 +herbiboar_leg_1 = 60371
 +herbiboar_leg_2 = 60372
@@ -15114,6 +15777,7 @@ index 000000000..eaffc4892
 +hunter_rumour_black_warlock = 60493
 +hunter_rumour_sunlight_moth = 60494
 +hunter_rumour_moonlight_moth = 60495
++hunter_rumour_embertailed_jerboa = 60496
 +
 +[gamevals.timer]
 +hunter_traps = 470

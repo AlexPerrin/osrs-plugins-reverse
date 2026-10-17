@@ -38,8 +38,10 @@ finished, easy added, music tab Play. Details in `docs/openrune-port.md`, "Ninth
   the spot), STASH; easy Talk (scroll swap), Search, coordinate Dig, Emote + easy Uri, easy STASH,
   easy casket and the Loot Tracker entry ("Clue Scroll (Easy)"; the host's event-order fix works).
 - **Music tab** (`api/music-plugin` `MusicTabScript`): Play/Unlock hint on the jukebox list; child
-  index = non-hidden music rows in row order (from osrs-dumps `music_list_setup`). Not yet
-  device-checked (5684e9e).
+  index = non-hidden music rows in row order (from osrs-dumps `music_list_setup`); order
+  device-checked (5684e9e deployed 02:10). The success branch of a music step (Cecilia while the
+  track plays) is untested on the device: "Alone" did not unlock on Ice Mountain (OpenRune's area
+  unlock). Built but not deployed: 1d7c56a (unlock hint wording "This track unlocks ...").
 - **Left out:** 4 easy map interfaces (Galahad, N of Falador, behind Lumbridge castle, Draynor
   wheat field: map interfaces are model icons, see the port doc), 27 easy loc searches on locs
   without a "Search" op (closed drawers), scroll cases, the master clue tertiary, medium+ tiers.

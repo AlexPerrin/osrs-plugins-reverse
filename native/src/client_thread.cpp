@@ -71,12 +71,13 @@ const char* name(EventType t) {
         case EventType::MenuOpened: return "MenuOpened";
         case EventType::MenuOptionClicked: return "MenuOptionClicked";
         case EventType::MenuTap: return "MenuTap";
+        case EventType::WidgetDrag: return "WidgetDrag";
     }
     return "?";
 }
 
 void post(const Event& e) {
-    if (e.type != EventType::ClientTick) {
+    if (e.type != EventType::ClientTick && e.type != EventType::WidgetDrag) {
         char line[96];
         snprintf(line, sizeof line, "%llu %s %d %d", (unsigned long long)g_cycles.load(), name(e.type), e.a, e.b);
         std::lock_guard lock(g_log_mutex);
@@ -466,6 +467,9 @@ bool install() {
     mprotect(start, page, PROT_READ);  // .data.rel.ro is read-only after relocation
     LOGI("client_thread: doCycle hooked");
     install_menu_hook();
+    game::install_drag_hook([] {
+        if (on_client_thread()) post({EventType::WidgetDrag, game::touch_state()});
+    });
     return true;
 }
 

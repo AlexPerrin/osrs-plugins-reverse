@@ -381,19 +381,50 @@ public class AndroidClient extends ClientStub {
         return (getServerVarpValue(v.getIndex()) >>> lsb) & mask;
     }
     @Override public int getKeyboardIdleTicks() { return idleCycles(); }
-    @Override public int getMouseCurrentButton() { return 0; }
+    /**
+     * 1 while the screen is held, 0 otherwise; during a WidgetDrag the release cycle reads 0 (desktop:
+     * the left button is up on the frame the drag completes). // unverified: touch state values outside drags
+     */
+    @Override public int getMouseCurrentButton() {
+        if (dragEventTouch >= 0) return dragEventTouch == 4 ? 0 : 1;
+        return Native.touchState() == 3 ? 1 : 0;
+    }
+    /** Touch state of the WidgetDrag being posted (Host), -1 outside it. */
+    int dragEventTouch = -1;
 
     /** The game canvas is the overlay canvas (UI-canvas units). */
     @Override public java.awt.Dimension getRealDimensions() { return new java.awt.Dimension(getCanvasWidth(), getCanvasHeight()); }
     @Override public java.awt.Dimension getStretchedDimensions() { return getRealDimensions(); }
 
-    // No drag/selection/cursor state on a touch screen (RuneLite returns null when nothing is dragged).
-    @Override public net.runelite.api.widgets.Widget getDraggedWidget() { return null; }
-    // Drag targets: the mobile client drags through its own touch code; a plugin's write is kept
-    // and read back (Bank Tags / Prayer reorder set it) but not given to the game.
-    private net.runelite.api.widgets.Widget draggedOnWidget;
-    @Override public net.runelite.api.widgets.Widget getDraggedOnWidget() { return draggedOnWidget; }
-    @Override public void setDraggedOnWidget(net.runelite.api.widgets.Widget w) { draggedOnWidget = w; }
+    // Widget drag from the game's drag state (docs/offsets.md "Widget drag"); null when nothing is held.
+    private static net.runelite.api.widgets.Widget dragWidget(int comp, int index) {
+        if (comp < 0) return null;
+        return index >= 0 ? new AndroidWidget.Dynamic(comp, index) : new AndroidWidget(comp);
+    }
+    @Override public net.runelite.api.widgets.Widget getDraggedWidget() {
+        int[] d = Native.dragState();
+        return d != null ? dragWidget(d[0], d[1]) : null;
+    }
+    @Override public net.runelite.api.widgets.Widget getDraggedOnWidget() {
+        int[] d = Native.dragState();
+        return d != null ? dragWidget(d[2], d[3]) : null;
+    }
+    @Override public boolean isDraggingWidget() {
+        int[] d = Native.dragState();
+        return d != null && d[4] != 0;
+    }
+    @Override public int getDragTime() {
+        int[] d = Native.dragState();
+        return d != null ? d[5] : 0;
+    }
+    /**
+     * null clears the game's target, so the release does no swap (Bank Tags' preventTagTabDrags,
+     * Layouts). Setting another widget is not written to the game. // unverified: non-null targets
+     */
+    @Override public void setDraggedOnWidget(net.runelite.api.widgets.Widget w) {
+        if (w == null) Native.dragClearTarget();
+        else android.util.Log.w(Host.TAG, "setDraggedOnWidget(" + w.getId() + "): not written to the game");
+    }
     private boolean widgetSelected;
     @Override public boolean isWidgetSelected() { return widgetSelected; }
     /** Kept host-side only; the game's spell/item-use target state is not written. */

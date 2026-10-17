@@ -266,6 +266,38 @@ uintptr_t ge_slot_raw(int slot, uint8_t out[0x28]) {
     return off;
 }
 
+// Widget drag, from the drag block of the cycle function 0x41d0a4 (Ghidra FUN_0051d0a4): Client
+// +0x413ad8 dragged Widget* (+0x413ad0 its reference count holder), +0x413ae8 the drag parent,
+// +0x413af0 press point, +0x413b00 dragged-on Widget* (+0x413af8), +0x413b20 u8 dragging (set
+// once the widget's dead time +0x324 and dead zone +0x320 are exceeded), +0x413b24 int cycles held.
+// Touch state Client+0x40e988: 3 held, 4 released (the release runs onDragComplete +0x500 and the
+// swap 0x528b50(…, dragged, dragged-on)).
+namespace {
+constexpr uintptr_t kDragged = 0x413ad8, kDraggedOn = 0x413b00, kDragging = 0x413b20, kDragCycles = 0x413b24,
+                    kTouchState = 0x40e988;
+}
+bool drag_state(int out[7]) {
+    uintptr_t c = client();
+    if (!c) return false;
+    uintptr_t d = read_at<uintptr_t>(c + kDragged);
+    if (!d) return false;
+    out[0] = out[1] = out[2] = out[3] = -1;
+    widget_ref(d, &out[0], &out[1]);
+    uintptr_t on = read_at<uintptr_t>(c + kDraggedOn);
+    if (on) widget_ref(on, &out[2], &out[3]);
+    out[4] = read_at<uint8_t>(c + kDragging);
+    out[5] = read_at<int32_t>(c + kDragCycles);
+    out[6] = read_at<int32_t>(c + kTouchState);
+    return true;
+}
+void drag_clear_target() {
+    uintptr_t c = client();
+    // Only the pointer: the game checks it before the swap and replaces both words (releasing the
+    // reference holder) when the next target is set.
+    if (c) *reinterpret_cast<volatile uintptr_t*>(c + kDraggedOn) = 0;
+}
+int touch_state() { uintptr_t c = client(); return c ? read_at<int32_t>(c + kTouchState) : 0; }
+
 // Instances (REBUILD_REGION). The scene loader manager is *(Client+0x4868) (passed to both rebuild
 // handlers from the packet dispatcher, 0x442610). REBUILD_REGION (0x555510) sets byte +0x54dd to 1,
 // both normal rebuild paths (0x5551dc, 0x5555xx) clear it. The region parser (0x5580e4) fills
@@ -2782,6 +2814,30 @@ void install_message_hook() {
     g_message_ctor = reinterpret_cast<MessageCtor>(
         inline_hook(g_base + g_build->message_ctor, kMessageCtorCode, reinterpret_cast<void*>(hook_message_ctor)));
     LOGI("game: message hook %s", g_message_ctor ? "installed" : "FAILED");
+}
+
+namespace {
+constexpr uintptr_t kMenuOpenCheck = 0x58da0c, kDragCheckRet = 0x41ffe8;
+constexpr uint32_t kMenuOpenCheckCode[4] = {0xf943e008, 0xf100011f, 0x1a9f07e0, 0xd65f03c0};
+void (*g_drag_cb)() = nullptr;
+}
+}  // namespace game
+
+// The menu-open check is a leaf the compiler may call assuming only x0/x8 change, so the stub
+// (script_stubs.S) saves every caller-saved register before calling this.
+extern "C" {
+__attribute__((visibility("hidden"))) void* osrsrl_drag_check_orig = nullptr;
+void osrsrl_drag_check_stub();
+void osrsrl_drag_check_cb(uintptr_t lr) {
+    if (game::g_drag_cb && lr == game::g_base + game::kDragCheckRet) game::g_drag_cb();
+}
+}
+
+namespace game {
+void install_drag_hook(void (*cb)()) {
+    g_drag_cb = cb;
+    osrsrl_drag_check_orig = inline_hook(g_base + kMenuOpenCheck, kMenuOpenCheckCode, reinterpret_cast<void*>(osrsrl_drag_check_stub));
+    LOGI("game: drag hook %s", osrsrl_drag_check_orig ? "installed" : "FAILED");
 }
 
 bool take_message_inventories(int id, std::vector<Inventory>& out) {

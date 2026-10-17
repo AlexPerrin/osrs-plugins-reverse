@@ -40,6 +40,12 @@ final class Native {
     static native long[] geOffers();
     /** Probe: GE slot object address (8 bytes LE) + its first 0x28 bytes, or null. */
     static native byte[] geSlotRaw(int slot);
+    /** Widget drag: {dragged comp, CC_CREATE index, dragged-on comp, index, dragging, cycles, touch state}, or null (client thread). */
+    static native int[] dragState();
+    /** setDraggedOnWidget(null): the release does no swap (client thread). */
+    static native void dragClearTarget();
+    /** Client+0x40e988: 3 held, 4 released. // unverified: other values */
+    static native int touchState();
     static native int worldFlags();
     /** {zoom, x, y, width, height} of the 3D viewport in UI canvas pixels, or null. */
     static native int[] viewportZoom();

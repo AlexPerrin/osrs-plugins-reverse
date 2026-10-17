@@ -68,6 +68,17 @@ bool write_file(const std::string& path, const char* data, size_t len) {
 jint n_game_state(JNIEnv*, jclass) { return game::game_state(); }
 jint n_game_cycle(JNIEnv*, jclass) { return game::cycle(); }
 jint n_server_tick(JNIEnv*, jclass) { return game::server_tick(); }
+// Widget drag: {dragged comp, index, dragged-on comp, index, dragging, cycles, touch state} or null.
+jintArray n_drag_state(JNIEnv* env, jclass) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    int v[7];
+    if (!game::drag_state(v)) return nullptr;
+    jintArray a = env->NewIntArray(7);
+    if (a) env->SetIntArrayRegion(a, 0, 7, reinterpret_cast<const jint*>(v));
+    return a;
+}
+void n_drag_clear_target(JNIEnv*, jclass) { if (client_thread::on_client_thread()) game::drag_clear_target(); }
+jint n_touch_state(JNIEnv*, jclass) { return game::touch_state(); }
 // GE slot object probe: 8 bytes address (little endian) + 0x28 raw bytes, or null.
 jbyteArray n_ge_slot_raw(JNIEnv* env, jclass, jint slot) {
     uint8_t buf[8 + 0x28] = {};
@@ -1362,6 +1373,9 @@ const JNINativeMethod kNatives[] = {
     {"instanceTemplates", "()[I", reinterpret_cast<void*>(n_instance_templates)},
     {"geOffers", "()[J", reinterpret_cast<void*>(n_ge_offers)},
     {"geSlotRaw", "(I)[B", reinterpret_cast<void*>(n_ge_slot_raw)},
+    {"dragState", "()[I", reinterpret_cast<void*>(n_drag_state)},
+    {"dragClearTarget", "()V", reinterpret_cast<void*>(n_drag_clear_target)},
+    {"touchState", "()I", reinterpret_cast<void*>(n_touch_state)},
     {"worldFlags", "()I", reinterpret_cast<void*>(n_world_flags)},
     {"viewportZoom", "()[I", reinterpret_cast<void*>(n_viewport_zoom)},
     {"viewTransforms", "()[F", reinterpret_cast<void*>(n_view_transforms)},

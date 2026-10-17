@@ -35,7 +35,7 @@ public final class Host {
     private static final int CLIENT_TICK = 0, GAME_TICK = 1, GAME_STATE_CHANGED = 2, VARBIT_CHANGED = 3,
             NPC_SPAWNED = 4, NPC_DESPAWNED = 5, CHAT_MESSAGE = 6, WIDGET_LOADED = 7, WIDGET_CLOSED = 8,
             PLAYER_SPAWNED = 9, PLAYER_DESPAWNED = 10, ITEM_CONTAINER_CHANGED = 11, STAT_CHANGED = 12,
-            MENU_OPENED = 13, MENU_OPTION_CLICKED = 14, MENU_TAP = 15;
+            MENU_OPENED = 13, MENU_OPTION_CLICKED = 14, MENU_TAP = 15, WIDGET_DRAG = 16;
 
     private static final net.runelite.client.callback.ClientThread clientThread = new net.runelite.client.callback.ClientThread();
     private static volatile EventBus eventBus;
@@ -641,6 +641,26 @@ public final class Host {
                 } finally {
                     menu.endSession();
                     menu.clearAdded();
+                }
+                break;
+            }
+            case WIDGET_DRAG: {
+                // Each cycle a widget is held, before the game's drag processing (a = touch state, 4 =
+                // this cycle releases it). As desktop, WidgetDrag is posted while the drag is past its
+                // dead zone/time, including the release cycle, where getMouseCurrentButton reads 0 and
+                // setDraggedOnWidget(null) still cancels the game's swap.
+                // unverified: on the device (static RE of the drag block, docs/offsets.md "Widget drag").
+                if (!bus.hasSubscribers(net.runelite.api.events.WidgetDrag.class)) break;
+                int[] d = Native.dragState();
+                if (d == null || d[4] == 0) break;
+                AndroidClient ac = (AndroidClient) client;
+                if (a == 4 && "1".equals(Native.property("debug.osrsrl.draglog")))
+                    Log.i(TAG, "WidgetDrag release: " + d[0] + "/" + d[1] + " on " + d[2] + "/" + d[3] + " cycles " + d[5]);
+                ac.dragEventTouch = a;
+                try {
+                    bus.post(new net.runelite.api.events.WidgetDrag());
+                } finally {
+                    ac.dragEventTouch = -1;
                 }
                 break;
             }

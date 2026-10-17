@@ -380,6 +380,18 @@ bool instance_templates(bool& instanced, int32_t out[4 * 13 * 13]);
 bool ge_offers(int64_t out[8 * 7]);
 // Raw bytes of GE slot object `slot` (probe); returns its address (0 if none).
 uintptr_t ge_slot_raw(int slot, uint8_t out[0x28]);
+
+// Widget drag (docs/offsets.md "Widget drag"). out = {dragged component, dragged CC_CREATE index,
+// dragged-on component, index, dragging (past the dead zone/time), drag cycles, touch state};
+// components -1 when none. False when no widget is pressed for a drag.
+bool drag_state(int out[7]);
+// setDraggedOnWidget(null): clears the dragged-on Widget* so the release does no swap.
+void drag_clear_target();
+int touch_state();
+// Inline hook on the menu-open check 0x58da0c; `cb` runs (game thread) when it is called from the
+// drag block of the cycle (return address 0x41ffe8), i.e. once per cycle while a widget is held,
+// before the release is processed.
+void install_drag_hook(void (*cb)());
 // 3D viewport projection: {zoom, x, y, width, height} in UI canvas pixels (Client +0x46d4, +0x46e0..+0x46ec,
 // computed by 0x5561e8 from the CS2 viewport zoom/fov settings; RuneLite's getScale/viewport).
 bool viewport_zoom(int out[5]);

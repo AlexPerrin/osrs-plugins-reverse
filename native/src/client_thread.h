@@ -27,6 +27,8 @@ enum class EventType {
     MenuOptionClicked, // an entry was selected (clicked_menu_entry()); runs before the game acts
     MenuTap,           // a plain tap is about to run node a (the default entry); entries: tap_menu();
                        // a listener may call redirect_menu_tap() (Menu Entry Swapper's left-click swaps)
+    WidgetDrag,        // a widget is held for a drag, before the cycle's drag processing (game::drag_state);
+                       // a = touch state (4 = this cycle releases it)
 };
 
 struct Event {

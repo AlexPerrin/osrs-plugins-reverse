@@ -42,13 +42,25 @@ for name in "$@"; do
     if [[ -n $deps && -z ${ALLOW_DEPS:-} ]]; then
         echo "$name: extra dependencies (review; ALLOW_DEPS=1 to build anyway):"; echo "$deps"; exit 1
     fi
+    # ALLOW_DEPS=1: 'group:artifact:version' dependencies are fetched from Maven Central into
+    # re/hub-deps, put on the compile classpath and unpacked into the plugin jar (as the hub's
+    # shadow jar does). Their licences must allow it; check each one when adding a plugin.
+    depjars=""
+    for gav in $(grep -ohE "['\"][a-zA-Z0-9_.-]+:[a-zA-Z0-9_.-]+:[0-9][a-zA-Z0-9_.-]*['\"]" <<<"$deps" | tr -d "'\""); do
+        IFS=: read -r g a v <<<"$gav"
+        dj=$ROOT/re/hub-deps/$a-$v.jar
+        mkdir -p "$ROOT/re/hub-deps"
+        [[ -s $dj ]] || curl -sfL -o "$dj" "https://repo1.maven.org/maven2/${g//.//}/$a/$v/$a-$v.jar" || { echo "$name: fetching $gav failed"; exit 1; }
+        depjars="$depjars:$dj"
+    done
     lic=$(ls "$src" | grep -iE '^(license|licence|copying)' | head -1 || true)
     [[ -n $lic ]] || echo "$name: WARNING no LICENSE file in the repository"
     w=$OUT/$name; rm -rf "$w" && mkdir -p "$w/classes" "$w/jar"
-    javac --release 11 -nowarn -proc:full -encoding UTF-8 -cp "$CP" -processorpath "$LOMBOK" -d "$w/classes" \
+    javac --release 11 -nowarn -proc:full -encoding UTF-8 -cp "$CP$depjars" -processorpath "$LOMBOK" -d "$w/classes" \
         $(find "$src/src/main/java" -name '*.java') 2>&1 | grep -vE "^Note:" || true
     [[ -n $(find "$w/classes" -name '*.class' | head -1) ]] || { echo "$name: compile failed"; exit 1; }
     cp -r "$w/classes/." "$w/jar/"
+    for dj in ${depjars//:/ }; do (cd "$w/jar" && unzip -qo "$dj" -x 'META-INF/MANIFEST.MF' 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.DSA' 'module-info.class'); done
     [[ -d $src/src/main/resources ]] && cp -r "$src/src/main/resources/." "$w/jar/"
     [[ -n $lic ]] && cp "$src/$lic" "$w/jar/LICENSE-$name.txt"
     # Resources a gradle task generates: version.txt = "version=<project version>" (Bank Tag Layouts).

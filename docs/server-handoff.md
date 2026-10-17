@@ -53,6 +53,15 @@ content for RuneLite plugins plus upstream patches.
   existing feature makes registration throw at startup; the integration tests catch that). On the
   device, devtools `item_action`/`interact_object` currently fail ("No menu entry matching"); taps
   and long-presses work. After any restart: wait ~30 s, "Try again", screenshot, Play Now.
+- **Farming (proposed next, ~1 day, waiting for the orchestrator's OK when this session ended):**
+  OpenRune has no farming. RuneLite's Time Tracking reads per-region `farming_transmit` varbits
+  4771-4775 (`re/rlsrc/.../timetracking/farming/FarmingWorld.java`: Catherby region 11062 = 4771/4772
+  allotments, 4773 flower, 4774 herb, 4775 compost; Falador 12083 the same set) and decodes each
+  value with `PatchImplementation.java` (e.g. allotment 0-3 weeds (3 = raked clear), potato 6-9
+  growing, 10-12 harvestable; herb guam 4-7 growing, 8-10 harvestable). The patch locs are
+  multilocs on those varbits. Plan: rake/plant (seed dibber)/grow on the farming clock
+  (allotments 10 min/stage, herbs 20, flowers 5)/harvest, crop data in a dbtable, a fast-forward
+  command; no disease, compost, water or payments.
 - **Next ideas (sizes):** bird house device check (5 min); farming patches for Time Tracking
   (1.5-3 days: planting, growth cycles, the farming_transmit varbits per region); clue scrolls for
   the Clue Scroll plugin (1-2 days for a beginner/easy slice: clue items, the clue interface text,

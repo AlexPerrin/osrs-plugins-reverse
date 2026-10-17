@@ -66,6 +66,7 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | Regeneration Meter | runs | HP ring on the HP orb (verified with `regenmeter.showWhenNoChange`); by default it draws only below full HP or spec |
 | Run Energy | runs | orb tooltip (weight, run time, 100% in) on a tap of the run orb (touch-as-mouse + TooltipOverlay, verified 2026-10-16) |
 | Timers & Buffs | runs | stamina timer InfoBox counting down after `::varbit 25 1` + `::varbit 24 20` (verified 2026-10-16); the InfoBox shows the stamina potion icon (ItemManager.getImage → the game's createItemSprite, verified 2026-10-16) |
+| Time Tracking | starts | farming panel shows a Catherby patch prediction from the server's farming_transmit varbits (server dev, 2026-10-16); it stayed stale after planting because the host never called PluginPanel.onActivate (its update() is a no-op while inactive), fixed in the sidebar (unverified) |
 | Woodcutting | runs | session panel (logs cut 6, 900/hr) while chopping an oak west of Lumbridge (verified 2026-10-16; TOP_LEFT overlays now stack below the chatbox) |
 | XP Tracker | runs | sidebar panel: gained XP, XP/hr, levels per skill after combat (verified 2026-10-16; some rows show twice in the flattened sidebar) |
 | Agility | runs | Gnome Stronghold log balance highlighted green (verified 2026-10-16; needs XP Tracker's module, installed as RuneLite does) |

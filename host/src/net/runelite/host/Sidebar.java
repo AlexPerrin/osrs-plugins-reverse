@@ -392,8 +392,30 @@ final class Sidebar {
         sb.append("S\t").append(selected);
         for (NavigationButton b : buttons) sb.append('\t').append(clean(b.getTooltip()));
         sb.append('\n');
+        activate(buttons.isEmpty() ? null : buttons.get(selected).getPanel());
         if (!buttons.isEmpty() && buttons.get(selected).getPanel() != null) walk(buttons.get(selected).getPanel(), 0, sb);
         return sb.toString();
+    }
+
+    private static net.runelite.client.ui.PluginPanel active;
+
+    /**
+     * Desktop's ClientUI calls onActivate/onDeactivate when a panel is shown/hidden; panels gate their
+     * updates on it (Time Tracking's update() is a no-op while inactive).
+     */
+    private static void activate(net.runelite.client.ui.PluginPanel p) {
+        if (p == active) return;
+        try {
+            if (active != null) active.onDeactivate();
+        } catch (Throwable t) {
+            Log.e(TAG, "panel onDeactivate threw", t);
+        }
+        active = p;
+        try {
+            if (p != null) p.onActivate();
+        } catch (Throwable t) {
+            Log.e(TAG, "panel onActivate threw", t);
+        }
     }
 
     private static void walk(Component c, int depth, StringBuilder sb) {

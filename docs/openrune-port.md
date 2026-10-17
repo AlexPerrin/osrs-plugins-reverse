@@ -1534,3 +1534,12 @@ clan hall, guest channels, events) are bigger again (several days).
   21, the list shows "Sold: Lobster x 21, 1,449 coins (1,470 - 21) = 69 each" above "Bought: Lobster, 70 coins"
   (so the long args parse on Android); the GE History button opens it too, and tapping a line (Buy-offer)
   opens a buy setup for Lobster at 70. Gap seen: lobsters are on the wiki's tax-exempt list, which is not done.
+
+### GE tax-exempt items (seventeenth server dev)
+
+`enum.ge_tax_exempt` (65381, pack `ge_tax_exempt.toml`, 48 objs) from the wiki's Grand Exchange page,
+"Exempt from tax" (by the wiki's contributors, CC BY-NC-SA 3.0, attributed in the file header; "Energy potion"
+taken as all four doses, watering cans matched only as "Watering can"). Sales of those items pay no tax
+(`GrandExchange.taxPerItem(item, price)`); the history's tax column follows. The client's own setup line still
+shows "(price - 2%)" for them (it computes that itself; **not checked** whether the real client knows the
+exempt list). Upstream `52`.

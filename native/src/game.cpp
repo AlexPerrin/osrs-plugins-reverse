@@ -1136,6 +1136,21 @@ std::vector<SubInterface> open_sub_interfaces() {
     return out;
 }
 
+// Closes the sub-interface `group` mounted in `component`, as IF_CLOSESUB (dispatcher case 0x65) does:
+// `0x462384(client, component, group, unload)` removes the component-table node, unloads the group
+// when `unload` (bit 0), drops the group's IF_SETEVENTS ranges, marks the parent dirty and lays out
+// the root again. Only called when the node is open (the packet handler checks the same).
+// Game thread only. unverified: on the device (RuneLite's Client.closeInterface).
+bool close_sub_interface(int component, int group, bool unload) {
+    uintptr_t c = client();
+    if (!c) return false;
+    bool open = false;
+    for (const SubInterface& s : open_sub_interfaces()) open |= s.component == component && s.group == group;
+    if (!open) return false;
+    reinterpret_cast<void (*)(uintptr_t, int, uint32_t, uint64_t)>(g_base + 0x462384)(c, component, static_cast<uint32_t>(group), unload ? 1 : 0);
+    return true;
+}
+
 Skills skills() {
     Skills out;
     uintptr_t c = client();
@@ -3019,6 +3034,28 @@ void install_drag_hook(void (*cb)()) {
     g_drag_cb = cb;
     osrsrl_drag_check_orig = inline_hook(g_base + kMenuOpenCheck, kMenuOpenCheckCode, reinterpret_cast<void*>(osrsrl_drag_check_stub));
     LOGI("game: drag hook %s", osrsrl_drag_check_orig ? "installed" : "FAILED");
+}
+
+namespace {
+// 0x4ae508 starts `tst w2, #0xff; b.eq` (PC-relative), so the hook goes at 0x4ae510, where no stack
+// or register has changed yet: returning from the replacement returns to 0x4ae508's caller.
+constexpr uintptr_t kSoundQueueBody = 0x4ae510;
+constexpr uint32_t kSoundQueueBodyCode[4] = {0xd101c3ff, 0xa9037bfd, 0xf90023f7, 0xa90557f6};
+using SoundQueueFn = void (*)(uintptr_t, uint32_t, uint32_t, uint32_t);
+SoundQueueFn g_sound_orig = nullptr;
+bool (*g_sound_cb)(int, int, int) = nullptr;
+void hook_sound_queue(uintptr_t sys, uint32_t id, uint32_t loops, uint32_t delay) {
+    if (g_sound_cb && g_sound_cb(static_cast<int>(id & 0xffff), static_cast<int>(loops & 0xff), static_cast<int>(delay)))
+        return;
+    g_sound_orig(sys, id, loops, delay);
+}
+}  // namespace
+
+void install_sound_hook(bool (*cb)(int id, int loops, int delay)) {
+    g_sound_cb = cb;
+    g_sound_orig = reinterpret_cast<SoundQueueFn>(
+        inline_hook(g_base + kSoundQueueBody, kSoundQueueBodyCode, reinterpret_cast<void*>(hook_sound_queue)));
+    LOGI("game: sound hook %s", g_sound_orig ? "installed" : "FAILED");
 }
 
 bool take_message_inventories(int id, std::vector<Inventory>& out) {

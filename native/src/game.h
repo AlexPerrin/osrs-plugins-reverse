@@ -158,6 +158,8 @@ bool widget_events(uintptr_t widget, int out[2]);
 void widget_set_flags(uintptr_t widget, int flags);  // game thread only
 struct SubInterface { int component, group, type; };  // `group` is open inside `component`; type = IF_OPENSUB modal mode (node +8)
 std::vector<SubInterface> open_sub_interfaces();
+// IF_CLOSESUB for an open sub-interface (`0x462384`); false when it isn't open. Game thread only.
+bool close_sub_interface(int component, int group, bool unload);
 
 constexpr int kSkillCount = 25;
 struct Skills {
@@ -417,6 +419,10 @@ bool clan_channel(int which, ChatChannel& out);
 // drag block of the cycle (return address 0x41ffe8), i.e. once per cycle while a widget is held,
 // before the release is processed.
 void install_drag_hook(void (*cb)());
+// Sound effects (SYNTH_SOUND packet `0x442944`, CS2 sound_synth `0x4ea718`, our play_sound_effect)
+// all go through the queue function `0x4ae508(sys, id, loops, delay)`. The hook sits after its
+// loops == 0 early-out; `cb` returns true to drop the sound (RuneLite's SoundEffectPlayed.consume).
+void install_sound_hook(bool (*cb)(int id, int loops, int delay));
 // 3D viewport projection: {zoom, x, y, width, height} in UI canvas pixels (Client +0x46d4, +0x46e0..+0x46ec,
 // computed by 0x5561e8 from the CS2 viewport zoom/fov settings; RuneLite's getScale/viewport).
 bool viewport_zoom(int out[5]);

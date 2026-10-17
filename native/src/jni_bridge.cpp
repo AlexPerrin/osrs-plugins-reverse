@@ -915,6 +915,9 @@ jobjectArray n_friends(JNIEnv* env, jclass, jboolean ignores) {
     return out;
 }
 jint n_friend_list_state(JNIEnv*, jclass) { return game::friend_list_state(); }
+jboolean n_close_sub_interface(JNIEnv*, jclass, jint component, jint group, jboolean unload) {
+    return client_thread::on_client_thread() && game::close_sub_interface(component, group, unload);
+}
 jintArray n_sub_interfaces(JNIEnv* env, jclass) {
     std::vector<jint> v;
     for (const auto& s : game::open_sub_interfaces()) v.insert(v.end(), {s.component, s.group, s.type});
@@ -1085,6 +1088,7 @@ jintArray n_ground_items(JNIEnv* env, jclass) {
     return out;
 }
 void n_consume_menu_click(JNIEnv*, jclass) { client_thread::consume_menu_click(); }
+void n_consume_sound(JNIEnv*, jclass) { client_thread::consume_sound(); }
 namespace {
 std::string to_latin1(JNIEnv* env, jstring text) {
     std::string out;
@@ -1444,6 +1448,7 @@ const JNINativeMethod kNatives[] = {
     {"friendListState", "()I", reinterpret_cast<void*>(n_friend_list_state)},
     {"reloadScene", "()Z", reinterpret_cast<void*>(n_reload_scene)},
     {"subInterfaces", "()[I", reinterpret_cast<void*>(n_sub_interfaces)},
+    {"closeSubInterface", "(IIZ)Z", reinterpret_cast<void*>(n_close_sub_interface)},
     {"typeParam", "(III)Ljava/lang/Object;", reinterpret_cast<void*>(n_type_param)},
     {"overlayBuffer", "(II)Ljava/nio/ByteBuffer;", reinterpret_cast<void*>(n_overlay_buffer)},
     {"overlayPublish", "(II)V", reinterpret_cast<void*>(n_overlay_publish)},
@@ -1460,6 +1465,7 @@ const JNINativeMethod kNatives[] = {
     {"sceneObjects", "()[I", reinterpret_cast<void*>(n_scene_objects)},
     {"groundItems", "()[I", reinterpret_cast<void*>(n_ground_items)},
     {"consumeMenuClick", "()V", reinterpret_cast<void*>(n_consume_menu_click)},
+    {"consumeSound", "()V", reinterpret_cast<void*>(n_consume_sound)},
     {"redirectMenuTap", "(I)V", reinterpret_cast<void*>(n_redirect_menu_tap)},
     {"menuReorder", "([I)Z", reinterpret_cast<void*>(n_menu_reorder)},
     {"menuBuildAt", "(II)Z", reinterpret_cast<void*>(n_menu_build_at)},

@@ -29,6 +29,8 @@ enum class EventType {
                        // a listener may call redirect_menu_tap() (Menu Entry Swapper's left-click swaps)
     WidgetDrag,        // a widget is held for a drag, before the cycle's drag processing (game::drag_state);
                        // a = touch state (4 = this cycle releases it)
+    SoundEffect,       // a sound effect is about to be queued: a = sound id, b = delay; listeners may
+                       // call consume_sound() (game::install_sound_hook)
 };
 
 struct Event {
@@ -77,6 +79,8 @@ std::vector<game::Npc> npcs();
 // listener stops the game from running it.
 const game::MenuEntry& clicked_menu_entry();
 void consume_menu_click();
+// During SoundEffect: drop the sound.
+void consume_sound();
 // During MenuTap: the menu model being tapped (0 otherwise), and the top-level node to run instead.
 uintptr_t tap_menu();
 void redirect_menu_tap(int index);

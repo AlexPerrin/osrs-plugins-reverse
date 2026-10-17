@@ -94,6 +94,8 @@ final class Native {
     static native Object[] widgetListener(int id, int index, int offset);
     /** Clears the game's CS2 listener at `offset` (0x4d0 onDrag, 0x590 onVarTransmit, 0x668 onTimer), as CC_SETON with -1. Client thread. */
     static native boolean widgetClearListener(int id, int index, int offset);
+    /** IF_CLOSESUB for `group` open in `component` (`0x462384`); false if not open. Client thread. */
+    static native boolean closeSubInterface(int component, int group, boolean unload);
     /** A widget's var/inv/stat transmit trigger ids (offset 0x5c0/0x608/0x650), or null. */
     static native int[] widgetTriggers(int id, int index, int offset);
     /**
@@ -283,6 +285,8 @@ final class Native {
     static native int[] menuPoint();
     /** From a MenuOptionClicked subscriber: the game won't run the entry. */
     static native void consumeMenuClick();
+    /** During a SOUND_EFFECT event: the game drops the sound. */
+    static native void consumeSound();
 
     /** During a MenuTap event: run this top-level node (Native.menuEntries index) instead of the default. */
     static native void redirectMenuTap(int index);

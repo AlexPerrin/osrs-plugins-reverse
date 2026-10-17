@@ -306,6 +306,14 @@ final class Probe {
                     Log.i(TAG, "moved " + a[1] + " original x " + ox + " -> " + w.getOriginalX() + ", laid-out x " + x0 + " -> " + w.getRelativeX());
                     break;
                 }
+                case "wclose": {  // "wclose <group> 0": closeInterface(node, true) on the component-table node holding that group
+                    net.runelite.api.WidgetNode n = null;
+                    for (net.runelite.api.WidgetNode w : c.getComponentTable()) if (w.getId() == id) n = w;
+                    if (n == null) { Log.w(TAG, "wclose: group " + id + " is not open"); break; }
+                    c.closeInterface(n, true);
+                    Log.i(TAG, "closeInterface group " + id + " in " + (n.getHash() >>> 16) + ":" + (n.getHash() & 0xffff));
+                    break;
+                }
                 case "sound": {  // "sound <id> <volume>"
                     c.playSoundEffect(id, Integer.parseInt(a[2]));
                     Log.i(TAG, "playSoundEffect " + id);

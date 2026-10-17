@@ -35,7 +35,7 @@ public final class Host {
     private static final int CLIENT_TICK = 0, GAME_TICK = 1, GAME_STATE_CHANGED = 2, VARBIT_CHANGED = 3,
             NPC_SPAWNED = 4, NPC_DESPAWNED = 5, CHAT_MESSAGE = 6, WIDGET_LOADED = 7, WIDGET_CLOSED = 8,
             PLAYER_SPAWNED = 9, PLAYER_DESPAWNED = 10, ITEM_CONTAINER_CHANGED = 11, STAT_CHANGED = 12,
-            MENU_OPENED = 13, MENU_OPTION_CLICKED = 14, MENU_TAP = 15, WIDGET_DRAG = 16;
+            MENU_OPENED = 13, MENU_OPTION_CLICKED = 14, MENU_TAP = 15, WIDGET_DRAG = 16, SOUND_EFFECT = 17;
 
     private static final net.runelite.client.callback.ClientThread clientThread = new net.runelite.client.callback.ClientThread();
     private static volatile EventBus eventBus;
@@ -714,6 +714,20 @@ public final class Host {
                     menu.endSession();
                     menu.clearAdded();
                 }
+                break;
+            }
+            case SOUND_EFFECT: {
+                // Every sound effect the game queues (SYNTH_SOUND, CS2 sound_synth, Client.playSoundEffect),
+                // before it is queued; a consumed event drops it (Music's prayer-sound mute).
+                // unverified: source = the local player (desktop's queueSoundEffect source assumed)
+                if (!bus.hasSubscribers(net.runelite.api.events.SoundEffectPlayed.class)) break;
+                net.runelite.api.events.SoundEffectPlayed e = new net.runelite.api.events.SoundEffectPlayed(client.getLocalPlayer());
+                e.setSoundId(a);
+                e.setDelay(b);
+                bus.post(e);
+                if (e.isConsumed()) Native.consumeSound();
+                if ("1".equals(Native.property("debug.osrsrl.soundlog")))
+                    Log.i(TAG, "SoundEffectPlayed " + a + " delay " + b + (e.isConsumed() ? " consumed" : ""));
                 break;
             }
             case WIDGET_DRAG: {

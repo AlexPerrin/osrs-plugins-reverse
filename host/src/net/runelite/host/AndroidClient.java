@@ -971,6 +971,15 @@ public class AndroidClient extends ClientStub {
             @Override public java.util.Iterator<net.runelite.api.WidgetNode> iterator() { return m.values().iterator(); }
         };
     }
+    /**
+     * As desktop: closes the sub-interface (the node from getComponentTable: hash = component,
+     * id = group) through the game's own IF_CLOSESUB path. Client thread only, as on desktop.
+     * // unverified: on the device (Bank's blockJagexAccountAd closes 12:109's sub-interface)
+     */
+    @Override public void closeInterface(net.runelite.api.WidgetNode node, boolean unload) {
+        if (node == null) return;
+        Native.closeSubInterface((int) node.getHash(), node.getId(), unload);
+    }
     /** Only LOADING is honoured (plugins use it to rebuild the scene), via the game's own reload. */
     @Override public void setGameState(GameState state) {
         if (state != GameState.LOADING) return;

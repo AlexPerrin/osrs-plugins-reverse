@@ -65,6 +65,14 @@ final class Probe {
                     Log.i(TAG, "db row " + r + " col " + col + " tuple " + tup + " -> " + java.util.Arrays.toString(c.getDBTableField(r, col, tup)));
                 return;
             }
+            if (a[0].equals("config") && Host.configManager != null) {  // "config <group> <key>=<value>": setConfiguration (fires ConfigChanged)
+                int eq = a[2].indexOf('=');
+                if (eq > 0) {
+                    Host.configManager.setConfiguration(a[1], a[2].substring(0, eq), a[2].substring(eq + 1));
+                    Log.i(TAG, "config " + a[1] + "." + a[2]);
+                }
+                return;
+            }
             if (a[0].equals("ohead")) {  // "ohead <npc id> <text>": setOverheadText + setOverheadCycle(100) on the first such NPC
                 int id = Integer.parseInt(a[1]);
                 for (net.runelite.api.NPC n : c.getTopLevelWorldView().npcs()) {

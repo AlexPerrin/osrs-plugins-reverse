@@ -152,6 +152,7 @@ public final class Host {
                 bind(net.runelite.client.ui.overlay.OverlayManager.class).toInstance(overlayManager);
                 bind(net.runelite.client.ui.DrawManager.class).toInstance(drawManager);
                 bind(net.runelite.client.config.ConfigManager.class).toInstance(configManager);
+                Host.configManager = configManager;
                 bind(net.runelite.client.config.RuneLiteConfig.class)
                         .toInstance(configManager.getConfig(net.runelite.client.config.RuneLiteConfig.class));
                 bind(net.runelite.client.config.ChatColorConfig.class)
@@ -781,6 +782,8 @@ public final class Host {
 
     private static final net.runelite.client.callback.Hooks hooks = new net.runelite.client.callback.Hooks();
     private static boolean hiding;
+    /** The host's ConfigManager (test hook `debug.osrsrl.set "config <group> <key=value>"`). */
+    static volatile net.runelite.client.config.ConfigManager configManager;
 
     /** Renderable draw listeners (Entity Hider): actors they reject are not drawn by the game this cycle. */
     private static void applyDrawListeners() {

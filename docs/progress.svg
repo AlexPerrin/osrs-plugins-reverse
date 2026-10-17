@@ -281,7 +281,7 @@
 <rect x="943.14" y="31.00" width="55.86" height="150.00" fill="none" stroke="#0d1117" stroke-width="2"/>
 <text x="948.14" y="47.00" font-family="sans-serif" font-size="12" fill="#ffffff" stroke="#0d1117" stroke-width="3" paint-order="stroke">Zone</text>
 </g>
-<text x="4" y="210" font-family="sans-serif" font-size="16" fill="#ffffff">RuneLite API*: 57.97% (502/866)</text>
+<text x="4" y="210" font-family="sans-serif" font-size="16" fill="#ffffff">RuneLite API*: 59.24% (513/866)</text>
 <g><title>Client: 175/325 (54%)</title>
 <rect x="2.00" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="18.20" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -611,7 +611,7 @@
 <rect x="1.00" y="220.00" width="374.54" height="230.00" fill="none" stroke="#0d1117" stroke-width="2"/>
 <text x="6.00" y="236.00" font-family="sans-serif" font-size="12" fill="#ffffff" stroke="#0d1117" stroke-width="3" paint-order="stroke">Client</text>
 </g>
-<g><title>Widget: 87/160 (54%)</title>
+<g><title>Widget: 98/160 (61%)</title>
 <rect x="376.54" y="221.00" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="393.12" y="221.00" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="409.70" y="221.00" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -699,17 +699,17 @@
 <rect x="492.60" y="327.40" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="509.18" y="327.40" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="525.76" y="327.40" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="542.35" y="327.40" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="376.54" y="342.60" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="393.12" y="342.60" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="409.70" y="342.60" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="426.28" y="342.60" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="442.86" y="342.60" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="459.44" y="342.60" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="476.02" y="342.60" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="492.60" y="342.60" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="509.18" y="342.60" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="525.76" y="342.60" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="542.35" y="327.40" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="376.54" y="342.60" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="393.12" y="342.60" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="409.70" y="342.60" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="426.28" y="342.60" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="442.86" y="342.60" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="459.44" y="342.60" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="476.02" y="342.60" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="492.60" y="342.60" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="509.18" y="342.60" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="525.76" y="342.60" width="16.58" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="542.35" y="342.60" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="376.54" y="357.80" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="393.12" y="357.80" width="16.58" height="15.20" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>

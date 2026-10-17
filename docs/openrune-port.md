@@ -1041,3 +1041,19 @@ was verified.
     5 starts through tunnel and harvest, wrong loc). Upstream `39-herbiboar`.
   - Device test: `::tele 3686 3871` (middle start), `::setxp hunter 14000000`, Inspect the rock,
     follow the plugin's highlight.
+- **Herbiboar device run 2026-10-17 08:14-08:27 EDT** (deployed 14127aa at 12:14 UTC; `EXTRA="hunter
+  herbiboars"`; tester now has Herblore 14M XP, Hunter already 14M): Inspect at the middle rock ->
+  "You find some fresh tracks.", footprints drawn east; the plugin then showed group C with the
+  next object highlighted, the trail tiles outlined and the minimap trail; Inspect the muddy patch
+  -> wiki message, Hunter XP, an unidentified fossil once; group B seaweed -> wiki message; group A
+  -> "The creature's tracks lead into a nearby tunnel.", plugin `finishId` = 8; Attack tunnel 8 ->
+  "You stun the herbiboar.", the herbiboar appeared with Harvest, Hunter XP; Harvest -> 3 grimy
+  dwarf weed (dropped: one free slot), +50 Herblore XP, "You harvest herbs from the herbiboar,
+  whereupon it escapes.". The plugin read every varbit as expected (currentGroup C -> B -> A,
+  finishId 8), so the leaves/hidden reading holds on the real client.
+- **Client-side gap found (for the client dev):** the plugin's `inHerbiboarArea` stays false after
+  a teleport or login: it calls `client.getMapRegions()` from `GameStateChanged(LOADING)`, and the
+  host's `AndroidClient.getMapRegions()` returns an empty array while the game state is below
+  LOGGED_IN. Nothing is drawn until the plugin re-checks; on the device I forced it with
+  `setprop debug.osrsrl.probe 'HerbiboarPlugin.startUp()'` (cleared right after). Desktop RuneLite
+  returns the regions during LOADING.

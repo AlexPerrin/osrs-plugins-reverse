@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 14 entry (2026-10-16) at the end of "Where things stand".
+> Latest state: see the gen 15 entry (2026-10-16) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -479,6 +479,36 @@ session; its notes are in `docs/android-protocol.md`.
     `menu: select ... x 0 y 0` of unshown menus (MenuManager +0x2a8 isn't set by our builds; harmless so
     far); Poison infobox (verify); Implings (spawns are fine; the impling spawns on the player's tile);
     recheck the server's NPC count fix with the npcprobe.
+- **2026-10-16 (client dev gen 15)**, commits 4e566fd..:
+  - **Plugin Hub from source**: `host/plugins/hub/build.sh <name>` clones the commit runelite/plugin-hub pins
+    (`--pin <name>` copies it into `host/plugins/hub/plugins.txt`), compiles with Lombok against our 1.13.1 jars,
+    keeps the LICENSE and resources, stops on extra Maven deps (Loot Lookup: jsoup), and converts to
+    `re/host/plugins-extra/hub-<name>.jar`. 18 pinned by install count (api.runelite.net
+    `/runelite-1.13.1/pluginhub`), all BSD-2. `host/tools/rank_api.py N --jars re/hub-build/*.jar` lists the
+    Client API they use that the host lacks; api_gaps.py on their dexdump the Java ones (CompatRewrite now
+    maps the Java 9 Duration methods). Table: `## Plugin Hub status` in docs/plugin-host.md.
+  - Host gaps closed for them: getDBTableRows (row scan of the DBRowType cache), getDBRowsByValue,
+    **getDBTableField with desktop semantics** (k-th field of every tuple; db_getfieldcount 7503), getItemCount,
+    getClientThread, getSprites/getIndexSprites, ConfigManager.getProfile/getConfigDescriptor, enum-like
+    config classes (FontType), jopt-simple in host.jar, headless Swing builders (GroupLayout), JPopupMenu
+    children, overlays only while LOGGED_IN, menu tile kept after the menu closes (plugin-strip entries),
+    InteractingChanged for actors that arrive interacting (Random Events' Genie).
+  - **host/build.sh now fails on any javac error**: a filtered GenHeadless error had shipped a partial host.jar
+    (NoClassDefFoundError WorldMapDataBag at start).
+  - URL_OPEN crash: server-side (the payload is ISAAC-encrypted per byte; fixed by the server dev). A/B with
+    `debug.osrsrl.off=1` (installs nothing of ours) showed stock dropping the session where we crashed; per-cycle
+    actor/inventory/menu reads now only run in LOADING/LOGGED_IN. `debug.osrsrl.crashlog=1` logs arm64
+    pc/lr/regs of faults in the game lib or ours (chains to the previous handler; not yet exercised).
+  - devtools: interact_npc prefers hull points on the canvas and off the UI columns (left-edge fix,
+    unverified); select_option, continue_dialogue, item_action (needs the inventory tab open) used for Turael.
+  - Verified in gen 15: Implings (Puro-Puro), Random Events, NPC Aggression Timer (core); Better NPC Highlight,
+    Monster HP %, Visual Metronome, Attack Timer Metronome, Shortest Path (hub). Core 48 runs / 3 starts.
+  - Test keys: `randomevents.notifyAll` (not notifyAllEvents), `npcUnaggroArea.npcUnaggroAlwaysActive`,
+    `BetterNpcHighlight.tileHighlight/tileNames`, `MonsterHP.npcShowAll`, `implings.showgourmet`.
+  - Next (gen 16): Slayer with a Turael task (getDBRowsByValue, unverified; tester has 17 Icefiends);
+    the remaining hub `starts` rows (bank ones with ::openbank, Inventory Setups sidebar, Skills Tab Progress
+    Bars, Large Logout, Tree Despawn Timer, Improved Tile Indicators, Customizable XP Drops' drops); more hub
+    plugins; Player Indicators via the desktop login; the impling name label height.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

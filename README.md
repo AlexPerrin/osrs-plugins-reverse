@@ -15,7 +15,7 @@ account: the server is also the local sign-in provider.
 ## Status
 
 <!-- progress:start -->
-![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-94.9%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-92.1%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-59.2%25-blue) ![Plugins running on Android](https://img.shields.io/badge/Plugins%20running%20on%20Android-92.3%25-blue) ![Plugin Hub plugins running](https://img.shields.io/badge/Plugin%20Hub%20plugins%20running-54.8%25-blue)
+![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-94.9%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-92.1%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-59.4%25-blue) ![Plugins running on Android](https://img.shields.io/badge/Plugins%20running%20on%20Android-95.5%25-blue) ![Plugin Hub plugins running](https://img.shields.io/badge/Plugin%20Hub%20plugins%20running-71.0%25-blue)
 
 [![Progress map](docs/progress.svg)](docs/progress.md)
 
@@ -26,13 +26,13 @@ account: the server is also the local sign-in provider.
 - **Server→client mapped**: 147/151 (97.4%)
 - **Client→server mapped**: 93/102 (91.2%)
 - **Zone sub-prots implemented**: 15/15 (100.0%)
-- **RuneLite API implemented**: 513/866 (59.2%)
-- **Plugins running on Android**: 60/65 (92.3%)
-- **Plugin Hub plugins running**: 17/31 (54.8%)
+- **RuneLite API implemented**: 514/866 (59.4%)
+- **Plugins running on Android**: 63/66 (95.5%)
+- **Plugin Hub plugins running**: 22/31 (71.0%)
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-17, `4145f6e`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-17, `e94aae4`).
 <!-- progress:end -->
 
 Milestones:

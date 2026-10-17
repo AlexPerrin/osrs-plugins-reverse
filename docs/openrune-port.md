@@ -1572,3 +1572,37 @@ exempt list). Upstream `52`.
   was not confirmed then, so the old hook's fault is likely but not proven. Android (17:05): pickpocketing a
   spawned Man in Lumbridge took the tester's Lumbridge & Draynor from 3/41 to 4/41 in the diary tab.
 - Note: the swamp caves also hold "Cave bug larva" (`npc.cave_littlebug`), which does not count.
+
+### Quest Helper runs on the desktop client (seventeenth server dev, 17:12-17:25)
+
+Desktop RuneLite 1.13.2 with `re/hub/quest-helper.jar` (QH 4.17.0, the same jar as Android) sideloaded into
+`C:\osrs-test\home\.rlcustom\sideloaded-plugins`; account "desktop". QH is started per quest with right-click on
+the quest list entry -> "Start Quest Helper" (devtools: `click {"button":3}` + `click_menu_option`).
+
+OpenRune quests besides Cook's Assistant / Sheep Shearer / Romeo & Juliet (rough size from the code): The Restless
+Ghost (1508 lines, test), Ernest the Chicken (434 + Draynor Manor search, lever puzzle, gate; puzzle tests), Imp
+Catcher (478, test), Rune Mysteries (125 + Duke Horacio / Sedridor / Aubury dialogue), X Marks the Spot (691, test),
+Misthalin Mystery (3718, 2 tests), Gertrude's Cat (720), Children of the Sun (1567, tests), Daddy's Home (1252,
+test, 1 TODO), His Faithful Servants (351). The quest list counts 11 quests ("Completed: 0/11", 18 QP).
+
+- **The Restless Ghost: complete on the server.** Stage varp 107: 0 -> 1 (Father Aereck: "I'm looking for a
+  quest!", "Yes.") -> 2 (Father Urhney: "Father Aereck sent me to talk to you.", "He's got a ghost haunting his
+  graveyard."; gives the amulet) -> opening the coffin spawns the ghost (npc 922) at once -> 3 (ghost, wearing the
+  amulet: "Yep, now tell me what the problem is.") -> 4 (Search the altar, loc 2146 multi on varbit 2130 = 1;
+  skull taken; "The skeleton in the corner suddently comes to life!", the skeleton attacks) -> 5 (open coffin
+  2145 -> 15061, Search: "You put the skull in the coffin.", "Release! Thank you stranger.."); the completion
+  scroll (1 QP, 1125 Prayer XP, Ghostspeak amulet).
+- **Imp Catcher: complete on the server.** Varp 160: 0 -> 1 (Wizard Mizgog, "Give me a quest!" -> "Give me a
+  quest please." -> "Yes.") -> 2 with the four beads (`::item 1470/1472/1474/1476`): "You give four coloured
+  beads to Wizard Mizgog.", scroll (1 QP, 875 Magic XP, amulet of accuracy).
+- **Rune Mysteries:** started only (varp 63 = 1 after Duke Horacio: "Have you any quests for me?", "Sure, no
+  problem."; talisman given). Not finished (slot time).
+- **Quest Helper on the desktop:** the overlay box showed the right step right after "Start Quest Helper" (Restless
+  Ghost stage 1: "Talk to Father Urhney, west of the Lumbridge Swamp."; Imp Catcher: "Collect one of each bead..."
+  with the four beads in red), but disappeared after the next change (stage 1 -> 2; beads added to the
+  inventory) and did not come back, although the quest list menu still offers "Stop Quest Helper". No highlights
+  either. Not a server problem as far as I can tell (the varps and items are right); possibly the devtools-driven
+  session (input without focus, a stuck right-click menu stayed drawn for a while), so worth a look on the client
+  side before trusting it. On real OSRS the box would switch to the next step.
+- Small things seen: dialogue lines sometimes print several times in the devtools dialogue read (the driver,
+  not the game); the desktop account died to the altar skeleton (10 HP), the skull was kept.

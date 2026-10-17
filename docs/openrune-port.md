@@ -1240,3 +1240,32 @@ was verified.
     was deposited in the bank to make room.
 - Upstream: 45 (jewellery charge slot, needs 44), 46 (default dog breeds, alone); all 46 `git am`
   on the pin.
+- **Deploy 2026-10-17 14:21 UTC (a0e18ab)**, device run 10:32-10:40 EDT: Chase's Adopt opens
+  "Puppy Adoption" (187) with Border Collie / Labrador / Pug / Spaniel (so unlock bit 0 is the
+  default breeds, confirmed), Pug → the colour menu (Fawn/Black/Brown) → "That'll be 200 coins."; a
+  worn games necklace(8) Burthorpe op leaves necklace(7) in the neck slot. Plugin evidence
+  (`EXTRA="bosstimer dpscounter runecraft"`): DPS Counter shows "tester 4.8" and the Giant Mole box
+  while hitting the Mole; Boss Timers shows no respawn InfoBox after the kill (client gap: it needs
+  `NPC.isDead()`, NpcUtil.isDying's default branch); Runecraft draws its magenta rift outlines in
+  the inner Abyss (`::tele 3030 4836`).
+- **Achievement diary journals** (new module `content/interfaces/achievement-diary`, dbtables
+  `achievement_diaries` 60022 / `achievement_diary_tasks` 60023, rows 60560-60652). The Achievement
+  Diaries tab (`area_task` 259) is built client-side (script 709 `build_achievement_list`: 12
+  rectangles at taskbox subs 0..11 in enum 595 order with op1 "Open <area> Journal", plus the
+  progress bars from the diary varbits); the server enables op1 on `area_task:taskbox` 0..11 and on
+  Open shows `journalscroll` (741): title "Achievement Diary" (**guess**; RuneLite's Diary
+  Requirements plugin only needs it to start with that), qj1 = "Lumbridge & Draynor Tasks" /
+  "Varrock Tasks" (the plugin's diary keys), then per tier a blank line, "<col=800000>Easy</col>"
+  etc. (**guess**), and the tasks word-wrapped at 404 px with the p12_full glyph advances; then
+  script 6845 (scroll setup, which the plugin re-runs). Task order from the wiki; wording from the
+  plugin's task strings where it has them (the in-game text), the wiki's otherwise (**guess** for
+  those 18). The cache's side-tab totals agree (Lumbridge 0/41, Varrock 0/42). Not done: other
+  areas ("That diary's journal isn't available yet."), task completion (struck lines, the diary
+  varbits), rewards. Device-checked 11:00 EDT with `EXTRA="achievementdiary"`: both journals open,
+  and the plugin appends its requirement brackets, struck when met ("(7 Slayer)", "(15 Woodcutting,
+  15 Firemaking)" wrapped to its own line, red "(Rune Mysteries)"). Quest Helper's "Start Helper
+  Varrock Easy/Medium/..." popup also shows over the tab. Upstream `47-achievement-diary-journals`.
+- `tools/repack.sh`: `OPENRUNE=1` now defaults to the live ports (SERVER 10.0.2.2:8080, GAME_PORT
+  43594).
+- Build tip again: after adding a pack module, `rm -rf openrune/src/.gradle/configuration-cache`
+  before `openrune.sh build`, or the build regenerates `api/generated` without the new dbtables.

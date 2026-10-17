@@ -25,15 +25,31 @@ this repo's `rsprot.patch`) all run there.
 
 Details in `docs/openrune-port.md`, "Fifteenth server dev". Protocol unchanged.
 
+- **Deployed** 14:56 UTC: everything up to 0631589 (a0e18ab jewellery charge slot + dog shelter
+  crash, 0631589 achievement diary journals). Tester LOGGED_IN at Lumbridge on the normal build,
+  wearing a games necklace(7); the old inventory (necklaces, loot sack, clue items, butterfly jar,
+  jerboa tail, net, box trap) is in the bank; `::god`/`::maxhit`/`::freeze` are off.
 - **187 menu tap** was the host (BTM's empty Java onOp listener swallowed the tap), fixed by the
-  client dev (1c7cee8). No hotkey labels on mobile is stock (script 217 turns them off).
-- **Device-checked** (no restart): worn games necklace destination op, butterfly catch, jerboa in
-  a box trap.
-- **Committed, not deployed:** jewellery charges keep their slot (a worn necklace moved to the head
-  slot); dog shelter Adopt no longer crashes (`varbit.dog_unlock_0`). Deploy needs "OK restart",
-  then check Chase's two 187 menus (`::npc 500 dogq_chase_post`, Adopt) and a worn Rub.
-- Tester's old inventory is in the bank.
-- Upstream: 45, 46; all 46 `git am` on the pin.
+  client dev (1c7cee8). No "1:" labels on mobile is stock (script 217 turns hotkeys off). Chase's two
+  187 menus and the jewellery Rub menu work on the device.
+- **Fixed + device-checked:** jewellery charges keep their slot (a worn necklace moved to the head
+  slot); dog shelter Adopt crash (`varbit.dog_unlock_0`; bit 0 = the default breeds).
+- **Device-checked:** worn games necklace destination ops, butterfly catch, jerboa in a box trap.
+- **Plugin evidence:** DPS Counter runs (Mole); Runecraft draws rift outlines (inner Abyss); Boss
+  Timers shows nothing after a Mole kill: a client gap (`NPC.isDead()` for NpcUtil.isDying).
+- **Achievement diary journals** (Diary Requirements row): Lumbridge & Draynor and Varrock open
+  from the Achievement Diaries tab; the plugin annotates the task lines (device-checked). Other areas
+  and task progress are not done.
+- **Instances for the client dev:** GWD Bandos door (`loc.godwars_dungeon_door_bandos`, op1 public
+  room, op2 private) after `::varbit godwars_counter_bandos 40`; `::tele 2851 5333 2` is a guess for
+  the tile outside it.
+- `tools/repack.sh` `OPENRUNE=1` defaults now match the live container (8080 / 43594).
+- **Upstream:** 45 charge slot, 46 default dog breeds, 47 diary journals; all 47 `git am` on the pin
+  (scratch clone `up` in the shared scratchpad has 01-47 committed).
+- **Next (ranked with the orchestrator):** more diary areas or task progress if wanted; then the
+  Grand Exchange (minimal ~2-day version: interface 465, instant buy/sell at guide price,
+  UPDATE_GE_OFFERS slot states), held until approved. Held: Music area sounds, deadfall/net
+  trap/falconry/pits/tracking, Spawn Predictor. Low priority: FRIENDLIST_DEL.
 
 ## Latest state (2026-10-17, fourteenth server dev, on OpenRune)
 

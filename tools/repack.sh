@@ -12,8 +12,8 @@
 #                              -> also patches the game port the client connects to (it ignores
 #                                 jav_config for that; tools/openrune/patch_port.py)
 #   OPENRUNE=1 LOCAL_AUTH=1 tools/repack.sh
-#                              -> the build for OpenRune (openrune/): SERVER=10.0.2.2:8081 (its
-#                                 jav_config sidecar), GAME_PORT=40255 and the modulus of
+#                              -> the build for OpenRune (openrune/): SERVER=10.0.2.2:8080 (its
+#                                 jav_config sidecar), GAME_PORT=43594 and the modulus of
 #                                 openrune/src/.data/game.key, unless set explicitly
 set -euo pipefail
 
@@ -28,8 +28,8 @@ KS_PASS=android
 [[ -f $HOOK_SO ]] || { echo "build native/ first (missing $HOOK_SO)"; exit 1; }
 
 if [[ -n ${OPENRUNE:-} ]]; then
-    SERVER=${SERVER:-10.0.2.2:8081}
-    GAME_PORT=${GAME_PORT:-40255}
+    SERVER=${SERVER:-10.0.2.2:8080}
+    GAME_PORT=${GAME_PORT:-43594}
     MODULUS=${MODULUS:-$("$ROOT/openrune/scripts/openrune.sh" modulus)}
 fi
 mkdir -p "$OUT"

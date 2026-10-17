@@ -842,6 +842,23 @@ session; its notes are in `docs/android-protocol.md`.
     stones (Inventory Viewer): start them left of the column. Instances aren't modelled (isInstance false;
     Spawn Predictor, Instance Map); `getArray` needs the frame's object locals (Spellbook also needs its
     runelite_callback).
+  - After slot 3 (0ea1a4d, unverified unless the next line says otherwise): BOTTOM_RIGHT overlays start
+    left of the tab stones (root child 50) and the open side panel (111); a plain tap on a single-op widget
+    (one game entry besides Cancel/Walk) shows the entries plugins created during its MenuEntryAdded pass
+    as the plugin strip at the tap point for 6 s (`AndroidMenu.publishTapEntries`; Bank Heatmap's toggles
+    on the bank wrench 12:106).
+  - **Next (gen 23)**:
+    1. Bank Tags / Bank Tag Layouts drag feasibility: the mobile bank mirrors desktop's interface 12 ids;
+       check Bank Tags' tag-tab column (create a tab, add an item via its "Edit-tags" strip entry, open it),
+       then how the mobile bank drags items (WidgetDrag, setDraggedOnWidget/getDraggedWidget are host-side
+       only today) before attempting Layouts.
+    2. Verify 0ea1a4d on the device if not done (Inventory Viewer placement; wrench tap → "Toggle GE
+       Heatmap" → heatmap overlay), then promote Bank Heatmap.
+    3. Feature checks for the 8 new `starts` core rows (Boss Timers/DPS Counter on the Giant Mole, Friend
+       List with the desktop friend, Diary Requirements text widths, Music, GE, Spellbook, Instance Map).
+    4. API: instances (isInstance/getInstanceTemplateChunks/instanced getMapRegions; Spawn Predictor, Instance
+       Map), `getArray` via the frame's object locals plus Spellbook's runelite_callback, GE offers from the
+       game (UPDATE_GE_OFFERS), clan/friends-chat data (ClanChannel.findMember).
   - Gotchas: `debug.osrsrl.set` may hold another agent's leftover ("reload 0 0"): check `getprop` before
     launching. The varp probe sets before it logs the old value (`set varp N v` prints "before").
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".

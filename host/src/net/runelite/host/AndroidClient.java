@@ -785,6 +785,24 @@ public class AndroidClient extends ClientStub {
         int mask = bits >= 32 ? -1 : (1 << bits) - 1;
         return (varps[d[0]] >>> d[1]) & mask;
     }
+    /**
+     * The server's IF_SETEVENTS settings covering a widget (Menu Entry Swapper's UI swaps read its click
+     * mask), or null when none covers it, as desktop's widget flags table. // unverified: on the device.
+     */
+    @Override public net.runelite.api.widgets.WidgetConfigNode getWidgetConfig(net.runelite.api.widgets.Widget w) {
+        if (w == null) return null;
+        int index = w.getIndex();
+        int[] e = Native.widgetEvents(w.getId(), index);
+        if (e == null) return null;
+        long hash = ((long) w.getId() << 32) | (index & 0xffffffffL);
+        return new net.runelite.api.widgets.WidgetConfigNode() {
+            @Override public int getClickMask() { return e[0]; }
+            @Override public int getOpMask() { return e[1]; }
+            @Override public long getHash() { return hash; }
+            @Override public net.runelite.api.Node getNext() { return null; }
+            @Override public net.runelite.api.Node getPrevious() { return null; }
+        };
+    }
     @Override public int getCanvasWidth() { return OverlayRenderer.canvasSize().width; }
     @Override public int getCanvasHeight() { return OverlayRenderer.canvasSize().height; }
 

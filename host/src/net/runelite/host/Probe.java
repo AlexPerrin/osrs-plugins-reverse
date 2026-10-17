@@ -238,7 +238,8 @@ final class Probe {
                     for (int k = 0; k < slots.length; k++)
                         sb.append(' ').append(names[k]).append('=').append(java.util.Arrays.toString(Native.widgetListener(id, idx, slots[k])));
                     Log.i(TAG, "wlisten " + a[1] + "[" + idx + "] flags 0x" + Integer.toHexString(Native.widgetFlags(id, idx)) + sb
-                            + " java onDragComplete " + (WidgetListeners.onDragComplete(id, idx) != null));
+                            + " java onDragComplete " + (WidgetListeners.onDragComplete(id, idx) != null)
+                            + " IF_SETEVENTS " + java.util.Arrays.toString(Native.widgetEvents(id, idx)));
                     break;
                 }
                 case "wmove": {  // "wmove <group:child> <dx>": setOriginalX(+dx) + revalidate()

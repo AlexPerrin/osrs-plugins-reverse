@@ -60,6 +60,9 @@ final class AndroidItemComposition extends ItemCompositionStub {
     @Override public int getPlaceholderTemplateId() { return v[9]; }
     // Inventory icon view (ObjType +0xc0..+0xc8, static RE; unverified). Setters keep host-side values
     // (desktop's change the cached definition; the game's icons aren't redrawn from them here).
+    /** Sub-ops (e.g. teleport lists under an inventory op) aren't read from the ObjType: null, which
+     *  plugins treat as "no sub-ops" (Menu Entry Swapper's shift-click item configuration). */
+    @Override public String[][] getSubops() { return null; }
     @Override public int getXan2d() { return v.length > 11 ? v[11] : 0; }
     @Override public int getYan2d() { return v.length > 12 ? v[12] : 0; }
     @Override public int getZan2d() { return v.length > 13 ? v[13] : 0; }

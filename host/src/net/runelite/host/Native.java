@@ -81,6 +81,8 @@ final class Native {
     static native void widgetSetString(int id, int index, int which, String text);
     /** Widget event flags (+0x2b0): bit i+1 shows op i in the game's menu. */
     static native int widgetFlags(int id, int index);
+    /** The IF_SETEVENTS range covering a widget: {flags, op mask}, or null (none; game thread only). */
+    static native int[] widgetEvents(int id, int index);
     static native void widgetSetFlags(int id, int index, int flags);
     /** The game's Widget* (0 if absent): identifies a CC_CREATE child across re-creations. */
     static native long widgetPtr(int id, int index);

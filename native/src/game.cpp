@@ -863,6 +863,29 @@ bool widget_set_string(uintptr_t w, int which, const std::string& text) {
 // 0x525c78 adds op i when bit i+1 is set (0x460e74 returns (flags >> 1) & 0x3ff) or the widget has
 // an onOp listener (+0x6a0 / +0x6b0..+0x6b8).
 int widget_flags(uintptr_t w) { return w ? read_at<int32_t>(w + 0x2b0) : 0; }
+// As the lookups 0x460dac / 0x460e74: bucket = component % count (Client +0x413c38) in the table at
+// +0x413c30; walk the chain (next at node +0x18) to the first node of this component, then over its
+// nodes {+0 component, +4 start, +8 end, +0xc flags, +0x10 op mask} for a range holding the index.
+bool widget_events(uintptr_t w, int out[2]) {
+    uintptr_t c = client();
+    if (!w || !c) return false;
+    uint32_t count = read_at<uint32_t>(c + 0x413c38);
+    uintptr_t buckets = read_at<uintptr_t>(c + 0x413c30);
+    if (!count || !buckets) return false;
+    uint32_t comp = read_at<uint32_t>(w + 4);
+    int32_t index = read_at<int32_t>(w + 8);
+    uintptr_t n = read_at<uintptr_t>(buckets + static_cast<uintptr_t>(comp % count) * 8);
+    int guard = 0;
+    while (n && read_at<uint32_t>(n) != comp && ++guard < 100000) n = read_at<uintptr_t>(n + 0x18);
+    for (; n && read_at<uint32_t>(n) == comp && ++guard < 100000; n = read_at<uintptr_t>(n + 0x18)) {
+        if (read_at<int32_t>(n + 4) <= index && index <= read_at<int32_t>(n + 8)) {
+            out[0] = read_at<int32_t>(n + 0xc);
+            out[1] = read_at<int32_t>(n + 0x10);
+            return true;
+        }
+    }
+    return false;
+}
 void widget_set_flags(uintptr_t w, int flags) {
     if (w) *reinterpret_cast<volatile int32_t*>(w + 0x2b0) = flags;
 }

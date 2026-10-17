@@ -1222,6 +1222,14 @@ void n_widget_set_string(JNIEnv* env, jclass, jint id, jint index, jint which, j
     game::widget_set_string(widget_or_child(id, index), which, t);
 }
 jint n_widget_flags(JNIEnv*, jclass, jint id, jint index) { return game::widget_flags(widget_or_child(id, index)); }
+jintArray n_widget_events(JNIEnv* env, jclass, jint id, jint index) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    int v[2];
+    if (!game::widget_events(widget_or_child(id, index), v)) return nullptr;
+    jintArray a = env->NewIntArray(2);
+    if (a) env->SetIntArrayRegion(a, 0, 2, reinterpret_cast<const jint*>(v));
+    return a;
+}
 void n_widget_set_flags(JNIEnv*, jclass, jint id, jint index, jint flags) {
     if (client_thread::on_client_thread()) game::widget_set_flags(widget_or_child(id, index), flags);
 }
@@ -1355,6 +1363,7 @@ const JNINativeMethod kNatives[] = {
     {"widgetSetText", "(IILjava/lang/String;)V", reinterpret_cast<void*>(n_widget_set_text)},
     {"widgetSetString", "(IIILjava/lang/String;)V", reinterpret_cast<void*>(n_widget_set_string)},
     {"widgetFlags", "(II)I", reinterpret_cast<void*>(n_widget_flags)},
+    {"widgetEvents", "(II)[I", reinterpret_cast<void*>(n_widget_events)},
     {"widgetSetFlags", "(III)V", reinterpret_cast<void*>(n_widget_set_flags)},
     {"widgetPtr", "(II)J", reinterpret_cast<void*>(n_widget_ptr)},
     {"widgetDynamicText", "(II)Ljava/lang/String;", reinterpret_cast<void*>(n_widget_dynamic_text)},

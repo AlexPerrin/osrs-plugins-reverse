@@ -347,7 +347,7 @@ public final class Host {
         GameStateChanged e = new GameStateChanged();
         // Desktop's ConfigManager switches the RuneScape profile while logging in; plugins
         // (Quest Helper) wait for that event before their first LOGGED_IN setup.
-        if (s == GameState.LOGIN_SCREEN) { profilePosted = false; pendingNpcs.clear(); }
+        if (s == GameState.LOGIN_SCREEN) { profilePosted = false; pendingNpcs.clear(); ChatChannels.reset(); }
         if (s == GameState.LOGGED_IN) ((AndroidClient) client).applyIdleTimeout();
         if (s == GameState.LOGGED_IN && !profilePosted) {
             profilePosted = true;
@@ -479,6 +479,11 @@ public final class Host {
                     }
                 }
                 postActorChanges(bus);  // hitsplats of this tick before its GameTick, as on desktop
+                try {
+                    ChatChannels.postChanges(bus);
+                } catch (RuntimeException ex) {
+                    Log.e(TAG, "chat channel events", ex);
+                }
                 bus.post(gameTick);
                 clientThread.runTickEnd();
                 Probe.onGameTick();

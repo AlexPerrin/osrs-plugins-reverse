@@ -130,6 +130,12 @@ final class AndroidMenu implements Menu {
             postDesktopAliases(bus, entries);
             presorting = true;
             try {
+                // Desktop posts ClientTick on every frame, after that frame's MenuEntryAdded pass, so plugins
+                // that edit the hover menu there (with no menu open) shape the menu that then opens: Bank Tag
+                // Layouts adds "Enable layout (hub)" to a tag tab's entries in ClientTick. The mobile client has
+                // no hover menu, so one ClientTick is posted here, with the menu reported closed.
+                // unverified: on the device.
+                bus.post(new net.runelite.api.events.ClientTick());
                 bus.post(new net.runelite.api.events.PostMenuSort());
             } finally {
                 presorting = false;

@@ -117,4 +117,63 @@ final class ChatChannels {
         Object[] r = Native.chatChannel(which);
         return r != null ? new Clan(r) : null;
     }
+
+    // --- events: desktop posts them from the channel packets; here the channels are diffed once per
+    // game tick (before GameTick). Joining posts FriendsChatChanged(true) / ClanChannelChanged, then a
+    // joined event per member already there, as the full channel arrives in one update on desktop.
+    // unverified: on the device.
+    private static final int[] CLAN_SLOTS = {-1, 0, 1};  // guest, ClanID.CLAN, ClanID.GROUP_IRONMAN
+    private static Fc lastFc;
+    private static final Clan[] lastClan = new Clan[CLAN_SLOTS.length];
+
+    private static final Class<?>[] EVENTS = {
+        net.runelite.api.events.FriendsChatChanged.class, net.runelite.api.events.FriendsChatMemberJoined.class,
+        net.runelite.api.events.FriendsChatMemberLeft.class, net.runelite.api.events.ClanChannelChanged.class,
+        net.runelite.api.events.ClanMemberJoined.class, net.runelite.api.events.ClanMemberLeft.class,
+    };
+
+    /** Game thread, once per game tick while logged in. */
+    static void postChanges(net.runelite.client.eventbus.EventBus bus) {
+        boolean any = false;
+        for (Class<?> c : EVENTS) any |= bus.hasSubscribers(c);
+        if (!any) return;
+        Object[] r = Native.chatChannel(-2);
+        Fc fc = r != null ? new Fc(r) : null;
+        Fc was = lastFc;
+        lastFc = fc;
+        if ((was == null) != (fc == null) || (was != null && !was.name.equals(fc.name))) {
+            if (was != null) for (FcMember m : was.members) bus.post(new net.runelite.api.events.FriendsChatMemberLeft(m));
+            if (was != null) bus.post(new net.runelite.api.events.FriendsChatChanged(false));
+            if (fc != null) bus.post(new net.runelite.api.events.FriendsChatChanged(true));
+            was = null;
+        }
+        if (fc != null) {
+            for (FcMember m : fc.members) if (was == null || was.findByName(m.name) == null)
+                bus.post(new net.runelite.api.events.FriendsChatMemberJoined(m));
+            if (was != null) for (FcMember m : was.members) if (fc.findByName(m.name) == null)
+                bus.post(new net.runelite.api.events.FriendsChatMemberLeft(m));
+        }
+        for (int k = 0; k < CLAN_SLOTS.length; k++) {
+            int which = CLAN_SLOTS[k];
+            Object[] cr = Native.chatChannel(which);
+            Clan ch = cr != null ? new Clan(cr) : null;
+            Clan old = lastClan[k];
+            lastClan[k] = ch;
+            if ((old == null) != (ch == null) || (old != null && !old.name.equals(ch.name))) {
+                bus.post(new net.runelite.api.events.ClanChannelChanged(ch, which < 0 ? -1 : which, which < 0));
+                old = null;
+            }
+            if (ch == null) continue;
+            for (ClanChannelMember m : ch.members) if (old == null || old.findMember(m.getName()) == null)
+                bus.post(new net.runelite.api.events.ClanMemberJoined(ch, m));
+            if (old != null) for (ClanChannelMember m : old.members) if (ch.findMember(m.getName()) == null)
+                bus.post(new net.runelite.api.events.ClanMemberLeft(ch, m));
+        }
+    }
+
+    /** Logged out: forget the channels (desktop clears them; no events). */
+    static void reset() {
+        lastFc = null;
+        java.util.Arrays.fill(lastClan, null);
+    }
 }

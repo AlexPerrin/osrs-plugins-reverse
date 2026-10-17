@@ -475,12 +475,20 @@ jboolean n_set_script_string(JNIEnv* env, jclass, jint index, jstring text) {
     env->ReleaseStringChars(text, c);
     return game::set_script_string(index, latin1);
 }
-void n_set_op_watches(JNIEnv* env, jclass, jintArray pairs) {
-    if (!pairs) { script_hooks::set_op_watches(nullptr, 0); return; }
+void n_set_op_watches(JNIEnv* env, jclass, jintArray pairs, jobjectArray prefixes) {
+    if (!pairs) { script_hooks::set_op_watches(nullptr, nullptr, 0); return; }
     jsize n = env->GetArrayLength(pairs);
     std::vector<jint> v(static_cast<size_t>(n));
     env->GetIntArrayRegion(pairs, 0, n, v.data());
-    script_hooks::set_op_watches(reinterpret_cast<const int32_t*>(v.data()), n / 2);
+    std::vector<std::string> p(static_cast<size_t>(n / 2));
+    for (jsize i = 0; prefixes && i < n / 2 && i < env->GetArrayLength(prefixes); i++) {
+        auto s = static_cast<jstring>(env->GetObjectArrayElement(prefixes, i));
+        if (!s) continue;
+        const char* c = env->GetStringUTFChars(s, nullptr);
+        if (c) { p[static_cast<size_t>(i)] = c; env->ReleaseStringUTFChars(s, c); }
+        env->DeleteLocalRef(s);
+    }
+    script_hooks::set_op_watches(reinterpret_cast<const int32_t*>(v.data()), p.data(), n / 2);
 }
 
 jobjectArray n_script_stacks(JNIEnv* env, jclass) {
@@ -1267,7 +1275,7 @@ const JNINativeMethod kNatives[] = {
     {"setScriptEvents", "(Z)V", reinterpret_cast<void*>(n_set_script_events)},
     {"scriptStacks", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_stacks)},
     {"setScriptIntStack", "([II)Z", reinterpret_cast<void*>(n_set_script_int_stack)},
-    {"setOpWatches", "([I)V", reinterpret_cast<void*>(n_set_op_watches)},
+    {"setOpWatches", "([I[Ljava/lang/String;)V", reinterpret_cast<void*>(n_set_op_watches)},
     {"setScriptString", "(ILjava/lang/String;)Z", reinterpret_cast<void*>(n_set_script_string)},
     {"scriptEventArgs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_event_args)},
     {"scriptEventSource", "()[I", reinterpret_cast<void*>(n_script_event_source)},

@@ -215,6 +215,8 @@ bool set_script_int_stack(const int32_t* values, int size);
 // Replaces the string at object stack slot `index` (0 = bottom) through the game's string assign
 // 0x3f1498, as CC_SETTEXT stores text. False when the slot isn't a string. Game thread only.
 bool set_script_string(int index, const std::string& text);
+// True when the top of the running script's object stack is a string starting with `prefix`.
+bool script_top_string_starts_with(const std::string& prefix);
 // A ScriptEvent's arguments (+0x08 argc, +0x10 0x28-byte variants); non-int/string args come
 // back as an empty string with is_string = false and i = -1.
 std::vector<ScriptArg> script_event_args(uintptr_t ev);

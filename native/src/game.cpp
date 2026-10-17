@@ -1308,6 +1308,16 @@ bool set_script_int_stack(const int32_t* values, int size) {
     return true;
 }
 
+bool script_top_string_starts_with(const std::string& prefix) {
+    if (!g_build || !g_build->script_vm) return false;
+    uintptr_t vm = g_base + g_build->script_vm;
+    int m = read_at<int32_t>(vm + 0xac38);
+    if (m <= 0 || m > 1000) return false;
+    uintptr_t v = vm + 0xff8 + static_cast<uintptr_t>(m - 1) * 0x28;
+    if (read_at<uint32_t>(v + 0x20) != 2) return false;
+    return read_string(v).compare(0, prefix.size(), prefix) == 0;
+}
+
 bool set_script_string(int index, const std::string& text) {
     if (!g_build || !g_build->script_vm) return false;
     uintptr_t vm = g_base + g_build->script_vm;

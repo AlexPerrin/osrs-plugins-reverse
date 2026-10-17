@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <string>
 
 // ScriptPreFired / ScriptPostFired: inline hooks on the game's CS2 VM (build 241.4).
 //  - runScriptEvent(vm, ScriptEvent*, maxOps) 0x4df54c: a root script (RootPre before, Post after).
@@ -29,9 +30,11 @@ uintptr_t current_event();
 // the listener gets OpPre before and OpPost after the instruction, with
 // script_id = opcode << 16 | script. Delivered whether or not set_enabled is on, so RuneLite's
 // runelite_callback instructions (which sit next to such opcodes) can be emulated.
-// At most kMaxOpWatches pairs; pairs is {script, opcode, script, opcode, ...}.
+// At most kMaxOpWatches pairs; pairs is {script, opcode, script, opcode, ...}. Script -1 matches
+// any script; then prefixes[i] (non-empty) must start the string on top of the object stack
+// (e.g. any if_settext of "Total level: ..."), reported with script id 0xffff.
 constexpr int kMaxOpWatches = 16;
-void set_op_watches(const int32_t* pairs, int count);
+void set_op_watches(const int32_t* pairs, const std::string* prefixes, int count);
 
 struct Stats { uint64_t roots, gosubs, returns, delivered; };
 Stats stats();

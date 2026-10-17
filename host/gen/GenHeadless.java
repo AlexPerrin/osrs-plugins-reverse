@@ -454,6 +454,9 @@ public class GenHeadless {
             if (c == javax.swing.text.AbstractDocument.class)
                 sb.append(in).append("/** Host: the document's text (JTextComponent.get/setText read and write it, as in Swing). */\n")
                   .append(in).append("public final java.lang.StringBuilder __content = new java.lang.StringBuilder();\n");
+            if (c == javax.swing.JOptionPane.class)
+                sb.append(in).append("/** Host: answers the static show*Dialog calls (kind, {message, title, options, initial, optionType}); null = none. */\n")
+                  .append(in).append("public static volatile java.util.function.BiFunction<String, Object[], Object> __dialog;\n");
             if (c == javax.swing.JPopupMenu.class)
                 sb.append(in).append("/** Host: the popup a listener last show()ed (the sidebar lists its menu items in a picker). */\n")
                   .append(in).append("public static volatile javax.swing.JPopupMenu __shown;\n");
@@ -574,6 +577,29 @@ public class GenHeadless {
         }
         if ((c == javax.swing.SwingUtilities.class || c == java.awt.EventQueue.class) && n.equals("isEventDispatchThread") && ps.length == 0)
             return "return Thread.currentThread() == javax.swing.SwingUtilities.__edt;";
+        // JOptionPane dialogs go to the host (modal Android dialogs); without one: cancelled/closed.
+        if (c == javax.swing.JOptionPane.class && n.startsWith("show") && n.endsWith("Dialog")) {
+            String kind = n.equals("showInputDialog") ? (x.getReturnType() == String.class ? "input" : "inputSelect")
+                : n.equals("showConfirmDialog") ? "confirm" : n.equals("showOptionDialog") ? "option"
+                : n.equals("showMessageDialog") ? "message" : null;
+            if (kind != null) {
+                int msg = -1, title = -1, arr = -1, init = -1, type = -1;
+                for (int i = 0; i < ps.length; i++) {
+                    if (ps[i] == Object.class) { if (msg < 0) msg = i; else init = i; }
+                    else if (ps[i] == String.class && title < 0) title = i;
+                    else if (ps[i] == Object[].class) arr = i;
+                    else if (ps[i] == int.class && type < 0 && title >= 0) type = i;
+                }
+                String a = "new Object[] {" + (msg >= 0 ? "a" + msg : "null") + ", " + (title >= 0 ? "a" + title : "null") + ", "
+                    + (arr >= 0 ? "a" + arr : "null") + ", " + (init >= 0 ? "a" + init : "null") + ", "
+                    + (type >= 0 && kind.equals("confirm") ? "a" + type : "-1") + "}";
+                String call = "Object r = __dialog != null ? __dialog.apply(\"" + kind + "\", " + a + ") : null; ";
+                Class<?> rt = x.getReturnType();
+                if (rt == void.class) return call;
+                if (rt == int.class) return call + "return r instanceof Integer ? (Integer) r : -1;";
+                return call + "return (" + rt.getName() + ") r;";
+            }
+        }
         // As the JDK: the event's button (press/release/click) or its extended modifiers (drags).
         if (c == javax.swing.SwingUtilities.class && ps.length == 1 && ps[0] == java.awt.event.MouseEvent.class) {
             int b = n.equals("isLeftMouseButton") ? 1 : n.equals("isMiddleMouseButton") ? 2 : n.equals("isRightMouseButton") ? 3 : 0;

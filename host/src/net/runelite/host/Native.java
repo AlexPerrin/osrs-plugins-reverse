@@ -74,8 +74,11 @@ final class Native {
     static native Object[] widgetListener(int id, int index, int offset);
     /** A widget's var/inv/stat transmit trigger ids (offset 0x5c0/0x608/0x650), or null. */
     static native int[] widgetTriggers(int id, int index, int offset);
-    /** Watched {script, opcode, ...} pairs: Host.onScript gets phase 3/4 around each (id = opcode << 16 | script). */
-    static native void setOpWatches(int[] pairs);
+    /**
+     * Watched {script, opcode, ...} pairs: Host.onScript gets phase 3/4 around each (id = opcode << 16 |
+     * script). Script -1 = any script whose object stack top starts with prefixes[i] (id script 0xffff).
+     */
+    static native void setOpWatches(int[] pairs, String[] prefixes);
     /** Replaces the string at object stack slot index (0 = bottom) of the running script. */
     static native boolean setScriptString(int index, String text);
     static native boolean playSound(int id, int loops, int delay);

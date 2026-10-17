@@ -3,6 +3,7 @@
 #include <sys/system_properties.h>
 
 #include <atomic>
+#include <string>
 
 #include "client_thread.h"
 #include "game.h"
@@ -52,6 +53,7 @@ uintptr_t g_event = 0;
 
 // Watched (script, opcode) pairs; written by the game thread's JNI calls only.
 int32_t g_watch[kMaxOpWatches * 2];
+std::string g_watch_prefix[kMaxOpWatches];
 std::atomic<int> g_watch_count{0};
 using OpDispatchFn = __uint128_t (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 OpDispatchFn g_orig_op = nullptr;
@@ -98,8 +100,13 @@ __uint128_t hook_op_dispatch(uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3,
     int match = -1;
     if (n > 0 && g_depth > 0 && g_depth <= kMaxDepth && g_listener) {
         int op = static_cast<int32_t>(a1), id = g_ids[g_depth - 1];
-        for (int i = 0; i < n; i++)
-            if (g_watch[2 * i] == id && g_watch[2 * i + 1] == op) { match = (op << 16) | (id & 0xffff); break; }
+        for (int i = 0; i < n && match < 0; i++) {
+            if (g_watch[2 * i + 1] != op) continue;
+            if (g_watch[2 * i] == id) match = (op << 16) | (id & 0xffff);
+            else if (g_watch[2 * i] == -1 && client_thread::on_client_thread()
+                     && (g_watch_prefix[i].empty() || game::script_top_string_starts_with(g_watch_prefix[i])))
+                match = (op << 16) | 0xffff;
+        }
         if (match >= 0 && !client_thread::on_client_thread()) match = -1;
     }
     if (match >= 0) g_listener(OpPre, match);
@@ -110,11 +117,12 @@ __uint128_t hook_op_dispatch(uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3,
 
 }  // namespace
 
-void set_op_watches(const int32_t* pairs, int count) {
+void set_op_watches(const int32_t* pairs, const std::string* prefixes, int count) {
     if (count < 0) count = 0;
     if (count > kMaxOpWatches) count = kMaxOpWatches;
     g_watch_count.store(0, std::memory_order_relaxed);
     for (int i = 0; i < count * 2; i++) g_watch[i] = pairs[i];
+    for (int i = 0; i < count; i++) g_watch_prefix[i] = prefixes ? prefixes[i] : std::string();
     g_watch_count.store(count, std::memory_order_relaxed);
 }
 

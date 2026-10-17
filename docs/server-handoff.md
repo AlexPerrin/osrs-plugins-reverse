@@ -21,6 +21,28 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-17, tenth server dev, on OpenRune)
+
+Protocol unchanged. Details in `docs/openrune-port.md`, "Tenth server dev".
+
+- **Deployed** 86b06e4 (02:54). Built, not deployed: b9001d9 (fairy ring dialog abort), 0b2ddee
+  (essence pouch wording); ask for a restart, then the client dev checks Ess Pouch.
+- **Easy clues complete except the 2 X Marks the Spot map rows (not easy scrolls):** all 71 loc
+  searches (open-then-search), Galahad and N Falador maps, "Alone" unlocks on Ice Mountain
+  (new music area), Cecilia success device-checked.
+- **Fairy rings** (`content/travel/fairy-rings`): device-checked dial/log/teleport/Last-destination.
+- **Tools:** a scratch Java renderer for cache models (OpenRune's `ModelDecoder` from the server
+  install's lib dir, run in `eclipse-temurin:21` with `.data/cache/LIVE` mounted; top-down for the
+  single-model maps, if3 placements for icon maps) identified the map interfaces. Rewrite it from the
+  port doc's description if needed (~50 lines).
+- **Build tip:** after adding a module, run the build steps with `--no-configuration-cache` (the
+  cached configuration skips the new module silently: no compile, no error).
+- **Device tips:** chat commands: tap the keyboard toggle (90,220) until `mInputShown=true`, then
+  `input text` and keyevent 66, otherwise the line stays typed but unsent; the music tab is the
+  harp (1840,685); long-press NPCs after `::freeze`.
+- **Next:** medium clues core slice (approved, ~1 day), then puzzle boxes/keys/map crates/encounters;
+  fairy ring favourites and the hideout sequence; more `music_modern` areas.
+
 ## Latest state (2026-10-17, ninth server dev, on OpenRune)
 
 Protocol unchanged. This session: Treasure Trails rebuilt on the cache's own clue data, beginner

@@ -1,0 +1,124 @@
+From 96ac655e203bdeae35de2d993b6d66c576a6051e Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 03:02:46 -0400
+Subject: [PATCH 25/27] Music: Ice Mountain area for Alone
+
+Only Lumbridge had a music_modern area, so tracks such as Alone (also an easy clue music step)
+never unlocked. Adds area.ice_mountain from the OSRS Wiki's Map:Alone polygon (modern mode; the
+Black Knights' Fortress hole is not modelled).
+---
+ .data/gamevals/area.rscm                      |  1 +
+ .data/gamevals/dbrow.rscm                     |  1 +
+ .data/raw-cache/map/area/ice_mountain.toml    | 59 +++++++++++++++++++
+ .../main/kotlin/dev/openrune/impl/Music.kt    |  6 ++
+ 4 files changed, 67 insertions(+)
+ create mode 100644 .data/raw-cache/map/area/ice_mountain.toml
+
+diff --git a/.data/gamevals/area.rscm b/.data/gamevals/area.rscm
+index 21e79845c..bb7e36efc 100644
+--- a/.data/gamevals/area.rscm
++++ b/.data/gamevals/area.rscm
+@@ -64,6 +64,7 @@ ferox_enclave=32758
+ wilderness_dungeons=32759
+ wilderness=32760
+ demonic_ruins=32761
++ice_mountain=32762
+ chaos_temple=32763
+ lumbridge=32764
+ singles_plus=32765
+diff --git a/.data/gamevals/dbrow.rscm b/.data/gamevals/dbrow.rscm
+index 410bb1dea..be007048e 100644
+--- a/.data/gamevals/dbrow.rscm
++++ b/.data/gamevals/dbrow.rscm
+@@ -1,5 +1,6 @@
+ gameframe_fullscreen=65530
+ music_modern_lumbridge=65531
++music_modern_ice_mountain=60920
+ gameframe_pre_eoc=65532
+ gameframe_osrs_stretch=65533
+ gameframe_toplevel=65534
+diff --git a/.data/raw-cache/map/area/ice_mountain.toml b/.data/raw-cache/map/area/ice_mountain.toml
+new file mode 100644
+index 000000000..555b3f5f1
+--- /dev/null
++++ b/.data/raw-cache/map/area/ice_mountain.toml
+@@ -0,0 +1,59 @@
++# Music area for "Alone" (modern mode), from the OSRS Wiki's Map:Alone polygon.
++# The wiki cuts the Black Knights' Fortress out of it; that hole is not modelled here.
++[[area]]
++name = "Ice Mountain"
++area_id = "area.ice_mountain"
++levels = [0]
++
++[[area.polygons]]
++vertices = [
++    [2994, 3520],
++    [2994, 3524],
++    [2998, 3528],
++    [2998, 3534],
++    [3008, 3544],
++    [3022, 3544],
++    [3029, 3537],
++    [3029, 3532],
++    [3041, 3520],
++    [3041, 3517],
++    [3039, 3515],
++    [3039, 3502],
++    [3028, 3491],
++    [3028, 3483],
++    [3034, 3477],
++    [3034, 3476],
++    [3037, 3473],
++    [3039, 3473],
++    [3039, 3470],
++    [3037, 3470],
++    [3035, 3468],
++    [3035, 3462],
++    [3033, 3460],
++    [3031, 3460],
++    [3031, 3462],
++    [3030, 3462],
++    [3030, 3463],
++    [3029, 3463],
++    [3029, 3464],
++    [3028, 3464],
++    [3028, 3465],
++    [3027, 3465],
++    [3027, 3466],
++    [3026, 3466],
++    [3026, 3467],
++    [3022, 3467],
++    [3021, 3466],
++    [3012, 3466],
++    [3012, 3465],
++    [3009, 3462],
++    [2994, 3462],
++    [2990, 3458],
++    [2988, 3458],
++    [2988, 3454],
++    [2979, 3463],
++    [2979, 3475],
++    [2990, 3486],
++    [2990, 3510],
++    [2994, 3514],
++]
+diff --git a/or-cache/src/main/kotlin/dev/openrune/impl/Music.kt b/or-cache/src/main/kotlin/dev/openrune/impl/Music.kt
+index b5ba8df06..199441c8a 100644
+--- a/or-cache/src/main/kotlin/dev/openrune/impl/Music.kt
++++ b/or-cache/src/main/kotlin/dev/openrune/impl/Music.kt
+@@ -49,6 +49,12 @@ object Music {
+                 )
+                 column(2, true)
+             }
++
++            row("dbrow.music_modern_ice_mountain") {
++                column(0, "ice_mountain")
++                columnRSCM(1, "dbrow.music_alone")
++                column(2, true)
++            }
+         }
+ 
+     fun musicClassic() =
+-- 
+2.43.0
+

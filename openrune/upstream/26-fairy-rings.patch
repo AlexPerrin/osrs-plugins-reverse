@@ -1,0 +1,338 @@
+From 0580dc83b27656f5e303a7e97d499ba5f3aae6e1 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 03:02:47 -0400
+Subject: [PATCH 26/27] Fairy rings: dial, travel log, Zanaris and
+ Last-destination
+
+New module on the cache's fairyring dbtable: Configure (Dramen or Lunar staff) opens the dial
+(398) with the travel log (381); dial buttons and 'Use code' set fairyring_1..3; Confirm,
+Zanaris and Last-destination teleport (fairyring_lastloc_opvis drives the op text); the log
+lists visited codes (server varps). A code with no ring, or the ring you stand in, does not
+move you (OSRS Wiki). Favourites, the hideout sequence and per-ring requirements are not done.
+---
+ content/travel/fairy-rings/build.gradle.kts   |  15 ++
+ .../travel/fairy-rings/pack/build.gradle.kts  |   7 +
+ .../fairyrings/pack/FairyRingsPluginPack.kt   |   5 +
+ .../pack/src/main/resources/gamevals.toml     |   3 +
+ .../pack/configs/fairy_ring_vars.toml         |  11 +
+ .../travel/fairyrings/FairyRingScriptTest.kt  |  34 ++++
+ .../travel/fairyrings/FairyRingScript.kt      | 190 ++++++++++++++++++
+ 7 files changed, 265 insertions(+)
+ create mode 100644 content/travel/fairy-rings/build.gradle.kts
+ create mode 100644 content/travel/fairy-rings/pack/build.gradle.kts
+ create mode 100644 content/travel/fairy-rings/pack/src/main/kotlin/org/rsmod/content/travel/fairyrings/pack/FairyRingsPluginPack.kt
+ create mode 100644 content/travel/fairy-rings/pack/src/main/resources/gamevals.toml
+ create mode 100644 content/travel/fairy-rings/pack/src/main/resources/pack/configs/fairy_ring_vars.toml
+ create mode 100644 content/travel/fairy-rings/src/integration/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScriptTest.kt
+ create mode 100644 content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
+
+diff --git a/content/travel/fairy-rings/build.gradle.kts b/content/travel/fairy-rings/build.gradle.kts
+new file mode 100644
+index 000000000..65478ea25
+--- /dev/null
++++ b/content/travel/fairy-rings/build.gradle.kts
+@@ -0,0 +1,15 @@
++plugins {
++    id("base-conventions")
++    id("integration-test-suite")
++}
++
++dependencies {
++    implementation(libs.rsprot.api)
++    implementation(projects.api.pluginCommons)
++}
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.pluginCommons)
++    }
++}
+diff --git a/content/travel/fairy-rings/pack/build.gradle.kts b/content/travel/fairy-rings/pack/build.gradle.kts
+new file mode 100644
+index 000000000..10c8703c8
+--- /dev/null
++++ b/content/travel/fairy-rings/pack/build.gradle.kts
+@@ -0,0 +1,7 @@
++plugins {
++    id("base-conventions")
++}
++
++dependencies {
++    implementation(projects.engine.map)
++}
+diff --git a/content/travel/fairy-rings/pack/src/main/kotlin/org/rsmod/content/travel/fairyrings/pack/FairyRingsPluginPack.kt b/content/travel/fairy-rings/pack/src/main/kotlin/org/rsmod/content/travel/fairyrings/pack/FairyRingsPluginPack.kt
+new file mode 100644
+index 000000000..aaebf7bb7
+--- /dev/null
++++ b/content/travel/fairy-rings/pack/src/main/kotlin/org/rsmod/content/travel/fairyrings/pack/FairyRingsPluginPack.kt
+@@ -0,0 +1,5 @@
++package org.rsmod.content.travel.fairyrings.pack
++
++import dev.openrune.pack.PluginPack
++
++class FairyRingsPluginPack : PluginPack()
+diff --git a/content/travel/fairy-rings/pack/src/main/resources/gamevals.toml b/content/travel/fairy-rings/pack/src/main/resources/gamevals.toml
+new file mode 100644
+index 000000000..96ddf35a0
+--- /dev/null
++++ b/content/travel/fairy-rings/pack/src/main/resources/gamevals.toml
+@@ -0,0 +1,3 @@
++[gamevals.varp]
++fairyring_travel_log_a = 63860
++fairyring_travel_log_b = 63861
+diff --git a/content/travel/fairy-rings/pack/src/main/resources/pack/configs/fairy_ring_vars.toml b/content/travel/fairy-rings/pack/src/main/resources/pack/configs/fairy_ring_vars.toml
+new file mode 100644
+index 000000000..5dfce83ca
+--- /dev/null
++++ b/content/travel/fairy-rings/pack/src/main/resources/pack/configs/fairy_ring_vars.toml
+@@ -0,0 +1,11 @@
++[[varp]]
++isServerOnly = true
++id = "varp.fairyring_travel_log_a"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.fairyring_travel_log_b"
++scope = "Perm"
++transmit = "Never"
+diff --git a/content/travel/fairy-rings/src/integration/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScriptTest.kt b/content/travel/fairy-rings/src/integration/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScriptTest.kt
+new file mode 100644
+index 000000000..6a9e7a50f
+--- /dev/null
++++ b/content/travel/fairy-rings/src/integration/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScriptTest.kt
+@@ -0,0 +1,34 @@
++package org.rsmod.content.travel.fairyrings
++
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.rsmod.api.table.FairyringRow
++import org.rsmod.content.travel.fairyrings.FairyRingScript.Companion.isDestination
++
++class FairyRingScriptTest {
++    private val left = listOf('A', 'D', 'C', 'B')
++    private val middle = listOf('I', 'L', 'K', 'J')
++    private val right = listOf('P', 'S', 'R', 'Q')
++
++    @Test
++    fun `row ids are the dial positions of their code`() {
++        val rows = FairyringRow.all()
++        assertEquals(64, rows.size)
++        for (row in rows) {
++            val code = row.code.replace(" ", "")
++            val id = left.indexOf(code[0]) * 100 + middle.indexOf(code[1]) * 10 + right.indexOf(code[2])
++            assertEquals(id, row.id, code)
++        }
++        assertEquals((0 until 64).toSet(), rows.map { it.multilocState }.toSet())
++    }
++
++    @Test
++    fun `the nine unused codes and the house ring (DIQ) have no fixed destination`() {
++        val unused = FairyringRow.all().filterNot(::isDestination).map { it.code.replace(" ", "") }.toSet()
++        assertEquals(setOf("AIP", "BIR", "BJQ", "CJP", "CJS", "CLQ", "DJQ", "DJS", "DKQ", "DIQ"), unused)
++        assertTrue(isDestination(FairyringRow.all().single { it.code == FairyRingScript.ZANARIS_CODE }))
++        assertFalse(FairyringRow.all().filter(::isDestination).any { it.destCoord.x < 1000 })
++    }
++}
+diff --git a/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
+new file mode 100644
+index 000000000..6d286376b
+--- /dev/null
++++ b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
+@@ -0,0 +1,190 @@
++package org.rsmod.content.travel.fairyrings
++
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.aconverted.interf.IfButtonOp
++import net.rsprot.protocol.game.outgoing.misc.player.TriggerOnDialogAbort
++import org.rsmod.api.player.output.mes
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.righthand
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.player.vars.intVarBit
++import org.rsmod.api.script.onIfModalButton
++import org.rsmod.api.script.onOpLoc1
++import org.rsmod.api.script.onOpLoc2
++import org.rsmod.api.script.onOpLoc3
++import org.rsmod.api.table.FairyringRow
++import org.rsmod.game.entity.Player
++import org.rsmod.map.CoordGrid
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Fairy rings on Jagex's `fairyring` dbtable (code, destination, travel log component and text).
++ * Configure opens the dial (398) with the travel log (381) beside it; the dials are
++ * `fairyring_1..3`, which the dial buttons' clientscript also turns on the client. The travel log
++ * lists the codes the player has travelled to (server varps), and Last-destination uses
++ * `fairyring_lastloc_opvis` (64 + the row's multiloc state), which the loc's op text reads.
++ */
++class FairyRingScript : PluginScript() {
++    private var Player.dial1 by intVarBit("varbit.fairyring_1")
++    private var Player.dial2 by intVarBit("varbit.fairyring_2")
++    private var Player.dial3 by intVarBit("varbit.fairyring_3")
++    private var Player.lastDestination by intVarBit("varbit.fairyring_lastloc_opvis")
++
++    override fun ScriptContext.startup() {
++        onOpLoc1(MINOR_HUB) { zanaris() }
++        for (hub in listOf(MINOR_HUB, HOME_HUB)) {
++            onOpLoc2(hub) { configure() }
++            onOpLoc3(hub) { lastDestination() }
++        }
++        for ((dial, button) in DIAL_BUTTONS) {
++            onIfModalButton("component.fairyrings:${button.first}") { turn(dial, 1) }
++            onIfModalButton("component.fairyrings:${button.second}") { turn(dial, 3) }
++        }
++        onIfModalButton("component.fairyrings:confirm") { confirm() }
++        for (row in FairyringRow.all()) {
++            onIfModalButton(logComponent(row)) { if (it.op == IfButtonOp.Op1) useCode(row) }
++        }
++    }
++
++    private fun ProtectedAccess.configure() {
++        if (!wieldsFairyMagic(player)) {
++            mes(NO_STAFF)
++            return
++        }
++        ifOpenMainSidePair(DIAL_INTERFACE, LOG_INTERFACE)
++        for (row in FairyringRow.all()) {
++            val desc = row.desc ?: continue
++            if (hasVisited(player, row)) ifSetText(logComponent(row), desc)
++        }
++        runClientScript(
++            SORT_UPDATE_SCRIPT,
++            comp("component.fairyrings_log:contents"),
++            comp("component.fairyrings_log:scrollbar"),
++            1,
++            1,
++            comp("component.fairyrings_log:divider"),
++            comp("component.fairyrings_log:faves"),
++        )
++    }
++
++    private fun ProtectedAccess.turn(dial: Int, steps: Int) {
++        when (dial) {
++            1 -> player.dial1 = (player.dial1 + steps) % 4
++            2 -> player.dial2 = (player.dial2 + steps) % 4
++            else -> player.dial3 = (player.dial3 + steps) % 4
++        }
++    }
++
++    private fun ProtectedAccess.useCode(row: FairyringRow) {
++        player.dial1 = row.id / 100
++        player.dial2 = row.id / 10 % 10
++        player.dial3 = row.id % 10
++    }
++
++    private suspend fun ProtectedAccess.confirm() {
++        val id = player.dial1 * 100 + player.dial2 * 10 + player.dial3
++        val row = FairyringRow.all().firstOrNull { it.id == id }
++        ifClose()
++        player.client.write(TriggerOnDialogAbort)
++        travel(row?.takeIf { isDestination(it) })
++    }
++
++    private suspend fun ProtectedAccess.zanaris() {
++        val here = ringAt(player.coords)
++        if (!wieldsFairyMagic(player) && here?.noStaffReturn != true) {
++            mes(NO_STAFF)
++            return
++        }
++        travel(FairyringRow.all().firstOrNull { it.code == ZANARIS_CODE })
++    }
++
++    private suspend fun ProtectedAccess.lastDestination() {
++        if (!wieldsFairyMagic(player)) {
++            mes(NO_STAFF)
++            return
++        }
++        val state = player.lastDestination - LAST_DESTINATION_BASE
++        val row = FairyringRow.all().firstOrNull { it.multilocState == state && isDestination(it) } ?: return
++        travel(row)
++    }
++
++    /**
++     * [row] null (a code with no ring) or the ring the player stands in: no teleport, and the
++     * player remarks on it (OSRS Wiki, Fairy ring).
++     */
++    private suspend fun ProtectedAccess.travel(row: FairyringRow?) {
++        arriveDelay()
++        anim(VANISH_SEQ)
++        spotanim(RING_SPOTANIM)
++        delay(TRAVEL_DELAY)
++        val here = ringAt(player.coords)
++        if (row != null && row.id != here?.id) {
++            telejump(row.destCoord)
++            player.lastDestination = LAST_DESTINATION_BASE + row.multilocState
++            markVisited(player, row)
++            anim(APPEAR_SEQ)
++            return
++        }
++        anim(APPEAR_SEQ)
++        say(HARDLY_MOVED)
++    }
++
++    private fun ringAt(coords: CoordGrid): FairyringRow? =
++        FairyringRow.all().firstOrNull {
++            isDestination(it) && it.destCoord.level == coords.level && it.destCoord.chebyshevDistance(coords) <= 3
++        }
++
++    private fun comp(name: String): Int = name.asRSCM(RSCMType.COMPONENT)
++
++    companion object {
++        const val MINOR_HUB = "loc.fairyring_minorhub"
++        const val HOME_HUB = "loc.fairyring_homehub"
++        const val DIAL_INTERFACE = "interface.fairyrings"
++        const val LOG_INTERFACE = "interface.fairyrings_log"
++        const val SORT_UPDATE_SCRIPT = 402
++        const val ZANARIS_CODE = "B K S"
++        const val LAST_DESTINATION_BASE = 64
++        const val TRAVEL_DELAY = 3
++        const val VANISH_SEQ = "seq.human_fairy_vanish"
++        const val APPEAR_SEQ = "seq.human_fairy_appear"
++        const val RING_SPOTANIM = "spotanim.fairy_flower_ring"
++        const val HARDLY_MOVED = "Wow, fairy magic sure is useful, I hardly moved at all!"
++        const val NO_STAFF = "The fairy rings only work for those who wield fairy magic."
++        const val PLACEHOLDER_X = 65
++        const val LOG_A = "varp.fairyring_travel_log_a"
++        const val LOG_B = "varp.fairyring_travel_log_b"
++
++        val DIAL_BUTTONS =
++            mapOf(
++                1 to ("1_clockwise" to "1_anticlockwise"),
++                2 to ("2_clockwise" to "2_anticlockwise"),
++                3 to ("3_clockwise" to "3_anticlockwise"),
++            )
++        val STAVES =
++            setOf("obj.dramen_staff", "obj.dramen_staff_air", "obj.dramen_staff_fire", "obj.dramen_staff_water")
++
++        fun logComponent(row: FairyringRow): String = "component.fairyrings_log:${row.textComponent.internalName}"
++
++        /** Unused codes have no destination: Jagex fills them with the 1_1_1_1_1 placeholder. */
++        fun isDestination(row: FairyringRow): Boolean = row.desc != null && row.destCoord.x > PLACEHOLDER_X
++
++        fun wieldsFairyMagic(player: Player): Boolean {
++            val weapon = player.righthand ?: return false
++            return STAVES.any { it.asRSCM(RSCMType.OBJ) == weapon.id }
++        }
++
++        fun hasVisited(player: Player, row: FairyringRow): Boolean {
++            val state = row.multilocState
++            val varp = if (state < 32) LOG_A else LOG_B
++            return player.vars[varp] and (1 shl (state % 32)) != 0
++        }
++
++        fun markVisited(player: Player, row: FairyringRow) {
++            val state = row.multilocState
++            val varp = if (state < 32) LOG_A else LOG_B
++            VarPlayerIntMapSetter.set(player, varp, player.vars[varp] or (1 shl (state % 32)))
++        }
++    }
++}
+-- 
+2.43.0
+

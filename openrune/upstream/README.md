@@ -3,7 +3,7 @@
 One `git format-patch` file per fix, each against OpenRune-Server
 [`9a8b338a8`](https://github.com/OpenRune/OpenRune-Server/commit/9a8b338a89cb87345e002bf83228e775a746ce69).
 Each applies on its own (`git apply --check` on a clean checkout of the pin) and
-all 18 apply together in number order (`git am *.patch`). Nothing has been sent
+all apply together in number order (`git am *.patch`). Nothing has been sent
 upstream.
 
 They were taken from `../src` (our working tree, exported as `../openrune.patch`)
@@ -36,6 +36,11 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 20 | `20-bird-houses` | `content/skills/hunter`: `BirdHouseScript.kt`, `BirdHouseTypesTable.kt`, `HunterPluginPack.kt`, both `gamevals.toml`, `birdhouse_vars.toml`, `BirdHouseScriptTest.kt` | Bird house trapping on Fossil Island with the varps (1626-1629) Time Tracking reads and the Loot Tracker message | Needs 15 (applies on pin+15 and after 01-19); dbtable 60001 (rows 60140-60148), varps 63760-63767; nest chances from the wiki chart (per mille, half at level 50 and below) |
 | 21 | `21-treasure-trails` | `api/player`: `NpcOpOverrides.kt`, `LocOpOverrides.kt` (new), `NpcEvents.kt`, `LocEvents.kt`, `NpcInteractions.kt`, `LocInteractions.kt`; `content/other/treasure-trails` + `treasure-trails/pack` (new modules) | Beginner and easy Treasure Trails driven by the cache's own `cluehelper_*` dbtables (texts, targets, emotes, outfits, STASH locs): npc talks, Charlie the Tramp, Reldo's hot-cold device, loc searches, digs, emotes with Uri, music steps with Cecilia, per-step easy scrolls (item param 623), STASH units, Check steps, the beginner casket from the wiki table; texts and messages RuneLite's Clue Scroll and Loot Tracker plugins match; generic APIs to take an npc or loc op for the players content claims; integration tests | dbtables 60003-60007, varps 63840-63855; needs 22 (music steps); 4 easy map interfaces and drawer searches not done |
 | 22 | `22-music-tab-play` | `api/music-plugin/.../MusicTabScript.kt`, `api/player/.../music/MusicPlayer.kt` | The music tab's track list did nothing: Play (unlocked tracks, switches to manual mode) and Unlock hint; `MusicPlayer.isUnlocked`/`isPlaying` | List order follows `music_list_setup` (non-hidden music rows in row order); 21 uses `isPlaying` for music clue steps, so apply 22 with 21 |
+| 23 | `23-openable-drawers-chests` | `generic-locs/.../DrawersScript.kt`, `PlainChestScript.kt` | drawers1/3, the Draynor wardrobe, Seers' Village drawers and the Camelot chest had Open with no handler | Messages for the new ones follow the existing pattern ("You search the wardrobe but find nothing." is a best guess) |
+| 24 | `24-treasure-trails-drawers-and-maps` | `treasure-trails`: `TrailSteps.kt`, `TreasureTrailScript.kt`, `TrailDataTables.kt`, pack `gamevals.toml`, `TreasureTrailScriptTest.kt` | Easy searches on locs that open first (27 rows) target the open variant's Search; map rows 2232/2234 get their interfaces | Needs 21 and 23 |
+| 25 | `25-ice-mountain-music-area` | `or-cache/.../impl/Music.kt`, `.data/gamevals/area.rscm`, `dbrow.rscm`, `.data/raw-cache/map/area/ice_mountain.toml` (new) | Only Lumbridge had a modern music area; Alone (an easy clue music step) never unlocked | Polygon from the OSRS Wiki's Map:Alone; area 32762, dbrow 60920 |
+| 26 | `26-fairy-rings` | `content/travel/fairy-rings` + `fairy-rings/pack` (new modules) | Fairy rings on the cache's `fairyring` dbtable: dial 398 + travel log 381, Zanaris, Last-destination, staff check; integration tests | Server varps 63860-63861 (visited codes); no favourites, hideout sequence or per-ring quest requirements |
+| 27 | `27-essence-pouch-check-wording` | `runecrafting/.../EssencePouchScript.kt` | OSRS Check wording (number words, pure/daeyalt/guardian) that RuneLite's Ess Pouch plugin parses | |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.

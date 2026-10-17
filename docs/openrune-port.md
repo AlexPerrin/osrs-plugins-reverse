@@ -654,3 +654,59 @@ was verified.
   "Have you come to play music to me?" / Yes / "Select the song I asked you to play, and speak to me
   again.". Not tried: the success branch, because "Alone" did not unlock by walking on Ice Mountain
   (OpenRune's area unlock for it; not looked into).
+
+## Tenth server dev (2026-10-17)
+
+- **Easy searches on locs that open first (27 rows):** `TrailSteps.searchTarget` maps a target loc
+  without a Search op to its open variant (`<loc>open`, `<loc>_open`, `closed` -> `open`), e.g.
+  `drawers1` -> `drawers1open`, `chestclosed` -> `chestopen`, `draynor_wardrobe` ->
+  `draynor_wardrobe_open`; the step completes on the open loc's Search. The Edgeville coffin's open
+  loc has only Close, so that step completes on the coffin's Open (guess: the open coffin is not
+  shown). Generic-locs now opens drawers1/2/3, the Draynor wardrobe, the Seers' Village drawers
+  and the Camelot chest (`DrawersScript`, `PlainChestScript`); "You search the wardrobe but find
+  nothing." is a best guess. Easy Search steps: 44 -> 71 (all). Device: not tried (the camera stays
+  inside walls in small houses); covered by the integration test.
+- **Easy map interfaces:** rendered every `trail_map*`/`trail_clue_*_map*` interface from its icon
+  models (scratch Java renderer over the cache's ModelDecoder, top-down; `if3` placements from
+  osrs-dumps) and compared with the wiki's map images: Galahad (2232) = `trail_map09` (354), north
+  of Falador (2234) = `trail_clue_easy_map006` (337). Rows 2260/2261 (behind Lumbridge castle,
+  Draynor wheat field) have no easy scroll obj: they are X Marks the Spot rows (`cluequest_clue2/3`,
+  interface `cluequest_map` 267), so nothing to add. Galahad's map device-checked.
+  Single-model maps 20-24 (314/317/318/316/102) render as 2018 hard maps (useful for medium/hard).
+- **Ice Mountain music area:** OpenRune's `music_modern` table had one row (Lumbridge), so area
+  unlocks barely exist. Added `area.ice_mountain` (32762, polygon from the wiki's `Map:Alone`, modern
+  mode, fortress hole not modelled) and row `music_modern_ice_mountain` (60920) with Alone.
+  Device-checked: "You have unlocked a new music track: Alone"; the Cecilia music step success
+  branch ("Thank you, I love that song!", "Cecilia offers you another clue.").
+- **Fairy rings** (`content/travel/fairy-rings`, `FairyRingScript`): on Jagex's `fairyring` dbtable
+  (id = dial positions d1*100+d2*10+d3 with dials A/D/C/B, I/L/K/J, P/S/R/Q; `multiloc_state` 0-63;
+  `text_component` in 381; `desc`). Locs `fairyring_minorhub` (Zanaris, Configure,
+  Last-destination, Favourites) and `fairyring_homehub`. Configure needs a wielded Dramen/Lunar
+  staff ("The fairy rings only work for those who wield fairy magic.", wiki), opens 398 + 381
+  (`ifOpenMainSidePair`), sets the visited codes' log text (desc) and runs clientscript 402
+  (`fairyrings_sort_update`, mode 1) so the list is built after the texts arrive. Dial buttons and
+  "Use code" set `fairyring_1..3` (3985-3987, what RuneLite's Fairy Rings plugin reads). Teleport:
+  vanish seq 3265 + spotanim 569, 3 ticks (guess), telejump, appear seq 3266; sets
+  `fairyring_lastloc_opvis` = 64 + state (the loc's "Last-destination (XXX)" op text). A code with
+  no ring (9 unused + DIQ house ring) or the ring you stand in: no move, the player says "Wow, fairy
+  magic sure is useful, I hardly moved at all!" (wiki). Zanaris op works without a staff only at
+  `no_staff_return` rings. Visited codes in server varps 63860-63861. Teleport also sends
+  TRIGGER_ONDIALOGABORT: the log's mobile search is a client-opened meslayer
+  (`meslayer_mode20` registers `meslayer_ondialogabort`) that otherwise stayed open after the
+  teleport (seen on the device; the fix is not device-checked yet). Not done: favourites, the
+  AIR-DLR-DJQ-AJS hideout sequence, per-ring quest/visit requirements, the POH ring.
+  Device-checked (86b06e4): menu ops, 398/381 layout on mobile, dial turns, BKS to Zanaris, travel
+  log entry, Last-destination (BKS), no-move at the same ring.
+- **Essence pouch Check wording:** "There are three essences in this pouch." / "There is one pure
+  essence in this pouch." / "There is no essence in this pouch." (number words, hyphenated; qualifier
+  pure/daeyalt/guardian, none for rune essence), from RuneLite's Ess Pouch regex and tests.
+  **Open question:** tictac7x Charges' colossal-pouch regex expects "normal" for rune essence
+  ("three normal essences"), which Ess Pouch would reject; maybe colossal-only wording. Fill/Empty
+  messages are parsed by neither plugin and were left unchanged.
+- **Medium clue sizing (approved, core slice next):** medium rows in the cluehelper tables: 48
+  anagrams (each with a challenge question), 6 ciphers, 44 coordinates, 25 emotes (all double), 12
+  maps, 7 music, 27 cryptics (8 npc, 8 loc, 11 key). Core slice ~1 day: anagram/cipher + challenge
+  answers, coordinate digs, double emotes + medium Uri/STASH, npc/loc cryptics, music, map digs,
+  medium casket. Later ~0.5 day: puzzle boxes, key steps, map crates, coordinate combat encounters.
+- **Upstream:** `23-openable-drawers-chests`, `24-treasure-trails-drawers-and-maps` (needs 21, 23),
+  `25-ice-mountain-music-area`, `26-fairy-rings`, `27-essence-pouch-check-wording`.

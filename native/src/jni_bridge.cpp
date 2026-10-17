@@ -626,6 +626,16 @@ jintArray n_script_event_source(JNIEnv* env, jclass) {
     return a;
 }
 
+jintArray n_script_active_widget(JNIEnv* env, jclass, jboolean dot) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    int id, index;
+    if (!game::script_active_widget(dot, &id, &index)) return nullptr;
+    jint v[2] = {id, index};
+    jintArray a = env->NewIntArray(2);
+    env->SetIntArrayRegion(a, 0, 2, v);
+    return a;
+}
+
 jlongArray n_script_stats(JNIEnv* env, jclass) {
     auto st = script_hooks::stats();
     jlong v[5] = {(jlong)st.roots, (jlong)st.gosubs, (jlong)st.returns, (jlong)st.delivered, script_hooks::installed()};
@@ -1330,6 +1340,7 @@ const JNINativeMethod kNatives[] = {
     {"setScriptString", "(ILjava/lang/String;)Z", reinterpret_cast<void*>(n_set_script_string)},
     {"scriptEventArgs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_event_args)},
     {"scriptEventSource", "()[I", reinterpret_cast<void*>(n_script_event_source)},
+    {"scriptActiveWidget", "(Z)[I", reinterpret_cast<void*>(n_script_active_widget)},
     {"widgetListener", "(III)[Ljava/lang/Object;", reinterpret_cast<void*>(n_widget_listener)},
     {"widgetTriggers", "(III)[I", reinterpret_cast<void*>(n_widget_triggers)},
     {"scriptStats", "()[J", reinterpret_cast<void*>(n_script_stats)},

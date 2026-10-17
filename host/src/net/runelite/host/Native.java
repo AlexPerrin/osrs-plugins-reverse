@@ -119,6 +119,8 @@ final class Native {
     static native Object[] scriptEventArgs();
     /** {component id, CC_CREATE index or -1} of the running ScriptEvent's source widget, or null. */
     static native int[] scriptEventSource();
+    /** {component id, CC_CREATE index or -1} of the VM's active component (dot = the .cc_ one), or null. Game thread. */
+    static native int[] scriptActiveWidget(boolean dot);
     /** CC_CREATE under static layer `id` at `index` (-1 = append); the index, or -1. Game thread. */
     static native int widgetCreateChild(int id, int index, int type);
     /** CC_DELETEALL on static component `id`. Game thread. */

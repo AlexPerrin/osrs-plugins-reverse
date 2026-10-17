@@ -77,7 +77,10 @@ public class AndroidPlayer extends PlayerStub {
     @Override public int getHealthScale() { return healthScale; }
     @Override public boolean isDead() { return false; }
     @Override public int getTeam() { return team; }
-    @Override public boolean isFriend() { return false; }
+    @Override public boolean isFriend() {
+        net.runelite.api.Client c = Host.client();
+        return this != Host.localPlayer() && c instanceof AndroidClient && ((AndroidClient) c).isFriendCached(name);
+    }
     @Override public boolean isFriendsChatMember() { return false; }
     @Override public boolean isClanMember() { return false; }
     @Override public int getSkullIcon() { return skull; }

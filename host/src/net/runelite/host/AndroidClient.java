@@ -359,7 +359,14 @@ public class AndroidClient extends ClientStub {
     @Override public net.runelite.api.widgets.Widget getDraggedWidget() { return null; }
     @Override public net.runelite.api.widgets.Widget getDraggedOnWidget() { return null; }
     @Override public net.runelite.api.widgets.Widget getSelectedWidget() { return null; }
-    @Override public net.runelite.api.widgets.Widget getScriptActiveWidget() { return null; }
+    /** The script VM's active component (CC_CREATE/CC_FIND), as desktop's scriptActiveWidget. Game thread. */
+    @Override public net.runelite.api.widgets.Widget getScriptActiveWidget() { return scriptWidget(false); }
+    @Override public net.runelite.api.widgets.Widget getScriptDotWidget() { return scriptWidget(true); }
+    private static net.runelite.api.widgets.Widget scriptWidget(boolean dot) {
+        int[] w = Native.scriptActiveWidget(dot);
+        if (w == null) return null;
+        return w[1] >= 0 ? new AndroidWidget.Dynamic(w[0], w[1]) : new AndroidWidget(w[0]);
+    }
     /** The game redraws its chat itself; nothing to rebuild. */
     private static void removeFromGame(int type, int id) {
         boolean removed = Native.chatRemove(type, id);
@@ -795,6 +802,20 @@ public class AndroidClient extends ClientStub {
         else Host.invoke(Native::reloadScene);
     }
     @Override public net.runelite.api.NameableContainer<net.runelite.api.Ignore> getIgnoreContainer() { return ignores; }
+    private AndroidNameables.Entry[] friendsCycle = new AndroidNameables.Entry[0];
+    private int friendsCycleStamp = -1;
+    /**
+     * Whether a player is on the friends list (Player.isFriend: desktop sets the flag per player
+     * from the same list). The list is read once per cycle; draw listeners ask for every player.
+     */
+    boolean isFriendCached(String name) {
+        if (name == null) return false;
+        if (friendsCycleStamp != Host.cycleStamp) {
+            friendsCycle = AndroidNameables.read(false);
+            friendsCycleStamp = Host.cycleStamp;
+        }
+        return AndroidNameables.find(friendsCycle, name) != null;
+    }
     @Override public boolean isFriended(String name, boolean mustBeLoggedIn) {
         net.runelite.api.Friend f = friends.findByName(name);
         return f != null && (!mustBeLoggedIn || f.getWorld() > 0);
@@ -822,6 +843,8 @@ public class AndroidClient extends ClientStub {
     @Override public java.util.Map<Integer, net.runelite.api.SpritePixels> getWidgetSpriteOverrides() { return widgetSpriteOverrides; }
     /** Overrides are written into the game's sprite cache directly, so there is nothing to reset. */
     @Override public net.runelite.api.NodeCache getWidgetSpriteCache() { return () -> {}; }
+    /** Struct compositions are read from the game per call (nothing cached host-side), so reset is a no-op. PostStructComposition is not posted. */
+    @Override public net.runelite.api.NodeCache getStructCompositionCache() { return () -> {}; }
     /**
      * The game's own item icon renderer (createItemSprite, docs/offsets.md): 36x32, border 0/1/2,
      * shadow colour, quantity text per `stackable` (0 never, 1 always, 2 if the item stacks).

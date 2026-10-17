@@ -542,8 +542,20 @@ Point player_world() {
 bool play_sound_effect(int id, int loops, int delay) {
     uintptr_t c = client();
     if (!c || id < 0 || id > 0xffff || loops <= 0) return false;
-    reinterpret_cast<void (*)(uintptr_t, uint32_t, char, int)>(g_base + 0x4ae508)(c + 0x2610, id, static_cast<char>(std::min(loops, 127)), delay);
-    return true;
+    // The queue (0x4ae508, Ghidra 005ae508.c) is a vector of 0x28-byte entries at +0xc0/+0xc8 of
+    // the sound system; the call adds one only while the system's "enabled" callback (slot 0,
+    // presumably the sound-effect volume setting) returns non-zero and fewer than 50 are queued.
+    // Report whether the game actually queued it, so a muted setting shows up as false.
+    uintptr_t sys = c + 0x2610;
+    uintptr_t before = read_at<uintptr_t>(sys + 0xc8);
+    reinterpret_cast<void (*)(uintptr_t, uint32_t, char, int)>(g_base + 0x4ae508)(sys, id, static_cast<char>(std::min(loops, 127)), delay);
+    bool queued = read_at<uintptr_t>(sys + 0xc8) != before;
+    static int logs = 0;
+    if (logs < 10) {
+        logs++;
+        LOGI("sound %d: %s by the game", id, queued ? "queued" : "not queued (sound effects off or queue full)");
+    }
+    return queued;
 }
 
 namespace {
@@ -1332,6 +1344,16 @@ bool set_script_string(int index, const std::string& text) {
     GameString s(text);
     reinterpret_cast<void* (*)(uintptr_t, const void*)>(g_base + 0x3f1498)(v, s.bytes);
     return true;
+}
+
+// The VM's active components (RuneLite's scriptActiveWidget / scriptDotWidget): {ctrl, Widget*}
+// pairs at vm +0xded8 (cc_*) and +0xdee8 (.cc_*, the opcode's isLong flag), set by CC_CREATE /
+// CC_FIND and read by every CC_* handler in 0x4e06dc (case 0x65 null-checks +0 and bumps its
+// count at +8, so +0 is the control block). widget_ref validates the pointer. Static RE (gen 22).
+bool script_active_widget(bool dot, int* component, int* index) {
+    if (!g_build || !g_build->script_vm) return false;
+    uintptr_t vm = g_base + g_build->script_vm;
+    return widget_ref(read_at<uintptr_t>(vm + (dot ? 0xdee8 : 0xded8) + 8), component, index);
 }
 
 // ScriptEvent +0x40: the source widget (Widget*), null for scripts not run from a widget hook.

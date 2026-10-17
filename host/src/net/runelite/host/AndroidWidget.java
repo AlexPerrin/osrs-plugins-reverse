@@ -146,6 +146,9 @@ public class AndroidWidget extends WidgetBag {
     @Override public void setNoClickThrough(boolean v) { set(0xb98, v ? 1 : 0); }
     @Override public void setNoScrollThrough(boolean v) { set(0xb99, v ? 1 : 0); }
     @Override public void revalidate() { Native.widgetRevalidate(id, childIndex()); }
+    // Desktop re-lays out the children and the scroll bounds; here the same layout pass as
+    // revalidate() (0x45ebf4 walks a layer's children). // unverified: scroll bounds on the device
+    @Override public void revalidateScroll() { Native.widgetRevalidate(id, childIndex()); }
     @Override public int getIndex() { return childIndex(); }
     // Script-visible properties read from the game widget (Native.widgetProps).
     private int prop(int i, int dflt) { int[] p = Native.widgetProps(id, childIndex()); return p != null ? p[i] : dflt; }

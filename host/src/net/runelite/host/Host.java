@@ -328,6 +328,7 @@ public final class Host {
             case CLIENT_TICK:
                 cycleStamp++;
                 AndroidWidget.reapplyHidden();
+                if (client instanceof AndroidClient) ((AndroidClient) client).syncModIcons();
                 bus.post(clientTick);
                 postActorChanges(bus);
                 if (!pendingNpcs.isEmpty() && localPlayer() != null) {

@@ -120,6 +120,44 @@ jintArray n_actor_model(JNIEnv* env, jclass, jboolean player, jint index) {
     env->SetIntArrayRegion(arr, 1, static_cast<jsize>(xyz.size()), xyz.data());
     return arr;
 }
+// meta: 7 ints per icon {gameIndex, w, h, ox, oy, fullW, fullH}; pixels/palettes null for game icons.
+void n_set_mod_icons(JNIEnv* env, jclass, jintArray meta, jobjectArray pixels, jobjectArray palettes) {
+    if (!meta) return;
+    jsize n = env->GetArrayLength(meta) / 7;
+    std::vector<jint> m(static_cast<size_t>(n) * 7);
+    env->GetIntArrayRegion(meta, 0, n * 7, m.data());
+    std::vector<game::ModIcon> icons(static_cast<size_t>(n));
+    for (jsize i = 0; i < n; i++) {
+        game::ModIcon& o = icons[i];
+        const jint* v = &m[static_cast<size_t>(i) * 7];
+        o.game_index = v[0];
+        o.w = v[1]; o.h = v[2]; o.ox = v[3]; o.oy = v[4]; o.full_w = v[5]; o.full_h = v[6];
+        if (o.game_index >= 0) continue;
+        auto px = static_cast<jbyteArray>(env->GetObjectArrayElement(pixels, i));
+        auto pal = static_cast<jintArray>(env->GetObjectArrayElement(palettes, i));
+        if (px) {
+            o.pixels.resize(static_cast<size_t>(env->GetArrayLength(px)));
+            env->GetByteArrayRegion(px, 0, static_cast<jsize>(o.pixels.size()), reinterpret_cast<jbyte*>(o.pixels.data()));
+            env->DeleteLocalRef(px);
+        }
+        if (pal) {
+            o.palette.resize(static_cast<size_t>(env->GetArrayLength(pal)));
+            env->GetIntArrayRegion(pal, 0, static_cast<jsize>(o.palette.size()), reinterpret_cast<jint*>(o.palette.data()));
+            env->DeleteLocalRef(pal);
+            for (size_t k = 0; k < o.palette.size(); k++)  // as the game's loader: index 0 clear, others opaque
+                o.palette[k] = k == 0 ? 0 : (o.palette[k] | 0xff000000u);
+        }
+    }
+    game::set_mod_icons(std::move(icons));
+}
+jintArray n_mod_icon_sizes(JNIEnv* env, jclass) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    std::vector<int32_t> v = game::mod_icon_sizes();
+    if (v.empty()) return nullptr;
+    jintArray arr = env->NewIntArray(static_cast<jsize>(v.size()));
+    env->SetIntArrayRegion(arr, 0, static_cast<jsize>(v.size()), v.data());
+    return arr;
+}
 jint n_actor_height(JNIEnv*, jclass, jboolean player, jint index) {
     if (!client_thread::on_client_thread()) return -1;
     uintptr_t a = player ? game::live_player(index) : game::live_npc(index);
@@ -1103,6 +1141,8 @@ const JNINativeMethod kNatives[] = {
     {"runEnergy", "()I", reinterpret_cast<void*>(n_run_energy)},
     {"actorModel", "(ZI)[I", reinterpret_cast<void*>(n_actor_model)},
     {"actorHeight", "(ZI)I", reinterpret_cast<void*>(n_actor_height)},
+    {"setModIcons", "([I[[B[[I)V", reinterpret_cast<void*>(n_set_mod_icons)},
+    {"modIconSizes", "()[I", reinterpret_cast<void*>(n_mod_icon_sizes)},
     {"actorSetOverhead", "(ZILjava/lang/String;I)Z", reinterpret_cast<void*>(n_actor_set_overhead)},
     {"objectModel", "(IIIIJ)[I", reinterpret_cast<void*>(n_object_model)},
     {"varcInt", "(I)I", reinterpret_cast<void*>(n_varc_int)},

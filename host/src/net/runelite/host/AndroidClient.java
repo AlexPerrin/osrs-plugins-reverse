@@ -739,17 +739,62 @@ public class AndroidClient extends ClientStub {
     @Override public net.runelite.api.SpritePixels createSpritePixels(int[] pixels, int width, int height) {
         return new HostSpritePixels(pixels, width, height);
     }
-    // Chat (mod) icons are kept host-side: plugins (ChatIconManager) append their icons to this
-    // array; the game's own chat doesn't draw them. Starts with blank 13x13 slots for the game's icons.
-    private net.runelite.api.IndexedSprite[] modIcons;
+    // Chat (mod) icons: the font's <img=N> table. The array starts with placeholders for the game's
+    // icons (sized from the game); plugins (ChatIconManager: Emojis, chat rank icons) append or replace
+    // entries, and syncModIcons hands the result to the native side, which installs it in the game.
+    private net.runelite.api.IndexedSprite[] modIcons, syncedIcons;
+    private Object[] syncedPixels;
     @Override public synchronized net.runelite.api.IndexedSprite[] getModIcons() {
         if (modIcons == null) {
-            modIcons = new net.runelite.api.IndexedSprite[32];
-            for (int i = 0; i < modIcons.length; i++) modIcons[i] = HostIndexedSprite.blank(13, 13);
+            int[] sizes = Native.modIconSizes();
+            if (sizes == null) return null;  // not loaded yet (desktop: null too)
+            modIcons = new net.runelite.api.IndexedSprite[sizes.length / 2];
+            for (int i = 0; i < modIcons.length; i++) modIcons[i] = HostIndexedSprite.game(i, sizes[2 * i], sizes[2 * i + 1]);
         }
         return modIcons;
     }
-    @Override public synchronized void setModIcons(net.runelite.api.IndexedSprite[] icons) { modIcons = icons; }
+    @Override public synchronized void setModIcons(net.runelite.api.IndexedSprite[] icons) {
+        modIcons = icons;
+        syncModIcons();
+    }
+
+    /** Game thread, every cycle and on setModIcons: pushes the table when an entry changed. */
+    synchronized void syncModIcons() {
+        net.runelite.api.IndexedSprite[] icons = modIcons;
+        if (icons == null) return;
+        int n = icons.length;
+        boolean same = syncedIcons != null && syncedIcons.length == n;
+        for (int i = 0; same && i < n; i++)
+            same = syncedIcons[i] == icons[i] && (icons[i] == null || syncedPixels[i] == icons[i].getPixels());
+        if (same) return;
+        syncedIcons = icons.clone();
+        syncedPixels = new Object[n];
+        boolean custom = false;
+        int[] meta = new int[n * 7];
+        byte[][] px = new byte[n][];
+        int[][] pal = new int[n][];
+        for (int i = 0; i < n; i++) {
+            net.runelite.api.IndexedSprite s = icons[i];
+            syncedPixels[i] = s != null ? s.getPixels() : null;
+            int at = i * 7;
+            if (s instanceof HostIndexedSprite && ((HostIndexedSprite) s).gameIndex >= 0) {
+                meta[at] = ((HostIndexedSprite) s).gameIndex;
+                continue;
+            }
+            meta[at] = -1;
+            if (s == null) continue;
+            custom = true;
+            meta[at + 1] = s.getWidth(); meta[at + 2] = s.getHeight();
+            meta[at + 3] = s.getOffsetX(); meta[at + 4] = s.getOffsetY();
+            meta[at + 5] = s.getOriginalWidth(); meta[at + 6] = s.getOriginalHeight();
+            px[i] = s.getPixels();
+            pal[i] = s.getPalette();
+        }
+        // Nothing to install while the table is only the game's own icons.
+        if (custom || syncedOnce) { Native.setModIcons(meta, px, pal); syncedOnce = true; }
+    }
+    private boolean syncedOnce;
+
     @Override public net.runelite.api.IndexedSprite createIndexedSprite() { return new HostIndexedSprite(); }
 
     /**

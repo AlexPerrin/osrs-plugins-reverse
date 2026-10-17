@@ -97,6 +97,7 @@ struct Build {
     // Scene picking for menus: set the pick point (screen px, mode; 0x72b758 as the touch handler
     // 0x518840), the "picked" flag the menu build checks, and the pick mode (2 pending, 3 done).
     uintptr_t pick_set, pick_ready, pick_mode;
+    uintptr_t mod_icons;  // global shared_ptr obj of the font's <img=N> table (setModIcons 0x431a84)
 };
 
 constexpr Build kBuilds[] = {
@@ -111,7 +112,8 @@ constexpr Build kBuilds[] = {
      0x4132b0, 0xa6d6c0, 0x515854, 0x62e5ec, 0x43a9c0,
      0x5d00fc, 0x3f804c, 0x3f8470, 0x64b450,
      0x514f48, 0x507398, 0x50621c, 0x58fa84,
-     0x72b758, 0x1d2f52d, 0x1d7ddf0},
+     0x72b758, 0x1d2f52d, 0x1d7ddf0,
+     0x18e2130},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -2309,4 +2311,111 @@ std::vector<GroundItem> ground_items() {
     return out;
 }
 
+}  // namespace game
+
+// ---- Mod icons (<img=N> in text). The font reads the table at the global obj pointer on every
+// call (game thread); we point it at our own header holding shallow copies of the game's sprites
+// plus plugin sprites, and never touch the game's ctrl or array (docs/offsets.md "Mod icons").
+namespace game {
+namespace {
+struct IdxSprite {
+    uint64_t unused, pixel_count;
+    const uint8_t* pixels;
+    uint64_t palette_count;
+    uintptr_t palette_ctrl;
+    const uint32_t* palette;
+    int32_t w, h, ox, oy, full_w, full_h;
+};
+static_assert(sizeof(IdxSprite) == 0x48, "IndexedSprite layout");
+struct IconHeader {
+    uint64_t unused;
+    uint64_t count;  // read as int32
+    IdxSprite* data;
+};
+using Entries = std::vector<ModIcon>;
+std::mutex g_icon_mutex;
+std::shared_ptr<const Entries> g_icon_want;  // guarded by g_icon_mutex
+struct BuiltIcons {
+    IconHeader header{};
+    std::vector<IdxSprite> sprites;
+    std::shared_ptr<const Entries> data;
+    uintptr_t game_obj = 0;
+};
+std::unique_ptr<BuiltIcons> g_icons_built, g_icons_prev;  // game thread only
+
+uintptr_t game_icon_obj() {
+    if (!g_build || !g_build->mod_icons) return 0;
+    uintptr_t cur = read_at<uintptr_t>(g_base + g_build->mod_icons);
+    if (g_icons_built && cur == reinterpret_cast<uintptr_t>(&g_icons_built->header)) return g_icons_built->game_obj;
+    return cur;
+}
+}  // namespace
+
+void set_mod_icons(std::vector<ModIcon> icons) {
+    auto e = std::make_shared<const Entries>(std::move(icons));
+    std::lock_guard<std::mutex> lock(g_icon_mutex);
+    g_icon_want = std::move(e);
+}
+
+std::vector<int32_t> mod_icon_sizes() {
+    std::vector<int32_t> out;
+    uintptr_t obj = game_icon_obj();
+    if (!obj) return out;
+    int n = read_at<int32_t>(obj + 8);
+    auto* data = read_at<const IdxSprite*>(obj + 0x10);
+    if (n <= 0 || n > 4096 || !data) return out;
+    for (int i = 0; i < n; i++) {
+        out.push_back(data[i].full_w);
+        out.push_back(data[i].full_h);
+    }
+    return out;
+}
+
+void mod_icons_cycle() {
+    std::shared_ptr<const Entries> want;
+    {
+        std::lock_guard<std::mutex> lock(g_icon_mutex);
+        want = g_icon_want;
+    }
+    if (!want || !g_build || !g_build->mod_icons) return;
+    auto* slot = reinterpret_cast<uintptr_t*>(g_base + g_build->mod_icons);
+    uintptr_t cur = *slot;
+    bool ours = g_icons_built && cur == reinterpret_cast<uintptr_t>(&g_icons_built->header);
+    if (ours && g_icons_built->data == want) return;
+    uintptr_t game_obj = ours ? g_icons_built->game_obj : cur;
+    if (!game_obj) return;  // the table isn't loaded yet
+    int gcount = read_at<int32_t>(game_obj + 8);
+    auto* gdata = read_at<const IdxSprite*>(game_obj + 0x10);
+    if (gcount < 0 || gcount > 4096 || (gcount && !gdata)) return;
+    auto b = std::make_unique<BuiltIcons>();
+    b->data = want;
+    b->game_obj = game_obj;
+    b->sprites.resize(want->size());
+    for (size_t i = 0; i < want->size(); i++) {
+        const ModIcon& m = (*want)[i];
+        IdxSprite& d = b->sprites[i];
+        d = {};
+        if (m.game_index >= 0) {
+            if (m.game_index < gcount) d = gdata[m.game_index];
+            continue;
+        }
+        if (m.w <= 0 || m.h <= 0 || m.pixels.size() < static_cast<size_t>(m.w) * m.h || m.palette.empty()) continue;
+        d.pixel_count = static_cast<uint64_t>(m.w) * m.h;
+        d.pixels = m.pixels.data();
+        d.palette_count = m.palette.size();
+        d.palette = m.palette.data();
+        d.w = m.w;
+        d.h = m.h;
+        d.ox = m.ox;
+        d.oy = m.oy;
+        d.full_w = m.full_w;
+        d.full_h = m.full_h;
+    }
+    b->header.count = b->sprites.size();
+    b->header.data = b->sprites.data();
+    *slot = reinterpret_cast<uintptr_t>(&b->header);
+    LOGI("mod icons: %zu (game %d)%s", b->sprites.size(), gcount, ours ? "" : " installed");
+    g_icons_prev = std::move(g_icons_built);  // the font may still hold it within this cycle? keep one
+    g_icons_built = std::move(b);
+}
 }  // namespace game

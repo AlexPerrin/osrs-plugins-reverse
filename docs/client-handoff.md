@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 16 entry (2026-10-16) at the end of "Where things stand".
+> Latest state: see the gen 17 entry (2026-10-16) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -559,6 +559,25 @@ session; its notes are in `docs/android-protocol.md`.
     height (desktop uses the model height for getLogicalHeight; host returns 200); Large Logout on mobile;
     devtools `walk_to` args (worldX/worldY threw a null getAsInt: check its schema); more hub plugins by
     install count.
+- **2026-10-16 (client dev gen 17)**, commits c80d06f..:
+  - **createChild in the game's tree is on by default** (`setprop debug.osrsrl.createchild 0` turns it off).
+    Pass: `::reset` (OpenRune: all stats to 1; `::master` restores 99s, always run it after), a few hits on a
+    rat; Skills Tab Progress Bars' red bars appear on Attack/Strength/Defence/Hitpoints; `debug.osrsrl.wdump 320`
+    now prints `dyn N` per widget: 17 per tile (game 12 + plugin 5) before and after reopening the tab 3x;
+    fresh login clean. Not done: an in-process relog (the mobile logout is the door in the left drawer; my taps
+    only toggled the drawer).
+  - **Actor.getLogicalHeight = posed model height** (`Native.actorHeight`, Model `+0x18` = max -y, checked
+    256/256 live), cached 10 cycles per actor (`ActorHeights`). Fallback boxes use it too. Impling label not
+    re-checked (Puro-Puro implings showed as id -1 multi-NPCs that run).
+  - **Emojis**: the font's `<img=N>` table is a global shared_ptr (docs/offsets.md "Mod icons"). Host:
+    `getModIcons` = placeholders for the game's icons (`Native.modIconSizes`), `syncModIcons` each cycle pushes
+    plugin entries (`Native.setModIcons`), and `game::mod_icons_cycle` points the global obj at our own header
+    (shallow copies of the game's sprites plus ours), re-installed when the game swaps its table. The game's
+    ctrl and array are never touched.
+  - devtools: `walk_to` takes `x`/`y`/`plane` (documented in docs/plugin-host.md).
+  - Clue Scroll (core) starts: `re/host/plugins-extra/cluescrolls.jar`, `EXTRA=cluescrolls`.
+  - Hub: built bank-tag-layouts, barrows-door-highlighter, spawnpredictor, better-teleport-menu (no API gaps;
+    collection-log skipped: built against a newer API, `getStringStack`).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

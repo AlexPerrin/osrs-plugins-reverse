@@ -394,6 +394,7 @@ void after_cycle() {
     diff_interfaces();
     if (world_up) diff_menu();
     game::drawlog_cycle();
+    game::mod_icons_cycle();
     // As on desktop, the events of a tick's packets (varps, hitsplats, spawns) come before that
     // tick's GameTick, then ClientTick. Special Attack Counter matches a hitsplat to the tick
     // count and timed out when GameTick came first.

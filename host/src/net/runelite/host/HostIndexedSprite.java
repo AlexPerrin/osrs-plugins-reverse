@@ -2,11 +2,20 @@ package net.runelite.host;
 
 import net.runelite.api.IndexedSprite;
 
-/** A plain IndexedSprite (chat icons are kept host-side; see AndroidClient.getModIcons). */
+/** A plain IndexedSprite: plugin chat icons, or a placeholder for a game icon (AndroidClient.getModIcons). */
 final class HostIndexedSprite implements IndexedSprite {
     private byte[] pixels = new byte[0];
     private int[] palette = {0};
     private int offsetX, offsetY, width, height, originalWidth, originalHeight;
+
+    /** Placeholder for the game's own icon `index` (its pixels stay in the game). */
+    int gameIndex = -1;
+
+    static HostIndexedSprite game(int index, int w, int h) {
+        HostIndexedSprite s = blank(w, h);
+        s.gameIndex = index;
+        return s;
+    }
 
     static HostIndexedSprite blank(int w, int h) {
         HostIndexedSprite s = new HostIndexedSprite();

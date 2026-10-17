@@ -50,6 +50,10 @@ final class Native {
     static native int[] actorModel(boolean player, int index);
     /** Posed model height (desktop Model.height), -1 if unknown or off the game thread. */
     static native int actorHeight(boolean player, int index);
+    /** Font <img=N> table: meta 7 ints per icon {gameIndex (-1 = custom), w, h, ox, oy, fullW, fullH}. */
+    static native void setModIcons(int[] meta, byte[][] pixels, int[][] palettes);
+    /** {fullW, fullH} per game mod icon, or null (not loaded / off the game thread). */
+    static native int[] modIconSizes();
     /** Client varcs (0 / null when unset). */
     /** {x, y, height, orientation, modelHeight, vx, vy, vz...} of a scene object's model this frame, or null. */
     static native int[] objectModel(int plane, int sceneX, int sceneY, int layer, long tag);

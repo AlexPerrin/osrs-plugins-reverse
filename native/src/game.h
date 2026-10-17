@@ -390,4 +390,15 @@ struct GroundItem {
 };
 std::vector<GroundItem> ground_items();  // per tile in stack order (top first)
 
+// Mod icons (font <img=N> table): game_index >= 0 keeps the game's icon, else a palette sprite
+// (index 0 transparent, palette ARGB with alpha 0xff). Applied by mod_icons_cycle on the game thread.
+struct ModIcon {
+    int game_index = -1;
+    int w = 0, h = 0, ox = 0, oy = 0, full_w = 0, full_h = 0;
+    std::vector<uint8_t> pixels;
+    std::vector<uint32_t> palette;
+};
+void set_mod_icons(std::vector<ModIcon> icons);
+std::vector<int32_t> mod_icon_sizes();  // {fullW, fullH} per game icon; empty before load
+void mod_icons_cycle();
 }  // namespace game

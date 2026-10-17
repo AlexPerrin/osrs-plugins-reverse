@@ -718,7 +718,8 @@ public final class Host {
             }
             case SOUND_EFFECT: {
                 // Every sound effect the game queues (SYNTH_SOUND, CS2 sound_synth, Client.playSoundEffect),
-                // before it is queued; a consumed event drops it (Music's prayer-sound mute).
+                // before it is queued; a consumed event drops it (verified 2026-10-17 gen 29: Music's
+                // prayer-sound mute; a consumed sound is not queued).
                 // unverified: source = the local player (desktop's queueSoundEffect source assumed)
                 if (!bus.hasSubscribers(net.runelite.api.events.SoundEffectPlayed.class)) break;
                 net.runelite.api.events.SoundEffectPlayed e = new net.runelite.api.events.SoundEffectPlayed(client.getLocalPlayer());

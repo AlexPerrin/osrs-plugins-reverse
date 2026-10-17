@@ -974,7 +974,7 @@ public class AndroidClient extends ClientStub {
     /**
      * As desktop: closes the sub-interface (the node from getComponentTable: hash = component,
      * id = group) through the game's own IF_CLOSESUB path. Client thread only, as on desktop.
-     * // unverified: on the device (Bank's blockJagexAccountAd closes 12:109's sub-interface)
+     * Verified 2026-10-17 gen 29 (probe `wclose 12 0` closed the bank; client-only, as desktop).
      */
     @Override public void closeInterface(net.runelite.api.WidgetNode node, boolean unload) {
         if (node == null) return;

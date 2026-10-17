@@ -1140,7 +1140,7 @@ std::vector<SubInterface> open_sub_interfaces() {
 // `0x462384(client, component, group, unload)` removes the component-table node, unloads the group
 // when `unload` (bit 0), drops the group's IF_SETEVENTS ranges, marks the parent dirty and lays out
 // the root again. Only called when the node is open (the packet handler checks the same).
-// Game thread only. unverified: on the device (RuneLite's Client.closeInterface).
+// Game thread only. Verified 2026-10-17 gen 29 (closing the bank, group 12, in 601:27).
 bool close_sub_interface(int component, int group, bool unload) {
     uintptr_t c = client();
     if (!c) return false;

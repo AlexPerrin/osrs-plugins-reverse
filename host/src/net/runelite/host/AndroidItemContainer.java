@@ -35,6 +35,11 @@ public class AndroidItemContainer extends ItemContainerStub {
     }
 
     @Override public int getId() { return id; }
+    // Node: the hash is the key the game's table holds it under (container id / message id); these
+    // snapshots aren't linked into a table, so next/previous are null.
+    @Override public long getHash() { return id; }
+    @Override public net.runelite.api.Node getNext() { return null; }
+    @Override public net.runelite.api.Node getPrevious() { return null; }
     @Override public Item[] getItems() { return items.clone(); }
     @Override public Item getItem(int slot) { return slot >= 0 && slot < items.length && items[slot].getId() != -1 ? items[slot] : null; }
     @Override public int size() { return items.length; }

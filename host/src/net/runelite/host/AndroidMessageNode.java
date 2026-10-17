@@ -54,6 +54,11 @@ public class AndroidMessageNode extends MessageNodeStub {
     }
 
     @Override public int getId() { return id; }
+    // Node: the hash is the key the game's table holds it under (container id / message id); these
+    // snapshots aren't linked into a table, so next/previous are null.
+    @Override public long getHash() { return id; }
+    @Override public net.runelite.api.Node getNext() { return null; }
+    @Override public net.runelite.api.Node getPrevious() { return null; }
     @Override public ChatMessageType getType() { return type; }
     @Override public String getName() { return name; }
     @Override public void setName(String name) { this.name = name; }

@@ -4848,10 +4848,10 @@ index 000000000..7ff829b56
 +transmit = "Never"
 diff --git a/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
 new file mode 100644
-index 000000000..a7bd1c075
+index 000000000..b53dbdc76
 --- /dev/null
 +++ b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
-@@ -0,0 +1,320 @@
+@@ -0,0 +1,337 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -4962,11 +4962,28 @@ index 000000000..a7bd1c075
 +        assertEquals(44, steps.count { it is TrailStep.Dig && it.map == null })
 +        assertEquals(12, steps.count { (it as? TrailStep.Dig)?.map != null || (it as? TrailStep.Search)?.map != null })
 +        assertEquals(25, steps.count { it is TrailStep.Emote && it.seq2 != null })
++        assertEquals(11, steps.count { it is TrailStep.Search && it.key != null })
 +        assertEquals(6, steps.count { it is TrailStep.Music })
 +        val objs = steps.map { TrailSteps.clueObj(it) }
 +        assertEquals(objs.size, objs.toSet().size)
 +        assertTrue(UNITS.count { it.tier == TrailTier.Medium } > 20)
 +    }
++
++    @Test
++    fun GameTestState.`a key step's npc drops its key once, and only on that step`() =
++        runInjectedGameTest(TreasureTrailScript::class, null, TreasureTrailScript::class) { script ->
++            prepare()
++            val medium = TrailTier.Medium
++            val step = TrailSteps.ALL.getValue(medium).filterIsInstance<TrailStep.Search>().first { it.key != null }
++            val npc = step.keyNpcs.first()
++            assertNull(script.keyDrop(player, npc))
++            script.giveClue(Cheat(player, "clue", listOf("medium", "${step.row}", "2")))
++            val key = TreasureTrailScript.objName(checkNotNull(step.key))
++            assertEquals(key, script.keyDrop(player, npc))
++            assertNull(script.keyDrop(player, -1))
++            player.inv[5] = InvObj(checkNotNull(step.key), 1)
++            assertNull(script.keyDrop(player, npc))
++        }
 +
 +    @Test
 +    fun `coordinate clue text is what the plugin parses`() {
@@ -5307,12 +5324,35 @@ index 000000000..81901ddc0
 +        }
 +    }
 +}
+diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailKeyDropHook.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailKeyDropHook.kt
+new file mode 100644
+index 000000000..a620d3ac6
+--- /dev/null
++++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailKeyDropHook.kt
+@@ -0,0 +1,17 @@
++package org.rsmod.content.other.treasuretrails
++
++import jakarta.inject.Inject
++import org.rsmod.api.death.NpcDeathKillContext
++import org.rsmod.api.death.NpcDeathKillHook
++
++/**
++ * Key steps: killing one of the step's npcs while holding the clue drops its key for the killer
++ * (OSRS Wiki, e.g. Market Guard: the key drops only for a player on that step; that it drops on
++ * every such kill, and the drop duration, are our choices).
++ */
++class TrailKeyDropHook @Inject constructor(private val script: TreasureTrailScript) : NpcDeathKillHook {
++    override fun onKill(context: NpcDeathKillContext) {
++        val key = script.keyDrop(context.hero, context.npc.id) ?: return
++        script.dropKey(key, context.dropCoords, context.hero)
++    }
++}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
 new file mode 100644
-index 000000000..849c6ab88
+index 000000000..9fd8d0ee1
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
-@@ -0,0 +1,281 @@
+@@ -0,0 +1,300 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
@@ -5338,6 +5378,7 @@ index 000000000..849c6ab88
 +import org.rsmod.api.table.cluehelper.CluehelperClueSkillchallengeRow
 +import org.rsmod.api.table.cluehelper.CluehelperOutfitRow
 +import org.rsmod.api.table.cluehelper.CluehelperTargetCoordRow
++import org.rsmod.api.table.cluehelper.CluehelperTargetKeyRow
 +import org.rsmod.api.table.cluehelper.CluehelperTargetLocRow
 +import org.rsmod.api.table.cluehelper.CluehelperTargetNpcRow
 +import org.rsmod.game.interact.InteractionOp
@@ -5357,13 +5398,18 @@ index 000000000..849c6ab88
 +    class HotCold(row: Int, tier: TrailTier, text: String, val npcs: Set<Int>, val spots: List<HotColdSpot>) :
 +        TrailStep(row, tier, text)
 +
-+    /** Search one of [locs] (cryptics such as "search the crates", map clues that show a crate). */
++    /**
++     * Search one of [locs] (cryptics such as "search the crates", map clues that show a crate). Key
++     * steps need [key] in the inventory, which one of [keyNpcs] drops when killed.
++     */
 +    class Search(
 +        row: Int,
 +        tier: TrailTier,
 +        text: String?,
 +        val locs: List<Pair<Int, CoordGrid>>,
 +        val map: String? = null,
++        val key: Int? = null,
++        val keyNpcs: Set<Int> = emptySet(),
 +    ) : TrailStep(row, tier, text)
 +
 +    /** Dig within [radius] of [coord]; map clues open [map]. */
@@ -5406,6 +5452,7 @@ index 000000000..849c6ab88
 +    private const val TARGET_NPC_TABLE = "dbtable.cluehelper_target_npc"
 +    private const val TARGET_LOC_TABLE = "dbtable.cluehelper_target_loc"
 +    private const val TARGET_COORD_TABLE = "dbtable.cluehelper_target_coord"
++    private const val TARGET_KEY_TABLE = "dbtable.cluehelper_target_key"
 +    private const val CHARLIE = "npc.tramppg"
 +    private const val RELDO = "npc.reldo"
 +
@@ -5498,6 +5545,18 @@ index 000000000..849c6ab88
 +                val searchable = locs.mapNotNull { (loc, coord) -> searchTarget(loc)?.let { it to coord } }.distinct()
 +                if (searchable.isEmpty()) return null
 +                TrailStep.Search(r.rowId, tier, r.clueText, searchable)
++            }
++            TARGET_KEY_TABLE.asRSCM(RSCMType.DBTABLE) -> {
++                val key = CluehelperTargetKeyRow.getRow(targets.single().id)
++                val target = searchTarget(key.loc.id) ?: return null
++                TrailStep.Search(
++                    r.rowId,
++                    tier,
++                    r.clueText,
++                    listOf(target to key.locCoord),
++                    key = key.key.id,
++                    keyNpcs = key.npcs.map { it.id }.toSet(),
++                )
 +            }
 +            TARGET_COORD_TABLE.asRSCM(RSCMType.DBTABLE) -> {
 +                val coord = CluehelperTargetCoordRow.getRow(targets.first().id).coord
@@ -5679,10 +5738,10 @@ index 000000000..017b2d3d7
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
 new file mode 100644
-index 000000000..59dd230d5
+index 000000000..950196c1b
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
-@@ -0,0 +1,723 @@
+@@ -0,0 +1,741 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
@@ -5814,7 +5873,8 @@ index 000000000..59dd230d5
 +        for ((loc, op) in searches.flatMap { it.locs }.map { it.first }.toSet().mapNotNull { loc -> TrailSteps.stepOp(loc)?.let { loc to it } }) {
 +            locOverrides.register(loc, op) { player, bound -> searchStep(player, loc, bound.coords) != null }
 +            onProtectedEvent<LocOverrideEvents.Op>(LocOverrideEvents.key(loc, op)) {
-+                val step = searchStep(player, loc, it.loc.coords) ?: return@onProtectedEvent
++                val step = searchStep(player, loc, it.loc.coords) as? TrailStep.Search ?: return@onProtectedEvent
++                if (step.key != null && invDel(inv, objName(step.key)).failure) return@onProtectedEvent
 +                completeStep(step)
 +            }
 +        }
@@ -6265,7 +6325,23 @@ index 000000000..59dd230d5
 +    fun searchStep(player: Player, loc: Int, coords: CoordGrid): TrailStep? =
 +        TrailTier.entries.firstNotNullOfOrNull { tier ->
 +            (currentStep(player, tier) as? TrailStep.Search)?.takeIf { step ->
-+                step.locs.any { it.first == loc && it.second == coords } && holdsClue(player, step)
++                step.locs.any { it.first == loc && it.second == coords } &&
++                    holdsClue(player, step) &&
++                    (step.key == null || player.inv.count(objName(step.key)) > 0)
++            }
++        }
++
++    fun dropKey(key: String, coords: CoordGrid, player: Player) {
++        objRepo.add(key, coords, KEY_DROP_DURATION, receiver = player)
++    }
++
++    /** The key a kill of [npcType] drops for [player]'s key step, if they do not hold it yet. */
++    fun keyDrop(player: Player, npcType: Int): String? =
++        TrailTier.entries.firstNotNullOfOrNull { tier ->
++            val step = currentStep(player, tier) as? TrailStep.Search ?: return@firstNotNullOfOrNull null
++            val key = step.key ?: return@firstNotNullOfOrNull null
++            objName(key).takeIf {
++                npcType in step.keyNpcs && holdsClue(player, step) && player.inv.count(it) == 0
 +            }
 +        }
 +
@@ -6299,6 +6375,7 @@ index 000000000..59dd230d5
 +        const val HOT_COLD_LAST_VARP = "varp.trail_beginner_hot_cold_last"
 +        const val URI_LIFETIME = 100
 +        const val SECOND_EMOTE_DONE = 1
++        const val KEY_DROP_DURATION = 200
 +        const val LIST_CHUNK = 12
 +        const val BLOCKED_FLAGS = CollisionFlag.BLOCK_WALK or CollisionFlag.BLOCK_PLAYERS
 +        val ADJACENT_OFFSETS =
@@ -6408,12 +6485,13 @@ index 000000000..59dd230d5
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailsModule.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailsModule.kt
 new file mode 100644
-index 000000000..f71271cd3
+index 000000000..414d9eeca
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailsModule.kt
-@@ -0,0 +1,11 @@
+@@ -0,0 +1,13 @@
 +package org.rsmod.content.other.treasuretrails
 +
++import org.rsmod.api.death.NpcDeathKillHook
 +import org.rsmod.api.player.hook.SpadeDigHook
 +import org.rsmod.plugin.module.PluginModule
 +
@@ -6421,6 +6499,7 @@ index 000000000..f71271cd3
 +    override fun bind() {
 +        bindInstance<TreasureTrailScript>()
 +        addSetBinding<SpadeDigHook>(TreasureTrailScript::class.java)
++        addSetBinding<NpcDeathKillHook>(TrailKeyDropHook::class.java)
 +    }
 +}
 diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml

@@ -1508,6 +1508,39 @@ bool varbit_def(int id, VarbitDef& out) {
     return out.varp >= 0 && out.varp < varp_count() && out.lsb >= 0 && out.msb < 32 && out.lsb <= out.msb;
 }
 
+// GE item search results (OC_FIND 4210 fills them, OC_FINDNEXT 4211 reads them, OC_FINDRESET 4212
+// zeroes the index; handlers in 0x4bcf44, cases 0x1072-0x1074): Client +0x417ba8
+// std::vector<uint16_t> ids {begin, end, cap}, +0x417bc0 next index, +0x417bc4 count.
+// Static RE (gen 21). // unverified: no plugin path exercised on the device yet
+namespace {
+constexpr uint32_t kGeIds = 0x417ba8, kGeIndex = 0x417bc0, kGeCount = 0x417bc4;
+constexpr uintptr_t kOperatorNew = 0x9f4384, kOperatorDelete = 0x9f43f4;
+}  // namespace
+
+bool set_ge_search_ids(const int16_t* ids, int n) {
+    uintptr_t c = client();
+    if (!c || n < 0 || n > 0xffff) return false;
+    auto* v = reinterpret_cast<uintptr_t*>(c + kGeIds);  // begin, end, cap
+    size_t cap = (v[2] - v[0]) / 2;
+    if (static_cast<size_t>(n) > cap) {
+        auto* fresh = reinterpret_cast<void* (*)(size_t)>(g_base + kOperatorNew)(static_cast<size_t>(n) * 2);
+        if (!fresh) return false;
+        if (v[0]) reinterpret_cast<void (*)(void*)>(g_base + kOperatorDelete)(reinterpret_cast<void*>(v[0]));
+        v[0] = reinterpret_cast<uintptr_t>(fresh);
+        v[2] = v[0] + static_cast<size_t>(n) * 2;
+    }
+    if (n) memcpy(reinterpret_cast<void*>(v[0]), ids, static_cast<size_t>(n) * 2);
+    v[1] = v[0] + static_cast<size_t>(n) * 2;
+    return true;
+}
+
+bool set_ge_search_int(bool index, int value) {
+    uintptr_t c = client();
+    if (!c) return false;
+    *reinterpret_cast<int32_t*>(c + (index ? kGeIndex : kGeCount)) = value;
+    return true;
+}
+
 bool queue_changed_skill(int skill) {
     uintptr_t c = client();
     if (!c || skill < 0 || skill >= 25) return false;

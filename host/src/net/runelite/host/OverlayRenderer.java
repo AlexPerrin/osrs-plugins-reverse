@@ -297,7 +297,9 @@ final class OverlayRenderer {
                 }
                 case CANVAS_TOP_RIGHT: c = new Point(size.width - BORDER, BORDER); break;
                 case TOP_CENTER: c = new Point(size.width / 2, BORDER); break;
-                case BOTTOM_LEFT: c = new Point(BORDER, size.height - BORDER); break;
+                // The mobile HUD's bottom-left button (the chat/pop-out toggle, screen x 28..152 of
+                // 1920) covers the desktop corner: start right of it. // unverified: proportion from one 1920x1080 screenshot
+                case BOTTOM_LEFT: c = new Point(BORDER + Math.round(size.width * 0.085f), size.height - BORDER); break;
                 case BOTTOM_RIGHT: c = new Point(size.width - BORDER, size.height - BORDER); break;
                 case ABOVE_CHATBOX_RIGHT: {
                     // The mobile chatbox is at the top left: stack these down from its bottom-right

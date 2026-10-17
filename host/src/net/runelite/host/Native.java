@@ -105,6 +105,8 @@ final class Native {
     static native boolean queueChangedSkill(int skill);
     /** Renderable draw listeners: these NPC / player indices are not drawn (or picked) until the next call. Client thread only. */
     static native void setHiddenActors(int[] npcs, int[] players);
+    /** GE item search results: ids (null = keep), count / index (Integer.MIN_VALUE = keep). Client thread only. */
+    static native boolean setGeSearch(short[] ids, int count, int index);
     /** Turns the script VM callbacks (Host.onScript) on or off. */
     static native void setScriptEvents(boolean on);
     /** The VM's live stacks (game thread): {int[] intStack (size entries), String[] objectStack}. */

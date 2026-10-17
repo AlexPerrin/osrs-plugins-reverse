@@ -450,6 +450,21 @@ public class AndroidClient extends ClientStub {
     @Override public net.runelite.api.worldmap.WorldMap getWorldMap() { return worldMap; }
     /** Minimap zoom isn't read from the game; RuneLite's default. */
     @Override public double getMinimapZoom() { return 4.0; }
+    @Override public void setMinimapZoom(double zoom) { }  // unverified: the mobile minimap zoom isn't mapped
+    @Override public void setMinimapZoom(boolean enabled) { }
+    /**
+     * Desktop's minimap dot sprites (item, NPC, player, friend, team, friends chat, clan). The
+     * mobile client draws its dots itself (it has a "setminimapdotstyle" setting) and where it keeps
+     * them isn't found, so plugins (Minimap's recolouring) get placeholders and their writes have no
+     * effect. // unverified: the mobile dot storage is not reverse-engineered
+     */
+    private final net.runelite.api.SpritePixels[] mapDots = newMapDots();
+    private static net.runelite.api.SpritePixels[] newMapDots() {
+        net.runelite.api.SpritePixels[] a = new net.runelite.api.SpritePixels[7];
+        for (int i = 0; i < a.length; i++) a[i] = new HostSpritePixels(new int[16], 4, 4);
+        return a;
+    }
+    @Override public net.runelite.api.SpritePixels[] getMapDots() { return mapDots; }
 
     /** The long-press menu (game::read_menu); plugin-created entries stay host-side for now. */
     static final AndroidMenu MENU = new AndroidMenu();
@@ -636,6 +651,10 @@ public class AndroidClient extends ClientStub {
     // Client +0x3174 / +0x2f64 (the CS2 map_world / worldflags handlers).
     @Override public int getWorld() { return Native.world(); }
     @Override public net.runelite.api.World createWorld() { return new AndroidWorld(); }
+    /** GE item search results that OC_FINDNEXT returns (game Client +0x417ba8; unverified on device). */
+    @Override public void setGeSearchResultIds(short[] ids) { if (isClientThread()) Native.setGeSearch(ids, Integer.MIN_VALUE, Integer.MIN_VALUE); }
+    @Override public void setGeSearchResultCount(int count) { if (isClientThread()) Native.setGeSearch(null, count, Integer.MIN_VALUE); }
+    @Override public void setGeSearchResultIndex(int index) { if (isClientThread()) Native.setGeSearch(null, Integer.MIN_VALUE, index); }
     /**
      * Desktop sets the world the next login connects to. The mobile client picks its world in its
      * own world list, so this only logs. // unverified: no world switch is attempted

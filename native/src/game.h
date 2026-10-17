@@ -25,6 +25,9 @@ int server_varp(int id);  // last value the server sent
 // Calls the game's varbit lookup (definition from the cache + bit extraction). Game thread only:
 // the definition cache isn't thread-safe.
 int varbit(int id);
+// Client.setGeSearchResultIds/Count/Index: the GE item search results OC_FINDNEXT reads. Game thread only.
+bool set_ge_search_ids(const int16_t* ids, int n);
+bool set_ge_search_int(bool index, int value);
 // Client.queueChangedSkill: records `skill` in the changed-skills ring as UPDATE_STAT does, so the
 // skill tab's onStatTransmit scripts redraw it. Game thread only.
 bool queue_changed_skill(int skill);

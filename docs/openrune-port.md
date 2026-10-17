@@ -1149,6 +1149,20 @@ was verified.
   `hg_jerboatail_large`, "some of its tail" **guess**). The Eagles' Peak requirement is not checked.
 - Tests: `HunterGuildScriptTest` (Gilman's sales: coins/space), `HunterRumoursTest` back-to-back.
   Upstream `42-hunter-guild-dialogues`.
-- Device test (after a deploy): `::tele 1560 9450` is the Burrow (`0_24_147`; **check** the exact
-  tile), `::setxp hunter 14000000`; Talk to Verity, then Gilman "Can we talk about rumours?" and
+- Device test (after a deploy): `::tele 1557 9462` is the Burrow beside Gilman (spawn
+  `0_24_147_20_56` = 1556,9464), `::setxp hunter 14000000`; Talk to Verity, then Gilman "Can we talk about rumours?" and
   watch the plugin's infobox; `::rumour turnin` is no longer needed (carry the part and talk).
+- **Device run 2026-10-17 09:01-09:13 EDT** (deployed 640abbd + b4acf3d + 2c1789e at 13:01 UTC;
+  `EXTRA="hunter hub-hunter-rumours"`): in the Burrow the plugin's infobox shows (Current Hunter /
+  Current Rumour / Back-To-Back). Cervus Talk-to: greeting lines and the 3 options. Verity (spawned
+  with `::npc 500 hg_verity` next to the player; the Burrow npcs wander, so spawning one is the
+  quickest way to tap it) first talk -> unlocked. Gilman Rumour op -> "We've got reports of a slightly
+  different sunlight moth ... some of its wings." and the plugin showed Gilman / Sunlight Moth
+  (Butterfly Net). Talk-to -> "Can we talk about rumours?" -> remind (no part yet: `::item` gave 0
+  with a full inventory; `::item <name> 1` after dropping one). With the wing: "Another one done?
+  You're really doing a lot for the guild." -> +5,200 Hunter XP ((99+5) x 50), a basic loot sack, the
+  plugin cleared Current Rumour; "Get another rumour?" Yes/No. `::rumour gilman red_chinchompa` then
+  Gilman's Rumour op remind line ("...about a red chinchompa...") -> the plugin showed Red Chinchompa
+  (Box Trap), so the rename works. Not checked on the device: butterfly catches, jerboas, the switch
+  lines, Verity's back-to-back toggle. Tester back at Lumbridge on the normal build, inventory full
+  (one copper ore dropped in the Burrow, a basic loot sack added).

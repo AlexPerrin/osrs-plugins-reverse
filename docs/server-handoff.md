@@ -21,6 +21,32 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-17, fourteenth server dev, on OpenRune)
+
+Details in `docs/openrune-port.md`, "Fourteenth server dev". Protocol unchanged.
+
+- **Deployed** 13:01 UTC: everything up to 2c1789e (640abbd Rumours part 1, b4acf3d butterfly
+  netting, 2c1789e guild hunter/Verity dialogues + jerboas). Tester LOGGED_IN at Lumbridge on the
+  normal build; Hunter 14M XP; Rumours unlocked (Verity), one rumour completed, current rumour Gilman's
+  red chinchompa; inventory full (a basic loot sack replaced a copper ore).
+- **Device-checked** with the hub Hunter Rumours plugin: assignment, remind and hand-in by dialogue
+  (plugin infobox follows), "red chinchompa". Not device-checked: butterfly catches, jerboas, switch
+  lines, back-to-back toggle.
+- **Butterfly netting** (`ButterflyScript`, dbtable `hunter_butterflies` 60019): net / magic net /
+  barehanded +10, wiki success charts, jars and Release effects, 5 butterfly/moth rumours.
+- **Guild dialogues** (`HunterGuildScript`): the plugin's matching rules are in the port doc (read
+  from its dex in the previous dev's scratch `gaps/hunter-rumours/classes.dex.txt`).
+- **Embertailed jerboa** in box traps (row 60361) and as a rumour (60496).
+- **Device tip:** Burrow npcs wander; `::npc 500 hg_<name>` spawns one on the player, then long-press
+  the player's position. `::item` with a full inventory says "x 0".
+- **Upstream:** 41 (butterfly netting), 42 (guild dialogues, jerboas); all 42 `git am` on the pin.
+- **Next (orchestrator to rank/approve; nothing started):** follower varp 447 = 0 after a relog
+  (Kitten Tracker; `PetFollowers.spawn` sets `follower_npc` on the post tick, so look at the login
+  varp sync order), jewellery teleport menus (Better Teleport Menu; games necklace says "Nothing
+  interesting happens."), a real Barrows crypt kill on the device, Spawn Predictor (Fight Caves,
+  multi-day). Held by the orchestrator: deadfall/net trap/falconry/pits/tracking. FRIENDLIST_DEL
+  (low priority).
+
 ## Latest state (2026-10-17, thirteenth server dev, on OpenRune)
 
 Details in `docs/openrune-port.md`, "Thirteenth server dev". Protocol unchanged.

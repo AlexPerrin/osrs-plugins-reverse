@@ -353,6 +353,14 @@ public final class Host {
 
     private static boolean pendingLoggedIn;
 
+    /**
+     * Latched with the posted GameStateChanged: false from a posted non-LOGGED_IN state until
+     * LOGGED_IN is posted (after the local player exists). AndroidClient.getGameState reads LOADING
+     * while the game is at 30 but LOGGED_IN hasn't been posted yet, as desktop never reports
+     * LOGGED_IN without a local player.
+     */
+    static volatile boolean loggedInPosted;
+
     private static void postLoggedIn(EventBus bus) {
         pendingLoggedIn = false;
         postGameState(bus, GameState.LOGGED_IN);
@@ -374,6 +382,9 @@ public final class Host {
         if (s == GameState.LOGGED_IN) postWorldViewLoaded(bus);
         else if (s == GameState.LOGIN_SCREEN || s == GameState.HOPPING) loadedBase = Long.MIN_VALUE;
         e.setGameState(s != null ? s : GameState.UNKNOWN);
+        loggedInPosted = e.getGameState() == GameState.LOGGED_IN;
+        Log.i(TAG, "GameStateChanged " + e.getGameState() + " (getGameState " + client.getGameState() + ", local player "
+            + (localPlayer() != null) + ")");
         bus.post(e);
     }
 

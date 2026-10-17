@@ -32,11 +32,11 @@ public class AndroidClient extends ClientStub {
     public GameState getGameState() {
         if (Host.sceneReloading) return GameState.LOADING;
         GameState s = GameState.of(Native.gameState());
-        // Desktop is LOGGED_IN only once the local player exists (GameStateChanged waits for it too,
-        // Host.pendingLoggedIn); the game's player list can still be empty for a few cycles after
-        // its state turns 30, and plugins guarded by LOGGED_IN then read a null local player
-        // (Runecrafting Utilities' ClientTick).
-        if (s == GameState.LOGGED_IN && Host.localPlayer() == null) return GameState.LOADING;
+        // Desktop is LOGGED_IN only once the local player exists. GameStateChanged(LOGGED_IN) waits
+        // for it (Host.pendingLoggedIn); the game's player list can still be empty for a few cycles
+        // after its state turns 30, and plugins guarded by LOGGED_IN then read a null local player
+        // (Runecrafting Utilities' ClientTick). Latched to the posted event, not the live list.
+        if (s == GameState.LOGGED_IN && !Host.loggedInPosted) return GameState.LOADING;
         return s != null ? s : GameState.UNKNOWN;
     }
 

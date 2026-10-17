@@ -617,3 +617,11 @@ was verified.
     hot-cold spot), easy 63850-63855. Old beginner saves pointed at rows of the removed table and
     simply start a new trail.
   - Tests: `TreasureTrailScriptTest` (11). Boot-checked in a throwaway container.
+- **Easy casket** (`EasyCasketTable`, dbtable 60007, rows 60700-60910): the wiki's table (Mod Tide's
+  rates) flattened to one weighted roll out of 617,760 (211 rows: uniques, standard table, shared
+  treasure trail items; parsed from the page source's DropsLineReward rarities, which sum to exactly
+  1), 2-4 rolls, needs 4 free slots. Not rolled: the 1/50 master clue tertiary (no master tier yet)
+  and scroll cases. Casket tables are generic per tier (`TreasureTrailScript.CASKETS`).
+- **Easy step counts as built:** Talk 41, Search 44 (of 71: loc searches whose loc has no "Search"
+  op, e.g. closed drawers, are left out for now), Dig 12 (8 coordinate cryptics + 4 maps with a
+  known interface), Emote 33. Music steps (6, play a track near Cecilia) not done.

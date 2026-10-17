@@ -113,8 +113,9 @@ Everything that compiles or runs OpenRune runs in Docker (Gradle as uid 1000 in
   units (Build, Search) from the emote rows; Check steps; the beginner casket rolls the OSRS Wiki
   table and sends the completion message and `trail_rewardinv` the Loot Tracker records.
   `::clue [beginner|easy] [row|list] [steps left]`. Talk/Search steps on npcs and locs with their own
-  content go through the new `NpcOpOverrides`/`LocOpOverrides` APIs. Not yet: the easy casket, easy
-  music steps, five easy map interfaces, scroll cases.
+  content go through the new `NpcOpOverrides`/`LocOpOverrides` APIs. The easy casket rolls the wiki table
+  (2-4 rolls). Not yet: easy music steps, five easy map interfaces, loc searches on locs without a
+  Search op (closed drawers), scroll cases.
 - **New characters** start at Lumbridge (3222, 3218) as in OSRS, not at the database default
   (3200, 3200).
 - **Random events** (`content/events/random-events`): the Genie, every 1-2 hours of play or with

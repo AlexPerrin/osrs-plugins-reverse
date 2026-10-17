@@ -1,6 +1,6 @@
-From 0fa5ff1af9b5cb0e3ef18554b09a4c2fba9313fd Mon Sep 17 00:00:00 2001
+From 6671af536097c1ba218b8b1e22922852fc541f42 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
-Date: Sat, 17 Oct 2026 01:06:14 -0400
+Date: Sat, 17 Oct 2026 01:31:21 -0400
 Subject: [PATCH] Treasure Trails (beginner and easy) on the cache's cluehelper
  tables
 
@@ -11,10 +11,11 @@ the step; npc talks (anagrams, cryptics), Charlie the Tramp's item tasks,
 Reldo's hot-cold strange device with its temperature readings, loc searches,
 digs, and emote steps with Uri; Check steps; per-step scroll items for easy
 (item param 623), swapped as the trail moves on; STASH units built from the
-emote rows (Build, Search); the beginner reward casket rolled from the OSRS
-Wiki table into trail_rewardinv with the completion count message; scroll
-boxes; ::clue [tier] [row|list] [steps left]. Three small server-only tables
-fill what the cache leaves out (Charlie's items, map interfaces, emote seqs).
+emote rows (Build, Search); the beginner and easy reward caskets rolled from
+the OSRS Wiki tables into trail_rewardinv with the completion count message;
+scroll boxes; ::clue [tier] [row|list] [steps left]. Small server-only tables
+fill what the cache leaves out (Charlie's items, map interfaces, emote seqs,
+casket tables).
 
 NpcOpOverrides and LocOpOverrides let content take an npc or loc op ahead of
 its own handler for the players it claims, so a clue step can take Talk-to or
@@ -29,22 +30,24 @@ Search on npcs and locs that already have content.
  .../other/treasure-trails/build.gradle.kts    |  15 +
  .../treasure-trails/pack/build.gradle.kts     |   7 +
  .../pack/BeginnerCasketTable.kt               | 140 ++++
+ .../treasuretrails/pack/EasyCasketTable.kt    | 255 +++++++
  .../treasuretrails/pack/TrailDataTables.kt    | 100 +++
- .../pack/TreasureTrailsPluginPack.kt          |  14 +
- .../pack/src/main/resources/gamevals.toml     | 136 ++++
+ .../pack/TreasureTrailsPluginPack.kt          |  15 +
+ .../pack/src/main/resources/gamevals.toml     | 348 ++++++++++
  .../pack/configs/treasure_trails_vars.toml    |  83 +++
- .../treasuretrails/TreasureTrailScriptTest.kt | 268 ++++++++
+ .../treasuretrails/TreasureTrailScriptTest.kt | 280 ++++++++
  .../other/treasuretrails/StashUnitScript.kt   | 128 ++++
- .../other/treasuretrails/TrailSteps.kt        | 175 +++++
- .../content/other/treasuretrails/TrailTier.kt |  52 ++
- .../treasuretrails/TreasureTrailScript.kt     | 626 ++++++++++++++++++
+ .../other/treasuretrails/TrailSteps.kt        | 183 +++++
+ .../content/other/treasuretrails/TrailTier.kt |  55 ++
+ .../treasuretrails/TreasureTrailScript.kt     | 629 ++++++++++++++++++
  .../treasuretrails/TreasureTrailsModule.kt    |  11 +
- 19 files changed, 1866 insertions(+), 2 deletions(-)
+ 20 files changed, 2360 insertions(+), 2 deletions(-)
  create mode 100644 api/player/src/main/kotlin/org/rsmod/api/player/interact/LocOpOverrides.kt
  create mode 100644 api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcOpOverrides.kt
  create mode 100644 content/other/treasure-trails/build.gradle.kts
  create mode 100644 content/other/treasure-trails/pack/build.gradle.kts
  create mode 100644 content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/BeginnerCasketTable.kt
+ create mode 100644 content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/EasyCasketTable.kt
  create mode 100644 content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
  create mode 100644 content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt
  create mode 100644 content/other/treasure-trails/pack/src/main/resources/gamevals.toml
@@ -437,6 +440,267 @@ index 000000000..8c32fc4b2
 +            }
 +        }
 +}
+diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/EasyCasketTable.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/EasyCasketTable.kt
+new file mode 100644
+index 000000000..09e6c3f92
+--- /dev/null
++++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/EasyCasketTable.kt
+@@ -0,0 +1,255 @@
++package org.rsmod.content.other.treasuretrails.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++
++/**
++ * One roll of the easy reward casket (OSRS Wiki: Reward casket (easy), rates from Mod Tide), flattened
++ * to a single weighted table out of [TOTAL_WEIGHT] = 617,760: the easy uniques, the standard table
++ * and the shared treasure trail items. A casket makes 2-4 rolls. The master clue tertiary and scroll
++ * cases are not rolled here.
++ */
++object EasyCasketTable {
++    const val TOTAL_WEIGHT = 617760
++
++    private data class Reward(
++        val obj: String,
++        val weight: Int,
++        val min: Int = 1,
++        val max: Int = min,
++        val noted: Boolean = false,
++    )
++
++    private val REWARDS =
++        listOf(
++            Reward("obj.trail_composite_bow_willow", 1716),
++            Reward("obj.trail_amulet_of_magic", 1716),
++            Reward("obj.wilderness_cape_zero", 110),
++            Reward("obj.wilderness_cape_i", 110),
++            Reward("obj.wilderness_cape_x", 110),
++            Reward("obj.cape_of_skulls", 110),
++            Reward("obj.chefs_hat_gold", 220),
++            Reward("obj.golden_apron", 220),
++            Reward("obj.wooden_shield_gold", 440),
++            Reward("obj.black_full_helm_trim", 440),
++            Reward("obj.black_platebody_trim", 440),
++            Reward("obj.black_platelegs_trim", 440),
++            Reward("obj.black_plateskirt_trim", 440),
++            Reward("obj.black_kiteshield_trim", 440),
++            Reward("obj.black_full_helm_gold", 440),
++            Reward("obj.black_platebody_gold", 440),
++            Reward("obj.black_platelegs_gold", 440),
++            Reward("obj.black_plateskirt_gold", 440),
++            Reward("obj.black_kiteshield_gold", 440),
++            Reward("obj.black_heraldic_kiteshield1", 440),
++            Reward("obj.black_heraldic_kiteshield2", 440),
++            Reward("obj.black_heraldic_kiteshield3", 440),
++            Reward("obj.black_heraldic_kiteshield4", 440),
++            Reward("obj.black_heraldic_kiteshield5", 440),
++            Reward("obj.trail_heraldic_helm_1_black", 440),
++            Reward("obj.trail_heraldic_helm_2_black", 440),
++            Reward("obj.trail_heraldic_helm_3_black", 440),
++            Reward("obj.trail_heraldic_helm_4_black", 440),
++            Reward("obj.trail_heraldic_helm_5_black", 440),
++            Reward("obj.black_platebody_h1", 440),
++            Reward("obj.black_platebody_h2", 440),
++            Reward("obj.black_platebody_h3", 440),
++            Reward("obj.black_platebody_h4", 440),
++            Reward("obj.black_platebody_h5", 440),
++            Reward("obj.steel_full_helm_trim", 440),
++            Reward("obj.steel_platebody_trim", 440),
++            Reward("obj.steel_platelegs_trim", 440),
++            Reward("obj.steel_plateskirt_trim", 440),
++            Reward("obj.steel_kiteshield_trim", 440),
++            Reward("obj.steel_full_helm_gold", 440),
++            Reward("obj.steel_platebody_gold", 440),
++            Reward("obj.steel_platelegs_gold", 440),
++            Reward("obj.steel_plateskirt_gold", 440),
++            Reward("obj.steel_kiteshield_gold", 440),
++            Reward("obj.iron_full_helm_trim", 440),
++            Reward("obj.iron_platebody_trim", 440),
++            Reward("obj.iron_platelegs_trim", 440),
++            Reward("obj.iron_plateskirt_trim", 440),
++            Reward("obj.iron_kiteshield_trim", 440),
++            Reward("obj.iron_full_helm_gold", 440),
++            Reward("obj.iron_platebody_gold", 440),
++            Reward("obj.iron_platelegs_gold", 440),
++            Reward("obj.iron_plateskirt_gold", 440),
++            Reward("obj.iron_kiteshield_gold", 440),
++            Reward("obj.bronze_full_helm_trim", 440),
++            Reward("obj.bronze_platebody_trim", 440),
++            Reward("obj.bronze_platelegs_trim", 440),
++            Reward("obj.bronze_plateskirt_trim", 440),
++            Reward("obj.bronze_kiteshield_trim", 440),
++            Reward("obj.bronze_full_helm_gold", 440),
++            Reward("obj.bronze_platebody_gold", 440),
++            Reward("obj.bronze_platelegs_gold", 440),
++            Reward("obj.bronze_plateskirt_gold", 440),
++            Reward("obj.bronze_kiteshield_gold", 440),
++            Reward("obj.studded_body_trim_gold", 440),
++            Reward("obj.studded_chaps_trim_gold", 440),
++            Reward("obj.studded_body_trim_fur", 440),
++            Reward("obj.studded_chaps_trim_fur", 440),
++            Reward("obj.leather_armour_trim_gold", 440),
++            Reward("obj.leather_chaps_trim_gold", 440),
++            Reward("obj.bluewizhat_trim_gold", 440),
++            Reward("obj.wizards_robe_trim_gold", 440),
++            Reward("obj.blue_skirt_trim_gold", 440),
++            Reward("obj.bluewizhat_trim", 440),
++            Reward("obj.wizards_robe_trim", 440),
++            Reward("obj.blue_skirt_trim", 440),
++            Reward("obj.blackwizhat_gold", 440),
++            Reward("obj.black_wizards_robe_gold", 440),
++            Reward("obj.black_skirt_gold", 440),
++            Reward("obj.blackwizhat_trim", 440),
++            Reward("obj.black_wizards_robe_trim", 440),
++            Reward("obj.black_skirt_trim", 440),
++            Reward("obj.monk_robetop_gold", 44),
++            Reward("obj.monk_robebottom_gold", 44),
++            Reward("obj.trail_saradomin_robe_t", 440),
++            Reward("obj.trail_saradomin_robe_l", 440),
++            Reward("obj.trail_guthix_robe_t", 440),
++            Reward("obj.trail_guthix_robe_l", 440),
++            Reward("obj.trail_zamorak_robe_t", 440),
++            Reward("obj.trail_zamorak_robe_l", 440),
++            Reward("obj.trail_ancient_robe_t", 440),
++            Reward("obj.trail_ancient_robe_l", 440),
++            Reward("obj.trail_armadyl_robe_t", 440),
++            Reward("obj.trail_armadyl_robe_l", 440),
++            Reward("obj.trail_bandos_robe_t", 440),
++            Reward("obj.trail_bandos_robe_l", 440),
++            Reward("obj.trail_bob_shirt_red", 440),
++            Reward("obj.trail_bob_shirt_green", 440),
++            Reward("obj.trail_bob_shirt_blue", 440),
++            Reward("obj.trail_bob_shirt_black", 440),
++            Reward("obj.trail_bob_shirt_purple", 440),
++            Reward("obj.highwaymanmask", 440),
++            Reward("obj.berret_blue", 440),
++            Reward("obj.berret_black", 440),
++            Reward("obj.berret_red", 440),
++            Reward("obj.berret_white", 440),
++            Reward("obj.trail_wig", 440),
++            Reward("obj.beanie_hat", 440),
++            Reward("obj.imp_mask", 440),
++            Reward("obj.goblin_mask", 440),
++            Reward("obj.trail_sleeping_cap", 440),
++            Reward("obj.trail_flared_pants", 440),
++            Reward("obj.trail_pantaloons", 440),
++            Reward("obj.black_cane", 440),
++            Reward("obj.staff_of_bobcat", 440),
++            Reward("obj.trail_elegant_shirt_male_r", 220),
++            Reward("obj.trail_elegant_shirt_female_r", 220),
++            Reward("obj.trail_elegant_pants_male_r", 220),
++            Reward("obj.trail_elegant_pants_female_r", 220),
++            Reward("obj.trail_elegant_shirt_male_g", 220),
++            Reward("obj.trail_elegant_shirt_female_g", 220),
++            Reward("obj.trail_elegant_pants_male_g", 220),
++            Reward("obj.trail_elegant_pants_female_g", 220),
++            Reward("obj.trail_elegant_shirt_male_b", 220),
++            Reward("obj.trail_elegant_shirt_female_b", 220),
++            Reward("obj.trail_elegant_pants_male_b", 220),
++            Reward("obj.trail_elegant_pants_female_b", 220),
++            Reward("obj.trail_power_ammy", 440),
++            Reward("obj.joint_of_ham", 440),
++            Reward("obj.rain_bow", 440),
++            Reward("obj.black_full_helm", 17160),
++            Reward("obj.black_platebody", 17160),
++            Reward("obj.black_platelegs", 17160),
++            Reward("obj.black_longsword", 17160),
++            Reward("obj.black_battleaxe", 17160),
++            Reward("obj.black_axe", 17160),
++            Reward("obj.black_dagger", 17160),
++            Reward("obj.steel_pickaxe", 17160),
++            Reward("obj.black_pickaxe", 17160),
++            Reward("obj.coif", 17160),
++            Reward("obj.studded_body", 17160),
++            Reward("obj.studded_chaps", 17160),
++            Reward("obj.willow_shortbow", 17160),
++            Reward("obj.willow_longbow", 15444),
++            Reward("obj.staff_of_air", 17160),
++            Reward("obj.amulet_of_magic", 15444),
++            Reward("obj.airrune", 17160, min = 30, max = 50),
++            Reward("obj.mindrune", 17160, min = 30, max = 50),
++            Reward("obj.waterrune", 17160, min = 30, max = 50),
++            Reward("obj.earthrune", 17160, min = 30, max = 50),
++            Reward("obj.firerune", 17160, min = 30, max = 50),
++            Reward("obj.bodyrune", 17160, min = 30, max = 50),
++            Reward("obj.chaosrune", 17160, min = 5, max = 10),
++            Reward("obj.naturerune", 17160, min = 5, max = 10),
++            Reward("obj.lawrune", 17160, min = 5, max = 10),
++            Reward("obj.trout", 17160, min = 6, max = 10, noted = true),
++            Reward("obj.salmon", 17160, min = 6, max = 10, noted = true),
++            Reward("obj.coins", 17160, min = 50, max = 200),
++            Reward("obj.coins", 11440, min = 3000, max = 7000),
++            Reward("obj.coins", 2002, min = 10000, max = 15000),
++            Reward("obj.coins", 352, min = 3400, max = 8200),
++            Reward("obj.trail_sweets", 17160, min = 2, max = 6),
++            Reward("obj.trail_sweets", 2002, min = 8, max = 12),
++            Reward("obj.gnomish_firelighter_red", 3432, min = 3, max = 5),
++            Reward("obj.gnomish_firelighter_green", 3432, min = 3, max = 5),
++            Reward("obj.gnomish_firelighter_blue", 3432, min = 3, max = 5),
++            Reward("obj.trail_gnomish_firelighter_purple", 3432, min = 3, max = 5),
++            Reward("obj.trail_gnomish_firelighter_white", 3432, min = 3, max = 5),
++            Reward("obj.blessing_saradomin", 286),
++            Reward("obj.blessing_zamorak", 286),
++            Reward("obj.blessing_guthix", 286),
++            Reward("obj.blessing_bandos", 286),
++            Reward("obj.blessing_armadyl", 286),
++            Reward("obj.blessing_zaros", 286),
++            Reward("obj.scroll_charge_dragonstone", 1365, min = 5, max = 15),
++            Reward("obj.teleportscroll_nardah", 1365, min = 5, max = 15),
++            Reward("obj.teleportscroll_mosles", 1365, min = 5, max = 15),
++            Reward("obj.teleportscroll_mortton", 1365, min = 5, max = 15),
++            Reward("obj.teleportscroll_feldip", 1365, min = 5, max = 15),
++            Reward("obj.teleportscroll_lunarisle", 1365, min = 5, max = 15),
++            Reward("obj.teleportscroll_digsite", 1365, min = 5, max = 15),
++            Reward("obj.teleportscroll_piscatoris", 1365, min = 5, max = 15),
++            Reward("obj.teleportscroll_pestcontrol", 1365, min = 5, max = 15),
++            Reward("obj.teleportscroll_taibwo", 1365, min = 5, max = 15),
++            Reward("obj.teleportscroll_lumberyard", 1365, min = 5, max = 15),
++            Reward("obj.teleportscroll_elf", 1365, min = 5, max = 15),
++            Reward("obj.bookofscrolls_empty", 780),
++            Reward("obj.holy_book_s_page1", 715),
++            Reward("obj.holy_book_s_page2", 715),
++            Reward("obj.holy_book_s_page3", 715),
++            Reward("obj.holy_book_s_page4", 715),
++            Reward("obj.holy_book_z_page1", 715),
++            Reward("obj.holy_book_z_page2", 715),
++            Reward("obj.holy_book_z_page3", 715),
++            Reward("obj.holy_book_z_page4", 715),
++            Reward("obj.holy_book_g_page1", 715),
++            Reward("obj.holy_book_g_page2", 715),
++            Reward("obj.holy_book_g_page3", 715),
++            Reward("obj.holy_book_g_page4", 715),
++            Reward("obj.bandos_page1", 715),
++            Reward("obj.bandos_page2", 715),
++            Reward("obj.bandos_page3", 715),
++            Reward("obj.bandos_page4", 715),
++            Reward("obj.armadyl_page1", 715),
++            Reward("obj.armadyl_page2", 715),
++            Reward("obj.armadyl_page3", 715),
++            Reward("obj.armadyl_page4", 715),
++            Reward("obj.zaros_page1", 715),
++            Reward("obj.zaros_page2", 715),
++            Reward("obj.zaros_page3", 715),
++            Reward("obj.zaros_page4", 715),
++        )
++
++    fun rewards() =
++        dbTable("dbtable.trail_easy_casket", serverOnly = true) {
++            column("obj", 0, VarType.OBJ)
++            column("min", 1, VarType.INT)
++            column("max", 2, VarType.INT)
++            column("weight", 3, VarType.INT)
++            column("noted", 4, VarType.BOOLEAN)
++            for ((i, reward) in REWARDS.withIndex()) {
++                row("dbrow.trail_easy_casket_$i") {
++                    columnRSCM(0, reward.obj)
++                    column(1, reward.min)
++                    column(2, reward.max)
++                    column(3, reward.weight)
++                    column(4, reward.noted)
++                }
++            }
++        }
++}
 diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
 new file mode 100644
 index 000000000..005e99e92
@@ -545,10 +809,10 @@ index 000000000..005e99e92
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt
 new file mode 100644
-index 000000000..2ef0efd9a
+index 000000000..1be464b2d
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,15 @@
 +package org.rsmod.content.other.treasuretrails.pack
 +
 +import dev.openrune.definition.dbtables.DBTable
@@ -561,19 +825,21 @@ index 000000000..2ef0efd9a
 +            TrailDataTables.maps(),
 +            TrailDataTables.emotes(),
 +            BeginnerCasketTable.rewards(),
++            EasyCasketTable.rewards(),
 +        )
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/resources/gamevals.toml b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..31a9f08ec
+index 000000000..0cdb76691
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
-@@ -0,0 +1,136 @@
+@@ -0,0 +1,348 @@
 +[gamevals.dbtable]
 +trail_charlie_tasks = 60003
 +trail_beginner_casket = 60004
 +trail_map_interfaces = 60005
 +trail_emote_seqs = 60006
++trail_easy_casket = 60007
 +
 +[gamevals.dbrow]
 +trail_charlie_task_0 = 60200
@@ -689,6 +955,217 @@ index 000000000..31a9f08ec
 +trail_beginner_casket_shrimp = 60311
 +trail_beginner_casket_sardine = 60312
 +trail_beginner_casket_herring = 60313
++trail_easy_casket_0 = 60700
++trail_easy_casket_1 = 60701
++trail_easy_casket_2 = 60702
++trail_easy_casket_3 = 60703
++trail_easy_casket_4 = 60704
++trail_easy_casket_5 = 60705
++trail_easy_casket_6 = 60706
++trail_easy_casket_7 = 60707
++trail_easy_casket_8 = 60708
++trail_easy_casket_9 = 60709
++trail_easy_casket_10 = 60710
++trail_easy_casket_11 = 60711
++trail_easy_casket_12 = 60712
++trail_easy_casket_13 = 60713
++trail_easy_casket_14 = 60714
++trail_easy_casket_15 = 60715
++trail_easy_casket_16 = 60716
++trail_easy_casket_17 = 60717
++trail_easy_casket_18 = 60718
++trail_easy_casket_19 = 60719
++trail_easy_casket_20 = 60720
++trail_easy_casket_21 = 60721
++trail_easy_casket_22 = 60722
++trail_easy_casket_23 = 60723
++trail_easy_casket_24 = 60724
++trail_easy_casket_25 = 60725
++trail_easy_casket_26 = 60726
++trail_easy_casket_27 = 60727
++trail_easy_casket_28 = 60728
++trail_easy_casket_29 = 60729
++trail_easy_casket_30 = 60730
++trail_easy_casket_31 = 60731
++trail_easy_casket_32 = 60732
++trail_easy_casket_33 = 60733
++trail_easy_casket_34 = 60734
++trail_easy_casket_35 = 60735
++trail_easy_casket_36 = 60736
++trail_easy_casket_37 = 60737
++trail_easy_casket_38 = 60738
++trail_easy_casket_39 = 60739
++trail_easy_casket_40 = 60740
++trail_easy_casket_41 = 60741
++trail_easy_casket_42 = 60742
++trail_easy_casket_43 = 60743
++trail_easy_casket_44 = 60744
++trail_easy_casket_45 = 60745
++trail_easy_casket_46 = 60746
++trail_easy_casket_47 = 60747
++trail_easy_casket_48 = 60748
++trail_easy_casket_49 = 60749
++trail_easy_casket_50 = 60750
++trail_easy_casket_51 = 60751
++trail_easy_casket_52 = 60752
++trail_easy_casket_53 = 60753
++trail_easy_casket_54 = 60754
++trail_easy_casket_55 = 60755
++trail_easy_casket_56 = 60756
++trail_easy_casket_57 = 60757
++trail_easy_casket_58 = 60758
++trail_easy_casket_59 = 60759
++trail_easy_casket_60 = 60760
++trail_easy_casket_61 = 60761
++trail_easy_casket_62 = 60762
++trail_easy_casket_63 = 60763
++trail_easy_casket_64 = 60764
++trail_easy_casket_65 = 60765
++trail_easy_casket_66 = 60766
++trail_easy_casket_67 = 60767
++trail_easy_casket_68 = 60768
++trail_easy_casket_69 = 60769
++trail_easy_casket_70 = 60770
++trail_easy_casket_71 = 60771
++trail_easy_casket_72 = 60772
++trail_easy_casket_73 = 60773
++trail_easy_casket_74 = 60774
++trail_easy_casket_75 = 60775
++trail_easy_casket_76 = 60776
++trail_easy_casket_77 = 60777
++trail_easy_casket_78 = 60778
++trail_easy_casket_79 = 60779
++trail_easy_casket_80 = 60780
++trail_easy_casket_81 = 60781
++trail_easy_casket_82 = 60782
++trail_easy_casket_83 = 60783
++trail_easy_casket_84 = 60784
++trail_easy_casket_85 = 60785
++trail_easy_casket_86 = 60786
++trail_easy_casket_87 = 60787
++trail_easy_casket_88 = 60788
++trail_easy_casket_89 = 60789
++trail_easy_casket_90 = 60790
++trail_easy_casket_91 = 60791
++trail_easy_casket_92 = 60792
++trail_easy_casket_93 = 60793
++trail_easy_casket_94 = 60794
++trail_easy_casket_95 = 60795
++trail_easy_casket_96 = 60796
++trail_easy_casket_97 = 60797
++trail_easy_casket_98 = 60798
++trail_easy_casket_99 = 60799
++trail_easy_casket_100 = 60800
++trail_easy_casket_101 = 60801
++trail_easy_casket_102 = 60802
++trail_easy_casket_103 = 60803
++trail_easy_casket_104 = 60804
++trail_easy_casket_105 = 60805
++trail_easy_casket_106 = 60806
++trail_easy_casket_107 = 60807
++trail_easy_casket_108 = 60808
++trail_easy_casket_109 = 60809
++trail_easy_casket_110 = 60810
++trail_easy_casket_111 = 60811
++trail_easy_casket_112 = 60812
++trail_easy_casket_113 = 60813
++trail_easy_casket_114 = 60814
++trail_easy_casket_115 = 60815
++trail_easy_casket_116 = 60816
++trail_easy_casket_117 = 60817
++trail_easy_casket_118 = 60818
++trail_easy_casket_119 = 60819
++trail_easy_casket_120 = 60820
++trail_easy_casket_121 = 60821
++trail_easy_casket_122 = 60822
++trail_easy_casket_123 = 60823
++trail_easy_casket_124 = 60824
++trail_easy_casket_125 = 60825
++trail_easy_casket_126 = 60826
++trail_easy_casket_127 = 60827
++trail_easy_casket_128 = 60828
++trail_easy_casket_129 = 60829
++trail_easy_casket_130 = 60830
++trail_easy_casket_131 = 60831
++trail_easy_casket_132 = 60832
++trail_easy_casket_133 = 60833
++trail_easy_casket_134 = 60834
++trail_easy_casket_135 = 60835
++trail_easy_casket_136 = 60836
++trail_easy_casket_137 = 60837
++trail_easy_casket_138 = 60838
++trail_easy_casket_139 = 60839
++trail_easy_casket_140 = 60840
++trail_easy_casket_141 = 60841
++trail_easy_casket_142 = 60842
++trail_easy_casket_143 = 60843
++trail_easy_casket_144 = 60844
++trail_easy_casket_145 = 60845
++trail_easy_casket_146 = 60846
++trail_easy_casket_147 = 60847
++trail_easy_casket_148 = 60848
++trail_easy_casket_149 = 60849
++trail_easy_casket_150 = 60850
++trail_easy_casket_151 = 60851
++trail_easy_casket_152 = 60852
++trail_easy_casket_153 = 60853
++trail_easy_casket_154 = 60854
++trail_easy_casket_155 = 60855
++trail_easy_casket_156 = 60856
++trail_easy_casket_157 = 60857
++trail_easy_casket_158 = 60858
++trail_easy_casket_159 = 60859
++trail_easy_casket_160 = 60860
++trail_easy_casket_161 = 60861
++trail_easy_casket_162 = 60862
++trail_easy_casket_163 = 60863
++trail_easy_casket_164 = 60864
++trail_easy_casket_165 = 60865
++trail_easy_casket_166 = 60866
++trail_easy_casket_167 = 60867
++trail_easy_casket_168 = 60868
++trail_easy_casket_169 = 60869
++trail_easy_casket_170 = 60870
++trail_easy_casket_171 = 60871
++trail_easy_casket_172 = 60872
++trail_easy_casket_173 = 60873
++trail_easy_casket_174 = 60874
++trail_easy_casket_175 = 60875
++trail_easy_casket_176 = 60876
++trail_easy_casket_177 = 60877
++trail_easy_casket_178 = 60878
++trail_easy_casket_179 = 60879
++trail_easy_casket_180 = 60880
++trail_easy_casket_181 = 60881
++trail_easy_casket_182 = 60882
++trail_easy_casket_183 = 60883
++trail_easy_casket_184 = 60884
++trail_easy_casket_185 = 60885
++trail_easy_casket_186 = 60886
++trail_easy_casket_187 = 60887
++trail_easy_casket_188 = 60888
++trail_easy_casket_189 = 60889
++trail_easy_casket_190 = 60890
++trail_easy_casket_191 = 60891
++trail_easy_casket_192 = 60892
++trail_easy_casket_193 = 60893
++trail_easy_casket_194 = 60894
++trail_easy_casket_195 = 60895
++trail_easy_casket_196 = 60896
++trail_easy_casket_197 = 60897
++trail_easy_casket_198 = 60898
++trail_easy_casket_199 = 60899
++trail_easy_casket_200 = 60900
++trail_easy_casket_201 = 60901
++trail_easy_casket_202 = 60902
++trail_easy_casket_203 = 60903
++trail_easy_casket_204 = 60904
++trail_easy_casket_205 = 60905
++trail_easy_casket_206 = 60906
++trail_easy_casket_207 = 60907
++trail_easy_casket_208 = 60908
++trail_easy_casket_209 = 60909
++trail_easy_casket_210 = 60910
 +
 +[gamevals.varp]
 +trail_beginner_step = 63840
@@ -796,10 +1273,10 @@ index 000000000..edb58312b
 +transmit = "Never"
 diff --git a/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
 new file mode 100644
-index 000000000..bd2041daf
+index 000000000..f0dd96d0f
 --- /dev/null
 +++ b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
-@@ -0,0 +1,268 @@
+@@ -0,0 +1,280 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -819,8 +1296,7 @@ index 000000000..bd2041daf
 +import org.rsmod.content.other.treasuretrails.StashUnitScript.Companion.UNITS
 +import org.rsmod.content.other.treasuretrails.StashUnitScript.Companion.isFilled
 +import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Advance
-+import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.CASKET_REWARDS
-+import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.CASKET_TOTAL_WEIGHT
++import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.CASKETS
 +import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.REWARD_INV
 +import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.currentStep
 +import org.rsmod.content.other.treasuretrails.TreasureTrailScript.Companion.rollRewards
@@ -837,12 +1313,23 @@ index 000000000..bd2041daf
 +
 +    @Test
 +    fun `beginner casket rolls follow the flattened wiki table`() {
-+        assertEquals(CASKET_TOTAL_WEIGHT, CASKET_REWARDS.sumOf { it.weight })
-+        assertEquals("obj.mole_slippers", rollRewards(1) { 0 }.single().obj.internalName)
-+        val last = rollRewards(1) { it - 1 }.single()
++        assertEquals(44280, CASKETS.getValue(beginner).sumOf { it.weight })
++        assertEquals("obj.mole_slippers", rollRewards(beginner, 1) { 0 }.single().obj.internalName)
++        val last = rollRewards(beginner, 1) { it - 1 }.single()
 +        assertEquals("obj.herring", last.obj.internalName)
 +        assertTrue(last.noted)
-+        assertEquals(2, rollRewards(2) { 0 }.single().count)
++        assertEquals(2, rollRewards(beginner, 2) { 0 }.single().count)
++    }
++
++    @Test
++    fun `easy casket rolls follow the wiki table`() {
++        val table = CASKETS.getValue(easy)
++        assertEquals(617760, table.sumOf { it.weight })
++        assertEquals(211, table.size)
++        val coins = table.filter { it.obj.internalName == "obj.coins" }
++        assertEquals(4, coins.size)
++        assertEquals(1716, table.first { it.obj.internalName == "obj.trail_composite_bow_willow" }.weight)
++        assertTrue(table.single { it.obj.internalName == "obj.salmon" }.noted)
 +    }
 +
 +    @Test
@@ -868,6 +1355,8 @@ index 000000000..bd2041daf
 +        assertTrue(steps.size > 100, "easy steps: ${steps.size}")
 +        val objs = steps.map { TrailSteps.clueObj(it) }
 +        assertEquals(objs.size, objs.toSet().size)
++        val counts = steps.groupingBy { it::class.simpleName }.eachCount()
++        println("easy steps by kind: $counts")
 +        assertTrue(steps.any { it is TrailStep.Search })
 +        assertTrue(steps.any { it is TrailStep.Emote && it.stashLoc != null })
 +    }
@@ -991,14 +1480,14 @@ index 000000000..bd2041daf
 +            player.inv[0] = InvObj(beginner.casket.asRSCM(RSCMType.OBJ), 2)
 +            with(script) {
 +                var rewards: List<TreasureTrailScript.Reward>? = null
-+                player.withProtectedAccess { rewards = openCasket() }
++                player.withProtectedAccess { rewards = openCasket(beginner) }
 +                assertNull(rewards)
 +                assertEquals(2, player.inv.count(beginner.casket))
 +                player.inv[1] = null
 +                player.inv[2] = null
 +                player.inv[3] = null
 +                val logs = player.inv.count("obj.logs")
-+                player.withProtectedAccess { rewards = openCasket() }
++                player.withProtectedAccess { rewards = openCasket(beginner) }
 +                assertEquals(1, player.inv.count(beginner.casket))
 +                assertEquals(1, player.vars[beginner.completedVarp])
 +                assertEquals(logs, player.inv.count("obj.logs"))
@@ -1204,10 +1693,10 @@ index 000000000..b57b481d7
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
 new file mode 100644
-index 000000000..e122dd62c
+index 000000000..8a0526944
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
-@@ -0,0 +1,175 @@
+@@ -0,0 +1,183 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
@@ -1229,6 +1718,7 @@ index 000000000..e122dd62c
 +import org.rsmod.api.table.cluehelper.CluehelperTargetCoordRow
 +import org.rsmod.api.table.cluehelper.CluehelperTargetLocRow
 +import org.rsmod.api.table.cluehelper.CluehelperTargetNpcRow
++import org.rsmod.game.interact.InteractionOp
 +import org.rsmod.map.CoordGrid
 +
 +/** One clue step, built from a row of Jagex's `cluehelper_clue_*` tables. */
@@ -1298,7 +1788,7 @@ index 000000000..e122dd62c
 +            steps += cryptic(tier, r) ?: continue
 +        }
 +        for (r in CluehelperClueMapRow.all().filter { it.difficulty == d }) {
-+            val map = TrailMapInterfacesRow.all().firstOrNull { it.clue == r.rowId }?.map
++            val map = TrailMapInterfacesRow.all().firstOrNull { it.clue == r.rowId }?.map ?: continue
 +            steps += TrailStep.Dig(r.rowId, tier, r.target.description, r.target.coord, MAP_RADIUS, map)
 +        }
 +        for (r in CluehelperClueEmoteRow.all().filter { it.difficulty == d && it.emote.size == 1 }) {
@@ -1341,7 +1831,9 @@ index 000000000..e122dd62c
 +                        val loc = CluehelperTargetLocRow.getRow(it.id)
 +                        listOfNotNull(loc.loc.id to loc.coord, loc.fallbackLoc?.let { f -> f.id to loc.coord })
 +                    }
-+                TrailStep.Search(r.rowId, tier, r.clueText, locs)
++                val searchable = locs.filter { searchOp(it.first) != null }
++                if (searchable.isEmpty()) return null
++                TrailStep.Search(r.rowId, tier, r.clueText, searchable)
 +            }
 +            TARGET_COORD_TABLE.asRSCM(RSCMType.DBTABLE) -> {
 +                val coord = CluehelperTargetCoordRow.getRow(targets.first().id).coord
@@ -1349,6 +1841,11 @@ index 000000000..e122dd62c
 +            }
 +            else -> null
 +        }
++    }
++
++    fun searchOp(loc: Int): InteractionOp? {
++        val type = ServerCacheManager.getObject(loc) ?: return null
++        return InteractionOp.entries.firstOrNull { type.actions.getOpOrNull(it.slot - 1) == "Search" }
 +    }
 +
 +    private fun charlieTasks(tier: TrailTier): List<CharlieTask> =
@@ -1385,10 +1882,10 @@ index 000000000..e122dd62c
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailTier.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailTier.kt
 new file mode 100644
-index 000000000..aa4a04c16
+index 000000000..469468835
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailTier.kt
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,55 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +/**
@@ -1404,6 +1901,7 @@ index 000000000..aa4a04c16
 +    val casket: String,
 +    val scrollBox: String,
 +    val lengths: List<Int>,
++    val rolls: IntRange,
 +    val stashLevel: Int,
 +    val varpPrefix: String,
 +    val uri: String,
@@ -1416,6 +1914,7 @@ index 000000000..aa4a04c16
 +        casket = "obj.trail_reward_casket_beginner",
 +        scrollBox = "obj.league_clue_box_beginner",
 +        lengths = List(2) { 1 } + List(9) { 2 } + List(9) { 3 },
++        rolls = 1..3,
 +        stashLevel = 12,
 +        varpPrefix = "varp.trail_beginner",
 +        uri = "npc.trail_beginner_uri",
@@ -1428,6 +1927,7 @@ index 000000000..aa4a04c16
 +        casket = "obj.trail_reward_casket_easy",
 +        scrollBox = "obj.league_clue_box_easy",
 +        lengths = listOf(2, 3, 4),
++        rolls = 2..4,
 +        stashLevel = 27,
 +        varpPrefix = "varp.trail_easy",
 +        uri = "npc.trail_easy_uri",
@@ -1443,10 +1943,10 @@ index 000000000..aa4a04c16
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
 new file mode 100644
-index 000000000..06d73eb9f
+index 000000000..87a12d0a8
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
-@@ -0,0 +1,626 @@
+@@ -0,0 +1,629 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
@@ -1481,6 +1981,7 @@ index 000000000..06d73eb9f
 +import org.rsmod.api.script.onPlayerLogout
 +import org.rsmod.api.script.onProtectedEvent
 +import org.rsmod.api.table.TrailBeginnerCasketRow
++import org.rsmod.api.table.TrailEasyCasketRow
 +import org.rsmod.api.table.cluehelper.CluehelperOutfitRow
 +import org.rsmod.content.interfaces.emotes.PlayEmote
 +import org.rsmod.game.MapClock
@@ -1528,7 +2029,7 @@ index 000000000..06d73eb9f
 +        for (tier in TrailTier.entries) {
 +            onOpHeld1(tier.scrollBox) { openScrollBox(tier) }
 +        }
-+        onOpHeld1(BEGINNER_CASKET) { openCasketAndShow() }
++        for (tier in TrailTier.entries) onOpHeld1(tier.casket) { openCasketAndShow(tier) }
 +        onOpHeld1(DEVICE) { feelDevice() }
 +        onIfClose(REWARD_INTERFACE) { player.invClear(player.invMap.getOrPut(REWARD_INV)) }
 +        registerNpcSteps()
@@ -1560,19 +2061,13 @@ index 000000000..06d73eb9f
 +
 +    private fun ScriptContext.registerLocSteps() {
 +        val searches = TrailSteps.ALL.values.flatten().filterIsInstance<TrailStep.Search>()
-+        for ((loc, op) in searches.flatMap { it.locs }.map { it.first }.toSet().mapNotNull { searchOp(it) }) {
++        for ((loc, op) in searches.flatMap { it.locs }.map { it.first }.toSet().mapNotNull { loc -> TrailSteps.searchOp(loc)?.let { loc to it } }) {
 +            locOverrides.register(loc, op) { player, bound -> searchStep(player, loc, bound.coords) != null }
 +            onProtectedEvent<LocOverrideEvents.Op>(LocOverrideEvents.key(loc, op)) {
 +                val step = searchStep(player, loc, it.loc.coords) ?: return@onProtectedEvent
 +                completeStep(step)
 +            }
 +        }
-+    }
-+
-+    private fun searchOp(loc: Int): Pair<Int, InteractionOp>? {
-+        val type = ServerCacheManager.getObject(loc) ?: return null
-+        val op = InteractionOp.entries.firstOrNull { type.actions.getOpOrNull(it.slot - 1) == "Search" }
-+        return op?.let { loc to it }
 +    }
 +
 +    private fun npcsOf(step: TrailStep): Set<Int> =
@@ -1851,8 +2346,8 @@ index 000000000..06d73eb9f
 +        return objs.any { playerContainsObj(objName(it)) }
 +    }
 +
-+    private fun ProtectedAccess.openCasketAndShow() {
-+        val rewards = openCasket() ?: return
++    private fun ProtectedAccess.openCasketAndShow(tier: TrailTier) {
++        val rewards = openCasket(tier) ?: return
 +        val rewardInv = player.invMap.getOrPut(REWARD_INV)
 +        invClear(rewardInv)
 +        for (reward in rewards) {
@@ -1862,11 +2357,11 @@ index 000000000..06d73eb9f
 +        ifOpenMainModal(REWARD_INTERFACE)
 +    }
 +
-+    fun ProtectedAccess.openCasket(): List<Reward>? {
-+        val tier = TrailTier.Beginner
++    fun ProtectedAccess.openCasket(tier: TrailTier): List<Reward>? {
 +        val freed = if (inv.count(tier.casket) == 1) 1 else 0
-+        if (inv.freeSpace() + freed < MAX_ROLLS) {
-+            mes("You need at least $MAX_ROLLS free inventory spaces to open the casket.")
++        val space = tier.rolls.last
++        if (inv.freeSpace() + freed < space) {
++            mes("You need at least $space free inventory spaces to open the casket.")
 +            return null
 +        }
 +        if (invDel(inv, tier.casket).failure) return null
@@ -1876,7 +2371,7 @@ index 000000000..06d73eb9f
 +        mes("Well done, you've completed the Treasure Trail!")
 +        val plural = if (completed == 1) "" else "s"
 +        mes("You have completed <col=ef1020>$completed</col> ${tier.label} Treasure Trail$plural.")
-+        val rewards = rollRewards(random.of(1, MAX_ROLLS)) { random.of(it) }
++        val rewards = rollRewards(tier, random.of(tier.rolls)) { random.of(it) }
 +        for (reward in rewards) {
 +            val obj = reward.obj.internalName
 +            if (invAdd(inv, obj, reward.count, cert = reward.noted).failure) {
@@ -1966,18 +2461,17 @@ index 000000000..06d73eb9f
 +
 +    data class Reward(val obj: ItemServerType, val count: Int, val noted: Boolean)
 +
++    data class CasketRow(val obj: ItemServerType, val min: Int, val max: Int, val weight: Int, val noted: Boolean)
++
 +    companion object {
 +        const val DEVICE = "obj.beginner_device"
-+        const val BEGINNER_CASKET = "obj.trail_reward_casket_beginner"
 +        const val CLUE_TEXT_INTERFACE = "interface.trail_cluetext"
 +        const val CLUE_TEXT = "component.trail_cluetext:text"
 +        const val REWARD_INTERFACE = "interface.trail_rewardscreen"
 +        const val REWARD_INV = "inv.trail_rewardinv"
 +        const val HOT_COLD_SPOT_VARP = "varp.trail_beginner_hot_cold_spot"
 +        const val HOT_COLD_LAST_VARP = "varp.trail_beginner_hot_cold_last"
-+        const val MAX_ROLLS = 3
 +        const val URI_LIFETIME = 100
-+        const val CASKET_TOTAL_WEIGHT = 44280
 +        const val BLOCKED_FLAGS = CollisionFlag.BLOCK_WALK or CollisionFlag.BLOCK_PLAYERS
 +        val ADJACENT_OFFSETS =
 +            listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1, -1 to -1, 1 to -1, -1 to 1, 1 to 1)
@@ -1995,7 +2489,14 @@ index 000000000..06d73eb9f
 +                0 to "visibly shaking",
 +            )
 +
-+        val CASKET_REWARDS: List<TrailBeginnerCasketRow> by lazy { TrailBeginnerCasketRow.all() }
++        val CASKETS: Map<TrailTier, List<CasketRow>> by lazy {
++            mapOf(
++                TrailTier.Beginner to
++                    TrailBeginnerCasketRow.all().map { CasketRow(it.obj, it.min, it.max, it.weight, it.noted) },
++                TrailTier.Easy to
++                    TrailEasyCasketRow.all().map { CasketRow(it.obj, it.min, it.max, it.weight, it.noted) },
++            )
++        }
 +
 +        val URI_LINES =
 +            listOf(
@@ -2047,13 +2548,15 @@ index 000000000..06d73eb9f
 +                )
 +                .filter { it.isNotEmpty() }
 +
-+        /** [rolls] picks from the beginner casket table; [nextInt] returns 0 until its bound. */
-+        fun rollRewards(rolls: Int, nextInt: (Int) -> Int): List<Reward> {
++        /** [rolls] picks from [tier]'s casket table; [nextInt] returns 0 until its bound (exclusive). */
++        fun rollRewards(tier: TrailTier, rolls: Int, nextInt: (Int) -> Int): List<Reward> {
++            val table = CASKETS.getValue(tier)
++            val total = table.sumOf { it.weight }
 +            val rewards = mutableListOf<Reward>()
 +            repeat(rolls) {
-+                val row = pickReward(nextInt(CASKET_TOTAL_WEIGHT))
++                val row = pickReward(table, nextInt(total))
 +                val count = if (row.max > row.min) row.min + nextInt(row.max - row.min + 1) else row.min
-+                val same = rewards.indexOfFirst { it.obj.id == row.obj.id }
++                val same = rewards.indexOfFirst { it.obj.id == row.obj.id && it.noted == row.noted }
 +                if (same >= 0) {
 +                    rewards[same] = rewards[same].copy(count = rewards[same].count + count)
 +                } else {
@@ -2063,9 +2566,9 @@ index 000000000..06d73eb9f
 +            return rewards
 +        }
 +
-+        private fun pickReward(roll: Int): TrailBeginnerCasketRow {
++        private fun pickReward(table: List<CasketRow>, roll: Int): CasketRow {
 +            var left = roll
-+            for (row in CASKET_REWARDS) {
++            for (row in table) {
 +                if (left < row.weight) return row
 +                left -= row.weight
 +            }

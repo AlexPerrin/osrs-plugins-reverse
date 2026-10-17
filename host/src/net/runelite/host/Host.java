@@ -456,6 +456,9 @@ public final class Host {
                     node.setValue(net.runelite.client.chat.ChatMessageManager.format(node.getRuneLiteFormatMessage()));
                 chatFilterCheck(bus, node, b);
                 chatMessageBuilding(bus, node);
+                if ("1".equals(Native.property("debug.osrsrl.chatlog")))
+                    Log.i(TAG, "chat id " + a + " type " + b + " (" + chatType + ") name '" + m[0] + "' sender '" + m[1]
+                        + "' text '" + m[2] + "' -> '" + node.getValue() + "'");
                 break;
             }
             case PLAYER_SPAWNED: {
@@ -510,6 +513,10 @@ public final class Host {
                 // the frame before the menu opened (Menu Entry Swapper's order is shown), and write
                 // option/target edits (e.g. Ground Items' recoloured item names) back into the game.
                 AndroidClient.MENU.presort(bus);
+                // Plugin player options (MenuManager sets them from MenuEntryAdded, so after presort).
+                for (net.runelite.api.MenuEntry m : AndroidClient.MENU.addPlayerOptions(
+                        client.getPlayerOptions(), client.getPlayerMenuTypes()))
+                    bus.post(new net.runelite.api.events.MenuEntryAdded(m));
                 net.runelite.api.MenuEntry[] entries = AndroidClient.MENU.getMenuEntries();
                 net.runelite.api.events.MenuOpened e = new net.runelite.api.events.MenuOpened();
                 e.setMenuEntries(entries);

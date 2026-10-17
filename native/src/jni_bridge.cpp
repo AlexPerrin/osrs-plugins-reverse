@@ -402,6 +402,7 @@ jintArray n_sidebar_poll_events(JNIEnv* env, jclass) {
     return arr;
 }
 jboolean n_sidebar_open(JNIEnv*, jclass) { return sidebar_open(); }
+void n_sidebar_set_open(JNIEnv*, jclass, jboolean open) { sidebar_set_open(open); }
 void n_sidebar_icon(JNIEnv* env, jclass, jint id, jint w, jint h, jintArray argb) {
     if (!argb || w <= 0 || h <= 0 || env->GetArrayLength(argb) < w * h) return;
     std::vector<uint32_t> px(static_cast<size_t>(w) * h);
@@ -1062,6 +1063,16 @@ jintArray n_inventory(JNIEnv* env, jclass, jint id) {
     return nullptr;
 }
 
+// Ids of every inventory the client holds (as n_inventory sees them outside an event view).
+jintArray n_inventory_ids(JNIEnv* env, jclass) {
+    std::vector<game::Inventory> all = client_thread::on_client_thread() ? game::read_inventories() : client_thread::inventories();
+    std::vector<jint> ids;
+    for (const auto& inv : all) ids.push_back(inv.id);
+    jintArray arr = env->NewIntArray(static_cast<jsize>(ids.size()));
+    if (!ids.empty()) env->SetIntArrayRegion(arr, 0, static_cast<jsize>(ids.size()), ids.data());
+    return arr;
+}
+
 // {current[25], real[25], xp[25]}
 jintArray n_skills(JNIEnv* env, jclass) {
     game::Skills sk = game::skills();
@@ -1075,6 +1086,7 @@ jintArray n_skills(JNIEnv* env, jclass) {
 const JNINativeMethod kNatives[] = {
     {"skills", "()[I", reinterpret_cast<void*>(n_skills)},
     {"inventory", "(I)[I", reinterpret_cast<void*>(n_inventory)},
+    {"inventoryIds", "()[I", reinterpret_cast<void*>(n_inventory_ids)},
     {"players", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_players)},
     {"widgetExists", "(I)Z", reinterpret_cast<void*>(n_widget_exists)},
     {"widgetHidden", "(I)Z", reinterpret_cast<void*>(n_widget_hidden)},
@@ -1175,6 +1187,7 @@ const JNINativeMethod kNatives[] = {
     {"sidebarSetModel", "(Ljava/lang/String;)V", reinterpret_cast<void*>(n_sidebar_set_model)},
     {"sidebarPollEvents", "()[I", reinterpret_cast<void*>(n_sidebar_poll_events)},
     {"sidebarOpen", "()Z", reinterpret_cast<void*>(n_sidebar_open)},
+    {"sidebarSetOpen", "(Z)V", reinterpret_cast<void*>(n_sidebar_set_open)},
     {"sidebarIcon", "(III[I)V", reinterpret_cast<void*>(n_sidebar_icon)},
     {"shiftHeld", "()Z", reinterpret_cast<void*>(n_shift_held)},
     {"pluginMenu", "([Ljava/lang/String;IIII)V", reinterpret_cast<void*>(n_plugin_menu)},

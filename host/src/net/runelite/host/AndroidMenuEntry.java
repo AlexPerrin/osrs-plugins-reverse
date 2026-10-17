@@ -60,7 +60,7 @@ final class AndroidMenuEntry implements MenuEntry {
     // [2] id (NPC/loc/obj type id, or widget component id), [3] NPC index / widget child slot,
     // [5] op (1-based for world entries, 0-based widget op; 0x7ffffffe = Examine, 0x7fffffff none),
     // [6] plane, [7]/[8] world x/y, [9] = u16 world view | target type << 16 | ? << 24.
-    static final int T_CANCEL = 0, T_WALK = 1, T_NPC = 2, T_LOC = 3, T_OBJ = 4, T_WIDGET = 7;
+    static final int T_CANCEL = 0, T_WALK = 1, T_NPC = 2, T_LOC = 3, T_OBJ = 4, T_PLAYER = 6, T_WIDGET = 7;
     static final int OP_EXAMINE = 0x7ffffffe;
 
     int targetType() { return raw[9] >>> 16 & 0xff; }
@@ -99,6 +99,11 @@ final class AndroidMenuEntry implements MenuEntry {
                 sceneParams();
                 type = op == OP_EXAMINE ? MenuAction.EXAMINE_ITEM_GROUND : groundOp(op);
                 break;
+            case T_PLAYER:  // [3] player index, op 1-based (Follow 3, Trade with 4, Report 8; seen 2026-10-17)
+                identifier = raw[3];
+                sceneParams();
+                type = playerOp(op);
+                break;
             case T_WIDGET:
                 param0 = raw[3];
                 param1 = raw[2];
@@ -114,12 +119,61 @@ final class AndroidMenuEntry implements MenuEntry {
                     type = identifier > 5 ? MenuAction.CC_OP_LOW_PRIORITY : MenuAction.CC_OP;
                 }
                 break;
-            default:
-                // Players: type byte not seen yet.
+            default: {
+                // Unmapped target types: a world entry whose target names a visible player is taken as
+                // that player's op (identifier = player index, as desktop).
                 identifier = raw[2];
                 sceneParams();
                 type = MenuAction.UNKNOWN;
+                net.runelite.api.Player p = kind == 2 ? playerNamed(target) : null;
+                if (p != null) {
+                    identifier = p.getId();
+                    type = op == OP_EXAMINE ? MenuAction.UNKNOWN : playerOp(op);
+                }
                 break;
+            }
+        }
+    }
+
+    /** The visible player a menu target names ("<col=ffffff>Name<col=ff00>  (level-3)"), or null. */
+    static net.runelite.api.Player playerNamed(String target) {
+        if (target == null || Host.client() == null) return null;
+        String t = net.runelite.client.util.Text.removeTags(target);
+        int lv = t.indexOf("  (level-");
+        if (lv < 0) lv = t.indexOf(" (level-");
+        if (lv >= 0) t = t.substring(0, lv);
+        t = net.runelite.client.util.Text.toJagexName(t.trim());
+        if (t.isEmpty()) return null;
+        net.runelite.api.WorldView v = Host.client().getTopLevelWorldView();
+        if (v == null) return null;
+        for (net.runelite.api.Player p : v.players())
+            if (p != null && p.getName() != null && net.runelite.client.util.Text.toJagexName(
+                    net.runelite.client.util.Text.removeTags(p.getName())).equalsIgnoreCase(t)) return p;
+        return null;
+    }
+
+    private static MenuAction playerOp(int op) {
+        switch (op) {
+            case 1: return MenuAction.PLAYER_FIRST_OPTION;
+            case 2: return MenuAction.PLAYER_SECOND_OPTION;
+            case 3: return MenuAction.PLAYER_THIRD_OPTION;
+            case 4: return MenuAction.PLAYER_FOURTH_OPTION;
+            case 5: return MenuAction.PLAYER_FIFTH_OPTION;
+            case 6: return MenuAction.PLAYER_SIXTH_OPTION;
+            case 7: return MenuAction.PLAYER_SEVENTH_OPTION;
+            case 8: return MenuAction.PLAYER_EIGHTH_OPTION;
+            default: return MenuAction.UNKNOWN;
+        }
+    }
+
+    boolean isPlayerEntry() {
+        switch (type) {
+            case PLAYER_FIRST_OPTION: case PLAYER_SECOND_OPTION: case PLAYER_THIRD_OPTION: case PLAYER_FOURTH_OPTION:
+            case PLAYER_FIFTH_OPTION: case PLAYER_SIXTH_OPTION: case PLAYER_SEVENTH_OPTION: case PLAYER_EIGHTH_OPTION:
+            case RUNELITE_PLAYER:
+                return true;
+            default:
+                return false;
         }
     }
 
@@ -223,8 +277,12 @@ final class AndroidMenuEntry implements MenuEntry {
         net.runelite.api.WorldView v = Host.client().getTopLevelWorldView();
         return v != null ? v.npcs().byIndex(identifier) : null;
     }
-    @Override public Player getPlayer() { return null; }
-    @Override public Actor getActor() { return getNpc(); }
+    @Override public Player getPlayer() {
+        if (!isPlayerEntry() || Host.client() == null) return null;
+        net.runelite.api.WorldView v = Host.client().getTopLevelWorldView();
+        return v != null ? v.players().byIndex(identifier) : null;
+    }
+    @Override public Actor getActor() { Actor a = getNpc(); return a != null ? a : getPlayer(); }
     /** Plugin-created submenu (shown in the plugin strip when this entry is tapped). */
     AndroidMenu subMenu;
     @Override public Menu getSubMenu() { return subMenu; }

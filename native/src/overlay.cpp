@@ -194,8 +194,12 @@ void sidebar_frame(int w, int h) {
     ImGui::SetNextWindowBgAlpha(0.88f);
     ImGui::Begin("##rlsidebar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove);
     if (ImGui::Button("Close") && tapped) g_sb_open = false;
+    // Tabs wrap onto further rows (with many panels the row ran past the window).
+    const ImGuiStyle& style = ImGui::GetStyle();
+    float row_end = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
     for (size_t i = 0; i < g_sb_tabs.size(); i++) {
-        ImGui::SameLine();
+        float bw = ImGui::CalcTextSize(g_sb_tabs[i].c_str()).x + style.FramePadding.x * 2;
+        if (ImGui::GetItemRectMax().x + style.ItemSpacing.x + bw <= row_end) ImGui::SameLine();
         bool sel = static_cast<int>(i) == g_sb_selected;
         if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
         std::string label = g_sb_tabs[i] + "##tab" + std::to_string(i);
@@ -460,6 +464,7 @@ std::vector<int> sidebar_poll_events() {
 }
 
 bool sidebar_open() { return g_sb_open; }
+void sidebar_set_open(bool open) { g_sb_open = open; }
 
 void sidebar_set_icon(int id, int w, int h, const std::vector<uint32_t>& argb) {
     SidebarIcon icon{w, h, std::vector<uint8_t>(argb.size() * 4)};

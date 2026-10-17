@@ -116,6 +116,7 @@ final class Native {
     /** Taps since the last call as (kind, index) pairs, or null. */
     static native int[] sidebarPollEvents();
     static native boolean sidebarOpen();
+    static native void sidebarSetOpen(boolean open);
 
     /** Sidebar icon pixels (ARGB, row-major) for model nodes of kind I with this id. */
     static native void sidebarIcon(int id, int width, int height, int[] argb);
@@ -191,6 +192,8 @@ final class Native {
     static native Object[] players();
     /** Item ids then quantities (2 x slots) of an inventory as of the last cycle, or null. */
     static native int[] inventory(int id);
+    /** Ids of every inventory the client holds. */
+    static native int[] inventoryIds();
     /** {current (boosted) levels[25], real levels[25], experience[25]}, indexed by Skill.ordinal(). */
     static native int[] skills();
     /** {name, sender, text} of a captured chat message, or null. */

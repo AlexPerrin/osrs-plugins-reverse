@@ -107,6 +107,15 @@ final class Sidebar {
                 dirty = true;
             }
         }
+        net.runelite.client.ui.NavigationButton req = toolbar.takeRequested();
+        if (req != null) {
+            int i = toolbar.getButtons().indexOf(req);
+            if (i >= 0) {
+                selected = i;
+                Native.sidebarSetOpen(true);
+                dirty = true;
+            }
+        }
         if (!dirty && ++cycles % 10 != 0) return;
         if (!Native.sidebarOpen() && !dirty && cycles % 100 != 0) return;
         try {

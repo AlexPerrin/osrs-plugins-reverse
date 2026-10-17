@@ -842,6 +842,21 @@ public class AndroidClient extends ClientStub {
         return AndroidItemContainer.of(id.getId());
     }
 
+    /** Every inventory the client holds, keyed by inventory id (snapshots, as getItemContainer). */
+    @Override
+    public net.runelite.api.HashTable<net.runelite.api.ItemContainer> getItemContainers() {
+        final java.util.LinkedHashMap<Long, net.runelite.api.ItemContainer> m = new java.util.LinkedHashMap<>();
+        int[] ids = Native.inventoryIds();
+        if (ids != null) for (int id : ids) {
+            net.runelite.api.ItemContainer c = AndroidItemContainer.of(id);
+            if (c != null) m.put((long) id, c);
+        }
+        return new net.runelite.api.HashTable<net.runelite.api.ItemContainer>() {
+            @Override public net.runelite.api.ItemContainer get(long key) { return m.get(key); }
+            @Override public java.util.Iterator<net.runelite.api.ItemContainer> iterator() { return m.values().iterator(); }
+        };
+    }
+
     // --- widgets ---
 
     @Override

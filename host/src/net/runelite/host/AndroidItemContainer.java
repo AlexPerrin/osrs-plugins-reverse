@@ -6,18 +6,32 @@ import net.runelite.api.Item;
 public class AndroidItemContainer extends ItemContainerStub {
     private final int id;
     private final Item[] items;
+    private final int[] packed;
 
     AndroidItemContainer(int id, int[] packed) {
         this.id = id;
+        this.packed = packed;
         int n = packed.length / 2;
         items = new Item[n];
         for (int i = 0; i < n; i++) items[i] = new Item(packed[i], packed[n + i]);
     }
 
-    /** null if the game has no such inventory. */
+    private static final java.util.concurrent.ConcurrentHashMap<Integer, AndroidItemContainer> last =
+        new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * null if the game has no such inventory. Desktop returns the live container, so plugins compare
+     * by identity (Ammo: `event.getItemContainer() != client.getItemContainer(EQUIPMENT)`): the same
+     * instance is returned while an inventory's contents are unchanged.
+     */
     static AndroidItemContainer of(int id) {
         int[] packed = Native.inventory(id);
-        return packed == null ? null : new AndroidItemContainer(id, packed);
+        if (packed == null) return null;
+        AndroidItemContainer c = last.get(id);
+        if (c != null && java.util.Arrays.equals(c.packed, packed)) return c;
+        c = new AndroidItemContainer(id, packed);
+        last.put(id, c);
+        return c;
     }
 
     @Override public int getId() { return id; }

@@ -219,6 +219,37 @@ final class AndroidMenu implements Menu {
 
     void clearAdded() { added.clear(); }
 
+    /**
+     * Game thread, as a menu opens: desktop's menu builder adds one entry per player option a plugin
+     * registered (MenuManager.addPlayerMenuItem: client.getPlayerOptions()[4..7], type RUNELITE_PLAYER)
+     * for each player in the menu. The game's player ops come from its own list, so those options are
+     * added as plugin entries (shown in the strip under the game's menu), once per player.
+     * Returns the entries added.
+     */
+    List<AndroidMenuEntry> addPlayerOptions(String[] options, int[] types) {
+        List<AndroidMenuEntry> out = new ArrayList<>();
+        AndroidMenuEntry[] game = AndroidMenuEntry.fromNative(Native.menuEntries());
+        java.util.Set<Integer> seen = new java.util.HashSet<>();
+        for (AndroidMenuEntry g : game) {  // top first
+            if (!g.isPlayerEntry() || g.type == net.runelite.api.MenuAction.RUNELITE_PLAYER || !seen.add(g.identifier)) continue;
+            for (int i = 0; i < options.length; i++) {
+                if (options[i] == null || types[i] != net.runelite.api.MenuAction.RUNELITE_PLAYER.getId()) continue;
+                boolean dup = false;
+                for (AndroidMenuEntry a : added)
+                    dup |= a.type == net.runelite.api.MenuAction.RUNELITE_PLAYER && a.identifier == g.identifier && options[i].equals(a.option);
+                if (dup) continue;
+                AndroidMenuEntry e = (AndroidMenuEntry) createMenuEntry(-1);
+                e.option = options[i];
+                e.target = g.target;
+                e.type = net.runelite.api.MenuAction.RUNELITE_PLAYER;
+                e.identifier = g.identifier;
+                e.worldViewId = net.runelite.api.WorldView.TOPLEVEL;
+                out.add(e);
+            }
+        }
+        return out;
+    }
+
     // --- plugin entries under the game's menu (native strip; see overlay.cpp plugin_menu_frame) ---
 
     private static List<AndroidMenuEntry> shown = new ArrayList<>();

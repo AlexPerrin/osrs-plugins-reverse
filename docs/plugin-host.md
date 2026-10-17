@@ -84,15 +84,15 @@ ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-
 | NPC Aggression Timer | runs | aggression timer InfoBox counting down (9:04 -> 8:25) after a teleport with `npcUnaggroArea.npcUnaggroAlwaysActive=true` (verified 2026-10-16) |
 | Mouse Tooltips | runs | "Eat Lobster" tooltip while a finger rests on an inventory item and "Remove Dragon dagger" on the worn weapon slot (hover entries, verified 2026-10-16) |
 | Loot Tracker | runs | sidebar: "Goblin (lvl-2) 2 gp, Total count: 1" after killing a goblin (verified 2026-10-16); beginner casket: "Inv change: [ItemStack(id=562, quantity=2)]" (verified 2026-10-17) after events were put in packet order (message constructor hook, docs/offsets.md); local only (same-name SessionManager without a runelite.net session) |
-| Hiscore | runs | sidebar lookup of "Lynx Titan" shows the levels from the public hiscores (okhttp, off the game thread; verified 2026-10-16). The player-menu "Lookup" entry is host-side only |
+| Hiscore | runs | sidebar lookup of "Lynx Titan" shows the levels from the public hiscores (okhttp, off the game thread; verified 2026-10-16). Its player-menu "Lookup" entry now goes in the plugin strip like Equipment Inspector's (not tried for Hiscore) |
 | Skill Calculator | runs | skill icons drawn as image buttons in the sidebar; picking Woodcutting fills current/target level and XP and lists the log actions (verified 2026-10-16) |
 | Menu Entry Swapper | runs | a plain tap on a banker runs "Bank" instead of "Talk-to", and the long-press menu lists "Bank Banker" first; each row runs the entry it shows (verified 2026-10-16). Taps raise MenuEntryAdded + PostMenuSort over the tapped menu and the game's select runs the entry MES leaves on top. As a menu opens, the host runs desktop's pre-open PostMenuSort (menu reported closed) and reorders the game's top-level menu nodes the way the game's own sort does (`game::menu_reorder`). With MES off, menus and taps are unchanged |
 | Clue Scroll | runs | beginner map clue (`::clue map_draynor_bank 1`): Read sets the plugin's clue item (23182) and its overlay shows "Map Clue ... South of Draynor Village Bank, Requires Spade!" (verified 2026-10-17). Read needed MenuEntry.getItemId for inventory CC_OP entries |
 | Item Identification | runs | "G" on grimy guam leaves in the inventory with `itemidentification.showHerbs=true` (verified 2026-10-17) |
 | Rune Pouch | starts | starts (2026-10-17); pouch not checked |
 | Virtual Levels | starts | starts (2026-10-17); not checked |
-| Ammo | starts | starts (2026-10-17); no ammo infobox seen after wielding 50 bronze arrows (open: check the equipment container's ammo slot) |
-| Metronome | starts | starts; its onGameTick threw (Client.getPreferences missing, added 2026-10-17, not re-run) |
+| Ammo | runs | the worn 50 bronze arrows show as a "50" arrow infobox (2026-10-17). It compares `event.getItemContainer() != client.getItemContainer(EQUIPMENT)` by identity, so the host now returns the same container instance while an inventory is unchanged |
+| Metronome | runs | Visual Metronome's tick square flashes on screen, no errors (2026-10-17, after getPreferences) |
 | Hunter | starts | starts (2026-10-17); traps not checked |
 | Quest List | starts | starts (2026-10-17); not checked |
 | Chat Commands | starts | starts (2026-10-17); not checked |
@@ -119,7 +119,7 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Shortest Path | runs | Shift + long-press a tile, "Set Target" in the plugin strip: red path on the scene and the minimap; from Burthorpe it routes via "Lumbridge Home Teleport" (verified 2026-10-16). Targets within its reached distance (default 5 tiles) clear at once. Needed getDBTableRows, getProfile, DB fields with desktop semantics, the menu tile after the menu closes |
 | Improved Tile Indicators | runs | with `improvedtileindicators.customDestinationTile=true`: RS3-style ring and arrow on the tapped destination (verified 2026-10-16) |
 | Inventory Setups | starts | sidebar panel renders (version notes, Return to Setups); setups not tried. Needed jopt-simple, headless JPopupMenu children, getItemCount, DB fields |
-| Equipment Inspector | starts | its "Inspect Equipment" player option (MenuManager.addPlayerMenuItem, RUNELITE_PLAYER) doesn't appear on the second player's long-press menu (2026-10-17): player menu items aren't supported by the host yet. Needed headless GroupLayout builders |
+| Equipment Inspector | runs | its "Equipment" player option (MenuManager.addPlayerMenuItem, RUNELITE_PLAYER) shows in the plugin strip under the long-press menu of the desktop player; tapping it opens the sidebar on its panel with "Player: desktop" and the (empty) gear total (2026-10-17). Needed headless GroupLayout builders that add their components to the host container, `ClientToolbar.openPanel` |
 | Bank Heatmap | starts | `::openbank`: its "Right click this button for Heatmap overlay" hint is drawn (2026-10-16). Its toggles are added to the bank's desktop "Show menu" op, which the mobile bank lacks: a long-press on the wrench or the bottom-left button gives only Walk here/Cancel (2026-10-16), so the overlay can't be switched on |
 | Wasted Bank Space | starts | sidebar panel: "Number of Items Wasting Space: 0" with a 3-item bank (2026-10-16) |
 | Banked Experience | starts | sidebar panel renders; the skill combo shows "Construction" and its Android list the skill names (the renderer's JLabel text, `Sidebar.comboLabel`, verified 2026-10-16); banked XP from a bank not checked |
@@ -136,10 +136,10 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Barrows Door Highlighter | starts | starts (2026-10-17); not checked (Barrows) |
 | Better Teleport Menu | starts | starts (2026-10-17); not checked |
 | Wilderness Player Alarm | starts | starts (2026-10-17); needs another player in the Wilderness |
-| Hunter Rumours | throws | startUp: its panel's `getAccessibleContext()` was null in the headless Swing (NPE in setAccessibleName); the shim now returns a context (2026-10-17, not re-run) |
+| Hunter Rumours | runs | starts; its sidebar panel lists the 29 creatures with a location picker each (2026-10-17, after the non-null `getAccessibleContext()`); rumours not tried |
 | Ess Pouch | starts | starts (2026-10-17); pouches not checked |
 | Plank Sack | starts | starts (2026-10-17); not checked |
-| KPH Tracker | starts | starts as "Bossing Info"; its onGameStateChanged threw on Client.getUsername (added 2026-10-17, not re-run) |
+| KPH Tracker | starts | starts as "Bossing Info"; no errors at login since getUsername (2026-10-17); kills not tried |
 | Thrall Helper | starts | starts as "Spell Reminder" (2026-10-17); not checked |
 | Loot Lookup | untested | not built: it needs jsoup, an extra Maven dependency (build.sh stops on those) |
 
@@ -233,6 +233,10 @@ VarbitChanged).
 | `ChatMessageManager.queue` → `Client.addChatMessage` (RuneLite colour placeholders mapped to the transparent-chatbox defaults; CONSOLE sent as GAMEMESSAGE); `MessageNode.setValue` rewrites the game's message text (Message +0xa0, string assign `0x3f1498`) | queue verified (Examine); setValue unverified (shown on the next chatbox redraw?) |
 | Plugin submenus (`createSubMenu`): a tapped parent replaces the strip with its entries (marked "  >") | verified 2026-10-16 (Ground Markers "Color Tile" → Pick, Reset all); "Pick" opens an Android colour dialog (same-name `RuneliteColorPicker`/`ColorPickerManager`, `host/.../ColorPrompt.java`: hex field, preview, 24 swatches); OK calls onColorChange + onClose on the game thread (verified 2026-10-16: tile recoloured red) |
 | `isClientThread()`, `Host.invoke` | game-thread id from the hook; queue drained after each cycle |
+| Player menu entries: target type 6 (`[3]` player index, op 1-based: Follow 3, Trade with 4, Report 8) → `PLAYER_*_OPTION`, identifier = player index; `MenuEntry.getPlayer()/getActor()` | seen on device 2026-10-17 (desktop player). Other unmapped world entries whose target names a visible player are matched by name |
+| **Plugin player options** (`MenuManager.addPlayerMenuItem`: `getPlayerOptions()[4..7]` with type RUNELITE_PLAYER): one strip entry per option per player in the opened menu, added after the pre-open MenuEntryAdded pass (MenuManager sets them from MenuEntryAdded), with their own MenuEntryAdded; a tap posts `MenuOptionClicked` with RUNELITE_PLAYER and the player index | `AndroidMenu.addPlayerOptions`; verified 2026-10-17 (Equipment Inspector) |
+| `ClientToolbar.openPanel`: opens the sidebar on that button's panel; sidebar tabs wrap onto further rows | `Native.sidebarSetOpen`; verified 2026-10-17 |
+| `Client.getItemContainers()` (every inventory the client holds); `getItemContainer` returns the same instance while the inventory is unchanged, as plugins compare containers by identity (Ammo, Cannon, Wintertodt, Drift Net) | `Native.inventoryIds`; identity verified via Ammo 2026-10-17, getItemContainers not yet exercised |
 
 Every other `Client`/`Player` method throws `UnsupportedOperationException` with its name, so
 plugin logs show what to implement next.

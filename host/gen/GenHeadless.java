@@ -411,6 +411,7 @@ public class GenHeadless {
                   .append("(").append(params(k.getParameterTypes())).append(") {");
                 sb.append(superCall(c));
                 sb.append(ctorProperties(c, k.getParameterTypes()));
+                if (c == javax.swing.GroupLayout.class && k.getParameterCount() == 1) sb.append(" __host = a0;");
                 sb.append(" }\n");
             }
         }
@@ -447,6 +448,9 @@ public class GenHeadless {
                   .append(in).append("public static final java.util.concurrent.ConcurrentLinkedQueue<Runnable> __queue = new java.util.concurrent.ConcurrentLinkedQueue<Runnable>();\n")
                   .append(in).append("public static volatile Thread __edt;\n");
             if (c == java.awt.Component.class) sb.append(in).append("java.awt.Container __parent;\n");
+            // GroupLayout adds the components its groups name to the host container (Equipment Inspector).
+            if (c == javax.swing.GroupLayout.class) sb.append(in).append("public java.awt.Container __host;\n");
+            if (c == javax.swing.GroupLayout.Group.class) sb.append(in).append("public javax.swing.GroupLayout __layout;\n");
             if (c == javax.swing.text.AbstractDocument.class)
                 sb.append(in).append("/** Host: the document's text (JTextComponent.get/setText read and write it, as in Swing). */\n")
                   .append(in).append("public final java.lang.StringBuilder __content = new java.lang.StringBuilder();\n");
@@ -644,6 +648,9 @@ public class GenHeadless {
             if (n.equals("add") && ps.length == 1 && java.awt.Container.class.isAssignableFrom(c) && c != java.awt.Container.class
                     && java.awt.Component.class.isAssignableFrom(ps[0]) && r == ps[0])
                 return "super.add((java.awt.Component) a0); return a0;";
+            if (n.equals("addComponent") && ps.length >= 1 && ps[0] == java.awt.Component.class
+                    && javax.swing.GroupLayout.Group.class.isAssignableFrom(c) && r.isAssignableFrom(c))
+                return "if (a0 != null && __layout != null && __layout.__host != null && a0.getParent() != __layout.__host) __layout.__host.add(a0); return this;";
             // Builders (GroupLayout groups): add*/set*/link* returning their own type hand back this.
             if ((n.startsWith("add") || n.startsWith("link")) && r != void.class && !r.isPrimitive() && r != Object.class
                     && r.isAssignableFrom(c) && !(ps.length >= 1 && r.isAssignableFrom(ps[0])))
@@ -651,7 +658,9 @@ public class GenHeadless {
             // Factories of a class's own inner classes (GroupLayout.createParallelGroup).
             if (n.startsWith("create") && r.getEnclosingClass() == c && generate.contains(r) && !r.isInterface()
                     && !Modifier.isAbstract(r.getModifiers()))
-                return "return new " + typeName(r) + "();";
+                return c == javax.swing.GroupLayout.class && javax.swing.GroupLayout.Group.class.isAssignableFrom(r)
+                        ? typeName(r) + " g = new " + typeName(r) + "(); g.__layout = this; return g;"
+                        : "return new " + typeName(r) + "();";
         }
         String l = listenerKind(x);
         if (l != null && listenerKinds.contains(l)) {

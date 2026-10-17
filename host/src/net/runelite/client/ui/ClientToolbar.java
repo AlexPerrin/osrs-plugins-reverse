@@ -17,7 +17,17 @@ public class ClientToolbar {
     }
 
     public void removeNavigation(NavigationButton button) { buttons.remove(button); }
-    public void openPanel(NavigationButton button) {}
+    private volatile NavigationButton requested;
+
+    /** As desktop: opens the sidebar on this button's panel (the host Sidebar picks it up). */
+    public void openPanel(NavigationButton button) { requested = button; }
+
+    /** Host: the button a plugin asked to open since the last call, or null. */
+    public NavigationButton takeRequested() {
+        NavigationButton b = requested;
+        requested = null;
+        return b;
+    }
 
     /** Host: buttons added by plugins. */
     public List<NavigationButton> getButtons() { return buttons; }

@@ -419,7 +419,8 @@ public class AndroidClient extends ClientStub {
     }
     /**
      * null clears the game's target, so the release does no swap (Bank Tags' preventTagTabDrags,
-     * Layouts). Setting another widget is not written to the game. // unverified: non-null targets
+     * Layouts; verified 2026-10-17 gen 25: a tag-tab layout swap left the real bank order unchanged). Setting
+     * another widget is not written to the game. // unverified: non-null targets
      */
     @Override public void setDraggedOnWidget(net.runelite.api.widgets.Widget w) {
         if (w == null) Native.dragClearTarget();

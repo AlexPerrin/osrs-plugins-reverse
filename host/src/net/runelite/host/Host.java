@@ -774,6 +774,8 @@ public final class Host {
      * stacks), 2 = a root script starts (its ScriptEvent's arguments are available), 3/4 = before/
      * after a watched instruction (id = opcode << 16 | script, ScriptCallbacks).
      */
+    private static final int BANKMAIN_FINISHBUILDING = 505, BANK_ITEM_LAYER = 12 << 16 | 12;
+
     public static void onScript(int phase, int id) {
         EventBus bus = eventBus;
         if (bus == null) return;
@@ -795,6 +797,10 @@ public final class Host {
                     ScriptCallbacks.onRootStart(bus, ac, id);
                     ac.beginScriptEvent();  // the callback's fake stacks end here
                 }
+                // Desktop's bank build re-sets each item's CS2 drag listeners, replacing Java onDragComplete
+                // listeners from an earlier tag-tab layout; the mobile build sets none, so they are dropped
+                // here, before plugins (Bank Tags' LayoutManager, Bank Tag Layouts) set them again.
+                if (id == BANKMAIN_FINISHBUILDING) WidgetListeners.forgetDragComplete(BANK_ITEM_LAYER);
                 ScriptPreFired e = new ScriptPreFired(id);
                 if (phase == 2) {
                     Object[] args = Native.scriptEventArgs();

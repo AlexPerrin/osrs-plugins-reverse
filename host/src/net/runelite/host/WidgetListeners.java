@@ -106,7 +106,8 @@ final class WidgetListeners {
      * the release cycle of a widget drag (Host's WIDGET_DRAG, touch state 4), before the game
      * processes the release, so a listener's setDraggedOnWidget(null) still cancels the game's swap.
      * The event's source is the dragged widget, its target the dragged-on widget (as desktop's
-     * onDragComplete event). // unverified: on the device (Bank Tag Layouts).
+     * onDragComplete event). Verified 2026-10-17 gen 25 (Bank Tags layouts: swap, move to an empty slot, the
+     * real bank order unchanged).
      */
     private static final Map<Long, Object[]> dragComplete = new HashMap<>();  // {Long ptr, Object[] listener}
 
@@ -122,6 +123,11 @@ final class WidgetListeners {
     static synchronized Object[] onDragComplete(int id, int index) {
         Object[] v = dragComplete.get(key(id, index));
         return v != null && (Long) v[0] == Native.widgetPtr(id, index) ? (Object[]) v[1] : null;
+    }
+
+    /** Drops the Java onDragComplete listeners of `id`'s created children. */
+    static synchronized void forgetDragComplete(int id) {
+        dragComplete.keySet().removeIf(k -> (int) (k >>> 32) == id && (int) (long) k >= 0);
     }
 
     static synchronized boolean hasDragComplete() { return !dragComplete.isEmpty(); }

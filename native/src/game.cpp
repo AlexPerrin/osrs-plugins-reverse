@@ -257,6 +257,15 @@ bool ge_offers(int64_t out[8 * 7]) {
     return true;
 }
 
+uintptr_t ge_slot_raw(int slot, uint8_t out[0x28]) {
+    uintptr_t c = client();
+    if (!c || slot < 0 || slot > 7) return 0;
+    uintptr_t off = read_at<uintptr_t>(c + 0x4185c0 + 8u * static_cast<uintptr_t>(slot));
+    if (!off) return 0;
+    for (int i = 0; i < 0x28; i++) out[i] = read_at<uint8_t>(off + i);
+    return off;
+}
+
 // Instances (REBUILD_REGION). The scene loader manager is *(Client+0x4868) (passed to both rebuild
 // handlers from the packet dispatcher, 0x442610). REBUILD_REGION (0x555510) sets byte +0x54dd to 1,
 // both normal rebuild paths (0x5551dc, 0x5555xx) clear it. The region parser (0x5580e4) fills

@@ -38,6 +38,8 @@ final class Native {
     static native int[] instanceTemplates();
     /** 8 GE slots x {state (0 empty, 1 adding, 2 stable, 5 finished, -1 none), type (0 buy, 1 sell), item, price, total, done, spent}; null before the client exists. */
     static native long[] geOffers();
+    /** Probe: GE slot object address (8 bytes LE) + its first 0x28 bytes, or null. */
+    static native byte[] geSlotRaw(int slot);
     static native int worldFlags();
     /** {zoom, x, y, width, height} of the 3D viewport in UI canvas pixels, or null. */
     static native int[] viewportZoom();

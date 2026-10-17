@@ -132,6 +132,29 @@ final class Probe {
                     Log.i(TAG, "component " + (n.getHash() >>> 16) + ":" + (n.getHash() & 0xffff) + " -> group " + n.getId() + " mode " + n.getModalMode());
                 return;
             }
+            if (a[0].equals("ge")) {  // "ge raw <slot>": the GE slot object's address and raw bytes, plus GeOffers' decode
+                int slot = Integer.parseInt(a[2]);
+                byte[] b = Native.geSlotRaw(slot);
+                if (b == null) { Log.i(TAG, "ge slot " + slot + ": no object"); return; }
+                long p = 0;
+                for (int i = 7; i >= 0; i--) p = p << 8 | (b[i] & 0xff);
+                StringBuilder sb = new StringBuilder();
+                for (int i = 8; i < b.length; i++) { if (i > 8 && (i - 8) % 4 == 0) sb.append(' '); sb.append(String.format("%02x", b[i] & 0xff)); }
+                net.runelite.api.GrandExchangeOffer o = c.getGrandExchangeOffers()[slot];
+                Log.i(TAG, "ge slot " + slot + " @" + Long.toHexString(p) + ": " + sb + " -> " + o.getState() + " item " + o.getItemId()
+                        + " price " + o.getPrice() + " qty " + o.getQuantitySold() + "/" + o.getTotalQuantity() + " spent " + o.getSpent());
+                return;
+            }
+            if (a[0].equals("script")) {  // "script <id> <int args, comma-separated>": runScript, then the int/object stacks
+                java.util.List<Object> args = new java.util.ArrayList<>();
+                args.add(Integer.parseInt(a[1]));
+                for (String s : a[2].split(",")) if (!s.isEmpty()) args.add(Integer.parseInt(s));
+                c.runScript(args.toArray());
+                int n = c.getIntStackSize(), m = c.getObjectStackSize();
+                Log.i(TAG, "script " + a[1] + " " + a[2] + " -> ints " + java.util.Arrays.toString(java.util.Arrays.copyOf(c.getIntStack(), Math.min(n, 16)))
+                        + " (" + n + ") objs " + java.util.Arrays.toString(java.util.Arrays.copyOf(c.getObjectStack(), Math.min(m, 8))) + " (" + m + ")");
+                return;
+            }
             if (a[0].equals("quest")) {  // "quest <Quest enum name> <varp>": QUEST_STATUS_GET result and a varp
                 net.runelite.api.Quest q = net.runelite.api.Quest.valueOf(a[1]);
                 c.runScript(net.runelite.api.ScriptID.QUEST_STATUS_GET, q.getId());

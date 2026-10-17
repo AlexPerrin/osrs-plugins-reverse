@@ -68,6 +68,16 @@ bool write_file(const std::string& path, const char* data, size_t len) {
 jint n_game_state(JNIEnv*, jclass) { return game::game_state(); }
 jint n_game_cycle(JNIEnv*, jclass) { return game::cycle(); }
 jint n_server_tick(JNIEnv*, jclass) { return game::server_tick(); }
+// GE slot object probe: 8 bytes address (little endian) + 0x28 raw bytes, or null.
+jbyteArray n_ge_slot_raw(JNIEnv* env, jclass, jint slot) {
+    uint8_t buf[8 + 0x28] = {};
+    uintptr_t p = game::ge_slot_raw(slot, buf + 8);
+    if (!p) return nullptr;
+    for (int i = 0; i < 8; i++) buf[i] = static_cast<uint8_t>(p >> (8 * i));
+    jbyteArray out = env->NewByteArray(sizeof buf);
+    if (out) env->SetByteArrayRegion(out, 0, sizeof buf, reinterpret_cast<const jbyte*>(buf));
+    return out;
+}
 jint n_varp(JNIEnv*, jclass, jint id) { return game::varp(id); }
 jint n_weight(JNIEnv*, jclass) { return game::weight(); }
 jint n_world(JNIEnv*, jclass) { return game::world(); }
@@ -1351,6 +1361,7 @@ const JNINativeMethod kNatives[] = {
     {"world", "()I", reinterpret_cast<void*>(n_world)},
     {"instanceTemplates", "()[I", reinterpret_cast<void*>(n_instance_templates)},
     {"geOffers", "()[J", reinterpret_cast<void*>(n_ge_offers)},
+    {"geSlotRaw", "(I)[B", reinterpret_cast<void*>(n_ge_slot_raw)},
     {"worldFlags", "()I", reinterpret_cast<void*>(n_world_flags)},
     {"viewportZoom", "()[I", reinterpret_cast<void*>(n_viewport_zoom)},
     {"viewTransforms", "()[F", reinterpret_cast<void*>(n_view_transforms)},

@@ -60,6 +60,10 @@ public class AndroidWidget extends WidgetBag {
     // then draws the item on a graphic widget; the host redraws items over custom sprites anyway.
     @Override public Widget setItemId(int v) { return set(0xb38, v); }
     @Override public Widget setItemQuantity(int v) { return set(0xb3c, v); }
+    // Click mask = the game widget's flags (+0x2b0; CC_SETFLAGS/IF_SETEVENTS bits, desktop layout:
+    // ops at bits 1..10, drag 17, drag target 20). Spellbook's reorder mode sets 0x120000.
+    @Override public int getClickMask() { return Native.widgetFlags(id, childIndex()); }
+    @Override public Widget setClickMask(int mask) { WidgetListeners.setFlags(id, childIndex(), mask); return this; }
     @Override public void setBorderType(int v) { set(0xf0, v); }
     @Override public void setFlippedVertically(boolean v) { set(0xf8, v ? 1 : 0); }
     @Override public void setFlippedHorizontally(boolean v) { set(0xf9, v ? 1 : 0); }

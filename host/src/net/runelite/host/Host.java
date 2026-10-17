@@ -616,6 +616,7 @@ public final class Host {
                 net.runelite.api.MenuEntry[] entries = menu.beginSession();
                 try {
                     for (net.runelite.api.MenuEntry m : entries) bus.post(new net.runelite.api.events.MenuEntryAdded(m));
+                    AndroidMenu.postDesktopAliases(bus, entries);
                     bus.post(new net.runelite.api.events.PostMenuSort());
                     net.runelite.api.MenuEntry[] sorted = menu.getMenuEntries();
                     net.runelite.api.MenuEntry top = sorted.length > 0 ? sorted[sorted.length - 1] : null;

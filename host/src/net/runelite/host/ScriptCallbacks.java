@@ -35,7 +35,7 @@ import net.runelite.client.eventbus.EventBus;
  *    count = local 22] and stores the answer in local 22; the plugin rewrites array 2 in place
  *    (getArray) and returns the visible count. Here it is raised when proc 2621 returns to 2611,
  *    on 2611's saved frame (Native.scriptArray/scriptIntLocal with caller = true).
- *    // unverified: on the device (Spellbook hiding).
+ *    Verified on the device 2026-10-17 gen 24 (Spellbook hides Wind Strike).
  * Not emulated: skillTabMaxLevel (next to an iconst, which the opcode hook can't see).
  * // unverified: that the mobile skills tab runs scripts 395/396 (the desktop ids).
  */

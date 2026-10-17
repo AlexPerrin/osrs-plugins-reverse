@@ -68,6 +68,48 @@ final class AndroidMenu implements Menu {
         bus.post(new net.runelite.api.events.MenuEntryAdded(ex));
     }
 
+    /**
+     * Mobile side tab stones (toplevel_osm 601) and desktop's resizable ones (toplevel_osrs_stretch
+     * 161), by gameval name: stone0..13 -> 601:{101,71,102,97,98,99,100,74,76,75,44,77,72,73} and
+     * 161:{59..65,43..49}. Plugins add tab-stone options by desktop id (MenuManager managed menus:
+     * Spellbook's "Enable spell reordering" on the magic stone 161:65).
+     * Verified by tap on the device (gen 24): stone5 Prayer, stone6 Magic, stone12 Emotes, stone13 Music.
+     * // unverified: the other stones (same gameval names; not tapped).
+     */
+    private static final int[] MOBILE_STONES = {101, 71, 102, 97, 98, 99, 100, 74, 76, 75, 44, 77, 72, 73};
+    private static final int[] DESKTOP_STONES = {59, 60, 61, 62, 63, 64, 65, 43, 44, 45, 46, 47, 48, 49};
+
+    static int desktopStone(int component) {
+        if (component >>> 16 != 601) return -1;
+        int child = component & 0xffff;
+        for (int i = 0; i < MOBILE_STONES.length; i++)
+            if (MOBILE_STONES[i] == child) return 161 << 16 | DESKTOP_STONES[i];
+        return -1;
+    }
+
+    /**
+     * For game CC_OP entries on a mobile tab stone, a copy with desktop's resizable stone id as
+     * param1 is posted as MenuEntryAdded only (not shown), so plugins keyed to desktop ids add their
+     * entries (shown in the plugin strip).
+     */
+    static void postDesktopAliases(net.runelite.client.eventbus.EventBus bus, MenuEntry[] entries) {
+        for (MenuEntry m : entries) {
+            if (!(m instanceof AndroidMenuEntry) || ((AndroidMenuEntry) m).synthetic) continue;
+            if (m.getType() != net.runelite.api.MenuAction.CC_OP) continue;
+            int desk = desktopStone(m.getParam1());
+            if (desk < 0) continue;
+            AndroidMenuEntry a = new AndroidMenuEntry();
+            a.synthetic = true;
+            a.setOption(m.getOption());
+            a.setTarget(m.getTarget());
+            a.setType(net.runelite.api.MenuAction.CC_OP);
+            a.setIdentifier(m.getIdentifier());
+            a.setParam0(m.getParam0());
+            a.setParam1(desk);
+            bus.post(new net.runelite.api.events.MenuEntryAdded(a));
+        }
+    }
+
     /** While a just-opened menu is sorted as on desktop's last frame before it opened. */
     static boolean presorting;
 
@@ -83,6 +125,7 @@ final class AndroidMenu implements Menu {
         try {
             for (MenuEntry m : entries) bus.post(new net.runelite.api.events.MenuEntryAdded(m));
             postMissingExamine(bus, entries);
+            postDesktopAliases(bus, entries);
             presorting = true;
             try {
                 bus.post(new net.runelite.api.events.PostMenuSort());

@@ -378,6 +378,8 @@ bool instance_templates(bool& instanced, int32_t out[4 * 13 * 13]);
 // The 8 GE slots: {state (0 empty, 1 adding, 2 stable, 5 finished; -1 none), type (0 buy, 1 sell),
 // item, price, total, quantity done, gold spent} each (Client +0x4185c0 slot objects).
 bool ge_offers(int64_t out[8 * 7]);
+// Raw bytes of GE slot object `slot` (probe); returns its address (0 if none).
+uintptr_t ge_slot_raw(int slot, uint8_t out[0x28]);
 // 3D viewport projection: {zoom, x, y, width, height} in UI canvas pixels (Client +0x46d4, +0x46e0..+0x46ec,
 // computed by 0x5561e8 from the CS2 viewport zoom/fov settings; RuneLite's getScale/viewport).
 bool viewport_zoom(int out[5]);

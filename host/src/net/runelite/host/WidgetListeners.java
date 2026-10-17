@@ -24,6 +24,7 @@ final class WidgetListeners {
         Object[] onOp;
         long ptr;
         int ownFlags;
+        int opBits;  // op bits syncFlags last added
     }
 
     private static final Map<Long, Entry> entries = new HashMap<>();
@@ -61,6 +62,17 @@ final class WidgetListeners {
         syncFlags(id, index);
     }
 
+    /** A plugin's setClickMask: kept as the widget's own flags while a Java onOp listener adds op bits. */
+    static synchronized void setFlags(int id, int index, int flags) {
+        Entry e = entries.get(key(id, index));
+        if (e != null && e.ptr == Native.widgetPtr(id, index)) {
+            e.ownFlags = flags & ~(e.opBits & ~e.ownFlags);  // not the op bits the host added
+            syncFlags(id, index);
+        } else {
+            Native.widgetSetFlags(id, index, flags);
+        }
+    }
+
     /** After an op's text changed: the shown-op bits follow the non-empty ops while a listener is set. */
     static synchronized void syncFlags(int id, int index) {
         Entry e = entries.get(key(id, index));
@@ -69,6 +81,7 @@ final class WidgetListeners {
         int bits = 0;
         for (int i = 2; s != null && i < s.length && i - 2 < 10; i++)
             if (s[i] != null && !s[i].isEmpty()) bits |= 1 << (i - 2 + 1);
+        e.opBits = bits;
         Native.widgetSetFlags(id, index, e.ownFlags | bits);
     }
 

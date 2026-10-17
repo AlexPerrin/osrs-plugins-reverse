@@ -10509,10 +10509,10 @@ index 000000000..6a9e7a50f
 +}
 diff --git a/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
 new file mode 100644
-index 000000000..4257eefff
+index 000000000..06c57b048
 --- /dev/null
 +++ b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
-@@ -0,0 +1,180 @@
+@@ -0,0 +1,188 @@
 +package org.rsmod.content.travel.fairyrings
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -10623,18 +10623,25 @@ index 000000000..4257eefff
 +        travel(row)
 +    }
 +
-+    /** [row] null: a code that leads nowhere; the player vanishes and reappears in place. */
++    /**
++     * [row] null (a code with no ring) or the ring the player stands in: no teleport, and the
++     * player remarks on it (OSRS Wiki, Fairy ring).
++     */
 +    private suspend fun ProtectedAccess.travel(row: FairyringRow?) {
 +        arriveDelay()
 +        anim(VANISH_SEQ)
 +        spotanim(RING_SPOTANIM)
 +        delay(TRAVEL_DELAY)
-+        if (row != null) {
++        val here = ringAt(player.coords)
++        if (row != null && row.id != here?.id) {
 +            telejump(row.destCoord)
 +            player.lastDestination = LAST_DESTINATION_BASE + row.multilocState
 +            markVisited(player, row)
++            anim(APPEAR_SEQ)
++            return
 +        }
 +        anim(APPEAR_SEQ)
++        say(HARDLY_MOVED)
 +    }
 +
 +    private fun ringAt(coords: CoordGrid): FairyringRow? =
@@ -10656,6 +10663,7 @@ index 000000000..4257eefff
 +        const val VANISH_SEQ = "seq.human_fairy_vanish"
 +        const val APPEAR_SEQ = "seq.human_fairy_appear"
 +        const val RING_SPOTANIM = "spotanim.fairy_flower_ring"
++        const val HARDLY_MOVED = "Wow, fairy magic sure is useful, I hardly moved at all!"
 +        const val NO_STAFF = "The fairy rings only work for those who wield fairy magic."
 +        const val PLACEHOLDER_X = 65
 +        const val LOG_A = "varp.fairyring_travel_log_a"

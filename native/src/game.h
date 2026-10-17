@@ -370,6 +370,9 @@ int world_flags(); // Client +0x2f64 (CS2 worldflags 3324)
 // REBUILD_REGION state: whether the scene is an instance, and the [level][x][z] template chunks
 // packed as desktop (level << 24 | zoneX << 14 | zoneZ << 3 | rotation << 1; -1 = none).
 bool instance_templates(bool& instanced, int32_t out[4 * 13 * 13]);
+// The 8 GE slots: {state (0 empty, 1 adding, 2 stable, 5 finished; -1 none), type (0 buy, 1 sell),
+// item, price, total, quantity done, gold spent} each (Client +0x4185c0 slot objects).
+bool ge_offers(int64_t out[8 * 7]);
 // 3D viewport projection: {zoom, x, y, width, height} in UI canvas pixels (Client +0x46d4, +0x46e0..+0x46ec,
 // computed by 0x5561e8 from the CS2 viewport zoom/fov settings; RuneLite's getScale/viewport).
 bool viewport_zoom(int out[5]);

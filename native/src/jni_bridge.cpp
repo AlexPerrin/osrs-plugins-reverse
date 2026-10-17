@@ -71,6 +71,13 @@ jint n_server_tick(JNIEnv*, jclass) { return game::server_tick(); }
 jint n_varp(JNIEnv*, jclass, jint id) { return game::varp(id); }
 jint n_weight(JNIEnv*, jclass) { return game::weight(); }
 jint n_world(JNIEnv*, jclass) { return game::world(); }
+jlongArray n_ge_offers(JNIEnv* env, jclass) {
+    int64_t o[8 * 7];
+    if (!game::ge_offers(o)) return nullptr;
+    jlongArray out = env->NewLongArray(8 * 7);
+    if (out) env->SetLongArrayRegion(out, 0, 8 * 7, reinterpret_cast<const jlong*>(o));
+    return out;
+}
 // int[1 + 4*13*13]: [0] = 1 if instanced, then the packed template chunks; null before login.
 jintArray n_instance_templates(JNIEnv* env, jclass) {
     bool inst = false;
@@ -1328,6 +1335,7 @@ const JNINativeMethod kNatives[] = {
     {"weight", "()I", reinterpret_cast<void*>(n_weight)},
     {"world", "()I", reinterpret_cast<void*>(n_world)},
     {"instanceTemplates", "()[I", reinterpret_cast<void*>(n_instance_templates)},
+    {"geOffers", "()[J", reinterpret_cast<void*>(n_ge_offers)},
     {"worldFlags", "()I", reinterpret_cast<void*>(n_world_flags)},
     {"viewportZoom", "()[I", reinterpret_cast<void*>(n_viewport_zoom)},
     {"viewTransforms", "()[F", reinterpret_cast<void*>(n_view_transforms)},

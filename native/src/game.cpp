@@ -234,6 +234,29 @@ bool viewport_zoom(int out[5]) {
 }
 int world_flags() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x2f64) : 0; }
 
+// Grand Exchange offers: slot i is the object *(Client + 0x4185c0 + i*8), read by the CS2
+// stockmarket_* ops (handler 0x4ed838, ops 3903-3913): +0x00 u8 state (0 empty, 1 adding, 2 stable,
+// 5 finished: isofferempty/adding/stable/finished), +0x01 u8 type (0 buy, 1 sell; getoffertype),
+// +0x04 int item, +0x08 s64 price, +0x10 int total quantity, +0x14 int quantity done, +0x18 s64 gold
+// spent. out = 8 x {state, type, item, price, total, done, spent}; state -1 = no object.
+bool ge_offers(int64_t out[8 * 7]) {
+    uintptr_t c = client();
+    if (!c) return false;
+    for (int i = 0; i < 8; i++) {
+        int64_t* o = out + 7 * i;
+        uintptr_t off = read_at<uintptr_t>(c + 0x4185c0 + 8u * static_cast<uintptr_t>(i));
+        if (!off) { o[0] = -1; for (int k = 1; k < 7; k++) o[k] = 0; continue; }
+        o[0] = read_at<uint8_t>(off);
+        o[1] = read_at<uint8_t>(off + 1);
+        o[2] = read_at<int32_t>(off + 4);
+        o[3] = read_at<int64_t>(off + 8);
+        o[4] = read_at<int32_t>(off + 0x10);
+        o[5] = read_at<int32_t>(off + 0x14);
+        o[6] = read_at<int64_t>(off + 0x18);
+    }
+    return true;
+}
+
 // Instances (REBUILD_REGION). The scene loader manager is *(Client+0x4868) (passed to both rebuild
 // handlers from the packet dispatcher, 0x442610). REBUILD_REGION (0x555510) sets byte +0x54dd to 1,
 // both normal rebuild paths (0x5551dc, 0x5555xx) clear it. The region parser (0x5580e4) fills

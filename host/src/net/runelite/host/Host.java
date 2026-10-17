@@ -417,6 +417,13 @@ public final class Host {
                 if (pendingLoggedIn && localPlayer() != null) postLoggedIn(bus);
                 if (!pendingLoggedIn && client.getGameState() == GameState.LOGGED_IN && localPlayer() != null) {
                     postSceneReload(bus);
+                    try {
+                        GeOffers.poll(bus);
+                    } catch (Throwable t) {
+                        Log.e(TAG, "GE offers failed", t);
+                    }
+                } else if (client.getGameState().getState() < GameState.LOADING.getState()) {
+                    GeOffers.reset();
                 }
                 if (!pendingNpcs.isEmpty() && localPlayer() != null) {
                     java.util.List<AndroidNPC> held = new java.util.ArrayList<>(pendingNpcs.values());

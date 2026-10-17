@@ -8,7 +8,8 @@ import java.util.function.Predicate;
  * Replaces RuneLite's ChatboxTextInput (same name). The desktop version draws a text field in the
  * chatbox and reads the keyboard; here build() opens an Android text dialog
  * (net.runelite.host.AndroidPrompts): edits go to onChanged, OK to onDone, and closing it to onClose
- * and ChatboxPanelManager.close(). Callbacks run on the client thread.
+ * and ChatboxPanelManager.close(), except after an OK whose onDone returned false (the input then
+ * stays current without a dialog, as desktop keeps its field). Callbacks run on the client thread.
  */
 public class ChatboxTextInput extends ChatboxInput implements net.runelite.client.input.KeyListener, net.runelite.client.input.MouseListener {
     private final ChatboxPanelManager chatboxPanelManager;
@@ -22,6 +23,7 @@ public class ChatboxTextInput extends ChatboxInput implements net.runelite.clien
     private Consumer<String> onChanged;
     private int fontID = 495;
     private boolean built;
+    private boolean keptAfterOk;  // OK pressed and onDone returned false (game thread)
 
     protected final net.runelite.client.callback.ClientThread clientThread;
 
@@ -82,9 +84,15 @@ public class ChatboxTextInput extends ChatboxInput implements net.runelite.clien
             },
             s -> {
                 value = filter(s);
-                if (onDone != null) onDone.test(value);
+                // Desktop closes the input on Enter only when onDone returns true; false keeps it
+                // open (Music's search keeps filtering until its Close button). The dialog itself is
+                // gone after OK, so the input stays current without one.
+                keptAfterOk = onDone != null && !onDone.test(value);
             },
-            () -> { if (chatboxPanelManager.getCurrentInput() == self) chatboxPanelManager.close(); });
+            () -> {
+                if (keptAfterOk) { keptAfterOk = false; return; }
+                if (chatboxPanelManager.getCurrentInput() == self) chatboxPanelManager.close();
+            });
     }
 
     @Override protected void close() {

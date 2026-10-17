@@ -40,7 +40,9 @@ import net.runelite.client.eventbus.EventBus;
  *    with `iconst -1; iload 0; iload 4; runelite_callback`, and a 0 or 1 left in the -1 slot is
  *    returned at once (the track is hidden or shown). Here the callback is raised as 9291 returns
  *    (Host.onScript phase 1; its args were taken at the GOSUB) with int stack [-1, local 0, local 4],
- *    and an answer other than -1 replaces the returned value. // unverified: that mobile's music list runs proc 9291 with these locals.
+ *    and an answer other than -1 replaces the returned value. Verified on the device 2026-10-17 gen 30:
+ *    9291 runs once per track of the music list (853), local 4 is 1 for the 24 unlocked tracks; Music's
+ *    search ("alo" -> Alone, Grip of the Talon, The Guidance of Ralos, Zealot) and Unlocked filter work.
  * Not emulated: skillTabMaxLevel (next to an iconst, which the opcode hook can't see).
  * // unverified: that the mobile skills tab runs scripts 395/396 (the desktop ids).
  */

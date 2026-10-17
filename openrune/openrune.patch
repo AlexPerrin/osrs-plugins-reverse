@@ -628,6 +628,111 @@ index 000000000..f5ae65a09
 +        override fun unregister(service: Any, player: Player) {}
 +    }
 +}
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/NpcEvents.kt b/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/NpcEvents.kt
+index ef93f420a..493c153e6 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/NpcEvents.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/NpcEvents.kt
+@@ -5,6 +5,7 @@ import dev.openrune.types.ItemServerType
+ import dev.openrune.types.NpcServerType
+ import org.rsmod.events.EventBus
+ import org.rsmod.game.entity.Npc
++import org.rsmod.game.interact.InteractionOp
+ 
+ public sealed class NpcEvents {
+     public sealed class Op(public val npc: Npc, public val type: NpcServerType) :
+@@ -34,6 +35,17 @@ public sealed class NpcEvents {
+     public class Ap5(npc: Npc, type: NpcServerType = npc.visType) : Ap(npc, type)
+ }
+ 
++/** An npc op taken over through [org.rsmod.api.player.interact.NpcOpOverrides]. */
++public class NpcOverrideEvents {
++    public class Op(public val npc: Npc, public val type: NpcServerType, public val op: InteractionOp) :
++        OpEvent(key(type.id, op))
++
++    public companion object {
++        public fun key(npcType: Int, op: InteractionOp): Long =
++            EventBus.composeLongKey(npcType, op.slot)
++    }
++}
++
+ public sealed class NpcContentEvents {
+     public sealed class Op(public val npc: Npc, contentGroup: Int) : OpEvent(contentGroup.toLong())
+ 
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcInteractions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcInteractions.kt
+index 3306d3f12..bcbacc71f 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcInteractions.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcInteractions.kt
+@@ -9,6 +9,7 @@ import org.rsmod.api.player.events.interact.ApEvent
+ import org.rsmod.api.player.events.interact.NpcContentEvents
+ import org.rsmod.api.player.events.interact.NpcDefaultEvents
+ import org.rsmod.api.player.events.interact.NpcEvents
++import org.rsmod.api.player.events.interact.NpcOverrideEvents
+ import org.rsmod.api.player.events.interact.NpcUnimplementedEvents
+ import org.rsmod.api.player.events.interact.OpEvent
+ import org.rsmod.events.EventBus
+@@ -20,7 +21,12 @@ import org.rsmod.game.movement.RouteRequestPathingEntity
+ import org.rsmod.game.vars.VarPlayerIntMap
+ import org.rsmod.utils.bits.getBits
+ 
+-public class NpcInteractions @Inject constructor(private val eventBus: EventBus) {
++public class NpcInteractions
++@Inject
++constructor(
++    private val eventBus: EventBus,
++    private val overrides: NpcOpOverrides = NpcOpOverrides(),
++) {
+     public fun interact(player: Player, npc: Npc, op: InteractionOp) {
+         val opTrigger = hasOpTrigger(player, npc, op)
+         val apTrigger = hasApTrigger(player, npc, op)
+@@ -43,6 +49,13 @@ public class NpcInteractions @Inject constructor(private val eventBus: EventBus)
+         op: InteractionOp,
+         type: NpcServerType = npc.visType,
+     ): OpEvent? {
++        if (overrides.claims(player, npc, type.id, op)) {
++            val overrideEvent = NpcOverrideEvents.Op(npc, type, op)
++            if (eventBus.contains(overrideEvent::class.java, overrideEvent.id)) {
++                return overrideEvent
++            }
++        }
++
+         val multiNpcType = multiNpc(type, player.vars)
+         if (multiNpcType != null) {
+             val multiNpcTrigger = opTrigger(player, npc, op, multiNpcType)
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcOpOverrides.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcOpOverrides.kt
+new file mode 100644
+index 000000000..48d1d61cd
+--- /dev/null
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcOpOverrides.kt
+@@ -0,0 +1,29 @@
++package org.rsmod.api.player.interact
++
++import jakarta.inject.Singleton
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.entity.Player
++import org.rsmod.game.interact.InteractionOp
++
++/**
++ * Lets content take an npc op ahead of that npc's own handler, but only for the players it
++ * claims: a treasure trail step on the Cook, for example, while everyone else still gets the
++ * Cook's usual dialogue. A claimed op is published as an [org.rsmod.api.player.events.interact.
++ * NpcOverrideEvents.Op] keyed by the npc type.
++ */
++@Singleton
++public class NpcOpOverrides {
++    private val claims = HashMap<Long, MutableList<(Player, Npc) -> Boolean>>()
++
++    public fun register(npcType: Int, op: InteractionOp, claim: (Player, Npc) -> Boolean) {
++        claims.getOrPut(key(npcType, op)) { mutableListOf() } += claim
++    }
++
++    public fun claims(player: Player, npc: Npc, npcType: Int, op: InteractionOp): Boolean {
++        val list = claims[key(npcType, op)] ?: return false
++        return list.any { it(player, npc) }
++    }
++
++    private fun key(npcType: Int, op: InteractionOp): Long =
++        (npcType.toLong() shl 8) or op.ordinal.toLong()
++}
 diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
 index 95ca2cd98..28129d308 100644
 --- a/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
@@ -2790,6 +2895,1059 @@ index 000000000..80fd80adf
 +    private companion object {
 +        const val DRAIN_PERCENT = 30
 +        val HAMMERS = listOf("obj.dragon_warhammer", "obj.dragon_warhammer_ornament")
++    }
++}
+diff --git a/content/other/treasure-trails/build.gradle.kts b/content/other/treasure-trails/build.gradle.kts
+new file mode 100644
+index 000000000..0f221f676
+--- /dev/null
++++ b/content/other/treasure-trails/build.gradle.kts
+@@ -0,0 +1,15 @@
++plugins {
++    id("base-conventions")
++    id("integration-test-suite")
++}
++
++dependencies {
++    implementation(projects.api.pluginCommons)
++    implementation(projects.content.interfaces.emotes)
++}
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.pluginCommons)
++    }
++}
+diff --git a/content/other/treasure-trails/pack/build.gradle.kts b/content/other/treasure-trails/pack/build.gradle.kts
+new file mode 100644
+index 000000000..10c8703c8
+--- /dev/null
++++ b/content/other/treasure-trails/pack/build.gradle.kts
+@@ -0,0 +1,7 @@
++plugins {
++    id("base-conventions")
++}
++
++dependencies {
++    implementation(projects.engine.map)
++}
+diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/BeginnerCasketTable.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/BeginnerCasketTable.kt
+new file mode 100644
+index 000000000..8c32fc4b2
+--- /dev/null
++++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/BeginnerCasketTable.kt
+@@ -0,0 +1,140 @@
++package org.rsmod.content.other.treasuretrails.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++
++/**
++ * One roll of the beginner reward casket (OSRS Wiki: Reward casket (beginner)), flattened to a
++ * single weighted table out of [TOTAL_WEIGHT] = 44,280: each generic item is 11/492, each black
++ * item 11/8,856, each unique 1/360 and noted cabbages 1/24. A casket makes 1-3 rolls.
++ */
++object BeginnerCasketTable {
++    const val OBJ = 0
++    const val MIN = 1
++    const val MAX = 2
++    const val WEIGHT = 3
++    const val NOTED = 4
++
++    const val TOTAL_WEIGHT = 44280
++
++    private const val GENERIC = 990
++    private const val BLACK = 55
++    private const val UNIQUE = 123
++    private const val CABBAGE = 1845
++
++    private data class Reward(
++        val obj: String,
++        val weight: Int,
++        val min: Int = 1,
++        val max: Int = min,
++        val noted: Boolean = false,
++    )
++
++    private val UNIQUES =
++        listOf(
++            "mole_slippers",
++            "frog_slippers",
++            "bear_slippers",
++            "demon_slippers",
++            "jester_cape",
++            "shoulder_parrot",
++            "monk_robetop_t",
++            "monk_robebottom_t",
++            "amulet_of_defence_t",
++            "sandwich_lady_hat",
++            "sandwich_lady_top",
++            "sandwich_lady_bottom",
++            "rune_scimitar_ornament_kit_guthix",
++            "rune_scimitar_ornament_kit_saradomin",
++            "rune_scimitar_ornament_kit_zamorak",
++        )
++
++    private val BLACK_ITEMS =
++        listOf(
++            "black_2h_sword",
++            "black_axe",
++            "black_battleaxe",
++            "black_chainbody",
++            "black_dagger",
++            "black_full_helm",
++            "black_kiteshield",
++            "black_longsword",
++            "black_mace",
++            "black_med_helm",
++            "black_pickaxe",
++            "black_platebody",
++            "black_plateskirt",
++            "black_platelegs",
++            "black_sq_shield",
++            "black_scimitar",
++            "black_sword",
++            "black_warhammer",
++        )
++
++    private val EQUIPMENT =
++        listOf(
++            "shortbow",
++            "longbow",
++            "oak_shortbow",
++            "oak_longbow",
++            "iron_pickaxe",
++            "staff_of_air",
++            "staff_of_water",
++            "staff_of_earth",
++            "staff_of_fire",
++            "steel_full_helm",
++            "steel_platebody",
++            "steel_platelegs",
++            "steel_plateskirt",
++            "steel_longsword",
++            "steel_dagger",
++            "steel_axe",
++            "steel_battleaxe",
++            "leather_cowl",
++            "leather_armour",
++            "leather_chaps",
++            "leather_vambraces",
++            "hardleather_body",
++            "bluewizhat",
++            "wizards_robe",
++            "blackwizhat",
++            "black_robe",
++        )
++
++    private val REWARDS =
++        UNIQUES.map { Reward(it, UNIQUE) } +
++            BLACK_ITEMS.map { Reward(it, BLACK) } +
++            EQUIPMENT.map { Reward(it, GENERIC) } +
++            listOf("airrune", "mindrune", "waterrune", "earthrune", "firerune", "bodyrune").map {
++                Reward(it, GENERIC, 15, 35)
++            } +
++            listOf("chaosrune", "naturerune", "lawrune").map { Reward(it, GENERIC, 2, 7) } +
++            listOf(
++                Reward("bronze_arrow", GENERIC, 15, 30),
++                Reward("iron_arrow", GENERIC, 7, 15),
++                Reward("cabbage", CABBAGE, 5, 9, noted = true),
++                Reward("shrimp", GENERIC, 5, 14, noted = true),
++                Reward("sardine", GENERIC, 5, 12, noted = true),
++                Reward("herring", GENERIC, 5, 9, noted = true),
++            )
++
++    fun rewards() =
++        dbTable("dbtable.trail_beginner_casket", serverOnly = true) {
++            column("obj", OBJ, VarType.OBJ)
++            column("min", MIN, VarType.INT)
++            column("max", MAX, VarType.INT)
++            column("weight", WEIGHT, VarType.INT)
++            column("noted", NOTED, VarType.BOOLEAN)
++
++            check(REWARDS.sumOf { it.weight } == TOTAL_WEIGHT)
++            for (r in REWARDS) {
++                row("dbrow.trail_beginner_casket_${r.obj}") {
++                    columnRSCM(OBJ, "obj.${r.obj}")
++                    column(MIN, r.min)
++                    column(MAX, r.max)
++                    column(WEIGHT, r.weight)
++                    column(NOTED, r.noted)
++                }
++            }
++        }
++}
+diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/BeginnerClueStepsTable.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/BeginnerClueStepsTable.kt
+new file mode 100644
+index 000000000..1dc9f24f9
+--- /dev/null
++++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/BeginnerClueStepsTable.kt
+@@ -0,0 +1,177 @@
++package org.rsmod.content.other.treasuretrails.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++import dev.openrune.pack.columnCoord
++import org.rsmod.map.CoordGrid
++
++/**
++ * Beginner Treasure Trail steps (OSRS Wiki: Treasure Trails/Guide/Beginner; the anagram, cryptic,
++ * emote and map pages). [TEXT] is what the clue scroll interface shows, in the exact wording
++ * RuneLite's Clue Scroll plugin matches. Talk steps name the [NPC]; emote steps an [EMOTE] (seq
++ * symbol) within [RADIUS] of [COORD] while wearing [ITEM_1]/[ITEM_2]; map steps open [MAP] and are
++ * dug within [RADIUS] of [COORD]. Not here: hot-cold (Reldo's strange device) and Charlie the
++ * Tramp's item tasks.
++ */
++object BeginnerClueStepsTable {
++    const val TYPE = 0
++    const val TEXT = 1
++    const val NPC = 2
++    const val COORD = 3
++    const val RADIUS = 4
++    const val EMOTE = 5
++    const val ITEM_1 = 6
++    const val ITEM_2 = 7
++    const val MAP = 8
++
++    const val TALK = 0
++    const val EMOTE_STEP = 1
++    const val MAP_STEP = 2
++
++    private data class Step(
++        val name: String,
++        val type: Int,
++        val coord: CoordGrid,
++        val radius: Int,
++        val text: String? = null,
++        val npc: String? = null,
++        val emote: String? = null,
++        val items: List<String> = emptyList(),
++        val map: String? = null,
++    )
++
++    private fun anagram(name: String, letters: String, npc: String, coord: CoordGrid) =
++        Step(
++            "anagram_$name",
++            TALK,
++            coord,
++            0,
++            text = "The anagram reveals<br>who to speak to next:<br>$letters",
++            npc = npc,
++        )
++
++    private fun cryptic(name: String, text: String, npc: String, coord: CoordGrid) =
++        Step("cryptic_$name", TALK, coord, 0, text = text, npc = npc)
++
++    private fun emote(
++        name: String,
++        text: String,
++        seq: String,
++        coord: CoordGrid,
++        radius: Int,
++        vararg items: String,
++    ) = Step("emote_$name", EMOTE_STEP, coord, radius, text = text, emote = seq, items = items.toList())
++
++    private fun map(name: String, map: String, coord: CoordGrid) =
++        Step("map_$name", MAP_STEP, coord, 1, map = map)
++
++    private val STEPS =
++        listOf(
++            anagram("ranael", "AN EARL", "npc.ranael", CoordGrid(3315, 3163, 0)),
++            anagram("apothecary", "CARPET AHOY", "npc.apothecary", CoordGrid(3195, 3404, 0)),
++            anagram("doric", "I CORD", "npc.doric", CoordGrid(2951, 3450, 0)),
++            anagram("brian", "IN BAR", "npc.brian", CoordGrid(3026, 3246, 0)),
++            anagram("veronica", "RAIN COVE", "npc.veronica", CoordGrid(3110, 3330, 0)),
++            anagram("gertrude", "RUG DETER", "npc.gertrude", CoordGrid(3151, 3412, 0)),
++            anagram("hairdresser", "SIR SHARE RED", "npc.hairdresser", CoordGrid(2944, 3381, 0)),
++            cryptic(
++                "hans",
++                "Always walking around the castle grounds and somehow knows everyone's age.",
++                "npc.hans",
++                CoordGrid(3221, 3218, 0),
++            ),
++            cryptic(
++                "cook",
++                "In the place Duke Horacio calls home, talk to a man with a hat dropped by goblins.",
++                "npc.cook",
++                CoordGrid(3208, 3213, 0),
++            ),
++            cryptic(
++                "shantay",
++                "Near the open desert I reside, to get past me you must abide. Go forward if you " +
++                    "dare, for when you pass me, you'll be sweating by your hair.",
++                "npc.shantay",
++                CoordGrid(3303, 3123, 0),
++            ),
++            emote(
++                "aris",
++                "Blow a raspberry at Aris in her tent. Equip a gold ring and a gold necklace.",
++                "seq.emote_ya_boo_sucks",
++                CoordGrid(3203, 3424, 0),
++                3,
++                "obj.gold_ring",
++                "obj.gold_necklace",
++            ),
++            emote(
++                "brugsen",
++                "Bow to Brugsen Bursen at the Grand Exchange.",
++                "seq.emote_bow",
++                CoordGrid(3164, 3477, 0),
++                5,
++            ),
++            emote(
++                "iffie",
++                "Cheer at Iffie Nitter. Equip a chef hat and a red cape.",
++                "seq.emote_cheer",
++                CoordGrid(3205, 3416, 0),
++                3,
++                "obj.chefs_hat",
++                "obj.red_cape",
++            ),
++            emote(
++                "bob",
++                "Clap at Bob's Brilliant Axes. Equip a bronze axe and leather boots.",
++                "seq.emote_clap",
++                CoordGrid(3231, 3203, 0),
++                3,
++                "obj.bronze_axe",
++                "obj.leather_boots",
++            ),
++            emote(
++                "al_kharid_mine",
++                "Panic at Al Kharid mine.",
++                "seq.emote_panic",
++                CoordGrid(3303, 3271, 0),
++                12,
++            ),
++            emote(
++                "flynn",
++                "Spin at Flynn's Mace Shop.",
++                "seq.emote_dance_spin",
++                CoordGrid(2950, 3387, 0),
++                3,
++            ),
++            map("champions_guild", "interface.trail_map01", CoordGrid(3167, 3360, 0)),
++            map("varrock_east_mine", "interface.trail_map02", CoordGrid(3290, 3373, 0)),
++            map("draynor_bank", "interface.trail_map03", CoordGrid(3092, 3226, 0)),
++            map("standing_stones", "interface.trail_map06", CoordGrid(3043, 3399, 0)),
++            map("wizards_tower", "interface.trail_map11", CoordGrid(3109, 3153, 0)),
++        )
++
++    fun steps() =
++        dbTable("dbtable.trail_beginner_steps", serverOnly = true) {
++            column("type", TYPE, VarType.INT)
++            column("text", TEXT, VarType.STRING)
++            column("npc", NPC, VarType.NPC)
++            column("coord", COORD, VarType.COORDGRID)
++            column("radius", RADIUS, VarType.INT)
++            column("emote", EMOTE, VarType.STRING)
++            column("item_1", ITEM_1, VarType.OBJ)
++            column("item_2", ITEM_2, VarType.OBJ)
++            column("map", MAP, VarType.STRING)
++
++            for (s in STEPS) {
++                row("dbrow.trail_beginner_${s.name}") {
++                    column(TYPE, s.type)
++                    s.text?.let { column(TEXT, it) }
++                    s.npc?.let { columnRSCM(NPC, it) }
++                    columnCoord(COORD, s.coord)
++                    column(RADIUS, s.radius)
++                    s.emote?.let { column(EMOTE, it) }
++                    s.items.getOrNull(0)?.let { columnRSCM(ITEM_1, it) }
++                    s.items.getOrNull(1)?.let { columnRSCM(ITEM_2, it) }
++                    s.map?.let { column(MAP, it) }
++                }
++            }
++        }
++}
+diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt
+new file mode 100644
+index 000000000..2128c803d
+--- /dev/null
++++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt
+@@ -0,0 +1,9 @@
++package org.rsmod.content.other.treasuretrails.pack
++
++import dev.openrune.definition.dbtables.DBTable
++import dev.openrune.pack.PluginPack
++
++class TreasureTrailsPluginPack : PluginPack() {
++    override fun dbTables(): List<DBTable> =
++        listOf(BeginnerClueStepsTable.steps(), BeginnerCasketTable.rewards())
++}
+diff --git a/content/other/treasure-trails/pack/src/main/resources/gamevals.toml b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
+new file mode 100644
+index 000000000..8606a9bb8
+--- /dev/null
++++ b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
+@@ -0,0 +1,105 @@
++[gamevals.dbtable]
++trail_beginner_steps = 60003
++trail_beginner_casket = 60004
++
++[gamevals.dbrow]
++trail_beginner_anagram_ranael = 60200
++trail_beginner_anagram_apothecary = 60201
++trail_beginner_anagram_doric = 60202
++trail_beginner_anagram_brian = 60203
++trail_beginner_anagram_veronica = 60204
++trail_beginner_anagram_gertrude = 60205
++trail_beginner_anagram_hairdresser = 60206
++trail_beginner_cryptic_hans = 60207
++trail_beginner_cryptic_cook = 60208
++trail_beginner_cryptic_shantay = 60209
++trail_beginner_emote_aris = 60210
++trail_beginner_emote_brugsen = 60211
++trail_beginner_emote_iffie = 60212
++trail_beginner_emote_bob = 60213
++trail_beginner_emote_al_kharid_mine = 60214
++trail_beginner_emote_flynn = 60215
++trail_beginner_map_champions_guild = 60216
++trail_beginner_map_varrock_east_mine = 60217
++trail_beginner_map_draynor_bank = 60218
++trail_beginner_map_standing_stones = 60219
++trail_beginner_map_wizards_tower = 60220
++trail_beginner_casket_mole_slippers = 60240
++trail_beginner_casket_frog_slippers = 60241
++trail_beginner_casket_bear_slippers = 60242
++trail_beginner_casket_demon_slippers = 60243
++trail_beginner_casket_jester_cape = 60244
++trail_beginner_casket_shoulder_parrot = 60245
++trail_beginner_casket_monk_robetop_t = 60246
++trail_beginner_casket_monk_robebottom_t = 60247
++trail_beginner_casket_amulet_of_defence_t = 60248
++trail_beginner_casket_sandwich_lady_hat = 60249
++trail_beginner_casket_sandwich_lady_top = 60250
++trail_beginner_casket_sandwich_lady_bottom = 60251
++trail_beginner_casket_rune_scimitar_ornament_kit_guthix = 60252
++trail_beginner_casket_rune_scimitar_ornament_kit_saradomin = 60253
++trail_beginner_casket_rune_scimitar_ornament_kit_zamorak = 60254
++trail_beginner_casket_black_2h_sword = 60255
++trail_beginner_casket_black_axe = 60256
++trail_beginner_casket_black_battleaxe = 60257
++trail_beginner_casket_black_chainbody = 60258
++trail_beginner_casket_black_dagger = 60259
++trail_beginner_casket_black_full_helm = 60260
++trail_beginner_casket_black_kiteshield = 60261
++trail_beginner_casket_black_longsword = 60262
++trail_beginner_casket_black_mace = 60263
++trail_beginner_casket_black_med_helm = 60264
++trail_beginner_casket_black_pickaxe = 60265
++trail_beginner_casket_black_platebody = 60266
++trail_beginner_casket_black_plateskirt = 60267
++trail_beginner_casket_black_platelegs = 60268
++trail_beginner_casket_black_sq_shield = 60269
++trail_beginner_casket_black_scimitar = 60270
++trail_beginner_casket_black_sword = 60271
++trail_beginner_casket_black_warhammer = 60272
++trail_beginner_casket_shortbow = 60273
++trail_beginner_casket_longbow = 60274
++trail_beginner_casket_oak_shortbow = 60275
++trail_beginner_casket_oak_longbow = 60276
++trail_beginner_casket_iron_pickaxe = 60277
++trail_beginner_casket_staff_of_air = 60278
++trail_beginner_casket_staff_of_water = 60279
++trail_beginner_casket_staff_of_earth = 60280
++trail_beginner_casket_staff_of_fire = 60281
++trail_beginner_casket_steel_full_helm = 60282
++trail_beginner_casket_steel_platebody = 60283
++trail_beginner_casket_steel_platelegs = 60284
++trail_beginner_casket_steel_plateskirt = 60285
++trail_beginner_casket_steel_longsword = 60286
++trail_beginner_casket_steel_dagger = 60287
++trail_beginner_casket_steel_axe = 60288
++trail_beginner_casket_steel_battleaxe = 60289
++trail_beginner_casket_leather_cowl = 60290
++trail_beginner_casket_leather_armour = 60291
++trail_beginner_casket_leather_chaps = 60292
++trail_beginner_casket_leather_vambraces = 60293
++trail_beginner_casket_hardleather_body = 60294
++trail_beginner_casket_bluewizhat = 60295
++trail_beginner_casket_wizards_robe = 60296
++trail_beginner_casket_blackwizhat = 60297
++trail_beginner_casket_black_robe = 60298
++trail_beginner_casket_airrune = 60299
++trail_beginner_casket_mindrune = 60300
++trail_beginner_casket_waterrune = 60301
++trail_beginner_casket_earthrune = 60302
++trail_beginner_casket_firerune = 60303
++trail_beginner_casket_bodyrune = 60304
++trail_beginner_casket_chaosrune = 60305
++trail_beginner_casket_naturerune = 60306
++trail_beginner_casket_lawrune = 60307
++trail_beginner_casket_bronze_arrow = 60308
++trail_beginner_casket_iron_arrow = 60309
++trail_beginner_casket_cabbage = 60310
++trail_beginner_casket_shrimp = 60311
++trail_beginner_casket_sardine = 60312
++trail_beginner_casket_herring = 60313
++
++[gamevals.varp]
++trail_beginner_step = 63840
++trail_beginner_steps_left = 63841
++trail_beginner_completed = 63842
+diff --git a/content/other/treasure-trails/pack/src/main/resources/pack/configs/treasure_trails_vars.toml b/content/other/treasure-trails/pack/src/main/resources/pack/configs/treasure_trails_vars.toml
+new file mode 100644
+index 000000000..fbc4a42ee
+--- /dev/null
++++ b/content/other/treasure-trails/pack/src/main/resources/pack/configs/treasure_trails_vars.toml
+@@ -0,0 +1,17 @@
++[[varp]]
++isServerOnly = true
++id = "varp.trail_beginner_step"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_beginner_steps_left"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.trail_beginner_completed"
++scope = "Perm"
++transmit = "Never"
+diff --git a/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScriptTest.kt b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScriptTest.kt
+new file mode 100644
+index 000000000..1f802f9af
+--- /dev/null
++++ b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScriptTest.kt
+@@ -0,0 +1,165 @@
++package org.rsmod.content.other.treasuretrails
++
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.util.UncheckedType
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertNotNull
++import org.junit.jupiter.api.Assertions.assertNull
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.api.testing.scope.GameTestScope
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Advance
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.CASKET
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.CASKET_REWARDS
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.CASKET_TOTAL_WEIGHT
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.CLUE
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.COMPLETED_VARP
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.REWARD_INV
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.SCROLL_BOX
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.STEPS
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.STEPS_LEFT_VARP
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.STEP_NAMES
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.currentStep
++import org.rsmod.content.other.treasuretrails.BeginnerClueScript.Companion.rollRewards
++import org.rsmod.game.cheat.Cheat
++import org.rsmod.game.inv.InvObj
++import org.rsmod.map.CoordGrid
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class BeginnerClueScriptTest {
++    private val draynorBankDig = CoordGrid(3092, 3226, 0)
++
++    @Test
++    fun `casket rolls follow the flattened wiki table`() {
++        assertEquals(CASKET_TOTAL_WEIGHT, CASKET_REWARDS.sumOf { it.weight })
++        assertEquals(74, CASKET_REWARDS.size)
++        val first = rollRewards(1) { 0 }.single()
++        assertEquals("obj.mole_slippers", first.obj.internalName)
++        val last = rollRewards(1) { it - 1 }.single()
++        assertEquals("obj.herring", last.obj.internalName)
++        assertEquals(9, last.count)
++        assertTrue(last.noted)
++        val twice = rollRewards(2) { 0 }.single()
++        assertEquals(2, twice.count)
++    }
++
++    @Test
++    fun `every step has its text, npc, emote or map`() {
++        assertEquals(21, STEPS.size)
++        for ((step, name) in STEPS.zip(STEP_NAMES)) {
++            when (step.type) {
++                BeginnerClueScript.TALK_STEP -> assertNotNull(step.npc, name)
++                BeginnerClueScript.EMOTE_STEP -> assertNotNull(step.emote?.asRSCM(RSCMType.SEQ), name)
++                BeginnerClueScript.MAP_STEP -> assertNotNull(step.map?.asRSCM(RSCMType.INTERFACE), name)
++            }
++            if (step.type != BeginnerClueScript.MAP_STEP) assertNotNull(step.text, name)
++        }
++        assertTrue(STEP_NAMES.contains("anagram_ranael"))
++    }
++
++    @Test
++    fun GameTestState.`a three step trail ends in one casket`() =
++        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
++            prepare()
++            script.giveClue(Cheat(player, "clue", listOf("map_draynor_bank", "3")))
++            assertEquals(1, player.inv.count(CLUE))
++            assertEquals("map_draynor_bank", stepName())
++            assertTrue(script.claims(player))
++            with(script) {
++                var result = Advance.NONE
++                player.withProtectedAccess { result = advanceTrail() }
++                assertEquals(Advance.NEXT_CLUE, result)
++                assertEquals(2, player.vars[STEPS_LEFT_VARP])
++                player.withProtectedAccess { result = advanceTrail() }
++                assertEquals(Advance.NEXT_CLUE, result)
++                player.withProtectedAccess { result = advanceTrail() }
++                assertEquals(Advance.CASKET, result)
++                assertEquals(0, player.inv.count(CLUE))
++                assertEquals(1, player.inv.count(CASKET))
++                assertNull(currentStep(player))
++                player.withProtectedAccess { result = advanceTrail() }
++                assertEquals(Advance.NONE, result)
++                assertEquals(1, player.inv.count(CASKET))
++            }
++        }
++
++    @Test
++    fun GameTestState.`steps need the clue and the right place or npc`() =
++        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
++            prepare()
++            script.giveClue(Cheat(player, "clue", listOf("map_draynor_bank")))
++            val away = CoordGrid(3095, 3226, 0)
++            allocZoneCollision(away)
++            player.teleport(away)
++            assertFalse(script.claims(player))
++            script.giveClue(Cheat(player, "clue", listOf("anagram_ranael")))
++            assertEquals("npc.ranael", script.talkStep(player)?.npc?.internalName)
++            player.clearInv()
++            assertNull(script.talkStep(player))
++            script.giveClue(Cheat(player, "clue", listOf("emote_flynn")))
++            script.emoted(player, "seq.emote_dance_spin".asRSCM(RSCMType.SEQ))
++            assertNull(script.uriOf(player))
++        }
++
++    @Test
++    fun GameTestState.`the casket needs space and pays out exactly the reward inv`() =
++        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
++            prepare()
++            for (slot in 0 until player.inv.size) {
++                player.inv[slot] = InvObj("obj.logs".asRSCM(RSCMType.OBJ), 1)
++            }
++            player.inv[0] = InvObj(CASKET.asRSCM(RSCMType.OBJ), 2)
++            with(script) {
++                player.withProtectedAccess { openCasket() }
++                assertEquals(2, player.inv.count(CASKET))
++                assertEquals(0, player.vars[COMPLETED_VARP])
++
++                player.inv[1] = null
++                player.inv[2] = null
++                player.inv[3] = null
++                val logs = player.inv.count("obj.logs")
++                player.withProtectedAccess { openCasket() }
++                assertEquals(1, player.inv.count(CASKET))
++                assertEquals(1, player.vars[COMPLETED_VARP])
++                assertEquals(logs, player.inv.count("obj.logs"))
++                val rewards = player.invMap.getOrPut(REWARD_INV).objs.filterNotNull()
++                assertTrue(rewards.isNotEmpty() && rewards.size <= 3)
++                val received = player.inv.objs.filterNotNull().filter {
++                    it.id != CASKET.asRSCM(RSCMType.OBJ) && it.id != "obj.logs".asRSCM(RSCMType.OBJ)
++                }
++                assertEquals(rewards.sumOf { it.count }, received.sumOf { it.count })
++            }
++        }
++
++    @Test
++    fun GameTestState.`a scroll box only opens without a clue`() =
++        runInjectedGameTest(BeginnerClueScript::class, null, BeginnerClueScript::class) { script ->
++            prepare()
++            player.inv[0] = InvObj(SCROLL_BOX.asRSCM(RSCMType.OBJ), 1)
++            player.inv[1] = InvObj(CLUE.asRSCM(RSCMType.OBJ), 1)
++            with(script) {
++                player.withProtectedAccess { openScrollBox() }
++                assertEquals(1, player.inv.count(SCROLL_BOX))
++                assertEquals(1, player.inv.count(CLUE))
++                player.inv[1] = null
++                player.withProtectedAccess { openScrollBox() }
++                assertEquals(0, player.inv.count(SCROLL_BOX))
++                assertEquals(1, player.inv.count(CLUE))
++            }
++        }
++
++    private fun GameTestScope.stepName(): String? =
++        currentStep(player)?.let { STEP_NAMES[STEPS.indexOf(it)] }
++
++    private fun GameTestScope.prepare() {
++        allocZoneCollision(draynorBankDig)
++        player.teleport(draynorBankDig)
++        player.clearInv()
++    }
++}
+diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt
+new file mode 100644
+index 000000000..0ce00ff7f
+--- /dev/null
++++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt
+@@ -0,0 +1,347 @@
++package org.rsmod.content.other.treasuretrails
++
++import dev.openrune.rscm.RSCM
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.ItemServerType
++import dev.openrune.types.NpcMode
++import jakarta.inject.Inject
++import jakarta.inject.Singleton
++import org.rsmod.api.invtx.invAdd
++import org.rsmod.api.invtx.invClear
++import org.rsmod.api.npc.owner.assignSpawnOwner
++import org.rsmod.api.player.events.interact.NpcOverrideEvents
++import org.rsmod.api.player.hook.SpadeDigHook
++import org.rsmod.api.player.interact.NpcOpOverrides
++import org.rsmod.api.player.output.mes
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.random.GameRandom
++import org.rsmod.api.repo.npc.NpcRepository
++import org.rsmod.api.repo.obj.ObjRepository
++import org.rsmod.api.script.onCommand
++import org.rsmod.api.script.onEvent
++import org.rsmod.api.script.onIfClose
++import org.rsmod.api.script.onOpHeld1
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.api.script.onPlayerLogout
++import org.rsmod.api.script.onProtectedEvent
++import org.rsmod.api.table.TrailBeginnerCasketRow
++import org.rsmod.api.table.TrailBeginnerStepsRow
++import org.rsmod.content.interfaces.emotes.PlayEmote
++import org.rsmod.game.MapClock
++import org.rsmod.game.cheat.Cheat
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.entity.Player
++import org.rsmod.game.interact.InteractionOp
++import org.rsmod.map.CoordGrid
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++import org.rsmod.routefinder.collision.CollisionFlagMap
++import org.rsmod.routefinder.flag.CollisionFlag
++
++/**
++ * Beginner Treasure Trails (OSRS Wiki: Clue scroll (beginner), Reward casket (beginner)). A clue
++ * is 1-3 steps (10/45/45%), each a row of `trail_beginner_steps`: talk to an npc, perform an emote
++ * at a spot (Uri then appears and hands over the next step), or dig at a map spot. Reading the
++ * scroll opens `trail_cluetext` (203) with the step's text, or the step's map interface (346-356):
++ * what RuneLite's Clue Scroll plugin reads. A finished trail leaves a reward casket, whose
++ * opening message and `trail_rewardinv` (141) contents are what the Loot Tracker records.
++ *
++ * Not done: hot-cold (Reldo), Charlie the Tramp, STASH units, "Check steps", scroll cases, the
++ * 10-hour unique restriction.
++ */
++@Singleton
++class BeginnerClueScript
++@Inject
++constructor(
++    private val overrides: NpcOpOverrides,
++    private val npcRepo: NpcRepository,
++    private val objRepo: ObjRepository,
++    private val collision: CollisionFlagMap,
++    private val mapClock: MapClock,
++    private val random: GameRandom,
++) : PluginScript(), SpadeDigHook {
++    private val uris = HashMap<Player, Npc>()
++
++    fun uriOf(player: Player): Npc? = uris[player]
++
++    override fun ScriptContext.startup() {
++        onOpHeld1(CLUE) { read() }
++        onOpHeld1(SCROLL_BOX) { openScrollBox() }
++        onOpHeld1(CASKET) { openCasket() }
++        onIfClose(REWARD_INTERFACE) { player.invClear(player.invMap.getOrPut(REWARD_INV)) }
++        for (npc in STEPS.mapNotNull { it.npc?.id }.toSet()) {
++            overrides.register(npc, InteractionOp.Op1) { player, _ -> talkStep(player)?.npc?.id == npc }
++            onProtectedEvent<NpcOverrideEvents.Op>(NpcOverrideEvents.key(npc, InteractionOp.Op1)) {
++                talkToStepNpc(it.npc)
++            }
++        }
++        onEvent<PlayEmote> { emoted(player, seq.id) }
++        onOpNpc1(URI) { talkToUri(it.npc) }
++        onPlayerLogout { uris.remove(player)?.let(::leave) }
++        onCommand("clue") {
++            desc = "Get a beginner clue scroll: ::clue [step, e.g. map_draynor_bank] [steps left]"
++            cheat(::giveClue)
++        }
++    }
++
++    private fun ProtectedAccess.read() {
++        val step = currentStep(player) ?: rollTrail(player)
++        val map = step.map
++        if (map != null) {
++            ifOpenMainModal(map)
++            return
++        }
++        ifOpenMainModal(CLUE_TEXT_INTERFACE)
++        ifSetText(CLUE_TEXT, step.text ?: "")
++    }
++
++    private suspend fun ProtectedAccess.talkToStepNpc(npc: Npc) {
++        if (talkStep(player)?.npc?.id != npc.visType.id) return
++        startDialogue(npc) {
++            chatNpc(neutral, "Well done.")
++            access.completeStep()
++        }
++    }
++
++    fun emoted(player: Player, seq: Int) {
++        val step = currentStep(player) ?: return
++        if (step.type != EMOTE_STEP || step.emote?.asRSCM(RSCMType.SEQ) != seq) return
++        if (CLUE !in player.inv || !step.covers(player.coords)) return
++        if (uris[player]?.isSlotAssigned == true) return
++        val uri = Npc(URI, besideTile(player.coords))
++        uri.mode = NpcMode.None
++        npcRepo.add(uri, URI_LIFETIME)
++        uri.assignSpawnOwner(player, mapClock.cycle)
++        uri.facePlayer(player)
++        uris[player] = uri
++    }
++
++    private suspend fun ProtectedAccess.talkToUri(uri: Npc) {
++        val step = currentStep(player)
++        val owned = uris[player] === uri
++        if (!owned || step?.type != EMOTE_STEP || !wearsItems(player, step)) {
++            startDialogue(uri) { chatNpc(neutral, "I do not believe we have any business, Comrade.") }
++            return
++        }
++        uris.remove(player)
++        startDialogue(uri) {
++            chatNpc(neutral, random.pick(URI_LINES))
++            chatPlayer(confused, "What?")
++            access.completeStep()
++        }
++        leave(uri)
++    }
++
++    override fun claims(player: Player): Boolean {
++        val step = currentStep(player) ?: return false
++        return step.type == MAP_STEP && CLUE in player.inv && step.covers(player.coords)
++    }
++
++    override suspend fun ProtectedAccess.dig() {
++        completeStep()
++    }
++
++    private suspend fun ProtectedAccess.completeStep() {
++        when (advanceTrail()) {
++            Advance.NEXT_CLUE -> objbox(CLUE, "You've found a new clue!")
++            Advance.CASKET -> objbox(CASKET, "You've obtained a casket!")
++            Advance.NONE -> Unit
++        }
++    }
++
++    fun ProtectedAccess.advanceTrail(): Advance {
++        if (CLUE !in inv) return Advance.NONE
++        val left = player.vars[STEPS_LEFT_VARP] - 1
++        if (left > 0) {
++            val next = random.pick(STEPS.filter { it.rowId != player.vars[STEP_VARP] })
++            VarPlayerIntMapSetter.set(player, STEP_VARP, next.rowId)
++            VarPlayerIntMapSetter.set(player, STEPS_LEFT_VARP, left)
++            return Advance.NEXT_CLUE
++        }
++        if (invDel(inv, CLUE).failure) return Advance.NONE
++        clearTrail(player)
++        invAdd(inv, CASKET)
++        return Advance.CASKET
++    }
++
++    enum class Advance {
++        NONE,
++        NEXT_CLUE,
++        CASKET,
++    }
++
++    fun ProtectedAccess.openScrollBox() {
++        if (playerContainsObj(CLUE)) {
++            mes("The clue box refuses to open - you already have a clue.")
++            return
++        }
++        if (invDel(inv, SCROLL_BOX).failure) return
++        invAdd(inv, CLUE)
++    }
++
++    fun ProtectedAccess.openCasket() {
++        val freed = if (inv.count(CASKET) == 1) 1 else 0
++        if (inv.freeSpace() + freed < MAX_ROLLS) {
++            mes("You need at least $MAX_ROLLS free inventory spaces to open the casket.")
++            return
++        }
++        if (invDel(inv, CASKET).failure) return
++        val completed = player.vars[COMPLETED_VARP] + 1
++        VarPlayerIntMapSetter.set(player, COMPLETED_VARP, completed)
++        val rewardInv = player.invMap.getOrPut(REWARD_INV)
++        invClear(rewardInv)
++        mes("Well done, you've completed the Treasure Trail!")
++        val plural = if (completed == 1) "" else "s"
++        mes("You have completed <col=ef1020>$completed</col> beginner Treasure Trail$plural.")
++        for (reward in rollRewards(random.of(1, MAX_ROLLS)) { random.of(it) }) {
++            val obj = reward.obj.internalName
++            invAdd(rewardInv, obj, reward.count, cert = reward.noted, strict = false)
++            if (invAdd(inv, obj, reward.count, cert = reward.noted).failure) {
++                invAddOrDrop(objRepo, obj, reward.count)
++            }
++        }
++        invTransmit(rewardInv)
++        ifOpenMainModal(REWARD_INTERFACE)
++    }
++
++    fun giveClue(cheat: Cheat) {
++        val player = cheat.player
++        val name = cheat.args.getOrNull(0)
++        val step =
++            if (name == null) {
++                random.pick(STEPS)
++            } else {
++                STEPS.firstOrNull { STEP_NAMES[STEPS.indexOf(it)] == name }
++            }
++        if (step == null) {
++            player.mes("Steps: ${STEP_NAMES.joinToString()}")
++            return
++        }
++        if (CLUE !in player.inv && player.invAdd(player.inv, CLUE).failure) {
++            player.mes("You need a free inventory space.")
++            return
++        }
++        val left = cheat.args.getOrNull(1)?.toIntOrNull()?.coerceIn(1, MAX_STEPS) ?: 1
++        VarPlayerIntMapSetter.set(player, STEP_VARP, step.rowId)
++        VarPlayerIntMapSetter.set(player, STEPS_LEFT_VARP, left)
++        player.mes("Beginner clue: ${STEP_NAMES[STEPS.indexOf(step)]}, $left step(s) left.")
++    }
++
++    private fun rollTrail(player: Player): TrailBeginnerStepsRow {
++        val roll = random.of(100)
++        val steps = if (roll < 10) 1 else if (roll < 55) 2 else 3
++        val step = random.pick(STEPS)
++        VarPlayerIntMapSetter.set(player, STEP_VARP, step.rowId)
++        VarPlayerIntMapSetter.set(player, STEPS_LEFT_VARP, steps)
++        return step
++    }
++
++    private fun clearTrail(player: Player) {
++        VarPlayerIntMapSetter.set(player, STEP_VARP, 0)
++        VarPlayerIntMapSetter.set(player, STEPS_LEFT_VARP, 0)
++    }
++
++    fun talkStep(player: Player): TrailBeginnerStepsRow? =
++        currentStep(player)?.takeIf { it.type == TALK_STEP && CLUE in player.inv }
++
++    private fun wearsItems(player: Player, step: TrailBeginnerStepsRow): Boolean =
++        listOfNotNull(step.item1, step.item2).all { it.internalName in player.worn }
++
++    private fun leave(npc: Npc) {
++        if (npc.isSlotAssigned) npcRepo.del(npc, Int.MAX_VALUE)
++    }
++
++    private fun besideTile(centre: CoordGrid): CoordGrid {
++        for ((x, z) in ADJACENT_OFFSETS) {
++            val candidate = centre.translate(x, z)
++            if (collision[candidate.x, candidate.z, candidate.level] and BLOCKED_FLAGS == 0) {
++                return candidate
++            }
++        }
++        return centre
++    }
++
++    data class Reward(val obj: ItemServerType, val count: Int, val noted: Boolean)
++
++    companion object {
++        const val CLUE = "obj.trail_clue_beginner"
++        const val SCROLL_BOX = "obj.league_clue_box_beginner"
++        const val CASKET = "obj.trail_reward_casket_beginner"
++        const val URI = "npc.trail_beginner_uri"
++        const val CLUE_TEXT_INTERFACE = "interface.trail_cluetext"
++        const val CLUE_TEXT = "component.trail_cluetext:text"
++        const val REWARD_INTERFACE = "interface.trail_rewardscreen"
++        const val REWARD_INV = "inv.trail_rewardinv"
++        const val STEP_VARP = "varp.trail_beginner_step"
++        const val STEPS_LEFT_VARP = "varp.trail_beginner_steps_left"
++        const val COMPLETED_VARP = "varp.trail_beginner_completed"
++        const val TALK_STEP = 0
++        const val EMOTE_STEP = 1
++        const val MAP_STEP = 2
++        const val MAX_STEPS = 3
++        const val MAX_ROLLS = 3
++        const val URI_LIFETIME = 100
++        const val CASKET_TOTAL_WEIGHT = 44280
++        const val BLOCKED_FLAGS = CollisionFlag.BLOCK_WALK or CollisionFlag.BLOCK_PLAYERS
++        val ADJACENT_OFFSETS =
++            listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1, -1 to -1, 1 to -1, -1 to 1, 1 to 1)
++
++        val STEPS: List<TrailBeginnerStepsRow> by lazy { TrailBeginnerStepsRow.all() }
++        val STEP_NAMES: List<String> by lazy {
++            STEPS.map {
++                RSCM.getReverseMapping(RSCMType.DBROW, it.rowId).removePrefix("dbrow.trail_beginner_")
++            }
++        }
++        val CASKET_REWARDS: List<TrailBeginnerCasketRow> by lazy { TrailBeginnerCasketRow.all() }
++
++        val URI_LINES =
++            listOf(
++                "A great captain is always ready to change course.",
++                "Actions have consequences.",
++                "Can I have your teabag?",
++                "I am the egg man, are you one of the egg men?",
++                "I believe that it is very rainy in Varrock.",
++                "I quite fancy an onion.",
++                "My magic carpet is full of eels.",
++                "Once, I was a poor man, but then I found a party hat.",
++                "The slowest of fishermen catch the swiftest of fish.",
++                "What's cheese?",
++                "Would you like to buy a pewter spoon?",
++            )
++
++        fun currentStep(player: Player): TrailBeginnerStepsRow? {
++            val row = player.vars[STEP_VARP]
++            return STEPS.firstOrNull { it.rowId == row }
++        }
++
++        fun TrailBeginnerStepsRow.covers(coords: CoordGrid): Boolean =
++            coords.level == coord.level && coords.chebyshevDistance(coord) <= radius
++
++        /** [rolls] picks from the casket table; [nextInt] returns 0 until its bound (exclusive). */
++        fun rollRewards(rolls: Int, nextInt: (Int) -> Int): List<Reward> {
++            val rewards = mutableListOf<Reward>()
++            repeat(rolls) {
++                val row = pickReward(nextInt(CASKET_TOTAL_WEIGHT))
++                val count = if (row.max > row.min) row.min + nextInt(row.max - row.min + 1) else row.min
++                val same = rewards.indexOfFirst { it.obj.id == row.obj.id }
++                if (same >= 0) {
++                    rewards[same] = rewards[same].copy(count = rewards[same].count + count)
++                } else {
++                    rewards += Reward(row.obj, count, row.noted)
++                }
++            }
++            return rewards
++        }
++
++        private fun pickReward(roll: Int): TrailBeginnerCasketRow {
++            var left = roll
++            for (row in CASKET_REWARDS) {
++                if (left < row.weight) return row
++                left -= row.weight
++            }
++            error("Casket roll $roll is past the table's total weight")
++        }
++    }
++}
+diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailsModule.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailsModule.kt
+new file mode 100644
+index 000000000..5a1e9c8b4
+--- /dev/null
++++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailsModule.kt
+@@ -0,0 +1,11 @@
++package org.rsmod.content.other.treasuretrails
++
++import org.rsmod.api.player.hook.SpadeDigHook
++import org.rsmod.plugin.module.PluginModule
++
++class TreasureTrailsModule : PluginModule() {
++    override fun bind() {
++        bindInstance<BeginnerClueScript>()
++        addSetBinding<SpadeDigHook>(BeginnerClueScript::class.java)
 +    }
 +}
 diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml

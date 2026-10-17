@@ -21,6 +21,40 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-17, ninth server dev, on OpenRune)
+
+Protocol unchanged. This session: Treasure Trails rebuilt on the cache's own clue data, beginner
+finished, easy added, music tab Play. Details in `docs/openrune-port.md`, "Ninth server dev".
+
+- **Engine** (`content/other/treasure-trails`): `TrailTier` (beginner, easy), `TrailSteps` builds
+  every step from Jagex's `cluehelper_*` dbtables (texts, npc/loc/coord targets, emotes, outfits,
+  STASH locs): Talk, Charlie, HotCold (Reldo), Search (new `LocOpOverrides` API), Dig (maps,
+  coordinate cryptics), Emote (+Uri per tier), Music (Cecilia). Easy scrolls are one item per step
+  (item param 623) and are swapped in their slot. `StashUnitScript` (units from the emote rows).
+  Caskets per tier from wiki tables (beginner 44,280; easy 617,760). Check steps. `::clue
+  [beginner|easy] [row|list] [steps left]`. Tests: `:content:other:treasure-trails:integration`
+  (12). Upstream: `21-treasure-trails` (+ `22-music-tab-play`, which 21 needs).
+- **Device-checked** (58ec4ba, eda3a16): beginner Uri, Charlie, hot-cold (plugin solver narrows to
+  the spot), STASH; easy Talk (scroll swap), Search, coordinate Dig, Emote + easy Uri, easy STASH,
+  easy casket and the Loot Tracker entry ("Clue Scroll (Easy)"; the host's event-order fix works).
+- **Music tab** (`api/music-plugin` `MusicTabScript`): Play/Unlock hint on the jukebox list; child
+  index = non-hidden music rows in row order (from osrs-dumps `music_list_setup`). Not yet
+  device-checked (5684e9e).
+- **Left out:** 4 easy map interfaces (Galahad, N of Falador, behind Lumbridge castle, Draynor
+  wheat field: map interfaces are model icons, see the port doc), 27 easy loc searches on locs
+  without a "Search" op (closed drawers), scroll cases, the master clue tertiary, medium+ tiers.
+- **Other:** new characters start at 3222,3218 (`CharacterAccountApplier`); the game channel closes
+  after 15 s without inbound packets (RSProt `IdleStateHandlerSuppliers.Game`): headless clients
+  must send NO_TIMEOUT (desktop opcode 75). DB queries: a throwaway `eclipse-temurin:21` jshell with
+  `--network container:osrs-openrune` and the install's postgresql jar (port from `ps` in the
+  container). The "desktop" account's saved row was 3200,3020.
+- **Device tips:** emotes tab = the green dancing figure (1840,600; smiley is Friends); scroll the
+  emote list with short swipes; equipment slots: head 1490,540, weapon 1370,707, feet 1490,880,
+  ring 1610,880; `::item` takes gameval names (`black_axe`, `woodplank`, `poh_saw`).
+- **Next ideas:** medium clues on the same engine (anagrams/ciphers/coordinates/keys/kills/challenge
+  scrolls exist in the tables; coordinate clues need a sextant flow or just digs), the remaining map
+  interfaces (plot `trail_mapNN` components against wiki images), drawers (open then search).
+
 ## Latest state (2026-10-17, eighth server dev, on OpenRune)
 
 Protocol unchanged. This session: beginner clue scrolls for RuneLite's Clue Scroll plugin. Details

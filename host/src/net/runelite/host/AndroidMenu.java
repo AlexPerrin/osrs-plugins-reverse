@@ -36,6 +36,38 @@ final class AndroidMenu implements Menu {
 
     void endSession() { session = null; }
 
+    /** Desktop bank item layers whose items have an "Examine" entry (bank 12:12, group storage 724:10). */
+    private static final int[] EXAMINE_LAYERS = {12 << 16 | 12, 724 << 16 | 10};
+
+    /**
+     * The mobile bank's item menus have no "Examine" (Withdraw-*, Placeholder, Cancel), which desktop
+     * always has and plugins hook (Bank Tags adds "Edit-tags" on it). For such a menu a desktop-like
+     * Examine entry is posted as MenuEntryAdded only (not shown); entries plugins create from it go
+     * to the plugin strip like any created entry. // unverified: on the device.
+     */
+    private static void postMissingExamine(net.runelite.client.eventbus.EventBus bus, MenuEntry[] entries) {
+        AndroidMenuEntry item = null;
+        for (MenuEntry m : entries) {
+            if (!(m instanceof AndroidMenuEntry) || ((AndroidMenuEntry) m).synthetic) continue;
+            for (int layer : EXAMINE_LAYERS) {
+                if (m.getParam1() != layer) continue;
+                if ("Examine".equals(m.getOption())) return;
+                if (item == null && m.getItemId() >= 0) item = (AndroidMenuEntry) m;
+            }
+        }
+        if (item == null) return;
+        AndroidMenuEntry ex = new AndroidMenuEntry();
+        ex.synthetic = true;
+        ex.setOption("Examine");
+        ex.setTarget(item.getTarget());
+        ex.setType(net.runelite.api.MenuAction.CC_OP_LOW_PRIORITY);
+        ex.setIdentifier(10);
+        ex.setParam0(item.getParam0());
+        ex.setParam1(item.getParam1());
+        ex.setItemId(item.getItemId());
+        bus.post(new net.runelite.api.events.MenuEntryAdded(ex));
+    }
+
     /** While a just-opened menu is sorted as on desktop's last frame before it opened. */
     static boolean presorting;
 
@@ -50,6 +82,7 @@ final class AndroidMenu implements Menu {
         boolean reordered = false;
         try {
             for (MenuEntry m : entries) bus.post(new net.runelite.api.events.MenuEntryAdded(m));
+            postMissingExamine(bus, entries);
             presorting = true;
             try {
                 bus.post(new net.runelite.api.events.PostMenuSort());

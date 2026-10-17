@@ -15,7 +15,7 @@ account: the server is also the local sign-in provider.
 ## Status
 
 <!-- progress:start -->
-![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-94.9%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-92.1%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-57.6%25-blue) ![Plugins running on Android](https://img.shields.io/badge/Plugins%20running%20on%20Android-96.2%25-blue) ![Plugin Hub plugins running](https://img.shields.io/badge/Plugin%20Hub%20plugins%20running-42.9%25-blue)
+![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-94.9%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-92.1%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-57.6%25-blue) ![Plugins running on Android](https://img.shields.io/badge/Plugins%20running%20on%20Android-100.0%25-blue) ![Plugin Hub plugins running](https://img.shields.io/badge/Plugin%20Hub%20plugins%20running-40.0%25-blue)
 
 [![Progress map](docs/progress.svg)](docs/progress.md)
 
@@ -27,12 +27,12 @@ account: the server is also the local sign-in provider.
 - **Client→server mapped**: 93/102 (91.2%)
 - **Zone sub-prots implemented**: 15/15 (100.0%)
 - **RuneLite API implemented**: 499/866 (57.6%)
-- **Plugins running on Android**: 50/52 (96.2%)
-- **Plugin Hub plugins running**: 9/21 (42.9%)
+- **Plugins running on Android**: 53/53 (100.0%)
+- **Plugin Hub plugins running**: 10/25 (40.0%)
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-16, `e7236cb+`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-17, `29ef30a+`).
 <!-- progress:end -->
 
 Milestones:
@@ -69,6 +69,8 @@ Milestones:
 - [x] **Agent-drivable Android client:** OpenRune-Developer-Tools (MCP) runs inside the plugin host, so
   agents talk to NPCs, walk dialogue, click, walk and screenshot over an adb tunnel (`osrs-devtools`
   in `.mcp.json`; device-loopback only, token, off by default), 2026-10-16
+- [x] **All 53 core RuneLite plugins tracked run on Android** (the last were Emojis, Player Indicators and
+  Clue Scroll; Loot Tracker records clue caskets via packet-ordered events), 2026-10-17
 - [ ] More plugins (GPU/region-dependent ones excluded): Status Bars, Chat History, InfoBox-based plugins
 
 ## Layout

@@ -10,7 +10,8 @@ Metrics (all counted from source, nothing hand-maintained):
 - RuneLite API: abstract methods of each interface the host backs that the Android* class
   implements (tools/progress/ApiCoverage.java; needs host/build.sh output in re/host/classes).
 
-Usage: tools/progress.py [--no-history] [--working]
+Usage: tools/progress.py [--no-history] [--working] [--dry-run]
+  --dry-run prints the numbers and per-interface API gaps without writing any file (for agents).
   Protocol numbers come from server/rsprot.patch as committed in HEAD; --working reads the
   server/rsprot working copy instead (uncommitted work, never for published numbers).
 """
@@ -307,6 +308,13 @@ def main():
     md += ["## RuneLite API by interface", "", "| Interface | Implemented | Total | % |", "|---|---:|---:|---:|"]
     for iface, a, b in sorted(rows, key=lambda r: -pct(r[1], r[2])):
         md.append(f"| `{iface}` | {a} | {b} | {pct(a, b):.0f}% |")
+    if "--dry-run" in sys.argv:
+        for name, a, b, _ in head:
+            print(f"{name:28} {a:4}/{b:<4} {pct(a, b):5.1f}%")
+        for iface, a, b in sorted(rows, key=lambda r: r[1] - r[2]):
+            if a < b:
+                print(f"  {iface:28} {a:4}/{b:<4} missing {b - a}")
+        return
     md += ["", "## Unmapped opcodes", "",
            f"- Client→server ({len(p['c2s_unknown'])}): " + ", ".join(map(str, p["c2s_unknown"])),
            f"- Server→client ({len(p['s2c_unknown'])}): " + ", ".join(map(str, p["s2c_unknown"])),

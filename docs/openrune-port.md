@@ -547,8 +547,9 @@ was verified.
   tried on the device.
 - **Loot Tracker recorded nothing.** The host dispatches queued native events and reads
   containers live, so on the ChatMessage the plugin's snapshot of inv 141 already held the
-  rewards (diff empty). Fix (after the device run, not yet deployed): items are paid out at
-  once, and `trail_rewardinv` is filled one tick after the message (`openCasketAndShow`).
+  rewards (diff empty). Decision (orchestrator): the server keeps the game's order (message,
+  then the inv in the same tick); the fix belongs in the plugin host (client dev). A one-tick
+  delay was tried in 89cf619 and reverted.
 - **Client gap (for the client dev):** ClueScrollPlugin.onMenuOptionClicked NPEs on "Read":
   `itemManager.getItemComposition(event.getItemId())` returns null for the inventory CC_OP entry
   (p1=9764864, id=2), so `clueItemId` is never set. The widget path still works, but the plugin

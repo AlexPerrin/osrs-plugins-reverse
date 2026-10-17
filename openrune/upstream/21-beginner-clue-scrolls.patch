@@ -1,6 +1,6 @@
-From aff89ee4285636eebf94670d1e9dadbc0993ae8c Mon Sep 17 00:00:00 2001
+From 4410972dc95dfbbbfd0c631018ca0d350079e021 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
-Date: Sat, 17 Oct 2026 00:11:15 -0400
+Date: Sat, 17 Oct 2026 00:12:51 -0400
 Subject: [PATCH] Beginner clue scrolls
 
 Beginner Treasure Trails: Read opens trail_cluetext (or the beginner map
@@ -22,12 +22,12 @@ have dialogue (Cook, Hans, Doric, ...).
  .../pack/BeginnerCasketTable.kt               | 140 +++++++
  .../pack/BeginnerClueStepsTable.kt            | 177 +++++++++
  .../pack/TreasureTrailsPluginPack.kt          |   9 +
- .../pack/src/main/resources/gamevals.toml     | 105 +++++
+ .../pack/src/main/resources/gamevals.toml     | 105 ++++++
  .../pack/configs/treasure_trails_vars.toml    |  17 +
- .../treasuretrails/BeginnerClueScriptTest.kt  | 168 ++++++++
- .../treasuretrails/BeginnerClueScript.kt      | 362 ++++++++++++++++++
+ .../treasuretrails/BeginnerClueScriptTest.kt  | 168 +++++++++
+ .../treasuretrails/BeginnerClueScript.kt      | 356 ++++++++++++++++++
  .../treasuretrails/TreasureTrailsModule.kt    |  11 +
- 13 files changed, 1066 insertions(+), 1 deletion(-)
+ 13 files changed, 1060 insertions(+), 1 deletion(-)
  create mode 100644 api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcOpOverrides.kt
  create mode 100644 content/other/treasure-trails/build.gradle.kts
  create mode 100644 content/other/treasure-trails/pack/build.gradle.kts
@@ -833,10 +833,10 @@ index 000000000..e522f96e9
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt
 new file mode 100644
-index 000000000..26df57405
+index 000000000..d86c545c0
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt
-@@ -0,0 +1,362 @@
+@@ -0,0 +1,356 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.rscm.RSCM
@@ -1020,9 +1020,8 @@ index 000000000..26df57405
 +        invAdd(inv, CLUE)
 +    }
 +
-+    private suspend fun ProtectedAccess.openCasketAndShow() {
++    private fun ProtectedAccess.openCasketAndShow() {
 +        val rewards = openCasket() ?: return
-+        delay(1)
 +        val rewardInv = player.invMap.getOrPut(REWARD_INV)
 +        invClear(rewardInv)
 +        for (reward in rewards) {
@@ -1032,11 +1031,6 @@ index 000000000..26df57405
 +        ifOpenMainModal(REWARD_INTERFACE)
 +    }
 +
-+    /**
-+     * Pays the casket out at once; the caller shows the rewards in `trail_rewardinv` a tick after
-+     * the completion message, so the Loot Tracker's snapshot of that inv (taken on the message)
-+     * is still the empty one.
-+     */
 +    fun ProtectedAccess.openCasket(): List<Reward>? {
 +        val freed = if (inv.count(CASKET) == 1) 1 else 0
 +        if (inv.freeSpace() + freed < MAX_ROLLS) {

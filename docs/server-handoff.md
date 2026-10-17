@@ -32,9 +32,10 @@ in `docs/openrune-port.md`, "Eighth server dev".
   `NpcOpOverrides` (a claimed npc op goes to the clue handler ahead of the npc's own Talk-to).
   Tests: `:content:other:treasure-trails:integration` (6). Upstream: `openrune/upstream/21`.
 - **Deployed** 00:02 (35d27b9) and device-checked: 203 and map 348 on mobile, plugin overlay and
-  NPC marker, Ranael step, dig, casket, reward screen. **Not deployed yet:** 89cf619 (reward inv
-  filled a tick after the completion message so the Loot Tracker records the loot; it recorded
-  nothing with 35d27b9). Re-check the Loot Tracker after deploying it.
+  NPC marker, Ranael step, dig, casket, reward screen. The Loot Tracker recorded nothing: the plugin
+  host reads inv 141 live when it dispatches the ChatMessage late, so the snapshot already holds
+  the rewards. That is fixed in the host (client dev), not the server (a one-tick delay was
+  reverted). Re-check the Loot Tracker once the host fix lands.
 - **Open:** client gap: ClueScrollPlugin's Read handler NPEs (item composition null for the
   inventory CC_OP), so it never learns the clue item id; emote/Uri step not tried on the device;
   Check steps, hot-cold (Reldo), Charlie the Tramp, STASH units, scroll cases not done.

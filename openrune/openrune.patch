@@ -3585,10 +3585,10 @@ index 000000000..e522f96e9
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt
 new file mode 100644
-index 000000000..26df57405
+index 000000000..d86c545c0
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/BeginnerClueScript.kt
-@@ -0,0 +1,362 @@
+@@ -0,0 +1,356 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.rscm.RSCM
@@ -3772,9 +3772,8 @@ index 000000000..26df57405
 +        invAdd(inv, CLUE)
 +    }
 +
-+    private suspend fun ProtectedAccess.openCasketAndShow() {
++    private fun ProtectedAccess.openCasketAndShow() {
 +        val rewards = openCasket() ?: return
-+        delay(1)
 +        val rewardInv = player.invMap.getOrPut(REWARD_INV)
 +        invClear(rewardInv)
 +        for (reward in rewards) {
@@ -3784,11 +3783,6 @@ index 000000000..26df57405
 +        ifOpenMainModal(REWARD_INTERFACE)
 +    }
 +
-+    /**
-+     * Pays the casket out at once; the caller shows the rewards in `trail_rewardinv` a tick after
-+     * the completion message, so the Loot Tracker's snapshot of that inv (taken on the message)
-+     * is still the empty one.
-+     */
 +    fun ProtectedAccess.openCasket(): List<Reward>? {
 +        val freed = if (inv.count(CASKET) == 1) 1 else 0
 +        if (inv.freeSpace() + freed < MAX_ROLLS) {

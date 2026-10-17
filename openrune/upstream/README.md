@@ -45,6 +45,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 29 | `29-rune-pouch` | `content/skills/magic/rune-pouch` (new module) | Rune pouches had no Open/Empty/store: the pouch interface (190) with Store/Withdraw quantities, drag reorder and Examine, Empty, rune-on-pouch, on the client-visible `rune_pouch_type_n`/`_quantity_n` varbits spells already read; integration tests | No loadouts (Configure); full/non-rune messages are best guesses |
 | 30 | `30-plank-sack` | `content/other/plank-sack` (new module) | Plank sack Fill/Check/Empty on the `plank_sack_*` varbits, and a storage hook so content can use planks from the sack; integration tests | Fill/full/no-space messages are best guesses; the sawmill does not fill the sack |
 | 31 | `31-friend-add-update` | `api/net/.../central/CentralSocialClientPackets.kt`, `api/net/.../handlers/FriendListAddHandler.kt` | After FRIENDLIST_ADD, OSRS sends the new friend's UPDATE_FRIENDLIST entry; Central pushed one only for online friends, so an offline friend appeared only after relogging | One extra social snapshot round trip per add |
+| 32 | `32-treasure-trails-hard` | `content/other/treasure-trails` (TrailTier, TrailSteps, TreasureTrailScript, pack: `HardCasketTable.kt` new, maps, gamevals, vars, test) | Hard Treasure Trails on the cache's clue rows: challenge talks, cryptics, coordinates, the 7 hard maps, emotes + Uri, music, hard STASH, the hard casket | Needs 21-28; dbtable 60009 (rows 61200-61433), map rows 61440-61446, varps 63880-63885; no puzzle boxes, wizards or Double agent yet |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -134,3 +135,6 @@ needs `libs.rsprot.api`).
 
 Patch 31 (friend add) was added 2026-10-17: `git apply --check` on the pin passes and all 31 apply
 with `git am`. Compiled, `:api:net:test` and spotless pass in our tree; not yet tried on a client.
+
+Patch 32 (hard clues, core tier) was added 2026-10-17: `git am` of 21-28 then 32 on the pin, and of
+all 32, applies. Compiled, tested (`TreasureTrailScriptTest`, 18) and spotless-checked in our tree.

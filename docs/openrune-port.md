@@ -797,3 +797,29 @@ was verified.
   offline friend showed nothing until relog. After a successful add, the handler now reads the
   social snapshot and sends that friend's entry (added = true; world name "OpenRune" from the
   snapshot path). Not tried on a client yet. Upstream `31-friend-add-update`.
+- **Hard clues, stage 1: core tier and casket** (`TrailTier.Hard`): 4-6 steps and 4-6 casket rolls
+  (wiki); scroll objs are the 187 "Clue scroll (hard)" objs by param 623; Uri `npc.trail_hard_uri`;
+  STASH Construction 55, teak planks, 400 XP (wiki STASH page); server varps 63880-63885. Steps on
+  the cache data (`::clue hard list`): 41 talks (20 with challenge scrolls: 12 anagrams, the rest
+  ciphers), 76 digs (54 coordinates, 18 cryptic digs, 4 map digs), 19 searches (incl. 3 map
+  crates), 17 emotes, 10 music.
+  - Left out for now: the 5 anagrams with a puzzle box (challenge in `cluehelper_challenge_box`
+    830), the anagram whose target is a loc ("WOO AN EGG KIWI", Awowogei's loc 4771), one
+    coordinate row whose short text does not parse. The wizards on 54 of the coordinates and the
+    Double agent on emote steps come in stage 3; until then the dig gives the next clue at once and
+    Uri appears at once.
+  - **Hard maps** (rendered from the if3 dumps with a scratch Java composite renderer over the
+    cache's `ModelDecoder`: each `type=model` component drawn at its x/y with its modelangle and
+    zoom, then compared with the OSRS Wiki's `Treasure Trails/Guide/Maps/Hard` images): row 2247
+    Lumberyard crate = `trail_map05`, 2248 Yanille anvil = `trail_map08`, 2249 West Ardougne =
+    `trail_map12`, 2250 Observatory crate = `trail_map13`, 2251 Dark Warriors' Fortress crate =
+    `trail_map14`, 2252 volcanoes = `trail_clue_hard_map006`, 2253 picnic tables =
+    `trail_clue_hard_map007`. The single-model maps 20-24 match none of the current hard maps
+    (elite, presumably); `trail_map19` is unused too.
+  - **Hard casket** (`HardCasketTable`, dbtable 60009, 234 rows): the wiki's per-roll rarities
+    (the `{{#expr:}}` products) over their common denominator 6,971,250; they sum to 48,751/48,750,
+    so the weights total 6,971,393. The super attack/strength/defence set (one wiki "dual drop") is
+    three separate rows (guess). Names resolve to the lowest non-noted, non-placeholder obj of that
+    name, skipping `fake_`/`br_`/`poh_`/`magictraining_`... variants; "Zombie head (Treasure
+    Trails)" = `obj.zombie_head`. Not rolled: the 1/15 master clue.
+  - Upstream `32-treasure-trails-hard`.

@@ -25,7 +25,7 @@ this repo's `rsprot.patch`) all run there.
 
 Details in `docs/openrune-port.md`, "Thirteenth server dev". Protocol unchanged.
 
-- **Deployed** 12:14 UTC: everything up to 14127aa (424fc37 Varrock platebody smelting, 11ac6d7
+- **Deployed** 12:14 UTC: everything up to 14127aa (640abbd, Rumours part 1, is not deployed) (424fc37 Varrock platebody smelting, 11ac6d7
   social resend off by default, e8cc07c + 14127aa Herbiboar). Tester LOGGED_IN at Lumbridge on the
   normal build with the kitten; wears Varrock armour 1; Hunter and Herblore 14M XP; carries 3 copper
   ore, a bronze bar, a chinchompa and an unidentified fossil.
@@ -50,13 +50,23 @@ Details in `docs/openrune-port.md`, "Thirteenth server dev". Protocol unchanged.
   on the pin (the scratch clone with 01-39 applied makes the next patch easy: copy files, commit,
   `format-patch -1`).
 - **`server/tools/device.sh login`** now checks the OpenRune log (`GAME_CONTAINER` overrides).
-- **Next (sized, sent to the orchestrator):**
-  1. Hunter Rumours (~1.5-2 d, +0.5 d for opening loot sacks): plugin reads npc DIALOG chat
-     messages in the Burrow (1549-1565, 9449-9464), the rare-part and whistle game messages and
-     Hunter XP drops. Npcs already spawned (`hunter_guild.toml`). Wiki transcripts have the lines.
-     Only wagtail, grey/red chinchompa and herbiboar are catchable here; assign only those. Risk:
-     the host may not emit DIALOG ChatMessages (ask the client dev).
-  2. FRIENDLIST_DEL on Android (low priority, see the twelfth dev's notes).
+- **Hunters' Rumours part 1** (640abbd, built and boot-checked, **not deployed**): state in server
+  varps, assignment (catchable creatures only: wagtail, grey/carnivorous chinchompa, herbiboar),
+  rare-part drops with the wiki rates and pity on trap Check / herbiboar harvest, turn-in XP + loot
+  sack (`HunterRumours.turnIn`), quetzal whistle Rumour op, `::rumour [hunter] [creature]` /
+  `::rumour turnin [hunter]` / `::rumour`. Integration tests in `HunterRumoursTest`. Upstream 40.
+- **Next:**
+  1. Deploy 640abbd ("OK restart") and device-check with `EXTRA="hunter hub-hunter-rumours"`:
+     `::rumour cervus grey_chinchompa`, whistle Rumour op (needs a whistle: `::item
+     hg_quetzalwhistle_basic`), box-trap chinchompas until "You find a rare piece...", the plugin's
+     infobox/catch count, `::rumour turnin`.
+  2. Guild hunter dialogues (Gilman, Cervus, Ornus, Aco, Teco, Wolf, Verity) from the wiki
+     transcripts (`Transcript:Huntmaster_Gilman_(Novice)` etc.), calling `assign`/`turnIn`. Blocked
+     until the client dev confirms the Android host emits DIALOG ChatMessages (the plugin parses
+     "<Hunter name>|..." lines inside the Burrow 1549-1565, 9449-9464).
+  3. Cheap wins to offer the orchestrator first: a butterfly net (catch butterflies/moths with a
+     net, ~0.5 d) would unlock 5 more rumours; deadfall/net traps more.
+  4. FRIENDLIST_DEL on Android (low priority, see the twelfth dev's notes).
 
 ## Latest state (2026-10-17, twelfth server dev, on OpenRune)
 

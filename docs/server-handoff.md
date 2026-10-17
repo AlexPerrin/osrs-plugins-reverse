@@ -45,7 +45,7 @@ Details in `docs/openrune-port.md`, "Twelfth server dev".
 - **Giant Mole kill count** (KPH Tracker): `::tele 1759 5189` (mole lair, its spawn) or
   `::npc 500 mole_giant`; `::maxhit` speeds the kill; message "Your Giant Mole kill count is: N".
   Not device-checked. Scurrius already had a KC.
-- **Kittens** (Kitten Tracker): `::item kittenobject` and Drop it (or ask Gertrude, 3151,3411, after
+- **Kittens** (Kitten Tracker): `::item kittenobject` and Drop it (or ask Gertrude, 3151,3410, after
   Gertrude's Cat); growth event every 90 s says "Meow!", growth paused in modals, "Your kitten got
   lonely and ran off.". Not device-checked.
 - **Upstream:** 35 hunter traps, 36 Giant Mole KC, 37 kitten growth; all 37 `git am` on the pin.

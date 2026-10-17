@@ -1,0 +1,890 @@
+From ceb67b9cc076855a4f4d825f4d4a9f65270c2ce1 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 08:12:02 -0400
+Subject: [PATCH] Hunter: herbiboar tracking on Fossil Island
+
+Herbiboar tracking in the Mushroom Forest, driven by the client's own trail
+varbits (the footprint multilocs on the map) so RuneLite's Herbiboar plugin
+works: start locs, clue loc inspects (wiki messages, 50 XP and fossil
+rolls), the tunnel (Hunter XP by level, the stunned herbiboar via
+fossil_herbiboar_visible) and the harvest (herbs by Herblore level from the
+wiki chart, magic secateurs, Herblore XP, harvest count).
+
+The network (dbtables herbiboar_legs/spots/tunnels) is read from the map's
+footprints and the plugin's per-loc trail lists. Route length, which legs
+end a route and most non-wiki messages are best guesses.
+---
+ content/skills/hunter/pack/build.gradle.kts   |   4 +
+ .../skills/hunter/pack/HerbiboarTables.kt     | 239 +++++++++++++++
+ .../skills/hunter/pack/HunterPluginPack.kt    |   4 +
+ .../pack/src/main/resources/gamevals.toml     |   2 +
+ .../pack/configs/herbiboar_vars.toml          |  11 +
+ .../skills/hunter/HerbiboarScriptTest.kt      | 151 +++++++++
+ .../content/skills/hunter/HerbiboarScript.kt  | 287 ++++++++++++++++++
+ .../hunter/src/main/resources/gamevals.toml   |  91 ++++++
+ 8 files changed, 789 insertions(+)
+ create mode 100644 content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HerbiboarTables.kt
+ create mode 100644 content/skills/hunter/pack/src/main/resources/pack/configs/herbiboar_vars.toml
+ create mode 100644 content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HerbiboarScriptTest.kt
+ create mode 100644 content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HerbiboarScript.kt
+
+diff --git a/content/skills/hunter/pack/build.gradle.kts b/content/skills/hunter/pack/build.gradle.kts
+index 92f804a7e..10c8703c8 100644
+--- a/content/skills/hunter/pack/build.gradle.kts
++++ b/content/skills/hunter/pack/build.gradle.kts
+@@ -1,3 +1,7 @@
+ plugins {
+     id("base-conventions")
+ }
++
++dependencies {
++    implementation(projects.engine.map)
++}
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HerbiboarTables.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HerbiboarTables.kt
+new file mode 100644
+index 000000000..f4592185e
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HerbiboarTables.kt
+@@ -0,0 +1,239 @@
++package org.rsmod.content.skills.hunter.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++import dev.openrune.pack.columnCoord
++import org.rsmod.map.CoordGrid
++
++/**
++ * The herbiboar tracking network in Fossil Island's Mushroom Forest.
++ *
++ * Sources:
++ * - The map gives the 5 start locs, the 19 clue locs, the 9 tunnels and the footprint multilocs.
++ *   The footprints sit on 24 trail varbits (`hunting_trail_state9_*`, `_state10_*`,
++ *   `_state11_0..3`). Each varbit's value picks its footprint loc: 3 and 4 show the trail (one per
++ *   walking direction), 5 and 6 show it faded, 0-2 show nothing.
++ * - RuneLite's Herbiboar plugin (`HerbiboarSearchSpot`) lists the (trail, direction) pairs that
++ *   belong to each clue loc. The other end of each trail comes from its footprint tiles on the map.
++ *
++ * Reading of the plugin data (inferred, not confirmed): a pair listed under a clue loc is a leg
++ * that leaves that loc in that direction. Start legs are the directions the plugin does not list.
++ * A leg either reaches a [HerbiboarSpotsTable] group, where the next leg starts, or ends only at a
++ * tunnel ([END_TUNNEL], a `hunting_trail_ends_fossil` value). A leg into a group that has a
++ * tunnel can also be the last leg ([END_TUNNEL] set together with [TO_GROUP]).
++ */
++object HerbiboarLegsTable {
++    const val FROM_LOC = 0
++    const val TRAIL = 1
++    const val DIR = 2
++    const val TO_GROUP = 3
++    const val END_TUNNEL = 4
++
++    const val NO_GROUP = -1
++
++    private data class Leg(val from: String, val trail: String, val dir: Int, val to: Char?, val endTunnel: Int)
++
++    private val GROUP_TUNNELS = mapOf('C' to 5, 'D' to 4, 'F' to 9, 'J' to 6, 'K' to 2)
++
++    private fun leg(from: String, trail: String, dir: Int, to: Char) = Leg(from, trail, dir, to, GROUP_TUNNELS[to] ?: 0)
++
++    private fun last(from: String, trail: String, dir: Int, tunnel: Int) = Leg(from, trail, dir, null, tunnel)
++
++    private val LEGS =
++        listOf(
++            leg("a_mushroom", "9_5", 1, 'B'),
++            leg("a_mushroom", "9_6", 1, 'E'),
++            last("a_patch", "9_1", 2, 8),
++            leg("b_seaweed", "9_4", 2, 'C'),
++            leg("b_seaweed", "9_5", 2, 'A'),
++            last("b_seaweed", "10_1", 1, 5),
++            leg("b_seaweed", "10_2", 1, 'D'),
++            last("c_mushroom", "9_0", 2, 8),
++            leg("c_patch", "9_3", 1, 'D'),
++            leg("c_patch", "9_4", 1, 'B'),
++            leg("d_patch", "9_9", 1, 'H'),
++            leg("d_patch", "10_0", 1, 'G'),
++            leg("d_seaweed", "9_3", 2, 'C'),
++            leg("d_seaweed", "10_2", 2, 'B'),
++            leg("e_mushroom", "10_3", 1, 'F'),
++            leg("e_mushroom", "10_4", 1, 'I'),
++            leg("e_patch", "9_6", 2, 'A'),
++            leg("f_mushroom", "9_7", 1, 'I'),
++            leg("f_mushroom", "9_8", 1, 'G'),
++            leg("f_mushroom", "10_3", 2, 'E'),
++            last("f_patch", "9_2", 2, 8),
++            leg("g_mushroom", "10_0", 2, 'D'),
++            last("g_mushroom", "10_7", 1, 3),
++            leg("g_patch", "9_8", 2, 'F'),
++            leg("h_seaweed_east", "10_8", 1, 'J'),
++            last("h_seaweed_east", "10_9", 1, 7),
++            leg("h_seaweed_west", "9_9", 2, 'D'),
++            leg("h_seaweed_west", "11_0", 1, 'G'),
++            leg("i_mushroom", "10_5", 1, 'K'),
++            last("i_mushroom", "10_6", 1, 1),
++            leg("i_patch", "9_7", 2, 'F'),
++            leg("i_patch", "10_4", 2, 'E'),
++            leg("j_patch", "10_8", 2, 'H'),
++            leg("j_patch", "11_3", 1, 'D'),
++            leg("k_patch", "10_5", 2, 'I'),
++            last("k_patch", "11_1", 1, 1),
++            leg("k_patch", "11_2", 1, 'J'),
++            leg("start_middle", "9_0", 1, 'C'),
++            leg("start_middle", "9_1", 1, 'A'),
++            leg("start_middle", "9_2", 1, 'F'),
++            leg("start_ghost_mushroom", "11_1", 2, 'K'),
++            leg("start_ghost_mushroom", "10_6", 2, 'I'),
++            leg("start_camp_entrance", "10_5", 2, 'I'),
++            leg("start_camp_entrance", "11_2", 1, 'J'),
++            leg("start_leprechaun", "10_7", 2, 'G'),
++            leg("start_driftwood", "10_9", 2, 'H'),
++        )
++
++    private val FROM_LOCS =
++        HerbiboarSpotsTable.SPOTS.associate { it.key to it.loc } +
++            mapOf(
++                "start_middle" to "loc.hunting_trail_spawn_fossil1",
++                "start_ghost_mushroom" to "loc.hunting_trail_spawn_fossil2",
++                "start_camp_entrance" to "loc.hunting_trail_spawn_fossil3",
++                "start_leprechaun" to "loc.hunting_trail_spawn_fossil4",
++                "start_driftwood" to "loc.hunting_trail_spawn_fossil5",
++            )
++
++    fun herbiboarLegs() =
++        dbTable("dbtable.herbiboar_legs", serverOnly = true) {
++            column("from_loc", FROM_LOC, VarType.LOC)
++            column("trail", TRAIL, VarType.INT)
++            column("dir", DIR, VarType.INT)
++            column("to_group", TO_GROUP, VarType.INT)
++            column("end_tunnel", END_TUNNEL, VarType.INT)
++
++            LEGS.forEachIndexed { index, leg ->
++                row("dbrow.herbiboar_leg_$index") {
++                    columnRSCM(FROM_LOC, checkNotNull(FROM_LOCS[leg.from]) { leg.from })
++                    columnRSCM(TRAIL, "varbit.hunting_trail_state${leg.trail}")
++                    column(DIR, leg.dir)
++                    column(TO_GROUP, leg.to?.let { it - 'A' } ?: NO_GROUP)
++                    column(END_TUNNEL, leg.endTunnel)
++                }
++            }
++        }
++}
++
++/** The 19 clue locs and their group (A-K as 0-10, the plugin's HerbiboarSearchSpot names). */
++object HerbiboarSpotsTable {
++    const val LOC = 0
++    const val GROUP = 1
++
++    data class Spot(val key: String, val loc: String, val group: Char)
++
++    val SPOTS =
++        listOf(
++            Spot("a_mushroom", "loc.hunting_trail_clue9_1", 'A'),
++            Spot("a_patch", "loc.hunting_trail_clue10_5", 'A'),
++            Spot("b_seaweed", "loc.hunting_trail_clue9_4", 'B'),
++            Spot("c_mushroom", "loc.hunting_trail_clue10_4", 'C'),
++            Spot("c_patch", "loc.hunting_trail_clue9_0", 'C'),
++            Spot("d_patch", "loc.hunting_trail_clue9_3", 'D'),
++            Spot("d_seaweed", "loc.hunting_trail_clue11_0", 'D'),
++            Spot("e_mushroom", "loc.hunting_trail_clue9_6", 'E'),
++            Spot("e_patch", "loc.hunting_trail_clue10_8", 'E'),
++            Spot("f_mushroom", "loc.hunting_trail_clue9_2", 'F'),
++            Spot("f_patch", "loc.hunting_trail_clue10_1", 'F'),
++            Spot("g_mushroom", "loc.hunting_trail_clue9_8", 'G'),
++            Spot("g_patch", "loc.hunting_trail_clue10_0", 'G'),
++            Spot("h_seaweed_east", "loc.hunting_trail_clue9_9", 'H'),
++            Spot("h_seaweed_west", "loc.hunting_trail_clue10_9", 'H'),
++            Spot("i_mushroom", "loc.hunting_trail_clue9_7", 'I'),
++            Spot("i_patch", "loc.hunting_trail_clue10_6", 'I'),
++            Spot("j_patch", "loc.hunting_trail_clue10_3", 'J'),
++            Spot("k_patch", "loc.hunting_trail_clue10_2", 'K'),
++        )
++
++    fun herbiboarSpots() =
++        dbTable("dbtable.herbiboar_spots", serverOnly = true) {
++            column("loc", LOC, VarType.LOC)
++            column("group", GROUP, VarType.INT)
++
++            for (spot in SPOTS) {
++                row("dbrow.herbiboar_spot_${spot.key}") {
++                    columnRSCM(LOC, spot.loc)
++                    column(GROUP, spot.group - 'A')
++                }
++            }
++        }
++}
++
++/** `hunting_trail_ends_fossil` values 1-9 (the plugin's END_LOCATIONS order) and their tiles. */
++object HerbiboarTunnelsTable {
++    const val INDEX = 0
++    const val COORDS = 1
++
++    private val TUNNELS =
++        listOf(
++            CoordGrid(3693, 3798, 0),
++            CoordGrid(3702, 3808, 0),
++            CoordGrid(3703, 3826, 0),
++            CoordGrid(3710, 3881, 0),
++            CoordGrid(3700, 3877, 0),
++            CoordGrid(3715, 3840, 0),
++            CoordGrid(3751, 3849, 0),
++            CoordGrid(3685, 3869, 0),
++            CoordGrid(3681, 3863, 0),
++        )
++
++    fun herbiboarTunnels() =
++        dbTable("dbtable.herbiboar_tunnels", serverOnly = true) {
++            column("index", INDEX, VarType.INT)
++            column("coords", COORDS, VarType.COORDGRID)
++
++            TUNNELS.forEachIndexed { i, coords ->
++                row("dbrow.herbiboar_tunnel_${i + 1}") {
++                    column(INDEX, i + 1)
++                    columnCoord(COORDS, coords)
++                }
++            }
++        }
++}
++
++/**
++ * Herbiboar herbs in roll order, from the wiki's "Herbiboar herb chance" chart (cascade: the first
++ * herb whose roll succeeds is picked; guam, last, always succeeds). [LOW]/[HIGH] are the chart's
++ * chances out of 256 at Herblore 1 and 99.
++ */
++object HerbiboarHerbsTable {
++    const val HERB = 0
++    const val LOW = 1
++    const val HIGH = 2
++
++    private val HERBS =
++        listOf(
++            Triple("ranarr", -10, 20),
++            Triple("torstol", -70, 20),
++            Triple("snapdragon", -60, 20),
++            Triple("dwarf_weed", -50, 30),
++            Triple("lantadyme", -30, 40),
++            Triple("cadantine", -10, 50),
++            Triple("kwuarm", 10, 60),
++            Triple("avantoe", 20, 60),
++            Triple("irit", 30, 70),
++            Triple("tarromin", 70, -20),
++            Triple("harralander", 100, -30),
++            Triple("marentill", 170, -40),
++            Triple("guam", 256, 256),
++        )
++
++    fun herbiboarHerbs() =
++        dbTable("dbtable.herbiboar_herbs", serverOnly = true) {
++            column("herb", HERB, VarType.OBJ)
++            column("low", LOW, VarType.INT)
++            column("high", HIGH, VarType.INT)
++
++            for ((herb, low, high) in HERBS) {
++                row("dbrow.herbiboar_herb_$herb") {
++                    columnRSCM(HERB, "obj.unidentified_$herb")
++                    column(LOW, low)
++                    column(HIGH, high)
++                }
++            }
++        }
++}
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
+index c5b78f791..300c697d3 100644
+--- a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
+@@ -10,5 +10,9 @@ class HunterPluginPack : PluginPack() {
+             BirdHouseTypesTable.birdHouseTypes(),
+             HunterTrapsTable.hunterTraps(),
+             HunterTrapCreaturesTable.hunterTrapCreatures(),
++            HerbiboarLegsTable.herbiboarLegs(),
++            HerbiboarSpotsTable.herbiboarSpots(),
++            HerbiboarTunnelsTable.herbiboarTunnels(),
++            HerbiboarHerbsTable.herbiboarHerbs(),
+         )
+ }
+diff --git a/content/skills/hunter/pack/src/main/resources/gamevals.toml b/content/skills/hunter/pack/src/main/resources/gamevals.toml
+index d64495096..661edc681 100644
+--- a/content/skills/hunter/pack/src/main/resources/gamevals.toml
++++ b/content/skills/hunter/pack/src/main/resources/gamevals.toml
+@@ -7,3 +7,5 @@ birdhouse_seeds_a = 63764
+ birdhouse_seeds_b = 63765
+ birdhouse_seeds_c = 63766
+ birdhouse_seeds_d = 63767
++herbiboar_harvested = 63890
++herbiboar_route_length = 63891
+diff --git a/content/skills/hunter/pack/src/main/resources/pack/configs/herbiboar_vars.toml b/content/skills/hunter/pack/src/main/resources/pack/configs/herbiboar_vars.toml
+new file mode 100644
+index 000000000..8d58a42d7
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/resources/pack/configs/herbiboar_vars.toml
+@@ -0,0 +1,11 @@
++[[varp]]
++isServerOnly = true
++id = "varp.herbiboar_harvested"
++scope = "Perm"
++transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.herbiboar_route_length"
++scope = "Temp"
++transmit = "Never"
+diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HerbiboarScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HerbiboarScriptTest.kt
+new file mode 100644
+index 000000000..ab966e359
+--- /dev/null
++++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HerbiboarScriptTest.kt
+@@ -0,0 +1,151 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.util.UncheckedType
++import net.rsprot.protocol.game.outgoing.misc.player.MessageGame
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.table.HerbiboarHerbsRow
++import org.rsmod.api.table.HerbiboarLegsRow
++import org.rsmod.api.table.HerbiboarSpotsRow
++import org.rsmod.api.table.HerbiboarTunnelsRow
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.api.testing.scope.GameTestScope
++import org.rsmod.content.skills.hunter.HerbiboarScript.Companion.ENDS
++import org.rsmod.content.skills.hunter.HerbiboarScript.Companion.HARVESTED
++import org.rsmod.content.skills.hunter.HerbiboarScript.Companion.HERBLORE
++import org.rsmod.content.skills.hunter.HerbiboarScript.Companion.HUNTER
++import org.rsmod.content.skills.hunter.HerbiboarScript.Companion.STARTED
++import org.rsmod.content.skills.hunter.HerbiboarScript.Companion.START_LOCS
++import org.rsmod.content.skills.hunter.HerbiboarScript.Companion.VISIBLE
++import org.rsmod.content.skills.hunter.HerbiboarScript.Companion.herbChance
++import org.rsmod.content.skills.hunter.HerbiboarScript.Companion.tunnelXp
++import org.rsmod.map.CoordGrid
++
++@OptIn(UncheckedType::class)
++@Execution(ExecutionMode.SAME_THREAD)
++class HerbiboarScriptTest {
++    @Test
++    fun `tunnel XP follows the wiki table`() {
++        assertEquals(1950, tunnelXp(80))
++        assertEquals(2370, tunnelXp(94))
++        assertEquals(2385, tunnelXp(95))
++        assertEquals(2461, tunnelXp(99))
++    }
++
++    @Test
++    fun `herb level ranges match the wiki table within two levels`() {
++        val rows = HerbiboarHerbsRow.all().associateBy { it.herb.internalName }
++        fun range(herb: String): IntRange {
++            val row = rows.getValue(herb)
++            val levels = (31..99).filter { herbChance(it, row.low, row.high) > 0 }
++            return levels.first()..levels.last()
++        }
++        fun near(expected: IntRange, herb: String) {
++            val actual = range(herb)
++            val ok = kotlin.math.abs(actual.first - expected.first) <= 2 && kotlin.math.abs(actual.last - expected.last) <= 2
++            assertTrue(ok, "$herb: $actual vs wiki $expected")
++        }
++        near(31..80, "obj.unidentified_marentill")
++        near(31..77, "obj.unidentified_tarromin")
++        near(31..76, "obj.unidentified_harralander")
++        near(41..99, "obj.unidentified_lantadyme")
++        near(62..99, "obj.unidentified_dwarf_weed")
++        near(74..99, "obj.unidentified_snapdragon")
++        near(77..99, "obj.unidentified_torstol")
++    }
++
++    @Test
++    fun `every leg's trail varbit is a footprint varbit and every group can be left`() {
++        val spots = HerbiboarSpotsRow.all().associate { it.loc.id to it.group }
++        val legs = HerbiboarLegsRow.all()
++        assertEquals(19, spots.size)
++        for (leg in legs) {
++            val varbit = checkNotNull(ServerCacheManager.getVarbit(leg.trail))
++            assertEquals(2, varbit.endBit - varbit.startBit, "3-bit trail varbit ${leg.trail}")
++            assertTrue(leg.dir in 1..2)
++            assertTrue(leg.toGroup >= 0 || leg.endTunnel in 1..9)
++        }
++        for (group in legs.mapNotNull { it.toGroup.takeIf { g -> g >= 0 } }.toSet()) {
++            assertTrue(legs.any { spots[it.fromLoc.id] == group }, "group $group has no leg out")
++        }
++    }
++
++    @Test
++    fun GameTestState.`track from every start, stun and harvest`() =
++        runInjectedGameTest(HerbiboarScript::class, null, HerbiboarScript::class) { script ->
++            prepare()
++            val tunnels = HerbiboarTunnelsRow.all().associate { it.index to it.coords }
++            val legs = HerbiboarLegsRow.all()
++            var harvested = 0
++            repeat(4) {
++                for (start in START_LOCS) {
++                    val sent = mutableListOf<String>()
++                    with(script) { player.withProtectedAccess { inspectStart(start.asRSCM(RSCMType.LOC)) } }
++                    run(sent)
++                    if (player.vars[STARTED] == 0) {
++                        assertTrue(sent.any { "confused you" in it }, sent.toString())
++                        return@repeat
++                    }
++                    var steps = 0
++                    while (player.vars[ENDS] == 0 && player.vars[STARTED] == 1) {
++                        val hidden =
++                            legs.singleOrNull { player.vars[checkNotNull(ServerCacheManager.getVarbit(it.trail))] == it.dir }
++                        checkNotNull(hidden) { "no hidden leg after $steps steps: $sent" }
++                        with(script) { player.withProtectedAccess { inspectSpot(hidden.fromLoc.id) } }
++                        run(sent)
++                        assertTrue(++steps <= 8, sent.toString())
++                    }
++                    if (player.vars[ENDS] == 0) continue
++                    val tunnel = player.vars[ENDS]
++                    with(script) { player.withProtectedAccess { attackTunnel(tunnels.getValue(tunnel)) } }
++                    run(sent)
++                    assertEquals(tunnel, player.vars[VISIBLE])
++                    assertEquals(0, player.vars[ENDS])
++                    val before = (player.inv.size - player.inv.freeSpace())
++                    with(script) { player.withProtectedAccess { harvest() } }
++                    run(sent)
++                    harvested++
++                    assertEquals(0, player.vars[VISIBLE])
++                    assertTrue((player.inv.size - player.inv.freeSpace()) - before in 1..3, sent.toString())
++                    assertEquals(harvested, player.vars[HARVESTED])
++                    player.clearInv()
++                }
++            }
++            assertTrue(harvested > 0)
++        }
++
++    @Test
++    fun GameTestState.`the wrong clue loc changes nothing`() =
++        runInjectedGameTest(HerbiboarScript::class, null, HerbiboarScript::class) { script ->
++            prepare()
++            val sent = mutableListOf<String>()
++            with(script) { player.withProtectedAccess { inspectSpot("loc.hunting_trail_clue9_4".asRSCM(RSCMType.LOC)) } }
++            run(sent)
++            assertTrue("Nothing seems to be out of place here." in sent, sent.toString())
++            assertEquals(0, player.vars[STARTED])
++        }
++
++    private fun GameTestScope.run(sent: MutableList<String>) {
++        repeat(4) {
++            advance(ticks = 1)
++            sent += client.mapOf(MessageGame::message)
++        }
++    }
++
++    private fun GameTestScope.prepare() {
++        val center = CoordGrid(0, 57, 60, 20, 20)
++        allocZoneCollision(center)
++        player.teleport(center)
++        player.clearInv()
++        player.setBaseLevel(HUNTER, 99)
++        player.setCurrentLevel(HUNTER, 99)
++        player.setBaseLevel(HERBLORE, 99)
++        player.setCurrentLevel(HERBLORE, 99)
++    }
++}
+diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HerbiboarScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HerbiboarScript.kt
+new file mode 100644
+index 000000000..329f642e4
+--- /dev/null
++++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HerbiboarScript.kt
+@@ -0,0 +1,287 @@
++package org.rsmod.content.skills.hunter
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.definition.type.VarBitType
++import jakarta.inject.Inject
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.random.GameRandom
++import org.rsmod.api.repo.obj.ObjRepository
++import org.rsmod.api.script.onOpLoc1
++import org.rsmod.api.script.onOpLoc2
++import org.rsmod.api.script.onOpLoc3
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.api.table.HerbiboarHerbsRow
++import org.rsmod.api.table.HerbiboarLegsRow
++import org.rsmod.api.table.HerbiboarSpotsRow
++import org.rsmod.api.table.HerbiboarTunnelsRow
++import org.rsmod.game.entity.Player
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Herbiboar tracking on Fossil Island (OSRS Wiki: Herbiboar, Tunnel (herbiboar) and the clue loc
++ * pages), on the network in the hunter pack's herbiboar tables.
++ *
++ * All state is in the client's own varbits, which is what RuneLite's Herbiboar plugin reads:
++ * - Each trail varbit holds its direction while it is the chosen next leg, which is not visible.
++ *   It holds direction + 2 once revealed and direction + 4 once faded.
++ * - `hunting_trail_ends_fossil` is the tunnel the herbiboar hides in.
++ * - `hunting_trails_used_fossil` is set while tracking.
++ * - `fossil_herbiboar_visible` shows the stunned herbiboar outside its tunnel.
++ *
++ * Inspecting a start loc reveals a first leg and picks the hidden next one. Inspecting the right
++ * clue loc reveals that leg and picks the next, until a leg ends at a tunnel. Attacking the tunnel
++ * stuns the herbiboar (Hunter XP by level). Harvesting gives herbs by Herblore level.
++ *
++ * Guesses: the route length (3-5 legs), XP and fossil rolls on every clue loc except the first and
++ * last, which legs may end a route, and every message not quoted from the wiki.
++ */
++class HerbiboarScript
++@Inject
++constructor(private val objRepo: ObjRepository, private val random: GameRandom) : PluginScript() {
++    private val legs: List<Leg> by lazy { loadLegs() }
++    private val spotGroups: Map<Int, Int> by lazy {
++        HerbiboarSpotsRow.all().associate { it.loc.id to it.group }
++    }
++    private val tunnels: Map<Int, org.rsmod.map.CoordGrid> by lazy {
++        HerbiboarTunnelsRow.all().associate { it.index to it.coords }
++    }
++    private val trailVarbits: List<VarBitType> by lazy { legs.map { it.trail }.distinctBy { it.id } }
++
++    override fun ScriptContext.startup() {
++        for (start in START_LOCS) {
++            onOpLoc1(start) { inspectStart(it.loc.id) }
++            onOpLoc2(start) { mes("You have harvested ${vars[HARVESTED]} Herbiboars.") }
++            onOpLoc3(start) { toggleWarning() }
++        }
++        for (row in HerbiboarSpotsRow.all()) {
++            onOpLoc1(row.loc.internalName) { inspectSpot(it.loc.id) }
++        }
++        onOpLoc1(TUNNEL) { attackTunnel(it.loc.coords) }
++        onOpLoc2(TUNNEL) { attackTunnel(it.loc.coords) }
++        onOpNpc1(HERBIBOAR) { harvest() }
++    }
++
++    suspend fun ProtectedAccess.inspectStart(loc: Int) {
++        if (stat(HUNTER) < LEVEL) {
++            mes("You need a Hunter level of $LEVEL to track a herbiboar.")
++            return
++        }
++        anim(INSPECT_SEQ)
++        delay(INSPECT_TICKS)
++        reset(player)
++        val first = legs.filter { it.from == loc }.randomOrNull(random) ?: return
++        VarPlayerIntMapSetter.set(player, ROUTE_LENGTH, random.of(MIN_LEGS, MAX_LEGS))
++        reveal(player, first)
++        VarPlayerIntMapSetter.set(player, STARTED, 1)
++        mes("You find some fresh tracks.")
++        if (!continueFrom(player, first)) confuse()
++    }
++
++    suspend fun ProtectedAccess.inspectSpot(loc: Int) {
++        anim(INSPECT_SEQ)
++        delay(INSPECT_TICKS)
++        val leg = legs.firstOrNull { it.from == loc && player.vars[it.trail] == it.dir }
++        if (leg == null) {
++            mes("Nothing seems to be out of place here.")
++            return
++        }
++        reveal(player, leg)
++        mes(SPOT_MESSAGES[locName(loc)] ?: "Something has passed this way.")
++        if (isLast(player, leg)) {
++            VarPlayerIntMapSetter.set(player, ENDS, leg.endTunnel)
++            mes("The creature's tracks lead into a nearby tunnel.")
++            return
++        }
++        statAdvance(HUNTER, INSPECT_XP)
++        rollFossil()
++        if (!continueFrom(player, leg)) confuse()
++    }
++
++    suspend fun ProtectedAccess.attackTunnel(coords: org.rsmod.map.CoordGrid) {
++        val index = tunnels.entries.firstOrNull { it.value == coords }?.key ?: return
++        if (vars[ENDS] != index) {
++            mes("Nothing seems to be hiding in this tunnel.")
++            return
++        }
++        anim(KICK_SEQ)
++        delay(INSPECT_TICKS)
++        if (vars[ENDS] != index) return
++        reset(player)
++        VarPlayerIntMapSetter.set(player, VISIBLE, index)
++        statAdvance(HUNTER, tunnelXp(statBase(HUNTER)).toDouble())
++        mes("You stun the herbiboar.")
++    }
++
++    suspend fun ProtectedAccess.harvest() {
++        if (vars[VISIBLE] == 0) return
++        if (stat(HERBLORE) < HERBLORE_LEVEL) {
++            mes("You need a Herblore level of $HERBLORE_LEVEL to harvest from the herbiboar.")
++            return
++        }
++        anim(HARVEST_SEQ)
++        delay(INSPECT_TICKS)
++        if (vars[VISIBLE] == 0) return
++        val secateurs = SECATEURS in inv || SECATEURS in player.worn
++        val count = random.of(1, 3) + if (secateurs) 1 else 0
++        val herb = rollHerb(stat(HERBLORE)) { random.of(it) }
++        VarPlayerIntMapSetter.set(player, VISIBLE, 0)
++        invAddOrDrop(objRepo, herb, count)
++        if (count > 1) statAdvance(HERBLORE, HERB_XP * (count - 1))
++        VarPlayerIntMapSetter.set(player, HARVESTED, vars[HARVESTED] + 1)
++        mes("You harvest herbs from the herbiboar, whereupon it escapes.")
++    }
++
++    private fun ProtectedAccess.toggleWarning() {
++        val ignore = vars[IGNORE_WARNING] == 0
++        VarPlayerIntMapSetter.set(player, IGNORE_WARNING, if (ignore) 1 else 0)
++        if (ignore) {
++            mes("You will no longer be warned if you try to track a second herbiboar before harvesting a caught one.")
++        } else {
++            mes("You will now be warned if you try to track a second herbiboar before harvesting a caught one.")
++        }
++    }
++
++    private fun ProtectedAccess.confuse() {
++        reset(player)
++        mes(
++            "The creature has successfully confused you with its tracks, leading you round in " +
++                "circles. You'll need to start again."
++        )
++    }
++
++    private fun ProtectedAccess.rollFossil() {
++        val roll = random.of(FOSSIL_ROLL)
++        var edge = 0
++        for ((obj, weight, quantity) in FOSSILS) {
++            edge += weight
++            if (roll < edge) {
++                invAddOrDrop(objRepo, obj, random.of(quantity))
++                return
++            }
++        }
++    }
++
++    /** Picks and hides the next leg from where [leg] ends. False at a dead end. */
++    private fun continueFrom(player: Player, leg: Leg): Boolean {
++        val group = leg.toGroup ?: return true
++        val used = trailVarbits.filter { player.vars[it] != 0 }.map { it.id }.toSet()
++        val candidates =
++            legs.filter { spotGroups[it.from] == group && it.trail.id !in used && it.trail.id != leg.trail.id }
++        if (candidates.isEmpty()) return false
++        val revealed = revealedCount(player)
++        val wantEnd = revealed + 1 >= player.vars[ROUTE_LENGTH]
++        val preferred = candidates.filter { (it.endTunnel > 0) == wantEnd }.ifEmpty { candidates }
++        val next = preferred.randomOrNull(random) ?: return false
++        VarPlayerIntMapSetter.set(player, next.trail, next.dir)
++        return true
++    }
++
++    private fun isLast(player: Player, leg: Leg): Boolean =
++        leg.toGroup == null || (leg.endTunnel > 0 && revealedCount(player) >= player.vars[ROUTE_LENGTH])
++
++    private fun revealedCount(player: Player): Int = trailVarbits.count { player.vars[it] >= REVEALED }
++
++    private fun reveal(player: Player, leg: Leg) {
++        for (varbit in trailVarbits) {
++            val value = player.vars[varbit]
++            if (value in REVEALED until FADED) VarPlayerIntMapSetter.set(player, varbit, value + 2)
++        }
++        VarPlayerIntMapSetter.set(player, leg.trail, leg.dir + 2)
++    }
++
++    private fun reset(player: Player) {
++        for (varbit in trailVarbits) VarPlayerIntMapSetter.set(player, varbit, 0)
++        VarPlayerIntMapSetter.set(player, ENDS, 0)
++        VarPlayerIntMapSetter.set(player, STARTED, 0)
++        VarPlayerIntMapSetter.set(player, VISIBLE, 0)
++    }
++
++    private fun <T> List<T>.randomOrNull(random: GameRandom): T? = if (isEmpty()) null else this[random.of(size)]
++
++    private fun locName(id: Int): String = ServerCacheManager.getObject(id)?.name.orEmpty()
++
++    data class Leg(val from: Int, val trail: VarBitType, val dir: Int, val toGroup: Int?, val endTunnel: Int)
++
++    private fun loadLegs(): List<Leg> =
++        HerbiboarLegsRow.all().map {
++            Leg(
++                from = it.fromLoc.id,
++                trail = checkNotNull(ServerCacheManager.getVarbit(it.trail)) { "Missing trail varbit ${it.trail}" },
++                dir = it.dir,
++                toGroup = it.toGroup.takeIf { group -> group >= 0 },
++                endTunnel = it.endTunnel,
++            )
++        }
++
++    companion object {
++        const val HUNTER = "stat.hunter"
++        const val HERBLORE = "stat.herblore"
++        const val LEVEL = 80
++        const val HERBLORE_LEVEL = 31
++        const val INSPECT_XP = 50.0
++        const val HERB_XP = 25.0
++        const val MIN_LEGS = 3
++        const val MAX_LEGS = 5
++        const val REVEALED = 3
++        const val FADED = 5
++        private const val INSPECT_TICKS = 2
++
++        const val TUNNEL = "loc.hunting_trail_end_fossil"
++        const val HERBIBOAR = "npc.fossil_herbiboar_visible"
++        const val SECATEURS = "obj.fairy_enchanted_secateurs"
++        const val ENDS = "varbit.hunting_trail_ends_fossil"
++        const val STARTED = "varbit.hunting_trails_used_fossil"
++        const val VISIBLE = "varbit.fossil_herbiboar_visible"
++        const val IGNORE_WARNING = "varbit.fossil_herbiboar_already_caught_ignore_warning"
++        const val HARVESTED = "varp.herbiboar_harvested"
++        const val ROUTE_LENGTH = "varp.herbiboar_route_length"
++        private const val INSPECT_SEQ = "seq.picking_low"
++        private const val HARVEST_SEQ = "seq.picking_low"
++        private const val KICK_SEQ = "seq.human_kicks_chest_open"
++
++        val START_LOCS = (1..5).map { "loc.hunting_trail_spawn_fossil$it" }
++
++        /** Wiki: the clue loc pages' inspect messages. */
++        val SPOT_MESSAGES =
++            mapOf(
++                "Muddy patch" to "You find a partial footprint in the disturbed earth. Something has passed this way.",
++                "Smelly mushroom" to "This mushroom is oozing where it has recently been bitten. Something has passed this way.",
++                "Seaweed" to "Something has disturbed this seaweed recently, it smells.",
++                "Mushroom" to "The mushroom cap looks freshly eaten. Something has passed this way.",
++            )
++
++        /** Wiki FossilDropLines (fossil=7, numulite=20) per inspection roll, out of 3500. */
++        private const val FOSSIL_ROLL = 3500
++        val FOSSILS =
++            listOf(
++                Triple("obj.fossil_numulite", 1260, 5..24),
++                Triple("obj.fossil_small_unid", 70, 1..1),
++                Triple("obj.fossil_medium_unid", 35, 1..1),
++                Triple("obj.fossil_large_unid", 28, 1..1),
++                Triple("obj.fossil_rare_unid", 7, 1..1),
++            )
++
++        /** Wiki (Mod Ash): 1,950 at 80, +30 per level to 94, 2,385 at 95, then +19 per level. */
++        fun tunnelXp(level: Int): Int =
++            when {
++                level < 80 -> 1950
++                level <= 94 -> 1950 + 30 * (level - 80)
++                else -> 2385 + 19 * (level.coerceAtMost(99) - 95)
++            }
++
++        /** OSRS skilling chance out of 256 at [level] for the chart's [low]/[high]. */
++        fun herbChance(level: Int, low: Int, high: Int): Int =
++            (low * (99 - level) / 98 + high * (level - 1) / 98 + 1).coerceIn(0, 256)
++
++        /** Cascades down the herb rows; the first successful roll wins. */
++        fun rollHerb(level: Int, nextInt: (Int) -> Int): String {
++            val rows = HerbiboarHerbsRow.all()
++            for (row in rows) {
++                if (nextInt(256) < herbChance(level, row.low, row.high)) return row.herb.internalName
++            }
++            return rows.last().herb.internalName
++        }
++    }
++}
+diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
+index 8b47beb7e..31bb55bca 100644
+--- a/content/skills/hunter/src/main/resources/gamevals.toml
++++ b/content/skills/hunter/src/main/resources/gamevals.toml
+@@ -3,6 +3,10 @@ impling_types = 60000
+ birdhouse_types = 60001
+ hunter_traps = 60011
+ hunter_trap_creatures = 60012
++herbiboar_legs = 60013
++herbiboar_spots = 60014
++herbiboar_tunnels = 60015
++herbiboar_herbs = 60016
+ 
+ [gamevals.dbrow]
+ impling_type_baby = 60124
+@@ -36,6 +40,93 @@ hunter_trap_creature_ferret = 60357
+ hunter_trap_creature_chinchompa = 60358
+ hunter_trap_creature_chinchompa_big = 60359
+ hunter_trap_creature_chinchompa_black = 60360
++herbiboar_leg_0 = 60370
++herbiboar_leg_1 = 60371
++herbiboar_leg_2 = 60372
++herbiboar_leg_3 = 60373
++herbiboar_leg_4 = 60374
++herbiboar_leg_5 = 60375
++herbiboar_leg_6 = 60376
++herbiboar_leg_7 = 60377
++herbiboar_leg_8 = 60378
++herbiboar_leg_9 = 60379
++herbiboar_leg_10 = 60380
++herbiboar_leg_11 = 60381
++herbiboar_leg_12 = 60382
++herbiboar_leg_13 = 60383
++herbiboar_leg_14 = 60384
++herbiboar_leg_15 = 60385
++herbiboar_leg_16 = 60386
++herbiboar_leg_17 = 60387
++herbiboar_leg_18 = 60388
++herbiboar_leg_19 = 60389
++herbiboar_leg_20 = 60390
++herbiboar_leg_21 = 60391
++herbiboar_leg_22 = 60392
++herbiboar_leg_23 = 60393
++herbiboar_leg_24 = 60394
++herbiboar_leg_25 = 60395
++herbiboar_leg_26 = 60396
++herbiboar_leg_27 = 60397
++herbiboar_leg_28 = 60398
++herbiboar_leg_29 = 60399
++herbiboar_leg_30 = 60400
++herbiboar_leg_31 = 60401
++herbiboar_leg_32 = 60402
++herbiboar_leg_33 = 60403
++herbiboar_leg_34 = 60404
++herbiboar_leg_35 = 60405
++herbiboar_leg_36 = 60406
++herbiboar_leg_37 = 60407
++herbiboar_leg_38 = 60408
++herbiboar_leg_39 = 60409
++herbiboar_leg_40 = 60410
++herbiboar_leg_41 = 60411
++herbiboar_leg_42 = 60412
++herbiboar_leg_43 = 60413
++herbiboar_leg_44 = 60414
++herbiboar_leg_45 = 60415
++herbiboar_spot_a_mushroom = 60420
++herbiboar_spot_a_patch = 60421
++herbiboar_spot_b_seaweed = 60422
++herbiboar_spot_c_mushroom = 60423
++herbiboar_spot_c_patch = 60424
++herbiboar_spot_d_patch = 60425
++herbiboar_spot_d_seaweed = 60426
++herbiboar_spot_e_mushroom = 60427
++herbiboar_spot_e_patch = 60428
++herbiboar_spot_f_mushroom = 60429
++herbiboar_spot_f_patch = 60430
++herbiboar_spot_g_mushroom = 60431
++herbiboar_spot_g_patch = 60432
++herbiboar_spot_h_seaweed_east = 60433
++herbiboar_spot_h_seaweed_west = 60434
++herbiboar_spot_i_mushroom = 60435
++herbiboar_spot_i_patch = 60436
++herbiboar_spot_j_patch = 60437
++herbiboar_spot_k_patch = 60438
++herbiboar_tunnel_1 = 60440
++herbiboar_tunnel_2 = 60441
++herbiboar_tunnel_3 = 60442
++herbiboar_tunnel_4 = 60443
++herbiboar_tunnel_5 = 60444
++herbiboar_tunnel_6 = 60445
++herbiboar_tunnel_7 = 60446
++herbiboar_tunnel_8 = 60447
++herbiboar_tunnel_9 = 60448
++herbiboar_herb_ranarr = 60450
++herbiboar_herb_torstol = 60451
++herbiboar_herb_snapdragon = 60452
++herbiboar_herb_dwarf_weed = 60453
++herbiboar_herb_lantadyme = 60454
++herbiboar_herb_cadantine = 60455
++herbiboar_herb_kwuarm = 60456
++herbiboar_herb_avantoe = 60457
++herbiboar_herb_irit = 60458
++herbiboar_herb_tarromin = 60459
++herbiboar_herb_harralander = 60460
++herbiboar_herb_marentill = 60461
++herbiboar_herb_guam = 60462
+ 
+ [gamevals.timer]
+ hunter_traps = 470
+-- 
+2.43.0
+

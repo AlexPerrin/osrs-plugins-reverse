@@ -998,3 +998,46 @@ was verified.
   Edgeville furnace (`::tele 3108 3499`): "You retrieve a bar of bronze." and the Smelting overlay
   "Bars: 1". The 10% Varrock extra bar was not seen (one bar only; full inventory). The tester now
   wears Varrock armour 1. `server/tools/device.sh login` now checks the OpenRune log.
+- **Herbiboar** (`content/skills/hunter` `HerbiboarScript`, pack `HerbiboarTables`: dbtables
+  `herbiboar_legs` 60013, `herbiboar_spots` 60014, `herbiboar_tunnels` 60015, `herbiboar_herbs`
+  60016; varps `herbiboar_harvested` 63890, `herbiboar_route_length` 63891). For RuneLite's core
+  Herbiboar plugin.
+  - From the cache/map (dumped with a throwaway test over `MapLocListDecoder`, regions 57-58 x
+    59-60): 5 start locs `hunting_trail_spawn_fossil1-5` (Inspect / Check count / Toggle warning),
+    19 clue locs `hunting_trail_clue9_*`/`10_*`/`11_0` (Inspect), 9 tunnels
+    `hunting_trail_end_fossil` (Attack / Search), 275 footprint multilocs on the 24 trail varbits
+    the plugin reads (`hunting_trail_state9_0-9`, `10_0-9`, `11_0-3`; 3 bits; transforms: 0-2 none,
+    3/4 visible per direction, 5/6 faded). The herbiboar npcs `fossil_herbiboar_1-9` are already
+    spawned at the tunnels: multinpcs on `fossil_herbiboar_visible` (5943) = tunnel index ->
+    `fossil_herbiboar_visible` (7785, Harvest). `hunting_trail_ends_fossil` (5766) = tunnel index,
+    `hunting_trails_used_fossil` (5767) = tracking.
+  - Network: each plugin `TrailToSpot(varbit, dir)` under a clue loc is read as a leg that
+    *leaves* that loc in direction dir; its other end is the group or tunnel at the far end of the
+    footprints. Start legs are the unlisted directions. A trail is dir while chosen but hidden
+    (the plugin highlights its loc as the one to search), dir+2 when revealed, dir+4 once a later
+    leg is revealed. **Guess**, but it matches the cache transforms, the plugin's reset rule
+    ("finished" when no trail is > 0 and != its listed dir) and the wiki's "guaranteed tracks".
+  - Flow: Inspect a start (Hunter 80, boostable) -> first leg revealed, next leg hidden, "You find
+    some fresh tracks." (**guess**); Inspect the right clue loc -> the wiki's per-object message
+    ("You find a partial footprint in the disturbed earth...", "This mushroom is oozing...",
+    "Something has disturbed this seaweed recently, it smells.", "The mushroom cap looks freshly
+    eaten..."), 50 Hunter XP and a FossilDropLines roll (numulite 5-24 at 63/175, unidentified
+    small/medium/large/rare 7/350, 7/700, 7/875, 7/3500); the first and last inspections give no
+    roll (wiki). Wrong loc: "Nothing seems to be out of place here." (**guess**). Dead end: the
+    wiki's "The creature has successfully confused you with its tracks..." and a reset. Route
+    length 3-5 legs (**guess**); a leg into a group with a tunnel (C 5, D 4, F 9, J 6, K 2) or a
+    leg into a start area ends the route and sets 5766 ("The creature's tracks lead into a nearby
+    tunnel.", **guess**). Attack the tunnel -> herbiboar visible, Hunter XP 1,950 at 80 +30/level to
+    94, 2,385 at 95, +19/level (wiki, Mod Ash), "You stun the herbiboar." (**guess**). Harvest
+    (Herblore 31): 1-3 herbs (+1 with magic secateurs) of one type from the wiki chart cascade
+    (`herbiboar_herbs`, OSRS 256 formula; level ranges within two levels of the wiki table), 25
+    Herblore XP per herb after the first, count +1 (Check count: "You have harvested N
+    Herbiboars."), "You harvest herbs from the herbiboar, whereupon it escapes." (**guess**).
+    Toggle warning: the wiki's two messages on `fossil_herbiboar_already_caught_ignore_warning`.
+  - Not done: the new-track warning dialog (starting a new track just drops the caught one, as
+    the wiki says it disappears), Herbi pet, herb tuft (Hunter Rumours), horn of plenty, the
+    appear animation npc (5945). Anims are stand-ins (`picking_low`, `human_kicks_chest_open`).
+  - Tests: `HerbiboarScriptTest` (tunnel XP, herb ranges, graph sanity, 20 full routes from all
+    5 starts through tunnel and harvest, wrong loc). Upstream `39-herbiboar`.
+  - Device test: `::tele 3686 3871` (middle start), `::setxp hunter 14000000`, Inspect the rock,
+    follow the plugin's highlight.

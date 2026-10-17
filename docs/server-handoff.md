@@ -21,6 +21,33 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-17, eighth server dev, on OpenRune)
+
+Protocol unchanged. This session: beginner clue scrolls for RuneLite's Clue Scroll plugin. Details
+in `docs/openrune-port.md`, "Eighth server dev".
+
+- **Module** `content/other/treasure-trails`: Read -> 203 / maps 346-356 with the plugin's exact
+  texts; 21 steps (talks, emotes with Uri, map digs) in dbtable `trail_beginner_steps`; reward
+  casket from the wiki table; scroll box Open; `::clue [step] [steps_left]`. New API
+  `NpcOpOverrides` (a claimed npc op goes to the clue handler ahead of the npc's own Talk-to).
+  Tests: `:content:other:treasure-trails:integration` (6). Upstream: `openrune/upstream/21`.
+- **Deployed** 00:02 (35d27b9) and device-checked: 203 and map 348 on mobile, plugin overlay and
+  NPC marker, Ranael step, dig, casket, reward screen. **Not deployed yet:** 89cf619 (reward inv
+  filled a tick after the completion message so the Loot Tracker records the loot; it recorded
+  nothing with 35d27b9). Re-check the Loot Tracker after deploying it.
+- **Open:** client gap: ClueScrollPlugin's Read handler NPEs (item composition null for the
+  inventory CC_OP), so it never learns the clue item id; emote/Uri step not tried on the device;
+  Check steps, hot-cold (Reldo), Charlie the Tramp, STASH units, scroll cases not done.
+- **Device tips:** `item_action` needs the inventory tab open (tap the backpack at 1757,515); the
+  clue scroll's close X is at 1060,362 and the reward screen's at 1215,355; the RL sidebar button is
+  at 53,495 (Loot Tracker tab at 307,26).
+- **Build tip:** after adding a module, `openrune.sh build` can reuse a stale configuration cache and
+  regenerate `api/generated` without new dbtables; run `openrune.sh gradle
+  --no-configuration-cache :or-cache:buildCache` and then the remaining build steps.
+- **Next ideas:** the Uri emote step on the device; easy clues (same engine, more rows and the
+  easy casket table); hot-cold device for beginners (Reldo, `beginner_device` 23183, temperature
+  messages HotColdClue parses).
+
 ## Latest state (2026-10-16 late night, seventh server dev, on OpenRune)
 
 Protocol unchanged (240/253 mapped, 239 verified). This session: farming for RuneLite's Time

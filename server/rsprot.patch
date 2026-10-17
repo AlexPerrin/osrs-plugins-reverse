@@ -4309,6 +4309,21 @@ index d4b5ff15..0b7750ae 100644
          ),
      )
  }
+diff --git a/protocol/osrs-241/osrs-241-desktop/src/main/kotlin/net/rsprot/protocol/game/outgoing/codec/misc/player/UpdateStockMarketSlotV2Encoder.kt b/protocol/osrs-241/osrs-241-desktop/src/main/kotlin/net/rsprot/protocol/game/outgoing/codec/misc/player/UpdateStockMarketSlotV2Encoder.kt
+index 6e5dfd3f..a5dd3730 100644
+--- a/protocol/osrs-241/osrs-241-desktop/src/main/kotlin/net/rsprot/protocol/game/outgoing/codec/misc/player/UpdateStockMarketSlotV2Encoder.kt
++++ b/protocol/osrs-241/osrs-241-desktop/src/main/kotlin/net/rsprot/protocol/game/outgoing/codec/misc/player/UpdateStockMarketSlotV2Encoder.kt
+@@ -19,7 +19,9 @@ public class UpdateStockMarketSlotV2Encoder : MessageEncoder<UpdateStockMarketSl
+     ) {
+         when (val update = message.update) {
+             UpdateStockMarketSlotV2.ResetStockMarketSlot -> {
+-                buffer.p1(0)
++                // osrs-plugins-reverse: the slot, not 0 (every reset emptied slot 0; device-checked
++                // on the Android client, whose dispatcher case 66 reads the slot first as desktop does).
++                buffer.p1(message.slot)
+                 buffer.p1(0x7)
+                 buffer.p1(2)
+                 buffer.skipWrite(31)
 diff --git a/protocol/osrs-241/osrs-241-desktop/src/test/kotlin/net/rsprot/protocol/game/outgoing/info/NpcInfoViewEdgeTest.kt b/protocol/osrs-241/osrs-241-desktop/src/test/kotlin/net/rsprot/protocol/game/outgoing/info/NpcInfoViewEdgeTest.kt
 new file mode 100644
 index 00000000..b4e15043

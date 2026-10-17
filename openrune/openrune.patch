@@ -4758,10 +4758,10 @@ index 000000000..8b7f11775
 +}
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 new file mode 100644
-index 000000000..43be0de20
+index 000000000..86dd2b946
 --- /dev/null
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
-@@ -0,0 +1,436 @@
+@@ -0,0 +1,443 @@
 +package org.rsmod.content.interfaces.grandexchange
 +
 +import dev.openrune.definition.type.widget.IfEvent
@@ -4916,6 +4916,7 @@ index 000000000..43be0de20
 +
 +    private suspend fun ProtectedAccess.startBuy(slot: Int) {
 +        resetSetup(player, slot + 1)
++        clearSetupText()
 +        val type = objDialog("What would you like to buy?", showLastSearched = true)
 +        if (vars["varbit.ge_selectedslot"] != slot + 1) return
 +        val item = GrandExchange.tradeable(type)
@@ -4926,8 +4927,14 @@ index 000000000..43be0de20
 +        selectItem(item, quantity = 1)
 +    }
 +
++    private fun ProtectedAccess.clearSetupText() {
++        player.runClientScript(SETDESC_SCRIPT, "", "", SETUP_DESC, SETUP_FEE)
++        ifSetText("component.ge_offers:setup_marketprice", "")
++    }
++
 +    private fun ProtectedAccess.startSell(slot: Int) {
 +        resetSetup(player, slot + 1)
++        clearSetupText()
 +        GrandExchange.setClientVar(player, "varbit.ge_newoffer_type", 1)
 +    }
 +

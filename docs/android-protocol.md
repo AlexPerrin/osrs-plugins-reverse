@@ -147,7 +147,7 @@ none of this table is verified live yet. Codecs: `AndroidMoreEncoders.kt`.
 | 61 | UPDATE_REBOOT_TIMER_V2 | [gameCycles p2][message string]; "\u0018" cancels |
 | 63 | IF_SETPLAYERMODEL_BASECOLOUR | index `p1Alt1`, colour `p1Alt2`, combinedId `pCombinedIdAlt2` |
 | 65 | SITE_SETTINGS | settings `pjstr` (as desktop); stored in the client and passed to the URL builder FUN_0070332c by the CS2 URL ops |
-| 66 | UPDATE_STOCKMARKET_SLOT_V2 | as desktop (FUN_00700428) |
+| 66 | UPDATE_STOCKMARKET_SLOT_V2 | as desktop: [slot][status; 7 = version prefix, then version 2 and the status][obj p2][price p8][count p4][done p4][gold p8]; a second byte of 0 resets the slot (FUN_00700408: state 0, type 1). Device-checked 2026-10-17 (SELLING/SOLD/BUYING/CANCELLED_BUY in the GE plugin; slot object layout confirmed with the host's `ge raw` probe). RSProt's Reset wrote slot 0 instead of the slot, fixed in rsprot.patch |
 | 67 | VARCLAN_ENABLE | as desktop (creates the varclan store) |
 | 69 | FRIENDLIST_LOADED | as desktop (friend manager state) |
 | 70 | REBUILD_WORLDENTITY_V4 | recognised, no codec |

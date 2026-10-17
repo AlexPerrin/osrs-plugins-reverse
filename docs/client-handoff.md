@@ -842,7 +842,10 @@ session; its notes are in `docs/android-protocol.md`.
     stones (Inventory Viewer): start them left of the column. Instances aren't modelled (isInstance false;
     Spawn Predictor, Instance Map); `getArray` needs the frame's object locals (Spellbook also needs its
     runelite_callback).
-  - After slot 3 (0ea1a4d, unverified unless the next line says otherwise): BOTTOM_RIGHT overlays start
+  - Slot 4 (10:13-10:19) verified 0ea1a4d: Inventory Viewer left of the tab stones; the wrench tap shows Bank
+    Heatmap's strip and its "Toggle GE Heatmap" runs, but no heatmap colours appeared (open). Strip window
+    raised to 12 s.
+  - After slot 3 (0ea1a4d): BOTTOM_RIGHT overlays start
     left of the tab stones (root child 50) and the open side panel (111); a plain tap on a single-op widget
     (one game entry besides Cancel/Walk) shows the entries plugins created during its MenuEntryAdded pass
     as the plugin strip at the tap point for 6 s (`AndroidMenu.publishTapEntries`; Bank Heatmap's toggles
@@ -852,8 +855,8 @@ session; its notes are in `docs/android-protocol.md`.
        check Bank Tags' tag-tab column (create a tab, add an item via its "Edit-tags" strip entry, open it),
        then how the mobile bank drags items (WidgetDrag, setDraggedOnWidget/getDraggedWidget are host-side
        only today) before attempting Layouts.
-    2. Verify 0ea1a4d on the device if not done (Inventory Viewer placement; wrench tap → "Toggle GE
-       Heatmap" → heatmap overlay), then promote Bank Heatmap.
+    2. Bank Heatmap: after "Toggle GE Heatmap" (strip verified) no colours are drawn on bank items; check
+       HeatmapItemOverlay (WidgetItemOverlay on 12:12 items, getWidget parent ids) and the prices it uses.
     3. Feature checks for the 8 new `starts` core rows (Boss Timers/DPS Counter on the Giant Mole, Friend
        List with the desktop friend, Diary Requirements text widths, Music, GE, Spellbook, Instance Map).
     4. API: instances (isInstance/getInstanceTemplateChunks/instanced getMapRegions; Spawn Predictor, Instance

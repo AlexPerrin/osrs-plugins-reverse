@@ -269,13 +269,13 @@ final class AndroidMenu implements Menu {
      * Game thread, during a plain tap on a widget op: entries plugins created while the tap's
      * MenuEntryAdded pass ran would be right-click options on desktop (Bank Heatmap's toggles on
      * the bank menu button). The tap still runs as usual; these are shown as the plugin strip at
-     * the tap point for a few seconds.
+     * the tap point for 12 s (6 s proved too short to read and tap).
      */
     void publishTapEntries(int x, int y) {
         List<AndroidMenuEntry> l = new ArrayList<>(added);
         if (l.isEmpty()) return;
         java.util.Collections.reverse(l);
-        tapStripUntil = android.os.SystemClock.uptimeMillis() + 6000;
+        tapStripUntil = android.os.SystemClock.uptimeMillis() + 12000;
         show(l, new java.awt.Rectangle(Math.max(0, x - MIN_WIDTH / 2), y, MIN_WIDTH, 0));
     }
 

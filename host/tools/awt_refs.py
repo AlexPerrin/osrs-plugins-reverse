@@ -12,8 +12,8 @@ import sys
 import zipfile
 
 refs_out, classes_out, jars = sys.argv[1], sys.argv[2], sys.argv[3:]
-ref_re = re.compile(r"// (?:Method|Field|InterfaceMethod) ((?:java/awt|javax/swing)/[\w/$]+)\.(\"?[\w<>]+\"?):(\S+)")
-cls_re = re.compile(r"= Class\s+#\d+\s+// \"?\[*L?((?:java/awt|javax/swing)/[\w/$]+)")
+ref_re = re.compile(r"// (?:Method|Field|InterfaceMethod) ((?:java/awt|javax/swing|javax/accessibility)/[\w/$]+)\.(\"?[\w<>]+\"?):(\S+)")
+cls_re = re.compile(r"= Class\s+#\d+\s+// \"?\[*L?((?:java/awt|javax/swing|javax/accessibility)/[\w/$]+)")
 refs, classes = set(), set()
 other_refs = set()           # refs whose owner is a jar class (resolved through superclasses below)
 supers = {}                  # jar class -> superclass (internal names)
@@ -47,7 +47,7 @@ for c, n, d in other_refs:
     while k in supers and k not in seen:
         seen.add(k)
         k = supers[k]
-        if k.startswith(("java/awt/", "javax/swing/")):
+        if k.startswith(("java/awt/", "javax/swing/", "javax/accessibility/")):
             refs.add((k, n, d))
             break
 with open(refs_out, "w") as f:

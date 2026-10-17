@@ -124,7 +124,7 @@ public class GenHeadless {
     static boolean candidate(Class<?> c) {
         if (c == null || c.isArray() || c.isPrimitive()) return false;
         String n = c.getName();
-        return n.startsWith("java.awt.") || n.startsWith("javax.swing.");
+        return n.startsWith("java.awt.") || n.startsWith("javax.swing.") || n.startsWith("javax.accessibility.");
     }
 
     static boolean handwritten(Class<?> c) {

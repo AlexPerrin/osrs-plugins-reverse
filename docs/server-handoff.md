@@ -42,12 +42,17 @@ Details in `docs/openrune-port.md`, "Seventeenth server dev" and the sections af
   total x Item." lines (wording a guess); buy limits from the wiki (`enum.ge_buy_limits`, CC BY-NC-SA 3.0,
   attributed in the file header); over-limit offers wait for the 4-hour window. Device-checked (lobsters
   3/6/9/10, bronze pickaxes stop at 40/50).
-- Upstream: 50 patches; all `git am` on the pin (scratch clone `pin` in this session's scratchpad, branch
+- **GE trade history** (upstream 51): clerk History / GE History button -> ge_history 383 with the last 40
+  trades; Buy-offer on a line. Device-checked 14:57 (620ac7f is live).
+- **Desktop client:** an isolated desktop RuneLite ("desktop") runs through RSProx (docs/multi-client.md);
+  its own lock is `LOCK_NAME=desktop tools/device-lock.sh take|free server`; after a container restart run
+  `tools/multiclient/desktop.sh relogin`. Do not use `desktop_login.py --user desktop` while it is online.
+- Upstream: 51 patches; all `git am` on the pin (scratch clone `pin` in this session's scratchpad, branch
   `up` with 01-50).
-- **Deployed** 14:37: 09d83ad (live = git; later commits are docs only). Tester LOGGED_IN at Lumbridge on the
-  normal build, no channel joined; 98,904 coins, 20 noted lobsters, 40 noted bronze pickaxes, a rune
+- **Deployed** 14:56: 620ac7f (live = git; later commits are docs only). Tester LOGGED_IN at Lumbridge on the
+  normal build, no channel joined; ~100k coins, 40 noted bronze pickaxes, a small pouch, a rune
   pickaxe, an iron ore; the 1 gp lobster buy still open in GE slot 1.
-- **Next candidates** (orchestrator to pick): GE History (`ge_history_addline`) / Sets / custom ±X%;
+- **Next candidates** (orchestrator to pick): diary task hooks (list sent), GE tax-exempt list, Sets, custom ±X%;
   real friends chat if the fake one is not enough; Better Teleport Menu item families. Held: Music area
   sounds, remaining hunter methods, Spawn Predictor. Low: FRIENDLIST_DEL.
 

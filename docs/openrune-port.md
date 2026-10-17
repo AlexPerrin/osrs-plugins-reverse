@@ -1529,3 +1529,8 @@ clan hall, guest channels, events) are bigger again (several days).
   price); op 10 examines.
 - RUNCLIENTSCRIPT with long args ('Ï') is used here for the first time on Android (desktop encoder).
 - Test: 1 more in the GE integration suite (11). Upstream `51`.
+- **Device-checked 14:57 (620ac7f):** the clerk's History opens "Grand Exchange Trade History" ("You have no
+  recorded Grand Exchange trades." at first); its Exchange button goes back; after buying 1 lobster and selling
+  21, the list shows "Sold: Lobster x 21, 1,449 coins (1,470 - 21) = 69 each" above "Bought: Lobster, 70 coins"
+  (so the long args parse on Android); the GE History button opens it too, and tapping a line (Buy-offer)
+  opens a buy setup for Lobster at 70. Gap seen: lobsters are on the wiki's tax-exempt list, which is not done.

@@ -26,6 +26,7 @@ public class ItemManager {
     public ItemManager(Client client, net.runelite.client.callback.ClientThread clientThread) {
         this.client = client;
         this.clientThread = clientThread;
+        startIndexBuild();
     }
 
     private static final class LRU<K, V> extends java.util.LinkedHashMap<K, V> {
@@ -53,8 +54,78 @@ public class ItemManager {
         return c != null ? c.getPrice() : 0;
     }
     public long getItemPriceWithSource(int id, boolean useWiki) { return getItemPrice(id); }
-    public List<?> search(String query) { return Collections.emptyList(); }
+    /**
+     * Desktop searches its price list (tradeable items) by name. Here the list is built from the
+     * game's item definitions: a pass over all ids after login, 4096 ids per client cycle (~180 ms
+     * in all on BlueStacks, so no single long frame); a search on the client thread before it is
+     * done finishes the pass at once. Off the client thread before then, the result is empty.
+     */
+    public List<net.runelite.http.api.item.ItemPrice> search(String query) {
+        List<net.runelite.http.api.item.ItemPrice> idx = priceIndex();
+        String q = query.toLowerCase();
+        List<net.runelite.http.api.item.ItemPrice> out = new java.util.ArrayList<>();
+        for (net.runelite.http.api.item.ItemPrice p : idx)
+            if (p.getName().toLowerCase().contains(q)) out.add(p);
+        return out;
+    }
+
+    /** Desktop prefers the wiki price; here both are the store value. */
+    public long getWikiPrice(net.runelite.http.api.item.ItemPrice p) {
+        return p.getWikiPrice() > 0 ? p.getWikiPrice() : p.getPrice();
+    }
+
+    private volatile List<net.runelite.http.api.item.ItemPrice> priceIndex;
+    private final List<net.runelite.http.api.item.ItemPrice> building = new java.util.ArrayList<>();
+    private int buildNext;
+    private long buildNanos;
+
+    private void startIndexBuild() {
+        clientThread.invoke(() -> {
+            if (priceIndex != null) return true;
+            if (client.getGameState() != GameState.LOGGED_IN) return false;
+            indexStep(4096);
+            return priceIndex != null;
+        });
+    }
+
+    /** Client thread: indexes up to `max` more ids; publishes the index when all are done. */
+    private void indexStep(int max) {
+        long t0 = System.nanoTime();
+        int n = client.getItemCount();
+        int end = (int) Math.min((long) n, (long) buildNext + max);
+        for (int id = buildNext; id < end; id++) {
+            ItemComposition c = client.getItemDefinition(id);
+            if (c == null || !c.isTradeable() || c.getNote() != -1 || c.getPlaceholderTemplateId() != -1) continue;
+            String name = c.getName();
+            if (name == null || name.isEmpty() || name.equals("null")) continue;
+            net.runelite.http.api.item.ItemPrice p = new net.runelite.http.api.item.ItemPrice();
+            p.setId(id);
+            p.setName(name);
+            p.setPrice(getItemPrice(id));
+            p.setWikiPrice(p.getPrice());
+            building.add(p);
+        }
+        buildNext = end;
+        buildNanos += System.nanoTime() - t0;
+        if (buildNext >= n) {
+            priceIndex = Collections.unmodifiableList(new java.util.ArrayList<>(building));
+            building.clear();
+            android.util.Log.i("osrsrl-host", "item search index: " + priceIndex.size() + " of " + n + " items in "
+                + buildNanos / 1000000 + " ms");
+        }
+    }
+
+    private List<net.runelite.http.api.item.ItemPrice> priceIndex() {
+        List<net.runelite.http.api.item.ItemPrice> idx = priceIndex;
+        if (idx != null) return idx;
+        if (!client.isClientThread() || client.getGameState().getState() < GameState.LOGIN_SCREEN.getState())
+            return Collections.emptyList();
+        indexStep(Integer.MAX_VALUE);
+        return priceIndex != null ? priceIndex : Collections.<net.runelite.http.api.item.ItemPrice>emptyList();
+    }
+
     public ItemStats getItemStats(int id) { return null; }
+    public net.runelite.http.api.item.ItemStats getItemStats(int id, boolean allowNote) { return null; }
 
     public AsyncBufferedImage getImage(int id) { return getImage(id, 1, false); }
     /**

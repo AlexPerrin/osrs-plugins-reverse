@@ -1543,3 +1543,25 @@ taken as all four doses, watering cans matched only as "Watering can"). Sales of
 (`GrandExchange.taxPerItem(item, price)`); the history's tax column follows. The client's own setup line still
 shows "(price - 2%)" for them (it computes that itself; **not checked** whether the real client knows the
 exempt list). Upstream `52`.
+
+### Diary task hooks, round 2 (seventeenth server dev)
+
+20 more Lumbridge & Draynor / Varrock tasks, each a one-line call into `DiaryHooks` from existing content
+(area boxes are **guesses**):
+- Lumbridge & Draynor easy 2 cave bug kill in the Lumbridge Swamp Caves (x 3136-3263, z 9530-9600), 6 pickpocket
+  a Man/Woman in Lumbridge, 8 Zombie kill in the Draynor Sewers (x 3072-3135, z 9600-9727), 9 raw anchovies in
+  Al Kharid (x 3240-3340, z 3120-3230); medium 6 raw salmon in Lumbridge, 7 coif in the Lumbridge cow pen (x
+  3253-3266, z 3255-3299), 8 willow logs in Draynor (x 3070-3135, z 3220-3300), 9 pickpocket Martin, 10 Chaeldar
+  task (master id 4); hard 4 Waka canoe Lumbridge -> Edgeville.
+- Varrock easy 1 Thessalia's store opened, 3 iron in the SE Varrock mine (x 3280-3292, z 3360-3372), 5 the
+  Stronghold's War-floor ladder down (Famine arrival), 10 bowl spun then fired in Barbarian Village (x 3070-3112,
+  z 3400-3445; bit 0 of server varp `diary_progress_varrock` 63160), 13 raw trout at Barbarian Village; medium 3
+  kitten colour picked at Gertrude, 5 the four Stronghold emotes (Flap, Slap Head, Idea, Stamp; bits 1-4 of the
+  same varp; any order, anywhere), 9 Vannaka task (master id 3), 10 at least 20 mahogany planks in one sawmill
+  order; hard 3 Waka canoe shaped at the Edgeville station.
+- Kills come from an `NpcDeathKillHook` (`DiaryModule`); fishing/woodcutting/mining from
+  `SkillingActionCompleteEvent`; emotes from `PlayEmote`.
+- Not done (content missing): agility, H.A.M. Hideout, Ava, fairy rings, Puro-Puro, lava runes, the tea stall,
+  Benny, the dog bone, Haig Halen, the Apothecary, the spirit tree, the digsite pendant, the white tree, the
+  balloon, Tolna, the dying tree and the Champions' Guild door.
+- Tests: 7 in `:content:interfaces:achievement-diary:integration`. Upstream `53` (not compiled on its own pin).

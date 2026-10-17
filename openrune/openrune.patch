@@ -1372,6 +1372,91 @@ index 21e4bd7c4..a292950bf 100644
      }
  
      private suspend fun ProtectedAccess.hansDialogue(npc: Npc) =
+diff --git a/content/areas/city/varrock/build.gradle.kts b/content/areas/city/varrock/build.gradle.kts
+index 2aaa78852..0fb793ade 100644
+--- a/content/areas/city/varrock/build.gradle.kts
++++ b/content/areas/city/varrock/build.gradle.kts
+@@ -4,6 +4,7 @@ plugins {
+ }
+ 
+ dependencies {
++    implementation(projects.content.interfaces.achievementDiary)
+     testImplementation(projects.api.invPlugin)
+     testImplementation(projects.api.gameProcess)
+     testImplementation(projects.api.invStorage)
+diff --git a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
+index 375f66a3b..ff8eeffd4 100644
+--- a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
++++ b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
+@@ -1,5 +1,6 @@
+ package org.rsmod.content.areas.city.varrock.npcs
+ 
++import org.rsmod.content.interfaces.diary.DiaryHooks
+ import jakarta.inject.Inject
+ import org.rsmod.api.invtx.invTakeFee
+ import org.rsmod.api.player.dialogue.Dialogue
+@@ -165,6 +166,7 @@ constructor(private val care: CatCare, private val gertrudesCat: GertrudesCatQue
+                 chatNpc(happy, "Well okay, but they're all just as cuddly as each other.")
+                 val colour = pickColour() ?: return
+                 if (access.giveKitten(colour)) {
++                    DiaryHooks.kittenColourSelected(access.player)
+                     mesbox("Gertrude gives you another kitten.")
+                 }
+             }
+diff --git a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/shops/FineClothesShop.kt b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/shops/FineClothesShop.kt
+index f1164c104..2b5275bef 100644
+--- a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/shops/FineClothesShop.kt
++++ b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/shops/FineClothesShop.kt
+@@ -1,5 +1,6 @@
+ package org.rsmod.content.areas.city.varrock.npcs.shops
+ 
++import org.rsmod.content.interfaces.diary.DiaryHooks
+ import jakarta.inject.Inject
+ import org.rsmod.api.player.dialogue.Dialogue
+ import org.rsmod.api.player.protect.ProtectedAccess
+@@ -21,6 +22,7 @@ class FineClothesShop @Inject constructor(private val shops: Shops) : PluginScri
+ 
+     private fun Player.openFineClothesShop(npc: Npc) {
+         shops.open(this, npc, "Thessalia's Fine Clothes", "inv.clotheshop")
++        DiaryHooks.thessaliaStoreBrowsed(this)
+     }
+ 
+     private suspend fun ProtectedAccess.shopDialogue(npc: Npc) =
+diff --git a/content/areas/misc/stronghold_of_security/build.gradle.kts b/content/areas/misc/stronghold_of_security/build.gradle.kts
+index 4e4b6bef3..57416995e 100644
+--- a/content/areas/misc/stronghold_of_security/build.gradle.kts
++++ b/content/areas/misc/stronghold_of_security/build.gradle.kts
+@@ -4,6 +4,7 @@ plugins {
+ }
+ 
+ dependencies {
++    implementation(projects.content.interfaces.achievementDiary)
+     testImplementation(projects.api.invPlugin)
+     testImplementation(projects.api.gameProcess)
+     testImplementation(projects.api.invStorage)
+diff --git a/content/areas/misc/stronghold_of_security/src/main/kotlin/org/rsmod/content/areas/misc/stronghold_of_security/StrongholdTravel.kt b/content/areas/misc/stronghold_of_security/src/main/kotlin/org/rsmod/content/areas/misc/stronghold_of_security/StrongholdTravel.kt
+index b75b262fc..1e7152334 100644
+--- a/content/areas/misc/stronghold_of_security/src/main/kotlin/org/rsmod/content/areas/misc/stronghold_of_security/StrongholdTravel.kt
++++ b/content/areas/misc/stronghold_of_security/src/main/kotlin/org/rsmod/content/areas/misc/stronghold_of_security/StrongholdTravel.kt
+@@ -1,5 +1,6 @@
+ package org.rsmod.content.areas.misc.stronghold_of_security
+ 
++import org.rsmod.content.interfaces.diary.DiaryHooks
+ import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.api.script.onOpLoc1
+ import org.rsmod.api.table.StrongholdFloorsRow
+@@ -12,7 +13,10 @@ class StrongholdTravel : PluginScript() {
+     override fun ScriptContext.startup() {
+         onOpLoc1("loc.sos_dung_ent_open") { climb(WarArrival) }
+         onOpLoc1("loc.sos_war_ladd_up") { climb(Surface) }
+-        onOpLoc1("loc.sos_war_ladd_down") { climb(FamineArrival) }
++        onOpLoc1("loc.sos_war_ladd_down") {
++            climb(FamineArrival)
++            DiaryHooks.strongholdSecondLevelEntered(player)
++        }
+         onOpLoc1("loc.sos_fam_ladd_up") { climb(WarArrival) }
+         onOpLoc1("loc.sos_fam_ladd_down") { climb(PestilenceArrival) }
+         onOpLoc1("loc.sos_pest_ladd_up") { climb(FamineArrival) }
 diff --git a/content/events/random-events/build.gradle.kts b/content/events/random-events/build.gradle.kts
 new file mode 100644
 index 000000000..0c66fd8e6
@@ -2374,16 +2459,18 @@ index f70724f28..602d939fb 100644
 +contentGroup = "content.banker"
 diff --git a/content/interfaces/achievement-diary/build.gradle.kts b/content/interfaces/achievement-diary/build.gradle.kts
 new file mode 100644
-index 000000000..6eb9d5aea
+index 000000000..fe2291ad0
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/build.gradle.kts
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,16 @@
 +plugins {
 +    id("base-conventions")
 +    id("integration-test-suite")
 +}
 +
 +dependencies {
++    implementation(projects.content.interfaces.emotes)
++    implementation(projects.api.death)
 +    implementation(projects.api.pluginCommons)
 +}
 +
@@ -3164,10 +3251,10 @@ index 000000000..7e28c8f6b
 +}
 diff --git a/content/interfaces/achievement-diary/pack/src/main/resources/gamevals.toml b/content/interfaces/achievement-diary/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..3c75ab264
+index 000000000..4c8177e60
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/pack/src/main/resources/gamevals.toml
-@@ -0,0 +1,10 @@
+@@ -0,0 +1,11 @@
 +[gamevals.varp]
 +diary_tasks_lumbridge_easy = 63976
 +diary_tasks_lumbridge_medium = 63977
@@ -3178,12 +3265,13 @@ index 000000000..3c75ab264
 +diary_tasks_varrock_hard = 63982
 +diary_tasks_varrock_elite = 63983
 +diary_progress_lumbridge = 63984
++diary_progress_varrock = 63160
 diff --git a/content/interfaces/achievement-diary/pack/src/main/resources/pack/configs/diary_task_vars.toml b/content/interfaces/achievement-diary/pack/src/main/resources/pack/configs/diary_task_vars.toml
 new file mode 100644
-index 000000000..2a681102b
+index 000000000..04cbbab06
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/pack/src/main/resources/pack/configs/diary_task_vars.toml
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,60 @@
 +[[varp]]
 +isServerOnly = true
 +id = "varp.diary_tasks_lumbridge_easy"
@@ -3237,12 +3325,19 @@ index 000000000..2a681102b
 +id = "varp.diary_progress_lumbridge"
 +scope = "Perm"
 +transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.diary_progress_varrock"
++scope = "Perm"
++transmit = "Never"
++
 diff --git a/content/interfaces/achievement-diary/src/integration/kotlin/org/rsmod/content/interfaces/diary/DiaryTasksTest.kt b/content/interfaces/achievement-diary/src/integration/kotlin/org/rsmod/content/interfaces/diary/DiaryTasksTest.kt
 new file mode 100644
-index 000000000..b253d5176
+index 000000000..f160db527
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/src/integration/kotlin/org/rsmod/content/interfaces/diary/DiaryTasksTest.kt
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,112 @@
 +package org.rsmod.content.interfaces.diary
 +
 +import org.junit.jupiter.api.Assertions.assertEquals
@@ -3297,19 +3392,79 @@ index 000000000..b253d5176
 +        assertTrue(lines.contains("<str>Learn your age from Hans in Lumbridge.</str>"))
 +        assertTrue(lines.contains("Have Sedridor teleport you to the Essence Mine."))
 +    }
++
++    @Test
++    fun GameTestState.`skilling hooks check the item and the area`() = runGameTest {
++        DiaryHooks.fishCaught(player, "obj.raw_anchovies", CoordGrid(3000, 3400, 0))
++        assertFalse(DiaryTasks.isDone(player, Area.Lumbridge, Tier.Easy, 9))
++        DiaryHooks.fishCaught(player, "obj.raw_anchovies", CoordGrid(3267, 3148, 0))
++        assertTrue(DiaryTasks.isDone(player, Area.Lumbridge, Tier.Easy, 9))
++        DiaryHooks.fishCaught(player, "obj.raw_trout", CoordGrid(3104, 3430, 0))
++        assertTrue(DiaryTasks.isDone(player, Area.Varrock, Tier.Easy, 13))
++        DiaryHooks.oreMined(player, "obj.iron_ore", CoordGrid(3285, 3368, 0))
++        assertTrue(DiaryTasks.isDone(player, Area.Varrock, Tier.Easy, 3))
++        assertFalse(DiaryTasks.isDone(player, Area.Lumbridge, Tier.Easy, 11))
++        DiaryHooks.logsChopped(player, "obj.willow_logs", CoordGrid(3087, 3235, 0))
++        assertTrue(DiaryTasks.isDone(player, Area.Lumbridge, Tier.Medium, 8))
++        DiaryHooks.pickpocketed(player, "npc.man", "Man", CoordGrid(3222, 3218, 0))
++        assertTrue(DiaryTasks.isDone(player, Area.Lumbridge, Tier.Easy, 6))
++        DiaryHooks.npcKilled(player, "Zombie", CoordGrid(3124, 9662, 0))
++        assertTrue(DiaryTasks.isDone(player, Area.Lumbridge, Tier.Easy, 8))
++        DiaryHooks.npcKilled(player, "Cave bug", CoordGrid(3160, 9580, 0))
++        assertTrue(DiaryTasks.isDone(player, Area.Lumbridge, Tier.Easy, 2))
++        DiaryHooks.slayerTaskAssigned(player, 3)
++        assertTrue(DiaryTasks.isDone(player, Area.Varrock, Tier.Medium, 9))
++        DiaryHooks.planksMade(player, "obj.mahogany_plank", 19)
++        assertFalse(DiaryTasks.isDone(player, Area.Varrock, Tier.Medium, 10))
++        DiaryHooks.planksMade(player, "obj.mahogany_plank", 20)
++        assertTrue(DiaryTasks.isDone(player, Area.Varrock, Tier.Medium, 10))
++    }
++
++    @Test
++    fun GameTestState.`a bowl counts only when spun and fired in Barbarian Village`() = runGameTest {
++        val village = CoordGrid(3086, 3409, 0)
++        DiaryHooks.crafted(player, "obj.bowl_empty", village)
++        assertFalse(DiaryTasks.isDone(player, Area.Varrock, Tier.Easy, 10))
++        DiaryHooks.crafted(player, "obj.bowl_unfired", CoordGrid(3200, 3240, 0))
++        DiaryHooks.crafted(player, "obj.bowl_empty", village)
++        assertFalse(DiaryTasks.isDone(player, Area.Varrock, Tier.Easy, 10))
++        DiaryHooks.crafted(player, "obj.bowl_unfired", village)
++        DiaryHooks.crafted(player, "obj.bowl_empty", village)
++        assertTrue(DiaryTasks.isDone(player, Area.Varrock, Tier.Easy, 10))
++    }
++
++    @Test
++    fun GameTestState.`the four Stronghold emotes and the Waka canoe tasks`() = runGameTest {
++        for (seq in listOf("seq.emote_panic_flap", "seq.emote_slap_head_loop", "seq.emote_lightbulb")) {
++            DiaryHooks.emotePerformed(player, seq)
++        }
++        DiaryHooks.emotePerformed(player, "seq.emote_wave")
++        assertFalse(DiaryTasks.isDone(player, Area.Varrock, Tier.Medium, 5))
++        DiaryHooks.emotePerformed(player, "seq.emote_stampfeet")
++        assertTrue(DiaryTasks.isDone(player, Area.Varrock, Tier.Medium, 5))
++        DiaryHooks.canoeTravelled(player, waka = false, from = "Lumbridge", to = "Edgeville")
++        assertFalse(DiaryTasks.isDone(player, Area.Lumbridge, Tier.Hard, 4))
++        DiaryHooks.canoeTravelled(player, waka = true, from = "Lumbridge", to = "Edgeville")
++        assertTrue(DiaryTasks.isDone(player, Area.Lumbridge, Tier.Hard, 4))
++        DiaryHooks.canoeShaped(player, waka = true, station = "Edgeville")
++        assertTrue(DiaryTasks.isDone(player, Area.Varrock, Tier.Hard, 3))
++    }
 +}
 diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
 new file mode 100644
-index 000000000..a4b8150dc
+index 000000000..e7ac60140
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
-@@ -0,0 +1,120 @@
+@@ -0,0 +1,127 @@
 +package org.rsmod.content.interfaces.diary
 +
 +import dev.openrune.ServerCacheManager
 +import dev.openrune.definition.type.FontType
 +import dev.openrune.definition.type.widget.IfEvent
++import dev.openrune.rscm.RSCM
 +import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import org.rsmod.content.interfaces.emotes.PlayEmote
 +import dev.openrune.types.aconverted.interf.IfButtonOp
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.player.ui.ifSetEvents
@@ -3345,10 +3500,14 @@ index 000000000..a4b8150dc
 +            val product = context as? SkillingActionContext.Product ?: return@onEvent
 +            when (val source = product.source) {
 +                is SkillingProductSource.Mining -> DiaryHooks.oreMined(player, product.item, source.rock.coords)
-+                is SkillingProductSource.Woodcutting -> DiaryHooks.logsCut(player, product.item, source.tree.coords)
-+                else -> Unit
++                is SkillingProductSource.Woodcutting -> {
++                    DiaryHooks.logsCut(player, product.item, source.tree.coords)
++                    DiaryHooks.logsChopped(player, product.item, source.tree.coords)
++                }
++                is SkillingProductSource.Fishing -> DiaryHooks.fishCaught(player, product.item, player.coords)
 +            }
 +        }
++        onEvent<PlayEmote> { DiaryHooks.emotePerformed(player, RSCM.getReverseMapping(RSCMType.SEQ, seq.id)) }
 +        onIfOpen("interface.area_task") { player.ifSetEvents(TASKBOX, 0 until AREAS, IfEvent.Op1) }
 +        onIfOverlayButton(TASKBOX) {
 +            if (it.op == IfButtonOp.Op1) openJournal(it.comsub)
@@ -3426,10 +3585,10 @@ index 000000000..a4b8150dc
 +}
 diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt
 new file mode 100644
-index 000000000..67c0e8918
+index 000000000..aced22882
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,232 @@
 +package org.rsmod.content.interfaces.diary
 +
 +import org.rsmod.content.interfaces.diary.DiaryTasks.Area
@@ -3444,6 +3603,17 @@ index 000000000..67c0e8918
 + */
 +object DiaryHooks {
 +    private const val OAK_CUT_IN_LUMBRIDGE = 1
++    private const val BOWL_SPUN_IN_BARBARIAN_VILLAGE = 1
++    private const val MAHOGANY_PLANKS_AT_ONCE = 20
++
++    /** Bits in `diary_progress_varrock` for the Stronghold emotes (bit 0 is the bowl). */
++    private val STRONGHOLD_EMOTE_BITS =
++        mapOf(
++            "seq.emote_panic_flap" to 2,
++            "seq.emote_slap_head" to 4,
++            "seq.emote_lightbulb" to 8,
++            "seq.emote_stampfeet" to 16,
++        )
 +
 +    /** Lumbridge & Draynor easy 5: "Learn your age from Hans in Lumbridge." */
 +    fun hansAge(player: Player) {
@@ -3479,11 +3649,134 @@ index 000000000..67c0e8918
 +        }
 +    }
 +
-+    /** Lumbridge & Draynor easy 11: "Mine some Iron ore at the Al Kharid mine." */
++    /**
++     * Lumbridge & Draynor easy 11: "Mine some Iron ore at the Al Kharid mine."; Varrock easy 3: "Mine
++     * some Iron in the south east mining patch near Varrock."
++     */
 +    fun oreMined(player: Player, ore: String, coords: CoordGrid) {
-+        if (ore == "obj.iron_ore" && inAlKharidMine(coords)) {
-+            DiaryTasks.complete(player, Area.Lumbridge, Tier.Easy, 11)
++        if (ore != "obj.iron_ore") return
++        if (inAlKharidMine(coords)) DiaryTasks.complete(player, Area.Lumbridge, Tier.Easy, 11)
++        if (inSouthEastVarrockMine(coords)) DiaryTasks.complete(player, Area.Varrock, Tier.Easy, 3)
++    }
++
++    /** Lumbridge & Draynor medium 8: "Chop some willow logs in Draynor Village." */
++    fun logsChopped(player: Player, logs: String, coords: CoordGrid) {
++        if (logs == "obj.willow_logs" && inDraynor(coords)) {
++            DiaryTasks.complete(player, Area.Lumbridge, Tier.Medium, 8)
 +        }
++    }
++
++    /**
++     * Lumbridge & Draynor easy 9 (anchovies in Al Kharid), medium 6 (salmon in Lumbridge); Varrock easy
++     * 13 (trout at Barbarian Village). [coords] is where the player stands.
++     */
++    fun fishCaught(player: Player, fish: String, coords: CoordGrid) {
++        when {
++            fish == "obj.raw_anchovies" && inAlKharid(coords) ->
++                DiaryTasks.complete(player, Area.Lumbridge, Tier.Easy, 9)
++            fish == "obj.raw_salmon" && inLumbridge(coords) ->
++                DiaryTasks.complete(player, Area.Lumbridge, Tier.Medium, 6)
++            fish == "obj.raw_trout" && inBarbarianVillage(coords) ->
++                DiaryTasks.complete(player, Area.Varrock, Tier.Easy, 13)
++        }
++    }
++
++    /**
++     * Lumbridge & Draynor easy 6 ("Pickpocket a man or woman in Lumbridge.") and medium 9
++     * ("Pickpocket Martin the Master Gardener.").
++     */
++    fun pickpocketed(player: Player, npc: String, npcName: String, coords: CoordGrid) {
++        when {
++            npc == "npc.martin_the_master_farmer" ->
++                DiaryTasks.complete(player, Area.Lumbridge, Tier.Medium, 9)
++            (npcName == "Man" || npcName == "Woman") && inLumbridge(coords) ->
++                DiaryTasks.complete(player, Area.Lumbridge, Tier.Easy, 6)
++        }
++    }
++
++    /**
++     * Lumbridge & Draynor easy 2 ("Slay a Cave bug beneath Lumbridge Swamp.") and easy 8 ("Kill a
++     * Zombie in Draynor Sewers.").
++     */
++    fun npcKilled(player: Player, npcName: String, coords: CoordGrid) {
++        when {
++            npcName == "Cave bug" && inLumbridgeSwampCaves(coords) ->
++                DiaryTasks.complete(player, Area.Lumbridge, Tier.Easy, 2)
++            npcName == "Zombie" && inDraynorSewers(coords) ->
++                DiaryTasks.complete(player, Area.Lumbridge, Tier.Easy, 8)
++        }
++    }
++
++    /**
++     * Crafting products: Lumbridge & Draynor medium 7 ("Craft a coif in the Lumbridge cow pen."); Varrock
++     * easy 10 ("Spin a bowl on the pottery wheel and fire it in the oven in Barb Village.").
++     */
++    fun crafted(player: Player, product: String, coords: CoordGrid) {
++        when (product) {
++            "obj.coif" ->
++                if (inLumbridgeCowPen(coords)) DiaryTasks.complete(player, Area.Lumbridge, Tier.Medium, 7)
++            "obj.bowl_unfired" ->
++                if (inBarbarianVillage(coords)) {
++                    val progress = player.vars["varp.diary_progress_varrock"]
++                    VarPlayerIntMapSetter.set(
++                        player,
++                        "varp.diary_progress_varrock",
++                        progress or BOWL_SPUN_IN_BARBARIAN_VILLAGE,
++                    )
++                }
++            "obj.bowl_empty" ->
++                if (
++                    inBarbarianVillage(coords) &&
++                        player.vars["varp.diary_progress_varrock"] and BOWL_SPUN_IN_BARBARIAN_VILLAGE != 0
++                ) {
++                    DiaryTasks.complete(player, Area.Varrock, Tier.Easy, 10)
++                }
++        }
++    }
++
++    /** Varrock easy 1: "Browse Thessalia's store." */
++    fun thessaliaStoreBrowsed(player: Player) {
++        DiaryTasks.complete(player, Area.Varrock, Tier.Easy, 1)
++    }
++
++    /** Varrock easy 5: "Enter the second level of the Stronghold of Security." */
++    fun strongholdSecondLevelEntered(player: Player) {
++        DiaryTasks.complete(player, Area.Varrock, Tier.Easy, 5)
++    }
++
++    /** Lumbridge & Draynor medium 10 (Chaeldar, master 4) and Varrock medium 9 (Vannaka, master 3). */
++    fun slayerTaskAssigned(player: Player, masterId: Int) {
++        when (masterId) {
++            4 -> DiaryTasks.complete(player, Area.Lumbridge, Tier.Medium, 10)
++            3 -> DiaryTasks.complete(player, Area.Varrock, Tier.Medium, 9)
++        }
++    }
++
++    /** Varrock medium 5: "Perform the 4 emotes from the Stronghold of Security." (any order, anywhere) */
++    fun emotePerformed(player: Player, seq: String) {
++        val bit = STRONGHOLD_EMOTE_BITS.entries.firstOrNull { seq.startsWith(it.key) }?.value ?: return
++        val progress = player.vars["varp.diary_progress_varrock"] or bit
++        VarPlayerIntMapSetter.set(player, "varp.diary_progress_varrock", progress)
++        if (STRONGHOLD_EMOTE_BITS.values.all { progress and it != 0 }) {
++            DiaryTasks.complete(player, Area.Varrock, Tier.Medium, 5)
++        }
++    }
++
++    /** Lumbridge & Draynor hard 4: "Travel from Lumbridge to Edgeville on a Waka Canoe." */
++    fun canoeTravelled(player: Player, waka: Boolean, from: String, to: String) {
++        if (waka && from == "Lumbridge" && to == "Edgeville") {
++            DiaryTasks.complete(player, Area.Lumbridge, Tier.Hard, 4)
++        }
++    }
++
++    /** Varrock hard 3: "Make a Waka Canoe near Edgeville." */
++    fun canoeShaped(player: Player, waka: Boolean, station: String) {
++        if (waka && station == "Edgeville") DiaryTasks.complete(player, Area.Varrock, Tier.Hard, 3)
++    }
++
++    /** Varrock medium 3: "Select a colour for your kitten." */
++    fun kittenColourSelected(player: Player) {
++        DiaryTasks.complete(player, Area.Varrock, Tier.Medium, 3)
 +    }
 +
 +    /** Lumbridge & Draynor medium 5 and Varrock medium 8: the standard teleport spells. */
@@ -3502,14 +3795,54 @@ index 000000000..67c0e8918
 +        }
 +    }
 +
-+    /** Varrock easy 4: "Make a normal plank at the Sawmill." */
-+    fun planksMade(player: Player, plank: String) {
++    /** Varrock easy 4 ("Make a normal plank at the Sawmill.") and medium 10 ("Make 20 Mahogany Planks in one go."). */
++    fun planksMade(player: Player, plank: String, count: Int = 1) {
 +        if (plank == "obj.wood_plank") DiaryTasks.complete(player, Area.Varrock, Tier.Easy, 4)
++        if (plank == "obj.mahogany_plank" && count >= MAHOGANY_PLANKS_AT_ONCE) {
++            DiaryTasks.complete(player, Area.Varrock, Tier.Medium, 10)
++        }
 +    }
 +
 +    private fun inLumbridge(c: CoordGrid) = c.level == 0 && c.x in 3170..3270 && c.z in 3190..3270
 +
 +    private fun inAlKharidMine(c: CoordGrid) = c.level == 0 && c.x in 3280..3310 && c.z in 3270..3320
++
++    private fun inAlKharid(c: CoordGrid) = c.level == 0 && c.x in 3240..3340 && c.z in 3120..3230
++
++    private fun inSouthEastVarrockMine(c: CoordGrid) = c.level == 0 && c.x in 3280..3292 && c.z in 3360..3372
++
++    private fun inDraynor(c: CoordGrid) = c.level == 0 && c.x in 3070..3135 && c.z in 3220..3300
++
++    private fun inBarbarianVillage(c: CoordGrid) = c.level == 0 && c.x in 3070..3112 && c.z in 3400..3445
++
++    private fun inLumbridgeCowPen(c: CoordGrid) = c.level == 0 && c.x in 3253..3266 && c.z in 3255..3299
++
++    private fun inLumbridgeSwampCaves(c: CoordGrid) = c.level == 0 && c.x in 3136..3263 && c.z in 9530..9600
++
++    private fun inDraynorSewers(c: CoordGrid) = c.level == 0 && c.x in 3072..3135 && c.z in 9600..9727
++}
+diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryModule.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryModule.kt
+new file mode 100644
+index 000000000..5eacbf026
+--- /dev/null
++++ b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryModule.kt
+@@ -0,0 +1,17 @@
++package org.rsmod.content.interfaces.diary
++
++import org.rsmod.api.death.NpcDeathKillContext
++import org.rsmod.api.death.NpcDeathKillHook
++import org.rsmod.plugin.module.PluginModule
++
++public class DiaryModule : PluginModule() {
++    override fun bind() {
++        addSetBinding<NpcDeathKillHook>(DiaryKillHook::class.java)
++    }
++}
++
++internal class DiaryKillHook : NpcDeathKillHook {
++    override fun onKill(context: NpcDeathKillContext) {
++        DiaryHooks.npcKilled(context.hero, context.npc.name, context.npc.coords)
++    }
 +}
 diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryTasks.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryTasks.kt
 new file mode 100644
@@ -13176,7 +13509,7 @@ index 7a33bad04..75301d3d7 100644
      implementation(projects.content.skills.utils)
  }
 diff --git a/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt b/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt
-index 9701b14db..3671463a1 100644
+index 9701b14db..64c180fbd 100644
 --- a/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt
 +++ b/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt
 @@ -1,5 +1,6 @@
@@ -13199,7 +13532,7 @@ index 9701b14db..3671463a1 100644
                  this.strictCount = amount
              }
          }
-+        if (result.success) DiaryHooks.planksMade(player, plank.plank.internalName)
++        if (result.success) DiaryHooks.planksMade(player, plank.plank.internalName, amount)
      }
  
      private fun openSupplies(player: Player) {
@@ -19191,6 +19524,37 @@ index dc68e7964..d39f5a6b2 100644
          }
      }
  
+diff --git a/content/skills/crafting/build.gradle.kts b/content/skills/crafting/build.gradle.kts
+index 61d75d887..1a5e4de43 100644
+--- a/content/skills/crafting/build.gradle.kts
++++ b/content/skills/crafting/build.gradle.kts
+@@ -3,6 +3,7 @@ plugins {
+ }
+ 
+ dependencies {
++    implementation(projects.content.interfaces.achievementDiary)
+     implementation(projects.api.combat.combatManager)
+     implementation(projects.api.player)
+     implementation(projects.api.pluginCommons)
+diff --git a/content/skills/crafting/src/main/kotlin/org/rsmod/content/skills/crafting/CraftingWorker.kt b/content/skills/crafting/src/main/kotlin/org/rsmod/content/skills/crafting/CraftingWorker.kt
+index 882d17e4e..334ae27a1 100644
+--- a/content/skills/crafting/src/main/kotlin/org/rsmod/content/skills/crafting/CraftingWorker.kt
++++ b/content/skills/crafting/src/main/kotlin/org/rsmod/content/skills/crafting/CraftingWorker.kt
+@@ -1,5 +1,6 @@
+ package org.rsmod.content.skills.crafting
+ 
++import org.rsmod.content.interfaces.diary.DiaryHooks
+ import dev.openrune.ServerCacheManager
+ import dev.openrune.rscm.RSCM.asRSCM
+ import dev.openrune.rscm.RSCMType
+@@ -236,6 +237,7 @@ suspend fun ProtectedAccess.craftOnce(product: CraftingProduct): Boolean {
+     }
+ 
+     product.byproducts.forEach { invAdd(inv, it.internal, it.count) }
++    DiaryHooks.crafted(player, product.output, player.coords)
+ 
+     if (product.consumesThread && !holdsCostumeNeedle()) {
+         consumeThreadCharge()
 diff --git a/content/skills/farming/build.gradle.kts b/content/skills/farming/build.gradle.kts
 new file mode 100644
 index 000000000..6eb9d5aea
@@ -25846,10 +26210,10 @@ index 15d39e1d9..6e08496b6 100644
 +    }
  }
 diff --git a/content/skills/slayer/build.gradle.kts b/content/skills/slayer/build.gradle.kts
-index 3d20c293c..b587c8d62 100644
+index 3d20c293c..dc57c703d 100644
 --- a/content/skills/slayer/build.gradle.kts
 +++ b/content/skills/slayer/build.gradle.kts
-@@ -1,6 +1,6 @@
+@@ -1,9 +1,10 @@
  plugins {
      id("base-conventions")
 -
@@ -25857,7 +26221,11 @@ index 3d20c293c..b587c8d62 100644
  }
  
  dependencies {
-@@ -23,3 +23,10 @@ dependencies {
++    implementation(projects.content.interfaces.achievementDiary)
+     implementation(projects.api.attr)
+     implementation(projects.api.areaChecker)
+     implementation(projects.api.config)
+@@ -23,3 +24,10 @@ dependencies {
      implementation(projects.api.invtx)
      implementation(projects.content.skills.utils)
  }
@@ -25949,10 +26317,17 @@ index 000000000..fcb97ccf5
 +    }
 +}
 diff --git a/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt b/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt
-index 39eb8404d..3d282add1 100644
+index 39eb8404d..cf0dd439a 100644
 --- a/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt
 +++ b/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt
-@@ -124,20 +124,26 @@ object SlayerTaskManager {
+@@ -1,5 +1,6 @@
+ package org.rsmod.content.slayer.core
+ 
++import org.rsmod.content.interfaces.diary.DiaryHooks
+ import dev.openrune.ServerCacheManager
+ import dev.openrune.definition.type.DBRowType
+ import dev.openrune.rscm.RSCM
+@@ -124,20 +125,26 @@ object SlayerTaskManager {
  
          val master = getCurrentAssignedMaster(player) ?: return clearAssignedTask(player)
  
@@ -25983,7 +26358,7 @@ index 39eb8404d..3d282add1 100644
  
                  val basePoints = master.pointsPerTask
                  val multiplier = streakPointMultiplier(streak)
-@@ -158,7 +164,8 @@ object SlayerTaskManager {
+@@ -158,7 +165,8 @@ object SlayerTaskManager {
          }
  
          player.mes(
@@ -25993,7 +26368,7 @@ index 39eb8404d..3d282add1 100644
                  "received $pointsToAdd points, giving you a total of " +
                  "${player.vars["varbit.slayer_points"]}; return to a Slayer master.",
          )
-@@ -277,12 +284,12 @@ object SlayerTaskManager {
+@@ -277,12 +285,12 @@ object SlayerTaskManager {
          )
      }
  
@@ -26009,7 +26384,15 @@ index 39eb8404d..3d282add1 100644
      }
  
      fun rollAssignment(
-@@ -636,7 +643,7 @@ object SlayerTaskManager {
+@@ -619,6 +627,7 @@ object SlayerTaskManager {
+         VarPlayerIntMapSetter.set(player, "varp.slayer_count_original", amount)
+         VarPlayerIntMapSetter.set(player, "varp.slayer_count", amount)
+         VarPlayerIntMapSetter.set(player, "varp.slayer_target", task.task.id)
++        DiaryHooks.slayerTaskAssigned(player, master.masterId)
+ 
+         val assignedKonarArea = if (master.masterId == KONAR_MASTER_ID) {
+             val areaId = KonarSlayerAreas.resolveTaskArea(player, task, konarAreaId)
+@@ -636,7 +645,7 @@ object SlayerTaskManager {
          recordLastAssignment(player, master.masterId, task.task.id, assignedKonarArea, amount)
  
          if (master.masterId == TURAEL_MASTER_ID) {
@@ -26018,7 +26401,7 @@ index 39eb8404d..3d282add1 100644
          }
      }
  
-@@ -707,6 +714,11 @@ object SlayerTaskManager {
+@@ -707,6 +716,11 @@ object SlayerTaskManager {
      private const val VARP_LAST_AREA = "varp.slayer_last_area"
      private const val VARBIT_TOTAL_TASKS_DONE = "varbit.slayer_total_tasks_done"
  
@@ -26220,6 +26603,85 @@ index a28095cd2..d17a300d1 100644
      }
  
      private suspend fun ProtectedAccess.canSmelt(bar: SmithingBarsRow, regularFurnace: Boolean = true): Boolean {
+diff --git a/content/skills/thieving/build.gradle.kts b/content/skills/thieving/build.gradle.kts
+index a7e5cb889..81add35c9 100644
+--- a/content/skills/thieving/build.gradle.kts
++++ b/content/skills/thieving/build.gradle.kts
+@@ -3,5 +3,6 @@ plugins {
+ }
+ 
+ dependencies {
++    implementation(projects.content.interfaces.achievementDiary)
+     implementation(projects.api.pluginCommons)
+ }
+diff --git a/content/skills/thieving/src/main/kotlin/org/rsmod/content/skills/thieving/ThievingScript.kt b/content/skills/thieving/src/main/kotlin/org/rsmod/content/skills/thieving/ThievingScript.kt
+index b6a6539cd..203790fea 100644
+--- a/content/skills/thieving/src/main/kotlin/org/rsmod/content/skills/thieving/ThievingScript.kt
++++ b/content/skills/thieving/src/main/kotlin/org/rsmod/content/skills/thieving/ThievingScript.kt
+@@ -1,5 +1,6 @@
+ package org.rsmod.content.skills.thieving
+ 
++import org.rsmod.content.interfaces.diary.DiaryHooks
+ import dev.openrune.ServerCacheManager
+ import dev.openrune.rscm.RSCM.asRSCM
+ import dev.openrune.rscm.RSCMType
+@@ -143,6 +144,7 @@ constructor(
+             mes("You steal ${describe(loot.obj, count)}.", ChatType.Spam)
+         }
+         statAdvance(THIEVING, target.xp)
++        DiaryHooks.pickpocketed(player, npc.type.internalName, npc.name, npc.coords)
+     }
+ 
+     private fun ProtectedAccess.openPouches(pouch: CoinPouch, all: Boolean) {
+diff --git a/content/travel/canoe/build.gradle.kts b/content/travel/canoe/build.gradle.kts
+index 6022e3c66..7fe1f7341 100644
+--- a/content/travel/canoe/build.gradle.kts
++++ b/content/travel/canoe/build.gradle.kts
+@@ -4,5 +4,6 @@ plugins {
+ }
+ 
+ dependencies {
++    implementation(projects.content.interfaces.achievementDiary)
+     implementation(projects.api.pluginCommons)
+ }
+diff --git a/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeShaping.kt b/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeShaping.kt
+index a6853ed68..724f62468 100644
+--- a/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeShaping.kt
++++ b/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeShaping.kt
+@@ -1,5 +1,6 @@
+ package org.rsmod.content.travel.canoe.scripts
+ 
++import org.rsmod.content.interfaces.diary.DiaryHooks
+ import dev.openrune.ServerCacheManager
+ import dev.openrune.definition.type.widget.IfEvent
+ import dev.openrune.rscm.RSCM
+@@ -150,6 +151,7 @@ constructor(
+             val station = resolveStation()
+             this[station, canoe] = CanoeState.Ready
+             confirmedCanoeType = false
++            DiaryHooks.canoeShaped(player, canoe == Canoe.Waka, station.name)
+ 
+             val xp = lcParam(ServerCacheManager.getObject(canoe.loc.asRSCM(RSCMType.LOC))!!, params.skill_xp) * xpMods.get(player, "stat.woodcutting")
+             resetAnim()
+diff --git a/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeTravelling.kt b/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeTravelling.kt
+index d1c973f07..8210e1fd8 100644
+--- a/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeTravelling.kt
++++ b/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeTravelling.kt
+@@ -1,5 +1,6 @@
+ package org.rsmod.content.travel.canoe.scripts
+ 
++import org.rsmod.content.interfaces.diary.DiaryHooks
+ import dev.openrune.ServerCacheManager
+ import dev.openrune.definition.type.widget.IfEvent
+ import dev.openrune.rscm.RSCM.asRSCM
+@@ -134,6 +135,7 @@ class CanoeTravelling @Inject private constructor(private val cutscene: CanoeCut
+ 
+         val cutsceneType = if (wilderness) CutsceneType.Wilderness else CutsceneType.Grass
+         cutscene.start(this, destination, cutsceneType)
++        DiaryHooks.canoeTravelled(player, canoe == Canoe.Waka, station.currentLocation().name, destination.name)
+     }
+ 
+     private fun resolveValidDestinations(station: Station, canoe: Canoe): List<CanoeDestination> {
 diff --git a/content/travel/fairy-rings/build.gradle.kts b/content/travel/fairy-rings/build.gradle.kts
 new file mode 100644
 index 000000000..6eb9d5aea

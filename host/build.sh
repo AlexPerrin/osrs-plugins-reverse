@@ -79,7 +79,12 @@ for f in config/ConfigManager config/ConfigInvocationHandler callback/ClientThre
          account/SessionManager; do
     rm -f "$OUT"/client-classes/net/runelite/client/$f.class "$OUT"/client-classes/net/runelite/client/$f\$*.class
 done
-(cd "$OUT/client-classes" && jar cf ../client-subset.jar .)
+(cd "$OUT/client-classes" && jar cf ../client-subset.raw.jar .)
+# Java 9+ calls in the client classes (Moonlight potion's toArray(IntFunction), Fairy Ring's
+# Collectors.toUnmodifiableMap) -> JdkCompat, as tools/dex-plugin.sh does for plugin jars.
+ASM=$ROOT/re/tools/asm-9.7.jar
+[[ -f $ASM ]] || curl -sfL -o "$ASM" https://repo1.maven.org/maven2/org/ow2/asm/asm/9.7/asm-9.7.jar
+java -cp "$ASM" "$ROOT/host/gen/CompatRewrite.java" "$OUT/client-subset.raw.jar" "$OUT/client-subset.jar"
 # Resources (fonts, runelite.properties, icons, ...) go into host.jar beside the dex files.
 mkdir -p "$OUT/resources"
 (cd "$OUT/client-classes" && find . -type f ! -name '*.class' -exec cp --parents {} "$OUT/resources/" \;)

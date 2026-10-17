@@ -8,7 +8,7 @@ import java.time.Duration;
 
 /**
  * Java 9+ library methods that Android 9 (API 28) lacks and d8 doesn't backport. tools/dex-plugin.sh
- * rewrites plugin call sites to these static versions (host/gen/CompatRewrite.java has the table).
+ * (plugins) and host/build.sh (the RuneLite client classes) rewrite call sites to these static versions (host/gen/CompatRewrite.java has the table).
  */
 public final class JdkCompat {
     private JdkCompat() {}
@@ -63,4 +63,12 @@ public final class JdkCompat {
     public static Object[] toArray(java.util.Set<?> c, java.util.function.IntFunction<Object[]> g) { return c.toArray(g.apply(0)); }
     public static Object[] toArray(java.util.Queue<?> c, java.util.function.IntFunction<Object[]> g) { return c.toArray(g.apply(0)); }
     public static Object[] toArray(java.util.Deque<?> c, java.util.function.IntFunction<Object[]> g) { return c.toArray(g.apply(0)); }
+
+    /** Collectors.toUnmodifiableMap(Function, Function) (Java 10, API 33); nulls rejected as on the JDK. */
+    public static <T, K, U> java.util.stream.Collector<T, ?, java.util.Map<K, U>> toUnmodifiableMap(
+            java.util.function.Function<? super T, ? extends K> key, java.util.function.Function<? super T, ? extends U> value) {
+        return java.util.stream.Collectors.collectingAndThen(
+            java.util.stream.Collectors.toMap(t -> java.util.Objects.requireNonNull(key.apply(t)), t -> java.util.Objects.requireNonNull(value.apply(t))),
+            java.util.Collections::unmodifiableMap);
+    }
 }

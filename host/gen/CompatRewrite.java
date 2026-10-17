@@ -5,7 +5,8 @@ import org.objectweb.asm.*;
 
 /**
  * Rewrites calls to Java 9+ library methods that Android 9 lacks (and d8 doesn't backport) into
- * static calls to net.runelite.host.compat.JdkCompat, before d8 (tools/dex-plugin.sh).
+ * static calls to net.runelite.host.compat.JdkCompat, before d8 (tools/dex-plugin.sh for plugins,
+ * host/build.sh for the RuneLite client classes in host.jar). host/tools/api_gaps.py finds new ones.
  * usage: java -cp asm-9.7.jar CompatRewrite.java in.jar out.jar
  */
 public class CompatRewrite {
@@ -26,6 +27,11 @@ public class CompatRewrite {
         for (String c : new String[] {"java/util/Collection", "java/util/List", "java/util/Set", "java/util/Queue", "java/util/Deque"})
             TABLE.put(c + ".toArray(Ljava/util/function/IntFunction;)[Ljava/lang/Object;", "toArray");
     }
+    // Static methods: owner.name+desc -> JdkCompat static method with the same descriptor.
+    static final Map<String, String> STATIC = new HashMap<>(Map.of(
+        "java/util/stream/Collectors.toUnmodifiableMap(Ljava/util/function/Function;Ljava/util/function/Function;)Ljava/util/stream/Collector;",
+            "toUnmodifiableMap"));
+    static final String TO_ARRAY = "(Ljava/util/function/IntFunction;)[Ljava/lang/Object;";
     static final String COMPAT = "net/runelite/host/compat/JdkCompat";
     static int rewritten;
 
@@ -52,7 +58,21 @@ public class CompatRewrite {
                 return new MethodVisitor(Opcodes.ASM9, super.visitMethod(acc, name, desc, sig, ex)) {
                     @Override
                     public void visitMethodInsn(int op, String owner, String n, String d, boolean itf) {
-                        String target = op == Opcodes.INVOKEVIRTUAL || op == Opcodes.INVOKEINTERFACE ? TABLE.get(owner + "." + n + d) : null;
+                        boolean inst = op == Opcodes.INVOKEVIRTUAL || op == Opcodes.INVOKEINTERFACE;
+                        String target = inst ? TABLE.get(owner + "." + n + d) : null;
+                        if (inst && target == null && n.equals("toArray") && d.equals(TO_ARRAY) && owner.startsWith("java/util/")) {
+                            // The default method through a concrete collection (ArrayList, HashSet, ...):
+                            // any java.util receiver is a Collection, so the Collection overload takes it.
+                            rewritten++;
+                            super.visitMethodInsn(Opcodes.INVOKESTATIC, COMPAT, "toArray", "(Ljava/util/Collection;" + d.substring(1), false);
+                            return;
+                        }
+                        String st = op == Opcodes.INVOKESTATIC ? STATIC.get(owner + "." + n + d) : null;
+                        if (st != null) {
+                            rewritten++;
+                            super.visitMethodInsn(Opcodes.INVOKESTATIC, COMPAT, st, d, false);
+                            return;
+                        }
                         if (target != null) {
                             rewritten++;
                             super.visitMethodInsn(Opcodes.INVOKESTATIC, COMPAT, target, "(L" + owner + ";" + d.substring(1), false);

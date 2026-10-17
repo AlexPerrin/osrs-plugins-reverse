@@ -23,10 +23,15 @@ startUp OK and no runtime exceptions seen, but the feature wasn't checked or is 
 `throws` = fails to start; `untested`. Batch test 2026-10-16: `EXTRA="<names>" tools/plugin-test.sh`
 with jars from `tools/dex-plugin.sh --core <package> re/host/plugins-extra/<package>.jar`.
 Platform gaps: `host/tools/api_gaps.py classes*.dex.txt` (dexdump of host.jar) lists Java/Android
-methods host.jar calls that API 28 lacks. RuneLite's `Text` and `WildcardMatcher` are replaced for
-that reason (Java 9 `Matcher` methods). Left (2026-10-16): `Files.readString/writeString`,
-`privateLookupIn`, `Runtime.Version`, `Collectors.toUnmodifiableMap` (Fairy Ring), guava's `ClassValue`
-use, javax.sound / java.lang.management / ProcessHandle (desktop-only paths).
+methods host.jar calls that API 28 lacks; for a converted plugin jar add `--own <host dexdump>` so the
+shim classes aren't reported. Calls resolve through the superclass/interface graph, so inherited
+Java 9+ default methods (`ArrayList.toArray(IntFunction)` -> Collection, API 33) show up too.
+RuneLite's `Text` and `WildcardMatcher` are replaced for that reason (Java 9 `Matcher` methods);
+`host/gen/CompatRewrite.java` rewrites the rest into `JdkCompat` calls, for plugin jars
+(dex-plugin.sh) and since 2026-10-16 for the client classes in host.jar too (Moonlight potion's
+`toArray(IntFunction)`, Fairy Ring's `Collectors.toUnmodifiableMap`). Left: `Files.readString/writeString`,
+`privateLookupIn`, `Runtime.Version`, guava's `ClassValue` use, javax.sound / java.lang.management /
+ProcessHandle (desktop-only paths). All 21 converted hub jars: no gaps (2026-10-16).
 
 | Plugin | Status | Notes |
 |---|---|---|

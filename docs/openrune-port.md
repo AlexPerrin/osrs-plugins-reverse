@@ -823,3 +823,21 @@ was verified.
     name, skipping `fake_`/`br_`/`poh_`/`magictraining_`... variants; "Zombie head (Treasure
     Trails)" = `obj.zombie_head`. Not rolled: the 1/15 master clue.
   - Upstream `32-treasure-trails-hard`.
+- **Hard clues, stage 2: puzzle boxes.** 8 hard steps (5 anagrams, 3 ciphers) have a
+  `cluehelper_challenge_box` challenge (row 830, "A puzzle box."). The box is the step scroll's own
+  obj plus `_puzzlebox` (e.g. `trail_hard_anagram_exp9` -> `trail_hard_anagram_exp9_puzzlebox`);
+  its picture comes from dbtable `trail_puzzle_boxes` (60010): castle = varp if1 1 (pieces
+  `trail_slidingpuzzleb01-24`, enum 1354), tree = 2 (`c`, 1355), troll = 3 (`d`, 1356). Box ids by
+  picture are from the OSRS Wiki's Puzzle box infobox; that castle/tree/troll = b/c/d (1/2/3) is a
+  guess from the id order. Flow (`TrailPuzzle`, `talkWithPuzzle`): the npc gives the box (inventory
+  space needed) and the server fills `trail_puzzleinv` (140) with a scramble of 101 random slides
+  from the solved state (Mod Ash); Open sets if1, opens 306 as the main modal, IF_SETEVENTS op1 on
+  `trail_slidepuzzle:pieces` 0-24 and transmits inv 140; each op1 (the slot the client moved, see
+  `trail_slidepuzzle_op`) is mirrored with the same gap rule; solved = pieces 0-23 in order and slot
+  24 empty. Talking to the npc with a solved box takes the box, clears inv 140 and moves the trail
+  on. Npc lines are guesses ("Ah, a clue scroll. Solve this puzzle and I'll give you the next
+  clue.", "<npc> has given you a puzzle box!", "You haven't solved the puzzle yet. Come back when you
+  have.", "Well done, you solved it!"). Whether inv 140 survives a relog is OpenRune's inv
+  persistence; Open re-scrambles when it does not hold the box's pieces. RuneLite's Puzzle Solver
+  reads inv 140 and widget 306:4 (20054020). Not device-checked yet. Upstream
+  `33-treasure-trails-puzzle-boxes`.

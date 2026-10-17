@@ -4777,10 +4777,10 @@ index 000000000..4fb4759ef
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
 new file mode 100644
-index 000000000..c54189fd3
+index 000000000..fa2f350db
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TrailDataTables.kt
-@@ -0,0 +1,122 @@
+@@ -0,0 +1,164 @@
 +package org.rsmod.content.other.treasuretrails.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -4792,6 +4792,10 @@ index 000000000..c54189fd3
 + * interface each map clue row opens, and the emote seq for each emote slot the emote rows name.
 + */
 +object TrailDataTables {
++    private const val CASTLE = 1
++    private const val TREE = 2
++    private const val TROLL = 3
++
 +    private val CHARLIE =
 +        listOf(
 +            Triple(1811, "obj.trout", "a cooked trout"),
@@ -4837,6 +4841,32 @@ index 000000000..c54189fd3
 +            2251 to "interface.trail_map14",
 +            2252 to "interface.trail_clue_hard_map006",
 +            2253 to "interface.trail_clue_hard_map007",
++        )
++
++    /** OSRS Wiki, Puzzle box: the castle, tree and troll pictures by box obj (hard tier). */
++    private val PUZZLE_BOXES =
++        listOf(
++            "obj.trail_clue_hard_riddle014_puzzlebox" to CASTLE,
++            "obj.trail_clue_hard_riddle016_puzzlebox" to CASTLE,
++            "obj.trail_clue_hard_riddle017_puzzlebox" to CASTLE,
++            "obj.trail_hard_riddle_exp1_puzzlebox" to CASTLE,
++            "obj.trail_hard_riddle_exp4_puzzlebox" to CASTLE,
++            "obj.trail_hard_anagram_exp11_puzzlebox" to CASTLE,
++            "obj.trail_clue_hard_cipher007_puzzlebox" to CASTLE,
++            "obj.trail_clue_hard_cipher008_puzzlebox" to CASTLE,
++            "obj.trail_clue_hard_riddle018_puzzlebox" to TREE,
++            "obj.trail_clue_hard_riddle019_puzzlebox" to TREE,
++            "obj.trail_clue_hard_riddle026_puzzlebox" to TREE,
++            "obj.trail_hard_riddle_exp2_puzzlebox" to TREE,
++            "obj.trail_hard_anagram_exp9_puzzlebox" to TREE,
++            "obj.trail_clue_hard_cipher009_puzzlebox" to TREE,
++            "obj.trail_clue_hard_riddle020_puzzlebox" to TROLL,
++            "obj.trail_clue_hard_riddle021_puzzlebox" to TROLL,
++            "obj.trail_clue_hard_riddle025_puzzlebox" to TROLL,
++            "obj.trail_hard_riddle_exp3_puzzlebox" to TROLL,
++            "obj.trail_hard_anagram_exp13_puzzlebox" to TROLL,
++            "obj.trail_hard_anagram_exp14_puzzlebox" to TROLL,
++            "obj.trail_clue_hard_cipher003_puzzlebox" to TROLL,
 +        )
 +
 +    private val EMOTES =
@@ -4902,13 +4932,25 @@ index 000000000..c54189fd3
 +                }
 +            }
 +        }
++
++    fun puzzleBoxes() =
++        dbTable("dbtable.trail_puzzle_boxes", serverOnly = true) {
++            column("box", 0, VarType.OBJ)
++            column("puzzle", 1, VarType.INT)
++            for ((i, box) in PUZZLE_BOXES.withIndex()) {
++                row("dbrow.trail_puzzle_box_$i") {
++                    columnRSCM(0, box.first)
++                    column(1, box.second)
++                }
++            }
++        }
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt
 new file mode 100644
-index 000000000..66891c559
+index 000000000..7e0998bf3
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/TreasureTrailsPluginPack.kt
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,18 @@
 +package org.rsmod.content.other.treasuretrails.pack
 +
 +import dev.openrune.definition.dbtables.DBTable
@@ -4920,6 +4962,7 @@ index 000000000..66891c559
 +            TrailDataTables.charlie(),
 +            TrailDataTables.maps(),
 +            TrailDataTables.emotes(),
++            TrailDataTables.puzzleBoxes(),
 +            BeginnerCasketTable.rewards(),
 +            EasyCasketTable.rewards(),
 +            MediumCasketTable.rewards(),
@@ -4928,10 +4971,10 @@ index 000000000..66891c559
 +}
 diff --git a/content/other/treasure-trails/pack/src/main/resources/gamevals.toml b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..06a5043c0
+index 000000000..347a4de93
 --- /dev/null
 +++ b/content/other/treasure-trails/pack/src/main/resources/gamevals.toml
-@@ -0,0 +1,810 @@
+@@ -0,0 +1,832 @@
 +[gamevals.dbtable]
 +trail_charlie_tasks = 60003
 +trail_beginner_casket = 60004
@@ -4940,6 +4983,7 @@ index 000000000..06a5043c0
 +trail_easy_casket = 60007
 +trail_medium_casket = 60008
 +trail_hard_casket = 60009
++trail_puzzle_boxes = 60010
 +
 +[gamevals.dbrow]
 +trail_charlie_task_0 = 60200
@@ -5707,6 +5751,27 @@ index 000000000..06a5043c0
 +trail_hard_casket_231 = 61431
 +trail_hard_casket_232 = 61432
 +trail_hard_casket_233 = 61433
++trail_puzzle_box_0 = 61450
++trail_puzzle_box_1 = 61451
++trail_puzzle_box_2 = 61452
++trail_puzzle_box_3 = 61453
++trail_puzzle_box_4 = 61454
++trail_puzzle_box_5 = 61455
++trail_puzzle_box_6 = 61456
++trail_puzzle_box_7 = 61457
++trail_puzzle_box_8 = 61458
++trail_puzzle_box_9 = 61459
++trail_puzzle_box_10 = 61460
++trail_puzzle_box_11 = 61461
++trail_puzzle_box_12 = 61462
++trail_puzzle_box_13 = 61463
++trail_puzzle_box_14 = 61464
++trail_puzzle_box_15 = 61465
++trail_puzzle_box_16 = 61466
++trail_puzzle_box_17 = 61467
++trail_puzzle_box_18 = 61468
++trail_puzzle_box_19 = 61469
++trail_puzzle_box_20 = 61470
 +trail_map_interface_24 = 61440
 +trail_map_interface_25 = 61441
 +trail_map_interface_26 = 61442
@@ -5905,10 +5970,10 @@ index 000000000..ab768d9a0
 +transmit = "Never"
 diff --git a/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
 new file mode 100644
-index 000000000..8d7cf2fa2
+index 000000000..54bacc513
 --- /dev/null
 +++ b/content/other/treasure-trails/src/integration/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScriptTest.kt
-@@ -0,0 +1,361 @@
+@@ -0,0 +1,406 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -6039,6 +6104,7 @@ index 000000000..8d7cf2fa2
 +        println("hard steps by kind: ${steps.groupingBy { it::class.simpleName }.eachCount()}")
 +        val talks = steps.filterIsInstance<TrailStep.Talk>()
 +        assertEquals(20, talks.count { it.challenge != null })
++        assertEquals(8, talks.count { it.puzzle != null })
 +        assertEquals(54, steps.count { it is TrailStep.Dig && it.map == null && it.text?.contains("degrees") == true })
 +        val maps = steps.mapNotNull { (it as? TrailStep.Dig)?.map ?: (it as? TrailStep.Search)?.map }
 +        assertEquals(7, maps.size)
@@ -6049,6 +6115,50 @@ index 000000000..8d7cf2fa2
 +        assertEquals(objs.size, objs.toSet().size)
 +        assertEquals(16, UNITS.count { it.tier == TrailTier.Hard })
 +    }
++
++    @Test
++    fun `puzzle boxes scramble into a solvable mix of their 24 pieces`() {
++        val pieces = TrailPuzzle.pieces(1)
++        assertEquals(24, pieces.size)
++        assertEquals("obj.trail_slidingpuzzleb01", TreasureTrailScript.objName(pieces.first()))
++        val rng = java.util.Random(7)
++        val scrambled = TrailPuzzle.scramble(1) { rng.nextInt(it) }
++        assertEquals(pieces.toSet(), scrambled.filterNotNull().toSet())
++        assertEquals(1, scrambled.count { it == null })
++        assertFalse(TrailPuzzle.isSolved(1, scrambled))
++        assertTrue(TrailPuzzle.isSolved(1, TrailPuzzle.solved(1)))
++        assertNull(TrailPuzzle.slide(TrailPuzzle.solved(1), 0))
++        val moved = checkNotNull(TrailPuzzle.slide(TrailPuzzle.solved(1), 23))
++        assertNull(moved[23])
++        assertEquals(pieces[23], moved[24])
++        assertNull(TrailPuzzle.slide(TrailPuzzle.solved(1), 19 - 1))
++    }
++
++    @Test
++    fun `hard puzzle steps hand out their own box`() {
++        val puzzles = TrailSteps.ALL.getValue(TrailTier.Hard).filterIsInstance<TrailStep.Talk>().mapNotNull { it.puzzle }
++        assertTrue(puzzles.size >= 5, puzzles.toString())
++        assertTrue(puzzles.all { TreasureTrailScript.objName(it.obj).endsWith("_puzzlebox") && it.puzzle in 1..3 })
++        for (box in puzzles) {
++            val type = checkNotNull(dev.openrune.ServerCacheManager.getItem(box.obj))
++            assertEquals(0, type.interfaceOptions.indexOf("Open"), type.name)
++        }
++    }
++
++    @Test
++    fun GameTestState.`sliding mirrors the client's move and only into the gap`() =
++        runInjectedGameTest(TreasureTrailScript::class, null, TreasureTrailScript::class) { script ->
++            prepare()
++            val solved = TrailPuzzle.solved(2)
++            script.setPuzzle(player, solved)
++            with(script) { player.withProtectedAccess { slidePiece(0) } }
++            assertEquals(solved, script.puzzleSlots(player))
++            with(script) { player.withProtectedAccess { slidePiece(19) } }
++            assertNull(script.puzzleSlots(player)[19])
++            assertEquals(solved[19], script.puzzleSlots(player)[24])
++            with(script) { player.withProtectedAccess { slidePiece(24) } }
++            assertTrue(TrailPuzzle.isSolved(2, script.puzzleSlots(player)))
++        }
 +
 +    @Test
 +    fun GameTestState.`a key step's npc drops its key once, and only on that step`() =
@@ -6428,12 +6538,76 @@ index 000000000..a620d3ac6
 +        script.dropKey(key, context.dropCoords, context.hero)
 +    }
 +}
+diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailPuzzle.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailPuzzle.kt
+new file mode 100644
+index 000000000..02604c3b9
+--- /dev/null
++++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailPuzzle.kt
+@@ -0,0 +1,58 @@
++package org.rsmod.content.other.treasuretrails
++
++import dev.openrune.ServerCacheManager
++
++/**
++ * The 5x5 slide puzzle (`trail_slidepuzzle`, 306): slot `i` of `trail_puzzleinv` holds a piece obj
++ * or nothing (the gap). The picture's pieces are enum 1864[puzzle] (position -> obj); it is solved
++ * when slots 0-23 hold pieces 0-23 in order and slot 24 is the gap.
++ */
++object TrailPuzzle {
++    const val SIZE = 5
++    const val SLOTS = SIZE * SIZE
++    const val SCRAMBLE_MOVES = 101
++    private const val PIECE_ENUMS = 1864
++
++    fun pieces(puzzle: Int): List<Int> {
++        val pieceEnum = ServerCacheManager.getEnum(PIECE_ENUMS)?.values?.get(puzzle) as? Int ?: return emptyList()
++        val values = ServerCacheManager.getEnum(pieceEnum)?.values ?: return emptyList()
++        return (0 until SLOTS - 1).mapNotNull { values[it] as? Int }
++    }
++
++    fun solved(puzzle: Int): List<Int?> = pieces(puzzle) + null
++
++    fun isSolved(puzzle: Int, slots: List<Int?>): Boolean = slots == solved(puzzle)
++
++    /** Where the gap is, if [slot] is next to it (no diagonals). */
++    fun gapBeside(slots: List<Int?>, slot: Int): Int? {
++        if (slot !in 0 until SLOTS || slots[slot] == null) return null
++        val x = slot % SIZE
++        val y = slot / SIZE
++        return listOfNotNull(
++                (slot - 1).takeIf { x > 0 },
++                (slot + 1).takeIf { x < SIZE - 1 },
++                (slot - SIZE).takeIf { y > 0 },
++                (slot + SIZE).takeIf { y < SIZE - 1 },
++            )
++            .firstOrNull { slots[it] == null }
++    }
++
++    fun slide(slots: List<Int?>, slot: Int): List<Int?>? {
++        val gap = gapBeside(slots, slot) ?: return null
++        return slots.toMutableList().also {
++            it[gap] = it[slot]
++            it[slot] = null
++        }
++    }
++
++    /** Mod Ash: a puzzle box is scrambled with 101 random slides into the gap from the solved state. */
++    fun scramble(puzzle: Int, nextInt: (Int) -> Int): List<Int?> {
++        var slots = solved(puzzle)
++        repeat(SCRAMBLE_MOVES) {
++            val gap = slots.indexOf(null)
++            val movable = (0 until SLOTS).filter { gapBeside(slots, it) == gap }
++            slots = checkNotNull(slide(slots, movable[nextInt(movable.size)]))
++        }
++        return slots
++    }
++}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
 new file mode 100644
-index 000000000..ae3f2fce5
+index 000000000..126f8bc74
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TrailSteps.kt
-@@ -0,0 +1,305 @@
+@@ -0,0 +1,330 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
@@ -6447,6 +6621,7 @@ index 000000000..ae3f2fce5
 +import org.rsmod.api.table.TrailCharlieTasksRow
 +import org.rsmod.api.table.TrailEmoteSeqsRow
 +import org.rsmod.api.table.TrailMapInterfacesRow
++import org.rsmod.api.table.TrailPuzzleBoxesRow
 +import org.rsmod.api.table.cluehelper.CluehelperChallengeQuestionRow
 +import org.rsmod.api.table.cluehelper.CluehelperClueAnagramRow
 +import org.rsmod.api.table.cluehelper.CluehelperClueCipherRow
@@ -6467,9 +6642,18 @@ index 000000000..ae3f2fce5
 +
 +/** One clue step, built from a row of Jagex's `cluehelper_clue_*` tables. */
 +sealed class TrailStep(val row: Int, val tier: TrailTier, val text: String?) {
-+    /** Talk to one of [npcs] (anagrams, ciphers, npc cryptics); from medium up some ask [challenge]. */
-+    class Talk(row: Int, tier: TrailTier, text: String, val npcs: Set<Int>, val challenge: Challenge? = null) :
-+        TrailStep(row, tier, text)
++    /**
++     * Talk to one of [npcs] (anagrams, ciphers, npc cryptics); from medium up some ask [challenge],
++     * from hard up some hand out a [puzzle] box instead.
++     */
++    class Talk(
++        row: Int,
++        tier: TrailTier,
++        text: String,
++        val npcs: Set<Int>,
++        val challenge: Challenge? = null,
++        val puzzle: PuzzleBox? = null,
++    ) : TrailStep(row, tier, text)
 +
 +    /** "Talk to Charlie the Tramp": he picks one of [tasks] and wants its item. */
 +    class Charlie(row: Int, tier: TrailTier, text: String, val npcs: Set<Int>, val tasks: List<CharlieTask>) :
@@ -6520,6 +6704,9 @@ index 000000000..ae3f2fce5
 +/** A challenge scroll question ([row] in `cluehelper_challenge_question`) and its scroll [obj]. */
 +data class Challenge(val row: Int, val question: String, val answer: Int, val obj: Int)
 +
++/** A puzzle box obj and its picture: the `if1` value the slide puzzle (306) draws from. */
++data class PuzzleBox(val obj: Int, val puzzle: Int)
++
 +data class CharlieTask(val row: Int, val text: String, val obj: Int, val request: String)
 +
 +data class HotColdSpot(val row: Int, val coord: CoordGrid)
@@ -6548,16 +6735,19 @@ index 000000000..ae3f2fce5
 +        val d = tier.difficulty
 +        val steps = mutableListOf<TrailStep>()
 +        for (r in CluehelperClueAnagramRow.all().filter { it.difficulty == d }) {
-+            if (r.challenge?.tableId == CHALLENGE_BOX_TABLE.asRSCM(RSCMType.DBTABLE)) continue
 +            if (!targetsOnly(r.rowId, "dbcol.cluehelper_clue_anagram:target", TARGET_NPC_TABLE)) continue
-+            val challenge = r.challenge?.let { challenge(it.rowId, r.rowId) }
++            val boxed = r.challenge?.tableId == CHALLENGE_BOX_TABLE.asRSCM(RSCMType.DBTABLE)
++            val puzzle = if (boxed) puzzleBox(tier, r.rowId) ?: continue else null
++            val challenge = if (boxed) null else r.challenge?.let { challenge(it.rowId, r.rowId) }
 +            val text = "The anagram reveals<br>who to speak to next:<br>${r.clueText.uppercase()}"
-+            steps += TrailStep.Talk(r.rowId, tier, text, r.target.map { it.npc.id }.toSet(), challenge)
++            steps += TrailStep.Talk(r.rowId, tier, text, r.target.map { it.npc.id }.toSet(), challenge, puzzle)
 +        }
 +        for (r in CluehelperClueCipherRow.all().filter { it.difficulty == d }) {
-+            val challenge = r.challenge?.let { challenge(it.rowId, r.rowId) } ?: continue
++            val boxed = r.challenge?.tableId == CHALLENGE_BOX_TABLE.asRSCM(RSCMType.DBTABLE)
++            val puzzle = if (boxed) puzzleBox(tier, r.rowId) ?: continue else null
++            val challenge = if (boxed) null else r.challenge?.let { challenge(it.rowId, r.rowId) } ?: continue
 +            val text = "The cipher reveals<br>who to speak to next:<br>${r.clueText}"
-+            steps += TrailStep.Talk(r.rowId, tier, text, r.target.map { it.npc.id }.toSet(), challenge)
++            steps += TrailStep.Talk(r.rowId, tier, text, r.target.map { it.npc.id }.toSet(), challenge, puzzle)
 +        }
 +        for (r in CluehelperClueCoordinateRow.all().filter { it.difficulty == d }) {
 +            val text = coordinateText(r.clueText) ?: continue
@@ -6600,6 +6790,15 @@ index 000000000..ae3f2fce5
 +        }
 +        val objs = STEP_OBJS.getValue(tier)
 +        return if (tier.clueObj == null) steps.filter { it.row in objs } else steps
++    }
++
++    /** The step scroll's own puzzle box (`<scroll>_puzzlebox`) and its picture (`trail_puzzle_boxes`). */
++    private fun puzzleBox(tier: TrailTier, row: Int): PuzzleBox? {
++        val scroll = STEP_OBJS.getValue(tier)[row] ?: return null
++        val name = dev.openrune.rscm.RSCM.getReverseMapping(RSCMType.OBJ, scroll) + "_puzzlebox"
++        val box = runCatching { name.asRSCM(RSCMType.OBJ) }.getOrNull() ?: return null
++        val puzzle = TrailPuzzleBoxesRow.all().firstOrNull { it.box.id == box }?.puzzle ?: return null
++        return PuzzleBox(box, puzzle)
 +    }
 +
 +    private fun targetsOnly(row: Int, column: String, table: String): Boolean =
@@ -6839,13 +7038,14 @@ index 000000000..1e9315ecb
 +}
 diff --git a/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
 new file mode 100644
-index 000000000..3f39aef4e
+index 000000000..1502fb548
 --- /dev/null
 +++ b/content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
-@@ -0,0 +1,744 @@
+@@ -0,0 +1,821 @@
 +package org.rsmod.content.other.treasuretrails
 +
 +import dev.openrune.ServerCacheManager
++import dev.openrune.definition.type.widget.IfEvent
 +import dev.openrune.rscm.RSCM.asRSCM
 +import dev.openrune.rscm.RSCMType
 +import dev.openrune.types.ItemServerType
@@ -6872,6 +7072,7 @@ index 000000000..3f39aef4e
 +import org.rsmod.api.script.onCommand
 +import org.rsmod.api.script.onEvent
 +import org.rsmod.api.script.onIfClose
++import org.rsmod.api.script.onIfModalButton
 +import org.rsmod.api.script.onOpHeld1
 +import org.rsmod.api.script.onOpHeld2
 +import org.rsmod.api.script.onOpNpc1
@@ -6929,6 +7130,10 @@ index 000000000..3f39aef4e
 +        for (challenge in challenges()) {
 +            onOpHeld1(objName(challenge.obj)) { readChallenge(challenge) }
 +        }
++        for (box in puzzleBoxes()) {
++            onOpHeld1(objName(box.obj)) { openPuzzle(box) }
++        }
++        onIfModalButton(PUZZLE_PIECES) { slidePiece(it.comsub) }
 +        for (tier in TrailTier.entries) {
 +            onOpHeld1(tier.scrollBox) { openScrollBox(tier) }
 +        }
@@ -6954,6 +7159,9 @@ index 000000000..3f39aef4e
 +
 +    private fun challenges(): List<Challenge> =
 +        TrailSteps.ALL.values.flatten().filterIsInstance<TrailStep.Talk>().mapNotNull { it.challenge }.distinctBy { it.obj }
++
++    private fun puzzleBoxes(): List<PuzzleBox> =
++        TrailSteps.ALL.values.flatten().filterIsInstance<TrailStep.Talk>().mapNotNull { it.puzzle }.distinctBy { it.obj }
 +
 +    private fun ProtectedAccess.readChallenge(challenge: Challenge) {
 +        ifOpenMainModal(CLUE_TEXT_INTERFACE)
@@ -7045,6 +7253,11 @@ index 000000000..3f39aef4e
 +
 +    private suspend fun ProtectedAccess.talkToStepNpc(npc: Npc, npcType: Int) {
 +        val step = npcStep(player, npcType) ?: return
++        val puzzle = (step as? TrailStep.Talk)?.puzzle
++        if (puzzle != null) {
++            talkWithPuzzle(npc, step as TrailStep.Talk, puzzle)
++            return
++        }
 +        val challenge = (step as? TrailStep.Talk)?.challenge
 +        if (challenge != null) {
 +            talkWithChallenge(npc, step as TrailStep.Talk, challenge)
@@ -7091,6 +7304,65 @@ index 000000000..3f39aef4e
 +        startDialogue(npc) {
 +            chatNpc(happy, "Spot on!")
 +            access.completeStep(step)
++        }
++    }
++
++    /**
++     * Hard and up: the npc hands out a scrambled puzzle box; once the box's slide puzzle is solved,
++     * talking again takes the box and moves the trail on. The npc lines are best guesses.
++     */
++    private suspend fun ProtectedAccess.talkWithPuzzle(npc: Npc, step: TrailStep.Talk, box: PuzzleBox) {
++        val boxName = objName(box.obj)
++        if (!playerContainsObj(boxName)) {
++            if (inv.freeSpace() == 0) {
++                startDialogue(npc) { chatNpc(neutral, "You'll need some space in your inventory for my puzzle.") }
++                return
++            }
++            invAdd(inv, boxName)
++            setPuzzle(player, TrailPuzzle.scramble(box.puzzle) { random.of(0, it - 1) })
++            startDialogue(npc) {
++                chatNpc(neutral, "Ah, a clue scroll. Solve this puzzle and I'll give you the next clue.")
++                objbox(boxName, "${npc.name} has given you a puzzle box!")
++            }
++            return
++        }
++        if (!TrailPuzzle.isSolved(box.puzzle, puzzleSlots(player))) {
++            startDialogue(npc) { chatNpc(neutral, "You haven't solved the puzzle yet. Come back when you have.") }
++            return
++        }
++        if (!holdsClue(player, step) || invDel(inv, boxName).failure) return
++        invClear(player.invMap.getOrPut(PUZZLE_INV))
++        startDialogue(npc) {
++            chatNpc(happy, "Well done, you solved it!")
++            access.completeStep(step)
++        }
++    }
++
++    fun ProtectedAccess.openPuzzle(box: PuzzleBox) {
++        if (puzzleSlots(player).filterNotNull().toSet() != TrailPuzzle.pieces(box.puzzle).toSet()) {
++            setPuzzle(player, TrailPuzzle.scramble(box.puzzle) { random.of(0, it - 1) })
++        }
++        VarPlayerIntMapSetter.set(player, PUZZLE_VARP, box.puzzle)
++        ifOpenMainModal(PUZZLE_INTERFACE)
++        ifSetEvents(PUZZLE_PIECES, 0 until TrailPuzzle.SLOTS, IfEvent.Op1)
++        invTransmit(player.invMap.getOrPut(PUZZLE_INV))
++    }
++
++    fun ProtectedAccess.slidePiece(slot: Int) {
++        val slid = TrailPuzzle.slide(puzzleSlots(player), slot) ?: return
++        setPuzzle(player, slid)
++    }
++
++    fun puzzleSlots(player: Player): List<Int?> {
++        val inv = player.invMap.getOrPut(PUZZLE_INV)
++        return (0 until TrailPuzzle.SLOTS).map { inv[it]?.id }
++    }
++
++    @OptIn(UncheckedType::class)
++    fun setPuzzle(player: Player, slots: List<Int?>) {
++        val inv = player.invMap.getOrPut(PUZZLE_INV)
++        for ((slot, obj) in slots.withIndex()) {
++            if (inv[slot]?.id != obj) inv[slot] = obj?.let { InvObj(it, 1) }
 +        }
 +    }
 +
@@ -7392,7 +7664,7 @@ index 000000000..3f39aef4e
 +
 +    private fun removeClues(player: Player, tier: TrailTier) {
 +        val objs = (tier.clueObj?.let { setOf(it.asRSCM(RSCMType.OBJ)) } ?: TrailSteps.STEP_OBJS.getValue(tier).values.toSet()) +
-+            listOfNotNull(tier.dropObj?.asRSCM(RSCMType.OBJ)) + challenges().map { it.obj }
++            listOfNotNull(tier.dropObj?.asRSCM(RSCMType.OBJ)) + challenges().map { it.obj } + puzzleBoxes().map { it.obj }
 +        for (slot in player.inv.indices) {
 +            if (player.inv[slot]?.id in objs) player.inv[slot] = null
 +        }
@@ -7473,6 +7745,10 @@ index 000000000..3f39aef4e
 +        const val CLUE_TEXT = "component.trail_cluetext:text"
 +        const val REWARD_INTERFACE = "interface.trail_rewardscreen"
 +        const val REWARD_INV = "inv.trail_rewardinv"
++        const val PUZZLE_INV = "inv.trail_puzzleinv"
++        const val PUZZLE_INTERFACE = "interface.trail_slidepuzzle"
++        const val PUZZLE_PIECES = "component.trail_slidepuzzle:pieces"
++        const val PUZZLE_VARP = "varp.if1"
 +        const val HOT_COLD_SPOT_VARP = "varp.trail_beginner_hot_cold_spot"
 +        const val HOT_COLD_LAST_VARP = "varp.trail_beginner_hot_cold_last"
 +        const val URI_LIFETIME = 100

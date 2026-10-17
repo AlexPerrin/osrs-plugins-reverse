@@ -21,6 +21,20 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-17, fifteenth server dev, on OpenRune)
+
+Details in `docs/openrune-port.md`, "Fifteenth server dev". Protocol unchanged.
+
+- **187 menu tap** was the host (BTM's empty Java onOp listener swallowed the tap), fixed by the
+  client dev (1c7cee8). No hotkey labels on mobile is stock (script 217 turns them off).
+- **Device-checked** (no restart): worn games necklace destination op, butterfly catch, jerboa in
+  a box trap.
+- **Committed, not deployed:** jewellery charges keep their slot (a worn necklace moved to the head
+  slot); dog shelter Adopt no longer crashes (`varbit.dog_unlock_0`). Deploy needs "OK restart",
+  then check Chase's two 187 menus (`::npc 500 dogq_chase_post`, Adopt) and a worn Rub.
+- Tester's old inventory is in the bank.
+- Upstream: 45, 46; all 46 `git am` on the pin.
+
 ## Latest state (2026-10-17, fourteenth server dev, on OpenRune)
 
 Details in `docs/openrune-port.md`, "Fourteenth server dev". Protocol unchanged.

@@ -1,0 +1,61 @@
+From 407038ec7998ecd52ec4b4900e04055d2a2a42ab Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 10:12:22 -0400
+Subject: [PATCH] Travel: jewellery charges keep their inventory or worn slot
+
+A charge swap used invReplace, which puts the next charge in the first free
+slot: a worn games necklace moved to the head slot. Replace in place.
+---
+ .../travel/jewellery/JewelleryTeleportScriptTest.kt      | 4 +++-
+ .../content/travel/jewellery/JewelleryTeleportScript.kt  | 9 +++++++--
+ 2 files changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt b/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
+index b1db0b25c..13247e365 100644
+--- a/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
++++ b/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
+@@ -23,10 +23,11 @@ class JewelleryTeleportScriptTest {
+     fun GameTestState.`a use swaps the necklace for one charge less`() =
+         runInjectedGameTest(JewelleryTeleportScript::class, null, JewelleryTeleportScript::class) { script ->
+             prepare()
+-            player.inv[0] = obj("obj.necklace_of_minigames_8")
++            player.inv[5] = obj("obj.necklace_of_minigames_8")
+             assertTrue(use(script, "dbrow.jewellery_teleport_games_necklace_8", inventory = true))
+             assertEquals(0, player.inv.count("obj.necklace_of_minigames_8"))
+             assertEquals(1, player.inv.count("obj.necklace_of_minigames_7"))
++            assertEquals("obj.necklace_of_minigames_7".asRSCM(RSCMType.OBJ), player.inv[5]?.id)
+             val sent = client.mapOf(MessageGame::message)
+             assertTrue("You rub the necklace..." in sent, sent.toString())
+             assertTrue(sent.any { "Your games necklace has seven uses left." in it }, sent.toString())
+@@ -44,6 +45,7 @@ class JewelleryTeleportScriptTest {
+             assertTrue(use(script, "dbrow.jewellery_teleport_amulet_of_glory_1", inventory = false))
+             assertEquals(0, player.worn.count("obj.amulet_of_glory_1"))
+             assertEquals(1, player.worn.count("obj.amulet_of_glory"))
++            assertEquals("obj.amulet_of_glory".asRSCM(RSCMType.OBJ), player.worn[NECK_SLOT]?.id)
+             val sent = client.mapOf(MessageGame::message)
+             assertTrue(sent.any { "Your ring of dueling crumbles to dust." in it }, sent.toString())
+             assertTrue(sent.any { "You use your amulet's last charge." in it }, sent.toString())
+diff --git a/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
+index a62a135cf..12fd7a433 100644
+--- a/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
++++ b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
+@@ -90,9 +90,14 @@ constructor(private val validator: PlayerTeleportValidator, private val areaChec
+ 
+     /** Swaps [item] in [from] for its next charge (or removes it) and sends the charge messages. */
+     fun ProtectedAccess.useCharge(item: JewelleryTeleportItemsRow, from: Inventory): Boolean {
+-        val obj = item.obj.internalName
++        val slot = from.indexOfFirst { it?.id == item.obj.id }
++        if (slot < 0) return false
+         val used =
+-            if (item.crumbles == 1) invDel(from, obj, 1) else invReplace(from, obj, 1, item.next.internalName)
++            if (item.crumbles == 1) {
++                invDel(from, item.obj.internalName, 1)
++            } else {
++                invReplaceSlot(from, slot, 1, item.next)
++            }
+         if (used.failure) return false
+         mes("You rub the ${item.rubWord}...")
+         val left = item.charges - 1
+-- 
+2.43.0
+

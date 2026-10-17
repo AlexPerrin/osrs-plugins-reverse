@@ -1,0 +1,28 @@
+From 1a8c8311b819b3b5c10d8c61fc6e4828028ab3e4 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 10:12:22 -0400
+Subject: [PATCH] Pets: default dog breeds have unlock bit 0
+
+puppy_colours rows for the breeds available after A Ruff Situation have
+unlock_bit 0, and varbit.dog_unlock_0 does not exist (dog_unlock_1..9 are the
+wandering-dog unlocks), so Chase's Adopt threw and disconnected the player.
+---
+ .../src/main/kotlin/org/rsmod/content/other/pets/dogs/Dogs.kt   | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/dogs/Dogs.kt b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/dogs/Dogs.kt
+index 44316d9f2..bc39ec213 100644
+--- a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/dogs/Dogs.kt
++++ b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/dogs/Dogs.kt
+@@ -11,7 +11,7 @@ class DogBreed(row: PuppyColoursRow) {
+     val id: Int = row.rowId
+     val key: String = RSCM.getReverseMapping(RSCMType.DBROW, row.rowId).removePrefix("dbrow.")
+     val name: String = row.name
+-    val unlock: String? = row.unlockBit?.let { "varbit.dog_unlock_$it" }
++    val unlock: String? = row.unlockBit?.takeIf { it > 0 }?.let { "varbit.dog_unlock_$it" }
+ 
+     fun unlocked(player: Player): Boolean {
+         val varbit = unlock ?: return true
+-- 
+2.43.0
+

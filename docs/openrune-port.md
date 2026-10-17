@@ -1207,3 +1207,36 @@ was verified.
   until his quest), Search sarcophagus -> Ahrim spawned, killed with `::maxhit`; the Barrows plugin
   showed Ahrim ticked and Potential 9.88% (server-set varbits). Tester back at Lumbridge on the
   normal build; inventory: a games necklace(8) instead of a copper ore.
+
+## Fifteenth server dev (2026-10-17)
+
+- **`menu()` on Android (interface 187):** not a server bug. The cache's script 217 runs
+  `if (~on_mobile = true) $boolean = false;`, so the mobile menu never shows "1:" hotkey labels
+  (stock behaviour, as on live mobile). Entries are `cc_create` text children of `menu:lj_layer1`
+  with no ops; a tap selects through the pause-button flag of `IF_SETEVENTS 187:lj_layer1 0..127`
+  (same as desktop) and sends RESUME_PAUSEBUTTON. The tap did nothing because RuneLite's Better
+  Teleport Menu gives every 187 entry an empty Java onOp listener (plus a low-priority "Set
+  Hotkey" op 9) on script 218's post-fire, and the host consumed any click on a widget with a Java
+  listener. The client dev fixed the host (1c7cee8); Rub → Burthorpe teleports with BTM loaded.
+- **Device run 2026-10-17 10:02-10:10 EDT** (no restart; live build up to 5e0e648):
+  - Worn games necklace ops: long-press the worn necklace lists Remove + the 5 destinations;
+    Barbarian Outpost teleported (2520,3571), "You rub the necklace..." and "Your games necklace
+    has five uses left." **Bug found:** after the charge swap the necklace(5) showed in the head
+    slot (`invReplace` takes the first free slot). Fixed: `useCharge` replaces in place
+    (`invReplaceSlot`), held and worn; the integration test now checks the slot. Not deployed.
+  - Butterfly: wielded net, `::npc 500 butterfly_warlock`, Catch: "You manage to catch the
+    butterfly." and the Hunter XP drop on the first swing (Hunter 14M).
+  - Jerboa: box trap laid in Lumbridge, `::npc 500 13139` (typing `varlamore_hunterjerboa01` through
+    adb lost the "a0"; the numeric id works), the trap shook, Check: "You've caught an embertailed
+    jerboa... or maybe not.", +137 XP, a jerboa tail and the box trap back.
+  - **Dog shelter Adopt crashed the player** (logged out): `Missing mapping for key:
+    'varbit.dog_unlock_0'`. Upstream OpenRune bug: `Dogs.kt` builds `varbit.dog_unlock_$unlockBit`,
+    and the default breeds' `puppy_colours` rows have `unlock_bit` 0 (only dog_unlock_1..9 exist).
+    Fixed by treating 0 as "no unlock". **Guess:** that 0 means the quest's default breeds
+    (labrador, pug, spaniel per the wiki); not checked row by row. Chase's 187 menus not yet seen
+    on the device (needs the deploy).
+  - Tester: LOGGED_IN at Lumbridge on the normal build, staff wielded; the whole previous inventory
+    (games necklaces, loot sack, clue items, the new butterfly jar and jerboa tail, net, box trap)
+    was deposited in the bank to make room.
+- Upstream: 45 (jewellery charge slot, needs 44), 46 (default dog breeds, alone); all 46 `git am`
+  on the pin.

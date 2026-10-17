@@ -3565,6 +3565,19 @@ index 35dd61859..90641375b 100644
          const val KITTEN_EVENTS = 120
          const val CAT_EVENTS = 220
          const val MAX_EVENTS = 255
+diff --git a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/dogs/Dogs.kt b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/dogs/Dogs.kt
+index 44316d9f2..bc39ec213 100644
+--- a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/dogs/Dogs.kt
++++ b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/dogs/Dogs.kt
+@@ -11,7 +11,7 @@ class DogBreed(row: PuppyColoursRow) {
+     val id: Int = row.rowId
+     val key: String = RSCM.getReverseMapping(RSCMType.DBROW, row.rowId).removePrefix("dbrow.")
+     val name: String = row.name
+-    val unlock: String? = row.unlockBit?.let { "varbit.dog_unlock_$it" }
++    val unlock: String? = row.unlockBit?.takeIf { it > 0 }?.let { "varbit.dog_unlock_$it" }
+ 
+     fun unlocked(player: Player): Boolean {
+         val varbit = unlock ?: return true
 diff --git a/content/other/plank-sack/build.gradle.kts b/content/other/plank-sack/build.gradle.kts
 new file mode 100644
 index 000000000..fc1089168
@@ -17238,10 +17251,10 @@ index 000000000..e7818ef6d
 +}
 diff --git a/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt b/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
 new file mode 100644
-index 000000000..b1db0b25c
+index 000000000..13247e365
 --- /dev/null
 +++ b/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,83 @@
 +package org.rsmod.content.travel.jewellery
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -17267,10 +17280,11 @@ index 000000000..b1db0b25c
 +    fun GameTestState.`a use swaps the necklace for one charge less`() =
 +        runInjectedGameTest(JewelleryTeleportScript::class, null, JewelleryTeleportScript::class) { script ->
 +            prepare()
-+            player.inv[0] = obj("obj.necklace_of_minigames_8")
++            player.inv[5] = obj("obj.necklace_of_minigames_8")
 +            assertTrue(use(script, "dbrow.jewellery_teleport_games_necklace_8", inventory = true))
 +            assertEquals(0, player.inv.count("obj.necklace_of_minigames_8"))
 +            assertEquals(1, player.inv.count("obj.necklace_of_minigames_7"))
++            assertEquals("obj.necklace_of_minigames_7".asRSCM(RSCMType.OBJ), player.inv[5]?.id)
 +            val sent = client.mapOf(MessageGame::message)
 +            assertTrue("You rub the necklace..." in sent, sent.toString())
 +            assertTrue(sent.any { "Your games necklace has seven uses left." in it }, sent.toString())
@@ -17288,6 +17302,7 @@ index 000000000..b1db0b25c
 +            assertTrue(use(script, "dbrow.jewellery_teleport_amulet_of_glory_1", inventory = false))
 +            assertEquals(0, player.worn.count("obj.amulet_of_glory_1"))
 +            assertEquals(1, player.worn.count("obj.amulet_of_glory"))
++            assertEquals("obj.amulet_of_glory".asRSCM(RSCMType.OBJ), player.worn[NECK_SLOT]?.id)
 +            val sent = client.mapOf(MessageGame::message)
 +            assertTrue(sent.any { "Your ring of dueling crumbles to dust." in it }, sent.toString())
 +            assertTrue(sent.any { "You use your amulet's last charge." in it }, sent.toString())
@@ -17325,10 +17340,10 @@ index 000000000..b1db0b25c
 +}
 diff --git a/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
 new file mode 100644
-index 000000000..a62a135cf
+index 000000000..12fd7a433
 --- /dev/null
 +++ b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
-@@ -0,0 +1,127 @@
+@@ -0,0 +1,132 @@
 +package org.rsmod.content.travel.jewellery
 +
 +import dev.openrune.rscm.RSCM
@@ -17421,9 +17436,14 @@ index 000000000..a62a135cf
 +
 +    /** Swaps [item] in [from] for its next charge (or removes it) and sends the charge messages. */
 +    fun ProtectedAccess.useCharge(item: JewelleryTeleportItemsRow, from: Inventory): Boolean {
-+        val obj = item.obj.internalName
++        val slot = from.indexOfFirst { it?.id == item.obj.id }
++        if (slot < 0) return false
 +        val used =
-+            if (item.crumbles == 1) invDel(from, obj, 1) else invReplace(from, obj, 1, item.next.internalName)
++            if (item.crumbles == 1) {
++                invDel(from, item.obj.internalName, 1)
++            } else {
++                invReplaceSlot(from, slot, 1, item.next)
++            }
 +        if (used.failure) return false
 +        mes("You rub the ${item.rubWord}...")
 +        val left = item.charges - 1

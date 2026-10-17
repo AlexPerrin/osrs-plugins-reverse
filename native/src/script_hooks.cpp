@@ -50,6 +50,7 @@ int g_ids[kMaxDepth];
 int g_depth = 0;
 int g_root_base = 0;  // g_depth index of the innermost root script
 uintptr_t g_event = 0;
+uintptr_t g_return_frame = 0;
 
 // Watched (script, opcode) pairs; written by the game thread's JNI calls only.
 int32_t g_watch[kMaxOpWatches * 2];
@@ -162,6 +163,8 @@ bool installed() { return g_orig_run != nullptr; }
 void set_listener(Listener listener) { g_listener = listener; }
 void set_enabled(bool enabled) { g_enabled.store(enabled, std::memory_order_relaxed); }
 uintptr_t current_event() { return g_event; }
+uintptr_t return_frame() { return g_return_frame; }
+int current_script() { return g_depth > 0 && g_depth <= kMaxDepth ? g_ids[g_depth - 1] : -1; }
 
 Stats stats() {
     return {g_roots.load(), g_gosubs.load(), g_returns.load(), g_delivered.load()};
@@ -181,7 +184,7 @@ extern "C" void osrsrl_script_lookup_cb(const uint64_t* regs, uintptr_t lr) {
     deliver(Pre, id);
 }
 
-extern "C" void osrsrl_script_swap_cb(const uint64_t*, uintptr_t lr) {
+extern "C" void osrsrl_script_swap_cb(const uint64_t* regs, uintptr_t lr) {
     if (lr != g_base + kReturnSwapRet) return;
     g_returns.fetch_add(1, std::memory_order_relaxed);
     // The root's own entry is never popped here: RETURN with no call frames leaves the
@@ -190,5 +193,8 @@ extern "C" void osrsrl_script_swap_cb(const uint64_t*, uintptr_t lr) {
     g_depth--;
     int id = g_depth < kMaxDepth ? g_ids[g_depth] : -1;
     if (g_log) LOGI("script: return %d (depth %d)", id, g_depth);
+    // swap(frame, vm+8, vm+0x20, vm+0x38) has not run yet: x0 is the caller's saved frame.
+    g_return_frame = regs ? static_cast<uintptr_t>(regs[0]) : 0;
     if (id >= 0) deliver(Post, id);
+    g_return_frame = 0;
 }

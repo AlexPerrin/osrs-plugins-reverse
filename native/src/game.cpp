@@ -1344,6 +1344,70 @@ bool set_script_int_stack(const int32_t* values, int size) {
     return true;
 }
 
+// Script locals of the running frame (frame 0: the VM's live locals, int vector vm+0x08, object
+// vector vm+0x38) or of a saved call frame (int vector +0x18, object vector +0x48; the frame a
+// RETURN is about to restore, script_hooks::return_frame()). Arrays (define_array, case 0x2c) are
+// object locals at slot = desktop array id: a 0x28-byte variant with type 4 (+0x20) holding the
+// array object pointer (+0); the array is {u8 dirty, variant storage +0x08, alternative index +0x38},
+// alternative 0 = int array, storage a std::vector<int32_t> (static RE of 0x4dd08c cases 0x2c-0x2e,
+// 0x5f1974/0x5f1fbc/0x5f200c). // unverified: the vector<int32_t> storage, on the device.
+namespace {
+bool locals_base(uintptr_t frame, uintptr_t& ints, uintptr_t& objs) {
+    if (!g_build || !g_build->script_vm) return false;
+    uintptr_t vm = g_base + g_build->script_vm;
+    ints = frame ? frame + 0x18 : vm + 0x08;
+    objs = frame ? frame + 0x48 : vm + 0x38;
+    return true;
+}
+
+int32_t* script_int_array(uintptr_t frame, int slot, size_t& n, uintptr_t* array_obj = nullptr) {
+    uintptr_t ints, objs;
+    if (slot < 0 || slot > 255 || !locals_base(frame, ints, objs)) return nullptr;
+    uintptr_t b = read_at<uintptr_t>(objs), e = read_at<uintptr_t>(objs + 8);
+    if (!b || e < b || b + static_cast<uintptr_t>(slot + 1) * 0x28 > e) return nullptr;
+    uintptr_t v = b + static_cast<uintptr_t>(slot) * 0x28;
+    if (read_at<uint32_t>(v + 0x20) != 4) return nullptr;
+    uintptr_t arr = read_at<uintptr_t>(v);
+    if (!arr || read_at<uint32_t>(arr + 0x38) != 0) return nullptr;
+    auto* vb = read_at<int32_t*>(arr + 0x08);
+    auto* ve = read_at<int32_t*>(arr + 0x10);
+    if (!vb || ve < vb || ve - vb > 1 << 20) return nullptr;
+    n = static_cast<size_t>(ve - vb);
+    if (array_obj) *array_obj = arr;
+    return vb;
+}
+}  // namespace
+
+bool script_array(uintptr_t frame, int slot, std::vector<int32_t>& out) {
+    size_t n = 0;
+    int32_t* p = script_int_array(frame, slot, n);
+    if (!p) return false;
+    out.assign(p, p + n);
+    return true;
+}
+
+bool set_script_array(uintptr_t frame, int slot, const int32_t* values, int count) {
+    size_t n = 0;
+    uintptr_t arr = 0;
+    int32_t* p = script_int_array(frame, slot, n, &arr);
+    if (!p || count < 0) return false;
+    size_t k = std::min(n, static_cast<size_t>(count));  // the array keeps its length
+    memcpy(p, values, k * 4u);
+    *reinterpret_cast<uint8_t*>(arr) = 1;  // as the element write 0x5f200c
+    return true;
+}
+
+bool script_int_local(uintptr_t frame, int index, int32_t& value, const int32_t* set) {
+    uintptr_t ints, objs;
+    if (index < 0 || !locals_base(frame, ints, objs)) return false;
+    auto* b = read_at<int32_t*>(ints);
+    auto* e = read_at<int32_t*>(ints + 8);
+    if (!b || e < b || index >= e - b) return false;
+    if (set) b[index] = *set;
+    value = b[index];
+    return true;
+}
+
 bool script_top_string_starts_with(const std::string& prefix) {
     if (!g_build || !g_build->script_vm) return false;
     uintptr_t vm = g_base + g_build->script_vm;

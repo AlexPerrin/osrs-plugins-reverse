@@ -30,6 +30,12 @@ import net.runelite.client.eventbus.EventBus;
  *    favourite row's code widget is the result of `enum 1298` earlier in the loop, the travel log
  *    row is the dbrow whose db_getfield 364608 (its code widget) preceded the test.
  *    // unverified: on the device (the travel log filter needs the server's fairy ring interface).
+ *  - spellbookSort (script 2611, the spellbook builder): the patched script raises it right
+ *    after `gosub 2621` (sorting array 2 of 2611's frame) with int stack [enum = local 14, 2,
+ *    count = local 22] and stores the answer in local 22; the plugin rewrites array 2 in place
+ *    (getArray) and returns the visible count. Here it is raised when proc 2621 returns to 2611,
+ *    on 2611's saved frame (Native.scriptArray/scriptIntLocal with caller = true).
+ *    // unverified: on the device (Spellbook hiding).
  * Not emulated: skillTabMaxLevel (next to an iconst, which the opcode hook can't see).
  * // unverified: that the mobile skills tab runs scripts 395/396 (the desktop ids).
  */
@@ -81,6 +87,28 @@ final class ScriptCallbacks {
         else if (script == ANY && (opcode == IF_SETTEXT || opcode == CC_SETTEXT)) raiseOnLive(bus, ac, "skillTabTotalLevel", 1, 1);
         else if (script == FRIEND_UPDATE && opcode == CC_SETTEXT) raiseOnLive(bus, ac, "friendsChatSetText", 0, 1);
         else if (script == FRIEND_UPDATE && opcode == CC_SETPOSITION) raiseOnLive(bus, ac, "friendsChatSetPosition", 4, 0);
+    }
+
+    static final int SPELLBOOK_BUILD = 2611, SPELLBOOK_SORT_PROC = 2621;
+    private static int sortLogs;
+
+    /** From Host.onScript on a ScriptPostFired (proc return), before the plugins see it. */
+    static void onReturn(EventBus bus, AndroidClient ac, int id) {
+        if (id != SPELLBOOK_SORT_PROC || !installed || Native.currentScript() != SPELLBOOK_BUILD) return;
+        int en = Native.scriptIntLocal(true, 14, false, 0), count = Native.scriptIntLocal(true, 22, false, 0);
+        if (en == Integer.MIN_VALUE || count == Integer.MIN_VALUE) {
+            Log.w(TAG, "spellbookSort: 2611 locals unavailable");
+            return;
+        }
+        ac.arrayFrameCaller = true;
+        try {
+            int answer = raise(bus, ac, "spellbookSort", new int[] {en, 2, count}, new Object[0], 2);
+            ac.flushArrays();
+            if (answer != count) Native.scriptIntLocal(true, 22, true, answer);
+            if (sortLogs++ < 3) Log.i(TAG, "spellbookSort: enum " + en + " count " + count + " -> " + answer);
+        } finally {
+            ac.arrayFrameCaller = false;
+        }
     }
 
     private static void skillTabBaseLevel(EventBus bus, AndroidClient ac, int phase) {

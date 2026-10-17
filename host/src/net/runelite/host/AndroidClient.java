@@ -165,6 +165,35 @@ public class AndroidClient extends ClientStub {
         objectStackSize = objs.length;
     }
 
+    // --- getArray: script int arrays (frame object locals). Arrays a plugin fetched during a
+    // callback are written back afterwards (desktop hands out the live array). arrayFrameCaller
+    // selects the frame a RETURN restores (callbacks raised from ScriptPostFired).
+    boolean arrayFrameCaller;
+    private final java.util.Map<Integer, int[]> fetchedArrays = new java.util.HashMap<>();
+
+    @Override
+    public int[] getArray(int id) {
+        if (!isClientThread()) return null;
+        int[] a = fetchedArrays.get(id);
+        if (a != null) return a;
+        a = Native.scriptArray(arrayFrameCaller, id);
+        if (a != null) fetchedArrays.put(id, a);
+        return a;
+    }
+
+    @Override
+    public int getArraySizes(int id) {
+        int[] a = getArray(id);
+        return a != null ? a.length : 0;
+    }
+
+    /** Writes back the arrays fetched since the last call (end of a callback). */
+    void flushArrays() {
+        for (java.util.Map.Entry<Integer, int[]> e : fetchedArrays.entrySet())
+            Native.setScriptArray(arrayFrameCaller, e.getKey(), e.getValue());
+        fetchedArrays.clear();
+    }
+
     void beginScriptEvent() {
         liveStacks = true;
         stacksLoaded = false;

@@ -36,6 +36,12 @@ uintptr_t current_event();
 constexpr int kMaxOpWatches = 16;
 void set_op_watches(const int32_t* pairs, const std::string* prefixes, int count);
 
+// Inside a Post delivered from RETURN: the call frame being restored (the caller's saved locals,
+// see game::script_int_local); 0 elsewhere.
+uintptr_t return_frame();
+// The innermost running script id (in a RETURN Post: the caller), -1 if none.
+int current_script();
+
 struct Stats { uint64_t roots, gosubs, returns, delivered; };
 Stats stats();
 

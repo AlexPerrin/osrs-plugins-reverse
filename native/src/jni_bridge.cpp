@@ -566,6 +566,33 @@ jobjectArray n_script_stacks(JNIEnv* env, jclass) {
     return res;
 }
 
+// Script locals for runelite_callback emulation: `caller` true = the frame a RETURN restores
+// (inside ScriptPostFired), false = the running frame.
+jintArray n_script_array(JNIEnv* env, jclass, jboolean caller, jint slot) {
+    uintptr_t frame = caller ? script_hooks::return_frame() : 0;
+    if (caller && !frame) return nullptr;
+    std::vector<int32_t> v;
+    if (!game::script_array(frame, slot, v)) return nullptr;
+    jintArray out = env->NewIntArray(static_cast<jsize>(v.size()));
+    if (out && !v.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(v.size()), v.data());
+    return out;
+}
+jboolean n_set_script_array(JNIEnv* env, jclass, jboolean caller, jint slot, jintArray values) {
+    uintptr_t frame = caller ? script_hooks::return_frame() : 0;
+    if ((caller && !frame) || !values) return JNI_FALSE;
+    jsize n = env->GetArrayLength(values);
+    std::vector<int32_t> v(static_cast<size_t>(n));
+    if (n) env->GetIntArrayRegion(values, 0, n, v.data());
+    return game::set_script_array(frame, slot, v.data(), n) ? JNI_TRUE : JNI_FALSE;
+}
+// Returns the int local (after writing `value` when `write`), or Integer.MIN_VALUE if unavailable.
+jint n_script_int_local(JNIEnv*, jclass, jboolean caller, jint index, jboolean write, jint value) {
+    uintptr_t frame = caller ? script_hooks::return_frame() : 0;
+    if (caller && !frame) return INT32_MIN;
+    int32_t out = 0, in = value;
+    return game::script_int_local(frame, index, out, write ? &in : nullptr) ? out : INT32_MIN;
+}
+jint n_current_script(JNIEnv*, jclass) { return script_hooks::current_script(); }
 jboolean n_set_script_int_stack(JNIEnv* env, jclass, jintArray values, jint size) {
     if (!client_thread::on_client_thread() || !values || size < 0 || size > env->GetArrayLength(values)) return false;
     std::vector<int32_t> v(size);
@@ -1354,6 +1381,10 @@ const JNINativeMethod kNatives[] = {
     {"setScriptEvents", "(Z)V", reinterpret_cast<void*>(n_set_script_events)},
     {"scriptStacks", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_stacks)},
     {"setScriptIntStack", "([II)Z", reinterpret_cast<void*>(n_set_script_int_stack)},
+    {"scriptArray", "(ZI)[I", reinterpret_cast<void*>(n_script_array)},
+    {"setScriptArray", "(ZI[I)Z", reinterpret_cast<void*>(n_set_script_array)},
+    {"scriptIntLocal", "(ZIZI)I", reinterpret_cast<void*>(n_script_int_local)},
+    {"currentScript", "()I", reinterpret_cast<void*>(n_current_script)},
     {"setOpWatches", "([I[Ljava/lang/String;)V", reinterpret_cast<void*>(n_set_op_watches)},
     {"setScriptString", "(ILjava/lang/String;)Z", reinterpret_cast<void*>(n_set_script_string)},
     {"scriptEventArgs", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_event_args)},

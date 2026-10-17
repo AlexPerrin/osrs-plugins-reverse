@@ -222,6 +222,12 @@ bool run_script(const std::vector<ScriptArg>& args, ScriptResult& out, std::stri
 // copied whole (size entries); set_script_int_stack writes values back and sets the size.
 bool script_stacks(ScriptResult& out);
 bool set_script_int_stack(const int32_t* values, int size);
+// Script locals: frame 0 = the running frame, else a saved call frame (script_hooks::return_frame).
+// Int arrays by desktop array id (object local slot); set_script_array keeps the array's length.
+bool script_array(uintptr_t frame, int slot, std::vector<int32_t>& out);
+bool set_script_array(uintptr_t frame, int slot, const int32_t* values, int count);
+// Reads int local `index` (writes *set first when non-null).
+bool script_int_local(uintptr_t frame, int index, int32_t& value, const int32_t* set);
 // Replaces the string at object stack slot `index` (0 = bottom) through the game's string assign
 // 0x3f1498, as CC_SETTEXT stores text. False when the slot isn't a string. Game thread only.
 bool set_script_string(int index, const std::string& text);

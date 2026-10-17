@@ -749,6 +749,8 @@ public final class Host {
             }
             if (id == QUEST_FILTER_PROC) questFilter(bus, ac, phase);
             if (phase == 1) {
+                ScriptCallbacks.onReturn(bus, ac, id);
+                ac.beginScriptEvent();  // the callback's fake stacks end here
                 bus.post(new ScriptPostFired(id));
             } else {
                 ScriptPreFired e = new ScriptPreFired(id);

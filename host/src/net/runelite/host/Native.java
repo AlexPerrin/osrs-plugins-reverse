@@ -117,6 +117,14 @@ final class Native {
     static native Object[] scriptStacks();
     /** Writes the first `size` ints back to the VM's int stack and sets its size (game thread). */
     static native boolean setScriptIntStack(int[] values, int size);
+    /** Int array `slot` (desktop array id) of the running frame, or with caller = true of the frame a RETURN restores (inside ScriptPostFired); null if none. */
+    static native int[] scriptArray(boolean caller, int slot);
+    /** Writes an int array back in place (its length is kept). */
+    static native boolean setScriptArray(boolean caller, int slot, int[] values);
+    /** Int local `index` (written first when write); Integer.MIN_VALUE if unavailable. */
+    static native int scriptIntLocal(boolean caller, int index, boolean write, int value);
+    /** Innermost running script id (inside a RETURN's ScriptPostFired: the caller), -1 if none. */
+    static native int currentScript();
     /** Arguments of the root script being started (inside Host.onScript phase 2), or null. */
     static native Object[] scriptEventArgs();
     /** {component id, CC_CREATE index or -1} of the running ScriptEvent's source widget, or null. */

@@ -53,8 +53,20 @@ Details in `docs/openrune-port.md`, "Twelfth server dev".
   keyboard is shown (tap 90,220 until `mInputShown=true`, then keyevent 66); every app restart costs
   ~45 s of "account still logged in" (Try again at 958,668). Del Friend at 1577,1013, Add Friend
   1400,1013, friends tab 1840,852, side_channels 1843,768 (sub-tabs at y 520: 1340/1440/1537/1637).
-- **Next candidates:** box traps on the device; KPH Tracker and Kitten Tracker checks (client dev's
-  slot); FRIENDLIST_DEL; then the eleventh dev's list (fairy ring favourites, music areas, elite clues).
+- **Next candidates (sized 2026-10-17, sent to the orchestrator, not started):**
+  1. Barrows Brothers + Smelting rows: OpenRune already has both. Barrows (`content/bosses/barrows`)
+     sets `barrows_killed_*` (the plugin reads varbits 457-463), opens puzzle 25 and reward 155, and
+     sends "Your Barrows chest count is:". Smelting sends "You retrieve a bar of ..." and "You remove
+     the cannonballs from the mould." (spam), which the plugin matches; only the Varrock-platebody
+     line differs ("Your Varrock armour helps you smelt an extra ..." vs the plugin's "The Varrock
+     platebody enabled you to smelt your next ore"). Device check only (~15 min each), plus the box
+     traps.
+  2. Herbiboar (~1-1.5 days): nothing in OpenRune. Fossil Island start rocks/mushrooms, trail
+     varbits and locs the plugin reads (ids 3681-3808, 30519-30523, 14651/14652/14907/14908 in
+     HerbiboarPlugin), the herbiboar npc, harvest (herbs, Hunter/Herblore XP).
+  3. Hunter Rumours (Hunter Guild rumour tasks; easier now that traps exist, ~1-2 days); Spawn
+     Predictor needs the Fight Caves (not in OpenRune; multi-day).
+  4. FRIENDLIST_DEL on Android (low priority, see above).
 
 ## Latest state (2026-10-17, eleventh server dev, on OpenRune)
 

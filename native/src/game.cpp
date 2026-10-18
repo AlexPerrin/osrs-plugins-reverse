@@ -3123,6 +3123,36 @@ std::vector<ProjectileInfo> projectiles() {
     return out;
 }
 
+// Graphics objects (map spotanims): WorldView +0x160 std::list, same node layout as projectiles, filled
+// by MAP_ANIM_SPECIFIC (dispatcher case 111) / zone MAP_ANIM. Ctor 0x3fee04(obj, worldView, id, level,
+// x, y, height, delay, cycle): +0x25c start cycle (cycle + delay), +0x260 level, +0x264/+0x268 local
+// x/y (tile centre, 128 units/tile), +0x26c height, +0x270 spotanim id, +0x278 WorldView, +0x280
+// animation (gen 37 static RE; the rest of the object is dumped raw for discovery).
+std::vector<GraphicsObjectInfo> graphics_objects() {
+    std::vector<GraphicsObjectInfo> out;
+    uintptr_t wv = top_world_view();
+    if (!wv) return out;
+    uintptr_t head = wv + 0x160;
+    uint64_t n = read_at<uint64_t>(head + 0x10);
+    if (n > 4096) return out;
+    uintptr_t node = read_at<uintptr_t>(head);
+    for (uint64_t i = 0; node && node != head && i < n; i++, node = read_at<uintptr_t>(node)) {
+        uintptr_t o = read_at<uintptr_t>(node + 0x18);
+        if (!o) continue;
+        GraphicsObjectInfo g;
+        g.obj = o;
+        g.start_cycle = read_at<int32_t>(o + 0x25c);
+        g.level = read_at<int32_t>(o + 0x260);
+        g.x = read_at<int32_t>(o + 0x264);
+        g.y = read_at<int32_t>(o + 0x268);
+        g.z = read_at<int32_t>(o + 0x26c);
+        g.id = read_at<int32_t>(o + 0x270);
+        memcpy(g.raw, reinterpret_cast<const void*>(o + 0x240), sizeof g.raw);
+        out.push_back(g);
+    }
+    return out;
+}
+
 bool projectile_set_end_cycle(uintptr_t obj, int cycle) {
     for (const auto& p : projectiles())
         if (p.obj == obj) {

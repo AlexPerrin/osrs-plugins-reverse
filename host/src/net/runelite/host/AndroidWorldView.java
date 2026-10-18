@@ -302,8 +302,8 @@ public class AndroidWorldView extends WorldViewStub {
         };
     }
 
-    /** Spot animations aren't read yet. */
+    /** The top-level view's map spotanims (Client.getGraphicsObjects). */
     @Override public net.runelite.api.Deque<net.runelite.api.GraphicsObject> getGraphicsObjects() {
-        return Inert.of(net.runelite.api.Deque.class);
+        return Host.client().getGraphicsObjects();
     }
 }

@@ -38,6 +38,8 @@ public class GenHeadless {
         // Default implementations that returnValue() hands out for interface-typed results.
         for (String k : new String[] {"javax/swing/text/PlainDocument", "javax/swing/DefaultListModel", "javax/swing/DefaultButtonModel",
                 "javax/swing/text/DefaultCaret", "javax/swing/DefaultListSelectionModel"}) want(load(k));
+        // JTextPane's document (getStyledDocument) when a plugin uses text panes (Slayer Assistant's TextTab).
+        if (generate.contains(javax.swing.JTextPane.class)) want(load("javax/swing/text/DefaultStyledDocument"));
         for (String line : Files.readAllLines(Paths.get(a[0]))) {
             String[] p = line.trim().split(" ");
             if (p.length != 3) continue;
@@ -712,6 +714,13 @@ public class GenHeadless {
                 return base ? "if (a1 != null) __content.insert(Math.max(0, Math.min(a0, __content.length())), a1);" : "super.insertString(a0, a1, a2);";
             if (n.equals("remove") && ps.length == 2 && ps[0] == int.class)
                 return base ? "int s = Math.max(0, Math.min(a0, __content.length())); __content.delete(s, Math.min(s + Math.max(0, a1), __content.length()));" : "super.remove(a0, a1);";
+        }
+        // A text pane's document is a styled one, shared by getDocument and getStyledDocument.
+        if (generate.contains(javax.swing.text.DefaultStyledDocument.class)) {
+            if (c == javax.swing.text.JTextComponent.class && n.equals("getDocument") && ps.length == 0 && props.containsKey("Document"))
+                return "if (!__DocumentSet) { __Document = this instanceof javax.swing.JTextPane ? new javax.swing.text.DefaultStyledDocument() : new javax.swing.text.PlainDocument(); __DocumentSet = true; } return __Document;";
+            if (c == javax.swing.JTextPane.class && n.equals("getStyledDocument") && ps.length == 0)
+                return "javax.swing.text.Document d = getDocument(); return d instanceof javax.swing.text.StyledDocument ? (javax.swing.text.StyledDocument) d : new javax.swing.text.DefaultStyledDocument();";
         }
         if (javax.swing.text.JTextComponent.class.isAssignableFrom(c) && generate.contains(javax.swing.text.AbstractDocument.class)
                 && x.getDeclaringClass() == c) {

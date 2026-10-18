@@ -525,8 +525,13 @@ public final class Host {
                 postActorChanges(bus);
                 if (pendingLoggedIn && localPlayer() != null) postLoggedIn(bus);
                 if (loggedInPosted) pollAmbientSounds(bus);
-                if (loggedInPosted && client instanceof AndroidClient) ((AndroidClient) client).projectiles.poll(bus, client);
-                else if (client instanceof AndroidClient) ((AndroidClient) client).projectiles.reset();
+                if (loggedInPosted && client instanceof AndroidClient) {
+                    ((AndroidClient) client).projectiles.poll(bus, client);
+                    ((AndroidClient) client).graphicsObjects.poll(bus);
+                } else if (client instanceof AndroidClient) {
+                    ((AndroidClient) client).projectiles.reset();
+                    ((AndroidClient) client).graphicsObjects.reset();
+                }
                 if (pendingSceneCycles >= 0 && (sceneBaseChanged() || ++pendingSceneCycles > 50)) {
                     pendingSceneCycles = -1;
                     postGameState(bus, GameState.LOGGED_IN);  // WorldViewLoaded, then LOGGED_IN
@@ -1123,6 +1128,10 @@ public final class Host {
                 if (n == npcs.length) npcs = java.util.Arrays.copyOf(npcs, n * 2);
                 npcs[n++] = npc.getIndex();
             }
+            // Graphics objects: listeners see them (Random Event Hider calls setFinished on poofs);
+            // the host can't hide one itself yet.
+            if (client instanceof AndroidClient)
+                for (AndroidGraphicsObject g : ((AndroidClient) client).graphicsObjects.all()) hooks.draw(g, false);
             for (net.runelite.api.Player pl : wv.players()) {
                 if (pl == null || hooks.draw(pl, false)) continue;
                 if (p == players.length) players = java.util.Arrays.copyOf(players, p * 2);

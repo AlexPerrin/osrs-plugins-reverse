@@ -1462,9 +1462,9 @@ public class AndroidClient extends ClientStub {
     /** Followers (pets) aren't tracked yet. */
     @Override public net.runelite.api.NPC getFollower() { return null; }
 
-    @Override public net.runelite.api.Deque<net.runelite.api.GraphicsObject> getGraphicsObjects() {
-        return Inert.of(net.runelite.api.Deque.class);
-    }
+    /** The top-level WorldView's map spotanims (GraphicsObjects, refreshed per client tick). */
+    final GraphicsObjects graphicsObjects = new GraphicsObjects();
+    @Override public net.runelite.api.Deque<net.runelite.api.GraphicsObject> getGraphicsObjects() { return graphicsObjects; }
 
     /** The sprite index stands for the game's sprite cache; getSprites reads frame 0 from it. */
     private final net.runelite.api.IndexDataBase spriteIndex = Inert.of(net.runelite.api.IndexDataBase.class);

@@ -263,6 +263,8 @@ final class Native {
     static native int[] ambientSounds();
     /** Projectiles (Client +0xcb30 list): 27 ints each, layout in jni_bridge.cpp n_projectiles; client thread. */
     static native int[] projectiles();
+    /** Graphics objects (top-level WorldView +0x160): 32 ints each, layout in jni_bridge.cpp n_graphics_objects; client thread. */
+    static native int[] graphicsObjects();
     /** Projectile.setEndCycle on a listed projectile; client thread. */
     static native boolean projectileSetEndCycle(long obj, int cycle);
     /** Clears the live ambient sound list (the game stops and frees them next cycle); client thread. */

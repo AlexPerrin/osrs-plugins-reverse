@@ -1038,6 +1038,20 @@ jintArray n_projectiles(JNIEnv* env, jclass) {
     if (out && !v.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(v.size()), v.data());
     return out;
 }
+// Per graphics object (32 ints): obj low, obj high, id, level, x, y, z, start cycle, raw[24] (+0x240..).
+jintArray n_graphics_objects(JNIEnv* env, jclass) {
+    if (!require_client_thread(env, "graphicsObjects")) return nullptr;
+    std::vector<jint> v;
+    for (const auto& g : game::graphics_objects()) {
+        v.push_back(static_cast<jint>(g.obj & 0xffffffffu));
+        v.push_back(static_cast<jint>(static_cast<uint64_t>(g.obj) >> 32));
+        v.insert(v.end(), {g.id, g.level, g.x, g.y, g.z, g.start_cycle});
+        v.insert(v.end(), g.raw, g.raw + 24);
+    }
+    jintArray out = env->NewIntArray(static_cast<jsize>(v.size()));
+    if (out && !v.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(v.size()), v.data());
+    return out;
+}
 jboolean n_projectile_set_end_cycle(JNIEnv* env, jclass, jlong obj, jint cycle) {
     return require_client_thread(env, "projectileSetEndCycle") && game::projectile_set_end_cycle(static_cast<uintptr_t>(obj), cycle);
 }
@@ -1594,6 +1608,7 @@ const JNINativeMethod kNatives[] = {
     {"removeGroundObject", "(III)Z", reinterpret_cast<void*>(n_remove_ground_object)},
     {"ambientSounds", "()[I", reinterpret_cast<void*>(n_ambient_sounds)},
     {"projectiles", "()[I", reinterpret_cast<void*>(n_projectiles)},
+    {"graphicsObjects", "()[I", reinterpret_cast<void*>(n_graphics_objects)},
     {"projectileSetEndCycle", "(JI)Z", reinterpret_cast<void*>(n_projectile_set_end_cycle)},
     {"ambientClear", "()Z", reinterpret_cast<void*>(n_ambient_clear)},
     {"ambientRestore", "(J)Z", reinterpret_cast<void*>(n_ambient_restore)},

@@ -541,7 +541,14 @@ struct ProjectileInfo {
     double x = 0, y = 0, z = 0;
 };
 std::vector<ProjectileInfo> projectiles();  // oldest first; game thread only
-bool projectile_set_end_cycle(uintptr_t obj, int cycle);  // game thread only; false if obj isn't listed
+bool projectile_set_end_cycle(uintptr_t obj, int cycle);
+// A map spotanim in the top-level WorldView's graphics object list (+0x160). x/y local units.
+struct GraphicsObjectInfo {
+    uintptr_t obj = 0;
+    int id = -1, level = 0, x = 0, y = 0, z = 0, start_cycle = 0;
+    int32_t raw[24] = {};  // obj +0x240..+0x2a0, for discovery
+};
+std::vector<GraphicsObjectInfo> graphics_objects();  // game thread only  // game thread only; false if obj isn't listed
 std::vector<AmbientSound> ambient_sounds();
 bool ambient_clear();
 // Moves one live entry to the pending vector (as 0x4b065c does for all of them). Game thread.

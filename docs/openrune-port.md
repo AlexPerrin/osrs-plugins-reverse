@@ -1834,7 +1834,7 @@ step keys 0 (talk to Doric: "I wanted to use your anvils.", "Yes.", "Yes, I will
 - Tests: `DoricsQuestInteractionTest` (5): start, decline, too few materials, exact take with extras kept and a
   single reward, start-with-materials shortcut.
 
-### Doric's Quest: desktop QH run (03:50 local / 02:49 UTC deploy 97b4b07, fresh account qhtest6)
+### Doric's Quest: desktop QH run (02:49 UTC deploy of 97b4b07, fresh account qhtest6)
 QH 4.18 "Start Quest Helper" from the quest list showed "Bring Doric north of Falador all the required items" with
 the item list red, and the dialogue highlights ("[1] I wanted to use your anvils.", "[1] Yes."). Doric -> varp 31 =
 10 and a bronze pickaxe; after `::item` of the materials QH's requirements turned green; Doric -> 100, quest scroll
@@ -1846,3 +1846,22 @@ hut ((2951,3451)); from (2953,3448) it is "I can't reach that!".
   start prompt title is "Start Doric's Quest?" (transcript) for names ending in "Quest", "Start the X quest?"
   otherwise (`startQuestTitle`).
 - The quest list showed Doric's Quest (and The Restless Ghost) grey before starting, the others red; not looked into.
+
+## Witch's Potion (nineteenth server dev)
+
+`content/quest/.../area/rimmington/WitchsPotion.kt`. Progress is varp 67 (`varp.hetty`) through the server-only
+varbit `witchs_potion_progress` (bits 0-1, gameval 63744): 0, 1 started, 2 ingredients given, 3 complete (endstate
+3 checked at startup). QH 4.18's `WitchsPotion` uses 0 (talk to Hetty: "I am in search of a quest.", "Yes."), 1 (kill
+a rat in the house to the west, then "Bring the ingredients to Hetty" once the tail is held), 2 (drink from the
+cauldron, loc 2024).
+- Dialogue from the wiki transcript, including the 14 "some ingredients" player lines (built from the four held
+  flags) and the hand-in mesboxes. Drinking: "You drink from the cauldron. It tastes horrible! You feel yourself
+  imbued with power." then the scroll (1 QP, 325 Magic XP). The cauldron before stage 2: "As nice as that looks, I
+  think I'll give it a miss for now."
+- **Rat's tail:** `WitchsPotionRatTail` (an `NpcDeathKillHook` bound in `QuestModule`) drops a rat's tail for the
+  killer when `npc.rat` or `npc.rat_indoors` dies and the killer is at stage 1. The drop-table TOML `quest` gate
+  cannot be used here: with `quest-requirements.mode: assume-completed` (our game.yml) `InProgress` is always false.
+  Dropping it every kill at stage 1 (also when one is already held) is a **guess**.
+- Hetty's old after-quest lines (rimmington `RimmingtonTownsfolkScript`) moved into the quest script (stage 3).
+- **Ours:** journal text, scroll item (eye of newt), mesanims.
+- Tests: `WitchsPotionInteractionTest` (5).

@@ -1,0 +1,51 @@
+We've been running RuneLite and Plugin Hub plugins against an OpenRune server, and along the way built some larger content on OpenRune's own frameworks (quest manager, packs, dbtables, the test harness). The small fixes went up as #343-#351. CONTRIBUTING asks to discuss larger changes first, so this lists the rest before any PR is opened. Nothing below is open as a PR.
+
+All of it is Kotlin in OpenRune's module layout, driven by cache data where the cache has it (e.g. the `cluehelper_*` and `fairyring` dbtables), and uses the client's own varps/varbits so RuneLite plugins (Quest Helper, Time Tracking, Clue Scroll, Herbiboar, Ess Pouch...) read the state. Most of it has integration tests. Sizes are from our patches against `9a8b338a8`, so they would change a bit on current main.
+
+**Quests**
+
+| Content | Size | Notes |
+|---|---|---|
+| Sheep Shearer | ~380 lines with its test; shares one 8-file / +1,293 patch and a quest test fixture (+164) with Romeo & Juliet | Quest varp 179 as Quest Helper reads it |
+| Romeo & Juliet | ~750 lines with its test (same patch) | Overlaps #299, which is open. Happy to drop ours, or compare notes on #299 |
+| Doric's Quest | 5 files, +486 | Overlaps #334, which is open. Same as above |
+| Witch's Potion | 6 files, +315 / -7 | The rat's tail uses the drop-table quest gate |
+| Goblin Diplomacy | 6 files, +878 / -152 | Replaces `GoblinGenerals.kt` / `Grubfoot.kt` from #328 with the quest's varbit-driven versions |
+| Vampyre Slayer | 7 files, +824 / -22 | Count Draynor's coffin, garlic, stake; the Blue Moon Inn bartender |
+
+**Activities and skills**
+
+| Content | Size | Notes |
+|---|---|---|
+| Treasure Trails, beginner to hard | 6 patches, ~4,300 lines | Steps from the cache's `cluehelper_*` dbtables (texts, targets, emotes, STASH units), puzzle boxes, hard-clue foes. Adds two small generic hooks in `api/player` (npc/loc op overrides) so content can claim an op for one player. Music steps need the music tab's track list to play tracks (a small separate fix we also have) |
+| Farming | 9 files, +1,084 | Allotment, flower and herb patches at six farms, with the `farming_transmit` values Time Tracking reads |
+| Bird houses | 7 files, +561 | Fossil Island; needs the hunter module below |
+| Hunter: implings | 12 files, +1,048 | New `hunter` module + pack; jar loot (see the data question) |
+| Hunter: traps, butterfly netting | 2 patches, ~13 files, ~1,070 lines | |
+| Hunter: Herbiboar | 8 files, +789 | The trail varbits RuneLite's Herbiboar plugin reads |
+| Hunter: Hunters' Rumours, guild dialogues | 2 patches, ~20 files, ~1,190 lines | |
+| Fairy rings | 7 files, +265 | `fairyring` dbtable, dial and travel log, Zanaris |
+
+**Systems and items**
+
+| Content | Size | Notes |
+|---|---|---|
+| Grand Exchange | 4 patches: core +1,317, partial fills and buy limits +4,725 (mostly a generated limits table), trade history +1,108, tax exemptions +80 | Needs the long-varp compiler fix (#352) and the rsprot bump to `1.0.0-ALPHA-20261014` (stock market slot reset) |
+| Achievement diaries | 3 patches: journals +385, all areas + progress +1,315, task hooks +275 | Journals for all 12 areas; progress for Lumbridge & Draynor and Varrock tasks via one-line hooks in existing content |
+| Jewellery teleports | 2 patches, +451 | Games necklace, ring of dueling, glory, skills necklace, combat bracelet: Rub menu, worn ops, charges |
+| Dwarf multicannon | 4 files, +642 | |
+| Genie random event | 4 files, +251 | |
+| Rune pouch | 4 files, +408 | Store/withdraw/reorder on the client-visible `rune_pouch_*` varbits; no loadouts |
+| Plank sack | 6 files, +249 | Fill/Check/Empty and a storage hook for building with planks from the sack |
+
+**Questions**
+
+1. Which of these do you want upstream, and are any already being worked on by someone else?
+2. How would you like them split? Our default would be one PR per row (e.g. Grand Exchange core, then fills/limits, then history), each building and passing `assemble test integration` on its own.
+3. Ids: our server-only dbtables, varps and timers use ranges we picked (dbtables from 60000, varps from 63740, timers from 440). Is there a range you'd like new content to use, or should we renumber against what's on main?
+4. Licence of wiki-derived data. Some pieces use data or text from the OSRS Wiki, which is CC BY-NC-SA 3.0 (OpenRune is ISC):
+   - Grand Exchange buy limits (generated from the wiki's `Module:GELimits/data.json`, 4,186 items) and the tax-exempt item list;
+   - impling jar loot tables, the beginner clue casket table, Hunters' Rumours rare-part rates, butterfly netting success charts, bird house nest chances;
+   - achievement diary task lists, some quest and hunter guild dialogue transcripts, jewellery teleport messages.
+
+   We'd like to know how you handle that before sending any of it. We can keep it out and send only the parts that come from the cache, attribute it in separate data files, or wait for another source if you have one (we have no live captures). `tools/wiki-dumping` suggests you use wiki data already, so maybe there is a policy we missed.

@@ -1,0 +1,22 @@
+**Problem.** At login, when the saved gameframe is missing or doesn't match the client mode (e.g. saved fixed, logging in resizable), `GameframeScript.selectFallback` takes the first gameframe with the same resizable and stone-arrangement flags. The fullscreen world map frame (`toplevel_display`) has the same flags as pre-EoC, and opening the map sets `resizable_stone_arrangement`. So the fallback can pick the fullscreen map frame: the player logs in to a black frame without the map, and that frame is saved, so every later login repeats it.
+
+A second way to get there: opening the fullscreen map overwrites `resizable_stone_arrangement` with the map frame's flag. Closing back to a resizable frame sets it again, but closing to a fixed frame doesn't, and logging out with the map open saves the map's value. The player's classic/modern choice is lost and the next mismatched login falls back on the wrong flag.
+
+Reproduced on our build: saved gameframe = the fixed frame, `resizable_stone_arrangement` set, login in resizable mode -> `toplevel_display`.
+
+**Change.**
+- The fullscreen map frame is never a fallback candidate (`selectFallback`, the intermediate-frame lookup), and a saved fullscreen map frame counts as missing at login.
+- Opening the map remembers `resizable_stone_arrangement` (a player attribute) and closing it puts the value back, also when closing to a fixed frame and on logout while the map is open. While the map is open the flag still changes as before. `gameframe` gets the `api:attr` dependency for the attribute key.
+
+**Tests.** None added (interface wiring). Checked in game on our build (desktop client): an account whose saved frame was `toplevel_display` logs in to a normal frame again; in the resizable classic frame, opening the fullscreen map sets `resizable_stone_arrangement` (varbit 4607) to 1 with frame 165, and closing it goes back to 0 and frame 161. The logout-with-the-map-open path was not tried. Not re-checked in game on this branch.
+
+**Caveats.** None known. Without the change, which frame wins depends on the gameframe rows' order (the fullscreen map row comes before pre-EoC); with it the order doesn't matter.
+
+**Release note.** Logging in can no longer land on the fullscreen world map's black frame, and the fullscreen map keeps the classic/modern stone choice.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.

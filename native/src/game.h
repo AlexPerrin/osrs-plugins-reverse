@@ -390,6 +390,8 @@ void menu_discard();
 bool menu_point_raw(int& x, int& y);
 // The client-side varp table (RuneLite getVarps()).
 std::vector<int32_t> varps();
+// The server's varp values (the table getServerVarpValue reads), whole.
+std::vector<int32_t> server_varps();
 int weight();      // kg (UPDATE_RUNWEIGHT)
 int world();       // Client +0x3174 (CS2 map_world 3318; jav_config param 12)
 int world_flags(); // Client +0x2f64 (CS2 worldflags 3324)

@@ -364,13 +364,15 @@ bool instance_templates(bool& instanced, int32_t out[4 * 13 * 13]) {
 int weight() { uintptr_t c = client(); return c ? read_at<int16_t>(c + 0x33a4) : 0; }
 int run_energy() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x33a0) : 0; }
 
-std::vector<int32_t> varps() {
+static std::vector<int32_t> varp_table(uintptr_t table) {
     if (!g_build) return {};
-    uint32_t count = read_at<uint32_t>(g_base + g_build->varps + 8);
-    auto* values = read_at<const int32_t*>(g_base + g_build->varps + 0x10);
+    uint32_t count = read_at<uint32_t>(g_base + table + 8);
+    auto* values = read_at<const int32_t*>(g_base + table + 0x10);
     if (!values || count > 1 << 20) return {};  // OpenRune has 65660 varps
     return std::vector<int32_t>(values, values + count);
 }
+std::vector<int32_t> varps() { return g_build ? varp_table(g_build->varps) : std::vector<int32_t>{}; }
+std::vector<int32_t> server_varps() { return g_build ? varp_table(g_build->server_varps) : std::vector<int32_t>{}; }
 
 namespace {
 // The game's 24-byte string: inline (byte 23 = 23 - length) up to 22 chars, else

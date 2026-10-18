@@ -120,6 +120,8 @@ final class Native {
     /** The game's addChatMessage; client thread only (returns false elsewhere). */
     static native boolean addChatMessage(int type, String name, String text);
     static native int serverVarp(int id);
+    /** The server's varp table, whole (getServerVarps). */
+    static native int[] serverVarps();
     /** Game thread only (throws IllegalStateException elsewhere). */
     static native int varbit(int id);
     /** {worldX, worldY, sceneX, sceneY, localX, localY, playerPlane, scenePlane}, or null when not logged in. */

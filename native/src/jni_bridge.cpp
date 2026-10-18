@@ -260,6 +260,12 @@ jintArray n_varps(JNIEnv* env, jclass) {
     env->SetIntArrayRegion(arr, 0, static_cast<jsize>(v.size()), v.data());
     return arr;
 }
+jintArray n_server_varps(JNIEnv* env, jclass) {
+    std::vector<int32_t> v = game::server_varps();
+    jintArray arr = env->NewIntArray(static_cast<jsize>(v.size()));
+    env->SetIntArrayRegion(arr, 0, static_cast<jsize>(v.size()), v.data());
+    return arr;
+}
 jint n_varc_int(JNIEnv*, jclass, jint id) { int v = 0; return game::varc_int(id, v) ? v : 0; }
 jstring latin1_string(JNIEnv* env, const std::string& s);
 jstring n_varc_string(JNIEnv* env, jclass, jint id) {
@@ -1536,6 +1542,7 @@ const JNINativeMethod kNatives[] = {
     {"serverTick", "()I", reinterpret_cast<void*>(n_server_tick)},
     {"varp", "(I)I", reinterpret_cast<void*>(n_varp)},
     {"varps", "()[I", reinterpret_cast<void*>(n_varps)},
+    {"serverVarps", "()[I", reinterpret_cast<void*>(n_server_varps)},
     {"weight", "()I", reinterpret_cast<void*>(n_weight)},
     {"world", "()I", reinterpret_cast<void*>(n_world)},
     {"instanceTemplates", "()[I", reinterpret_cast<void*>(n_instance_templates)},

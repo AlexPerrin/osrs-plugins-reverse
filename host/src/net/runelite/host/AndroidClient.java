@@ -140,6 +140,16 @@ public class AndroidClient extends ClientStub {
     public int getServerVarpValue(int id) {
         return Native.serverVarp(id);
     }
+    /** A copy of the server's varp table (desktop hands out the live array; nothing writes it here). */
+    @Override public int[] getServerVarps() { return Native.serverVarps(); }
+    /**
+     * As desktop: writes the client's varp value (no VarbitChanged until queueChangedVarp). Here the
+     * game's own write-back, which also queues the change (as setVarbit). // unverified: on the device
+     */
+    @Override public void setVarpValue(int varp, int value) {
+        if (lastVarps != null && varp >= 0 && varp < lastVarps.length) lastVarps[varp] = value;
+        Native.setVarp(varp, value);
+    }
 
     @Override
     public int getVarbitValue(int id) {

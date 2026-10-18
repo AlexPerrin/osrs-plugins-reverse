@@ -18656,12 +18656,16 @@ index 8fba8cb4d..a8e9c8029 100644
          private const val OilCan = "obj.oil_can"
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt
 new file mode 100644
-index 000000000..e23af9260
+index 000000000..7bbfe063e
 --- /dev/null
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt
-@@ -0,0 +1,609 @@
+@@ -0,0 +1,616 @@
 +package org.rsmod.content.quest.area.draynor
 +
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.NpcServerType
 +import jakarta.inject.Inject
 +import org.rsmod.annotations.InternalApi
 +import org.rsmod.api.death.NpcDeath
@@ -19166,12 +19170,15 @@ index 000000000..e23af9260
 +
 +    private fun stage(player: Player): Int = quest.getQuestStage(player)
 +
++    private fun countType(): NpcServerType =
++        ServerCacheManager.getNpc(COUNT.asRSCM(RSCMType.NPC)) ?: error("Missing npc: $COUNT")
++
 +    override fun ScriptContext.startup() {
 +        onOpLoc1(CUPBOARD_SHUT) { openCupboard(it.loc) }
 +        onOpLoc1(CUPBOARD_OPEN) { searchCupboard() }
 +        onOpLoc2(CUPBOARD_OPEN) { closeCupboard(it.loc) }
 +        onOpLoc1(COFFIN) { openCoffin(it.loc) }
-+        onNpcQueue(COUNT, "queue.death") { countDeath() }
++        onNpcQueue(countType(), "queue.death") { countDeath() }
 +        onPlayerLogout {
 +            val fight = player.uuid?.let(fights::remove) ?: return@onPlayerLogout
 +            if (fight.count.isSlotAssigned) npcRepo.del(fight.count, Int.MAX_VALUE)

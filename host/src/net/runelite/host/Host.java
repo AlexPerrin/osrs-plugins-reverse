@@ -589,6 +589,7 @@ public final class Host {
                 break;
             }
             case CHAT_MESSAGE: {
+                if (ScriptCallbacks.takeReplaced(a)) break;  // re-added with another type (ExamineItem)
                 String[] m = Native.message(a);
                 if (m == null) break;
                 ChatMessageType chatType = ChatMessageType.of(b);

@@ -280,6 +280,7 @@ jboolean n_add_chat_message(JNIEnv* env, jclass, jint type, jstring name, jstrin
 jboolean n_chat_remove(JNIEnv*, jclass, jint type, jint id) {
     return client_thread::on_client_thread() && game::chat_remove_message(type, id);
 }
+jint n_next_message_id(JNIEnv*, jclass) { return game::next_message_id(); }
 jint n_afk_timeout(JNIEnv*, jclass) { return game::afk_timeout_minutes(); }
 jboolean n_set_afk_timeout(JNIEnv*, jclass, jint minutes) {
     return client_thread::on_client_thread() && game::set_afk_timeout_minutes(minutes);
@@ -1532,6 +1533,7 @@ const JNINativeMethod kNatives[] = {
     {"messageSetText", "(ILjava/lang/String;)Z", reinterpret_cast<void*>(n_message_set_text)},
     {"chatRemove", "(II)Z", reinterpret_cast<void*>(n_chat_remove)},
     {"chatChanged", "()V", reinterpret_cast<void*>(n_chat_changed)},
+    {"nextMessageId", "()I", reinterpret_cast<void*>(n_next_message_id)},
     {"afkTimeout", "()I", reinterpret_cast<void*>(n_afk_timeout)},
     {"setAfkTimeout", "(I)Z", reinterpret_cast<void*>(n_set_afk_timeout)},
     {"serverVarp", "(I)I", reinterpret_cast<void*>(n_server_varp)},

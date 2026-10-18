@@ -314,6 +314,11 @@ final class Probe {
                     Log.i(TAG, "closeInterface group " + id + " in " + (n.getHash() >>> 16) + ":" + (n.getHash() & 0xffff));
                     break;
                 }
+                case "examine": {  // "examine <obj> <count>": the server's examine_item clientscript 6003, run client-side
+                    c.runScript(6003, id, Integer.parseInt(a[2]), "Probe examine text.", 1, 100, 1, 60, 40);
+                    Log.i(TAG, "runScript 6003 obj " + id + " count " + a[2]);
+                    break;
+                }
                 case "sound": {  // "sound <id> <volume>"
                     c.playSoundEffect(id, Integer.parseInt(a[2]));
                     Log.i(TAG, "playSoundEffect " + id);

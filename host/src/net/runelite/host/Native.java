@@ -200,6 +200,8 @@ final class Native {
     static native boolean chatRemove(int type, int id);
     /** Makes the chatbox rebuild (the game's chat cycle bump); client thread only. */
     static native void chatChanged();
+    /** The id the game's next chat message will get (its global message counter). */
+    static native int nextMessageId();
     /** Sprite by id, frame 0: {width, height, ARGB pixels...}, null while not loaded; client thread only. */
     static native int[] sprite(int id);
     /** Writes same-size ARGB pixels into the game's cached sprite; client thread only. */

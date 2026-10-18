@@ -70,6 +70,50 @@ Pushes to a branch that already has an open upstream PR change that PR, so they 
 - Sign-in (LOCAL_AUTH) and the privacy patches present in the build (`repack.sh` + `patch_telemetry.py` log).
 - Done by the QA agent, not the client dev.
 
+## Agents
+
+The roles grew one at a time as problems appeared (see the history in the 2026-10-18 review), which left
+overlapping owners. From now on:
+
+- **Task-scoped agents, not open-ended generations.** Each agent gets one deliverable and its definition of done:
+  a feature branch through its gate, a release QA, or a migration step. It finishes and reports instead of
+  running until its context fills. Long work is split into tasks, not generations.
+- **Steady-state roster:**
+  - one client dev;
+  - one or two server devs, each owning its own branches;
+  - one QA agent with the server and client checklists (two if they queue);
+  - the orchestrator, which owns pushes, PRs, deploys and decisions.
+
+  No standing PR or accuracy agents: renumbering, splitting, rebasing and accuracy specs are part of the server
+  dev's task checklist.
+- **One owner per branch or area at a time.** The orchestrator's brief says who owns what. Another agent that
+  needs a change sends it to the owner, through the orchestrator.
+
+## State docs
+
+- **Each track keeps a short `STATE.md`** (client: `docs/client-state.md`; server: `STATE.md` on the fork's `docs`
+  branch), under about 150 lines: the current state, what's live, the gotchas, and the next tasks. It is
+  rewritten, not appended to. A new agent reads it first.
+- **History goes to a changelog** (the existing handoff docs become history), which agents read only when they
+  need it.
+- **Gotchas that keep recurring become checks or tools, not prose.** Examples: the end-of-slot device restore
+  checklist as a script, and test jars removed by name only.
+
+## Gates first
+
+- **New work starts with its gate already defined.** For server features, that's the accuracy spec plus the QA
+  checklist. For client releases, it's client QA plus Network QA. Nothing is published (PR, release, comment)
+  before its gate passes.
+- **Each user rule gets an observable check where possible**, not only an instruction in agent briefs. Examples:
+  - Network QA for "never contact Jagex";
+  - netcheck/R1 for plugin networking;
+  - the telemetry patch's one-match assertions;
+  - buildq for build concurrency.
+- **Shared resources are scheduled by tools:**
+  - `tools/buildq.sh` for builds (FIFO, 2 slots);
+  - `tools/device-lock.sh` for the Android device and desktop RuneLite. A grant per holder with an expiry is
+    planned, so a newer grant can't replace an older one.
+
 ## Shared rules
 - **Builds** go through `tools/buildq.sh <owner> -- docker run ...` (2 slots, 4 GB per container,
   `-Pkotlin.compiler.execution.strategy=in-process`).

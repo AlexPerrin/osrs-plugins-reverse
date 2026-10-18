@@ -279,7 +279,10 @@ Always, even without QA: every build goes through `tools/repack.sh` (with `patch
    - `api.runelite.net`, `static.runelite.net` (Cloudflare, e.g. 104.26.8.233 / 104.26.9.233 / 172.67.74.139): the host's read-only GETs;
    - `sdk.fra-01.braze.eu` (104.18.35.7 / 172.64.152.249): Braze, left on by the user's decision;
    - `mobile-data.onetrust.io` / `cdn-ukwest.onetrust.com` (172.64.155.231, 104.18.32.25): the consent banner GET;
-   - one Google 443 address (e.g. 172.217.116.4): most likely FCM for Braze's push token.
+   - one Google 443 address (e.g. 172.217.116.4): most likely FCM for Braze's push token;
+   - a netd lookup of `dns.google` (**system, not app: Private DNS validation**). Android Pie's opportunistic Private DNS (DoT)
+     validates the 8.8.8.8 resolver. Evidence (gen 40): netd logs no uid; `dumpsys connectivity` shows `UsePrivateDns: true`,
+     `DnsAddresses: [8.8.8.8,10.0.2.3]`, `private_dns_mode` unset (the default, opportunistic); no app-uid socket goes to it.
 5. Must not appear: any `*.jagex.com`, `*.runescape.com`, `*.singular.net`, `app-measurement.com`, `pp-*.x.invalid`,
    `secure.x.invalid` / `services.x.invalid` lookups; no `ConsentSync` or `Singular` log lines; no socket to Jagex addresses
    (104.18.40.92, 172.64.147.164, 104.18.35.117, 18.67.39.x).
@@ -336,3 +339,18 @@ deleted, and the host logs `W osrsrl-host: netscan: refused <jar>: java.net outs
   synthetic jars (clean, Socket, java.net.http, URL as a value vs. URL+openStream, a reference only in classes2.dex, allow-list
   matching, vetted name), then prints `load` / `REFUSE <reason>` per jar. On gen 40's 189 dexed jars (`re/host/plugins`, `re/host/plugins-extra`)
   all load (loot-lookup and devtools through the vetted list; copies of either under another name are refused).
+- **Device check (gen 40, 17:20-17:34)**: with `hub-netscan-test.jar` (an inert dex holding one uncalled `new java.net.Socket()`, empty plugin
+  list) pushed, the host logged `W osrsrl-host: netscan: refused hub-netscan-test.jar: java.net outside NetGuard: [Ljava/net/Socket;] (vet it, or list it in debug.osrsrl.netallow)`
+  and started the default 3 plugins. With `debug.osrsrl.netallow hub-netscan-test`, the next start had no netscan line. That run also loaded `devtools`
+  (vetted) and `hub-max-hit-calculator`: 5 plugins running.
+
+### Network QA, gen 40 (2026-10-18 17:20:38-17:31:43)
+
+Build: master 40c9ed2 (the R1 gate), LOCAL_AUTH OpenRune build through `tools/repack.sh` (7 `telemetry:` lines). Run: app start (R1 refusal),
+Sign out -> "Sign in with Email / Username" -> Play Now -> LOGGED_IN -> tabs, two `::tele` -> `::drop` relog -> restart (netallow, devtools,
+Max Hit) -> "Try again" -> Play Now -> another restart (devtools bridge) -> Play Now, attacked a Man, teleport home. 4482 samples at 0.5 s.
+- netd DNS: `api.runelite.net`, `static.runelite.net`, `sdk.fra-01.braze.eu` (3 each), and `dns.google` once at 17:21:25, right after the
+  LOCAL_AUTH sign-in (system Private DNS validation, see the expected list). No `*.jagex.com`, `*.runescape.com`, `*.x.invalid`, `singular`, `app-measurement`.
+- App-uid sockets: 10.0.2.2:43594; 104.26.8.233, 104.26.9.233, 172.67.74.139 (runelite); 172.64.152.249 (braze); 104.18.32.25 (onetrust);
+  172.217.119.4 (Google), all :443. No Jagex address. 0 `ConsentSync`/`Singular` lines.
+- No GE digest fetch happened in this run (still unconfirmed, as in gen 38).

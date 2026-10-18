@@ -463,6 +463,8 @@ public class AndroidClient extends ClientStub {
         return GeOffers.read();
     }
     @Override public net.runelite.api.widgets.Widget getSelectedWidget() { return null; }
+    // unverified: default (no CS2 input field focus is read from the mobile client yet; Key Remapping only checks it for null)
+    @Override public net.runelite.api.widgets.Widget getFocusedInputFieldWidget() { return null; }
     /** The script VM's active component (CC_CREATE/CC_FIND), as desktop's scriptActiveWidget. Game thread. */
     @Override public net.runelite.api.widgets.Widget getScriptActiveWidget() { return scriptWidget(false); }
     @Override public net.runelite.api.widgets.Widget getScriptDotWidget() { return scriptWidget(true); }

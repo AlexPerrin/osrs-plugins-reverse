@@ -8830,5 +8830,6837 @@
   "new": 64052,
   "row": "grand-exchange",
   "file": "content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "pirates_treasure_state",
+  "old": 63747,
+  "new": 64053,
+  "row": "pirates-treasure",
+  "file": "content/quest/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varbit",
+  "name": "pirates_treasure_employed",
+  "old": 63747,
+  "new": 63722,
+  "row": "pirates-treasure",
+  "file": "content/quest/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varbit",
+  "name": "pirates_treasure_crate_bananas",
+  "old": 63748,
+  "new": 63723,
+  "row": "pirates-treasure",
+  "file": "content/quest/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varbit",
+  "name": "pirates_treasure_crate_rum",
+  "old": 63749,
+  "new": 63724,
+  "row": "pirates-treasure",
+  "file": "content/quest/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varbit",
+  "name": "pirates_treasure_gardener_met",
+  "old": 63750,
+  "new": 63725,
+  "row": "pirates-treasure",
+  "file": "content/quest/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varbit",
+  "name": "pirates_treasure_progress",
+  "old": 63751,
+  "new": 63726,
+  "row": "pirates-treasure",
+  "file": "content/quest/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbtable",
+  "name": "fletching_knife",
+  "old": 60024,
+  "new": 56017,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "queue",
+  "name": "fletching_knife",
+  "old": 61,
+  "new": 61,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_shafts_logs",
+  "old": 60950,
+  "new": 60855,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_shortbow",
+  "old": 60951,
+  "new": 60856,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_longbow",
+  "old": 60952,
+  "new": 60857,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_shafts_oak",
+  "old": 60953,
+  "new": 60858,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_oak_shortbow",
+  "old": 60954,
+  "new": 60859,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_oak_longbow",
+  "old": 60955,
+  "new": 60860,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_shafts_willow",
+  "old": 60956,
+  "new": 60861,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_willow_shortbow",
+  "old": 60957,
+  "new": 60862,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_willow_longbow",
+  "old": 60958,
+  "new": 60863,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_shafts_maple",
+  "old": 60959,
+  "new": 60864,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_maple_shortbow",
+  "old": 60960,
+  "new": 60865,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_maple_longbow",
+  "old": 60961,
+  "new": 60866,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_shafts_yew",
+  "old": 60962,
+  "new": 60867,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_yew_shortbow",
+  "old": 60963,
+  "new": 60868,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_yew_longbow",
+  "old": 60964,
+  "new": 60869,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_shafts_magic",
+  "old": 60965,
+  "new": 60870,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_magic_shortbow",
+  "old": 60966,
+  "new": 60871,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_magic_longbow",
+  "old": 60967,
+  "new": 60872,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "fletching_knife_shafts_redwood",
+  "old": 60968,
+  "new": 60873,
+  "row": "fletching",
+  "file": "content/skills/fletching/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbtable",
+  "name": "trail_charlie_tasks",
+  "old": 60003,
+  "new": 56018,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbtable",
+  "name": "trail_beginner_casket",
+  "old": 60004,
+  "new": 56019,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbtable",
+  "name": "trail_map_interfaces",
+  "old": 60005,
+  "new": 56020,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbtable",
+  "name": "trail_emote_seqs",
+  "old": 60006,
+  "new": 56021,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbtable",
+  "name": "trail_easy_casket",
+  "old": 60007,
+  "new": 56022,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbtable",
+  "name": "trail_medium_casket",
+  "old": 60008,
+  "new": 56023,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbtable",
+  "name": "trail_hard_casket",
+  "old": 60009,
+  "new": 56024,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbtable",
+  "name": "trail_puzzle_boxes",
+  "old": 60010,
+  "new": 56025,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_charlie_task_0",
+  "old": 60200,
+  "new": 60874,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_charlie_task_1",
+  "old": 60201,
+  "new": 60875,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_charlie_task_2",
+  "old": 60202,
+  "new": 60876,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_charlie_task_3",
+  "old": 60203,
+  "new": 60877,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_charlie_task_4",
+  "old": 60204,
+  "new": 60878,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_charlie_task_5",
+  "old": 60205,
+  "new": 60879,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_charlie_task_6",
+  "old": 60206,
+  "new": 60880,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_charlie_task_7",
+  "old": 60207,
+  "new": 60881,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_0",
+  "old": 60210,
+  "new": 60882,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_1",
+  "old": 60211,
+  "new": 60883,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_2",
+  "old": 60212,
+  "new": 60884,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_3",
+  "old": 60213,
+  "new": 60885,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_4",
+  "old": 60214,
+  "new": 60886,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_5",
+  "old": 60215,
+  "new": 60887,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_6",
+  "old": 60216,
+  "new": 60888,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_7",
+  "old": 60217,
+  "new": 60889,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_8",
+  "old": 60218,
+  "new": 60890,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_9",
+  "old": 60219,
+  "new": 60891,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_10",
+  "old": 60220,
+  "new": 60892,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_11",
+  "old": 60221,
+  "new": 60893,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_12",
+  "old": 60222,
+  "new": 60894,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_13",
+  "old": 60223,
+  "new": 60895,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_14",
+  "old": 60224,
+  "new": 60896,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_15",
+  "old": 60225,
+  "new": 60897,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_16",
+  "old": 60226,
+  "new": 60898,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_17",
+  "old": 60227,
+  "new": 60899,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_18",
+  "old": 60228,
+  "new": 60900,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_19",
+  "old": 60229,
+  "new": 60901,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_20",
+  "old": 60230,
+  "new": 60902,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_21",
+  "old": 60231,
+  "new": 60903,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_22",
+  "old": 60232,
+  "new": 60904,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_23",
+  "old": 60233,
+  "new": 60905,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_0",
+  "old": 60320,
+  "new": 60906,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_1",
+  "old": 60321,
+  "new": 60907,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_2",
+  "old": 60322,
+  "new": 60908,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_3",
+  "old": 60323,
+  "new": 60909,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_4",
+  "old": 60324,
+  "new": 60910,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_5",
+  "old": 60325,
+  "new": 60911,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_6",
+  "old": 60326,
+  "new": 60912,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_7",
+  "old": 60327,
+  "new": 60913,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_8",
+  "old": 60328,
+  "new": 60914,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_9",
+  "old": 60329,
+  "new": 60915,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_10",
+  "old": 60330,
+  "new": 60916,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_11",
+  "old": 60331,
+  "new": 60917,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_12",
+  "old": 60332,
+  "new": 60918,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_13",
+  "old": 60333,
+  "new": 60919,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_14",
+  "old": 60334,
+  "new": 60920,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_15",
+  "old": 60335,
+  "new": 60921,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_16",
+  "old": 60336,
+  "new": 60922,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_17",
+  "old": 60337,
+  "new": 60923,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_18",
+  "old": 60338,
+  "new": 60924,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_19",
+  "old": 60339,
+  "new": 60925,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_20",
+  "old": 60340,
+  "new": 60926,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_emote_seq_21",
+  "old": 60341,
+  "new": 60927,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_mole_slippers",
+  "old": 60240,
+  "new": 60928,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_frog_slippers",
+  "old": 60241,
+  "new": 60929,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_bear_slippers",
+  "old": 60242,
+  "new": 60930,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_demon_slippers",
+  "old": 60243,
+  "new": 60931,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_jester_cape",
+  "old": 60244,
+  "new": 60932,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_shoulder_parrot",
+  "old": 60245,
+  "new": 60933,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_monk_robetop_t",
+  "old": 60246,
+  "new": 60934,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_monk_robebottom_t",
+  "old": 60247,
+  "new": 60935,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_amulet_of_defence_t",
+  "old": 60248,
+  "new": 60936,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_sandwich_lady_hat",
+  "old": 60249,
+  "new": 60937,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_sandwich_lady_top",
+  "old": 60250,
+  "new": 60938,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_sandwich_lady_bottom",
+  "old": 60251,
+  "new": 60939,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_rune_scimitar_ornament_kit_guthix",
+  "old": 60252,
+  "new": 60940,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_rune_scimitar_ornament_kit_saradomin",
+  "old": 60253,
+  "new": 60941,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_rune_scimitar_ornament_kit_zamorak",
+  "old": 60254,
+  "new": 60942,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_2h_sword",
+  "old": 60255,
+  "new": 60943,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_axe",
+  "old": 60256,
+  "new": 60944,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_battleaxe",
+  "old": 60257,
+  "new": 60945,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_chainbody",
+  "old": 60258,
+  "new": 60946,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_dagger",
+  "old": 60259,
+  "new": 60947,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_full_helm",
+  "old": 60260,
+  "new": 60948,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_kiteshield",
+  "old": 60261,
+  "new": 60949,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_longsword",
+  "old": 60262,
+  "new": 60950,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_mace",
+  "old": 60263,
+  "new": 60951,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_med_helm",
+  "old": 60264,
+  "new": 60952,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_pickaxe",
+  "old": 60265,
+  "new": 60953,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_platebody",
+  "old": 60266,
+  "new": 60954,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_plateskirt",
+  "old": 60267,
+  "new": 60955,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_platelegs",
+  "old": 60268,
+  "new": 60956,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_sq_shield",
+  "old": 60269,
+  "new": 60957,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_scimitar",
+  "old": 60270,
+  "new": 60958,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_sword",
+  "old": 60271,
+  "new": 60959,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_warhammer",
+  "old": 60272,
+  "new": 60960,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_shortbow",
+  "old": 60273,
+  "new": 60961,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_longbow",
+  "old": 60274,
+  "new": 60962,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_oak_shortbow",
+  "old": 60275,
+  "new": 60963,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_oak_longbow",
+  "old": 60276,
+  "new": 60964,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_iron_pickaxe",
+  "old": 60277,
+  "new": 60965,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_staff_of_air",
+  "old": 60278,
+  "new": 60966,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_staff_of_water",
+  "old": 60279,
+  "new": 60967,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_staff_of_earth",
+  "old": 60280,
+  "new": 60968,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_staff_of_fire",
+  "old": 60281,
+  "new": 60969,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_steel_full_helm",
+  "old": 60282,
+  "new": 60970,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_steel_platebody",
+  "old": 60283,
+  "new": 60971,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_steel_platelegs",
+  "old": 60284,
+  "new": 60972,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_steel_plateskirt",
+  "old": 60285,
+  "new": 60973,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_steel_longsword",
+  "old": 60286,
+  "new": 60974,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_steel_dagger",
+  "old": 60287,
+  "new": 60975,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_steel_axe",
+  "old": 60288,
+  "new": 60976,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_steel_battleaxe",
+  "old": 60289,
+  "new": 60977,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_leather_cowl",
+  "old": 60290,
+  "new": 60978,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_leather_armour",
+  "old": 60291,
+  "new": 60979,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_leather_chaps",
+  "old": 60292,
+  "new": 60980,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_leather_vambraces",
+  "old": 60293,
+  "new": 60981,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_hardleather_body",
+  "old": 60294,
+  "new": 60982,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_bluewizhat",
+  "old": 60295,
+  "new": 60983,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_wizards_robe",
+  "old": 60296,
+  "new": 60984,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_blackwizhat",
+  "old": 60297,
+  "new": 60985,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_black_robe",
+  "old": 60298,
+  "new": 60986,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_airrune",
+  "old": 60299,
+  "new": 60987,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_mindrune",
+  "old": 60300,
+  "new": 60988,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_waterrune",
+  "old": 60301,
+  "new": 60989,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_earthrune",
+  "old": 60302,
+  "new": 60990,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_firerune",
+  "old": 60303,
+  "new": 60991,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_bodyrune",
+  "old": 60304,
+  "new": 60992,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_chaosrune",
+  "old": 60305,
+  "new": 60993,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_naturerune",
+  "old": 60306,
+  "new": 60994,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_lawrune",
+  "old": 60307,
+  "new": 60995,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_bronze_arrow",
+  "old": 60308,
+  "new": 60996,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_iron_arrow",
+  "old": 60309,
+  "new": 60997,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_cabbage",
+  "old": 60310,
+  "new": 60998,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_shrimp",
+  "old": 60311,
+  "new": 60999,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_sardine",
+  "old": 60312,
+  "new": 61000,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_beginner_casket_herring",
+  "old": 60313,
+  "new": 61001,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_0",
+  "old": 60700,
+  "new": 61002,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_1",
+  "old": 60701,
+  "new": 61003,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_2",
+  "old": 60702,
+  "new": 61004,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_3",
+  "old": 60703,
+  "new": 61005,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_4",
+  "old": 60704,
+  "new": 61006,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_5",
+  "old": 60705,
+  "new": 61007,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_6",
+  "old": 60706,
+  "new": 61008,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_7",
+  "old": 60707,
+  "new": 61009,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_8",
+  "old": 60708,
+  "new": 61010,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_9",
+  "old": 60709,
+  "new": 61011,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_10",
+  "old": 60710,
+  "new": 61012,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_11",
+  "old": 60711,
+  "new": 61013,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_12",
+  "old": 60712,
+  "new": 61014,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_13",
+  "old": 60713,
+  "new": 61015,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_14",
+  "old": 60714,
+  "new": 61016,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_15",
+  "old": 60715,
+  "new": 61017,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_16",
+  "old": 60716,
+  "new": 61018,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_17",
+  "old": 60717,
+  "new": 61019,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_18",
+  "old": 60718,
+  "new": 61020,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_19",
+  "old": 60719,
+  "new": 61021,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_20",
+  "old": 60720,
+  "new": 61022,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_21",
+  "old": 60721,
+  "new": 61023,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_22",
+  "old": 60722,
+  "new": 61024,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_23",
+  "old": 60723,
+  "new": 61025,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_24",
+  "old": 60724,
+  "new": 61026,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_25",
+  "old": 60725,
+  "new": 61027,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_26",
+  "old": 60726,
+  "new": 61028,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_27",
+  "old": 60727,
+  "new": 61029,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_28",
+  "old": 60728,
+  "new": 61030,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_29",
+  "old": 60729,
+  "new": 61031,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_30",
+  "old": 60730,
+  "new": 61032,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_31",
+  "old": 60731,
+  "new": 61033,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_32",
+  "old": 60732,
+  "new": 61034,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_33",
+  "old": 60733,
+  "new": 61035,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_34",
+  "old": 60734,
+  "new": 61036,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_35",
+  "old": 60735,
+  "new": 61037,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_36",
+  "old": 60736,
+  "new": 61038,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_37",
+  "old": 60737,
+  "new": 61039,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_38",
+  "old": 60738,
+  "new": 61040,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_39",
+  "old": 60739,
+  "new": 61041,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_40",
+  "old": 60740,
+  "new": 61042,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_41",
+  "old": 60741,
+  "new": 61043,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_42",
+  "old": 60742,
+  "new": 61044,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_43",
+  "old": 60743,
+  "new": 61045,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_44",
+  "old": 60744,
+  "new": 61046,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_45",
+  "old": 60745,
+  "new": 61047,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_46",
+  "old": 60746,
+  "new": 61048,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_47",
+  "old": 60747,
+  "new": 61049,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_48",
+  "old": 60748,
+  "new": 61050,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_49",
+  "old": 60749,
+  "new": 61051,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_50",
+  "old": 60750,
+  "new": 61052,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_51",
+  "old": 60751,
+  "new": 61053,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_52",
+  "old": 60752,
+  "new": 61054,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_53",
+  "old": 60753,
+  "new": 61055,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_54",
+  "old": 60754,
+  "new": 61056,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_55",
+  "old": 60755,
+  "new": 61057,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_56",
+  "old": 60756,
+  "new": 61058,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_57",
+  "old": 60757,
+  "new": 61059,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_58",
+  "old": 60758,
+  "new": 61060,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_59",
+  "old": 60759,
+  "new": 61061,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_60",
+  "old": 60760,
+  "new": 61062,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_61",
+  "old": 60761,
+  "new": 61063,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_62",
+  "old": 60762,
+  "new": 61064,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_63",
+  "old": 60763,
+  "new": 61065,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_64",
+  "old": 60764,
+  "new": 61066,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_65",
+  "old": 60765,
+  "new": 61067,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_66",
+  "old": 60766,
+  "new": 61068,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_67",
+  "old": 60767,
+  "new": 61069,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_68",
+  "old": 60768,
+  "new": 61070,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_69",
+  "old": 60769,
+  "new": 61071,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_70",
+  "old": 60770,
+  "new": 61072,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_71",
+  "old": 60771,
+  "new": 61073,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_72",
+  "old": 60772,
+  "new": 61074,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_73",
+  "old": 60773,
+  "new": 61075,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_74",
+  "old": 60774,
+  "new": 61076,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_75",
+  "old": 60775,
+  "new": 61077,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_76",
+  "old": 60776,
+  "new": 61078,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_77",
+  "old": 60777,
+  "new": 61079,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_78",
+  "old": 60778,
+  "new": 61080,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_79",
+  "old": 60779,
+  "new": 61081,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_80",
+  "old": 60780,
+  "new": 61082,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_81",
+  "old": 60781,
+  "new": 61083,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_82",
+  "old": 60782,
+  "new": 61084,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_83",
+  "old": 60783,
+  "new": 61085,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_84",
+  "old": 60784,
+  "new": 61086,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_85",
+  "old": 60785,
+  "new": 61087,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_86",
+  "old": 60786,
+  "new": 61088,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_87",
+  "old": 60787,
+  "new": 61089,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_88",
+  "old": 60788,
+  "new": 61090,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_89",
+  "old": 60789,
+  "new": 61091,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_90",
+  "old": 60790,
+  "new": 61092,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_91",
+  "old": 60791,
+  "new": 61093,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_92",
+  "old": 60792,
+  "new": 61094,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_93",
+  "old": 60793,
+  "new": 61095,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_94",
+  "old": 60794,
+  "new": 61096,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_95",
+  "old": 60795,
+  "new": 61097,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_96",
+  "old": 60796,
+  "new": 61098,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_97",
+  "old": 60797,
+  "new": 61099,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_98",
+  "old": 60798,
+  "new": 61100,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_99",
+  "old": 60799,
+  "new": 61101,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_100",
+  "old": 60800,
+  "new": 61102,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_101",
+  "old": 60801,
+  "new": 61103,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_102",
+  "old": 60802,
+  "new": 61104,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_103",
+  "old": 60803,
+  "new": 61105,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_104",
+  "old": 60804,
+  "new": 61106,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_105",
+  "old": 60805,
+  "new": 61107,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_106",
+  "old": 60806,
+  "new": 61108,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_107",
+  "old": 60807,
+  "new": 61109,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_108",
+  "old": 60808,
+  "new": 61110,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_109",
+  "old": 60809,
+  "new": 61111,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_110",
+  "old": 60810,
+  "new": 61112,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_111",
+  "old": 60811,
+  "new": 61113,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_112",
+  "old": 60812,
+  "new": 61114,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_113",
+  "old": 60813,
+  "new": 61115,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_114",
+  "old": 60814,
+  "new": 61116,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_115",
+  "old": 60815,
+  "new": 61117,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_116",
+  "old": 60816,
+  "new": 61118,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_117",
+  "old": 60817,
+  "new": 61119,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_118",
+  "old": 60818,
+  "new": 61120,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_119",
+  "old": 60819,
+  "new": 61121,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_120",
+  "old": 60820,
+  "new": 61122,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_121",
+  "old": 60821,
+  "new": 61123,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_122",
+  "old": 60822,
+  "new": 61124,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_123",
+  "old": 60823,
+  "new": 61125,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_124",
+  "old": 60824,
+  "new": 61126,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_125",
+  "old": 60825,
+  "new": 61127,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_126",
+  "old": 60826,
+  "new": 61128,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_127",
+  "old": 60827,
+  "new": 61129,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_128",
+  "old": 60828,
+  "new": 61130,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_129",
+  "old": 60829,
+  "new": 61131,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_130",
+  "old": 60830,
+  "new": 61132,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_131",
+  "old": 60831,
+  "new": 61133,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_132",
+  "old": 60832,
+  "new": 61134,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_133",
+  "old": 60833,
+  "new": 61135,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_134",
+  "old": 60834,
+  "new": 61136,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_135",
+  "old": 60835,
+  "new": 61137,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_136",
+  "old": 60836,
+  "new": 61138,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_137",
+  "old": 60837,
+  "new": 61139,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_138",
+  "old": 60838,
+  "new": 61140,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_139",
+  "old": 60839,
+  "new": 61141,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_140",
+  "old": 60840,
+  "new": 61142,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_141",
+  "old": 60841,
+  "new": 61143,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_142",
+  "old": 60842,
+  "new": 61144,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_143",
+  "old": 60843,
+  "new": 61145,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_144",
+  "old": 60844,
+  "new": 61146,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_145",
+  "old": 60845,
+  "new": 61147,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_146",
+  "old": 60846,
+  "new": 61148,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_147",
+  "old": 60847,
+  "new": 61149,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_148",
+  "old": 60848,
+  "new": 61150,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_149",
+  "old": 60849,
+  "new": 61151,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_150",
+  "old": 60850,
+  "new": 61152,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_151",
+  "old": 60851,
+  "new": 61153,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_152",
+  "old": 60852,
+  "new": 61154,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_153",
+  "old": 60853,
+  "new": 61155,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_154",
+  "old": 60854,
+  "new": 61156,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_155",
+  "old": 60855,
+  "new": 61157,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_156",
+  "old": 60856,
+  "new": 61158,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_157",
+  "old": 60857,
+  "new": 61159,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_158",
+  "old": 60858,
+  "new": 61160,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_159",
+  "old": 60859,
+  "new": 61161,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_160",
+  "old": 60860,
+  "new": 61162,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_161",
+  "old": 60861,
+  "new": 61163,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_162",
+  "old": 60862,
+  "new": 61164,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_163",
+  "old": 60863,
+  "new": 61165,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_164",
+  "old": 60864,
+  "new": 61166,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_165",
+  "old": 60865,
+  "new": 61167,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_166",
+  "old": 60866,
+  "new": 61168,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_167",
+  "old": 60867,
+  "new": 61169,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_168",
+  "old": 60868,
+  "new": 61170,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_169",
+  "old": 60869,
+  "new": 61171,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_170",
+  "old": 60870,
+  "new": 61172,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_171",
+  "old": 60871,
+  "new": 61173,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_172",
+  "old": 60872,
+  "new": 61174,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_173",
+  "old": 60873,
+  "new": 61175,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_174",
+  "old": 60874,
+  "new": 61176,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_175",
+  "old": 60875,
+  "new": 61177,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_176",
+  "old": 60876,
+  "new": 61178,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_177",
+  "old": 60877,
+  "new": 61179,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_178",
+  "old": 60878,
+  "new": 61180,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_179",
+  "old": 60879,
+  "new": 61181,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_180",
+  "old": 60880,
+  "new": 61182,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_181",
+  "old": 60881,
+  "new": 61183,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_182",
+  "old": 60882,
+  "new": 61184,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_183",
+  "old": 60883,
+  "new": 61185,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_184",
+  "old": 60884,
+  "new": 61186,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_185",
+  "old": 60885,
+  "new": 61187,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_186",
+  "old": 60886,
+  "new": 61188,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_187",
+  "old": 60887,
+  "new": 61189,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_188",
+  "old": 60888,
+  "new": 61190,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_189",
+  "old": 60889,
+  "new": 61191,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_190",
+  "old": 60890,
+  "new": 61192,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_191",
+  "old": 60891,
+  "new": 61193,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_192",
+  "old": 60892,
+  "new": 61194,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_193",
+  "old": 60893,
+  "new": 61195,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_194",
+  "old": 60894,
+  "new": 61196,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_195",
+  "old": 60895,
+  "new": 61197,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_196",
+  "old": 60896,
+  "new": 61198,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_197",
+  "old": 60897,
+  "new": 61199,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_198",
+  "old": 60898,
+  "new": 61200,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_199",
+  "old": 60899,
+  "new": 61201,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_200",
+  "old": 60900,
+  "new": 61202,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_201",
+  "old": 60901,
+  "new": 61203,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_202",
+  "old": 60902,
+  "new": 61204,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_203",
+  "old": 60903,
+  "new": 61205,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_204",
+  "old": 60904,
+  "new": 61206,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_205",
+  "old": 60905,
+  "new": 61207,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_206",
+  "old": 60906,
+  "new": 61208,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_207",
+  "old": 60907,
+  "new": 61209,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_208",
+  "old": 60908,
+  "new": 61210,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_209",
+  "old": 60909,
+  "new": 61211,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_easy_casket_210",
+  "old": 60910,
+  "new": 61212,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_0",
+  "old": 61000,
+  "new": 61213,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_1",
+  "old": 61001,
+  "new": 61214,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_2",
+  "old": 61002,
+  "new": 61215,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_3",
+  "old": 61003,
+  "new": 61216,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_4",
+  "old": 61004,
+  "new": 61217,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_5",
+  "old": 61005,
+  "new": 61218,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_6",
+  "old": 61006,
+  "new": 61219,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_7",
+  "old": 61007,
+  "new": 61220,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_8",
+  "old": 61008,
+  "new": 61221,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_9",
+  "old": 61009,
+  "new": 61222,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_10",
+  "old": 61010,
+  "new": 61223,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_11",
+  "old": 61011,
+  "new": 61224,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_12",
+  "old": 61012,
+  "new": 61225,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_13",
+  "old": 61013,
+  "new": 61226,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_14",
+  "old": 61014,
+  "new": 61227,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_15",
+  "old": 61015,
+  "new": 61228,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_16",
+  "old": 61016,
+  "new": 61229,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_17",
+  "old": 61017,
+  "new": 61230,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_18",
+  "old": 61018,
+  "new": 61231,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_19",
+  "old": 61019,
+  "new": 61232,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_20",
+  "old": 61020,
+  "new": 61233,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_21",
+  "old": 61021,
+  "new": 61234,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_22",
+  "old": 61022,
+  "new": 61235,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_23",
+  "old": 61023,
+  "new": 61236,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_24",
+  "old": 61024,
+  "new": 61237,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_25",
+  "old": 61025,
+  "new": 61238,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_26",
+  "old": 61026,
+  "new": 61239,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_27",
+  "old": 61027,
+  "new": 61240,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_28",
+  "old": 61028,
+  "new": 61241,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_29",
+  "old": 61029,
+  "new": 61242,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_30",
+  "old": 61030,
+  "new": 61243,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_31",
+  "old": 61031,
+  "new": 61244,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_32",
+  "old": 61032,
+  "new": 61245,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_33",
+  "old": 61033,
+  "new": 61246,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_34",
+  "old": 61034,
+  "new": 61247,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_35",
+  "old": 61035,
+  "new": 61248,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_36",
+  "old": 61036,
+  "new": 61249,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_37",
+  "old": 61037,
+  "new": 61250,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_38",
+  "old": 61038,
+  "new": 61251,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_39",
+  "old": 61039,
+  "new": 61252,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_40",
+  "old": 61040,
+  "new": 61253,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_41",
+  "old": 61041,
+  "new": 61254,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_42",
+  "old": 61042,
+  "new": 61255,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_43",
+  "old": 61043,
+  "new": 61256,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_44",
+  "old": 61044,
+  "new": 61257,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_45",
+  "old": 61045,
+  "new": 61258,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_46",
+  "old": 61046,
+  "new": 61259,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_47",
+  "old": 61047,
+  "new": 61260,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_48",
+  "old": 61048,
+  "new": 61261,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_49",
+  "old": 61049,
+  "new": 61262,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_50",
+  "old": 61050,
+  "new": 61263,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_51",
+  "old": 61051,
+  "new": 61264,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_52",
+  "old": 61052,
+  "new": 61265,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_53",
+  "old": 61053,
+  "new": 61266,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_54",
+  "old": 61054,
+  "new": 61267,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_55",
+  "old": 61055,
+  "new": 61268,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_56",
+  "old": 61056,
+  "new": 61269,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_57",
+  "old": 61057,
+  "new": 61270,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_58",
+  "old": 61058,
+  "new": 61271,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_59",
+  "old": 61059,
+  "new": 61272,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_60",
+  "old": 61060,
+  "new": 61273,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_61",
+  "old": 61061,
+  "new": 61274,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_62",
+  "old": 61062,
+  "new": 61275,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_63",
+  "old": 61063,
+  "new": 61276,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_64",
+  "old": 61064,
+  "new": 61277,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_65",
+  "old": 61065,
+  "new": 61278,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_66",
+  "old": 61066,
+  "new": 61279,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_67",
+  "old": 61067,
+  "new": 61280,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_68",
+  "old": 61068,
+  "new": 61281,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_69",
+  "old": 61069,
+  "new": 61282,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_70",
+  "old": 61070,
+  "new": 61283,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_71",
+  "old": 61071,
+  "new": 61284,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_72",
+  "old": 61072,
+  "new": 61285,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_73",
+  "old": 61073,
+  "new": 61286,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_74",
+  "old": 61074,
+  "new": 61287,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_75",
+  "old": 61075,
+  "new": 61288,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_76",
+  "old": 61076,
+  "new": 61289,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_77",
+  "old": 61077,
+  "new": 61290,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_78",
+  "old": 61078,
+  "new": 61291,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_79",
+  "old": 61079,
+  "new": 61292,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_80",
+  "old": 61080,
+  "new": 61293,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_81",
+  "old": 61081,
+  "new": 61294,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_82",
+  "old": 61082,
+  "new": 61295,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_83",
+  "old": 61083,
+  "new": 61296,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_84",
+  "old": 61084,
+  "new": 61297,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_85",
+  "old": 61085,
+  "new": 61298,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_86",
+  "old": 61086,
+  "new": 61299,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_87",
+  "old": 61087,
+  "new": 61300,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_88",
+  "old": 61088,
+  "new": 61301,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_89",
+  "old": 61089,
+  "new": 61302,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_90",
+  "old": 61090,
+  "new": 61303,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_91",
+  "old": 61091,
+  "new": 61304,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_92",
+  "old": 61092,
+  "new": 61305,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_93",
+  "old": 61093,
+  "new": 61306,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_94",
+  "old": 61094,
+  "new": 61307,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_95",
+  "old": 61095,
+  "new": 61308,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_96",
+  "old": 61096,
+  "new": 61309,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_97",
+  "old": 61097,
+  "new": 61310,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_98",
+  "old": 61098,
+  "new": 61311,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_99",
+  "old": 61099,
+  "new": 61312,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_100",
+  "old": 61100,
+  "new": 61313,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_101",
+  "old": 61101,
+  "new": 61314,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_102",
+  "old": 61102,
+  "new": 61315,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_103",
+  "old": 61103,
+  "new": 61316,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_104",
+  "old": 61104,
+  "new": 61317,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_105",
+  "old": 61105,
+  "new": 61318,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_106",
+  "old": 61106,
+  "new": 61319,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_107",
+  "old": 61107,
+  "new": 61320,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_108",
+  "old": 61108,
+  "new": 61321,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_109",
+  "old": 61109,
+  "new": 61322,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_110",
+  "old": 61110,
+  "new": 61323,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_111",
+  "old": 61111,
+  "new": 61324,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_112",
+  "old": 61112,
+  "new": 61325,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_113",
+  "old": 61113,
+  "new": 61326,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_114",
+  "old": 61114,
+  "new": 61327,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_115",
+  "old": 61115,
+  "new": 61328,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_116",
+  "old": 61116,
+  "new": 61329,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_117",
+  "old": 61117,
+  "new": 61330,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_118",
+  "old": 61118,
+  "new": 61331,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_119",
+  "old": 61119,
+  "new": 61332,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_120",
+  "old": 61120,
+  "new": 61333,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_121",
+  "old": 61121,
+  "new": 61334,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_122",
+  "old": 61122,
+  "new": 61335,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_123",
+  "old": 61123,
+  "new": 61336,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_124",
+  "old": 61124,
+  "new": 61337,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_125",
+  "old": 61125,
+  "new": 61338,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_126",
+  "old": 61126,
+  "new": 61339,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_127",
+  "old": 61127,
+  "new": 61340,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_128",
+  "old": 61128,
+  "new": 61341,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_129",
+  "old": 61129,
+  "new": 61342,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_130",
+  "old": 61130,
+  "new": 61343,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_131",
+  "old": 61131,
+  "new": 61344,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_132",
+  "old": 61132,
+  "new": 61345,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_133",
+  "old": 61133,
+  "new": 61346,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_134",
+  "old": 61134,
+  "new": 61347,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_135",
+  "old": 61135,
+  "new": 61348,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_136",
+  "old": 61136,
+  "new": 61349,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_137",
+  "old": 61137,
+  "new": 61350,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_138",
+  "old": 61138,
+  "new": 61351,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_139",
+  "old": 61139,
+  "new": 61352,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_140",
+  "old": 61140,
+  "new": 61353,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_141",
+  "old": 61141,
+  "new": 61354,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_142",
+  "old": 61142,
+  "new": 61355,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_143",
+  "old": 61143,
+  "new": 61356,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_144",
+  "old": 61144,
+  "new": 61357,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_145",
+  "old": 61145,
+  "new": 61358,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_146",
+  "old": 61146,
+  "new": 61359,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_147",
+  "old": 61147,
+  "new": 61360,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_148",
+  "old": 61148,
+  "new": 61361,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_149",
+  "old": 61149,
+  "new": 61362,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_150",
+  "old": 61150,
+  "new": 61363,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_151",
+  "old": 61151,
+  "new": 61364,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_152",
+  "old": 61152,
+  "new": 61365,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_153",
+  "old": 61153,
+  "new": 61366,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_154",
+  "old": 61154,
+  "new": 61367,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_155",
+  "old": 61155,
+  "new": 61368,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_156",
+  "old": 61156,
+  "new": 61369,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_157",
+  "old": 61157,
+  "new": 61370,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_158",
+  "old": 61158,
+  "new": 61371,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_159",
+  "old": 61159,
+  "new": 61372,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_160",
+  "old": 61160,
+  "new": 61373,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_161",
+  "old": 61161,
+  "new": 61374,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_162",
+  "old": 61162,
+  "new": 61375,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_163",
+  "old": 61163,
+  "new": 61376,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_164",
+  "old": 61164,
+  "new": 61377,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_165",
+  "old": 61165,
+  "new": 61378,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_166",
+  "old": 61166,
+  "new": 61379,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_167",
+  "old": 61167,
+  "new": 61380,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_168",
+  "old": 61168,
+  "new": 61381,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_169",
+  "old": 61169,
+  "new": 61382,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_170",
+  "old": 61170,
+  "new": 61383,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_171",
+  "old": 61171,
+  "new": 61384,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_172",
+  "old": 61172,
+  "new": 61385,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_173",
+  "old": 61173,
+  "new": 61386,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_174",
+  "old": 61174,
+  "new": 61387,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_175",
+  "old": 61175,
+  "new": 61388,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_176",
+  "old": 61176,
+  "new": 61389,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_177",
+  "old": 61177,
+  "new": 61390,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_178",
+  "old": 61178,
+  "new": 61391,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_179",
+  "old": 61179,
+  "new": 61392,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_180",
+  "old": 61180,
+  "new": 61393,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_181",
+  "old": 61181,
+  "new": 61394,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_182",
+  "old": 61182,
+  "new": 61395,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_183",
+  "old": 61183,
+  "new": 61396,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_184",
+  "old": 61184,
+  "new": 61397,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_185",
+  "old": 61185,
+  "new": 61398,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_186",
+  "old": 61186,
+  "new": 61399,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_187",
+  "old": 61187,
+  "new": 61400,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_188",
+  "old": 61188,
+  "new": 61401,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_189",
+  "old": 61189,
+  "new": 61402,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_190",
+  "old": 61190,
+  "new": 61403,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_medium_casket_191",
+  "old": 61191,
+  "new": 61404,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_0",
+  "old": 61200,
+  "new": 61405,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_1",
+  "old": 61201,
+  "new": 61406,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_2",
+  "old": 61202,
+  "new": 61407,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_3",
+  "old": 61203,
+  "new": 61408,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_4",
+  "old": 61204,
+  "new": 61409,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_5",
+  "old": 61205,
+  "new": 61410,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_6",
+  "old": 61206,
+  "new": 61411,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_7",
+  "old": 61207,
+  "new": 61412,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_8",
+  "old": 61208,
+  "new": 61413,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_9",
+  "old": 61209,
+  "new": 61414,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_10",
+  "old": 61210,
+  "new": 61415,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_11",
+  "old": 61211,
+  "new": 61416,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_12",
+  "old": 61212,
+  "new": 61417,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_13",
+  "old": 61213,
+  "new": 61418,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_14",
+  "old": 61214,
+  "new": 61419,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_15",
+  "old": 61215,
+  "new": 61420,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_16",
+  "old": 61216,
+  "new": 61421,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_17",
+  "old": 61217,
+  "new": 61422,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_18",
+  "old": 61218,
+  "new": 61423,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_19",
+  "old": 61219,
+  "new": 61424,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_20",
+  "old": 61220,
+  "new": 61425,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_21",
+  "old": 61221,
+  "new": 61426,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_22",
+  "old": 61222,
+  "new": 61427,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_23",
+  "old": 61223,
+  "new": 61428,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_24",
+  "old": 61224,
+  "new": 61429,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_25",
+  "old": 61225,
+  "new": 61430,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_26",
+  "old": 61226,
+  "new": 61431,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_27",
+  "old": 61227,
+  "new": 61432,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_28",
+  "old": 61228,
+  "new": 61433,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_29",
+  "old": 61229,
+  "new": 61434,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_30",
+  "old": 61230,
+  "new": 61435,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_31",
+  "old": 61231,
+  "new": 61436,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_32",
+  "old": 61232,
+  "new": 61437,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_33",
+  "old": 61233,
+  "new": 61438,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_34",
+  "old": 61234,
+  "new": 61439,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_35",
+  "old": 61235,
+  "new": 61440,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_36",
+  "old": 61236,
+  "new": 61441,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_37",
+  "old": 61237,
+  "new": 61442,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_38",
+  "old": 61238,
+  "new": 61443,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_39",
+  "old": 61239,
+  "new": 61444,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_40",
+  "old": 61240,
+  "new": 61445,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_41",
+  "old": 61241,
+  "new": 61446,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_42",
+  "old": 61242,
+  "new": 61447,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_43",
+  "old": 61243,
+  "new": 61448,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_44",
+  "old": 61244,
+  "new": 61449,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_45",
+  "old": 61245,
+  "new": 61450,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_46",
+  "old": 61246,
+  "new": 61451,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_47",
+  "old": 61247,
+  "new": 61452,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_48",
+  "old": 61248,
+  "new": 61453,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_49",
+  "old": 61249,
+  "new": 61454,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_50",
+  "old": 61250,
+  "new": 61455,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_51",
+  "old": 61251,
+  "new": 61456,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_52",
+  "old": 61252,
+  "new": 61457,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_53",
+  "old": 61253,
+  "new": 61458,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_54",
+  "old": 61254,
+  "new": 61459,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_55",
+  "old": 61255,
+  "new": 61460,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_56",
+  "old": 61256,
+  "new": 61461,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_57",
+  "old": 61257,
+  "new": 61462,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_58",
+  "old": 61258,
+  "new": 61463,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_59",
+  "old": 61259,
+  "new": 61464,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_60",
+  "old": 61260,
+  "new": 61465,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_61",
+  "old": 61261,
+  "new": 61466,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_62",
+  "old": 61262,
+  "new": 61467,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_63",
+  "old": 61263,
+  "new": 61468,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_64",
+  "old": 61264,
+  "new": 61469,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_65",
+  "old": 61265,
+  "new": 61470,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_66",
+  "old": 61266,
+  "new": 61471,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_67",
+  "old": 61267,
+  "new": 61472,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_68",
+  "old": 61268,
+  "new": 61473,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_69",
+  "old": 61269,
+  "new": 61474,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_70",
+  "old": 61270,
+  "new": 61475,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_71",
+  "old": 61271,
+  "new": 61476,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_72",
+  "old": 61272,
+  "new": 61477,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_73",
+  "old": 61273,
+  "new": 61478,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_74",
+  "old": 61274,
+  "new": 61479,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_75",
+  "old": 61275,
+  "new": 61480,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_76",
+  "old": 61276,
+  "new": 61481,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_77",
+  "old": 61277,
+  "new": 61482,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_78",
+  "old": 61278,
+  "new": 61483,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_79",
+  "old": 61279,
+  "new": 61484,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_80",
+  "old": 61280,
+  "new": 61485,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_81",
+  "old": 61281,
+  "new": 61486,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_82",
+  "old": 61282,
+  "new": 61487,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_83",
+  "old": 61283,
+  "new": 61488,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_84",
+  "old": 61284,
+  "new": 61489,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_85",
+  "old": 61285,
+  "new": 61490,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_86",
+  "old": 61286,
+  "new": 61491,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_87",
+  "old": 61287,
+  "new": 61492,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_88",
+  "old": 61288,
+  "new": 61493,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_89",
+  "old": 61289,
+  "new": 61494,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_90",
+  "old": 61290,
+  "new": 61495,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_91",
+  "old": 61291,
+  "new": 61496,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_92",
+  "old": 61292,
+  "new": 61497,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_93",
+  "old": 61293,
+  "new": 61498,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_94",
+  "old": 61294,
+  "new": 61499,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_95",
+  "old": 61295,
+  "new": 61500,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_96",
+  "old": 61296,
+  "new": 61501,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_97",
+  "old": 61297,
+  "new": 61502,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_98",
+  "old": 61298,
+  "new": 61503,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_99",
+  "old": 61299,
+  "new": 61504,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_100",
+  "old": 61300,
+  "new": 61505,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_101",
+  "old": 61301,
+  "new": 61506,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_102",
+  "old": 61302,
+  "new": 61507,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_103",
+  "old": 61303,
+  "new": 61508,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_104",
+  "old": 61304,
+  "new": 61509,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_105",
+  "old": 61305,
+  "new": 61510,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_106",
+  "old": 61306,
+  "new": 61511,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_107",
+  "old": 61307,
+  "new": 61512,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_108",
+  "old": 61308,
+  "new": 61513,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_109",
+  "old": 61309,
+  "new": 61514,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_110",
+  "old": 61310,
+  "new": 61515,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_111",
+  "old": 61311,
+  "new": 61516,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_112",
+  "old": 61312,
+  "new": 61517,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_113",
+  "old": 61313,
+  "new": 61518,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_114",
+  "old": 61314,
+  "new": 61519,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_115",
+  "old": 61315,
+  "new": 61520,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_116",
+  "old": 61316,
+  "new": 61521,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_117",
+  "old": 61317,
+  "new": 61522,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_118",
+  "old": 61318,
+  "new": 61523,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_119",
+  "old": 61319,
+  "new": 61524,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_120",
+  "old": 61320,
+  "new": 61525,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_121",
+  "old": 61321,
+  "new": 61526,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_122",
+  "old": 61322,
+  "new": 61527,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_123",
+  "old": 61323,
+  "new": 61528,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_124",
+  "old": 61324,
+  "new": 61529,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_125",
+  "old": 61325,
+  "new": 61530,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_126",
+  "old": 61326,
+  "new": 61531,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_127",
+  "old": 61327,
+  "new": 61532,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_128",
+  "old": 61328,
+  "new": 61533,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_129",
+  "old": 61329,
+  "new": 61534,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_130",
+  "old": 61330,
+  "new": 61535,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_131",
+  "old": 61331,
+  "new": 61536,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_132",
+  "old": 61332,
+  "new": 61537,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_133",
+  "old": 61333,
+  "new": 61538,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_134",
+  "old": 61334,
+  "new": 61539,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_135",
+  "old": 61335,
+  "new": 61540,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_136",
+  "old": 61336,
+  "new": 61541,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_137",
+  "old": 61337,
+  "new": 61542,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_138",
+  "old": 61338,
+  "new": 61543,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_139",
+  "old": 61339,
+  "new": 61544,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_140",
+  "old": 61340,
+  "new": 61545,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_141",
+  "old": 61341,
+  "new": 61546,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_142",
+  "old": 61342,
+  "new": 61547,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_143",
+  "old": 61343,
+  "new": 61548,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_144",
+  "old": 61344,
+  "new": 61549,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_145",
+  "old": 61345,
+  "new": 61550,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_146",
+  "old": 61346,
+  "new": 61551,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_147",
+  "old": 61347,
+  "new": 61552,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_148",
+  "old": 61348,
+  "new": 61553,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_149",
+  "old": 61349,
+  "new": 61554,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_150",
+  "old": 61350,
+  "new": 61555,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_151",
+  "old": 61351,
+  "new": 61556,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_152",
+  "old": 61352,
+  "new": 61557,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_153",
+  "old": 61353,
+  "new": 61558,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_154",
+  "old": 61354,
+  "new": 61559,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_155",
+  "old": 61355,
+  "new": 61560,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_156",
+  "old": 61356,
+  "new": 61561,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_157",
+  "old": 61357,
+  "new": 61562,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_158",
+  "old": 61358,
+  "new": 61563,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_159",
+  "old": 61359,
+  "new": 61564,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_160",
+  "old": 61360,
+  "new": 61565,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_161",
+  "old": 61361,
+  "new": 61566,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_162",
+  "old": 61362,
+  "new": 61567,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_163",
+  "old": 61363,
+  "new": 61568,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_164",
+  "old": 61364,
+  "new": 61569,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_165",
+  "old": 61365,
+  "new": 61570,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_166",
+  "old": 61366,
+  "new": 61571,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_167",
+  "old": 61367,
+  "new": 61572,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_168",
+  "old": 61368,
+  "new": 61573,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_169",
+  "old": 61369,
+  "new": 61574,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_170",
+  "old": 61370,
+  "new": 61575,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_171",
+  "old": 61371,
+  "new": 61576,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_172",
+  "old": 61372,
+  "new": 61577,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_173",
+  "old": 61373,
+  "new": 61578,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_174",
+  "old": 61374,
+  "new": 61579,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_175",
+  "old": 61375,
+  "new": 61580,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_176",
+  "old": 61376,
+  "new": 61581,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_177",
+  "old": 61377,
+  "new": 61582,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_178",
+  "old": 61378,
+  "new": 61583,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_179",
+  "old": 61379,
+  "new": 61584,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_180",
+  "old": 61380,
+  "new": 61585,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_181",
+  "old": 61381,
+  "new": 61586,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_182",
+  "old": 61382,
+  "new": 61587,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_183",
+  "old": 61383,
+  "new": 61588,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_184",
+  "old": 61384,
+  "new": 61589,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_185",
+  "old": 61385,
+  "new": 61590,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_186",
+  "old": 61386,
+  "new": 61591,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_187",
+  "old": 61387,
+  "new": 61592,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_188",
+  "old": 61388,
+  "new": 61593,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_189",
+  "old": 61389,
+  "new": 61594,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_190",
+  "old": 61390,
+  "new": 61595,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_191",
+  "old": 61391,
+  "new": 61596,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_192",
+  "old": 61392,
+  "new": 61597,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_193",
+  "old": 61393,
+  "new": 61598,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_194",
+  "old": 61394,
+  "new": 61599,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_195",
+  "old": 61395,
+  "new": 61600,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_196",
+  "old": 61396,
+  "new": 61601,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_197",
+  "old": 61397,
+  "new": 61602,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_198",
+  "old": 61398,
+  "new": 61603,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_199",
+  "old": 61399,
+  "new": 61604,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_200",
+  "old": 61400,
+  "new": 61605,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_201",
+  "old": 61401,
+  "new": 61606,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_202",
+  "old": 61402,
+  "new": 61607,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_203",
+  "old": 61403,
+  "new": 61608,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_204",
+  "old": 61404,
+  "new": 61609,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_205",
+  "old": 61405,
+  "new": 61610,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_206",
+  "old": 61406,
+  "new": 61611,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_207",
+  "old": 61407,
+  "new": 61612,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_208",
+  "old": 61408,
+  "new": 61613,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_209",
+  "old": 61409,
+  "new": 61614,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_210",
+  "old": 61410,
+  "new": 61615,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_211",
+  "old": 61411,
+  "new": 61616,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_212",
+  "old": 61412,
+  "new": 61617,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_213",
+  "old": 61413,
+  "new": 61618,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_214",
+  "old": 61414,
+  "new": 61619,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_215",
+  "old": 61415,
+  "new": 61620,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_216",
+  "old": 61416,
+  "new": 61621,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_217",
+  "old": 61417,
+  "new": 61622,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_218",
+  "old": 61418,
+  "new": 61623,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_219",
+  "old": 61419,
+  "new": 61624,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_220",
+  "old": 61420,
+  "new": 61625,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_221",
+  "old": 61421,
+  "new": 61626,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_222",
+  "old": 61422,
+  "new": 61627,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_223",
+  "old": 61423,
+  "new": 61628,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_224",
+  "old": 61424,
+  "new": 61629,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_225",
+  "old": 61425,
+  "new": 61630,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_226",
+  "old": 61426,
+  "new": 61631,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_227",
+  "old": 61427,
+  "new": 61632,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_228",
+  "old": 61428,
+  "new": 61633,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_229",
+  "old": 61429,
+  "new": 61634,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_230",
+  "old": 61430,
+  "new": 61635,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_231",
+  "old": 61431,
+  "new": 61636,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_232",
+  "old": 61432,
+  "new": 61637,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_hard_casket_233",
+  "old": 61433,
+  "new": 61638,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_0",
+  "old": 61450,
+  "new": 61639,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_1",
+  "old": 61451,
+  "new": 61640,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_2",
+  "old": 61452,
+  "new": 61641,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_3",
+  "old": 61453,
+  "new": 61642,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_4",
+  "old": 61454,
+  "new": 61643,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_5",
+  "old": 61455,
+  "new": 61644,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_6",
+  "old": 61456,
+  "new": 61645,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_7",
+  "old": 61457,
+  "new": 61646,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_8",
+  "old": 61458,
+  "new": 61647,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_9",
+  "old": 61459,
+  "new": 61648,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_10",
+  "old": 61460,
+  "new": 61649,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_11",
+  "old": 61461,
+  "new": 61650,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_12",
+  "old": 61462,
+  "new": 61651,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_13",
+  "old": 61463,
+  "new": 61652,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_14",
+  "old": 61464,
+  "new": 61653,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_15",
+  "old": 61465,
+  "new": 61654,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_16",
+  "old": 61466,
+  "new": 61655,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_17",
+  "old": 61467,
+  "new": 61656,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_18",
+  "old": 61468,
+  "new": 61657,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_19",
+  "old": 61469,
+  "new": 61658,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_puzzle_box_20",
+  "old": 61470,
+  "new": 61659,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_24",
+  "old": 61440,
+  "new": 61660,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_25",
+  "old": 61441,
+  "new": 61661,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_26",
+  "old": 61442,
+  "new": 61662,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_27",
+  "old": 61443,
+  "new": 61663,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_28",
+  "old": 61444,
+  "new": 61664,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_29",
+  "old": 61445,
+  "new": 61665,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "dbrow",
+  "name": "trail_map_interface_30",
+  "old": 61446,
+  "new": 61666,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_beginner_step",
+  "old": 63840,
+  "new": 64055,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_beginner_steps_left",
+  "old": 63841,
+  "new": 64056,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_beginner_completed",
+  "old": 63842,
+  "new": 64057,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_beginner_steps_done",
+  "old": 63843,
+  "new": 64058,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_beginner_aux",
+  "old": 63844,
+  "new": 64059,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_beginner_hot_cold_last",
+  "old": 63845,
+  "new": 64061,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_stash_beginner_filled",
+  "old": 63846,
+  "new": 64062,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_beginner_hot_cold_spot",
+  "old": 63847,
+  "new": 64063,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_easy_step",
+  "old": 63850,
+  "new": 64065,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_easy_steps_left",
+  "old": 63851,
+  "new": 64066,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_easy_completed",
+  "old": 63852,
+  "new": 64067,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_easy_steps_done",
+  "old": 63853,
+  "new": 64068,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_easy_aux",
+  "old": 63854,
+  "new": 64069,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_stash_easy_filled",
+  "old": 63855,
+  "new": 64070,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_medium_step",
+  "old": 63870,
+  "new": 64071,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_medium_steps_left",
+  "old": 63871,
+  "new": 64072,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_medium_completed",
+  "old": 63872,
+  "new": 64073,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_medium_steps_done",
+  "old": 63873,
+  "new": 64074,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_medium_aux",
+  "old": 63874,
+  "new": 64075,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_stash_medium_filled",
+  "old": 63875,
+  "new": 64076,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_hard_step",
+  "old": 63880,
+  "new": 64077,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_hard_steps_left",
+  "old": 63881,
+  "new": 64078,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_hard_completed",
+  "old": 63882,
+  "new": 64079,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_hard_steps_done",
+  "old": 63883,
+  "new": 64080,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_hard_aux",
+  "old": 63884,
+  "new": 64081,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "trail_stash_hard_filled",
+  "old": 63885,
+  "new": 64082,
+  "row": "treasure-trails",
+  "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
  }
 ]

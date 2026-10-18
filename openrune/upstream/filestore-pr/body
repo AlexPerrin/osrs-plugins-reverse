@@ -40,7 +40,7 @@ plugins (Grand Exchange).
 **Release note.** Long-typed varps are now read and written with PUSH_VAR_LONG/POP_VAR_LONG, fixing the Grand Exchange offer setup panel ("Dwarf remains").
 
 **Checklist**
-- [x] The change compiles (`./gradlew :tools:test`).
+- [x] The change compiles (`./gradlew build`). With a rev 241 cache in `data/cache`, the one failing test is `CodecByteRoundTripTest` "npcs survive a byte round trip" (`Unable to decode NpcType [16576]`), which fails the same way on main.
 - [x] Tests related to the change pass (`LongVarpOpcodesTest`, `BaselineSymbolMergeTest`).
 - [x] No documentation change needed.
 - [x] No unrelated formatting or dependency changes.

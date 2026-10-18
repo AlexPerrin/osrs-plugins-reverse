@@ -4,7 +4,9 @@ import net.runelite.api.coords.LocalPoint;
 
 /**
  * A map spotanim from the top-level WorldView's graphics object list (+0x160), refreshed each client
- * tick (GraphicsObjects.poll). x/y are local units (tile centre), z the height.
+ * tick (GraphicsObjects.poll). x/y are local units (tile centre), z the height. The animation state
+ * is at +0x280 (docs/offsets.md "Graphics objects"): +0x290 sequence id (-1 once finished), +0x294 u16
+ * frame cycle, +0x296 u16 frame.
  */
 final class AndroidGraphicsObject extends GraphicsObjectStub {
     final long obj;
@@ -25,11 +27,23 @@ final class AndroidGraphicsObject extends GraphicsObjectStub {
     @Override public int getStartCycle() { return startCycle; }
     @Override public int getLevel() { return level; }
     @Override public int getZ() { return z; }
-    @Override public boolean finished() { return finished; }
-    /** Recorded only: the game's finished flag isn't located yet, so the spotanim keeps playing. // unverified */
-    @Override public void setFinished(boolean f) { finished = f; }
-    @Override public net.runelite.api.Animation getAnimation() { return null; }
-    @Override public int getAnimationFrame() { return -1; }
+    /** raw[] starts at +0x240. */
+    private int seqId() { return raw[(0x290 - 0x240) / 4]; }
+
+    @Override public boolean finished() { return finished || seqId() < 0; }
+    /**
+     * true ends the animation the way the game does when it runs out (setSequence(-1) on the state);
+     * the game drops the object on its next pass over the list. Client thread only, like desktop.
+     */
+    @Override public void setFinished(boolean f) {
+        if (f && !finished && Native.isClientThread()) Native.graphicsObjectFinish(obj);
+        finished = f;
+    }
+    @Override public net.runelite.api.Animation getAnimation() {
+        int id = seqId();
+        return id < 0 || Host.client() == null ? null : Host.client().loadAnimation(id);
+    }
+    @Override public int getAnimationFrame() { return seqId() < 0 ? -1 : raw[(0x294 - 0x240) / 4] >>> 16; }
     @Override public net.runelite.api.Model getModel() { return null; }
 
     @Override public String toString() {

@@ -127,6 +127,15 @@ final class Probe {
                 tilesDump(c, Integer.parseInt(a[1]), "1".equals(a[2]));
                 return;
             }
+            if (a[0].equals("gfin")) {  // "gfin <spotanim id> 0": setFinished(true) on each graphics object with that id
+                for (net.runelite.api.GraphicsObject g : c.getTopLevelWorldView().getGraphicsObjects()) {
+                    if (g.getId() != Integer.parseInt(a[1])) continue;
+                    Log.i(TAG, "gfin " + g + " frame " + g.getAnimationFrame() + " anim " + (g.getAnimation() != null ? g.getAnimation().getId() : -1));
+                    g.setFinished(true);
+                    Log.i(TAG, "gfin -> finished " + g.finished());
+                }
+                return;
+            }
             if (a[0].equals("reload")) {  // "reload 0 0": setGameState(LOADING)
                 c.setGameState(net.runelite.api.GameState.LOADING);
                 Log.i(TAG, "reload requested, state now " + c.getGameState());

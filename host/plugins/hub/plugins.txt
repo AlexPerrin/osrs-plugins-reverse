@@ -1,6 +1,7 @@
 action-progress https://github.com/guillaume009/runelite-plugin-action-progress.git ec2091d59ec74d9856d2190184dc06f335f87976
 afk-countdown https://github.com/Im2be/afk-countdown.git 3f0e352cbcfd7282bd6cf15df42df57ed3bf6ee2
 annoyance-mute https://github.com/Broooklyn/runelite-external-plugins.git 195334815e22ef0dbbc76d74e518c5c0a3ab20cb
+arceuus-timers https://github.com/Mantic-says-hi/arceuus-timers.git f2bb1c19885346d2763b6c70fda93762b08a63e8
 attack-ranges https://github.com/tylerwgrass/attack-ranges.git 35fc4575ad64b9678b886c08c008bb03d434c9b2
 attacktimer https://github.com/ngraves95/attacktimer.git 52c321783bc52e5772a51fded4efd7d2523a37ac
 bank-heatmap https://github.com/raiyni/example-plugin.git 05fefb91577b7946a04843ee2ef6172042edc96e
@@ -13,6 +14,7 @@ barrows-potential https://github.com/Godofdrakes/barrows-potential.git a81d09b55
 better-npc-highlight https://github.com/riktenx/better-npc-highlight.git 8a2b92b35b34ec71aaad1e4c294033d840924cad
 better-teleport-menu https://github.com/abextm/better-teleport-menu.git f11546c7b0552e3efc4572bef7504ac34c16cfb1
 c-engineer-completed https://github.com/m0bilebtw/c-engineer-completed.git 5aba5151ac409e1aabcfaf44f19fc86f7a6ce8be
+cannon-highlighter https://github.com/ConorLeckey/Cannon-Highlighter.git 63aab3565b7302fd8530ad6aab8c653686c53478
 clue-scroll-juggling https://github.com/geheur/clue-juggling-timers.git c099981f9f8f5f2adea72d1706949b4f461a5f81
 clue-steps https://github.com/SkyBouncer/clue_step_tracker.git 9b366ffa212721b35462fe13bea8d642e6f4abf3
 coal-bag https://github.com/WolffTech/coal-bag-plugin.git b432633deedd2c95119ce6e388cae93cb07034c8
@@ -20,6 +22,7 @@ consumable-cooldowns https://github.com/CopyPastaOSRS/consumable-cooldowns.git 4
 corner-tile-indicators https://github.com/geheur/Corner-Tile-Indicators.git 05b27f1847aeca9ce690675710b4e87710dca447
 customizable-xp-drops https://github.com/l2-/template-plugin.git abad441320f001d454ccf67186a0d142c235888a
 damage-counter https://github.com/0anth/damage-counter.git d69450bf84a738c696fa71591cd3a9700562f236
+death-charge-reminder https://github.com/InfernoStats/death-charge-reminder.git 99d99c6a5d1c0fb247f007d259393dda2253b2cd
 did-i-compost https://github.com/AbusiveTuna/DidICompost.git d88c635e42951be266253079a4ba6df51757a390
 door-kicker https://github.com/Enriath/external-plugins.git 9d078ca73f670d14b23bbb776ffd75075bec69f3
 dropsounds https://github.com/MitzDK/DropSounds.git b65023428b63bf9dd52666479de16c5a8a3cd2f5
@@ -29,8 +32,10 @@ emote-clue-items https://github.com/larsvansoest/emote-clue-items.git 2ab1220cbc
 equipment-inspector https://github.com/botanicvelious/Equipment-Inspector.git 19f1b077a3c1304754580f071316b908366edc78
 ess-pouch https://github.com/Adam-/runelite-plugins.git 57a0f35f42a834f4738f58fe40e12bda9bd4fce8
 fish-barrel https://github.com/molo-pl/runelite-plugins.git 6aaa5993260cce2d2f46d74325071050f2382b2b
+fishing-notifier https://github.com/Bram91/fishing-notifier.git 957a15e80268bbfd249adc987e24108c395ce0cc
 gemstone-crab-timer https://github.com/ShaneeexD/GemstoneCrabTimer.git 4f6a2da963cc60d4347795fb2ea3833b5d9c176a
 herbi-afk https://github.com/Maurits825/herbi-afk.git a23942dca96df277807bfc82d3a4fb87580741a1
+herblorerecipes https://github.com/climbridecode/herblore-recipes.git 18ee204c28efba41d9a9fee430f07d306b9560fe
 high-alc-highlight https://github.com/bloogeyz/high-alc-value.git afcc704c04f9dd2ae1cf7aaa89a0745a6e383203
 hotkeyable-menu-swaps https://github.com/geheur/More-menu-entry-swaps.git 720769e96dfcc1d976784ece846a4ab0403ef96d
 hunter-rumours https://github.com/geel9/runelite-hunter-rumours.git 91b833b05b30bcb18cae812be5f0686b324d41c2
@@ -46,6 +51,7 @@ loot-logger https://github.com/TheStonedTurtle/Loot-Logger.git f359a7eea8a0021d0
 loot-lookup https://github.com/donth77/loot-lookup-plugin.git 58812e18d0f955d597c4894ece0ae23aff1a3a74
 looting-bag-value https://github.com/pwatts6060/runelite-plugins.git b334aa4e3dbce5ebb0036d78b182a1faa5e44a90
 mahogany-homes https://github.com/TheStonedTurtle/Mahogany-Homes.git 7ec419eed23dbd8f3970c40bbe0b03d5b951a0dd
+max-hit-calculator https://github.com/j-cob44/max-hit-calc.git 1d6a48552e50499b7a27c27ac6346939e351d1de
 maxhitplugin https://github.com/Seebity/max-hit.git dce258e2d185887de891eec8961c27b5df92a55c
 menu-swapper-extended https://github.com/raiyni/menu-swapper-extended.git 9a5a9cc3278fd552b948bfc62c2ee1a461f6fde1
 menuhp https://github.com/AnkouOSRS/npc-menu-hp.git aa0eeeafecf14bf851921a119ea2dd0dbd88d5ef
@@ -64,9 +70,11 @@ random-event-hider https://github.com/YvesW/random-event-hider.git 27743728beb87
 resource-packs https://github.com/melkypie/resource-packs.git bd269eda1d4b6f50eba3b8cd84939a20b3b2bd29
 ring-of-recoil-notifier https://github.com/delps1001/recoil-plugin.git 5b61813ee225cb9e25ef3f0120ff642b737870ba
 rogues-den https://github.com/nightfirecat/plugin-hub-plugins.git 3ece9e0401f5ebac9da2762015449d5e68bb0bfc
+set-timer https://github.com/InfernoStats/SetTimer.git 45a47eb32763087006459e43e865975fdace68fe
 shortest-path https://github.com/Skretzo/shortest-path.git 37abff3a3345185fc11fccecae04d8170de25a11
 skills-tab-progress-bars https://github.com/m0bilebtw/skills-tab-progress-bars.git c421ff74691c8ccbe35f99e602a32cd94614afbe
 slayer-assistant https://github.com/LeeOkeefe/slayer-assistant-plugin.git f04cb9a5dc9c60c94d5ad1710eeb2d7f9048ee6f
+slayer-task-sorter https://github.com/MJHylkema/slayer-task-sorter.git d8f7e2e0c11d6fdba6f4e26713544fe5b6863551
 spamfilter https://github.com/jackriccomini/spamfilter-plugin-runelite.git c32ec0671fba04fc9371ad43ff0adfb65f799784
 spawnpredictor https://github.com/damencs/spawn-predictor.git 8c5a34d4c88407cda7a6c60d8014018163d97974
 spirit-tree-map https://github.com/MJHylkema/spirit-tree-map.git 25382eeebed8d5b88abfb9710d4040f986687caf
@@ -74,6 +82,7 @@ startierindicator https://github.com/pwatts6060/runelite-plugins.git 38fc77770ad
 supplies-tracker https://github.com/pwatts6060/SuppliesTrackerExternal.git c3f6bfb81673781a6acabd96c9bdb7c5a607093a
 target-true-tile https://github.com/Notloc/runelite-target-true-tile.git c20c412959e8595d3ec785effb2025b072d59a34
 thrall-helper https://github.com/PortAGuy/thrall-helper.git 758de245793d09ea3c765b70a3c3e0dfbe9852e3
+ticktracker https://github.com/Tatters654/tick-tracker.git a1c5d170529f54e78d52f67874458c27329f88a6
 tictac7x-charges https://github.com/TicTac7x/runelite-plugins.git 85bc2cef4245e6394a0404d8c2f0efd12ef9faa5
 tile-packs https://github.com/TrevorMDev/tile-packs.git 8091ee842642c34fb88bb79c61e104500e91bd96
 time-tracking-reminder https://github.com/queicherius/runelite-time-tracking-reminder.git f66b6af1c6dfa2a5180fe6710a1126dcf4ce4e7b

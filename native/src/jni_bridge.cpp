@@ -1052,6 +1052,9 @@ jintArray n_graphics_objects(JNIEnv* env, jclass) {
     if (out && !v.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(v.size()), v.data());
     return out;
 }
+jboolean n_graphics_object_finish(JNIEnv* env, jclass, jlong obj) {
+    return require_client_thread(env, "graphicsObjectFinish") && game::graphics_object_finish(static_cast<uintptr_t>(obj));
+}
 jboolean n_projectile_set_end_cycle(JNIEnv* env, jclass, jlong obj, jint cycle) {
     return require_client_thread(env, "projectileSetEndCycle") && game::projectile_set_end_cycle(static_cast<uintptr_t>(obj), cycle);
 }
@@ -1610,6 +1613,7 @@ const JNINativeMethod kNatives[] = {
     {"projectiles", "()[I", reinterpret_cast<void*>(n_projectiles)},
     {"graphicsObjects", "()[I", reinterpret_cast<void*>(n_graphics_objects)},
     {"projectileSetEndCycle", "(JI)Z", reinterpret_cast<void*>(n_projectile_set_end_cycle)},
+    {"graphicsObjectFinish", "(J)Z", reinterpret_cast<void*>(n_graphics_object_finish)},
     {"ambientClear", "()Z", reinterpret_cast<void*>(n_ambient_clear)},
     {"ambientRestore", "(J)Z", reinterpret_cast<void*>(n_ambient_restore)},
     {"ambientRemove", "(J)Z", reinterpret_cast<void*>(n_ambient_remove)},

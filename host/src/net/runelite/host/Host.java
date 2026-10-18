@@ -1128,8 +1128,8 @@ public final class Host {
                 if (n == npcs.length) npcs = java.util.Arrays.copyOf(npcs, n * 2);
                 npcs[n++] = npc.getIndex();
             }
-            // Graphics objects: listeners see them (Random Event Hider calls setFinished on poofs);
-            // the host can't hide one itself yet.
+            // Graphics objects: listeners see them; Random Event Hider calls setFinished(true) on poofs,
+            // which ends them in the game (AndroidGraphicsObject). A plain false from draw() hides nothing yet.
             if (client instanceof AndroidClient)
                 for (AndroidGraphicsObject g : ((AndroidClient) client).graphicsObjects.all()) hooks.draw(g, false);
             for (net.runelite.api.Player pl : wv.players()) {

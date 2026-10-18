@@ -267,6 +267,7 @@ final class Native {
     static native int[] graphicsObjects();
     /** Projectile.setEndCycle on a listed projectile; client thread. */
     static native boolean projectileSetEndCycle(long obj, int cycle);
+    static native boolean graphicsObjectFinish(long obj);
     /** Clears the live ambient sound list (the game stops and frees them next cycle); client thread. */
     static native boolean ambientClear();
     /** Puts an ambient sound cleared this cycle back into the live list; client thread. */

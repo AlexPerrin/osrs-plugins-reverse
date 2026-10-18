@@ -105,6 +105,9 @@ struct Build {
     // Client: int[32] ring of skill ids changed by UPDATE_STAT (case 2 of 0x541dd4: ring[count++ & 31] = skill);
     // widgets' onStatTransmit listeners run for the skills in it (RuneLite's changedSkills).
     uint32_t f_changed_skills, f_changed_skill_count;
+    // AnimationState::setSequence(state*, seq id); -1 clears it. A graphics object's state is at +0x280,
+    // and the per-cycle walk (0x455f24) drops objects whose state has no sequence (+0x288 == 0).
+    uintptr_t seq_set;
 };
 
 constexpr Build kBuilds[] = {
@@ -121,7 +124,8 @@ constexpr Build kBuilds[] = {
      0x514f48, 0x507398, 0x50621c, 0x58fa84,
      0x72b758, 0x1d2f52d, 0x1d7ddf0,
      0x18e2130, 0x3f0a04,
-     0x413d64, 0x413de4},
+     0x413d64, 0x413de4,
+     0x659274},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -3151,6 +3155,17 @@ std::vector<GraphicsObjectInfo> graphics_objects() {
         out.push_back(g);
     }
     return out;
+}
+
+bool graphics_object_finish(uintptr_t obj) {
+    if (!g_build || !g_build->seq_set) return false;
+    for (const auto& g : graphics_objects())
+        if (g.obj == obj) {
+            if (!read_at<uintptr_t>(obj + 0x288)) return true;  // already finished
+            reinterpret_cast<void (*)(uintptr_t, int)>(g_base + g_build->seq_set)(obj + 0x280, -1);
+            return true;
+        }
+    return false;
 }
 
 bool projectile_set_end_cycle(uintptr_t obj, int cycle) {

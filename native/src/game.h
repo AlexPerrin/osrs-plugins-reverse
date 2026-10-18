@@ -542,6 +542,9 @@ struct ProjectileInfo {
 };
 std::vector<ProjectileInfo> projectiles();  // oldest first; game thread only
 bool projectile_set_end_cycle(uintptr_t obj, int cycle);
+// Ends a graphics object's animation as the game does when it runs out (clears its sequence);
+// the game removes it on its next walk of the list. Game thread only.
+bool graphics_object_finish(uintptr_t obj);
 // A map spotanim in the top-level WorldView's graphics object list (+0x160). x/y local units.
 struct GraphicsObjectInfo {
     uintptr_t obj = 0;

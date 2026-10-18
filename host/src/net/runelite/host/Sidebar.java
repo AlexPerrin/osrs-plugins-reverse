@@ -519,6 +519,10 @@ final class Sidebar {
             walkList((javax.swing.JList) c, depth, sb);
             return;
         }
+        if (c instanceof javax.swing.JTable) {
+            walkTable((javax.swing.JTable) c, depth, sb);
+            return;
+        }
         if (c.getMouseListeners().length > 0) {
             String t = labelText(c, new StringBuilder(), 0).toString().trim();
             if (!t.isEmpty()) add(sb, 'H', depth, c, t);
@@ -583,6 +587,25 @@ final class Sidebar {
             else add(sb, 'H', depth, row, label);
         }
         if (n > MAX_LIST_ROWS) add(sb, 'L', depth, list, "(" + (n - MAX_LIST_ROWS) + " more)");
+    }
+
+    /** JTable: a header line of column names, then one text line per model row (cells joined). */
+    private static void walkTable(javax.swing.JTable table, int depth, StringBuilder sb) {
+        javax.swing.table.TableModel m = table.getModel();
+        if (m == null) return;
+        int cols = m.getColumnCount(), rows = m.getRowCount();
+        StringBuilder h = new StringBuilder();
+        for (int j = 0; j < cols; j++) h.append(j > 0 ? "  |  " : "").append(clean(m.getColumnName(j)));
+        if (h.length() > 0) add(sb, 'L', depth, table, h.toString());
+        for (int i = 0; i < rows && i < MAX_LIST_ROWS && nodes.size() <= 3000; i++) {
+            StringBuilder r = new StringBuilder();
+            for (int j = 0; j < cols; j++) {
+                Object v = m.getValueAt(i, j);
+                r.append(j > 0 ? "  |  " : "").append(v == null ? "" : clean(String.valueOf(v)));
+            }
+            JLabel row = new JLabel();
+            add(sb, 'L', depth, row, r.toString());
+        }
     }
 
     private static StringBuilder labelText(Component c, StringBuilder out, int found) {

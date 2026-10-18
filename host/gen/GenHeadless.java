@@ -420,6 +420,9 @@ public class GenHeadless {
                 // override with checks: Bank Memory's ItemList casts getModel() to its own model).
                 if (c == javax.swing.JList.class && k.getParameterCount() == 1 && k.getParameterTypes()[0] == javax.swing.ListModel.class)
                     sb.append(" __Model = a0; __ModelSet = true;");
+                if (c == javax.swing.JTable.class && k.getParameterCount() == 1 && k.getParameterTypes()[0] == javax.swing.table.TableModel.class
+                        && generatedHas(c, "setModel", javax.swing.table.TableModel.class))
+                    sb.append(" setModel(a0);");
                 if (c == javax.swing.border.CompoundBorder.class && k.getParameterCount() == 2) sb.append(" __outside = a0; __inside = a1;");
                 if (c == javax.swing.border.MatteBorder.class && k.getParameterCount() == 5 && k.getParameterTypes()[4] == java.awt.Color.class) sb.append(" __matte = a4;");
                 sb.append(" }\n");
@@ -648,6 +651,23 @@ public class GenHeadless {
             if (n.equals("show") && ps.length == 2) return "__current.put(a0, a1);";
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[0] == String.class) return "__cards.put(a0, a1);";
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[1] == Object.class) return "if (a1 instanceof String) __cards.put(a1, a0);";
+        }
+        // JTable: a new table has an empty DefaultTableModel; the column model is built from the
+        // model (createDefaultColumnsFromModel) and rebuilt after setModel (Slayer Assistant's TableTab).
+        if (c == javax.swing.JTable.class && props.containsKey("Model")) {
+            if (n.equals("getModel") && ps.length == 0)
+                return "if (!__ModelSet) { __Model = new javax.swing.table.DefaultTableModel(); __ModelSet = true; } return __Model;";
+            if (n.equals("setModel") && ps.length == 1)
+                return "__Model = a0; __ModelSet = true;" + (props.containsKey("ColumnModel") ? " __ColumnModel = null; __ColumnModelSet = false;" : "");
+            if (n.equals("getColumnModel") && ps.length == 0 && props.containsKey("ColumnModel"))
+                return "if (!__ColumnModelSet) { __ColumnModel = javax.swing.table.DefaultTableColumnModel.__fromModel(getModel()); __ColumnModelSet = true; } return __ColumnModel;";
+        }
+        // JList.setListData: a read-only model over a copy of the data (Slayer Assistant's task list).
+        if (c == javax.swing.JList.class && n.equals("setListData") && ps.length == 1 && generatedHas(c, "setModel", javax.swing.ListModel.class)) {
+            String data = ps[0] == Object[].class ? "a0 == null ? new Object[0] : a0.clone()" : "a0 == null ? new Object[0] : a0.toArray()";
+            return "final Object[] d = " + data + "; setModel(new javax.swing.ListModel() {"
+                    + " public int getSize() { return d.length; } public Object getElementAt(int i) { return d[i]; }"
+                    + " public void addListDataListener(javax.swing.event.ListDataListener l) {} public void removeListDataListener(javax.swing.event.ListDataListener l) {} });";
         }
         if (c == javax.swing.JPopupMenu.class && n.equals("show") && ps.length == 3) return "__shown = this;";
         // JList selection (the sidebar lists rows and selects one on a tap): -1 when nothing is

@@ -21,6 +21,22 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Re-pin after upstream merges
+
+Our tree is `openrune.patch` on top of our fork's main (`REPO`/`COMMIT` in `openrune/scripts/openrune.sh`). When
+upstream merges some of our PRs:
+1. **Orchestrator:** `tools/fork.sh sync` (fork main = upstream main), and passes the new sha on.
+2. **Server dev:** re-pin. In a scratch clone of `openrune/src`: check out the old `COMMIT`, apply
+   `openrune.patch`, commit, fetch the fork's main, `git rebase <new sha>`. Resolve conflicts in favour of main
+   where main now has the same fix (drop our now-unused helpers and constants). Then in `openrune/src`:
+   `git apply -R` the old patch, `git reset`, `git checkout <new sha>`, apply the rebased diff, set `COMMIT` (and
+   `REPO`) in `openrune.sh`, `openrune.sh export`. List what was dropped in the port doc.
+3. **Server dev:** full clean build (`clean :or-cache:buildCache`, the three fix scripts, `generateRsa
+   installDist`), `test` and `integration` (separate runs), boot-check the image as `osrs-openrune:bootcheckNN`,
+   commit `openrune.patch` + `openrune.sh` (pathspec), report it ready.
+4. **Orchestrator:** deploys when both devices are free (rollback tag first).
+First done 2026-10-18 (twenty-second server dev): 9a8b338a8 -> fork c2492318d.
+
 ## Latest state (2026-10-18, twenty-first server dev, on OpenRune)
 
 Details in `docs/openrune-port.md`, "Twenty-first server dev". Protocol unchanged.

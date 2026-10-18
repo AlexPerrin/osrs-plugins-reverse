@@ -165,25 +165,10 @@ index 8cffae43f..7b5616346 100644
  id="mesanim.drunk"
  len1="seq.chatdrunk1"
 diff --git a/.data/raw-cache/server/npcs.toml b/.data/raw-cache/server/npcs.toml
-index 0e61a1db8..536d4a4af 100644
+index bd9af7f5d..536d4a4af 100644
 --- a/.data/raw-cache/server/npcs.toml
 +++ b/.data/raw-cache/server/npcs.toml
-@@ -1,12 +1,14 @@
- [[npc]]
- id = "npc.0_50_50_freshfish"
- inherit = "npc.0_50_50_freshfish"
-+contentGroup = "content.lure_bait_fishing_spot"
- moveRestrict = "NoMove"
- wanderRange = 0
- 
- [[npc]]
- id = "npc.0_50_49_saltfish"
- inherit = "npc.0_50_49_saltfish"
-+contentGroup = "content.net_bait_fishing_spot"
- moveRestrict = "NoMove"
- wanderRange = 0
- respawnRate = 50
-@@ -10900,6 +10902,7 @@ inherit = "npc.castlewars_imp"
+@@ -10902,6 +10902,7 @@ inherit = "npc.castlewars_imp"
  id = "npc.mole_giant"
  inherit = "npc.mole_giant"
  [npc.params]
@@ -1573,10 +1558,10 @@ index b7269da3e..2f90774fe 100644
              MusicAreaMode.Modern -> {
                  val modernMusic = repo.getModernArea(area)
 diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
-index 95ca2cd98..28129d308 100644
+index a07f02868..e425e5af8 100644
 --- a/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
 +++ b/api/player/src/main/kotlin/org/rsmod/api/player/ui/PlayerInterfaceExtensions.kt
-@@ -359,6 +359,10 @@ private fun Player.closeModal(interf: UserInterface, target: Component, eventBus
+@@ -360,6 +360,10 @@ private fun Player.closeModal(interf: UserInterface, target: Component, eventBus
      eventBus.publish(CloseSub(this, interf, target))
  
      closeOverlayChildren(interf, eventBus)
@@ -1587,7 +1572,7 @@ index 95ca2cd98..28129d308 100644
  }
  
  private fun Player.closeOverlay(interf: String, eventBus: EventBus) {
-@@ -412,6 +416,10 @@ public fun Player.closeSubs(from: Component, eventBus: EventBus) {
+@@ -413,6 +417,10 @@ public fun Player.closeSubs(from: Component, eventBus: EventBus) {
          eventBus.publish(CloseSub(this, remove, from))
  
          closeOverlayChildren(remove, eventBus)
@@ -1598,7 +1583,7 @@ index 95ca2cd98..28129d308 100644
      }
  }
  
-@@ -661,11 +669,44 @@ internal fun Player.ifChatNpcSpecific(
+@@ -662,11 +670,44 @@ internal fun Player.ifChatNpcSpecific(
  private fun chatLogText(text: String): String = text.replace("<br>", " ").take(200)
  
  internal fun Player.ifOpenChat(interf: String, widthAndHeightMode: Int, eventBus: EventBus) {
@@ -1721,26 +1706,6 @@ index 952ef4a9b..5f2318054 100644
          var left = count
          while (left-- > 0) {
              val next = pendingLogins.poll() ?: break
-diff --git a/content/areas/city/al-kharid/pack/src/main/resources/pack/configs/al_kharid_npcs.toml b/content/areas/city/al-kharid/pack/src/main/resources/pack/configs/al_kharid_npcs.toml
-index ef0006d83..cfef1fa6d 100644
---- a/content/areas/city/al-kharid/pack/src/main/resources/pack/configs/al_kharid_npcs.toml
-+++ b/content/areas/city/al-kharid/pack/src/main/resources/pack/configs/al_kharid_npcs.toml
-@@ -1,6 +1,7 @@
- [[npc]]
- id = "npc.kharidbanker1"
- inherit = "npc.kharidbanker1"
-+contentGroup = "content.banker"
- moveRestrict = "NoMove"
- wanderRange = 0
- respawnDir = "East"
-@@ -8,6 +9,7 @@ respawnDir = "East"
- [[npc]]
- id = "npc.kharidbanker2"
- inherit = "npc.kharidbanker2"
-+contentGroup = "content.banker"
- moveRestrict = "NoMove"
- wanderRange = 0
- respawnDir = "East"
 diff --git a/content/areas/city/draynor/src/main/kotlin/org/rsmod/content/areas/city/draynor/npcs/DraynorVillageNpcs.kt b/content/areas/city/draynor/src/main/kotlin/org/rsmod/content/areas/city/draynor/npcs/DraynorVillageNpcs.kt
 index 0d9fbe8a4..a0944005b 100644
 --- a/content/areas/city/draynor/src/main/kotlin/org/rsmod/content/areas/city/draynor/npcs/DraynorVillageNpcs.kt
@@ -2317,7 +2282,7 @@ index 000000000..d6fc9c726
 +    }
 +}
 diff --git a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
-index 375f66a3b..ff8eeffd4 100644
+index efaa614cd..814ee0968 100644
 --- a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
 +++ b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
 @@ -1,5 +1,6 @@
@@ -3077,578 +3042,6 @@ index d64463d3d..93bceff93 100644
  }
  
  class StraightStaircaseScript : PluginScript() {
-diff --git a/content/generic/generic-npcs/pack/src/main/resources/pack/configs/bankers.toml b/content/generic/generic-npcs/pack/src/main/resources/pack/configs/bankers.toml
-index f70724f28..602d939fb 100644
---- a/content/generic/generic-npcs/pack/src/main/resources/pack/configs/bankers.toml
-+++ b/content/generic/generic-npcs/pack/src/main/resources/pack/configs/bankers.toml
-@@ -1,9 +1,567 @@
-+# Every "Banker" type with the standard ops (Talk-to, Bank, Collect) gets the banker content
-+# group, so Banker.kt handles Talk-to/Bank/Collect across the booth (osrs-plugins-reverse; only
-+# the deadman banker had it, the rest answered "I can't reach that!").
-+
-+[[npc]]
-+id = "npc.misc_banker"
-+inherit = "npc.misc_banker"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.mourning_elf_bankerm"
-+inherit = "npc.mourning_elf_bankerm"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.mourning_elf_bankerf"
-+inherit = "npc.mourning_elf_bankerf"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
- [[npc]]
- id = "npc.banker1"
- inherit = "npc.banker1"
- moveRestrict = "NoMove"
-+contentGroup = "content.banker"
- 
- [[npc]]
- id = "npc.banker2"
- inherit = "npc.banker2"
- moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.banker1_west"
-+inherit = "npc.banker1_west"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.banker1_east"
-+inherit = "npc.banker1_east"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.wom_banker1"
-+inherit = "npc.wom_banker1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.wom_banker2"
-+inherit = "npc.wom_banker2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.wom_banker3"
-+inherit = "npc.wom_banker3"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.dorgesh_female_banker"
-+inherit = "npc.dorgesh_female_banker"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.dorgesh_male_banker"
-+inherit = "npc.dorgesh_male_banker"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.dwarf_city_banker1"
-+inherit = "npc.dwarf_city_banker1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.dwarf_city_banker2"
-+inherit = "npc.dwarf_city_banker2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.werewolfbanker"
-+inherit = "npc.werewolfbanker"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.banker1_new"
-+inherit = "npc.banker1_new"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.banker2_new"
-+inherit = "npc.banker2_new"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.banker2_east"
-+inherit = "npc.banker2_east"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.fairy_banker"
-+inherit = "npc.fairy_banker"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.shilobanker"
-+inherit = "npc.shilobanker"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.falador_banker"
-+inherit = "npc.falador_banker"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.contact_banker_male"
-+inherit = "npc.contact_banker_male"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.contact_banker_female"
-+inherit = "npc.contact_banker_female"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.fever_banker_01"
-+inherit = "npc.fever_banker_01"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.fever_banker_02"
-+inherit = "npc.fever_banker_02"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.shayzien_banker_m_north"
-+inherit = "npc.shayzien_banker_m_north"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.shayzien_banker_m_east"
-+inherit = "npc.shayzien_banker_m_east"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.shayzien_banker_m_west"
-+inherit = "npc.shayzien_banker_m_west"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.shayzien_banker_f_north"
-+inherit = "npc.shayzien_banker_f_north"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.shayzien_banker_f_east"
-+inherit = "npc.shayzien_banker_f_east"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.shayzien_banker_f_west"
-+inherit = "npc.shayzien_banker_f_west"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.hosidius_banker_m_west"
-+inherit = "npc.hosidius_banker_m_west"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.hosidius_banker_m_east"
-+inherit = "npc.hosidius_banker_m_east"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.hosidius_banker_f_west"
-+inherit = "npc.hosidius_banker_f_west"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.hosidius_banker_f_east"
-+inherit = "npc.hosidius_banker_f_east"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.piscarilius_banker_1"
-+inherit = "npc.piscarilius_banker_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.piscarilius_banker_2"
-+inherit = "npc.piscarilius_banker_2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.arceuus_banker_1_west"
-+inherit = "npc.arceuus_banker_1_west"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.arceuus_banker_1_east"
-+inherit = "npc.arceuus_banker_1_east"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.arceuus_banker_2_west"
-+inherit = "npc.arceuus_banker_2_west"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.arceuus_banker_2_east"
-+inherit = "npc.arceuus_banker_2_east"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.lovakengj_banker_f_west"
-+inherit = "npc.lovakengj_banker_f_west"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.lovakengj_banker_f_north"
-+inherit = "npc.lovakengj_banker_f_north"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.lovakengj_banker_f_east"
-+inherit = "npc.lovakengj_banker_f_east"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.lovakengj_banker_f_south"
-+inherit = "npc.lovakengj_banker_f_south"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.lovakengj_banker_m_east"
-+inherit = "npc.lovakengj_banker_m_east"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.lovakengj_banker_m_south"
-+inherit = "npc.lovakengj_banker_m_south"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.vampyre_banker_female"
-+inherit = "npc.vampyre_banker_female"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.vampyre_banker_male"
-+inherit = "npc.vampyre_banker_male"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.farming_guild_banker1"
-+inherit = "npc.farming_guild_banker1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.farming_guild_banker2"
-+inherit = "npc.farming_guild_banker2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.prif_bankerm1"
-+inherit = "npc.prif_bankerm1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.prif_bankerm2"
-+inherit = "npc.prif_bankerm2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.prif_bankerm3"
-+inherit = "npc.prif_bankerm3"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.prif_bankerm4"
-+inherit = "npc.prif_bankerm4"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.prif_bankerf1"
-+inherit = "npc.prif_bankerf1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.prif_bankerf2"
-+inherit = "npc.prif_bankerf2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.darkm_banker_female"
-+inherit = "npc.darkm_banker_female"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.darkm_banker_male"
-+inherit = "npc.darkm_banker_male"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.wildy_hub_banker"
-+inherit = "npc.wildy_hub_banker"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.clan_hall_banker_0"
-+inherit = "npc.clan_hall_banker_0"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.clan_hall_banker_1"
-+inherit = "npc.clan_hall_banker_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.clan_hall_banker_2"
-+inherit = "npc.clan_hall_banker_2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.clan_hall_banker_3"
-+inherit = "npc.clan_hall_banker_3"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.cam_torum_banker_1"
-+inherit = "npc.cam_torum_banker_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.cam_torum_banker_2"
-+inherit = "npc.cam_torum_banker_2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.cam_torum_banker_3"
-+inherit = "npc.cam_torum_banker_3"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.cam_torum_banker_4"
-+inherit = "npc.cam_torum_banker_4"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.hg_banker_dwarf"
-+inherit = "npc.hg_banker_dwarf"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_s_1"
-+inherit = "npc.varlamore_banker_s_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_s_2"
-+inherit = "npc.varlamore_banker_s_2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_s_3"
-+inherit = "npc.varlamore_banker_s_3"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_s_4"
-+inherit = "npc.varlamore_banker_s_4"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_n_1"
-+inherit = "npc.varlamore_banker_n_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_n_2"
-+inherit = "npc.varlamore_banker_n_2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_n_3"
-+inherit = "npc.varlamore_banker_n_3"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_n_4"
-+inherit = "npc.varlamore_banker_n_4"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_e_1"
-+inherit = "npc.varlamore_banker_e_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_e_2"
-+inherit = "npc.varlamore_banker_e_2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_e_3"
-+inherit = "npc.varlamore_banker_e_3"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_e_4"
-+inherit = "npc.varlamore_banker_e_4"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_w_1"
-+inherit = "npc.varlamore_banker_w_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_w_2"
-+inherit = "npc.varlamore_banker_w_2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_w_3"
-+inherit = "npc.varlamore_banker_w_3"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.varlamore_banker_w_4"
-+inherit = "npc.varlamore_banker_w_4"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.mistrock_banker_1"
-+inherit = "npc.mistrock_banker_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.mistrock_banker_2"
-+inherit = "npc.mistrock_banker_2"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.auburnvale_banker_west_1"
-+inherit = "npc.auburnvale_banker_west_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.auburnvale_banker_east_1"
-+inherit = "npc.auburnvale_banker_east_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.auburnvale_banker_south_1"
-+inherit = "npc.auburnvale_banker_south_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.auburnvale_banker_north_1"
-+inherit = "npc.auburnvale_banker_north_1"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.tal_teklan_banker"
-+inherit = "npc.tal_teklan_banker"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.tortugan_banker"
-+inherit = "npc.tortugan_banker"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
-+
-+[[npc]]
-+id = "npc.sailing_bank_boat_banker"
-+inherit = "npc.sailing_bank_boat_banker"
-+moveRestrict = "NoMove"
-+contentGroup = "content.banker"
 diff --git a/content/interfaces/achievement-diary/build.gradle.kts b/content/interfaces/achievement-diary/build.gradle.kts
 new file mode 100644
 index 000000000..fe2291ad0
@@ -13182,7 +12575,7 @@ index ea293b6e0..126edec7c 100644
      implementation(projects.api.areaChecker)
      implementation(projects.api.combat.combatCommons)
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
-index a8bc2108d..1caa61466 100644
+index 4e2a9e845..29c2dbc90 100644
 --- a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
 @@ -154,9 +154,14 @@ constructor(
@@ -13288,25 +12681,6 @@ index a8bc2108d..1caa61466 100644
              }
          }
  
-@@ -1072,7 +1092,17 @@ constructor(
-         if (id != null) {
-             return ServerCacheManager.getItem(id)
-         }
--        return ServerCacheManager.getItem("obj.$input".asRSCM(RSCMType.OBJ))
-+        val mapped = RSCM.getRSCMOrNull("obj.$input", RSCMType.OBJ)
-+        if (mapped != null) {
-+            return ServerCacheManager.getItem(mapped)
-+        }
-+        // Not a gameval name (the saw is `obj.poh_saw`): fall back to the first unnoted,
-+        // non-placeholder obj whose cache name matches, so `::item saw` works.
-+        val name = input.replace('_', ' ')
-+        return ServerCacheManager.getItems()
-+            .values
-+            .filter { it.name.equals(name, ignoreCase = true) && !it.isCert && !it.isPlaceholder }
-+            .minByOrNull { it.id }
-     }
- 
-     private fun List<String>.asTypeName(): String = joinToString("_")
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt
 new file mode 100644
 index 000000000..16e7d2d4f
@@ -13581,16 +12955,17 @@ index 000000000..16e7d2d4f
 +}
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
 new file mode 100644
-index 000000000..45c7bffea
+index 000000000..81bda7891
 --- /dev/null
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
-@@ -0,0 +1,196 @@
+@@ -0,0 +1,219 @@
 +package org.rsmod.content.other.commands
 +
 +import dev.openrune.ServerCacheManager
 +import dev.openrune.rscm.RSCM
 +import dev.openrune.rscm.RSCM.asRSCM
 +import dev.openrune.rscm.RSCMType
++import dev.openrune.types.aconverted.SpotanimType
 +import jakarta.inject.Inject
 +import kotlin.math.min
 +import net.rsprot.protocol.api.IncomingPacketTrace
@@ -13607,6 +12982,7 @@ index 000000000..45c7bffea
 +import org.rsmod.api.player.stat.statRestore
 +import org.rsmod.api.player.ui.PlayerInterfaceUpdates
 +import org.rsmod.api.repo.npc.NpcRepository
++import org.rsmod.api.repo.world.WorldRepository
 +import org.rsmod.game.cheat.Cheat
 +import org.rsmod.game.debug.TestFlags
 +import org.rsmod.game.entity.Npc
@@ -13626,6 +13002,7 @@ index 000000000..45c7bffea
 +constructor(
 +    private val protectedAccess: ProtectedAccessLauncher,
 +    private val npcRepo: NpcRepository,
++    private val worldRepo: WorldRepository,
 +) : PluginScript() {
 +    override fun ScriptContext.startup() {
 +        onCommand("freeze", "Toggle NPC wandering for device tests", ::freeze)
@@ -13635,6 +13012,9 @@ index 000000000..45c7bffea
 +        onCommand("options", "Open a chatmenu with 2-5 options (::options One Two Three)", ::options)
 +        onCommand("url", "Send URL_OPEN (::url https://example.com)", ::url)
 +        onCommand("pos", "Current coordinates (x z level), like the old test server", ::pos)
++        onCommand("mapanim", "World spotanim (MAP_ANIM) at your tile (::mapanim id [height] [delay] [dx dz])", ::mapAnim) {
++            invalidArgs = "Use as ::mapanim spotanimId [height] [delay] [dx dz]"
++        }
 +        onCommand("heal", "Restore hitpoints, prayer, drained stats and run energy", ::heal)
 +        onCommand("drop", "Close the connection without logging out (the client reconnects)", ::drop)
 +        onCommand("trace", "Log every incoming game packet (docker logs) on/off", ::trace)
@@ -13707,6 +13087,23 @@ index 000000000..45c7bffea
 +        with(cheat) {
 +            val c = player.coords
 +            player.mes("${c.x} ${c.z} ${c.level}")
++        }
++
++    private fun mapAnim(cheat: Cheat) =
++        with(cheat) {
++            val nums = args.map { it.toIntOrNull() }
++            val id = nums.getOrNull(0)
++            if (id == null || id < 0 || nums.any { it == null }) {
++                player.mes("Use as ::mapanim spotanimId [height] [delay] [dx dz]")
++                return
++            }
++            val height = nums.getOrNull(1) ?: 0
++            val delay = nums.getOrNull(2) ?: 0
++            val dx = nums.getOrNull(3) ?: 0
++            val dz = nums.getOrNull(4) ?: 0
++            val coord = player.coords.translate(dx, dz)
++            worldRepo.spotanimMap(SpotanimType(id), coord, height, delay)
++            player.mes("Map anim $id at ${coord.x} ${coord.z} ${coord.level} (height=$height, delay=$delay)")
 +        }
 +
 +    private fun heal(cheat: Cheat) =
@@ -20037,7 +19434,7 @@ index 39d0d5701..7f910453c 100644
 +9973	[clientscript,quest_available_set]
 +9974	[clientscript,quest_policy_complete_set]
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
-index 8fba8cb4d..a8e9c8029 100644
+index e5899ea95..a491008c5 100644
 --- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChicken.kt
 @@ -153,6 +153,7 @@ constructor(
@@ -20063,7 +19460,7 @@ index 8fba8cb4d..a8e9c8029 100644
      }
  
      private suspend fun Dialogue.handIn(npc: Npc) {
-@@ -341,6 +350,8 @@ constructor(
+@@ -344,6 +353,8 @@ constructor(
      }
  
      private companion object {
@@ -22156,7 +21553,7 @@ index 000000000..7e6ad371d
 +    }
 +}
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/misthalin/MisthalinMystery.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/misthalin/MisthalinMystery.kt
-index 3aa651706..64507bba1 100644
+index 3b5d93a0f..c392d8a9e 100644
 --- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/misthalin/MisthalinMystery.kt
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/misthalin/MisthalinMystery.kt
 @@ -331,6 +331,10 @@ constructor(
@@ -22170,26 +21567,6 @@ index 3aa651706..64507bba1 100644
          chatNpc(happy, "Oh hi, ${player.displayName}.")
          chatPlayer(happy, "Hi Mandy. How are you feeling now?")
          chatNpc(happy, "Much better thanks, and lucky to be alive, thanks to you in no small part.")
-@@ -341,12 +345,19 @@ constructor(
-                 "so please, take them...",
-         )
- 
-+        if (access.inv.freeSpace() < RewardSlots) {
-+            access.mes("You need $RewardSlots free inventory spaces to take the gems.")
-+            return
-+        }
-+
-         access.mistmystXpAwarded = true
- 
-         quest.completeQuest(access)
-     }
- 
-     private companion object {
-+        /** The uncut ruby, emerald and sapphire. */
-+        private const val RewardSlots = 3
-         private const val BoatFadeDelay = 1
-         private const val BoatCrossingTicks = 2
-         private const val BoatFadeInDelay = 1
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasure.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasure.kt
 new file mode 100644
 index 000000000..7bbe51da7
@@ -23518,117 +22895,6 @@ index 000000000..fa85abf5f
 +        val RATS = setOf("npc.rat", "npc.rat_indoors")
 +    }
 +}
-diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSun.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSun.kt
-index 8a9c3bef4..0ee746517 100644
---- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSun.kt
-+++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSun.kt
-@@ -90,7 +90,7 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
-                 "I have marked <red>${markedCount(access.player)}</red> of the " +
-                     "<red>$BanditCount</red> bandits so far."
-             ) {
--                visibleWhen { stage(access.player) == CotsStage.Marking }
-+                visibleWhen { stage(access.player) in CotsStage.Marking..CotsStage.MarkedAll }
-             }
-         }
- 
-@@ -122,7 +122,7 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
-     }
- 
-     fun syncGuards(player: Player) {
--        val marking = stage(player) == CotsStage.Marking
-+        val marking = stage(player) in CotsStage.Marking..CotsStage.MarkedAll
-         for (guard in 1..CotsNpc.GuardCount) {
-             val varbit = CotsNpc.guardVarbit(guard)
-             val current = player.vars[varbit]
-@@ -148,7 +148,7 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
-         }
- 
-     private suspend fun ProtectedAccess.markGuard(guard: Int) {
--        if (stage(player) != CotsStage.Marking) {
-+        if (stage(player) !in CotsStage.Marking..CotsStage.MarkedAll) {
-             return
-         }
-         if (markedCount(player) >= CotsNpc.BanditGuards) {
-@@ -157,14 +157,20 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
-         }
-         VarPlayerIntMapSetter.set(player, CotsNpc.guardVarbit(guard), GuardMarked)
-         mes("You mark the guard.")
-+        if (markedCount(player) == CotsNpc.BanditGuards && markedCorrectly(player)) {
-+            setStage(CotsStage.MarkedAll)
-+        }
-     }
- 
-     private fun ProtectedAccess.unmarkGuard(guard: Int) {
--        if (stage(player) != CotsStage.Marking) {
-+        if (stage(player) !in CotsStage.Marking..CotsStage.MarkedAll) {
-             return
-         }
-         VarPlayerIntMapSetter.set(player, CotsNpc.guardVarbit(guard), GuardUnmarked)
-         mes("You unmark the guard.")
-+        if (stage(player) == CotsStage.MarkedAll) {
-+            setStage(CotsStage.Marking)
-+        }
-     }
- 
-     internal suspend fun ProtectedAccess.tailTick() {
-@@ -363,7 +369,8 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
-             CotsStage.Tailing,
-             CotsStage.Eavesdropping -> tobyn(neutral, "Move along, citizen.")
-             CotsStage.ReportToTobyn -> reportBandits()
--            CotsStage.Marking -> markingStage()
-+            CotsStage.Marking,
-+            CotsStage.MarkedAll -> markingStage()
-             CotsStage.OnRoof,
-             CotsStage.Interrogating,
-             CotsStage.Interrogated,
-@@ -639,7 +646,7 @@ internal constructor(private val scenes: CotsScenes, private val tails: CotsTail
-                 ),
-                 JournalStep(
-                     CotsStage.Marking,
--                    CotsStage.Marking,
-+                    CotsStage.MarkedAll,
-                     "<red>Sergeant Tobyn</red> wants me to <red>Mark</red> the four disguised " +
-                         "bandits among the guards in the <red>square</red> and on the " +
-                         "<red>eastern road</red> to the bank. Once I've marked all four, I " +
-diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/CotsStage.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/CotsStage.kt
-index 0b06d498a..42dad502f 100644
---- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/CotsStage.kt
-+++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/CotsStage.kt
-@@ -10,6 +10,9 @@ internal object CotsStage {
-     const val Eavesdropping = 8
-     const val ReportToTobyn = 10
-     const val Marking = 12
-+
-+    /** Quest Helper's "Report back to Sergeant Tobyn" step; set on the fourth correct mark (guess). */
-+    const val MarkedAll = 14
-     const val OnRoof = 16
-     const val Interrogating = 18
-     const val Interrogated = 20
-diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeFurniture.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeFurniture.kt
-index 60b374b08..0c70a8e91 100644
---- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeFurniture.kt
-+++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeFurniture.kt
-@@ -268,11 +268,18 @@ class DaddysHomeFurniture @Inject constructor(private val daddysHome: DaddysHome
-         val needsLogs =
-             stage in DaddysHomeQuest.BUILDING until DaddysHomeQuest.COMPLETE &&
-                 daddysHome.furnitureState(player, Furniture.bed) < Furniture.BUILT
--        if (!needsLogs) {
-+        // The wiki says duplicates cannot be obtained: top up to three logs, counting logs and
-+        // planks already held or banked. The message once the player has three is a guess.
-+        val held =
-+            listOf(DaddysHomeQuest.WAXWOOD_LOGS, DaddysHomeQuest.WAXWOOD_PLANK).sumOf {
-+                inv.count(it) + bank.count(it)
-+            }
-+        val missing = WAXWOOD_LOG_COUNT - held
-+        if (!needsLogs || missing <= 0) {
-             mes("You search the crates but find nothing interesting.")
-             return
-         }
--        if (invAdd(inv, DaddysHomeQuest.WAXWOOD_LOGS, WAXWOOD_LOG_COUNT).failure) {
-+        if (invAdd(inv, DaddysHomeQuest.WAXWOOD_LOGS, missing).failure) {
-             mes("You don't have enough inventory space.")
-             return
-         }
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/GertrudesCatQuest.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/GertrudesCatQuest.kt
 index 7c9209e5d..faf783439 100644
 --- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/GertrudesCatQuest.kt
@@ -24389,12 +23655,12 @@ index 000000000..c3a81b04d
 +    }
 +}
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/Quest.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/Quest.kt
-index 009be2ce1..2eca486ce 100644
+index 6245c2360..c3958a90d 100644
 --- a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/Quest.kt
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/Quest.kt
-@@ -59,6 +59,9 @@ data class Quest(
- 
+@@ -64,6 +64,9 @@ data class Quest(
      private val attributeRegistry = mutableMapOf<String, QuestAttribute<*>>()
+     private val itemRewards = rewards.items.map { (item, amount) -> InvObj(item, amount) }
  
 +    /** osrs-plugins-reverse: the stage `::quest name start` sets. */
 +    var debugStartStage: Int = 1
@@ -24402,7 +23668,7 @@ index 009be2ce1..2eca486ce 100644
      companion object {
          private val logger = InlineLogger()
          private val questsByKey = mutableMapOf<String, Quest>()
-@@ -123,6 +126,18 @@ data class Quest(
+@@ -128,6 +131,18 @@ data class Quest(
          stages[key] = clampedStage
      }
  
@@ -24785,6 +24051,22 @@ index 000000000..fa296aa0b
 +        }
 +    }
 +}
+diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChickenInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChickenInteractionTest.kt
+index d0d2fa86c..5031a1292 100644
+--- a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChickenInteractionTest.kt
++++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/draynor/ErnestTheChickenInteractionTest.kt
+@@ -236,8 +236,9 @@ class ErnestTheChickenInteractionTest {
+         }
+ 
+         fun assertPending() {
+-            assertEquals(1, script.quest.getQuestStage(player))
+-            assertEquals(1, player.vars["varp.haunted"])
++            // Talking to Oddenstein sets stage 2 (OSRS varp haunted; Quest Helper's step key).
++            assertEquals(2, script.quest.getQuestStage(player))
++            assertEquals(2, player.vars["varp.haunted"])
+             assertEquals(1, player.vars["varbit.ernesthandin_complete"])
+             assertEquals(0, player.vars["varp.qp"])
+             assertEquals(0, player.vars["varbit.quests_completed_count"])
 diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayerInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayerInteractionTest.kt
 new file mode 100644
 index 000000000..be3c8e2d3
@@ -25523,69 +24805,6 @@ index 000000000..d9f8e357a
 +        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
 +    }
 +}
-diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSunInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSunInteractionTest.kt
-index 11571e03c..d1ffcd5c6 100644
---- a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSunInteractionTest.kt
-+++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/childrenofthesun/ChildrenOfTheSunInteractionTest.kt
-@@ -216,6 +216,28 @@ class ChildrenOfTheSunInteractionTest {
-         assertTrue(f.output().contains("already marked enough guards"), f.output())
-     }
- 
-+    @Test fun `marking the four bandits moves to the report stage and an unmark moves back`() {
-+        val f = Fixture(CotsStage.Marking)
-+        f.script.syncGuards(f.player)
-+        for (guard in 1..3) f.mark(guard)
-+        assertEquals(CotsStage.Marking, f.stage())
-+        f.mark(4)
-+        assertEquals(CotsStage.MarkedAll, f.stage())
-+        assertEquals(2, f.player.vars["varbit.vmq1_guard_4"])
-+        f.talk("npc.vmq1_guard_4")
-+        f.finish()
-+        assertEquals(CotsStage.Marking, f.stage())
-+        assertEquals(1, f.player.vars["varbit.vmq1_guard_4"])
-+        assertEquals(1, f.player.vars["varbit.vmq1_guard_5"])
-+    }
-+
-+    @Test fun `four marks with an honest guard stay in the marking stage`() {
-+        val f = Fixture(CotsStage.Marking)
-+        f.script.syncGuards(f.player)
-+        for (guard in listOf(1, 2, 3, 5)) f.mark(guard)
-+        assertEquals(CotsStage.Marking, f.stage())
-+    }
-+
-     @Test fun `Tobyn repeats his instructions until four guards are marked`() {
-         val f = Fixture(CotsStage.Marking)
-         f.script.syncGuards(f.player)
-diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeInteractionTest.kt
-index 6978f83d7..baed2d0a6 100644
---- a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeInteractionTest.kt
-+++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeInteractionTest.kt
-@@ -216,6 +216,25 @@ class DaddysHomeInteractionTest {
-         assertEquals(0, late.player.inv.count("obj.daddyshome_waxwood_logs"))
-     }
- 
-+    @Test
-+    fun `the crates only top up to three waxwood logs counting planks and the bank`() {
-+        val f = Fixture(DaddysHomeQuest.BUILDING)
-+        f.setAll(Furniture.CLEARED)
-+        f.crates()
-+        f.crates()
-+        assertEquals(3, f.player.inv.count("obj.daddyshome_waxwood_logs"))
-+
-+        val mixed = Fixture(DaddysHomeQuest.BUILDING)
-+        mixed.setAll(Furniture.CLEARED)
-+        mixed.give("obj.daddyshome_waxwood_plank" to 1)
-+        mixed.player.invMap.getOrPut("inv.bank")[0] = InvObj("obj.daddyshome_waxwood_logs", 1)
-+        mixed.crates()
-+        assertEquals(1, mixed.player.inv.count("obj.daddyshome_waxwood_logs"))
-+        mixed.crates()
-+        assertEquals(1, mixed.player.inv.count("obj.daddyshome_waxwood_logs"))
-+        assertTrue(mixed.output().contains("find nothing interesting"), mixed.output())
-+    }
-+
-     @Test
-     fun `a full inventory does not lose the logs`() {
-         val f = Fixture(DaddysHomeQuest.BUILDING)
 diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJulietInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJulietInteractionTest.kt
 new file mode 100644
 index 000000000..75669a427
@@ -26927,32 +26146,10 @@ index 3819d1409..af99f4f2c 100644
          moveAwayFromFire(fireCoords)
          faceSquare(fireCoords)
 diff --git a/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt b/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt
-index 09ea6418a..a0f013676 100644
+index c03e888b6..4b156ea81 100644
 --- a/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt
 +++ b/content/skills/fishing/src/main/kotlin/org/rsmod/content/skills/fishing/scripts/Fishing.kt
-@@ -139,7 +139,7 @@ constructor(
- 
-     private suspend fun ProtectedAccess.attemptCatch(task: FishTask) {
-         // The spot can despawn or hop to another tile while the cycle is running.
--        if (task.npc.uid != task.uid) {
-+        if (task.npc.uid != task.uid || !isBesideSpot(task.npc)) {
-             return
-         }
-         val attempt = prepare(task.spot, task.method, verbose = false) ?: return
-@@ -148,6 +148,12 @@ constructor(
-         weakQueue(CATCH_QUEUE, rollDelay(attempt.bait), task)
-     }
- 
-+    private fun ProtectedAccess.isBesideSpot(npc: Npc): Boolean {
-+        val dx = kotlin.math.abs(player.coords.x - npc.coords.x)
-+        val dz = kotlin.math.abs(player.coords.z - npc.coords.z)
-+        return player.coords.level == npc.coords.level && maxOf(dx, dz) <= 1
-+    }
-+
-     private fun ProtectedAccess.startAnim(attempt: FishAttempt) {
-         skillAnimDelay = mapClock + ANIM_REFRESH
-         anim(attempt.active.anim)
-@@ -279,9 +285,9 @@ constructor(
+@@ -279,9 +279,9 @@ constructor(
              return
          }
  
@@ -32685,75 +31882,6 @@ index 2837bdc85..c4ed5b447 100644
  }
  
  suspend fun Dialogue.teleportToMainLand() {
-diff --git a/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/essencepouch/EssencePouchScript.kt b/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/essencepouch/EssencePouchScript.kt
-index 15d39e1d9..6e08496b6 100644
---- a/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/essencepouch/EssencePouchScript.kt
-+++ b/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/essencepouch/EssencePouchScript.kt
-@@ -2,8 +2,8 @@ package org.rsmod.content.skills.runecrafting.essencepouch
- 
- import dev.openrune.ServerCacheManager
- import dev.openrune.rscm.RSCM
--import dev.openrune.rscm.RSCMType
- import dev.openrune.rscm.RSCM.asRSCM
-+import dev.openrune.rscm.RSCMType
- import org.rsmod.api.player.protect.ProtectedAccess
- import org.rsmod.api.player.stat.baseRunecraftingLvl
- import org.rsmod.api.script.onOpHeld1
-@@ -117,7 +117,7 @@ class EssencePouchScript : PluginScript() {
- 
-         val amount = EssencePouch.storedAmount(player, tier)
-         if (amount <= 0) {
--            mes("There are no essences in this pouch.")
-+            mes(EMPTY_POUCH)
-             return
-         }
- 
-@@ -149,7 +149,7 @@ class EssencePouchScript : PluginScript() {
- 
-         val amount = EssencePouch.storedAmount(player, tier)
-         if (amount <= 0) {
--            mes("There are no essences in this pouch.")
-+            mes(EMPTY_POUCH)
-             return
-         }
- 
-@@ -157,11 +157,33 @@ class EssencePouchScript : PluginScript() {
-         val essenceType =
-             EssencePouch.storedEssenceTypeName(player, tier)
-                 ?: EssencePouch.preferredEssenceType(player, tier)
--        val essenceName =
--            ServerCacheManager.getItem(essenceType.asRSCM(RSCMType.OBJ))?.name?.lowercase() ?: "essence"
--        mes("There ${if (amount == 1) "is" else "are"} $amount $essenceName in this pouch.")
-+        val name = ServerCacheManager.getItem(essenceType.asRSCM(RSCMType.OBJ))?.name?.lowercase() ?: "essence"
-+        val kind = name.removeSuffix("essence").trim().takeUnless { it.isEmpty() || it == "rune" }
-+        val noun = if (amount == 1) "essence" else "essences"
-+        val count = listOfNotNull(numberWord(amount), kind, noun).joinToString(" ")
-+        mes("There ${if (amount == 1) "is" else "are"} $count in this pouch.")
-         if (tier == EssencePouch.Tier.Colossal) {
-             mes("It can hold up to $capacity essence.")
-         }
-     }
-+
-+    private companion object {
-+        /** OSRS wording, as RuneLite's Ess Pouch and tictac7x Charges plugins parse it. */
-+        const val EMPTY_POUCH = "There is no essence in this pouch."
-+
-+        val UNITS =
-+            listOf(
-+                "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-+                "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
-+                "eighteen", "nineteen",
-+            )
-+        val TENS = listOf("", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety")
-+
-+        fun numberWord(n: Int): String =
-+            when {
-+                n < 20 -> UNITS[n]
-+                n % 10 == 0 -> TENS[n / 10]
-+                else -> "${TENS[n / 10]}-${UNITS[n % 10]}"
-+            }
-+    }
- }
 diff --git a/content/skills/slayer/build.gradle.kts b/content/skills/slayer/build.gradle.kts
 index 3d20c293c..dc57c703d 100644
 --- a/content/skills/slayer/build.gradle.kts
@@ -32999,6 +32127,57 @@ index dd7c61d52..366a28005 100644
          if (invAdd(inv, ball.output.internalName, ballsPerSmelt).success) {
              statAdvance("stat.smithing", ball.xp * barsPerSmelt.toDouble())
          }
+diff --git a/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/coalbag/CoalBagScript.kt b/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/coalbag/CoalBagScript.kt
+index a47808657..97bcc09c0 100644
+--- a/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/coalbag/CoalBagScript.kt
++++ b/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/coalbag/CoalBagScript.kt
+@@ -38,14 +38,14 @@ class CoalBagScript : PluginScript() {
+         val toDeposit = minOf(coalInInv, freeSpace)
+         if (invDel(inv, "obj.coal", toDeposit).success) {
+             CoalBag.addStored(player, toDeposit)
+-            mes("You fill the coal bag with $toDeposit coal.")
++            mes(contentsMessage(CoalBag.storedAmount(player)))
+         }
+     }
+ 
+     private fun ProtectedAccess.emptyBag() {
+         val current = CoalBag.storedAmount(player)
+         if (current <= 0) {
+-            mes("Your coal bag is empty.")
++            mes(contentsMessage(0))
+             return
+         }
+ 
+@@ -56,18 +56,21 @@ class CoalBagScript : PluginScript() {
+         }
+ 
+         CoalBag.removeStored(player, added)
+-        mes("You empty $added coal from the coal bag.")
++        val left = CoalBag.storedAmount(player)
++        mes(if (left <= 0) "The coal bag is now empty." else contentsMessage(left, still = true))
+     }
+ 
+     private fun ProtectedAccess.checkBag() {
+-        val current = CoalBag.storedAmount(player)
+-        if (current <= 0) {
+-            mes("Your coal bag is empty.")
+-            return
+-        }
++        mes(contentsMessage(CoalBag.storedAmount(player)))
++    }
+ 
+-        val capacity = CoalBag.capacity(player)
+-        mes("Your coal bag contains $current of $capacity coal.")
++    private fun contentsMessage(count: Int, still: Boolean = false): String {
++        val contains = if (still) "still contains" else "contains"
++        return when {
++            count <= 0 -> "The coal bag is empty."
++            count == 1 -> "The coal bag $contains one piece of coal."
++            else -> "The coal bag $contains $count pieces of coal."
++        }
+     }
+ 
+     private fun ProtectedAccess.openBag() {
 diff --git a/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/smelting/SmeltingScript.kt b/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/smelting/SmeltingScript.kt
 index a28095cd2..d17a300d1 100644
 --- a/content/skills/smithing/src/main/kotlin/org/rsmod/content/skills/smithing/smelting/SmeltingScript.kt

@@ -3,7 +3,8 @@
 Staged port of our Android test server onto OpenRune-Server, approved 2026-10-16 after the spike
 (`docs/openrune-spike.md`). Build and run steps: `openrune/README.md`.
 
-- **Upstream pin:** OpenRune-Server 9a8b338a8 (2026-10-16), in `openrune/scripts/openrune.sh`.
+- **Upstream pin:** our fork AlexPerrin/OpenRune-Server, main c2492318d (2026-10-18, = upstream main with our merged
+  fixes), in `openrune/scripts/openrune.sh`. Was OpenRune-Server 9a8b338a8 until the twenty-second server dev's re-pin.
 - **Our changes:** `openrune/openrune.patch`.
 - **Containers:** `osrs-openrune` (game/JS5, host port 40255) and `osrs-openrune-http`
   (jav_config/LOCAL_AUTH, host port 8081). Our current server `osrs-rsps-test` (43594/8080) keeps
@@ -2156,3 +2157,55 @@ on the Count, in addition to the stat drain. `VampyreSlayerManor` adds 1 to ever
 deals damage while garlic is in the inventory (`onModifyNpcHit`). **Simplified:** zero-damage hits stay at 0 (a
 miss cannot be told apart from a 0 roll). The wiki also says the garlic effect "will wear off after 30 seconds";
 that is not modelled. Returning to the coffin: still no source, not done. Not yet checked in a client.
+
+## Twenty-second server dev (2026-10-18): HeldU dispatch order, coal bag wording, re-pin to the fork
+
+### Item-on-item dispatch order (live 17:28 UTC, 021e487)
+The client dev found that using an item on the looting bag did nothing (Android, tester, Settings = ask). Cause:
+`HeldUInteractions` tried every script for (selected, target), including the selected item's "used on anything"
+default, before the pair the other way round. Firemaking registers such a default on every log (bow lighting),
+and herblore one on potions and secondaries; both return silently for anything else. Now: pair scripts
+(type, content-type, content) in either order first, then the target's default, then the selected item's
+(RuneScript's `[opheldu,<target>]` gets the used obj as `last_useitem`). This also fixes logs used on a knife
+(fletching) and logs used on a tinderbox (upstream main too). Test: `LootingBagScriptTest` "an item with its own
+used-on-anything script still goes into the bag". Desktop-checked on 021e487: oak logs on the bag in the Wilderness
+give the One/Five/All prompt and are stored.
+- **"View" missing in the bank** was not a bug: osrs-dumps `[proc,bankside_build]` passes `$int13 = 1` to
+  `bankside_drawitem` only when `inv.looting_bag` holds an item, and only then sets op 1 "View". The bag was empty
+  because of the bug above. Desktop-checked: View opens "Bank your loot" with the logs; Deposit loot banks them.
+- Desktop side note: on the desktop client the bag only offers Use/Destroy/Examine (name "Looting bag (Members)").
+  Both sidecars serve world 255 with flags 0x1 (members), and the `desktop` character has `members = t`, so the
+  difference is on the client/RSProx side; not resolved.
+
+### Coal bag messages
+`CoalBagScript` said "Your coal bag contains 5 of 27 coal." and "You fill the coal bag with 5 coal.". OSRS
+wording, from the Coal Bag Plugin Hub plugin's parser and tests (`CoalBag.java`: "The coal bag contains one piece
+of coal.", "The coal bag contains 27 pieces of coal.", "The coal bag is empty.", "The coal bag is now empty.",
+"The coal bag still contains N pieces of coal.") and tictac7x Charges (`U_CoalBag.java`: fill and check both
+answer "The coal bag contains ..."): Check and Fill now print the bag's contents in that form, Empty prints "The
+coal bag is now empty." or "The coal bag still contains ..." when the inventory was too full. "Your coal bag is
+full." and "You don't have any coal to fill your coal bag with." are unchanged (no source). Upstream main has the
+same old text.
+
+### Re-pin to the fork (c2492318d)
+`openrune.sh` now clones AlexPerrin/OpenRune-Server at c2492318d (the fork's main, synced to upstream main, which
+has our merged 02, 03, 04, 27, 58, 60, 62 plus upstream's own #337-#341). `openrune.patch` was rebased: applied on
+9a8b338a8, committed, `git rebase` onto c2492318d, conflicts resolved in favour of main. 308 files became 300.
+Dropped or reduced:
+- 02 bankers (bankers.toml, al_kharid_npcs.toml), 58 Children of the Sun `MarkedAll` stage, 60 Daddy's Home
+  waxwood cap, 27 essence pouch wording: fully upstream (our comments dropped).
+- 04 fishing "beside the spot": main uses `isWithinDistance(npc, 1)`; our `isBesideSpot` removed.
+- 62 `::item` cache-name fallback: upstream; only our comment differed.
+- 55 general store stock: upstream #341 does the same, no diff left.
+- Misthalin Mystery Mandy reward: main (#339) checks the reward space in dialogue ("You need another space...")
+  and `completeQuest` now returns false on a full inventory; our `RewardSlots` message check was dropped, our
+  stage guard stays.
+- `completeQuest` returns a Boolean now (#339); our quests ignore the result (they award rewards as before).
+- Main's new `ErnestTheChickenInteractionTest` (#339) expects `haunted` = 1 at the hand-in; our 54 sets 2 on the first
+  Oddenstein talk (OSRS / Quest Helper), so the test's `assertPending` now expects 2 in our tree. Upstream 54 needs the
+  same test change.
+- Built clean (`clean :or-cache:buildCache`, fix scripts, installDist), `test` and `integration` pass (integration with
+  one worker: two workers in 4 GB were OOM-killed, exit 137), boot-checked as `osrs-openrune:bootcheck23` (Server ready
+  in 10.4 s, 20:23 UTC). Also in this bundle: the coal bag wording and `::mapanim <spotanimId> [height] [delay] [dx dz]`
+  (test command, `TestCommands`; a world spotanim through `WorldRepository.spotanimMap`; upstream only has `::spot`,
+  a player spotanim).

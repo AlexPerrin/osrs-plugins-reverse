@@ -22,8 +22,8 @@ cd "$(dirname "$0")/.."
 OR=$(pwd)
 ROOT=$(cd .. && pwd)
 
-REPO=https://github.com/OpenRune/OpenRune-Server.git
-COMMIT=9a8b338a89cb87345e002bf83228e775a746ce69
+REPO=https://github.com/AlexPerrin/OpenRune-Server.git
+COMMIT=c2492318d2dfbf4d4f02e21d2b182af1b2d714a3
 
 RSPROT_REPO=https://github.com/blurite/rsprot.git
 RSPROT_COMMIT=4ec57fd7a28e16e9ae207bd1f02b7f343bb77957 # same pin as server/scripts/rsprot.sh

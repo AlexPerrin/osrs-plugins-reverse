@@ -1865,3 +1865,16 @@ cauldron, loc 2024).
 - Hetty's old after-quest lines (rimmington `RimmingtonTownsfolkScript`) moved into the quest script (stage 3).
 - **Ours:** journal text, scroll item (eye of newt), mesanims.
 - Tests: `WitchsPotionInteractionTest` (5).
+
+### Quest requirement mode (`assume-completed`)
+OpenRune's `game.yml` key `gameplay.quest-requirements.mode` (ours: `openrune/src/game.yml`, copied from
+`game.example.yml` by `openrune.sh init` and baked into the image by the Dockerfile) is `"assume-completed"`, the
+upstream default ("Temporary core-mechanics default"). In that mode `QuestRequirements.satisfies`
+(`content/quest/.../manager/QuestRequirements.kt`) answers only `Completed` with true: every quest gate that asks
+"has the player completed X" passes (members areas, spells, crafting gates and so on), and every "is on X" /
+"has not completed X" check is false, whatever the player's real quest varps say. The other modes are
+`respect-progress` (real quest state) and `virtual-completions` (a configured list counts as completed, the rest is
+real). It only affects code that goes through `QuestRequirements`; the quest scripts read their own varps, so
+Quest Helper's stages are unaffected. Effect seen: drop-table `quest_mode = "during"` drops never drop (the Witch's
+Potion rat's tail uses a kill hook instead). Switching to `respect-progress` would make gated content need real
+quests (most quests are not implemented), so it is left as is.

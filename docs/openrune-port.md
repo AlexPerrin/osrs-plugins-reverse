@@ -2054,3 +2054,13 @@ Redbeard left `RustyAnchorScript`.
   than an HTTP setter (first version, replaced before deploy): port 8080 is published on all interfaces, and inside the
   container every caller comes from the Docker gateway, so a loopback check could not tell them apart. Token length
   with a name is up to 60 characters (**not yet checked** that the app passes it through unchanged).
+
+### Fletching: knife on logs (twentieth server dev)
+New module `content/skills/fletching` (+ pack): a knife on logs opens the skill Make-X menu (`openSkillMulti`) with the
+arrow shafts and unstrung short/longbows those logs make, then a weak queue cuts one log per action (2 ticks to the
+first, 3 between: wiki). Data: `dbtable.fletching_knife` (60024, rows 60950-60968); items from the cache, levels,
+XP (stored in tenths) and shaft counts (15 per tier up to 105 for redwood) from the OSRS Wiki (Arrow shaft and the
+unstrung bow pages). The cut is one inventory transaction (log out, product in). Anim `seq.human_fletching`.
+**Guesses:** the spam line "You carefully cut the wood into ..." and the level message. Not done: javelin shafts,
+crossbow stocks, shields, stringing, arrows. For RuneLite's Action Progress (Make-X detection is the same path as
+herblore's, which already works). Tests: `KnifeFletchingScriptTest` (3).

@@ -26143,6 +26143,349 @@ index 09ea6418a..a0f013676 100644
          if (infernalHarpoon) {
              cookInfernalCatch(item, product.count)
          }
+diff --git a/content/skills/fletching/build.gradle.kts b/content/skills/fletching/build.gradle.kts
+new file mode 100644
+index 000000000..a51191098
+--- /dev/null
++++ b/content/skills/fletching/build.gradle.kts
+@@ -0,0 +1,15 @@
++plugins {
++    id("base-conventions")
++    id("integration-test-suite")
++}
++
++dependencies {
++    implementation(projects.api.pluginCommons)
++    implementation(projects.content.skills.utils)
++}
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.pluginCommons)
++    }
++}
+diff --git a/content/skills/fletching/pack/build.gradle.kts b/content/skills/fletching/pack/build.gradle.kts
+new file mode 100644
+index 000000000..92f804a7e
+--- /dev/null
++++ b/content/skills/fletching/pack/build.gradle.kts
+@@ -0,0 +1,3 @@
++plugins {
++    id("base-conventions")
++}
+diff --git a/content/skills/fletching/pack/src/main/kotlin/org/rsmod/content/skills/fletching/pack/FletchingKnifeTable.kt b/content/skills/fletching/pack/src/main/kotlin/org/rsmod/content/skills/fletching/pack/FletchingKnifeTable.kt
+new file mode 100644
+index 000000000..b0ac4a572
+--- /dev/null
++++ b/content/skills/fletching/pack/src/main/kotlin/org/rsmod/content/skills/fletching/pack/FletchingKnifeTable.kt
+@@ -0,0 +1,67 @@
++package org.rsmod.content.skills.fletching.pack
++
++import dev.openrune.definition.dbtables.dbTable
++import dev.openrune.definition.util.VarType
++
++/**
++ * Knife-on-log fletching: one row per product. Levels, experience (in tenths) and the shaft counts
++ * are from the OSRS Wiki (Arrow shaft and the unstrung bow pages); items are cache objs.
++ */
++object FletchingKnifeTable {
++    const val LOG = 0
++    const val PRODUCT = 1
++    const val COUNT = 2
++    const val LEVEL = 3
++    const val XP_TENTHS = 4
++
++    private data class Row(
++        val key: String,
++        val log: String,
++        val product: String,
++        val count: Int,
++        val level: Int,
++        val xpTenths: Int,
++    )
++
++    private val ROWS =
++        listOf(
++            Row("shafts_logs", "obj.logs", "obj.arrow_shaft", 15, 1, 50),
++            Row("shortbow", "obj.logs", "obj.unstrung_shortbow", 1, 5, 50),
++            Row("longbow", "obj.logs", "obj.unstrung_longbow", 1, 10, 100),
++            Row("shafts_oak", "obj.oak_logs", "obj.arrow_shaft", 30, 15, 100),
++            Row("oak_shortbow", "obj.oak_logs", "obj.unstrung_oak_shortbow", 1, 20, 165),
++            Row("oak_longbow", "obj.oak_logs", "obj.unstrung_oak_longbow", 1, 25, 250),
++            Row("shafts_willow", "obj.willow_logs", "obj.arrow_shaft", 45, 30, 150),
++            Row("willow_shortbow", "obj.willow_logs", "obj.unstrung_willow_shortbow", 1, 35, 333),
++            Row("willow_longbow", "obj.willow_logs", "obj.unstrung_willow_longbow", 1, 40, 415),
++            Row("shafts_maple", "obj.maple_logs", "obj.arrow_shaft", 60, 45, 200),
++            Row("maple_shortbow", "obj.maple_logs", "obj.unstrung_maple_shortbow", 1, 50, 500),
++            Row("maple_longbow", "obj.maple_logs", "obj.unstrung_maple_longbow", 1, 55, 583),
++            Row("shafts_yew", "obj.yew_logs", "obj.arrow_shaft", 75, 60, 250),
++            Row("yew_shortbow", "obj.yew_logs", "obj.unstrung_yew_shortbow", 1, 65, 675),
++            Row("yew_longbow", "obj.yew_logs", "obj.unstrung_yew_longbow", 1, 70, 750),
++            Row("shafts_magic", "obj.magic_logs", "obj.arrow_shaft", 90, 75, 300),
++            Row("magic_shortbow", "obj.magic_logs", "obj.unstrung_magic_shortbow", 1, 80, 833),
++            Row("magic_longbow", "obj.magic_logs", "obj.unstrung_magic_longbow", 1, 85, 915),
++            Row("shafts_redwood", "obj.redwood_logs", "obj.arrow_shaft", 105, 90, 350),
++        )
++
++    fun fletchingKnife() =
++        dbTable("dbtable.fletching_knife", serverOnly = true) {
++            column("log", LOG, VarType.OBJ)
++            column("product", PRODUCT, VarType.OBJ)
++            column("count", COUNT, VarType.INT)
++            column("level", LEVEL, VarType.INT)
++            column("xp_tenths", XP_TENTHS, VarType.INT)
++
++            for (r in ROWS) {
++                row("dbrow.fletching_knife_${r.key}") {
++                    columnRSCM(LOG, r.log)
++                    columnRSCM(PRODUCT, r.product)
++                    column(COUNT, r.count)
++                    column(LEVEL, r.level)
++                    column(XP_TENTHS, r.xpTenths)
++                }
++            }
++        }
++}
+diff --git a/content/skills/fletching/pack/src/main/kotlin/org/rsmod/content/skills/fletching/pack/FletchingPluginPack.kt b/content/skills/fletching/pack/src/main/kotlin/org/rsmod/content/skills/fletching/pack/FletchingPluginPack.kt
+new file mode 100644
+index 000000000..63f88388f
+--- /dev/null
++++ b/content/skills/fletching/pack/src/main/kotlin/org/rsmod/content/skills/fletching/pack/FletchingPluginPack.kt
+@@ -0,0 +1,8 @@
++package org.rsmod.content.skills.fletching.pack
++
++import dev.openrune.definition.dbtables.DBTable
++import dev.openrune.pack.PluginPack
++
++class FletchingPluginPack : PluginPack() {
++    override fun dbTables(): List<DBTable> = listOf(FletchingKnifeTable.fletchingKnife())
++}
+diff --git a/content/skills/fletching/src/integration/kotlin/org/rsmod/content/skills/fletching/KnifeFletchingScriptTest.kt b/content/skills/fletching/src/integration/kotlin/org/rsmod/content/skills/fletching/KnifeFletchingScriptTest.kt
+new file mode 100644
+index 000000000..b2b152ba7
+--- /dev/null
++++ b/content/skills/fletching/src/integration/kotlin/org/rsmod/content/skills/fletching/KnifeFletchingScriptTest.kt
+@@ -0,0 +1,67 @@
++package org.rsmod.content.skills.fletching
++
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.table.fletching.FletchingKnifeRow
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.content.skills.fletching.KnifeFletchingScript.Companion.FLETCHING
++import org.rsmod.content.skills.fletching.KnifeFletchingScript.Companion.KNIFE
++import org.rsmod.game.inv.InvObj
++
++@Execution(ExecutionMode.SAME_THREAD)
++class KnifeFletchingScriptTest {
++    private fun row(key: String) = FletchingKnifeRow.getRow("dbrow.fletching_knife_$key")
++
++    @Test
++    fun GameTestState.`one log becomes fifteen arrow shafts and the knife stays`() =
++        runInjectedGameTest(KnifeFletchingScript::class, null, KnifeFletchingScript::class) { script ->
++            player.inv[0] = InvObj(KNIFE, 1)
++            player.inv[1] = InvObj("obj.logs", 1)
++            player.inv[2] = InvObj("obj.logs", 1)
++            player.setBaseLevel(FLETCHING, 1)
++            val xp = player.statMap.getXP(FLETCHING)
++            var cut = false
++            with(script) { player.withProtectedAccess { cut = cutOnce(row("shafts_logs")) } }
++            assertTrue(cut)
++            assertEquals(1, player.inv.count("obj.logs"))
++            assertEquals(15, player.inv.count("obj.arrow_shaft"))
++            assertEquals(1, player.inv.count(KNIFE))
++            assertEquals(xp.toDouble() + 5, player.statMap.getXP(FLETCHING).toDouble(), 0.5)
++        }
++
++    @Test
++    fun GameTestState.`a bow below the level takes nothing`() =
++        runInjectedGameTest(KnifeFletchingScript::class, null, KnifeFletchingScript::class) { script ->
++            player.inv[0] = InvObj(KNIFE, 1)
++            player.inv[1] = InvObj("obj.yew_logs", 1)
++            player.setBaseLevel(FLETCHING, 64)
++            var cut = false
++            with(script) { player.withProtectedAccess { cut = cutOnce(row("yew_shortbow")) } }
++            assertFalse(cut)
++            assertEquals(1, player.inv.count("obj.yew_logs"))
++            assertEquals(0, player.inv.count("obj.unstrung_yew_shortbow"))
++        }
++
++    @Test
++    fun GameTestState.`without a knife or with no room nothing is lost`() =
++        runInjectedGameTest(KnifeFletchingScript::class, null, KnifeFletchingScript::class) { script ->
++            player.inv[0] = InvObj("obj.logs", 1)
++            player.setBaseLevel(FLETCHING, 99)
++            var noKnife = false
++            with(script) { player.withProtectedAccess { noKnife = cutOnce(row("longbow")) } }
++            assertFalse(noKnife)
++            assertEquals(1, player.inv.count("obj.logs"))
++
++            player.inv[1] = InvObj(KNIFE, 1)
++            for (slot in 2 until player.inv.size) player.inv[slot] = InvObj("obj.bronze_dagger", 1)
++            var bow = false
++            with(script) { player.withProtectedAccess { bow = cutOnce(row("longbow")) } }
++            assertTrue(bow)
++            assertEquals(0, player.inv.count("obj.logs"))
++            assertEquals(1, player.inv.count("obj.unstrung_longbow"))
++        }
++}
+diff --git a/content/skills/fletching/src/main/kotlin/org/rsmod/content/skills/fletching/KnifeFletchingScript.kt b/content/skills/fletching/src/main/kotlin/org/rsmod/content/skills/fletching/KnifeFletchingScript.kt
+new file mode 100644
+index 000000000..7d6229f92
+--- /dev/null
++++ b/content/skills/fletching/src/main/kotlin/org/rsmod/content/skills/fletching/KnifeFletchingScript.kt
+@@ -0,0 +1,115 @@
++package org.rsmod.content.skills.fletching
++
++import org.rsmod.api.invtx.invTransaction
++import org.rsmod.api.invtx.select
++import org.rsmod.api.player.output.ChatType
++import org.rsmod.api.player.output.mes
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.stat.statBase
++import org.rsmod.api.script.onOpHeldU
++import org.rsmod.api.script.onPlayerQueueWithArgs
++import org.rsmod.api.table.fletching.FletchingKnifeRow
++import org.rsmod.content.skills.SkillMultiConfig
++import org.rsmod.content.skills.SkillMultiEntry
++import org.rsmod.content.skills.openSkillMulti
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * A knife on logs opens the skill menu with the arrow shafts and unstrung bows those logs make
++ * (`dbtable.fletching_knife`), then cuts one log per action: 2 ticks to the first, 3 between the
++ * rest (OSRS Wiki).
++ */
++class KnifeFletchingScript : PluginScript() {
++    override fun ScriptContext.startup() {
++        for (log in FletchingKnifeRow.all().map { it.log.internalName }.distinct()) {
++            onOpHeldU(KNIFE, log) { chooseProduct(log) }
++        }
++        onPlayerQueueWithArgs<CutTask>(QUEUE) { cutStep(it.args) }
++    }
++
++    private suspend fun ProtectedAccess.chooseProduct(log: String) {
++        val rows = FletchingKnifeRow.all().filter { it.log.internalName == log }
++        openSkillMulti(
++            SkillMultiConfig(
++                verb = "make",
++                entries = rows.map { SkillMultiEntry(it.product.internalName) },
++                maxCountProvider = { inventory, _ -> inventory.count(log) },
++            ),
++        ) { selection ->
++            val row = rows.firstOrNull { it.product.internalName == selection.entry.internal }
++            if (row != null) startCutting(row, selection.amount)
++        }
++    }
++
++    private fun ProtectedAccess.startCutting(row: FletchingKnifeRow, amount: Int) {
++        if (statBase(FLETCHING) < row.level) {
++            mes("You need a Fletching level of ${row.level} to make that.")
++            return
++        }
++        weakQueue(QUEUE, FIRST_DELAY, CutTask(row, amount, 0))
++    }
++
++    private fun ProtectedAccess.cutStep(task: CutTask) {
++        if (!cutOnce(task.row)) {
++            resetAnim()
++            return
++        }
++        val done = task.done + 1
++        if (done < task.amount) {
++            weakQueue(QUEUE, CUT_DELAY, CutTask(task.row, task.amount, done))
++        } else {
++            resetAnim()
++        }
++    }
++
++    /** Cuts one log into [row]'s product; `false` (nothing taken) when it cannot. */
++    fun ProtectedAccess.cutOnce(row: FletchingKnifeRow): Boolean {
++        if (statBase(FLETCHING) < row.level || KNIFE !in inv || row.log.internalName !in inv) {
++            return false
++        }
++        val cut =
++            player.invTransaction(inv) {
++                val from = select(inv)
++                delete {
++                    this.from = from
++                    this.obj = row.log.id
++                    this.strictCount = 1
++                }
++                insert {
++                    this.into = from
++                    this.obj = row.product.id
++                    this.strictCount = row.count
++                }
++            }
++        if (cut.failure) {
++            mes("You don't have enough inventory space.")
++            return false
++        }
++        anim(CUT_ANIM)
++        statAdvance(FLETCHING, row.xpTenths / XP_DIVISOR)
++        mes(cutMessage(row), ChatType.Spam)
++        return true
++    }
++
++    private fun cutMessage(row: FletchingKnifeRow): String =
++        if (row.count > 1) {
++            "You carefully cut the wood into ${row.count} arrow shafts."
++        } else {
++            "You carefully cut the wood into ${row.product.name.lowercase().withArticle()}."
++        }
++
++    private fun String.withArticle(): String = if (first() in "aeiou") "an $this" else "a $this"
++
++    private data class CutTask(val row: FletchingKnifeRow, val amount: Int, val done: Int)
++
++    companion object {
++        const val KNIFE = "obj.knife"
++        const val FLETCHING = "stat.fletching"
++        const val QUEUE = "queue.fletching_knife"
++        const val CUT_ANIM = "seq.human_fletching"
++        const val FIRST_DELAY = 2
++        const val CUT_DELAY = 3
++        const val XP_DIVISOR = 10.0
++    }
++}
+diff --git a/content/skills/fletching/src/main/resources/gamevals.toml b/content/skills/fletching/src/main/resources/gamevals.toml
+new file mode 100644
+index 000000000..3353b18af
+--- /dev/null
++++ b/content/skills/fletching/src/main/resources/gamevals.toml
+@@ -0,0 +1,26 @@
++[gamevals.dbtable]
++fletching_knife = 60024
++
++[gamevals.dbrow]
++fletching_knife_shafts_logs = 60950
++fletching_knife_shortbow = 60951
++fletching_knife_longbow = 60952
++fletching_knife_shafts_oak = 60953
++fletching_knife_oak_shortbow = 60954
++fletching_knife_oak_longbow = 60955
++fletching_knife_shafts_willow = 60956
++fletching_knife_willow_shortbow = 60957
++fletching_knife_willow_longbow = 60958
++fletching_knife_shafts_maple = 60959
++fletching_knife_maple_shortbow = 60960
++fletching_knife_maple_longbow = 60961
++fletching_knife_shafts_yew = 60962
++fletching_knife_yew_shortbow = 60963
++fletching_knife_yew_longbow = 60964
++fletching_knife_shafts_magic = 60965
++fletching_knife_magic_shortbow = 60966
++fletching_knife_magic_longbow = 60967
++fletching_knife_shafts_redwood = 60968
++
++[gamevals.queue]
++fletching_knife = 61
 diff --git a/content/skills/hunter/build.gradle.kts b/content/skills/hunter/build.gradle.kts
 new file mode 100644
 index 000000000..6eb9d5aea

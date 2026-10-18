@@ -317,6 +317,27 @@ $M --tool screenshot '{}'                             # PNG (base64) of the canv
 5. The desktop RSProx transcript in `C:\osrs-test\home\.rsprox\binary` has every server packet.
    Transcribe it with RSProx's `transcribe` CLI.
 
+**A/B results, gen 31 (2026-10-17; desktop QH 4.18.0 on qhab31a, Android QH 4.17.1 on tester).**
+- Rune Mysteries (varp 63: 1, 2, 3, 3 + package 290, 4, 5 + notes 291, 6) and Ernest the Chicken (varp 32: 1, 2,
+  2 + gauge 271/tube 276, 3) were set with `::varp`/`::item` on both clients. The step text, the requirement
+  colour (red "1 x Air talisman"), the NPC highlight + world arrow (Sedridor, Aubury) and the object highlight
+  (manor door) match at every stage. Both overlays close at the final stage.
+- QH quirks shared by both clients: stage 3 stays "Talk to Sedridor ... accept the Research Package" with the
+  package in the inventory; stage 5 stays "Talk to Aubury again"; Ernest stages 1-2 say "Enter Draynor Manor's
+  ground floor" even upstairs next to Oddenstein.
+- Android drew QH's far minimap arrow from Varrock to Sedridor (basement, y 9571), and desktop did not. Desktop's
+  `WorldMapData.surfaceContainsPosition` differs between surface and underground, so QH skips that arrow. The host
+  returned false for everything, which drew it. It now approximates the surface band (unverified). Desktop
+  screenshots showed no QH minimap arrows at all this session, not even for near NPCs. QH draws them on the
+  ALWAYS_ON_TOP layer, so check whether the devtools screenshot includes that layer before comparing minimap arrows.
+- Two NPCs on one tile (Sedridor with the tester's cat or a genie) show only one model on both clients.
+- Driving: desktop quest list = quest stone (canvas 612,187), then the quest list sub-tab (620,219); the list
+  scrolls (down arrow 720,411). Right-click the entry's row, then `click_menu_option "Start Quest Helper"`.
+  `widget_action` on 399:7 children found no menu entry. ESCAPE closes the side panel. Android:
+  `setprop debug.osrsrl.sbclick "'<quest name>'"` (send `Close helper` first if a helper is open), then
+  `sbclick 0`.
+- `desktop.sh login` with no arguments logged back into the last account (qhab31a), not `desktop`.
+
 ## Steps for the user (Windows)
 
 You need:

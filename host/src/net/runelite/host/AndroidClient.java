@@ -576,9 +576,21 @@ public class AndroidClient extends ClientStub {
     public net.runelite.api.EnumComposition getEnum(int id) {
         return AndroidEnum.lookup(id);
     }
-    /** The world map isn't mapped: an inert map whose data contains no positions. */
+    /** The world map isn't mapped: an inert map; its data approximates the surface area (below). */
     private final WorldMapBag worldMap = new WorldMapBag() {
-        private final WorldMapDataBag data = new WorldMapDataBag();
+        private final WorldMapDataBag data = new WorldMapDataBag() {
+            /**
+             * Desktop tests the main surface map area's sections. The game's world map data isn't
+             * read, so approximate it with the surface coordinate band: underground and separate
+             * map areas (dungeons, Zanaris, instances' template areas) sit at y >= 4160 or x < 1024.
+             * Quest Helper's far minimap arrow needs start and target to agree (no arrow from
+             * Varrock to the Wizards' Tower basement, as desktop; a constant false drew one).
+             * // unverified: coordinate band, not the game's map area sections
+             */
+            @Override public boolean surfaceContainsPosition(int x, int y) {
+                return x >= 1024 && x < 4160 && y >= 2304 && y < 4160;
+            }
+        };
         @Override public net.runelite.api.worldmap.WorldMapData getWorldMapData() { return data; }
         // The game's world map regions aren't read: report it as not loaded, as desktop before its
         // map is opened (World Map's onClientTick returns early). // unverified: default

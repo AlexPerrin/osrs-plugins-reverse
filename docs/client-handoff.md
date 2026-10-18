@@ -1,10 +1,8 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 31 entry (2026-10-17) at the end of "Where things stand".
-> **Start here (gen 32):** (1) World Map plugin points are not drawn on the open mobile map although the world map
-> getters work (position/zoom/loaded verified, probe `set 'wmap 0 0'`); (2) read the game's world map regions and
-> icons (`WorldMapRenderer.getMapRegions`, `getMapElementConfig`; quest-start tooltips); (3) check
-> `setWorldMapPositionTarget` (the game's jumptosourcecoord `0x4b7854`, unverified) on the device.
+> Latest state: see the gen 32 entry (2026-10-17) at the end of "Where things stand".
+> **Start here (gen 33):** see the gen 32 entry's "Next". World Map and Key Remapping run; LinkBrowser (Wiki) needs a
+> device check.
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1180,6 +1178,31 @@ session; its notes are in `docs/android-protocol.md`.
     2. AreaSoundEffectPlayed frame-sound path (needs content with seq frame sounds; ask the server dev).
     3. Roof Removal: **parked** (orchestrator): needs RE of the mobile scene draw and the game's roof hiding.
     4. World Hopper world list getters (never hop).
+- **2026-10-17 (client dev gen 32)**, commits cda40a1..(see git log) (progress at start: core 86/90, hub 34/37, API 652/866;
+  now core 88/90, hub 34/37, API 655/866).
+  - **World Map runs.** Points never drew because the host never added `WorldMapOverlay` (desktop's OverlayManager.init does);
+    Host now adds it. Region icons (`getMapRegions`, game.cpp `world_map_icons`) and mel categories (`getMapElementConfig`,
+    table at ELF 0x1212620, category +0x180) feed World Map's quest-start points (14 near Lumbridge, 89 after panning: the
+    game loads region icons lazily). `setWorldMapPositionTarget` verified (probe `wjump x y`). Probe `wmap 0 0` logs points,
+    595 widgets, regions, icons and categories.
+  - **Gotcha (crashed the game once):** the region icon list/hash hold shared_ptrs {control block, object}; the icon is node
+    +0x18 (list) / +0x10 (hash). Calling vtable slot 1 on the control block frees it.
+  - **getDBTableField**: a column the row lacks, whose game fallback is the generic -1/"", now reads empty (World Map skips
+    quest rows whose COL_PARENT_QUEST 21 is set; quests read -1 there). Empty results are cached; getDBRowsByValue is cached.
+    Widget geometry is cached within an overlay frame (`AndroidWidget.beginFrame/endFrame`): WorldMapOverlay asks 595:7's
+    bounds once per point (1800+), which dropped the game to ~4 ticks/s.
+  - **KeyRouter** (hardware/adb keys through RuneLite's KeyManager while any KeyListener exists; Ground Items registers one,
+    so it is always on): keys are held on the main thread, run through the listeners on the client thread, and re-dispatched
+    in order (unchanged, remapped, or dropped). Typing verified with adb key events and the on-screen LatinIME
+    (`settings put secure show_ime_with_hard_keyboard 1` shows it; restore to 0). `setprop debug.osrsrl.keylog 1` logs remaps.
+    **Key Remapping runs** (D -> RIGHT turns the camera) after a ConfigManager fix: Keybind values are "keyCode:modifiers".
+  - `getServerVarps`, `setVarpValue` (unverified). **LinkBrowser** replacement opens web links via ACTION_VIEW (0dd6b23).
+  - World Hopper stays `starts` (orchestrator): no plugin calls getWorldList; its gaps are the hop paths we must not use.
+  - **LinkBrowser verified** (Wiki's skills-tab entry opens the wiki in Chrome). Wiki stays `starts`: the mobile skill widget's
+    first action is "Toggle <skill> XP", so the page is wrong, and the entry is listed twice. Opening a browser backgrounds the
+    game, which drops the session (relaunch with plugin-test.sh, wait ~20 s, Try again, Play Now).
+  - **Next (gen 33)**: Wiki's WIKI orb lookup (targeting mode: the onTargetEnter listener on its CC_CREATE icon) and Search; F-key remaps / chat lock in Key Remapping; the AreaSoundEffectPlayed frame-sound path (needs server content);
+    remaining Client API gaps (mostly GPU/stretch/camera/login setters no tracked plugin uses).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

@@ -9,6 +9,11 @@
       "type": "stdio",
       "command": "tools/devtools-mcp.sh",
       "args": []
+    },
+    "osrs-devtools-desktop": {
+      "type": "stdio",
+      "command": "tools/multiclient/desktop-devtools-mcp.sh",
+      "args": []
     }
   }
 }

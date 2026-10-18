@@ -1,170 +1,311 @@
-# Workflow: client and server tracks
+# Workflow: one loop, two tracks
 
-Two repos, two tracks. The orchestrator (main session) runs both, does every push to GitHub and every
-deploy, and decides; agents never push, post or deploy.
+Both tracks run the same loop: **trigger → analyse → build → verify → ship**. Each track has one dev agent and
+one QA companion. The orchestrator (the main session) sits above both: it routes tasks, does every ship step
+(push, PR, deploy, release, tag) and decides. Agents never push, post or deploy.
 
-| | Client track | Server track |
+| Slot | Client track | Server track |
 |---|---|---|
-| Repo | `AlexPerrin/osrs-plugins-reverse` (this repo) | `AlexPerrin/OpenRune-Server` (fork of `OpenRune/OpenRune-Server`) |
-| Code | `native/`, `host/`, APK repack (`tools/repack.sh`, `patch_telemetry.py`, `patch_server.py`), `sidecar/` (today `server/`) | OpenRune content, engine fixes, our local-only server pieces |
-| Ships as | Tagged APK releases (`client-vX.Y`) | Upstream PRs, plus our live test server |
-| Developer | Client dev (gen N) | Server dev |
-| QA | Client QA (`qa/client-<version>.md`) | Server QA (`openrune/upstream/QA.md` checklist → moves to the fork) |
+| Goal | RuneLite plugins running in the official OSRS Android app | The test server those plugins run against, contributed upstream |
+| Repo | `AlexPerrin/osrs-plugins-reverse` (this repo) | `AlexPerrin/OpenRune-Server`, a fork of upstream `OpenRune/OpenRune-Server` |
+| Code | `native/`, `host/`, APK repack (`tools/repack.sh`, `patch_telemetry.py`, `patch_server.py`), `sidecar/` (today `server/`) | OpenRune content, engine fixes, our local-only pieces |
+| Trigger | The plugin backlog | A client blocker, or the feature backlog |
+| Analyse | The client (Ghidra), the server when needed, ids and data (`osrs-mcp`) | The accuracy baseline (`osrs-mcp`: wiki, cache, gamevals; Mod posts); the client's side of the protocol (Ghidra) |
+| Verify | BlueStacks against the test server; A/B against desktop RuneLite | Unit and integration tests, boot; desktop RuneLite against the branch's own server |
+| Gates | Merge gate, release gate | Internal gate, upstream gate |
+| Ships to | `master`, then a tagged release (`client-vX.Y`) | `integration` and the live test server, then an upstream PR |
+| Agents | `client-dev` + `client-qa` | `server-dev` + `server-qa` |
+| State | `docs/client-state.md`, records in `qa/` | `STATE.md`, `accuracy/`, `qa/` on the fork's `docs` branch |
 
 Shared workspace tooling stays in this repo: `tools/buildq.sh` (build queue), `tools/device-lock.sh`,
-`tools/fork.sh`, `tools/multiclient/`, `tools/progress.py`, and the test environment (the compose stack that runs
-the live server and sidecars, pinned to a fork commit).
+`tools/device-restore-check.sh`, `tools/fork.sh`, `tools/multiclient/`, `tools/progress.py`, and the test
+environment (the compose stack that runs the live server and sidecars, pinned to a fork commit). Every agent is
+spawned from the orchestrator's session here.
+
+## Client track
+
+1. **Trigger.** A plugin or feature from the backlog, as one task with its definition of done.
+2. **Analyse.** The client with the `reverse` skill (Ghidra), and the server with `server-probe` when the
+   feature depends on what the server sends.
+3. **Build** on a short branch `client/<topic>` in this repo. Small fixes may go straight to `master`.
+4. **Verify** with `device-test` (BlueStacks against the test server, in a device slot) and `ab-test` (desktop
+   RuneLite) for plugins that draw things. When the server is missing something, the dev raises a **blocker**
+   (below) instead of working around it.
+5. **Merge gate.** `client-qa` runs the regression and checks at the branch's commit; on PASS the orchestrator
+   merges to `master`.
+6. **Release gate.** When a set of features is ready, `client-qa` runs the release QA on `master`; on PASS the
+   orchestrator tags `client-vX.Y`. A GitHub release is published only with the user's confirmation, and never
+   with the Jagex APK or anything its licence forbids.
+
+Client QA covers: a device regression (core plugins and pinned hub plugins, scripted through the devtools bridge
+where possible, with the plugin-host table updated); Network QA (docs/app-telemetry.md) for every release and
+every network-relevant change; desktop A/B for plugins that draw things; sign-in (LOCAL_AUTH) and the privacy
+patches present in the build (the `repack.sh` + `patch_telemetry.py` log); native claims checked with `reverse`.
 
 ## Server track
 
 ### Branches on the fork
-- `main`: mirrors upstream `main` exactly. Only `tools/fork.sh sync` (fast-forward) moves it. Nothing of ours
-  goes here, so upstream PRs and syncs stay clean.
-- `content/<slug>` and `fix/<NN>-<slug>`: one self-contained feature or fix each, off `main`, with
-  upstream ids. These are what get PR'd upstream. Shared infrastructure gets its own small branch, so features
-  don't stack on each other (UPSTREAM-PRS.md lists any real dependencies).
-- `local/*`: our test-only pieces that never go upstream: the Android/mobile protocol support, LOCAL_AUTH hooks,
-  test commands (`::pos`, `::heal`, `::mapanim`...), deploy files. Kept small and separate by topic.
-- `integration` (the fork's default branch): `main` + every `content/*` and `fix/*` that isn't merged upstream
-  yet + every `local/*`, merged in a scripted, recorded order (`integration.txt` on the branch). It's rebuilt, not
-  hand-edited: `scripts/build-integration.sh` recreates it from `main` and the list. Our live server builds from it.
-- `docs`: server docs (port notes, server handoff, accuracy specs, QA records, PR texts, UPSTREAM-PRS.md).
+- `main`: mirrors upstream `main` exactly. Only `tools/fork.sh sync` (fast-forward) moves it.
+- `content/<slug>` and `fix/<slug>`: one self-contained feature or fix each, off `main`. These are what get PR'd
+  upstream (see "Changes for upstream"). Existing `fix/NN-<slug>` branches keep their names until merged.
+- `local/*`: our test-only pieces that never go upstream (Android protocol support, LOCAL_AUTH, test commands,
+  world settings, deploy files). Small and separate by topic.
+- `integration` (the fork's default branch): `main` + every `content/*` and `fix/*` that passed the internal gate
+  and isn't merged upstream yet + every `local/*`, merged in a recorded order (`integration.txt`). Rebuilt by
+  `scripts/build-integration.sh`, never hand-edited. The live server builds from a pinned `integration` commit.
+- `docs`: STATE.md, accuracy specs, QA records, PR texts, UPSTREAM-PRS.md.
+
+### Changes for upstream
+Our server work started as numbered patches over a pinned commit (`openrune/upstream/NN-*.patch`, applied in
+number order). That made changes stack and grow; once they became PRs, maintainers asked for smaller scope (on
+#366: pull Romeo & Juliet out, upstream already had #299). From now on:
+- **One change per PR**: one quest, one feature, one fix. A fix found along the way (e.g. a ladder) is its own
+  `fix/<slug>`. A large feature is split along its own seams before coding (a shared base first, then each part),
+  and the split is in the spec.
+- **No numbers.** A change is named by its slug, used for the branch, `accuracy/<slug>.md`, `qa/<slug>.md` and the
+  PR text. Order and dependencies are written down (`Depends:` in the spec and the PR text), not encoded in a
+  number. The `NN-*.patch` files and `id-allocation.json` are history; no new ones.
+- **Off current `main`, independent.** Each branch is based on upstream `main` and builds and tests on its own.
+  Shared code goes in its own small change that the others depend on; a dependent PR says so and waits for it.
+- **Check upstream first.** Before the spec: open PRs, issues and recent `main` commits for the same content
+  (`gh pr list -R OpenRune/OpenRune-Server --search <topic>`). If upstream has it, build on theirs or drop ours.
+
+### Gameval ids
+Follow upstream's procedure (`tools/scripts/fix_gameval_conflicts.py`, and its CI check on every PR):
+- Write each new gameval as `name = -1` and run `python3 tools/scripts/fix_gameval_conflicts.py` on the branch
+  (needs `.data/gamevals-binary/max-ids.toml` from `freshCache`); it assigns free ids above the OSRS max.
+  Commit the result.
+- Names are what matter: saves are keyed by name, and code uses names, not numbers. Prefix names with the
+  feature (`sheep_shearer_*`). Renaming a gameval or moving a varbit's bits needs a data migration; renumbering
+  doesn't.
+- After `scripts/build-integration.sh`, run `fix_gameval_conflicts.py --check` on the integration tree. If two of
+  our branches clash, apply the id it reports to the branch that came later in `integration.txt`.
+- Upstream's CI can't push to a fork PR; when it comments a reassignment, apply it on the branch.
 
 ### Flow for a feature or fix
-1. **Spec first.** `accuracy/<slug>.md`: each mechanic with its source (wiki section, cache, Mod post), the
-   planned behaviour, caveats, guesses, and the tests. The orchestrator reviews it before coding starts.
-2. **Develop** on `content/<slug>` off `main`, in the server dev's own clone. Tests for each rule. Build with
-   `tools/buildq.sh`.
-3. **Fork PR.** The orchestrator pushes it and opens the PR on the fork (`tools/fork.sh`, no confirmation).
-4. **QA**, by the QA agent, on the branch's own server (upstream `main` + branch, spare ports): uncached build,
-   tests, spec check, scripted protocol scenarios, and in-game checks on desktop RuneLite where a plugin renders
-   something. Recorded as PASS or FAIL in `qa/<slug>.md` on `docs`. A new commit voids the record.
-5. **Upstream PR.** On a PASS, the orchestrator opens it (asks the user). It goes into `integration` at the same
-   time, so the live server gets it.
-6. **Upstream merge.** `fork.sh sync`, drop the branch from `integration.txt`, rebuild `integration`, deploy.
+1. **Trigger.** A client blocker, or a feature from the backlog.
+2. **Spec first.** `accuracy/<slug>.md` on `docs`: what upstream already has, each mechanic with its source
+   (wiki section, cache, Mod post), the planned behaviour, caveats, guesses, the tests, and the PR split. The
+   orchestrator reviews it before coding.
+3. **Build** on `content/<slug>` or `fix/<slug>` off `main`, in the server dev's own clone, with tests for each
+   rule and ids assigned as above.
+4. **Fork PR.** The orchestrator pushes the branch and opens the PR on the fork (`tools/fork.sh`, no
+   confirmation). This comes before QA, so QA has a fixed commit to check.
+5. **Internal gate** (`server-qa`): is it safe and accurate enough for our live server? Uncached build,
+   `spotlessCheck`, `test`, `integration`, boot on upstream `main` + the branch; behaviour against the accuracy
+   spec; in-game on desktop RuneLite where a plugin renders something. On PASS the orchestrator adds the branch to
+   `integration` and deploys. A client blocker is unblocked here.
+6. **Upstream gate** (`server-qa`): is it ready for upstream? The internal gate at the same commit, plus one
+   change only (nothing unrelated, no overlap with an upstream PR), based on current `main`,
+   `fix_gameval_conflicts.py --check` clean, upstream's CONTRIBUTING (commit style, PR text with problem,
+   change, tests, data sources, caveats, release note and checklist), every claim in the PR text true of the
+   commit, and caveats covering every gap the accuracy check found. On PASS the orchestrator opens the upstream PR (asks
+   the user).
+7. **Upstream merge.** `fork.sh sync`, drop the branch from `integration.txt`, rebuild `integration`, deploy.
 
-Pushes to a branch that already has an open upstream PR change that PR, so they ask the user.
+A new commit voids both gates. The branch stays in `integration` at the commit that passed the internal gate
+until the new one passes it. Pushes to a branch that already has an open upstream PR change that PR, so they ask
+the user.
 
 ### Live server
-- It builds from a pinned `integration` commit. The orchestrator deploys boot-checked images when both devices
-  are free, with a rollback tag (standing approval).
-- Live ids equal upstream ids. Saved player data is migrated with an SQL map (old id → new id) when ids change, so
-  there is one id space only.
+- Built from a pinned `integration` commit. The orchestrator deploys boot-checked images when both devices are
+  free, with a rollback tag (standing approval).
+- Live ids are the ids on the branches (see "Gameval ids").
 
-## Client track
+## Blockers between tracks
 
-### Flow
-1. **Develop** on short branches `client/<topic>` in this repo, merged to `master` after a passing device
-   check. Small fixes may go straight to `master`.
-2. **Device slots.** Take the free device for a stated time (see device lock). At the end, return it to the
-   normal state.
-3. **Release.** When a set of features is ready, the client QA agent runs the release QA, and the orchestrator
-   tags `client-vX.Y`. A GitHub release is published only with the user's confirmation, and never with the
-   Jagex APK or anything its licence forbids.
+A blocker is a task, not a message chain. When the client needs something from the server:
+1. The client dev reports it to the orchestrator: a repro on the test server, the expected behaviour and its
+   source, and evidence (a Ghidra finding, an A/B run, a `server-probe` capture).
+2. The orchestrator files it as a server task that blocks the client task, and pauses or re-scopes the client
+   task.
+3. The server task ships through the internal gate to the live server. The orchestrator then unblocks the client
+   task. The upstream gate follows on its own schedule; the client never waits for it.
 
-### Client QA (`qa/client-<version>.md`)
-- A regression pass on the device: core plugins and pinned hub plugins, scripted through the devtools bridge where
-  possible, with the plugin-host table updated.
-- Network QA (docs/app-telemetry.md): required for every release and for every network-relevant change.
-- Desktop A/B for plugins that draw things.
-- Sign-in (LOCAL_AUTH) and the privacy patches present in the build (`repack.sh` + `patch_telemetry.py` log).
-- Done by the QA agent, not the client dev.
+The same applies the other way (a server task that needs a client change or a device check).
 
 ## Agents
 
-The roles grew one at a time as problems appeared (see the history in the 2026-10-18 review), which left
-overlapping owners. From now on:
+- **Task-scoped agents, not open-ended generations.** Each spawn gets one deliverable and its definition of
+  done, finishes, rewrites its STATE lines and reports. Long work is split into tasks.
+- **Roster:** the orchestrator; per track one dev (two server devs at most, each owning its own branches) and
+  one QA companion per dev.
+- **Role files** in `.claude/agents/` (`client-dev`, `client-qa`, `server-dev`, `server-qa`) hold each role's
+  standing brief: its track's slots, its gate, its limits. Hooks and `maxTurns` in the frontmatter enforce the
+  limits. A spawn's brief is only the task, its definition of done, and (server) the agent's name and branches.
+  Spawn by `subagent_type`, never `general-purpose`.
+- **Where they work.** The client roles work in this repo (two client devs at once use `isolation: worktree`).
+  The server roles each work in their own fork clone, `re/agents/<name>/or`, with `docs` checked out beside it
+  as a worktree; a shared working tree leaks build outputs between branches. During the move, server QA records
+  and QA.md may still be in `openrune/upstream/` here; the hooks read both places.
+- **QA is a companion.** The dev hands over a branch at a commit and moves on to its next task; the companion
+  runs the gate, records the result, sends fixes back to its dev, and reports PASS or FAIL to the orchestrator.
+  A companion never writes the code it checks (a hook limits it to records, QA.md and scratch files).
+- **One owner per branch or area at a time.** Another agent that needs a change sends it to the owner, through
+  the orchestrator.
 
-- **Task-scoped agents, not open-ended generations.** Each agent gets one deliverable and its definition of done:
-  a feature branch through its gate, a release QA, or a migration step. It finishes and reports instead of
-  running until its context fills. Long work is split into tasks, not generations.
-- **Steady-state roster:**
-  - one client dev;
-  - one or two server devs, each owning its own branches;
-  - one QA companion per dev agent, which runs the activities below as subagents;
-  - the orchestrator, which owns pushes, PRs, deploys and decisions.
+## Shared skills
 
-  No standing PR or accuracy agents: renumbering, splitting, rebasing and accuracy specs are part of the server
-  dev's task checklist.
-- **QA is a companion to a dev agent.** Each dev agent (client dev, each server dev) is paired with one QA
-  companion, which takes over the shipping process so the dev can move on to the next task. The dev hands over a
-  ready branch or build. The companion:
-  - runs the activities its gate requires;
-  - records the result;
-  - sends fixes back to its dev;
-  - reports PASS or FAIL to the orchestrator.
+Tools belong to no role. Each is a skill any agent calls when it needs it: a dev while building, a companion
+against a fixed commit for its gate. Only the companion's run counts for a gate; a dev's run is evidence it
+hands over.
 
-  A companion never writes the feature code it checks.
-- **QA work is scoped by activity.** A companion runs each activity as a subagent or a workflow with its own brief
-  and record, often several in parallel. The activities are:
+| Skill | What it does | Resource | Typical callers |
+|---|---|---|---|
+| `reverse` | Headless Ghidra on `re/ghidra` (`tools/ghidra_scripts/`: Decompile, Xrefs, StringXrefs, FindScalar), jadx, the in-app agent (`tools/agent.py`): offsets, struct layouts, xrefs, the client's side of the protocol, patched bytes and their callers | one Ghidra writer at a time (`-readOnly` otherwise) | client-dev, server-dev, client-qa (native claims), server-qa (protocol claims) |
+| `device-test` | BlueStacks against the test server, in a device slot, driven through `osrs-devtools`: restore-check `pre`, the test, `check` until all OK, free | device lock | client-dev, client-qa |
+| `ab-test` | The same plugin or feature on desktop RuneLite (`osrs-devtools-desktop`) and Android (`osrs-devtools`), or on the branch server and `main` | desktop lock (+ device lock) | all four |
+| `server-probe` | What the server does: logs, protocol captures, `tools/openrune-sql.sh` reads; ids and decoded cache data through `osrs-mcp` | none | client-dev, server-dev |
+| `build-test` | Clean, uncached build; `spotlessCheck`, `test`, `integration`; boot to "Server ready in" (server), host builds (client) | `buildq` slot | all four |
+| `network-qa` | The Network QA procedure: DNS, sockets, expected hosts, the telemetry patch log | device lock | client-dev, client-qa |
+| `accuracy-check` | The spec before code; behaviour against the spec and its sources after (`osrs-mcp`: wiki pages, NPC spawns, cache); the caveats the PR must declare | none | server-dev (writes the spec), server-qa |
+| `pr-text-review` | Every claim in a PR or release text is true of the commit; CONTRIBUTING's sections present | none | server-dev, server-qa, client-qa |
 
-  | Activity | What it checks | Resource | Used by |
-  |---|---|---|---|
-  | Unit and integration test | Clean, uncached build; `test`, `integration`, `spotlessCheck`; boot | `buildq` slot | server; client host builds |
-  | Accuracy check | Spec review before code; after code, behaviour against the spec and its sources | none | server |
-  | A/B test | The same feature or plugin on desktop RuneLite and Android, or on the branch server and main | desktop lock, device lock | client; server in-game checks |
-  | Network test | The Network QA procedure: DNS, sockets, expected hosts, telemetry patch log | device lock | client releases, network-relevant changes |
-  | Ghidra session | Native RE checks: offsets, struct layouts, patched bytes and their callers (e.g. the telemetry rewrites' match counts and xrefs) | none (headless) | client native changes |
-  | PR text review | Every claim in a PR or release text is true of the commit | none | server PRs, client releases |
+Each is `.claude/skills/<name>/SKILL.md`: inputs, steps, evidence, and the PASS criteria a companion records.
+Heavy ones (`reverse`, `build-test`) use `context: fork`. A skill bundles the scripts it runs, and only its name
+and description are in context until it's used. Until a skill is written, its procedure is in the docs named
+above (docs/app-telemetry.md, docs/offsets.md, docs/multi-client.md, QA.md).
 
-  Each activity has a reusable brief in `docs/qa/activities/<activity>.md` (inputs, steps, evidence, PASS
-  criteria) and writes its part of the record. Running activities through the Workflow tool needs the user's
-  opt-in each time; otherwise they are subagents.
-- **One owner per branch or area at a time.** The orchestrator's brief says who owns what. Another agent that
-  needs a change sends it to the owner, through the orchestrator.
+### MCP servers
 
-## State docs
+The skills reach the game through three MCP servers. Agents inherit the session's MCP tools; load them with
+ToolSearch (e.g. `select:mcp__osrs-mcp__wiki_page,mcp__osrs-mcp__gameval_search`).
 
-- **Each track keeps a short `STATE.md`** (client: `docs/client-state.md`; server: `STATE.md` on the fork's `docs`
-  branch), under about 150 lines: the current state, what's live, the gotchas, and the next tasks. It is
-  rewritten, not appended to. A new agent reads it first.
-- **History goes to a changelog** (the existing handoff docs become history), which agents read only when they
-  need it.
-- **Gotchas that keep recurring become checks or tools, not prose.** Examples: the end-of-slot device restore
-  checklist as a script, and test jars removed by name only.
+| Server | What it gives | Where it runs | Rules | Used by |
+|---|---|---|---|---|
+| `osrs-mcp` (OpenRune's own) | `wiki_search`, `wiki_page`, `wiki_npc_spawns` (OSRS Wiki); `gameval_search` (names ↔ ids); `cache_search` (decoded cache); `*_reload` | `tools/osrs-mcp/run.sh`: Docker, jars, gamevals, cache and game.yml mounted read-only, no server keys, no live-server control | No lock. Gamevals and cache are the tree it was built from (`openrune/src`), not upstream `main`; ids are assigned by upstream's tool ("Gameval ids"), not looked up here. Rebuild: `openrune/scripts/openrune.sh gradle :tools:osrs-mcp:installDist --no-configuration-cache` | all four: the accuracy baseline (specs and checks), ids for plugins and content |
+| `osrs-devtools` | OpenRune-Developer-Tools in the Android plugin host: client state, chat, NPC/object/item actions, vars, dialogue, walking, screenshots | `tools/devtools-mcp.sh`: adb bridge to the device, per-process token from logcat | Only while holding the device lock. Needs `devtools.jar` in plugins/, `setprop debug.osrsrl.devtools 1` and a restart; remove both at the end of the slot. `get_chat_history` under-reports repeats: confirm by screenshot | client-dev, client-qa |
+| `osrs-devtools-desktop` | The same tools in the isolated desktop RuneLite | `tools/multiclient/desktop-devtools-mcp.sh`: Windows curl.exe to the client's loopback port; start the client first (`tools/multiclient/desktop.sh start`) | Only while holding the desktop lock; profile under C:\osrs-test only | all four (`ab-test`, server in-game checks) |
 
-## Gates first
+## Gates
 
-- **New work starts with its gate already defined.** For server features, that's the accuracy spec plus the QA
-  checklist. For client releases, it's client QA plus Network QA. Nothing is published (PR, release, comment)
+Every gate is defined before its work starts, and recorded against an exact commit. A new commit voids it.
+
+| Gate | Track | Run by | Checks | On PASS |
+|---|---|---|---|---|
+| Merge | client | `client-qa` | Device regression for what changed, A/B where it draws, Network QA if network-relevant, native claims | merge to `master` |
+| Release | client | `client-qa` | Full client QA on `master`, Network QA, privacy patches in the build | tag; GitHub release on the user's OK |
+| Internal | server | `server-qa` | `build-test`, `accuracy-check` against the spec, in-game where it renders | into `integration`, deploy |
+| Upstream | server | `server-qa` | Internal at the same commit + one change only, no upstream overlap, on current `main` + `fix_gameval_conflicts.py --check` + CONTRIBUTING + `pr-text-review` + caveats complete | upstream PR on the user's OK |
+
+Records start with these lines exactly, because the hooks parse them:
+```
+# QA: <branch or version>
+- Branch: `<branch>`
+- Commit: `<full sha>`
+## Internal gate: **PASS**     (server; or **FAIL**)
+## Upstream gate: **PASS**     (server; or **FAIL**, or **PENDING** until it runs)
+## Verdict: **PASS**           (client merge or release; or **FAIL**)
+```
+A FAIL says precisely what must change. Older server records with only `## Verdict:` were full QA runs and count
+for both server gates.
+
+Each user rule gets an observable check where possible, not only an instruction: Network QA for "never contact
+Jagex", netcheck/R1 for plugin networking, the telemetry patch's one-match assertions, buildq for build
+concurrency, and the hooks below.
+
+## State
+
+- **Each track keeps a short STATE doc** (`docs/client-state.md`; `STATE.md` on the fork's `docs` branch), under
+  about 150 lines: what's live, the gotchas, the next tasks. Rewritten, not appended to. A new agent reads it
+  first. History goes to the handoff docs, read only when needed.
+- **Gotchas that keep recurring become checks or tools, not prose** (the device restore check, test jars removed
+  by name only).
+- **Tasks and blockers in `tasks.json`** (planned): `id`, `track`, `owner`, `description`, `gate`, `blocks`,
+  `passes`. Agents may only set `passes`, after the gate passes; the orchestrator adds and edits tasks.
+- **The orchestrator restarts per milestone** and rebuilds from the STATE docs, the records and `tasks.json`. A
+  `SessionStart` hook with matcher `compact` (planned) prints them after each compaction.
+
+## Harness
+
+```mermaid
+flowchart TB
+  user([User]) -- "upstream PRs, releases, restarts" --> orch
+  orch["Orchestrator<br/>routes tasks · owns every ship step"]
+
+  subgraph client["Client track · osrs-plugins-reverse"]
+    cdev["client-dev<br/>analyse · build · BlueStacks · A/B"] -- "branch @ commit" --> cqa["client-qa<br/>merge / release gate"]
+    cqa -- "FAIL" --> cdev
+  end
+
+  subgraph server["Server track · fork clones re/agents/NAME/or"]
+    sdev["server-dev<br/>spec · build · tests"] -- "fork PR @ commit" --> sqa["server-qa<br/>internal / upstream gate"]
+    sqa -- "FAIL" --> sdev
+  end
+
+  orch -- "tasks" --> cdev & sdev
+  cqa & sqa -- "PASS/FAIL" --> orch
+  cdev -. "blocker" .-> orch -. "server task" .-> sdev
+
+  orch -- "merge gate" --> master[(master)] -- "release gate" --> release[(client-vX.Y)]
+  orch -- "internal gate" --> integ[(integration → live server)]
+  orch -- "upstream gate" --> upstream[(upstream PR)]
+
+  skills[["shared skills: reverse · device-test · ab-test · server-probe<br/>build-test · network-qa · accuracy-check · pr-text-review"]]
+  mcp[["MCP: osrs-mcp (wiki · gamevals · cache)<br/>osrs-devtools (Android) · osrs-devtools-desktop"]]
+  cdev & cqa & sdev & sqa -.- skills
+  skills -.- mcp
+```
+
+| Piece | Where | What it enforces |
+|---|---|---|
+| Role files | `.claude/agents/{client,server}-{dev,qa}.md` | Standing brief, hooks, `maxTurns` 400 (dev) / 300 (QA) |
+| Shared rules | `CLAUDE.md` | Loaded by every agent, and again after each compaction |
+| Upstream publish gate | `tools/hooks/publish_gate.py` (settings) | An upstream `gh pr create` needs `## Upstream gate: **PASS**` at the fork branch's commit |
+| Orchestrator-only actions | `tools/hooks/deny_publish.py` (role files) | Agents can't push, post, run fork.sh, deploy, grant devices or write progress |
+| QA write scope | `tools/hooks/qa_write_scope.py` (QA role files) | Companions write records, QA.md and scratch files only |
+| Slot stop gate | `tools/hooks/slot_stop.py <holder>` (settings) | No agent finishes holding a lock, or with a device slot that hasn't passed its restore check |
+| Permissions | `.claude/settings.json` | Every GitHub write and push asks the user |
+
+How it handles the bottlenecks:
+- **The client waiting on the server.** Blockers ship through the internal gate to the live server; the
+  upstream gate's paperwork happens afterwards and never holds the client.
+- **Waiting for review.** The companion takes over shipping, so a dev starts its next task on hand-over: feature
+  N is in QA while N+1 is being built.
+- **Rework.** The spec and the gate are fixed before coding. A FAIL goes back to the same dev with exactly what
+  must change.
+- **Devices and builds.** Expiring grants and the buildq FIFO; devices always come back restored; one clone per
+  server agent.
+- **The user's attention.** Asked only for upstream PRs, releases and restarts, and nothing reaches the prompt
   before its gate passes.
-- **Each user rule gets an observable check where possible**, not only an instruction in agent briefs. Examples:
-  - Network QA for "never contact Jagex";
-  - netcheck/R1 for plugin networking;
-  - the telemetry patch's one-match assertions;
-  - buildq for build concurrency.
-- **Shared resources are scheduled by tools:**
-  - `tools/buildq.sh` for builds (FIFO, 2 slots);
-  - `tools/device-lock.sh` for the Android device and desktop RuneLite. A grant per holder with an expiry is
-    planned, so a newer grant can't replace an older one.
+- **Context.** Role text lives in files, reports are PASS/FAIL plus evidence paths, state is on disk, and each
+  spawn is one task with a turn cap. The orchestrator relays decisions, not reports, and batches pushes and
+  grants. Builds are waited on with a background command that notifies, not by polling.
 
-## Capacity and token efficiency
+Not built yet, in order:
+0. `osrs-mcp` itself: its jars are missing (`openrune/src/tools/osrs-mcp/build/install/`), so `run.sh` exits
+   with "osrs-mcp not built". Build it through buildq with the `installDist` command in "MCP servers".
+1. Integration gate hook: `scripts/build-integration.sh` refuses a `content/*` or `fix/*` branch without an
+   internal PASS at its commit.
+2. `SessionStart` compact hook.
+3. The shared skills, `reverse` first (both devs use it).
+4. `tasks.json` with blockers, read by `tools/progress.py`.
+5. Client release gate hook on `gh release` and tags.
+6. Server dev stop gate (buildq writes a green-run marker per commit).
+
+Why: up to gen 40, a single orchestrator session ran for about 2.7 days through 4 compactions, spawning 79
+general-purpose agents with briefs of about 3,700 characters, and each dev generation ran 2,500-3,900 turns before
+it was replaced. Sources: the Claude Code docs on hooks, subagents, skills, and memory and context; Anthropic's
+"Effective harnesses for long-running agents" and "Building verification loops in Claude Code with skills".
+
+## Capacity
 
 The machine has 16 threads. Windows (the host) and WSL each have about 16 GB.
-
-- **Windows side:** several BlueStacks instances (about 2-3 GB each) and desktop RuneLite clients (about 1 GB
-  each) can run at once. Each dev/QA pair gets its own BlueStacks instance and its own desktop client (its own
-  isolated profile and port), so pairs never wait for each other's device. The device lock becomes one lock per
-  instance (`LOCK_NAME=<instance>`). Only a server restart reserves all of them.
-- **WSL side:**
-  - the live server (about 3 GB);
-  - the sidecars;
-  - up to 2-3 build containers at 4 GB (`BUILDQ_SLOTS`), each with its own Gradle home volume (a shared one
-    deadlocks on Gradle's journal lock);
-  - QA branch servers on spare ports.
-- **Token efficiency:**
-  - **Briefs:** short, one task and its definition of done, linking STATE.md rather than restating it.
-  - **Reports:** agents report milestones only. No routine status pings, and no long reports of passing checks:
-    pass/fail plus evidence paths.
-  - **Builds:** wait for a build with a background command that notifies on completion, not polling.
-  - **Gate failures:** QA activities read only what they check, and stop at the first gate failure.
-  - **Orchestrator:** it relays only decisions, never full reports, and it batches pushes and grants.
+- **Windows:** several BlueStacks instances (about 2-3 GB each) and desktop RuneLite clients (about 1 GB each).
+  Each dev/QA pair gets its own BlueStacks instance and desktop client (own profile and port), so pairs never
+  wait for each other; the device lock becomes one lock per instance (`LOCK_NAME=<instance>`). Only a server
+  restart reserves all of them.
+- **WSL:** the live server (about 3 GB), the sidecars, up to 2-3 build containers at 4 GB (`BUILDQ_SLOTS`), each
+  with its own Gradle home volume (a shared one deadlocks on Gradle's journal lock), and QA branch servers on
+  spare ports.
 
 ## Shared rules
 - **Builds** go through `tools/buildq.sh <owner> -- docker run ...` (2 slots, 4 GB per container,
   `-Pkotlin.compiler.execution.strategy=in-process`).
-- **Devices**: `tools/device-lock.sh`. Server restarts reserve both devices.
+- **Devices**: `tools/device-lock.sh`, granted by the orchestrator. Server restarts reserve both devices.
 - **Accuracy**: server behaviour must match the official server; divergences are caveats or fixes.
 - **Privacy**: no client ever contacts Jagex or RuneScape servers. Every APK goes through the telemetry patch.
 - **Commits**: pathspec-only, as Alex Perrin, with the Claude co-author line; PR texts end with the Claude Code
   line.
+- **Settings**: hooks and `ask` rules live in the committed `.claude/settings.json`, not the personal
+  `settings.local.json`. Allow rules name scripts, not whole interpreters like `Bash(python3:*)`.

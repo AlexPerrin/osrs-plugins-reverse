@@ -45,9 +45,10 @@ Details in `docs/openrune-port.md`, "Eighteenth server dev" and the sections aft
   shows "Report back to Sergeant Tobyn"; Tobyn -> roof 16 -> 24, scroll 1 QP. The guard tail (stage 6) was skipped
   with `::quest children 10` (real-time line-of-sight stealth; unit-tested).
 - **Daddy's Home and His Faithful Servants: complete** with QH on qhtest4 (details in the port doc).
-- **Next candidates:** (HFS needs
-  `::god` for the Barrows run; turn it off); Gertrude's Cat leftovers (shared Fluffs hide for 100 ticks, Stroke =
-  pick-up) - check whether the cache's Fluffs is a multinpc on the quest varbit before changing the hide.
+- **Next candidates:** Gertrude's Cat leftovers (shared Fluffs hide for 100 ticks in `Fluffs.returnKitten`, Stroke
+  = pick-up). Check whether the cache's Fluffs is a multinpc on the quest varbit before changing the hide (not
+  checked: osrs-mcp was disconnected). Optional: a cap on the Daddy's Home waxwood crate; a real run of the Children
+  of the Sun guard tail; the `::item saw` name mapping.
 
 ## Latest state (2026-10-17, seventeenth server dev, on OpenRune)
 

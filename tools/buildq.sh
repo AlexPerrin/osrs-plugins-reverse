@@ -33,9 +33,12 @@ printf '%s waiting since %s\n' "$*" "$(date +%H:%M:%S)" > "$Q/$ticket"
 trap 'rm -f "$Q/$ticket"' EXIT
 SLOTS=${BUILDQ_SLOTS:-2}
 announced=
-while ! live | head -"$SLOTS" | grep -qx -- "$ticket"; do
+# Position without early-exiting readers: under pipefail, grep -q/head would SIGPIPE the producer
+# and make the test fail even when the ticket is in a slot.
+pos() { live | grep -n -x -- "$ticket" | cut -d: -f1; }
+while p=$(pos); ! [[ -n $p && $p -le $SLOTS ]]; do
     if [[ -z $announced ]]; then
-        echo "buildq: $owner queued at position $(live | grep -n -- "$ticket" | cut -d: -f1)" >&2
+        echo "buildq: $owner queued at position ${p:-?}" >&2
         announced=1
     fi
     sleep 5

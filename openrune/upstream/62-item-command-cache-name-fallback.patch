@@ -1,0 +1,40 @@
+From a2b07db873e3820512127c9471f3010fb98978f1 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 22:13:10 -0400
+Subject: [PATCH 62/62] Commands: ::item falls back to an obj's cache name
+
+::item resolved its argument only as a gameval name (obj.<arg>) and threw
+"Missing mapping" for anything else, e.g. ::item saw (the saw is
+obj.poh_saw). An unknown name now falls back to the lowest-id unnoted,
+non-placeholder obj whose cache name matches (underscores as spaces), and
+an unmatched name gives the existing "There is no obj mapped to" line.
+---
+ .../rsmod/content/other/commands/AdminCommands.kt    | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
+index a8bc2108d..8c8628ccf 100644
+--- a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
++++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
+@@ -1072,7 +1072,17 @@ constructor(
+         if (id != null) {
+             return ServerCacheManager.getItem(id)
+         }
+-        return ServerCacheManager.getItem("obj.$input".asRSCM(RSCMType.OBJ))
++        val mapped = RSCM.getRSCMOrNull("obj.$input", RSCMType.OBJ)
++        if (mapped != null) {
++            return ServerCacheManager.getItem(mapped)
++        }
++        // Not a gameval name (the saw is `obj.poh_saw`): fall back to the first unnoted,
++        // non-placeholder obj whose cache name matches, so `::item saw` works.
++        val name = input.replace('_', ' ')
++        return ServerCacheManager.getItems()
++            .values
++            .filter { it.name.equals(name, ignoreCase = true) && !it.isCert && !it.isPlaceholder }
++            .minByOrNull { it.id }
+     }
+ 
+     private fun List<String>.asTypeName(): String = joinToString("_")
+-- 
+2.43.0
+

@@ -1,0 +1,100 @@
+From d834e6469282e80f378ccce0ff252759ad0f863e Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 22:13:10 -0400
+Subject: [PATCH 61/62] Gameframe: the fullscreen world map keeps the
+ stone-arrangement choice
+
+Opening the fullscreen world map copies that frame's flag into
+resizable_stone_arrangement. Closing it back to a resizable frame set the
+flag again, but closing to a fixed frame did not, and a session that ended
+with the map open saved the map's value. Either way the player's classic /
+modern choice was lost, so a later mismatched login (see the previous
+patch) fell back to the wrong resizable frame.
+
+Remember the flag when the map opens and put it back when the map closes,
+and on logout while it is open. The flag still changes while the map is
+open, as before.
+---
+ content/interfaces/gameframe/build.gradle.kts |  1 +
+ .../gameframe/script/GameframeScript.kt       | 23 ++++++++++++++++++-
+ 2 files changed, 23 insertions(+), 1 deletion(-)
+
+diff --git a/content/interfaces/gameframe/build.gradle.kts b/content/interfaces/gameframe/build.gradle.kts
+index 2c82bf53e..f42c31ce0 100644
+--- a/content/interfaces/gameframe/build.gradle.kts
++++ b/content/interfaces/gameframe/build.gradle.kts
+@@ -5,4 +5,5 @@ plugins {
+ dependencies {
+     implementation(projects.api.pluginCommons)
+     implementation(projects.api.scriptAdvanced)
++    implementation(projects.api.attr)
+ }
+diff --git a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
+index 2282ee9cc..2d43b9a41 100644
+--- a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
++++ b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
+@@ -5,6 +5,7 @@ import dev.openrune.definition.type.widget.IfEvent
+ import dev.openrune.rscm.RSCM.asRSCM
+ import dev.openrune.rscm.RSCMType
+ import jakarta.inject.Inject
++import org.rsmod.api.attr.AttributeKey
+ import org.rsmod.api.player.cinematic.Cinematic
+ import org.rsmod.api.player.output.ClientScripts
+ import org.rsmod.api.player.output.runClientScript
+@@ -17,6 +18,7 @@ import org.rsmod.api.player.vars.resyncVar
+ import org.rsmod.api.script.advanced.onIfMoveSub
+ import org.rsmod.api.script.advanced.onIfMoveTop
+ import org.rsmod.api.script.onPlayerInit
++import org.rsmod.api.script.onPlayerLogout
+ import org.rsmod.api.script.onPlayerSoftQueueWithArgs
+ import org.rsmod.content.interfaces.gameframe.Gameframe
+ import org.rsmod.content.interfaces.gameframe.GameframeLoader
+@@ -46,6 +48,7 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+         loadAll()
+ 
+         onPlayerInit { player.openLoginGameframe() }
++        onPlayerLogout { player.restoreStoneArrangement() }
+ 
+         for ((topLevel, gameframe) in gameframes) {
+             val type = ServerCacheManager.getInterface(topLevel) ?: error("Unable to get Interface")
+@@ -151,11 +154,18 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+         private fun Gameframe.isLoginSelectable(): Boolean = topLevel != FULLSCREEN_MAP_TOPLEVEL
+ 
+         private const val FULLSCREEN_MAP_TOPLEVEL = "interface.toplevel_display"
++
++        private val STONE_BEFORE_FULLSCREEN = AttributeKey<Boolean>()
+     }
+ 
+     public fun Player.changeGameframe(move: GameframeMove) {
+         val (from, dest, intermediate) = move
+-        if (dest.resizable) {
++        if (dest.topLevel == FULLSCREEN_MAP_TOPLEVEL && from.topLevel != FULLSCREEN_MAP_TOPLEVEL) {
++            attr[STONE_BEFORE_FULLSCREEN] = stoneArrangements
++        }
++        if (from.topLevel == FULLSCREEN_MAP_TOPLEVEL && dest.topLevel != FULLSCREEN_MAP_TOPLEVEL) {
++            restoreStoneArrangement()
++        } else if (dest.resizable) {
+             stoneArrangements = dest.stoneArrangement
+         }
+         resyncVar("varp.chat_filter_assist")
+@@ -181,6 +191,17 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+         Cinematic.syncMinimapState(this)
+     }
+ 
++    /**
++     * Opening the fullscreen world map flips `resizable_stone_arrangement` to that frame's flag.
++     * Put the player's own choice back when the map closes (also from a fixed frame, which does not
++     * set the flag itself) or when the session ends with the map open, so it is not saved.
++     */
++    private fun Player.restoreStoneArrangement() {
++        val saved = attr[STONE_BEFORE_FULLSCREEN] ?: return
++        attr.remove(STONE_BEFORE_FULLSCREEN)
++        stoneArrangements = saved
++    }
++
+     private fun selectFallback(resizable: Boolean, stoneArrangements: Boolean): Gameframe? {
+         val candidates = gameframes.values.filter { it.isLoginSelectable() }
+         val priority = candidates.firstOrNull { it.hasFlags(resizable, stoneArrangements) }
+-- 
+2.43.0
+

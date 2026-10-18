@@ -1448,6 +1448,55 @@ index f1164c104..2b5275bef 100644
      }
  
      private suspend fun ProtectedAccess.shopDialogue(npc: Npc) =
+diff --git a/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt b/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt
+index ae0ba7098..ff9f26b6f 100644
+--- a/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt
++++ b/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt
+@@ -175,6 +175,26 @@ class GertrudesCatInteractionTest {
+         assertEquals(1, f.player.inv.count(FluffsKitten))
+     }
+ 
++    @Test fun `Stroke hisses with its own line and Pick-up keeps the stage hint`() {
++        for (stage in 1..4) {
++            val f = Fixture(stage)
++            f.opFluffs(3)
++            assertTrue(f.output().contains("Perhaps the cat wants something?"), "stage $stage: ${f.output()}")
++            assertFalse(f.output().contains("Maybe the cat"), "stage $stage: ${f.output()}")
++            assertEquals(stage, f.stage())
++        }
++        val f = Fixture(2)
++        f.opFluffs(1)
++        assertTrue(f.output().contains("Maybe the cat is thirsty?"), f.output())
++        assertFalse(f.output().contains("Perhaps the cat wants something?"), f.output())
++    }
++
++    @Test fun `Stroke after the kitten is home purrs`() {
++        val f = Fixture(5)
++        f.opFluffs(3)
++        assertTrue(f.output().contains("Fluffs purrs contentedly."), f.output())
++    }
++
+     @Test fun `doogle leaves season a raw sardine`() {
+         val f = Fixture(0)
+         f.player.inv[1] = InvObj(DoogleLeaves, 1)
+@@ -466,6 +486,17 @@ class GertrudesCatInteractionTest {
+             assertTrue(events.publish(this, NpcEvents.Op1(Npc(kid, coords.translateZ(1)))))
+         }
+ 
++        fun opFluffs(op: Int) {
++            val event =
++                when (op) {
++                    1 -> NpcEvents.Op1(fluffs)
++                    3 -> NpcEvents.Op3(fluffs)
++                    else -> error("op $op")
++                }
++            start { assertTrue(events.publish(this, event)) }
++            finish()
++        }
++
+         fun useOnFluffs(obj: String) {
+             val slot = slotOf(obj)
+             val type = checkNotNull(ServerCacheManager.getItem(obj.asRSCM()))
 diff --git a/content/areas/misc/stronghold_of_security/build.gradle.kts b/content/areas/misc/stronghold_of_security/build.gradle.kts
 index 4e4b6bef3..57416995e 100644
 --- a/content/areas/misc/stronghold_of_security/build.gradle.kts
@@ -4466,6 +4515,16 @@ index 000000000..fde4f5b40
 +achievement_diary_kourend_elite_6 = 61916
 +achievement_diary_kourend_elite_7 = 61917
 +achievement_diary_kourend_elite_8 = 61918
+diff --git a/content/interfaces/gameframe/build.gradle.kts b/content/interfaces/gameframe/build.gradle.kts
+index 2c82bf53e..f42c31ce0 100644
+--- a/content/interfaces/gameframe/build.gradle.kts
++++ b/content/interfaces/gameframe/build.gradle.kts
+@@ -5,4 +5,5 @@ plugins {
+ dependencies {
+     implementation(projects.api.pluginCommons)
+     implementation(projects.api.scriptAdvanced)
++    implementation(projects.api.attr)
+ }
 diff --git a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/GameframeLoader.kt b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/GameframeLoader.kt
 index 523f4c3e8..5ea021697 100644
 --- a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/GameframeLoader.kt
@@ -4503,10 +4562,34 @@ index 523f4c3e8..5ea021697 100644
          val topLevel = RSCM.getReverseMapping(RSCMType.INTERFACE, row.toplevel)
          val clientMode = row.clientMode
 diff --git a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
-index 7af3c1d93..c13b4ad5d 100644
+index 7af3c1d93..3c4427d8e 100644
 --- a/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
 +++ b/content/interfaces/gameframe/src/main/kotlin/org/rsmod/content/interfaces/gameframe/script/GameframeScript.kt
-@@ -64,7 +64,14 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+@@ -5,6 +5,7 @@ import dev.openrune.definition.type.widget.IfEvent
+ import dev.openrune.rscm.RSCM.asRSCM
+ import dev.openrune.rscm.RSCMType
+ import jakarta.inject.Inject
++import org.rsmod.api.attr.AttributeKey
+ import org.rsmod.api.player.cinematic.Cinematic
+ import org.rsmod.api.player.output.ClientScripts
+ import org.rsmod.api.player.output.runClientScript
+@@ -17,6 +18,7 @@ import org.rsmod.api.player.vars.resyncVar
+ import org.rsmod.api.script.advanced.onIfMoveSub
+ import org.rsmod.api.script.advanced.onIfMoveTop
+ import org.rsmod.api.script.onPlayerInit
++import org.rsmod.api.script.onPlayerLogout
+ import org.rsmod.api.script.onPlayerSoftQueueWithArgs
+ import org.rsmod.content.interfaces.gameframe.Gameframe
+ import org.rsmod.content.interfaces.gameframe.GameframeLoader
+@@ -46,6 +48,7 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+         loadAll()
+ 
+         onPlayerInit { player.openLoginGameframe() }
++        onPlayerLogout { player.restoreStoneArrangement() }
+ 
+         for ((topLevel, gameframe) in gameframes) {
+             val type = ServerCacheManager.getInterface(topLevel) ?: error("Unable to get Interface")
+@@ -64,7 +67,14 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
      }
  
      private fun Player.openLoginGameframe() {
@@ -4522,7 +4605,7 @@ index 7af3c1d93..c13b4ad5d 100644
          if (gameframe != null && gameframe.resizable == ui.frameResizable) {
              ifOpenTop(gameframe.topLevel)
              openGameframe(gameframe, eventBus)
-@@ -135,12 +142,23 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+@@ -135,17 +145,35 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
              if (!requiresIntermediate) {
                  return null
              }
@@ -4544,12 +4627,37 @@ index 7af3c1d93..c13b4ad5d 100644
 +            topLevel != FULLSCREEN_MAP_TOPLEVEL && topLevel != GameframeLoader.MOBILE_TOPLEVEL
 +
 +        private const val FULLSCREEN_MAP_TOPLEVEL = "interface.toplevel_display"
++
++        private val STONE_BEFORE_FULLSCREEN = AttributeKey<Boolean>()
      }
  
      public fun Player.changeGameframe(move: GameframeMove) {
-@@ -172,11 +190,12 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+         val (from, dest, intermediate) = move
+-        if (dest.resizable) {
++        if (dest.topLevel == FULLSCREEN_MAP_TOPLEVEL && from.topLevel != FULLSCREEN_MAP_TOPLEVEL) {
++            attr[STONE_BEFORE_FULLSCREEN] = stoneArrangements
++        }
++        if (from.topLevel == FULLSCREEN_MAP_TOPLEVEL && dest.topLevel != FULLSCREEN_MAP_TOPLEVEL) {
++            restoreStoneArrangement()
++        } else if (dest.resizable) {
+             stoneArrangements = dest.stoneArrangement
+         }
+         resyncVar("varp.chat_filter_assist")
+@@ -171,12 +199,24 @@ class GameframeScript @Inject internal constructor(private val eventBus: EventBu
+         Cinematic.syncMinimapState(this)
      }
  
++    /**
++     * Opening the fullscreen world map flips `resizable_stone_arrangement` to that frame's flag.
++     * Put the player's own choice back when the map closes (also from a fixed frame, which does not
++     * set the flag itself) or when the session ends with the map open, so it is not saved.
++     */
++    private fun Player.restoreStoneArrangement() {
++        val saved = attr[STONE_BEFORE_FULLSCREEN] ?: return
++        attr.remove(STONE_BEFORE_FULLSCREEN)
++        stoneArrangements = saved
++    }
++
      private fun selectFallback(resizable: Boolean, stoneArrangements: Boolean): Gameframe? {
 -        val priority = gameframes.values.firstOrNull { it.hasFlags(resizable, stoneArrangements) }
 +        val candidates = gameframes.values.filter { it.isLoginSelectable() }
@@ -11881,7 +11989,7 @@ index ea293b6e0..126edec7c 100644
      implementation(projects.api.areaChecker)
      implementation(projects.api.combat.combatCommons)
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
-index a8bc2108d..9cf4c201c 100644
+index a8bc2108d..1caa61466 100644
 --- a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/AdminCommands.kt
 @@ -154,9 +154,14 @@ constructor(
@@ -11987,6 +12095,25 @@ index a8bc2108d..9cf4c201c 100644
              }
          }
  
+@@ -1072,7 +1092,17 @@ constructor(
+         if (id != null) {
+             return ServerCacheManager.getItem(id)
+         }
+-        return ServerCacheManager.getItem("obj.$input".asRSCM(RSCMType.OBJ))
++        val mapped = RSCM.getRSCMOrNull("obj.$input", RSCMType.OBJ)
++        if (mapped != null) {
++            return ServerCacheManager.getItem(mapped)
++        }
++        // Not a gameval name (the saw is `obj.poh_saw`): fall back to the first unnoted,
++        // non-placeholder obj whose cache name matches, so `::item saw` works.
++        val name = input.replace('_', ' ')
++        return ServerCacheManager.getItems()
++            .values
++            .filter { it.name.equals(name, ignoreCase = true) && !it.isCert && !it.isPlaceholder }
++            .minByOrNull { it.id }
+     }
+ 
+     private fun List<String>.asTypeName(): String = joinToString("_")
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/ChatChannelTestCommands.kt
 new file mode 100644
 index 000000000..16e7d2d4f
@@ -18573,6 +18700,86 @@ index 0b06d498a..42dad502f 100644
      const val OnRoof = 16
      const val Interrogating = 18
      const val Interrogated = 20
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeFurniture.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeFurniture.kt
+index 60b374b08..0c70a8e91 100644
+--- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeFurniture.kt
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeFurniture.kt
+@@ -268,11 +268,18 @@ class DaddysHomeFurniture @Inject constructor(private val daddysHome: DaddysHome
+         val needsLogs =
+             stage in DaddysHomeQuest.BUILDING until DaddysHomeQuest.COMPLETE &&
+                 daddysHome.furnitureState(player, Furniture.bed) < Furniture.BUILT
+-        if (!needsLogs) {
++        // The wiki says duplicates cannot be obtained: top up to three logs, counting logs and
++        // planks already held or banked. The message once the player has three is a guess.
++        val held =
++            listOf(DaddysHomeQuest.WAXWOOD_LOGS, DaddysHomeQuest.WAXWOOD_PLANK).sumOf {
++                inv.count(it) + bank.count(it)
++            }
++        val missing = WAXWOOD_LOG_COUNT - held
++        if (!needsLogs || missing <= 0) {
+             mes("You search the crates but find nothing interesting.")
+             return
+         }
+-        if (invAdd(inv, DaddysHomeQuest.WAXWOOD_LOGS, WAXWOOD_LOG_COUNT).failure) {
++        if (invAdd(inv, DaddysHomeQuest.WAXWOOD_LOGS, missing).failure) {
+             mes("You don't have enough inventory space.")
+             return
+         }
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/npcs/Fluffs.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/npcs/Fluffs.kt
+index 2320ae79e..3fac8fc0a 100644
+--- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/npcs/Fluffs.kt
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/npcs/Fluffs.kt
+@@ -42,7 +42,7 @@ constructor(
+ 
+     override fun ScriptContext.startup() {
+         onOpNpc1(FLUFFS) { handle(it.npc) }
+-        onOpNpc3(FLUFFS) { handle(it.npc) }
++        onOpNpc3(FLUFFS) { stroke(it.npc) }
+         onOpNpc4(FLUFFS) { talkTo(it.npc) }
+         onOpNpcU(FLUFFS) { useItem(it.npc, it.objType, it.invSlot) }
+     }
+@@ -88,6 +88,27 @@ constructor(
+         )
+     }
+ 
++    /*
++     * Stroke (op 3). The wiki transcript gives only the line before the milk ("Perhaps the cat wants
++     * something?"); using it for every stage before the kitten is returned is a guess.
++     */
++    private suspend fun ProtectedAccess.stroke(npc: Npc) {
++        approach(npc)
++        if (gertrudesCat.stage(player) >= STAGE_KITTEN_RETURNED) {
++            npc.say("Purr...")
++            soundSynth(PURR_SOUND)
++            mes("Fluffs purrs contentedly.")
++            return
++        }
++        npc.anim("seq.cat_archback")
++        npc.say("Hisss!")
++        soundSynth(HISS_SOUND)
++        delay(1)
++        say("Ouch!")
++        delay(1)
++        mes("Perhaps the cat wants something?")
++    }
++
+     private suspend fun ProtectedAccess.useItem(npc: Npc, objType: ItemServerType, slot: Int) {
+         approach(npc)
+         when (objType.id) {
+@@ -198,6 +219,12 @@ constructor(
+         val HOME_TILE = CoordGrid(3309, 3510, 1)
+ 
+         const val KITTEN_VISIBLE_TICKS = 20
+-        const val FLUFFS_AWAY_TICKS = 100
++
++        /*
++         * Fluffs is one shared npc and the cache has no multinpc for her (3497 has no multivarbit or
++         * transforms), so the "ran off home" hide is seen by everyone. Kept short so another player
++         * on the quest is not blocked for long; OSRS's own respawn delay is unknown (guess).
++         */
++        const val FLUFFS_AWAY_TICKS = 10
+     }
+ }
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJuliet.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJuliet.kt
 new file mode 100644
 index 000000000..c3a81b04d
@@ -19642,6 +19849,36 @@ index 11571e03c..d1ffcd5c6 100644
      @Test fun `Tobyn repeats his instructions until four guards are marked`() {
          val f = Fixture(CotsStage.Marking)
          f.script.syncGuards(f.player)
+diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeInteractionTest.kt
+index 6978f83d7..baed2d0a6 100644
+--- a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeInteractionTest.kt
++++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/daddyshome/DaddysHomeInteractionTest.kt
+@@ -216,6 +216,25 @@ class DaddysHomeInteractionTest {
+         assertEquals(0, late.player.inv.count("obj.daddyshome_waxwood_logs"))
+     }
+ 
++    @Test
++    fun `the crates only top up to three waxwood logs counting planks and the bank`() {
++        val f = Fixture(DaddysHomeQuest.BUILDING)
++        f.setAll(Furniture.CLEARED)
++        f.crates()
++        f.crates()
++        assertEquals(3, f.player.inv.count("obj.daddyshome_waxwood_logs"))
++
++        val mixed = Fixture(DaddysHomeQuest.BUILDING)
++        mixed.setAll(Furniture.CLEARED)
++        mixed.give("obj.daddyshome_waxwood_plank" to 1)
++        mixed.player.invMap.getOrPut("inv.bank")[0] = InvObj("obj.daddyshome_waxwood_logs", 1)
++        mixed.crates()
++        assertEquals(1, mixed.player.inv.count("obj.daddyshome_waxwood_logs"))
++        mixed.crates()
++        assertEquals(1, mixed.player.inv.count("obj.daddyshome_waxwood_logs"))
++        assertTrue(mixed.output().contains("find nothing interesting"), mixed.output())
++    }
++
+     @Test
+     fun `a full inventory does not lose the logs`() {
+         val f = Fixture(DaddysHomeQuest.BUILDING)
 diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJulietInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJulietInteractionTest.kt
 new file mode 100644
 index 000000000..75669a427

@@ -1744,3 +1744,40 @@ Stage keys, varbits and step ids were read from the QH jar's bytecode (`loadStep
   tunnel); chest (client id 20973 at (3551,9695)) -> stage 4, Strange icon, QH "Return to the Strange Old Man with
   the strange icon"; the old man -> 10 (Dusty lamp, Crypt map). Done with `::god`/`::maxhit`/`::master` (turned off;
   qhtest4 keeps 99s).
+
+## Nineteenth server dev (2026-10-17): Gertrude's Cat leftovers, small follow-ups
+
+osrs-mcp did not connect to this session (CONNECTION_CLOSED); it was driven by hand over stdio
+(`tools/osrs-mcp/run.sh`, JSON-RPC `tools/call`), so the cache/wiki lookups below are from it.
+
+### Gertrude's Cat: Fluffs (upstream 59)
+- **Cache:** Fluffs is `npc.gertrudescat` 3497 (ops Pick-up, Stroke, Talk-to) with multivarbit/multivarp -1 and no
+  transforms; `npc.vc_gertrudescat` 1010 (Talk-to only) is a separate npc. So there is no multinpc to hide her per
+  player; the post-kitten hide stays global. It is now **10 ticks** instead of 100 (**guess**; OSRS's delay is
+  unknown).
+- **Stroke** (op 3) ran the Pick-up handler. It now has its own reply from the wiki transcript ("Hisss!" / "Ouch!" /
+  "Perhaps the cat wants something?"). The transcript only shows Stroke before the milk; using that line at stages
+  1-4 is a **guess**. After the kitten is home it purrs like Pick-up. Tests: 2 new in `GertrudesCatInteractionTest`.
+- Not changed: the transcript's return line is "Fluffs has run off home with her offsping." (sic); ours says "with
+  her kitten." Whether the typo is in-game or a wiki slip is unchecked. Gertrude's "What about Shilop?" repeat (see
+  the seventeenth dev's audit) is still open.
+
+### Daddy's Home waxwood cap (upstream 60)
+The wiki's Waxwood log page: "three of them can be found within the crates ... Duplicates cannot be obtained." A
+search now tops up to three, counting logs and waxwood planks in the inventory and bank; with three held the crates
+say "You search the crates but find nothing interesting." (**guess** for that case). Test added.
+
+### Fullscreen map and the stone-arrangement choice (upstream 61, needs 57)
+`changeGameframe` copied the fullscreen frame's flag into `resizable_stone_arrangement` on open; closing to a
+resizable frame set it back, but closing to a fixed frame did not, and a logout with the map open saved the map's
+value. The flag is now remembered on open (player attribute) and restored on close and on logout while the map is
+open. The flag still changes while the map is open (kept for the intermediate-frame emulation). Compiled; not yet
+checked in game.
+
+### `::item saw` (upstream 62)
+The saw's gameval is `obj.poh_saw`; `::item` only took gameval names and threw. Unknown names now fall back to the
+lowest-id unnoted, non-placeholder obj with that cache name (underscores as spaces).
+
+### Tooling
+`tools/multiclient/desktop.sh login` with no arguments is always desktop/desktop; the script records the account it
+logged in (`C:\osrs-test\desktop-account`) and logs out a different or unknown account first (d8b21ad; not yet run).

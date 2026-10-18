@@ -72,6 +72,10 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 56 | `56-misthalin-mystery-mandy-guards` | `content/quest/.../misthalin/MisthalinMystery.kt` | Mandy outside completed the quest at any stage (the multinpc falls back to its base handler) and the gem reward was lost with a full inventory; now stage 130 and 3 free slots are required | The refusal line "You need 3 free inventory spaces to take the gems." is a guess |
 | 57 | `57-gameframe-no-fullscreen-map-at-login` | `content/interfaces/gameframe/.../GameframeScript.kt` | The login fallback (saved gameframe missing or not matching the client mode) picks the first frame with matching resizable/stone-arrangement flags; the fullscreen world map frame (`toplevel_display`) shares pre-EoC's flags and opening the map sets the stone-arrangement varbit, so a login could land on a black frame without the map, saved for every later login. Reproduced with `varp gameframe` = 548 + stone bit set + a resizable login | Rows are taken in cache order; that the fullscreen row (65530) comes before pre-EoC (65532) is inferred from the repro, not read |
 | 58 | `58-children-of-the-sun-marked-all-stage` | `content/quest/.../childrenofthesun/ChildrenOfTheSun.kt`, `CotsStage.kt`, `ChildrenOfTheSunInteractionTest.kt` | Quest Helper has a step at `vmq1` = 14 ("Report back to Sergeant Tobyn") between marking (12) and the roof (16); the script never set 14. Now the fourth correct mark sets 14, an unmark goes back to 12 | Setting 14 on the mark (not on the report talk) is a guess from QH's step text |
+| 59 | `59-gertrudes-cat-fluffs-stroke-and-hide` | `content/quest/.../gertrudescat/npcs/Fluffs.kt`, `GertrudesCatInteractionTest.kt` | Fluffs' Stroke ran the Pick-up handler; it now has the wiki transcript's Stroke line. The shared Fluffs hide after the kitten is returned drops from 100 to 10 ticks (the cache has no multinpc for her, so everyone sees it) | Stroke line for stages after the milk and the 10-tick delay are guesses |
+| 60 | `60-daddys-home-waxwood-cap` | `content/quest/.../daddyshome/DaddysHomeFurniture.kt`, `DaddysHomeInteractionTest.kt` | Each crate search gave three more waxwood logs; the wiki says duplicates cannot be obtained, so it tops up to three (logs + planks, inventory + bank) | The "nothing interesting" reply once three are held is a guess |
+| 61 | `61-gameframe-fullscreen-map-keeps-stone-choice` | `content/interfaces/gameframe/.../GameframeScript.kt`, `build.gradle.kts` | Opening the fullscreen map overwrote `resizable_stone_arrangement`; closing to a fixed frame or logging out with the map open kept the map's value | Needs 57 |
+| 62 | `62-item-command-cache-name-fallback` | `content/other/commands/.../AdminCommands.kt` | `::item saw` threw "Missing mapping" (the gameval is `obj.poh_saw`); unknown names fall back to the cache name | Debug command only |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -191,3 +195,7 @@ Compiled in our tree (`:content:interfaces:gameframe:compileKotlin`).
 
 Patch 58 (Children of the Sun stage 14) was added 2026-10-17: it applies alone on the pin, and `git am` of all 58 on the pin applies.
 Tested in our tree (`ChildrenOfTheSunInteractionTest` 36).
+
+Patches 59-62 were added 2026-10-17 (nineteenth server dev): 59, 60 and 62 apply alone on the pin, 61 on the pin
+plus 57, and `git am` of all 62 on the pin applies. Compiled and tested in our tree (`GertrudesCatInteractionTest`,
+`DaddysHomeInteractionTest`).

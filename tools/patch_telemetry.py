@@ -10,9 +10,18 @@
      switch; it overrides the app's runtime setAnalyticsCollectionEnabled(true)).
   D. AndroidManifest meta-data firebase_crashlytics_collection_enabled=false.
 
-Idempotent: a patched method carries a marker comment, and meta-data are set rather than duplicated.
+  E. The consent sync never reaches Jagex (docs/app-telemetry.md): the CMP flow's consent POST client
+     (za.l.a(url, token, body) in 241.4, found as the (String, String, String) method that starts the
+     AsyncTask holding "Consent sync failed with HTTP ") returns at once, and, with --native, the game
+     library's sync URLs (account.jagex.com and the dev account.development.jxp.jagex.com) are zeroed,
+     so the SDK takes its "sync client is not configured" path (za.f.b: blank or whitespace-only URL;
+     NUL is whitespace to String.trim()).
+
+Idempotent on the decoded APK: a patched method carries a marker comment, and meta-data are set rather
+than duplicated. --native works on a freshly extracted library (it fails if the URLs aren't there).
 
 Usage: patch_telemetry.py DECODED_BASE_DIR
+       patch_telemetry.py --native IN_SO OUT_SO
 """
 import pathlib
 import re
@@ -55,6 +64,56 @@ def patch_singular(root: pathlib.Path) -> None:
         sys.exit(f"telemetry: expected one Singular starter ({sig} creating {cls}), found {done}")
 
 
+def patch_consent_sync(root: pathlib.Path) -> None:
+    holders = [p for p in root.glob("smali*/**/*.smali") if '"Consent sync failed with HTTP "' in p.read_text(errors="ignore")]
+    if len(holders) != 1:
+        sys.exit(f"telemetry: expected one smali file with the consent sync failure string, found {len(holders)}")
+    task = re.search(r"^\.class [^\n]*?(L[^;\s]+;)", holders[0].read_text(), re.M).group(1)
+    method = re.compile(r"(\.method (?:public |final |private )*\w+\(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;\)V\n)(.*?)(\.end method)", re.S)
+    done = 0
+    for p in root.glob("smali*/**/*.smali"):
+        if p == holders[0]:
+            continue
+        text = p.read_text(errors="ignore")
+        if MARKER not in text and task not in text:
+            continue
+        def repl(m):
+            nonlocal done
+            body = m.group(2)
+            if MARKER in body:
+                done += 1
+                return m.group(0)
+            if not re.search(r"new-instance [vp]\d+, " + re.escape(task), body):
+                return m.group(0)
+            done += 1
+            return m.group(1) + f"    .locals 0\n\n    {MARKER}\n    return-void\n" + m.group(3)
+        new = method.sub(repl, text)
+        if new != text:
+            p.write_text(new)
+            print("telemetry: consent sync POST disabled in", p.relative_to(root))
+    if done != 1:
+        sys.exit(f"telemetry: expected one consent sync starter (creating {task}), found {done}")
+
+
+SYNC_URLS = [b"https://account.jagex.com/consent/sync", b"https://account.development.jxp.jagex.com/consent/sync"]
+
+
+def patch_native(src: str, dst: str) -> None:
+    data = bytearray(open(src, "rb").read())
+    for url in SYNC_URLS:
+        needle = b"\0" + url + b"\0"
+        n = 0
+        i = data.find(needle)
+        while i >= 0:
+            data[i + 1:i + 1 + len(url)] = bytes(len(url))
+            n += 1
+            i = data.find(needle, i + 1)
+        if n == 0:
+            sys.exit(f"telemetry: {url.decode()} not found in {src}")
+        print(f"telemetry: zeroed {url.decode()} ({n}x)")
+    open(dst, "wb").write(data)
+
+
 def patch_manifest(root: pathlib.Path) -> None:
     mf = root / "AndroidManifest.xml"
     text = mf.read_text()
@@ -74,8 +133,12 @@ def patch_manifest(root: pathlib.Path) -> None:
 
 
 def main() -> None:
+    if sys.argv[1] == "--native":
+        patch_native(sys.argv[2], sys.argv[3])
+        return
     root = pathlib.Path(sys.argv[1])
     patch_singular(root)
+    patch_consent_sync(root)
     patch_manifest(root)
 
 

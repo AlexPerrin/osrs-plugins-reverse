@@ -41,8 +41,8 @@ $APKTOOL d -q -f "$ROOT/base.apk" -o "$RE/apk/base"
 if [[ -n ${LOCAL_AUTH:-} ]]; then
     python3 -I "$ROOT/tools/patch_local_auth.py" "$RE/apk/base"
 fi
-# 1b. Telemetry off, every build (docs/app-telemetry.md): Singular never starts, Firebase Analytics
-#     deactivated, Crashlytics collection off.
+# 1b. Telemetry off, every build (docs/app-telemetry.md): Singular never starts, the consent sync
+#     POST to account.jagex.com is disabled, Firebase Analytics deactivated, Crashlytics collection off.
 python3 -I "$ROOT/tools/patch_telemetry.py" "$RE/apk/base"
 
 # 2. Load our library right after the game's.
@@ -63,12 +63,15 @@ print("patched", path)
 EOF
 $APKTOOL b -q "$RE/apk/base" -o "$OUT/base-unsigned.apk"
 
-# 3. Optionally retarget the game library at the test server.
-GAME_SO=""
+# 3. The game library: consent sync URLs zeroed in every build (patch_telemetry.py --native, so the
+#    app never posts to account.jagex.com), then optionally retargeted at the test server.
+GAME_SO=$OUT/liblibs.hal.system.osclient.so
+unzip -p "$ROOT/split_config.arm64_v8a.apk" lib/arm64-v8a/liblibs.hal.system.osclient.so > "$GAME_SO.orig"
+python3 -I "$ROOT/tools/patch_telemetry.py" --native "$GAME_SO.orig" "$GAME_SO"
+rm "$GAME_SO.orig"
 if [[ -n ${SERVER:-} ]]; then
     MODULUS=${MODULUS:-$(grep '^modulus=' "$ROOT/server/data/rsa.properties" | cut -d= -f2)}
-    GAME_SO=$OUT/liblibs.hal.system.osclient.so
-    unzip -p "$ROOT/split_config.arm64_v8a.apk" lib/arm64-v8a/liblibs.hal.system.osclient.so > "$GAME_SO.orig"
+    mv "$GAME_SO" "$GAME_SO.orig"
     python3 -I "$ROOT/tools/patch_server.py" "$GAME_SO.orig" "$GAME_SO" --server "$SERVER" --modulus "$MODULUS"
     rm "$GAME_SO.orig"
     if [[ -n ${GAME_PORT:-} ]]; then

@@ -18,6 +18,8 @@ respect-progress or virtual-completions; our own server, which keeps
 assume-completed, uses an NpcDeathKillHook on the quest stage instead.
 
 Guesses: the journal text and the quest scroll item.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
  .../npcs/RimmingtonTownsfolkScript.kt         |   7 -
  .../resources/drops/tables/monsters/rat.toml  |   8 +

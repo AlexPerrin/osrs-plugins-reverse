@@ -21,6 +21,8 @@ handler; it now climbs between level 0 and level 2.
 QuestTalkFixture gains a fixed random value and a generic interact().
 Guesses: the journal, the dye-mixing message, and "Human! Get us <colour>
 armour!" when asking for a new colour mid-quest.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
  .../goblinvillage/locs/GoblinCaveLadders.kt   |  11 +
  .../misc/goblinvillage/npcs/GoblinGenerals.kt |  88 ---

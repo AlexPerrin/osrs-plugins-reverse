@@ -18,6 +18,8 @@ in "Quest" (as in OSRS), "Start the X quest?" otherwise.
 Guesses: the journal text, the after-quest talk, the split of the long
 start line into two boxes, the quest scroll item.
 Needs 12 (QuestTalkFixture) and 21 (LocOpOverrides).
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
  .../pack/src/main/resources/gamevals.toml     |   1 +
  .../pack/configs/dorics_quest_vars.toml       |   6 +

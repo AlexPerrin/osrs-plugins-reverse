@@ -44,6 +44,8 @@ stake after the kill. Simplified: the garlic weakening lasts until he
 respawns (the wiki ties it to the first melee hit and 30 seconds); his
 fast regeneration and return to the coffin are not implemented. Needs
 the quest-module patches 12 (QuestTalkFixture), 64 and 66.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
  .../city/draynor/npcs/DraynorVillageNpcs.kt   |  22 -
  .../city/varrock/npcs/BlueMoonBartender.kt    | 101 +++

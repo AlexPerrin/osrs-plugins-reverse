@@ -1,0 +1,49 @@
+Stopgap for OpenRune/OpenRune-Server#352 until the clientscript compiler supports long vars.
+
+**Problem.** `clientscript-compiler` 0.0.7-openrune writes `PUSH_VARP`/`POP_VARP` (opcodes 1/2)
+for every `%varp`, including varps typed `long` in `varp.sym` (rev 241: 5753-5769,
+`ge_tax_slot_long_*`, `ge_itemsink_price_long_*`). Jagex's scripts use `PUSH_VAR_LONG`/`POP_VAR_LONG`
+(64/65) for these. Opcode 1 pushes onto the int stack, so `ge_itemsink_get` (5733) returns obj 0 for
+an empty Grand Exchange slot and the setup panel shows "Dwarf remains". The compiler has no 64/65
+opcodes (its `BinaryScriptWriter` maps every `VarPlayerType` to the int opcodes), and
+`ClientScripts.compileTask` builds its own writer, so FileStore cannot change what gets emitted.
+
+**Change.** New `LongVarpOpcodes` (internal, documented as a stopgap). `PackCs2.compileAndWrite`
+reads the varps typed `long` from `symbols/varp.sym` and `symbols_custom/varp.sym`. Before each
+compiled script is packed, it swaps the opcode of every push/pop of one of those varps to 64/65. The
+operand and length stay the same, so branch offsets are unaffected. The instruction walk takes its
+operand widths from the compiler's own `ClientScriptOpcode` table and has to land exactly on the
+script's instruction count. If it doesn't, the script is packed as compiled and a warning is logged.
+When the compiler emits 64/65 itself, the call in `PackCs2` and the new file can be deleted.
+
+**Tests.** `LongVarpOpcodesTest`: a synthetic script with a long varp push and pop is rewritten to
+64/65. A push and pop of an int varp in the same script are left alone. A `PUSH_CONSTANT_LONG`
+whose 8 bytes read as `PUSH_VARP 5762` checks that the walk stays aligned, and a string constant
+and a 1-byte command operand cover the other operand widths. Also covered: both local-count
+layouts, a script without long varps comes back as the same array, a truncated script is
+rejected, and long varps are read from the sym type column.
+`./gradlew :tools:test --tests 'dev.openrune.LongVarpOpcodesTest' --tests 'dev.openrune.BaselineSymbolMergeTest'`
+(JDK 17).
+
+End to end: ran `BuildCache` with `UnpackDefaultCs2` + `PackCs2` (bundle 241.1) on a Jagex rev 241
+cache. The log reports `Rewrote 40 long varp push/pop(s) in 6 script(s)`, with no walk warnings.
+Scripts 778, 779, 5156, 5732, 5733 and 9911 in the built cache now have the same instruction streams
+as Jagex's. In 5733, `%ge_itemsink_price_long_0` is `0040 00001682` (op 64, varp 5762), as in
+https://archive.openrs2.org/caches/runescape/2740/archives/12/groups/5733.dat. No script in the
+built archive 12 still reads or writes a long varp with 1/2.
+
+**Caveats.** This is a post-compile byte patch, not real long-var support in the compiler. It only
+covers varps (varcs are already compiled correctly as 51/52), and it relies on the compiler's
+script layout, which the strict walk checks on every build. Found while testing with RuneLite
+plugins (Grand Exchange).
+
+**Release note.** Long-typed varps are now read and written with PUSH_VAR_LONG/POP_VAR_LONG, fixing the Grand Exchange offer setup panel ("Dwarf remains").
+
+**Checklist**
+- [x] The change compiles (`./gradlew :tools:test`).
+- [x] Tests related to the change pass (`LongVarpOpcodesTest`, `BaselineSymbolMergeTest`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

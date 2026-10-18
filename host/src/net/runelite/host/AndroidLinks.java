@@ -6,8 +6,21 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
-/** Opens links for LinkBrowser (net.runelite.client.util): an ACTION_VIEW intent from the game's Activity. */
+/**
+ * Opens links for LinkBrowser (net.runelite.client.util) the way the official client opens its own
+ * external links: the game's native open-URL function (ELF 0x98a214) calls the Java
+ * com.jagex.android.ApplicationContext.openBrowser(String), which shows Jagex's confirm dialog ("You
+ * are opening a link to an external site. If you remain inactive in game for too long, you will be
+ * logged out.") and then starts an ACTION_VIEW intent. The ApplicationContext is the game
+ * MainActivity's field of that type (obfuscated name, so found by type). If that reflection fails,
+ * fall back to a plain ACTION_VIEW from the game's Activity.
+ *
+ * Backgrounding the game stops its thread, so after ~15 s away the session drops on OpenRune (the
+ * stock client too: its reconnect gets "Unexpected server response"; gen 33, docs/client-handoff.md).
+ */
 public final class AndroidLinks {
     private AndroidLinks() {}
 
@@ -25,6 +38,7 @@ public final class AndroidLinks {
             return false;
         }
         if (a == null) return false;
+        if (gameOpenBrowser(a, url)) return true;
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
                 Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
@@ -36,5 +50,27 @@ public final class AndroidLinks {
             }
         });
         return true;
+    }
+
+    /** The game's ApplicationContext.openBrowser(url) (it posts its dialog to the UI thread itself). */
+    private static boolean gameOpenBrowser(Activity a, String url) {
+        try {
+            for (Class<?> c = a.getClass(); c != null && c != Activity.class; c = c.getSuperclass()) {
+                for (Field f : c.getDeclaredFields()) {
+                    if (!f.getType().getName().equals("com.jagex.android.ApplicationContext")) continue;
+                    f.setAccessible(true);
+                    Object ctx = f.get(a);
+                    if (ctx == null) continue;
+                    Method m = ctx.getClass().getMethod("openBrowser", String.class);
+                    m.invoke(ctx, url);
+                    Log.i(Host.TAG, "LinkBrowser: game openBrowser " + url);
+                    return true;
+                }
+            }
+            Log.w(Host.TAG, "LinkBrowser: no ApplicationContext on " + a.getClass().getName() + ", plain ACTION_VIEW");
+        } catch (Throwable t) {
+            Log.w(Host.TAG, "LinkBrowser: game openBrowser failed, plain ACTION_VIEW", t);
+        }
+        return false;
     }
 }

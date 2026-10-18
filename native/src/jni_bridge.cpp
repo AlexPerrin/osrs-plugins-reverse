@@ -957,6 +957,13 @@ jobjectArray n_friends(JNIEnv* env, jclass, jboolean ignores) {
     return out;
 }
 jint n_friend_list_state(JNIEnv*, jclass) { return game::friend_list_state(); }
+jbyteArray n_target_state(JNIEnv* env, jclass, jint len) {
+    std::vector<uint8_t> b = game::target_state_bytes(len);
+    if (b.empty()) return nullptr;
+    jbyteArray a = env->NewByteArray(static_cast<jsize>(b.size()));
+    if (a) env->SetByteArrayRegion(a, 0, static_cast<jsize>(b.size()), reinterpret_cast<const jbyte*>(b.data()));
+    return a;
+}
 jboolean n_close_sub_interface(JNIEnv*, jclass, jint component, jint group, jboolean unload) {
     return client_thread::on_client_thread() && game::close_sub_interface(component, group, unload);
 }
@@ -1505,6 +1512,7 @@ const JNINativeMethod kNatives[] = {
     {"walkDestination", "()[I", reinterpret_cast<void*>(n_walk_destination)},
     {"friends", "(Z)[Ljava/lang/Object;", reinterpret_cast<void*>(n_friends)},
     {"friendListState", "()I", reinterpret_cast<void*>(n_friend_list_state)},
+    {"targetState", "(I)[B", reinterpret_cast<void*>(n_target_state)},
     {"reloadScene", "()Z", reinterpret_cast<void*>(n_reload_scene)},
     {"subInterfaces", "()[I", reinterpret_cast<void*>(n_sub_interfaces)},
     {"drawMinimap", "(I)[I", reinterpret_cast<void*>(n_draw_minimap)},

@@ -1553,6 +1553,19 @@ bool reload_scene() {
     return true;
 }
 
+// Widget target mode ("Use"/spell/targetable widget selected): the state object at
+// *(Client+0x4132b0)+2000 (FUN_00561520, ELF 0x461520). Byte +0x9f bit 0 = target mode on (menu builders
+// 0x525c78 and others take the target-entry path, "%s -> %s"); +0x48 = the selected name string. Probe dump.
+std::vector<uint8_t> target_state_bytes(int len) {
+    std::vector<uint8_t> out;
+    uintptr_t c = client();
+    uintptr_t holder = c ? read_at<uintptr_t>(c + 0x4132b0) : 0;
+    if (!holder || len <= 0 || len > 0x400) return out;
+    out.resize(len);
+    for (int i = 0; i < len; i++) out[i] = read_at<uint8_t>(holder + 2000 + i);
+    return out;
+}
+
 int friend_list_state() {
     uintptr_t c = client();
     auto fm = c ? read_at<uintptr_t>(c + 0x46c0) : 0;

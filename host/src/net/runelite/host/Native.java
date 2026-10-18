@@ -249,6 +249,8 @@ final class Native {
     static native Object[] friends(boolean ignores);
     /** FriendSystem +0x150: 0 none, 1 FRIENDLIST_LOADED, 2 list received. */
     static native int friendListState();
+    /** Probe: the first `len` bytes of the game's widget target-mode state (game.cpp target_state_bytes); null if unreadable. */
+    static native byte[] targetState(int len);
     /** The game's settings-changed scene reload (state 30 -> 25); client thread only. */
     static native boolean reloadScene();
     /** Writes an actor's overhead text (null keeps it) and timer (-1 keeps it); client thread only. */

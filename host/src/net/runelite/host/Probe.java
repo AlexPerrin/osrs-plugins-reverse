@@ -416,9 +416,26 @@ final class Probe {
         plugins = running;
     }
 
+    private static byte[] lastTargetState;
+
+    /** `setprop debug.osrsrl.tmodelog 1`: hex of the game's widget target-mode state (0xc0 bytes) when it changes. */
+    private static void logTargetState() {
+        byte[] b = Native.targetState(0xc0);
+        if (b == null || java.util.Arrays.equals(b, lastTargetState)) return;
+        StringBuilder sb = new StringBuilder("tmode");
+        for (int i = 0; i < b.length; i++) {
+            if (i % 16 == 0) sb.append(String.format(" | %02x:", i));
+            boolean diff = lastTargetState != null && lastTargetState[i] != b[i];
+            sb.append(String.format(diff ? " *%02x" : " %02x", b[i] & 0xff));
+        }
+        lastTargetState = b;
+        Log.i(TAG, sb.toString());
+    }
+
     static void onGameTick() {
         if ("1".equals(Native.property("debug.osrsrl.camlog"))) logCamera();
         if ("1".equals(Native.property("debug.osrsrl.selflog")) && (tick % 5) == 0) logSelf();
+        if ("1".equals(Native.property("debug.osrsrl.tmodelog"))) logTargetState();
         String say = Native.property("debug.osrsrl.say");  // test hook: Client.addChatMessage (GAMEMESSAGE), once per value
         if (!say.isEmpty() && !say.equals(lastSay) && Host.client() != null) {
             lastSay = say;

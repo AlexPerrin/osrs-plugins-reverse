@@ -261,6 +261,10 @@ final class Native {
     static native boolean removeGroundObject(int plane, int x, int y);
     /** Ambient (loc) sounds: per entry obj low, obj high, sound id, plane, n, n background ids; client thread. */
     static native int[] ambientSounds();
+    /** Projectiles (Client +0xcb30 list): 27 ints each, layout in jni_bridge.cpp n_projectiles; client thread. */
+    static native int[] projectiles();
+    /** Projectile.setEndCycle on a listed projectile; client thread. */
+    static native boolean projectileSetEndCycle(long obj, int cycle);
     /** Clears the live ambient sound list (the game stops and frees them next cycle); client thread. */
     static native boolean ambientClear();
     /** Puts an ambient sound cleared this cycle back into the live list; client thread. */

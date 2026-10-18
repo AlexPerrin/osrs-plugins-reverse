@@ -8,6 +8,7 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <thread>
 #include <vector>
@@ -1010,6 +1011,36 @@ jintArray n_ambient_sounds(JNIEnv* env, jclass) {
     if (out && !packed.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(packed.size()), packed.data());
     return out;
 }
+// Per projectile (kProjectileInts): obj low, obj high, id, source level/x/y, start height, source
+// index, target level/x/y, end height, target index, start/end cycle, slope, start pos, orientation,
+// animation, frame, then x, y, z as raw double bits (low, high each).
+jintArray n_projectiles(JNIEnv* env, jclass) {
+    if (!require_client_thread(env, "projectiles")) return nullptr;
+    std::vector<jint> v;
+    auto bits = [&v](double d) {
+        uint64_t b;
+        memcpy(&b, &d, 8);
+        v.push_back(static_cast<jint>(b & 0xffffffffu));
+        v.push_back(static_cast<jint>(b >> 32));
+    };
+    for (const auto& p : game::projectiles()) {
+        v.push_back(static_cast<jint>(p.obj & 0xffffffffu));
+        v.push_back(static_cast<jint>(static_cast<uint64_t>(p.obj) >> 32));
+        v.insert(v.end(), {p.id, p.source_level, p.source_x, p.source_y, p.start_height, p.source_index,
+                           p.target_level, p.target_x, p.target_y, p.end_height, p.target_index,
+                           p.start_cycle, p.end_cycle, p.slope, p.start_pos, p.orientation,
+                           p.animation, p.animation_frame});
+        bits(p.x);
+        bits(p.y);
+        bits(p.z);
+    }
+    jintArray out = env->NewIntArray(static_cast<jsize>(v.size()));
+    if (out && !v.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(v.size()), v.data());
+    return out;
+}
+jboolean n_projectile_set_end_cycle(JNIEnv* env, jclass, jlong obj, jint cycle) {
+    return require_client_thread(env, "projectileSetEndCycle") && game::projectile_set_end_cycle(static_cast<uintptr_t>(obj), cycle);
+}
 // size*size collision flags of a plane (scene x major), or null.
 jintArray n_collision_flags(JNIEnv* env, jclass, jint plane, jint size) {
     if (!require_client_thread(env, "collisionFlags")) return nullptr;
@@ -1562,6 +1593,8 @@ const JNINativeMethod kNatives[] = {
     {"reloadScene", "()Z", reinterpret_cast<void*>(n_reload_scene)},
     {"removeGroundObject", "(III)Z", reinterpret_cast<void*>(n_remove_ground_object)},
     {"ambientSounds", "()[I", reinterpret_cast<void*>(n_ambient_sounds)},
+    {"projectiles", "()[I", reinterpret_cast<void*>(n_projectiles)},
+    {"projectileSetEndCycle", "(JI)Z", reinterpret_cast<void*>(n_projectile_set_end_cycle)},
     {"ambientClear", "()Z", reinterpret_cast<void*>(n_ambient_clear)},
     {"ambientRestore", "(J)Z", reinterpret_cast<void*>(n_ambient_restore)},
     {"ambientRemove", "(J)Z", reinterpret_cast<void*>(n_ambient_remove)},

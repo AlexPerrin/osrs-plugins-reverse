@@ -3080,6 +3080,58 @@ bool remove_ground_decoration(int plane, int x, int y) {
     return read_at<uintptr_t>(tile + 0x118) == 0;
 }
 
+// Projectiles: Client +0xcb30 is a std::list (libc++: node {next, prev, ctrl, Projectile*}; header
+// {first, last, size}) filled by PROJANIM_SPECIFIC (dispatcher case 76) and the zone MAP_PROJANIM
+// (0x46edb0 case 6); emptied on logout/rebuild (0x4684d0). Projectile ctor 0x477b14 copies the
+// packet's 0x3c-byte struct to obj +0x25c; the rest was read live (gen 37, docs/offsets.md "Projectiles").
+std::vector<ProjectileInfo> projectiles() {
+    std::vector<ProjectileInfo> out;
+    uintptr_t c = client();
+    if (!c) return out;
+    uintptr_t head = c + 0xcb30;
+    uint64_t n = read_at<uint64_t>(head + 0x10);
+    if (n > 4096) return out;
+    uintptr_t node = read_at<uintptr_t>(head);
+    for (uint64_t i = 0; node && node != head && i < n; i++, node = read_at<uintptr_t>(node)) {
+        uintptr_t o = read_at<uintptr_t>(node + 0x18);
+        if (!o) continue;
+        ProjectileInfo p;
+        p.obj = o;
+        p.id = read_at<int32_t>(o + 0x294);
+        p.source_level = read_at<int32_t>(o + 0x25c);
+        p.source_x = read_at<int32_t>(o + 0x260);
+        p.source_y = read_at<int32_t>(o + 0x264);
+        p.start_height = read_at<int32_t>(o + 0x268);
+        p.source_index = read_at<int32_t>(o + 0x26c);
+        p.target_level = read_at<int32_t>(o + 0x270);
+        p.target_x = read_at<int32_t>(o + 0x274);
+        p.target_y = read_at<int32_t>(o + 0x278);
+        p.end_height = read_at<int32_t>(o + 0x27c);
+        p.target_index = read_at<int32_t>(o + 0x280);
+        p.start_cycle = read_at<int32_t>(o + 0x284);
+        p.end_cycle = read_at<int32_t>(o + 0x288);
+        p.slope = read_at<int32_t>(o + 0x28c);
+        p.start_pos = read_at<int32_t>(o + 0x290);
+        p.x = read_at<double>(o + 0x298);
+        p.z = read_at<double>(o + 0x2a0);
+        p.y = read_at<double>(o + 0x2a8);
+        p.orientation = read_at<int32_t>(o + 0x2b0);
+        p.animation = read_at<int32_t>(o + 0x2d8);
+        p.animation_frame = read_at<uint16_t>(o + 0x2dc);
+        out.push_back(p);
+    }
+    return out;
+}
+
+bool projectile_set_end_cycle(uintptr_t obj, int cycle) {
+    for (const auto& p : projectiles())
+        if (p.obj == obj) {
+            *reinterpret_cast<int32_t*>(obj + 0x288) = cycle;
+            return true;
+        }
+    return false;
+}
+
 namespace {
 constexpr uint32_t kAmbientLive = 0xb78, kAmbientPending = 0xb90;
 }  // namespace

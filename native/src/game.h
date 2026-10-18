@@ -529,6 +529,19 @@ struct AmbientSound {
     int32_t id, plane;
     std::vector<int32_t> background;  // empty = none
 };
+// A projectile in the client's list (Client +0xcb30). Source/target are world tiles; indexes use the
+// packet encoding (NPC index + 1, -(player index + 1), 0 none). x/y/z: current scene position in
+// local units (z negative up), 0 until the projectile first moves (start cycle).
+struct ProjectileInfo {
+    uintptr_t obj = 0;
+    int id = -1, source_level = 0, source_x = 0, source_y = 0, start_height = 0, source_index = 0;
+    int target_level = 0, target_x = 0, target_y = 0, end_height = 0, target_index = 0;
+    int start_cycle = 0, end_cycle = 0, slope = 0, start_pos = 0, orientation = 0;
+    int animation = -1, animation_frame = 0;
+    double x = 0, y = 0, z = 0;
+};
+std::vector<ProjectileInfo> projectiles();  // oldest first; game thread only
+bool projectile_set_end_cycle(uintptr_t obj, int cycle);  // game thread only; false if obj isn't listed
 std::vector<AmbientSound> ambient_sounds();
 bool ambient_clear();
 // Moves one live entry to the pending vector (as 0x4b065c does for all of them). Game thread.

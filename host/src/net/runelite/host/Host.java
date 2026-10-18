@@ -524,6 +524,8 @@ public final class Host {
                 postActorChanges(bus);
                 if (pendingLoggedIn && localPlayer() != null) postLoggedIn(bus);
                 if (loggedInPosted) pollAmbientSounds(bus);
+                if (loggedInPosted && client instanceof AndroidClient) ((AndroidClient) client).projectiles.poll(bus, client);
+                else if (client instanceof AndroidClient) ((AndroidClient) client).projectiles.reset();
                 if (pendingSceneCycles >= 0 && (sceneBaseChanged() || ++pendingSceneCycles > 50)) {
                     pendingSceneCycles = -1;
                     postGameState(bus, GameState.LOGGED_IN);  // WorldViewLoaded, then LOGGED_IN

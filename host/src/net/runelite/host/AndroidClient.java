@@ -453,12 +453,8 @@ public class AndroidClient extends ClientStub {
      * test-server data out of RuneLite's datasets.
      */
     @Override public int getEnvironment() { return 1; }
-    /** Projectiles aren't read from the game yet: always empty. // unverified: no projectile reader */
-    private final net.runelite.api.Deque<net.runelite.api.Projectile> projectiles = new net.runelite.api.Deque<net.runelite.api.Projectile>() {
-        @Override public void addLast(net.runelite.api.Projectile p) { }
-        @Override public void clear() { }
-        @Override public java.util.Iterator<net.runelite.api.Projectile> iterator() { return java.util.Collections.emptyIterator(); }
-    };
+    /** The game's projectile list (Projectiles, refreshed per client tick). */
+    final Projectiles projectiles = new Projectiles();
     @Override public net.runelite.api.Deque<net.runelite.api.Projectile> getProjectiles() { return projectiles; }
     /** The game's ambient (loc) sound list (AmbientSounds). */
     final AmbientSounds ambientSounds = new AmbientSounds();

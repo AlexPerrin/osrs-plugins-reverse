@@ -146,6 +146,24 @@ index 000000000..be7534f2b
 +
 +[object.params]
 +"param.next_loc_stage" = "loc.opencastledoubledoorr"
+diff --git a/.data/raw-cache/server/mesanim.toml b/.data/raw-cache/server/mesanim.toml
+index 8cffae43f..7b5616346 100644
+--- a/.data/raw-cache/server/mesanim.toml
++++ b/.data/raw-cache/server/mesanim.toml
+@@ -75,6 +75,13 @@ len2="seq.chatscared2"
+ len3="seq.chatscared3"
+ len4="seq.chatscared4"
+ 
++[[mesanim]]
++id="mesanim.scared"
++len1="seq.chatscared1"
++len2="seq.chatscared2"
++len3="seq.chatscared3"
++len4="seq.chatscared4"
++
+ [[mesanim]]
+ id="mesanim.drunk"
+ len1="seq.chatdrunk1"
 diff --git a/.data/raw-cache/server/npcs.toml b/.data/raw-cache/server/npcs.toml
 index 0e61a1db8..536d4a4af 100644
 --- a/.data/raw-cache/server/npcs.toml
@@ -1771,6 +1789,19 @@ index 171a91646..2f235f647 100644
              1 -> {
                  chatPlayer(happy, "Yes please.")
                  player.openShop(PortSarimShop.Food)
+diff --git a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimTownsfolkScript.kt b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimTownsfolkScript.kt
+index 6fdaae7b3..f09288c9a 100644
+--- a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimTownsfolkScript.kt
++++ b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimTownsfolkScript.kt
+@@ -165,7 +165,7 @@ class PortSarimTownsfolkScript : PluginScript() {
+     }
+ 
+     private suspend fun Dialogue.sleepingGuard() {
+-        chatNpc(mesanim("mesanim.sleep"), "Guh... mwww... zzzzz...")
++        chatNpc(bored, "Guh... mwww... zzzzz...")
+         chatPlayer(neutral, "Maybe I should let him sleep.")
+     }
+ 
 diff --git a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/RustyAnchorScript.kt b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/RustyAnchorScript.kt
 index 362276ff2..f03cf03cb 100644
 --- a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/RustyAnchorScript.kt
@@ -13276,10 +13307,10 @@ index 000000000..16e7d2d4f
 +}
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
 new file mode 100644
-index 000000000..e638c6db8
+index 000000000..45c7bffea
 --- /dev/null
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
-@@ -0,0 +1,175 @@
+@@ -0,0 +1,196 @@
 +package org.rsmod.content.other.commands
 +
 +import dev.openrune.ServerCacheManager
@@ -13292,12 +13323,14 @@ index 000000000..e638c6db8
 +import net.rsprot.protocol.api.OutgoingPacketTrace
 +import net.rsprot.protocol.game.outgoing.misc.client.UrlOpen
 +import org.rsmod.annotations.InternalApi
++import org.rsmod.api.player.output.UpdateRun
 +import org.rsmod.api.player.output.UpdateStat
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccessLauncher
 +import org.rsmod.api.player.stat.PlayerSkillXP
 +import org.rsmod.api.player.stat.XpSource
 +import org.rsmod.api.player.stat.statAdvance
++import org.rsmod.api.player.stat.statRestore
 +import org.rsmod.api.player.ui.PlayerInterfaceUpdates
 +import org.rsmod.api.repo.npc.NpcRepository
 +import org.rsmod.game.cheat.Cheat
@@ -13311,7 +13344,7 @@ index 000000000..e638c6db8
 +
 +/**
 + * osrs-plugins-reverse: the `::` commands our Android device tests use that OpenRune lacks
-+ * (`::freeze`, `::npcsay`, `::options`, `::url`, `::drop`). The rest map onto OpenRune's own commands: `::give` and
++ * (`::freeze`, `::npcsay`, `::options`, `::url`, `::drop`, `::pos`, `::heal`). The rest map onto OpenRune's own commands: `::give` and
 + * `::empty` are aliases of `::item` and `::invclear`, `::quest` lives in the quest module.
 + */
 +class TestCommands
@@ -13327,6 +13360,8 @@ index 000000000..e638c6db8
 +        }
 +        onCommand("options", "Open a chatmenu with 2-5 options (::options One Two Three)", ::options)
 +        onCommand("url", "Send URL_OPEN (::url https://example.com)", ::url)
++        onCommand("pos", "Current coordinates (x z level), like the old test server", ::pos)
++        onCommand("heal", "Restore hitpoints, prayer, drained stats and run energy", ::heal)
 +        onCommand("drop", "Close the connection without logging out (the client reconnects)", ::drop)
 +        onCommand("trace", "Log every incoming game packet (docker logs) on/off", ::trace)
 +        onCommand("traceout", "Log the first n outgoing packets of new Android sessions (docker logs; 0 = off)", ::traceOut)
@@ -13394,6 +13429,22 @@ index 000000000..e638c6db8
 +        }
 +
 +    /** Logs the first n outgoing packets of the next Android logins (`OUT #..`); 0 turns it off. */
++    private fun pos(cheat: Cheat) =
++        with(cheat) {
++            val c = player.coords
++            player.mes("${c.x} ${c.z} ${c.level}")
++        }
++
++    private fun heal(cheat: Cheat) =
++        with(cheat) {
++            for (stat in ServerCacheManager.getStats().values) {
++                player.statRestore(RSCM.getReverseMapping(RSCMType.STAT, stat.id))
++            }
++            player.runEnergy = MAX_RUN_ENERGY
++            UpdateRun.energy(player, player.runEnergy)
++            player.mes("Restored.")
++        }
++
 +    private fun drop(cheat: Cheat) =
 +        with(cheat) {
 +            player.client.close()
@@ -13451,6 +13502,7 @@ index 000000000..e638c6db8
 +            .toList()
 +
 +    private companion object {
++        const val MAX_RUN_ENERGY = 10000
 +        const val NEARBY = 16
 +        const val MAX_XP = 200_000_000
 +    }
@@ -14236,6 +14288,314 @@ index a325cee80..487843c79 100644
 +        const val SOCIAL_RESEND_DELAY = 2
      }
  }
+diff --git a/content/other/looting-bag/build.gradle.kts b/content/other/looting-bag/build.gradle.kts
+new file mode 100644
+index 000000000..d80028960
+--- /dev/null
++++ b/content/other/looting-bag/build.gradle.kts
+@@ -0,0 +1,15 @@
++plugins {
++    id("base-conventions")
++    id("integration-test-suite")
++}
++
++dependencies {
++    implementation(projects.api.pluginCommons)
++    implementation(projects.api.areaChecker)
++}
++
++testing.suites.named<JvmTestSuite>("integration") {
++    dependencies {
++        implementation(projects.api.pluginCommons)
++    }
++}
+diff --git a/content/other/looting-bag/pack/build.gradle.kts b/content/other/looting-bag/pack/build.gradle.kts
+new file mode 100644
+index 000000000..2693e4696
+--- /dev/null
++++ b/content/other/looting-bag/pack/build.gradle.kts
+@@ -0,0 +1,9 @@
++plugins {
++    id("base-conventions")
++}
++
++dependencies {
++    implementation(libs.or2.all.cache)
++    implementation(libs.or2.tools)
++    implementation(libs.or2.definition)
++}
+diff --git a/content/other/looting-bag/pack/src/main/kotlin/org/rsmod/content/other/lootingbag/pack/LootingBagPluginPack.kt b/content/other/looting-bag/pack/src/main/kotlin/org/rsmod/content/other/lootingbag/pack/LootingBagPluginPack.kt
+new file mode 100644
+index 000000000..b4d6eed5f
+--- /dev/null
++++ b/content/other/looting-bag/pack/src/main/kotlin/org/rsmod/content/other/lootingbag/pack/LootingBagPluginPack.kt
+@@ -0,0 +1,5 @@
++package org.rsmod.content.other.lootingbag.pack
++
++import dev.openrune.pack.PluginPack
++
++class LootingBagPluginPack : PluginPack()
+diff --git a/content/other/looting-bag/pack/src/main/resources/pack/configs/looting_bag.toml b/content/other/looting-bag/pack/src/main/resources/pack/configs/looting_bag.toml
+new file mode 100644
+index 000000000..6c0589979
+--- /dev/null
++++ b/content/other/looting-bag/pack/src/main/resources/pack/configs/looting_bag.toml
+@@ -0,0 +1,7 @@
++# The cache's looting bag inventory is client-scoped; the server keeps its contents across logins.
++[[inventory]]
++isServerOnly = true
++id = "inv.looting_bag"
++inherit = "inv.looting_bag"
++scope = "Perm"
++protect = false
+diff --git a/content/other/looting-bag/src/integration/kotlin/org/rsmod/content/other/lootingbag/LootingBagScriptTest.kt b/content/other/looting-bag/src/integration/kotlin/org/rsmod/content/other/lootingbag/LootingBagScriptTest.kt
+new file mode 100644
+index 000000000..7025777ee
+--- /dev/null
++++ b/content/other/looting-bag/src/integration/kotlin/org/rsmod/content/other/lootingbag/LootingBagScriptTest.kt
+@@ -0,0 +1,73 @@
++package org.rsmod.content.other.lootingbag
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.types.InvScope
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.content.other.lootingbag.LootingBagScript.Companion.BAG
++import org.rsmod.content.other.lootingbag.LootingBagScript.Companion.BAG_INV
++import org.rsmod.game.inv.InvObj
++
++@Execution(ExecutionMode.SAME_THREAD)
++class LootingBagScriptTest {
++    @Test
++    fun GameTestState.`the bag inventory is a saved one`() = runBasicGameTest {
++        val type = checkNotNull(ServerCacheManager.getInventory(BAG_INV.asRSCM()))
++        assertEquals(InvScope.Perm, type.scope)
++    }
++
++    @Test
++    fun GameTestState.`storing moves exactly the requested items into the bag`() =
++        runInjectedGameTest(LootingBagScript::class, null, LootingBagScript::class) { script ->
++            player.inv[0] = InvObj(BAG, 1)
++            player.inv[1] = InvObj("obj.coins", 500)
++            player.inv[2] = InvObj("obj.bronze_dagger", 1)
++            player.inv[3] = InvObj("obj.bronze_dagger", 1)
++            player.inv[4] = InvObj("obj.bronze_dagger", 1)
++            var stored = false
++            with(script) { player.withProtectedAccess { stored = store("obj.coins", 200) } }
++            assertTrue(stored)
++            with(script) { player.withProtectedAccess { store("obj.bronze_dagger", 5) } }
++            val bag = player.invMap.getOrPut(BAG_INV)
++            assertEquals(300, player.inv.count("obj.coins"))
++            assertEquals(200, bag.count("obj.coins"))
++            assertEquals(0, player.inv.count("obj.bronze_dagger"))
++            assertEquals(3, bag.count("obj.bronze_dagger"))
++            assertEquals(1, player.inv.count(BAG))
++        }
++
++    @Test
++    fun GameTestState.`the bag and untradeables stay out`() =
++        runInjectedGameTest(LootingBagScript::class, null, LootingBagScript::class) { script ->
++            player.inv[0] = InvObj(BAG, 1)
++            player.inv[1] = InvObj("obj.coal_bag", 1)
++            var bagStored = true
++            var keyStored = true
++            with(script) { player.withProtectedAccess { bagStored = store(BAG, 1) } }
++            with(script) { player.withProtectedAccess { keyStored = store("obj.coal_bag", 1) } }
++            assertFalse(bagStored)
++            assertFalse(keyStored)
++            assertEquals(1, player.inv.count(BAG))
++            assertEquals(1, player.inv.count("obj.coal_bag"))
++            assertEquals(0, player.invMap.getOrPut(BAG_INV).occupiedSpace())
++        }
++
++    @Test
++    fun GameTestState.`a full bag refuses and keeps the item`() =
++        runInjectedGameTest(LootingBagScript::class, null, LootingBagScript::class) { script ->
++            val bag = player.invMap.getOrPut(BAG_INV)
++            for (slot in 0 until bag.size) bag[slot] = InvObj("obj.bronze_sword", 1)
++            player.inv[0] = InvObj("obj.bronze_dagger", 1)
++            var stored = true
++            with(script) { player.withProtectedAccess { stored = store("obj.bronze_dagger", 1) } }
++            assertFalse(stored)
++            assertEquals(1, player.inv.count("obj.bronze_dagger"))
++            assertEquals(0, bag.count("obj.bronze_dagger"))
++        }
++}
+diff --git a/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagScript.kt b/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagScript.kt
+new file mode 100644
+index 000000000..8a403f9f7
+--- /dev/null
++++ b/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagScript.kt
+@@ -0,0 +1,163 @@
++package org.rsmod.content.other.lootingbag
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.definition.type.widget.IfEvent
++import dev.openrune.rscm.RSCM
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import dev.openrune.types.aconverted.interf.IfButtonOp
++import org.rsmod.api.area.checker.isInWildernessBasic
++import org.rsmod.api.invtx.invTransaction
++import org.rsmod.api.invtx.select
++import org.rsmod.api.player.events.interact.HeldUDefaultEvents
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.startInvTransmit
++import org.rsmod.api.script.onIfModalButton
++import org.rsmod.api.script.onOpHeld1
++import org.rsmod.api.script.onOpHeld2
++import org.rsmod.api.script.onOpHeld3
++import org.rsmod.api.script.onOpHeldU
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * The looting bag (OSRS Wiki): Open/Close swaps the bag's variant, Check shows the bag's inventory
++ * (`inv.looting_bag`, which RuneLite's looting bag plugins read), Deposit and using an item on
++ * the bag store tradeable items while in the Wilderness. Not done: auto-looting while open,
++ * Settings, emptying it into the bank.
++ */
++class LootingBagScript : PluginScript() {
++    override fun ScriptContext.startup() {
++        onOpHeld1(BAG) { swap(it.slot, BAG_OPEN) }
++        onOpHeld1(BAG_OPEN) { swap(it.slot, BAG) }
++        for (bag in listOf(BAG, BAG_OPEN)) {
++            onOpHeld2(bag) { check() }
++            onOpHeld3(bag) { openDeposit() }
++            onOpHeldU(bag) { useOnBag(it) }
++        }
++        onIfModalButton(ITEMS) { depositOp(it.comsub, it.op) }
++    }
++
++    private fun ProtectedAccess.swap(slot: Int, into: String) {
++        val type = ServerCacheManager.getItem(into.asRSCM(RSCMType.OBJ)) ?: return
++        invReplaceSlot(inv, slot, 1, type)
++    }
++
++    private fun ProtectedAccess.check() {
++        openBagInterface(MODE_BAG, "Looting bag")
++    }
++
++    private fun ProtectedAccess.openDeposit() {
++        if (!player.coords.isInWildernessBasic()) {
++            mes(OUTSIDE_WILDERNESS)
++            return
++        }
++        openBagInterface(MODE_DEPOSIT, "Add to bag")
++        ifSetEvents(ITEMS, inv.indices, IfEvent.Op1, IfEvent.Op2, IfEvent.Op3, IfEvent.Op10)
++    }
++
++    private fun ProtectedAccess.openBagInterface(mode: Int, title: String) {
++        player.startInvTransmit(bag())
++        ifOpenSide(INTERFACE)
++        runClientScript(SETUP_SCRIPT, mode, title)
++    }
++
++    private suspend fun ProtectedAccess.useOnBag(event: HeldUDefaultEvents.Type) {
++        val other = if (event.first.internalName in BAGS) event.second else event.first
++        if (!player.coords.isInWildernessBasic()) {
++            mes(OUTSIDE_WILDERNESS)
++            return
++        }
++        if (other.internalName in BAGS) {
++            mes("You may be surprised to learn that bagception is not permitted.")
++            return
++        }
++        val count = startDialogueChoice() ?: return
++        store(other.internalName, count)
++    }
++
++    private suspend fun ProtectedAccess.startDialogueChoice(): Int? {
++        var count: Int? = null
++        startDialogue {
++            count =
++                choice3(
++                    "One",
++                    1,
++                    "Five",
++                    FIVE,
++                    "All",
++                    Int.MAX_VALUE,
++                    title = "How many do you want to deposit?",
++                )
++        }
++        return count
++    }
++
++    private fun ProtectedAccess.depositOp(slot: Int, op: IfButtonOp) {
++        val obj = inv[slot] ?: return
++        val internal = RSCM.getReverseMapping(RSCMType.OBJ, obj.id)
++        val count =
++            when (op) {
++                IfButtonOp.Op1 -> 1
++                IfButtonOp.Op2 -> FIVE
++                IfButtonOp.Op3 -> Int.MAX_VALUE
++                else -> return
++            }
++        store(internal, count)
++    }
++
++    /** Moves up to [requested] of [obj] from the inventory into the bag in one transaction. */
++    fun ProtectedAccess.store(obj: String, requested: Int): Boolean {
++        if (obj in BAGS) {
++            mes("You may be surprised to learn that bagception is not permitted.")
++            return false
++        }
++        val type = ServerCacheManager.getItem(obj.asRSCM(RSCMType.OBJ)) ?: return false
++        // `tradeable` reads true for items the server config marks untradeable; Grand Exchange
++        // items stand in for tradeable ones (tradeable items that are not on the GE are refused).
++        if (!type.stockmarket) {
++            mes("Only tradeable items can be put in the bag.")
++            return false
++        }
++        val count = minOf(requested, inv.count(obj))
++        if (count <= 0) return false
++        val bag = bag()
++        val moved =
++            player.invTransaction(inv, bag) {
++                val from = select(inv)
++                val into = select(bag)
++                delete {
++                    this.from = from
++                    this.obj = type.id
++                    this.strictCount = count
++                }
++                insert {
++                    this.into = into
++                    this.obj = type.id
++                    this.strictCount = count
++                }
++            }
++        if (moved.failure) {
++            mes("The bag's too full.")
++            return false
++        }
++        return true
++    }
++
++    private fun ProtectedAccess.bag() = inv(BAG_INV)
++
++    companion object {
++        const val BAG = "obj.looting_bag"
++        const val BAG_OPEN = "obj.looting_bag_open"
++        const val BAG_INV = "inv.looting_bag"
++        const val INTERFACE = "interface.wilderness_lootingbag"
++        const val ITEMS = "component.wilderness_lootingbag:items"
++        const val SETUP_SCRIPT = 495
++        const val MODE_BAG = 0
++        const val MODE_DEPOSIT = 1
++        const val FIVE = 5
++        const val OUTSIDE_WILDERNESS = "You can't put items in the bag unless you're in the Wilderness."
++
++        val BAGS = setOf(BAG, BAG_OPEN)
++    }
++}
 diff --git a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/cats/CatCare.kt b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/cats/CatCare.kt
 index 35dd61859..90641375b 100644
 --- a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/cats/CatCare.kt
@@ -23775,6 +24135,50 @@ index 8f3ee7093..bd809341a 100644
  
  [gamevals.timer]
  quest_scroll_close = 402
+diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/MesAnimTypesTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/MesAnimTypesTest.kt
+new file mode 100644
+index 000000000..836513843
+--- /dev/null
++++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/MesAnimTypesTest.kt
+@@ -0,0 +1,38 @@
++package org.rsmod.content.quest.area
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import org.junit.jupiter.api.AfterAll
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.BeforeAll
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.junit.jupiter.api.parallel.ResourceLock
++
++/**
++ * Every chat-head animation the content asks for must be a server mesanim; a missing one throws
++ * "Error Loading MesAnim" mid-dialogue (the Lumbridge Doomsayer's `mesanim.scared` did).
++ */
++@Execution(ExecutionMode.SAME_THREAD)
++@ResourceLock("ServerCacheManager")
++class MesAnimTypesTest {
++    @Test fun `every mesanim used by content resolves`() {
++        val missing = USED.filter { name ->
++            runCatching { ServerCacheManager.getMesAnim(name.asRSCM()) }.getOrNull() == null
++        }
++        assertTrue(missing.isEmpty(), "Missing server mesanims: $missing")
++    }
++
++    companion object {
++        val USED =
++            listOf(
++                "angry", "bored", "confused", "drunk", "happy", "laugh", "mad_laugh", "neutral",
++                "quiz", "sad", "scared", "shifty", "shocked", "short", "silent", "very_mad", "worried",
++            ).map { "mesanim.$it" }
++
++        @JvmStatic @BeforeAll fun cache() = QuestTalkFixture.setUpCache()
++
++        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
++    }
++}
 diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/QuestTalkFixture.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/QuestTalkFixture.kt
 new file mode 100644
 index 000000000..fa296aa0b

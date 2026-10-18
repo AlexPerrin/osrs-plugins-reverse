@@ -2064,3 +2064,26 @@ unstrung bow pages). The cut is one inventory transaction (log out, product in).
 **Guesses:** the spam line "You carefully cut the wood into ..." and the level message. Not done: javelin shafts,
 crossbow stocks, shields, stringing, arrows. For RuneLite's Action Progress (Make-X detection is the same path as
 herblore's, which already works). Tests: `KnifeFletchingScriptTest` (3).
+
+### Looting bag, `::pos`/`::heal`, missing mesanims (twentieth server dev)
+- **Looting bag** (`content/other/looting-bag` + pack): Open/Close swaps `looting_bag` / `looting_bag_open`; Check opens
+  `wilderness_lootingbag` (81) in the side modal with client script 495 (`wilderness_lootingbag_setup`, mode 0 = the
+  bag) and transmits `inv.looting_bag` (516), which RuneLite's looting bag plugins read; Deposit (mode 1, Store-1/5/All
+  on the inventory items) and using an item on the bag (One/Five/All, title a **guess**) store items while in the
+  Wilderness (`isInWildernessBasic`). The cache's inv 516 is client-scoped, so the pack's `looting_bag.toml` makes it
+  `Perm` (saved). Only Grand Exchange items are stored: `ItemServerType.tradeable` reads true even for items
+  items.toml marks `tradeable = false` (coal bag, chest key), so `stockmarket` stands in (tradeable items that are not
+  on the GE are refused: **simplified**). Messages from the wiki where it has them ("You may be surprised to learn that
+  bagception is not permitted."), otherwise **guesses**. Not done: auto-looting while open, Settings, emptying into
+  the bank, Store-X. Tests: `LootingBagScriptTest` (4).
+- **`::pos`** (x z level) and **`::heal`** (restores every stat to its base, run energy to full): test commands the
+  old server had; OpenRune ignores unknown commands without a reply, which looked like an account problem on qhand1.
+- **Missing mesanims:** the Lumbridge Doomsayer's `mesanim.scared` (in mesanim.rscm, but not in the server's
+  mesanim.toml) threw "Error Loading MesAnim" and the player was disconnected; added with the `chatscared` seqs that
+  `worried` uses (**guess** that they match). Port Sarim's sleeping guard used `mesanim.sleep`, which exists nowhere;
+  now `bored` (**guess**). `MesAnimTypesTest` checks every mesanim name the content uses.
+- **Upstream candidates:** (1) the mesanim data fix (both); (2) script exceptions: `PlayerInputProcess` /
+  `PlayerMainProcess.tryOrDisconnect` call `forceDisconnect()` for any exception in the player's cycle, so a bug in one
+  dialogue logs the player out; cancelling the failed script (close the dialogue, keep the session) would be a design
+  change for upstream to discuss; (3) `ItemServerType.tradeable` ignoring items.toml's `tradeable = false` (death drops
+  use it too).

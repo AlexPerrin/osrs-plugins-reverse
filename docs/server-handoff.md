@@ -21,6 +21,33 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-17, eighteenth server dev, on OpenRune)
+
+Details in `docs/openrune-port.md`, "Eighteenth server dev" and the sections after it. Protocol unchanged.
+
+- **Misthalin Mystery: complete** with Quest Helper on a fresh desktop account (qhtest2), stage 0 to 135; QH's
+  step keys equal the server's `MisthalinStage` values. No server bug found in the quest.
+- **Ernest stage 2 confirmed** on a fresh account (qhtest3): first Oddenstein talk sets varp 32 = 2.
+- **Black screen on login (desktop) fixed** (upstream 57): the login fallback could pick the fullscreen world map
+  frame (`toplevel_display`) and save it. Reproduced with the stone-arrangement bit (set by opening the fullscreen
+  map) plus a saved frame that does not match the client mode. Android is not affected.
+- **Children of the Sun** sets `vmq1` = 14 (QH "Report back to Sergeant Tobyn") on the fourth correct mark
+  (upstream 58; the trigger point is a guess). His Faithful Servants and Daddy's Home stages match QH (audit in the
+  port doc).
+- **Desktop driving:** fresh accounts via `desktop.sh login <user> <pass>`; scene-base / `invoke_menu_action` tips
+  in docs/multi-client.md "Driving tips". QH drops the helper at the first region load after a new account's
+  first login (QH behaviour); teleport once before "Start Quest Helper".
+- **Deployed** 23:57 UTC: 43e944f + 330dc44.
+- **Test accounts:** qhtest1 (Misthalin stage 25), qhtest2 (Misthalin done),
+  qhtest3 (Ernest stage 2, fullscreen-map repro), qhtest4 (Children of the Sun done). qhtest1/qhtest3 recovered after the 57 deploy (log in to 164).
+- Upstream: 58 patches; all `git am` on the pin (scratch clone `up` in this session's scratchpad has 01-58).
+- **Children of the Sun: complete** with QH on fresh qhtest4 (deployed 330dc44): the 4th correct mark sets 14 and QH
+  shows "Report back to Sergeant Tobyn"; Tobyn -> roof 16 -> 24, scroll 1 QP. The guard tail (stage 6) was skipped
+  with `::quest children 10` (real-time line-of-sight stealth; unit-tested).
+- **Next candidates:** runs of Daddy's Home (qhtest4 at stage 1), His Faithful Servants on fresh accounts (HFS needs
+  `::god` for the Barrows run; turn it off); Gertrude's Cat leftovers (shared Fluffs hide for 100 ticks, Stroke =
+  pick-up) - check whether the cache's Fluffs is a multinpc on the quest varbit before changing the hide.
+
 ## Latest state (2026-10-17, seventeenth server dev, on OpenRune)
 
 Details in `docs/openrune-port.md`, "Seventeenth server dev" and the sections after it. Protocol unchanged.

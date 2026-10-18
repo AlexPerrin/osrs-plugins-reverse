@@ -1,7 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 39 entry (2026-10-18) at the end of "Where things stand".
-> **Start here (gen 40):** see the gen 39 entry's "Next", and docs/app-telemetry.md (privacy patches in every build).
+> **Start here: docs/client-state.md** (current state, gotchas, next tasks). This file is history now; the last entry is gen 40.
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1425,6 +1424,12 @@ session; its notes are in `docs/android-protocol.md`.
     2. When the OBJ_ADD timer fix is deployed: Clue Juggling Timers and Ground Items' despawn timer.
     3. More hub plugins from the ranking (scratchpad ranking.json from gen 38, or refetch). Run netcheck on every one.
     4. Opportunistic: a capture that includes a GE digest fetch (it should hit the sidecar).
+- **2026-10-18 (client dev gen 40)**, commits 40c9ed2..(this entry). From here on, docs/client-state.md holds the current state.
+  - R1 load-time network gate wired and device-verified (40c9ed2; netscan-check.sh). Network QA run: expected hosts plus
+    `dns.google` (system Private DNS validation, now on the expected list). getStats verified (Man hp 7).
+  - Hub: 9 pinned and loaded (1d496a2); Decimal Prices breaks chat Enter (open); No Examine can't remove native entries;
+    Current World NPEs on world 255. Dropped: dude-wheres-my-stuff (NET-RAW), companion-pet, camera-smoothing, pet-info.
+  - tools/device-restore-check.sh (pre/check) replaces the prose end-of-slot checklist.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

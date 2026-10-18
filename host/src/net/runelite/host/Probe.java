@@ -314,6 +314,15 @@ final class Probe {
                     Log.i(TAG, "closeInterface group " + id + " in " + (n.getHash() >>> 16) + ":" + (n.getHash() & 0xffff));
                     break;
                 }
+                case "wmap": {  // "wmap 0 0": the world map API as plugins see it, and surfaceContainsPosition on/off the surface
+                    net.runelite.api.worldmap.WorldMap wm = c.getWorldMap();
+                    Log.i(TAG, "wmap raw " + java.util.Arrays.toString(Native.worldMap()) + " loaded " + wm.getWorldMapRenderer().isLoaded()
+                        + " pos " + wm.getWorldMapPosition() + " zoom " + wm.getWorldMapZoom()
+                        + " contains(Lumbridge 3222,3218) " + Native.worldMapContains(0, 0, 3222, 3218)
+                        + " contains(tower basement 3104,9571) " + Native.worldMapContains(0, 0, 3104, 9571)
+                        + " surface " + wm.getWorldMapData().surfaceContainsPosition(3222, 3218) + "/" + wm.getWorldMapData().surfaceContainsPosition(3104, 9571));
+                    break;
+                }
                 case "examine": {  // "examine <obj> <count>": the server's examine_item clientscript 6003, run client-side
                     c.runScript(6003, id, Integer.parseInt(a[2]), "Probe examine text.", 1, 100, 1, 60, 40);
                     Log.i(TAG, "runScript 6003 obj " + id + " count " + a[2]);

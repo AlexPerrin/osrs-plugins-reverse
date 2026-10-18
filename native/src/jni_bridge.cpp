@@ -281,6 +281,21 @@ jboolean n_chat_remove(JNIEnv*, jclass, jint type, jint id) {
     return client_thread::on_client_thread() && game::chat_remove_message(type, id);
 }
 jint n_next_message_id(JNIEnv*, jclass) { return game::next_message_id(); }
+// World map {present, loaded, zoom * 1000, x, y, map}, or null off the client thread.
+jintArray n_world_map(JNIEnv* env, jclass) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    game::WorldMapState st = game::world_map_state();
+    jint v[6] = {st.present, st.loaded, static_cast<jint>(st.zoom * 1000.0f), st.x, st.y, st.map};
+    jintArray out = env->NewIntArray(6);
+    env->SetIntArrayRegion(out, 0, 6, v);
+    return out;
+}
+jint n_world_map_contains(JNIEnv*, jclass, jint map, jint level, jint x, jint z) {
+    return client_thread::on_client_thread() ? game::world_map_contains(map, level, x, z) : -1;
+}
+jboolean n_world_map_jump(JNIEnv*, jclass, jint level, jint x, jint z) {
+    return client_thread::on_client_thread() && game::world_map_jump(level, x, z);
+}
 jint n_afk_timeout(JNIEnv*, jclass) { return game::afk_timeout_minutes(); }
 jboolean n_set_afk_timeout(JNIEnv*, jclass, jint minutes) {
     return client_thread::on_client_thread() && game::set_afk_timeout_minutes(minutes);
@@ -1536,6 +1551,9 @@ const JNINativeMethod kNatives[] = {
     {"chatRemove", "(II)Z", reinterpret_cast<void*>(n_chat_remove)},
     {"chatChanged", "()V", reinterpret_cast<void*>(n_chat_changed)},
     {"nextMessageId", "()I", reinterpret_cast<void*>(n_next_message_id)},
+    {"worldMap", "()[I", reinterpret_cast<void*>(n_world_map)},
+    {"worldMapContains", "(IIII)I", reinterpret_cast<void*>(n_world_map_contains)},
+    {"worldMapJump", "(III)Z", reinterpret_cast<void*>(n_world_map_jump)},
     {"afkTimeout", "()I", reinterpret_cast<void*>(n_afk_timeout)},
     {"setAfkTimeout", "(I)Z", reinterpret_cast<void*>(n_set_afk_timeout)},
     {"serverVarp", "(I)I", reinterpret_cast<void*>(n_server_varp)},

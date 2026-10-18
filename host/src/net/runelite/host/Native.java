@@ -202,6 +202,12 @@ final class Native {
     static native void chatChanged();
     /** The id the game's next chat message will get (its global message counter). */
     static native int nextMessageId();
+    /** Client thread: the game's world map {present, loaded, zoom * 1000, display x, y, current map id}, else null. */
+    static native int[] worldMap();
+    /** Client thread: worldmap_coordinmap(map, level, x, z) = 0/1, -1 when the map area isn't known. */
+    static native int worldMapContains(int map, int level, int x, int z);
+    /** Client thread: worldmap_jumptosourcecoord (smooth scroll). */
+    static native boolean worldMapJump(int level, int x, int z);
     /** Sprite by id, frame 0: {width, height, ARGB pixels...}, null while not loaded; client thread only. */
     static native int[] sprite(int id);
     /** Writes same-size ARGB pixels into the game's cached sprite; client thread only. */

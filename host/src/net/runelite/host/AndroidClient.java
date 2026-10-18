@@ -576,26 +576,48 @@ public class AndroidClient extends ClientStub {
     public net.runelite.api.EnumComposition getEnum(int id) {
         return AndroidEnum.lookup(id);
     }
-    /** The world map isn't mapped: an inert map; its data approximates the surface area (below). */
+    /**
+     * The game's world map (Client +0x418660, the object behind the CS2 worldmap_* opcodes; static RE
+     * gen 31, docs/offsets.md "World map"): position, zoom, loaded flag, the surface map area test and
+     * the smooth jump. Map regions (WorldMapRegion tiles/icons) are not read.
+     */
+    static final int SURFACE_MAP = 0;  // map area id 0 = the main surface map // unverified: from desktop
     private final WorldMapBag worldMap = new WorldMapBag() {
+        private int[] state() {
+            int[] s = Native.worldMap();
+            return s != null && s[0] != 0 ? s : null;
+        }
         private final WorldMapDataBag data = new WorldMapDataBag() {
             /**
-             * Desktop tests the main surface map area's sections. The game's world map data isn't
-             * read, so approximate it with the surface coordinate band: underground and separate
-             * map areas (dungeons, Zanaris, instances' template areas) sit at y >= 4160 or x < 1024.
-             * Quest Helper's far minimap arrow needs start and target to agree; World Map's
-             * overlay skips points outside the surface.
-             * // unverified: coordinate band, not the game's map area sections
+             * worldmap_coordinmap on the surface map area, level 0. When the area table isn't
+             * readable, the surface coordinate band (underground and separate areas sit at
+             * y >= 4160 or x < 1024). Quest Helper's far minimap arrow and World Map's overlay use it.
+             * // unverified: map id 0 / level 0 as desktop's surfaceContainsPosition
              */
             @Override public boolean surfaceContainsPosition(int x, int y) {
+                int r = Native.worldMapContains(SURFACE_MAP, 0, x, y);
+                if (r >= 0) return r == 1;
                 return x >= 1024 && x < 4160 && y >= 2304 && y < 4160;
             }
         };
         @Override public net.runelite.api.worldmap.WorldMapData getWorldMapData() { return data; }
-        // The game's world map regions aren't read: report it as not loaded, as desktop before its
-        // map is opened (World Map's onClientTick returns early). // unverified: default
+        @Override public net.runelite.api.Point getWorldMapPosition() {
+            int[] s = state();
+            return s == null || s[3] < 0 ? null : new net.runelite.api.Point(s[3], s[4]);
+        }
+        @Override public float getWorldMapZoom() {
+            int[] s = state();
+            return s == null ? 4f : s[2] / 1000f;
+        }
+        @Override public void setWorldMapPositionTarget(net.runelite.api.coords.WorldPoint p) {
+            if (p != null) Native.worldMapJump(p.getPlane(), p.getX(), p.getY());  // unverified: on the device
+        }
         private final net.runelite.api.worldmap.WorldMapRenderer renderer = new net.runelite.api.worldmap.WorldMapRenderer() {
-            @Override public boolean isLoaded() { return false; }
+            @Override public boolean isLoaded() {
+                int[] s = state();
+                return s != null && s[1] != 0;
+            }
+            // Regions (per-region tiles and map icons) aren't read. // unverified: default
             @Override public net.runelite.api.worldmap.WorldMapRegion[][] getMapRegions() { return new net.runelite.api.worldmap.WorldMapRegion[0][0]; }
         };
         @Override public net.runelite.api.worldmap.WorldMapRenderer getWorldMapRenderer() { return renderer; }

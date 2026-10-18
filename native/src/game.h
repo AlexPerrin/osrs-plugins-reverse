@@ -451,6 +451,19 @@ void chat_changed();
 // start skips). Game thread, per cycle; no-op when they agree.
 void sync_members_world();
 // Idle logout timeout in minutes (the game's AFKTimeout setting); -1 if unknown. Game thread only.
+// World map (Client +0x418660, the object the CS2 worldmap_* opcodes 6600-6699 use; handler 0x4c3cf8).
+struct WorldMapState {
+    bool present = false;
+    bool loaded = false;  // renderer loaded (worldmap_isloaded)
+    float zoom = 0;       // pixels per tile (1, 1.5, 2, 3, 4, 8)
+    int x = -1, y = -1;   // display position (worldmap_getdisplayposition)
+    int map = -1;         // current map area id (worldmap_getcurrentmap)
+};
+WorldMapState world_map_state();
+// worldmap_coordinmap: -1 = the map area isn't known (not loaded), else 0/1. Game thread.
+int world_map_contains(int map, int level, int x, int z);
+// worldmap_jumptosourcecoord (smooth). Game thread.
+bool world_map_jump(int level, int x, int z);
 int afk_timeout_minutes();
 bool set_afk_timeout_minutes(int minutes);
 // Client varcs (VarClientInt/VarClientStr); false when unset. Game thread only.

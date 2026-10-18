@@ -1298,6 +1298,75 @@ uintptr_t chat_channel(int type) {
 // Idle logout (0x41d0a4, IDLE = client prot 97 at 0x4216f8): the game logs out when
 // settings->AFKTimeout (minutes; Settings* at Client +0x2278, int +0x154c, 5 by default) * 60000
 // ms have passed since the last input (Client +0x413270, ms).
+// ---- World map. Static RE gen 31 of the worldmap_* handler (ELF 0x4c3cf8): zoom 6603 = float
+// wm+0xfc (0x4b7570 maps 1/1.5/2/3/4/else to 25/37/50/75/100/200), isloaded 6605 = byte
+// *(wm+0xd8)+0x14 (0x4b6158), display position 6610 = wm+0xe0/+0xe4 + current area's
+// regionLowX/Y (+0x50/+0x58) * 64 (0x4b795c/0x4b797c), current map 6616 = *(int*)area (area = wm+0xb8),
+// coordinmap 6621 = area lookup by id in the wm+0x78 bucket table (0x4b6be0) and the area's sections
+// (+0x68..+0x70, 16-byte {ctrl, section*}) vtable slot 6 contains(level, x, z) (0x5c57f4).
+static constexpr uintptr_t kClientWorldMap = 0x418660;
+
+static uintptr_t world_map() {
+    uintptr_t c = client();
+    return c ? read_at<uintptr_t>(c + kClientWorldMap) : 0;
+}
+
+WorldMapState world_map_state() {
+    WorldMapState st;
+    uintptr_t wm = world_map();
+    if (!g_build || !wm) return st;
+    st.present = true;
+    uintptr_t r = read_at<uintptr_t>(wm + 0xd8);
+    st.loaded = r && read_at<uint8_t>(r + 0x14) != 0;
+    st.zoom = read_at<float>(wm + 0xfc);
+    uintptr_t area = read_at<uintptr_t>(wm + 0xb8);
+    if (area) {
+        st.map = read_at<int32_t>(area);
+        st.x = read_at<int32_t>(wm + 0xe0) + read_at<int32_t>(area + 0x50) * 64;
+        st.y = read_at<int32_t>(wm + 0xe4) + read_at<int32_t>(area + 0x58) * 64;
+    }
+    return st;
+}
+
+int world_map_contains(int map, int level, int x, int z) {
+    uintptr_t wm = world_map();
+    if (!g_build || !wm) return -1;
+    uintptr_t buckets = read_at<uintptr_t>(wm + 0x78);
+    uint64_t count = read_at<uint64_t>(wm + 0x80);
+    if (!buckets || count == 0 || count > 4096) return -1;
+    uintptr_t area = 0;
+    for (uint64_t b = 0; b < count && !area; b++) {
+        int guard = 0;
+        for (uintptr_t node = read_at<uintptr_t>(buckets + b * 8); node && guard < 4096; guard++) {
+            uintptr_t a = read_at<uintptr_t>(node + 0x20);
+            if (a && read_at<int32_t>(a) == map) { area = a; break; }
+            uintptr_t next = read_at<uintptr_t>(node + 0x28);
+            // The last node of a bucket chains into the next bucket's first node (0x4b6be0 walks
+            // on until the end sentinel); stop at the bucket boundary instead.
+            if (next == read_at<uintptr_t>(buckets + (b + 1) * 8)) break;
+            node = next;
+        }
+    }
+    if (!area) return -1;
+    uintptr_t it = read_at<uintptr_t>(area + 0x68), end = read_at<uintptr_t>(area + 0x70);
+    if (it > end || end - it > 0x10 * 4096) return -1;
+    for (; it < end; it += 0x10) {
+        uintptr_t sec = read_at<uintptr_t>(it + 8);
+        if (!sec) continue;
+        uintptr_t vt = read_at<uintptr_t>(sec);
+        auto contains = reinterpret_cast<uint32_t (*)(uintptr_t, int, int, int)>(read_at<uintptr_t>(vt + 0x30));
+        if (contains(sec, level, x, z) & 1) return 1;
+    }
+    return 0;
+}
+
+bool world_map_jump(int level, int x, int z) {
+    uintptr_t wm = world_map();
+    if (!g_build || !wm) return false;
+    reinterpret_cast<void (*)(uintptr_t, int, int, int)>(g_base + 0x4b7854)(wm, level, x, z);
+    return true;
+}
+
 int afk_timeout_minutes() {
     uintptr_t c = client();
     if (!g_build || !c) return -1;

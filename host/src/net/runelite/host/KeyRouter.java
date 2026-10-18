@@ -66,6 +66,30 @@ final class KeyRouter {
         return true;
     }
 
+    private static boolean shiftDown;
+
+    /**
+     * Client thread, per cycle: the overlay's Shift toggle (Native.shiftHeld, what isKeyPressed(KC_SHIFT)
+     * reports) as VK_SHIFT press/release events for KeyListeners, which desktop plugins use to arm
+     * shift-click modes (Line Markers, Ground Markers' hotkey). Listeners only; the game sees no key.
+     */
+    static void syncShift() {
+        boolean held = Native.shiftHeld();
+        if (held == shiftDown) return;
+        shiftDown = held;
+        KeyManager m = manager;
+        if (m == null) return;
+        int mods = held ? java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.SHIFT_MASK : 0;
+        java.awt.event.KeyEvent ke = new java.awt.event.KeyEvent(SOURCE,
+            held ? java.awt.event.KeyEvent.KEY_PRESSED : java.awt.event.KeyEvent.KEY_RELEASED,
+            System.currentTimeMillis(), mods, java.awt.event.KeyEvent.VK_SHIFT, java.awt.event.KeyEvent.CHAR_UNDEFINED);
+        try {
+            if (held) m.processKeyPressed(ke); else m.processKeyReleased(ke);
+        } catch (Throwable t) {
+            Log.e(Host.TAG, "shift key listeners threw", t);
+        }
+    }
+
     /** Client thread: runs the listeners; the event the game should get, or null when consumed. */
     private static KeyEvent process(KeyEvent e) {
         KeyManager m = manager;

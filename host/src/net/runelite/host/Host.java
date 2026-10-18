@@ -518,6 +518,7 @@ public final class Host {
                 cycleStamp++;
                 AndroidWidget.reapplyHidden();
                 if (client instanceof AndroidClient) ((AndroidClient) client).syncModIcons();
+                KeyRouter.syncShift();
                 bus.post(clientTick);
                 WidgetListeners.runCycle(client);
                 WidgetListeners.runTargetMode(client);

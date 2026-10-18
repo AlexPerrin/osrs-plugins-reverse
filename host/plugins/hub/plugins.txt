@@ -1,4 +1,5 @@
 action-progress https://github.com/guillaume009/runelite-plugin-action-progress.git ec2091d59ec74d9856d2190184dc06f335f87976
+afk-countdown https://github.com/Im2be/afk-countdown.git 3f0e352cbcfd7282bd6cf15df42df57ed3bf6ee2
 annoyance-mute https://github.com/Broooklyn/runelite-external-plugins.git 195334815e22ef0dbbc76d74e518c5c0a3ab20cb
 attack-ranges https://github.com/tylerwgrass/attack-ranges.git 35fc4575ad64b9678b886c08c008bb03d434c9b2
 attacktimer https://github.com/ngraves95/attacktimer.git 52c321783bc52e5772a51fded4efd7d2523a37ac
@@ -18,7 +19,9 @@ corner-tile-indicators https://github.com/geheur/Corner-Tile-Indicators.git 05b2
 customizable-xp-drops https://github.com/l2-/template-plugin.git abad441320f001d454ccf67186a0d142c235888a
 damage-counter https://github.com/0anth/damage-counter.git d69450bf84a738c696fa71591cd3a9700562f236
 did-i-compost https://github.com/AbusiveTuna/DidICompost.git d88c635e42951be266253079a4ba6df51757a390
+dropsounds https://github.com/MitzDK/DropSounds.git b65023428b63bf9dd52666479de16c5a8a3cd2f5
 easy-empty https://github.com/jpeter17/easy-empty.git 3c8a143b79e797f24ff3ca4d01bee4c7fa33bb18
+effective-level https://github.com/XrioBtw/effectivelevel-plugin.git 2e9968260b96a2f183ce763b2577dd2da8db94ed
 emote-clue-items https://github.com/larsvansoest/emote-clue-items.git 2ab1220cbccba512c2f6744b217c266524e70be9
 equipment-inspector https://github.com/botanicvelious/Equipment-Inspector.git 19f1b077a3c1304754580f071316b908366edc78
 ess-pouch https://github.com/Adam-/runelite-plugins.git 57a0f35f42a834f4738f58fe40e12bda9bd4fce8
@@ -33,6 +36,7 @@ kitten-tracker https://github.com/pieterjanbuntinx/kitten-tracker.git 6672c661be
 kph-tracker https://github.com/Mrnice98/BossingInfo.git c7f4c8ce8b7d36435ae5b5b6e028a8c6ed91bff9
 large-logout https://github.com/dekvall/runelite-external-plugins.git edcd51ca9e865576ccb91fc75a685de0fd4a3556
 line-markers https://github.com/Skretzo/runelite-plugins.git f5e0754cf356881026e5d0e8110c06531a5aa5e1
+line-of-sight https://github.com/Krazune/LineOfSight.git 13e1a7fea214cb04ff6dd7b0441f455f96f94d27
 loot-logger https://github.com/TheStonedTurtle/Loot-Logger.git f359a7eea8a0021d06beebce296ed04dbaf1af07
 loot-lookup https://github.com/donth77/loot-lookup-plugin.git 58812e18d0f955d597c4894ece0ae23aff1a3a74
 looting-bag-value https://github.com/pwatts6060/runelite-plugins.git b334aa4e3dbce5ebb0036d78b182a1faa5e44a90
@@ -44,16 +48,20 @@ monster-hp-percentage https://github.com/lejeffe/MonsterHP.git 360f0c84d42701057
 not-empty https://github.com/dekvall/runelite-external-plugins.git 0c1c5cf2a8588ac3b017e7026c393d2eee4980c3
 npc-id https://github.com/Skretzo/runelite-plugins.git a9e282772b46d7dcdb01e5d80b77e037a10a77c3
 object-hider https://github.com/dey0/pluginhub-plugins.git 49ec944000c45bed16f96a6fe0669cf45a924727
+one-tick-flick https://github.com/SuperNerdEric/1-Tick-Flick.git c1c2877560ac2a3c9b0a1a8c3b0ab5655beb0100
+path-marker https://github.com/GeChallengeM/path-marker.git 495f3594bf697a1b9a5313802f731b2c85a6e37e
 pickpocket-helper https://github.com/pajlads/runelite-pickpocket-helper.git 15840d787ca06b705677465b01f19a8d4b11a8b7
 plank-sack https://github.com/Talkarcabbage/planksacktracker.git e13a56ed6cbba3e54701d43924f12df16556fe2e
 player-outline https://github.com/Adam-/runelite-plugins.git 2effa2c2d2900696679488294cb453af94149d22
 radius-markers https://github.com/Skretzo/runelite-plugins.git 02effd4f76fbe8e773da1c604b45bc0be7c9f636
 random-event-hider https://github.com/YvesW/random-event-hider.git 27743728beb8703da13888c9ccefdfc31ec2472e
 resource-packs https://github.com/melkypie/resource-packs.git bd269eda1d4b6f50eba3b8cd84939a20b3b2bd29
+ring-of-recoil-notifier https://github.com/delps1001/recoil-plugin.git 5b61813ee225cb9e25ef3f0120ff642b737870ba
 rogues-den https://github.com/nightfirecat/plugin-hub-plugins.git 3ece9e0401f5ebac9da2762015449d5e68bb0bfc
 shortest-path https://github.com/Skretzo/shortest-path.git 37abff3a3345185fc11fccecae04d8170de25a11
 skills-tab-progress-bars https://github.com/m0bilebtw/skills-tab-progress-bars.git c421ff74691c8ccbe35f99e602a32cd94614afbe
 slayer-assistant https://github.com/LeeOkeefe/slayer-assistant-plugin.git f04cb9a5dc9c60c94d5ad1710eeb2d7f9048ee6f
+spamfilter https://github.com/jackriccomini/spamfilter-plugin-runelite.git c32ec0671fba04fc9371ad43ff0adfb65f799784
 spawnpredictor https://github.com/damencs/spawn-predictor.git 8c5a34d4c88407cda7a6c60d8014018163d97974
 spirit-tree-map https://github.com/MJHylkema/spirit-tree-map.git 25382eeebed8d5b88abfb9710d4040f986687caf
 supplies-tracker https://github.com/pwatts6060/SuppliesTrackerExternal.git c3f6bfb81673781a6acabd96c9bdb7c5a607093a

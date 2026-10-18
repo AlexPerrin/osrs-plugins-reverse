@@ -29,7 +29,12 @@ if [[ ${1:-} == --pin ]]; then
     exit 0
 fi
 
-CP=$(ls "$ROOT"/re/runelite/*.jar | grep -v slf4j-simple | tr '\n' ':')$LOMBOK
+# FlatLaf (compile only, never packed): RuneLite's laf classes extend it (RuneLiteTabbedPaneUI); the
+# host supplies a stand-in for the parts plugins reach (host/src/com/formdev/flatlaf).
+FLATLAF=$ROOT/re/hub-deps/flatlaf-3.2.5.jar
+mkdir -p "$ROOT/re/hub-deps"
+[[ -s $FLATLAF ]] || curl -sfL -o "$FLATLAF" https://repo1.maven.org/maven2/com/formdev/flatlaf/3.2.5/flatlaf-3.2.5.jar
+CP=$(ls "$ROOT"/re/runelite/*.jar | grep -v slf4j-simple | tr '\n' ':')$LOMBOK:$FLATLAF
 for name in "$@"; do
     read -r _ repo commit < <(grep "^$name " "$PINS") || { echo "$name: not pinned (use --pin)"; exit 1; }
     src=$ROOT/re/hub-src/$name

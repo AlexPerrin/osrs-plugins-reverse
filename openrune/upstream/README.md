@@ -80,6 +80,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 64 | `64-dorics-quest` | `content/quest/.../falador/DoricsQuest.kt`, test, `dorics_quest_vars.toml`, quest pack `gamevals.toml`, `QuestDialogue.kt` | New quest (varp 31: 0/10/100, Quest Helper's values); anvils gated until done; "Start Doric's Quest?" prompt title | Needs 12 and 21; journal and after-quest talk are ours |
 | 65 | `65-witchs-potion` | `content/quest/.../rimmington/WitchsPotion.kt`, test, vars, gamevals, `RimmingtonTownsfolkScript.kt`, new drop table `rat.toml` | New quest (varp 67: 0/1/2/3) | Rat's tail through the drop-table quest gate, which never passes under the default assume-completed mode (our server uses a kill hook instead) |
 | 66 | `66-goblin-diplomacy` | `content/quest/.../goblinvillage/GoblinDiplomacy.kt`, test, `QuestTalkFixture.kt`, goblin-village `GoblinCaveLadders.kt`; removes `GoblinGenerals.kt`, `Grubfoot.kt` | New quest on the client varbits (gobdip_main, crate and Grubfoot varbits); lookout ladder handler | Start value 3 inferred from Quest Helper; needs 12 |
+| 67 | `67-vampyre-slayer` | `content/quest/.../draynor/VampyreSlayer.kt`, test, `vampyre_slayer_vars.toml`, `vampyre_slayer_npcs.toml`, quest pack `gamevals.toml`, draynor `DraynorVillageNpcs.kt`, varrock `BlueMoonBartender.kt` (new) | New quest (varp 178: 0/1/2/3, Quest Helper's values) with Count Draynor's coffin, garlic and stake; Morgan's after-quest lines move into the quest; the Blue Moon Inn bartender (the quest's beer). First upstream patch in the CONTRIBUTING format (`feat:`, problem/change/tests/data sources) | Count's regeneration/return to the coffin not done; garlic weakening simplified; needs 12, 64 and 66 |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -210,3 +211,8 @@ upstream's `examine_item` behaviour; `git am` of the remaining 61 patches on the
 Patches 64-66 were added 2026-10-17 (nineteenth server dev, after desktop Quest Helper runs of all three): `git am` of all
 65 remaining patches (08 withdrawn) on the pin applies. Compiled and tested in our tree (our tree's Witch's Potion uses a kill
 hook instead of 65's drop table); the patch versions were not compiled on a pin-only clone.
+
+Patch 67 was added 2026-10-18 (twentieth server dev, after a desktop Quest Helper run of Vampyre Slayer on a fresh
+account): `git am` of all 66 remaining patches (08 withdrawn) on the pin applies. Compiled and tested in our tree; the
+patch version was not compiled on a pin-only clone. From 67 on, commit messages follow upstream's CONTRIBUTING
+(`feat:`/`fix:` subject; problem, change, tests, data sources).

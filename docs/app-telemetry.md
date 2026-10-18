@@ -62,3 +62,34 @@ Suggested minimal set if the user wants it off: **A + C + D**. All three are in 
 (`tools/repack.sh` / `tools/patch_server.py`, which the server session owns): one smali method body and two
 manifest meta-data lines. Each can be verified on the device by the absence of the `Singular:` /
 `FA` / `FirebaseCrashlytics` log lines at start.
+
+## Applied and verified (gen 37, 2026-10-18)
+
+The user chose **A + C + D**. `tools/patch_telemetry.py` runs as step 1b of `tools/repack.sh` for every
+build, normal and LOCAL_AUTH; normal builds now decode resources too, so that the manifest is text. A
+normal build rebuilt fine but was not installed. The LOCAL_AUTH build was verified on BlueStacks from a
+clean app start (force-stop, cleared logcat, `debug.osrsrl.netlog 1`), then sign-in, Play Now, LOGGED_IN
+and a few minutes of play (walking, tabs, `::nproj`), then a second restart:
+
+- **Singular: gone.** No `Singular` line at all (no "Singular Initialized", no `SingularRequestHandler`), so
+  no `/start`, `/event`, config or exception requests. Sign-in and play are unaffected.
+- **Firebase Analytics: off.** `FA: App measurement deactivated via the manifest`. Play services' own
+  `PackageMeasurementTaskService` upload jobs still get scheduled in the gms process; they belong to
+  Google Play services, not the app.
+- **Crashlytics: collection off.** It still initialises (`Initializing Firebase Crashlytics 20.0.2`, native
+  handler installed), and `FirebaseSessions: Sessions SDK disabled through data collection. Events will
+  not be sent.` No upload lines.
+- **Still active (not part of A/C/D):**
+  - **OneTrust**: `GET https://mobile-data.onetrust.io/cfw/cmp/v1/banner` returns 200 (consent banner
+    config; it logs a geolocation country/region), with parameters for `cdn-ukwest.onetrust.com`. This
+    is the read-only fetch we expected.
+  - **Braze**: active. It registers the FCM push token, "Requesting immediate data flush to Braze", sets
+    a user, and resolves `sdk.fra-01.braze.eu`. It is configured from resources (`com_braze_api_key`),
+    not from the code paths patched here. To stop it, an option is to blank `com_braze_api_key` /
+    `com_braze_custom_endpoint` in `res/values/strings.xml`, or to disable Braze's lifecycle hook (risk
+    not assessed yet).
+  - DNS lookups netd logged during the run: `api.runelite.net` and `static.runelite.net` (the host's
+    read-only GETs: prices and NPC data), `sdk.fra-01.braze.eu` (Braze), and **`account.jagex.com`**,
+    which the app looked up right after Play Now, next to its billing client starting ("In-app billing
+    API version 3 is not supported"). Whether a connection followed is not visible in logcat. netd only
+    logs some lookups, so this list is not exhaustive.

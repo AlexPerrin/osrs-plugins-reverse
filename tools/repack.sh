@@ -34,15 +34,16 @@ if [[ -n ${OPENRUNE:-} ]]; then
 fi
 mkdir -p "$OUT"
 
-# 1. Decode classes only (-r keeps resources.arsc untouched; fewer rebuild failures). LOCAL_AUTH
-#    needs the resources decoded too, to allow cleartext HTTP in the network security config.
+# 1. Decode classes and resources (the manifest must be text for the telemetry switches; LOCAL_AUTH
+#    also edits the network security config).
 rm -rf "$RE/apk/base"
+$APKTOOL d -q -f "$ROOT/base.apk" -o "$RE/apk/base"
 if [[ -n ${LOCAL_AUTH:-} ]]; then
-    $APKTOOL d -q -f "$ROOT/base.apk" -o "$RE/apk/base"
     python3 -I "$ROOT/tools/patch_local_auth.py" "$RE/apk/base"
-else
-    $APKTOOL d -q -r -f "$ROOT/base.apk" -o "$RE/apk/base"
 fi
+# 1b. Telemetry off, every build (docs/app-telemetry.md): Singular never starts, Firebase Analytics
+#     deactivated, Crashlytics collection off.
+python3 -I "$ROOT/tools/patch_telemetry.py" "$RE/apk/base"
 
 # 2. Load our library right after the game's.
 SMALI=$(grep -rl 'const-string [vp][0-9]*, "libs.hal.system.osclient"' "$RE/apk/base"/smali*/com/jagex/android/)

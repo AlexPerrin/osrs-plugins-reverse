@@ -1,0 +1,30 @@
+Content area from OpenRune/OpenRune-Server#353 (answers there: all of it, one PR per row, ids renumbered against main, wiki data is fine).
+
+From our per-feature patch `13-dwarf-multicannon` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`1be5dfb5f`).
+
+**Problem.** The dwarf multicannon could not be set up.
+
+**Change.** New module `content/other/dwarf-multicannon`:
+- Set-up in four stages, loading, firing, pick-up and decay, with the OSRS varps client plugins read (`dropcannon` stage, `rockthrower` ammo, `ownedmcannon` coord, `mcannon_decayed`).
+- A cannon left behind by a logout, or one that decays, goes back to the owner's bank.
+
+Server-only ids, numbered after the ids already on main and not shared with any of our other PRs, so they merge in any order: timers `mcannon_fire` 431, `mcannon_decay` 432.
+
+**Tests.** `DwarfMulticannonTest` (7, integration).
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): buildCache pass, `spotlessCheck` pass, `assemble` pass, `test` pass, `integration` pass, boot pass (Server ready in 7.310347166s). `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch, nor with all of our open content PRs merged together.
+
+Nothing was checked in game from this exact branch; the in-game checks above were on our own server build (an older main plus these and our other patches).
+
+**Data sources.** Varps and locs from the cache; varp meanings as RuneLite's Cannon plugin reads them (BSD).
+
+**Release note.** The dwarf multicannon can be set up, loaded, fired and picked up.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

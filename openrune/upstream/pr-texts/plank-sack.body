@@ -1,0 +1,33 @@
+Content area from OpenRune/OpenRune-Server#353 (answers there: all of it, one PR per row, ids renumbered against main, wiki data is fine).
+
+From our per-feature patch `30-plank-sack` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`1be5dfb5f`).
+
+**Problem.** The plank sack had no Fill, Check or Empty.
+
+**Change.** New module `content/other/plank-sack`:
+- Up to 28 planks of the seven types in the `plank_sack_*` varbits RuneLite's Plank Sack plugin reads.
+- Fill (or a plank used on the sack), Check ('Oak planks: 3' per type, 'Your sack is currently empty.'), Empty into the inventory.
+- A `PlayerItemStorageHook` lets content use planks straight from the sack while it is in the inventory (inventory first).
+
+**Tests.** `PlankSackScriptTest` (3, integration).
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): buildCache pass, `spotlessCheck` pass, `assemble` pass, `test` pass, `integration` pass, boot pass (Server ready in 8.151531140s). `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch, nor with all of our open content PRs merged together.
+
+Nothing was checked in game from this exact branch; the in-game checks above were on our own server build (an older main plus these and our other patches).
+
+**Data sources.** Varbits from the cache; Check wording as RuneLite's Plank Sack plugin parses it (BSD).
+
+**Caveats.**
+- Fill/full/no-space messages are best guesses.
+- The sawmill does not fill the sack yet.
+
+**Release note.** The plank sack can be filled, checked and emptied, and building can use planks from it.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

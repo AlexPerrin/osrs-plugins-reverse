@@ -1,12 +1,12 @@
-From a84e0a26ecc311c7e4f3fb656664ef94d1a42556 Mon Sep 17 00:00:00 2001
+From 7b62ce683414f32db711edcca240e6ebebba215f Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Fri, 16 Oct 2026 20:36:16 -0400
-Subject: [PATCH] Add the dwarf multicannon
+Subject: [PATCH] feat: dwarf multicannon
 
 Set-up in four stages, loading, firing, pick-up and decay, with the OSRS varps
 client plugins read (dropcannon stage, rockthrower ammo, ownedmcannon coord,
 mcannon_decayed). A cannon left behind by a logout, or one that decays, goes
-back to the owner's bank. Timers mcannon_fire (440) and mcannon_decay (441).
+back to the owner's bank. Timers mcannon_fire (431) and mcannon_decay (432).
 Integration tests in DwarfMulticannonTest.
 ---
  .../other/dwarf-multicannon/build.gradle.kts  |   8 +
@@ -678,13 +678,10 @@ index 000000000..89ed9ba6e
 +var Player.cannonDecayed: Boolean by boolVarBit("varbit.mcannon_decayed")
 diff --git a/content/other/dwarf-multicannon/src/main/resources/gamevals.toml b/content/other/dwarf-multicannon/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..724a884e2
+index 000000000..cb54d20a6
 --- /dev/null
 +++ b/content/other/dwarf-multicannon/src/main/resources/gamevals.toml
 @@ -0,0 +1,3 @@
 +[gamevals.timer]
-+mcannon_fire = 440
-+mcannon_decay = 441
--- 
-2.43.0
-
++mcannon_fire = 431
++mcannon_decay = 432

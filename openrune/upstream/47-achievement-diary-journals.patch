@@ -1,7 +1,7 @@
-From dd9a940af423be17a88ce836a20a9ba7fc82d41e Mon Sep 17 00:00:00 2001
+From 9ba3600fe0ae06103011c03a16c263d72f0762e3 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 11:00:45 -0400
-Subject: [PATCH] Interfaces: achievement diary journals (Lumbridge & Draynor,
+Subject: [PATCH] feat: achievement diary journals (Lumbridge & Draynor,
  Varrock)
 
 Open <area> Journal in the Achievement Diaries side tab (area_task) opens the
@@ -350,100 +350,97 @@ index 000000000..84d1d3d4e
 +}
 diff --git a/content/interfaces/achievement-diary/src/main/resources/gamevals.toml b/content/interfaces/achievement-diary/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..ebe03f3d9
+index 000000000..9c8a9f6ba
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/src/main/resources/gamevals.toml
 @@ -0,0 +1,90 @@
 +[gamevals.dbtable]
-+achievement_diaries = 60022
-+achievement_diary_tasks = 60023
++achievement_diaries = 56015
++achievement_diary_tasks = 56016
 +
 +[gamevals.dbrow]
-+achievement_diary_lumbridge = 60560
-+achievement_diary_varrock = 60561
-+achievement_diary_lumbridge_easy_1 = 60570
-+achievement_diary_lumbridge_easy_2 = 60571
-+achievement_diary_lumbridge_easy_3 = 60572
-+achievement_diary_lumbridge_easy_4 = 60573
-+achievement_diary_lumbridge_easy_5 = 60574
-+achievement_diary_lumbridge_easy_6 = 60575
-+achievement_diary_lumbridge_easy_7 = 60576
-+achievement_diary_lumbridge_easy_8 = 60577
-+achievement_diary_lumbridge_easy_9 = 60578
-+achievement_diary_lumbridge_easy_10 = 60579
-+achievement_diary_lumbridge_easy_11 = 60580
-+achievement_diary_lumbridge_easy_12 = 60581
-+achievement_diary_lumbridge_medium_1 = 60582
-+achievement_diary_lumbridge_medium_2 = 60583
-+achievement_diary_lumbridge_medium_3 = 60584
-+achievement_diary_lumbridge_medium_4 = 60585
-+achievement_diary_lumbridge_medium_5 = 60586
-+achievement_diary_lumbridge_medium_6 = 60587
-+achievement_diary_lumbridge_medium_7 = 60588
-+achievement_diary_lumbridge_medium_8 = 60589
-+achievement_diary_lumbridge_medium_9 = 60590
-+achievement_diary_lumbridge_medium_10 = 60591
-+achievement_diary_lumbridge_medium_11 = 60592
-+achievement_diary_lumbridge_medium_12 = 60593
-+achievement_diary_lumbridge_hard_1 = 60594
-+achievement_diary_lumbridge_hard_2 = 60595
-+achievement_diary_lumbridge_hard_3 = 60596
-+achievement_diary_lumbridge_hard_4 = 60597
-+achievement_diary_lumbridge_hard_5 = 60598
-+achievement_diary_lumbridge_hard_6 = 60599
-+achievement_diary_lumbridge_hard_7 = 60600
-+achievement_diary_lumbridge_hard_8 = 60601
-+achievement_diary_lumbridge_hard_9 = 60602
-+achievement_diary_lumbridge_hard_10 = 60603
-+achievement_diary_lumbridge_hard_11 = 60604
-+achievement_diary_lumbridge_elite_1 = 60605
-+achievement_diary_lumbridge_elite_2 = 60606
-+achievement_diary_lumbridge_elite_3 = 60607
-+achievement_diary_lumbridge_elite_4 = 60608
-+achievement_diary_lumbridge_elite_5 = 60609
-+achievement_diary_lumbridge_elite_6 = 60610
-+achievement_diary_varrock_easy_1 = 60611
-+achievement_diary_varrock_easy_2 = 60612
-+achievement_diary_varrock_easy_3 = 60613
-+achievement_diary_varrock_easy_4 = 60614
-+achievement_diary_varrock_easy_5 = 60615
-+achievement_diary_varrock_easy_6 = 60616
-+achievement_diary_varrock_easy_7 = 60617
-+achievement_diary_varrock_easy_8 = 60618
-+achievement_diary_varrock_easy_9 = 60619
-+achievement_diary_varrock_easy_10 = 60620
-+achievement_diary_varrock_easy_11 = 60621
-+achievement_diary_varrock_easy_12 = 60622
-+achievement_diary_varrock_easy_13 = 60623
-+achievement_diary_varrock_easy_14 = 60624
-+achievement_diary_varrock_medium_1 = 60625
-+achievement_diary_varrock_medium_2 = 60626
-+achievement_diary_varrock_medium_3 = 60627
-+achievement_diary_varrock_medium_4 = 60628
-+achievement_diary_varrock_medium_5 = 60629
-+achievement_diary_varrock_medium_6 = 60630
-+achievement_diary_varrock_medium_7 = 60631
-+achievement_diary_varrock_medium_8 = 60632
-+achievement_diary_varrock_medium_9 = 60633
-+achievement_diary_varrock_medium_10 = 60634
-+achievement_diary_varrock_medium_11 = 60635
-+achievement_diary_varrock_medium_12 = 60636
-+achievement_diary_varrock_medium_13 = 60637
-+achievement_diary_varrock_hard_1 = 60638
-+achievement_diary_varrock_hard_2 = 60639
-+achievement_diary_varrock_hard_3 = 60640
-+achievement_diary_varrock_hard_4 = 60641
-+achievement_diary_varrock_hard_5 = 60642
-+achievement_diary_varrock_hard_6 = 60643
-+achievement_diary_varrock_hard_7 = 60644
-+achievement_diary_varrock_hard_8 = 60645
-+achievement_diary_varrock_hard_9 = 60646
-+achievement_diary_varrock_hard_10 = 60647
-+achievement_diary_varrock_elite_1 = 60648
-+achievement_diary_varrock_elite_2 = 60649
-+achievement_diary_varrock_elite_3 = 60650
-+achievement_diary_varrock_elite_4 = 60651
-+achievement_diary_varrock_elite_5 = 60652
--- 
-2.43.0
-
++achievement_diary_lumbridge = 60351
++achievement_diary_varrock = 60352
++achievement_diary_lumbridge_easy_1 = 60353
++achievement_diary_lumbridge_easy_2 = 60354
++achievement_diary_lumbridge_easy_3 = 60355
++achievement_diary_lumbridge_easy_4 = 60356
++achievement_diary_lumbridge_easy_5 = 60357
++achievement_diary_lumbridge_easy_6 = 60358
++achievement_diary_lumbridge_easy_7 = 60359
++achievement_diary_lumbridge_easy_8 = 60360
++achievement_diary_lumbridge_easy_9 = 60361
++achievement_diary_lumbridge_easy_10 = 60362
++achievement_diary_lumbridge_easy_11 = 60363
++achievement_diary_lumbridge_easy_12 = 60364
++achievement_diary_lumbridge_medium_1 = 60365
++achievement_diary_lumbridge_medium_2 = 60366
++achievement_diary_lumbridge_medium_3 = 60367
++achievement_diary_lumbridge_medium_4 = 60368
++achievement_diary_lumbridge_medium_5 = 60369
++achievement_diary_lumbridge_medium_6 = 60370
++achievement_diary_lumbridge_medium_7 = 60371
++achievement_diary_lumbridge_medium_8 = 60372
++achievement_diary_lumbridge_medium_9 = 60373
++achievement_diary_lumbridge_medium_10 = 60374
++achievement_diary_lumbridge_medium_11 = 60375
++achievement_diary_lumbridge_medium_12 = 60376
++achievement_diary_lumbridge_hard_1 = 60377
++achievement_diary_lumbridge_hard_2 = 60378
++achievement_diary_lumbridge_hard_3 = 60379
++achievement_diary_lumbridge_hard_4 = 60380
++achievement_diary_lumbridge_hard_5 = 60381
++achievement_diary_lumbridge_hard_6 = 60382
++achievement_diary_lumbridge_hard_7 = 60383
++achievement_diary_lumbridge_hard_8 = 60384
++achievement_diary_lumbridge_hard_9 = 60385
++achievement_diary_lumbridge_hard_10 = 60386
++achievement_diary_lumbridge_hard_11 = 60387
++achievement_diary_lumbridge_elite_1 = 60388
++achievement_diary_lumbridge_elite_2 = 60389
++achievement_diary_lumbridge_elite_3 = 60390
++achievement_diary_lumbridge_elite_4 = 60391
++achievement_diary_lumbridge_elite_5 = 60392
++achievement_diary_lumbridge_elite_6 = 60393
++achievement_diary_varrock_easy_1 = 60394
++achievement_diary_varrock_easy_2 = 60395
++achievement_diary_varrock_easy_3 = 60396
++achievement_diary_varrock_easy_4 = 60397
++achievement_diary_varrock_easy_5 = 60398
++achievement_diary_varrock_easy_6 = 60399
++achievement_diary_varrock_easy_7 = 60400
++achievement_diary_varrock_easy_8 = 60401
++achievement_diary_varrock_easy_9 = 60402
++achievement_diary_varrock_easy_10 = 60403
++achievement_diary_varrock_easy_11 = 60404
++achievement_diary_varrock_easy_12 = 60405
++achievement_diary_varrock_easy_13 = 60406
++achievement_diary_varrock_easy_14 = 60407
++achievement_diary_varrock_medium_1 = 60408
++achievement_diary_varrock_medium_2 = 60409
++achievement_diary_varrock_medium_3 = 60410
++achievement_diary_varrock_medium_4 = 60411
++achievement_diary_varrock_medium_5 = 60412
++achievement_diary_varrock_medium_6 = 60413
++achievement_diary_varrock_medium_7 = 60414
++achievement_diary_varrock_medium_8 = 60415
++achievement_diary_varrock_medium_9 = 60416
++achievement_diary_varrock_medium_10 = 60417
++achievement_diary_varrock_medium_11 = 60418
++achievement_diary_varrock_medium_12 = 60419
++achievement_diary_varrock_medium_13 = 60420
++achievement_diary_varrock_hard_1 = 60421
++achievement_diary_varrock_hard_2 = 60422
++achievement_diary_varrock_hard_3 = 60423
++achievement_diary_varrock_hard_4 = 60424
++achievement_diary_varrock_hard_5 = 60425
++achievement_diary_varrock_hard_6 = 60426
++achievement_diary_varrock_hard_7 = 60427
++achievement_diary_varrock_hard_8 = 60428
++achievement_diary_varrock_hard_9 = 60429
++achievement_diary_varrock_hard_10 = 60430
++achievement_diary_varrock_elite_1 = 60431
++achievement_diary_varrock_elite_2 = 60432
++achievement_diary_varrock_elite_3 = 60433
++achievement_diary_varrock_elite_4 = 60434
++achievement_diary_varrock_elite_5 = 60435

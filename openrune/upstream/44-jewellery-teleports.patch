@@ -1,7 +1,7 @@
-From 1586f7bf6d6e57a4d5d36cb0968b5b710c0f36dd Mon Sep 17 00:00:00 2001
+From 96b6393e5d54ce6622fd2c8babb74d3b4d18357d Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 09:44:11 -0400
-Subject: [PATCH] Travel: jewellery teleports (games necklace, dueling, glory, 
+Subject: [PATCH] feat: jewellery teleports (games necklace, dueling, glory,
  skills, combat)
 
 Rub opens the teleport menu (interface 187 via script 217 with hotkeys, as
@@ -446,72 +446,69 @@ index 000000000..a62a135cf
 +}
 diff --git a/content/travel/jewellery-teleports/src/main/resources/gamevals.toml b/content/travel/jewellery-teleports/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..d962a9ba2
+index 000000000..a1b761911
 --- /dev/null
 +++ b/content/travel/jewellery-teleports/src/main/resources/gamevals.toml
 @@ -0,0 +1,62 @@
 +[gamevals.dbtable]
-+jewellery_teleport_items = 60020
-+jewellery_teleport_dests = 60021
++jewellery_teleport_items = 56013
++jewellery_teleport_dests = 56014
 +
 +[gamevals.dbrow]
-+jewellery_teleport_games_necklace_1 = 60500
-+jewellery_teleport_games_necklace_2 = 60501
-+jewellery_teleport_games_necklace_3 = 60502
-+jewellery_teleport_games_necklace_4 = 60503
-+jewellery_teleport_games_necklace_5 = 60504
-+jewellery_teleport_games_necklace_6 = 60505
-+jewellery_teleport_games_necklace_7 = 60506
-+jewellery_teleport_games_necklace_8 = 60507
-+jewellery_teleport_ring_of_dueling_1 = 60508
-+jewellery_teleport_ring_of_dueling_2 = 60509
-+jewellery_teleport_ring_of_dueling_3 = 60510
-+jewellery_teleport_ring_of_dueling_4 = 60511
-+jewellery_teleport_ring_of_dueling_5 = 60512
-+jewellery_teleport_ring_of_dueling_6 = 60513
-+jewellery_teleport_ring_of_dueling_7 = 60514
-+jewellery_teleport_ring_of_dueling_8 = 60515
-+jewellery_teleport_amulet_of_glory_1 = 60516
-+jewellery_teleport_amulet_of_glory_2 = 60517
-+jewellery_teleport_amulet_of_glory_3 = 60518
-+jewellery_teleport_amulet_of_glory_4 = 60519
-+jewellery_teleport_amulet_of_glory_5 = 60520
-+jewellery_teleport_amulet_of_glory_6 = 60521
-+jewellery_teleport_dest_games_burthorpe = 60522
-+jewellery_teleport_dest_games_barbarian_outpost = 60523
-+jewellery_teleport_dest_games_corporeal_beast = 60524
-+jewellery_teleport_dest_games_tears_of_guthix = 60525
-+jewellery_teleport_dest_games_wintertodt = 60526
-+jewellery_teleport_dest_dueling_emirs_arena = 60527
-+jewellery_teleport_dest_dueling_castle_wars = 60528
-+jewellery_teleport_dest_dueling_ferox_enclave = 60529
-+jewellery_teleport_dest_dueling_fortis_colosseum = 60530
-+jewellery_teleport_dest_glory_edgeville = 60531
-+jewellery_teleport_dest_glory_karamja = 60532
-+jewellery_teleport_dest_glory_draynor_village = 60533
-+jewellery_teleport_dest_glory_al_kharid = 60534
-+jewellery_teleport_skills_necklace_1 = 60535
-+jewellery_teleport_skills_necklace_2 = 60536
-+jewellery_teleport_skills_necklace_3 = 60537
-+jewellery_teleport_skills_necklace_4 = 60538
-+jewellery_teleport_skills_necklace_5 = 60539
-+jewellery_teleport_skills_necklace_6 = 60540
-+jewellery_teleport_combat_bracelet_1 = 60541
-+jewellery_teleport_combat_bracelet_2 = 60542
-+jewellery_teleport_combat_bracelet_3 = 60543
-+jewellery_teleport_combat_bracelet_4 = 60544
-+jewellery_teleport_combat_bracelet_5 = 60545
-+jewellery_teleport_combat_bracelet_6 = 60546
-+jewellery_teleport_dest_skills_fishing_guild = 60547
-+jewellery_teleport_dest_skills_mining_guild = 60548
-+jewellery_teleport_dest_skills_crafting_guild = 60549
-+jewellery_teleport_dest_skills_cooking_guild = 60550
-+jewellery_teleport_dest_skills_woodcutting_guild = 60551
-+jewellery_teleport_dest_skills_farming_guild = 60552
-+jewellery_teleport_dest_combat_warriors_guild = 60553
-+jewellery_teleport_dest_combat_champions_guild = 60554
-+jewellery_teleport_dest_combat_monastery = 60555
-+jewellery_teleport_dest_combat_ranging_guild = 60556
--- 
-2.43.0
-
++jewellery_teleport_games_necklace_1 = 60294
++jewellery_teleport_games_necklace_2 = 60295
++jewellery_teleport_games_necklace_3 = 60296
++jewellery_teleport_games_necklace_4 = 60297
++jewellery_teleport_games_necklace_5 = 60298
++jewellery_teleport_games_necklace_6 = 60299
++jewellery_teleport_games_necklace_7 = 60300
++jewellery_teleport_games_necklace_8 = 60301
++jewellery_teleport_ring_of_dueling_1 = 60302
++jewellery_teleport_ring_of_dueling_2 = 60303
++jewellery_teleport_ring_of_dueling_3 = 60304
++jewellery_teleport_ring_of_dueling_4 = 60305
++jewellery_teleport_ring_of_dueling_5 = 60306
++jewellery_teleport_ring_of_dueling_6 = 60307
++jewellery_teleport_ring_of_dueling_7 = 60308
++jewellery_teleport_ring_of_dueling_8 = 60309
++jewellery_teleport_amulet_of_glory_1 = 60310
++jewellery_teleport_amulet_of_glory_2 = 60311
++jewellery_teleport_amulet_of_glory_3 = 60312
++jewellery_teleport_amulet_of_glory_4 = 60313
++jewellery_teleport_amulet_of_glory_5 = 60314
++jewellery_teleport_amulet_of_glory_6 = 60315
++jewellery_teleport_dest_games_burthorpe = 60316
++jewellery_teleport_dest_games_barbarian_outpost = 60317
++jewellery_teleport_dest_games_corporeal_beast = 60318
++jewellery_teleport_dest_games_tears_of_guthix = 60319
++jewellery_teleport_dest_games_wintertodt = 60320
++jewellery_teleport_dest_dueling_emirs_arena = 60321
++jewellery_teleport_dest_dueling_castle_wars = 60322
++jewellery_teleport_dest_dueling_ferox_enclave = 60323
++jewellery_teleport_dest_dueling_fortis_colosseum = 60324
++jewellery_teleport_dest_glory_edgeville = 60325
++jewellery_teleport_dest_glory_karamja = 60326
++jewellery_teleport_dest_glory_draynor_village = 60327
++jewellery_teleport_dest_glory_al_kharid = 60328
++jewellery_teleport_skills_necklace_1 = 60329
++jewellery_teleport_skills_necklace_2 = 60330
++jewellery_teleport_skills_necklace_3 = 60331
++jewellery_teleport_skills_necklace_4 = 60332
++jewellery_teleport_skills_necklace_5 = 60333
++jewellery_teleport_skills_necklace_6 = 60334
++jewellery_teleport_combat_bracelet_1 = 60335
++jewellery_teleport_combat_bracelet_2 = 60336
++jewellery_teleport_combat_bracelet_3 = 60337
++jewellery_teleport_combat_bracelet_4 = 60338
++jewellery_teleport_combat_bracelet_5 = 60339
++jewellery_teleport_combat_bracelet_6 = 60340
++jewellery_teleport_dest_skills_fishing_guild = 60341
++jewellery_teleport_dest_skills_mining_guild = 60342
++jewellery_teleport_dest_skills_crafting_guild = 60343
++jewellery_teleport_dest_skills_cooking_guild = 60344
++jewellery_teleport_dest_skills_woodcutting_guild = 60345
++jewellery_teleport_dest_skills_farming_guild = 60346
++jewellery_teleport_dest_combat_warriors_guild = 60347
++jewellery_teleport_dest_combat_champions_guild = 60348
++jewellery_teleport_dest_combat_monastery = 60349
++jewellery_teleport_dest_combat_ranging_guild = 60350

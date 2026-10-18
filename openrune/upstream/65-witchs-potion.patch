@@ -1,7 +1,10 @@
-From c2a6f8c502640d999ab7b2f8c82dc0997cc5bfe9 Mon Sep 17 00:00:00 2001
+From 18afab0a7b037b85932783015343636c85469816 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 23:51:25 -0400
-Subject: [PATCH 65/66] Witch's Potion
+Subject: [PATCH] feat: Witch's Potion quest
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
 New quest. Progress is varp 67 (hetty) through a server-only varbit: 0,
 1 started, 2 ingredients given, 3 complete (drunk from the cauldron), the
@@ -25,9 +28,9 @@ Guesses: the journal text and the quest scroll item.
  .../resources/drops/tables/monsters/rat.toml  |   8 +
  .../pack/src/main/resources/gamevals.toml     |   1 +
  .../pack/configs/witchs_potion_vars.toml      |   6 +
- .../quest/area/rimmington/WitchsPotion.kt     | 221 ++++++++++++++++++
+ .../quest/area/rimmington/WitchsPotion.kt     | 220 ++++++++++++++++++
  .../rimmington/WitchsPotionInteractionTest.kt |  79 +++++++
- 6 files changed, 315 insertions(+), 7 deletions(-)
+ 6 files changed, 314 insertions(+), 7 deletions(-)
  create mode 100644 content/drops/src/main/resources/drops/tables/monsters/rat.toml
  create mode 100644 content/quest/pack/src/main/resources/pack/configs/witchs_potion_vars.toml
  create mode 100644 content/quest/src/main/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotion.kt
@@ -73,17 +76,17 @@ index 000000000..c79cab127
 +quest = "quest_witchspotion"
 +quest_mode = "during"
 diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml
-index f3d3f4fb4..343f32c75 100644
+index b4e41d645..3a5452a08 100644
 --- a/content/quest/pack/src/main/resources/gamevals.toml
 +++ b/content/quest/pack/src/main/resources/gamevals.toml
-@@ -93,6 +93,7 @@ sheep_shearer_progress = 63740
- sheep_shearer_saw_thing = 63741
- romeo_juliet_progress = 63742
- doric_quest_progress = 63743
-+witchs_potion_progress = 63744
- 
- [gamevals.models]
- misthalin_gem_diamond = 32333
+@@ -84,6 +84,7 @@ cooks_assistant_progress = 63704
+ cooks_assistant_milk = 63705
+ cooks_assistant_egg = 63706
+ cooks_assistant_flour = 63707
++witchs_potion_progress = 63718
+ gertrudes_cat_progress = 63711
+ gertrudes_cat_kitten_crate = 63712
+ gertrudes_cat_met_fluffs = 63713
 diff --git a/content/quest/pack/src/main/resources/pack/configs/witchs_potion_vars.toml b/content/quest/pack/src/main/resources/pack/configs/witchs_potion_vars.toml
 new file mode 100644
 index 000000000..4b0647503
@@ -98,10 +101,10 @@ index 000000000..4b0647503
 +endBit = 1
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotion.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotion.kt
 new file mode 100644
-index 000000000..db122b233
+index 000000000..d0c15e082
 --- /dev/null
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotion.kt
-@@ -0,0 +1,221 @@
+@@ -0,0 +1,220 @@
 +package org.rsmod.content.quest.area.rimmington
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -322,7 +325,6 @@ index 000000000..db122b233
 +        }
 +    }
 +}
-+
 diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotionInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotionInteractionTest.kt
 new file mode 100644
 index 000000000..d9f8e357a
@@ -408,6 +410,3 @@ index 000000000..d9f8e357a
 +        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
 +    }
 +}
--- 
-2.43.0
-

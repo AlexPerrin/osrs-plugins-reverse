@@ -1,7 +1,8 @@
-From c0c2adaf6a590af352ca6eda9885e788027f0d8e Mon Sep 17 00:00:00 2001
+From af57c4ad80496255b90b69b9212b065963407cc8 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 04:01:35 -0400
-Subject: [PATCH] Rune pouch: store, withdraw, empty and the pouch interface
+Subject: [PATCH] feat: rune pouch (store, withdraw, empty and the pouch
+ interface)
 
 The rune pouch and divine rune pouch (and their locked variants) store runes in the
 client-visible rune_pouch_type_n/rune_pouch_quantity_n varbits (compact ids from enum 55, up to
@@ -453,6 +454,3 @@ index 000000000..1d26ceb52
 +            )
 +    }
 +}
--- 
-2.43.0
-

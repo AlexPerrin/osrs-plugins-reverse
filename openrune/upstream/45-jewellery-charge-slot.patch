@@ -1,7 +1,7 @@
-From 407038ec7998ecd52ec4b4900e04055d2a2a42ab Mon Sep 17 00:00:00 2001
+From 6ece8ea133e240caf6de22b121b92c1835490679 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 10:12:22 -0400
-Subject: [PATCH] Travel: jewellery charges keep their inventory or worn slot
+Subject: [PATCH] fix: jewellery charges keep their inventory or worn slot
 
 A charge swap used invReplace, which puts the next charge in the first free
 slot: a worn games necklace moved to the head slot. Replace in place.
@@ -56,6 +56,3 @@ index a62a135cf..12fd7a433 100644
          if (used.failure) return false
          mes("You rub the ${item.rubWord}...")
          val left = item.charges - 1
--- 
-2.43.0
-

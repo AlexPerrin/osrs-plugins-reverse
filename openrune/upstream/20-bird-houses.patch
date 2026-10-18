@@ -1,15 +1,15 @@
-From ea10de00761b6ba1334896d2f77148076ecfcca1 Mon Sep 17 00:00:00 2001
+From 6d8ff309e8b535a97501377898c2a3d0e2f0036c Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Fri, 16 Oct 2026 22:30:48 -0400
-Subject: [PATCH] Add bird house trapping on Fossil Island
+Subject: [PATCH] feat: bird house trapping on Fossil Island
 
 The four bird house spaces (multilocs on varps 1626-1629, the values RuneLite's
 Time Tracking reads): build (or use a bird house on the space), add 10 seeds,
 and after 50 minutes Empty or Reset for the clockwork, raw bird meat, feathers,
 nests (the OSRS Wiki's seed-nest and nest-table chances) and the Hunter XP,
 with the collect message RuneLite's Loot Tracker parses. Tier data in the
-server-only dbtable birdhouse_types (60001, rows 60140-60148), server varps
-63760-63767, ::birdhouses makes seeded houses full. Integration tests in
+server-only dbtable birdhouse_types (56003, rows 60163-60171), server varps
+63762-63769, ::birdhouses makes seeded houses full. Integration tests in
 BirdHouseScriptTest. Needs patch 15 (the hunter module).
 ---
  .../skills/hunter/pack/BirdHouseTypesTable.kt |  57 ++++
@@ -102,19 +102,19 @@ index f3397313a..20f8fa9d8 100644
  }
 diff --git a/content/skills/hunter/pack/src/main/resources/gamevals.toml b/content/skills/hunter/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..d64495096
+index 000000000..4e82cb1a3
 --- /dev/null
 +++ b/content/skills/hunter/pack/src/main/resources/gamevals.toml
 @@ -0,0 +1,9 @@
 +[gamevals.varp]
-+birdhouse_seeded_a = 63760
-+birdhouse_seeded_b = 63761
-+birdhouse_seeded_c = 63762
-+birdhouse_seeded_d = 63763
-+birdhouse_seeds_a = 63764
-+birdhouse_seeds_b = 63765
-+birdhouse_seeds_c = 63766
-+birdhouse_seeds_d = 63767
++birdhouse_seeded_a = 63762
++birdhouse_seeded_b = 63763
++birdhouse_seeded_c = 63764
++birdhouse_seeded_d = 63765
++birdhouse_seeds_a = 63766
++birdhouse_seeds_b = 63767
++birdhouse_seeds_c = 63768
++birdhouse_seeds_d = 63769
 diff --git a/content/skills/hunter/pack/src/main/resources/pack/configs/birdhouse_vars.toml b/content/skills/hunter/pack/src/main/resources/pack/configs/birdhouse_vars.toml
 new file mode 100644
 index 000000000..1b8d0d8a7
@@ -618,29 +618,26 @@ index 000000000..ed11a889d
 +    }
 +}
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
-index 77a8628d3..d8e0b6f99 100644
+index 89309478e..72db58384 100644
 --- a/content/skills/hunter/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
 @@ -1,5 +1,6 @@
  [gamevals.dbtable]
- impling_types = 60000
-+birdhouse_types = 60001
+ impling_types = 56002
++birdhouse_types = 56003
  
  [gamevals.dbrow]
- impling_type_baby = 60124
-@@ -13,3 +14,12 @@ impling_type_magpie = 60131
- impling_type_ninja = 60132
- impling_type_dragon = 60133
- impling_type_lucky = 60134
-+birdhouse_type_normal = 60140
-+birdhouse_type_oak = 60141
-+birdhouse_type_willow = 60142
-+birdhouse_type_teak = 60143
-+birdhouse_type_maple = 60144
-+birdhouse_type_mahogany = 60145
-+birdhouse_type_yew = 60146
-+birdhouse_type_magic = 60147
-+birdhouse_type_redwood = 60148
--- 
-2.43.0
-
+ impling_type_baby = 60152
+@@ -13,3 +14,12 @@ impling_type_magpie = 60159
+ impling_type_ninja = 60160
+ impling_type_dragon = 60161
+ impling_type_lucky = 60162
++birdhouse_type_normal = 60163
++birdhouse_type_oak = 60164
++birdhouse_type_willow = 60165
++birdhouse_type_teak = 60166
++birdhouse_type_maple = 60167
++birdhouse_type_mahogany = 60168
++birdhouse_type_yew = 60169
++birdhouse_type_magic = 60170
++birdhouse_type_redwood = 60171

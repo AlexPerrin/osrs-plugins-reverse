@@ -1,0 +1,35 @@
+Content area from OpenRune/OpenRune-Server#353 (answers there: all of it, one PR per row, ids renumbered against main, wiki data is fine).
+
+From our per-feature patch `19-farming-patches` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`c2492318d`).
+
+**Problem.** OpenRune had no farming.
+
+**Change.** New modules `content/skills/farming` + pack:
+- Allotment, flower and herb patches at Catherby, Falador, Ardougne, Morytania (Port Phasmatys), Hosidius and Civitas illa Fortis.
+- Rake, plant with a seed dibber, growth on the farming clock (allotments every 10 minutes, flowers 5, herbs 20, also while logged out), harvest with harvest lives, chance-to-save and XP.
+- Each patch's state is the `farming_transmit` value the patch multilocs show (and RuneLite's Time Tracking reads), written to `farming_transmit_a-d` while the player is in that farm's area.
+- `::growpatches` for testing.
+
+Server-only ids, numbered after the ids already on main and not shared with any of our other PRs, so they merge in any order: dbtable `farming_crops` 56001 (rows 60124-60151), varps 63714-63761 (eight per farm), timer `farming_transmit` 435.
+
+**Tests.** `FarmingScriptTest` (8, integration).
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): RESULTS_PENDING. `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch, nor with all of our open content PRs merged together.
+
+Nothing was checked in game from this exact branch; the in-game checks above were on our own server build (an older main plus these and our other patches).
+
+**Data sources.** Patch locs and transmit values from the cache. OSRS Wiki (by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/): crop data, harvest lives and the chance-to-save constants (Allotment patch, Flower patch, Herb patch, Farming pages).
+
+**Caveats.**
+- No disease, compost, watering, payments, weed regrowth or tool leprechaun.
+
+**Release note.** Allotment, flower and herb patches at six farms, with the state RuneLite's Time Tracking reads.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

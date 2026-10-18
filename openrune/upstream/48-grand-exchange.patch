@@ -1,8 +1,8 @@
-From 18f485c9cceebbae8f11da840507cf3561578acf Mon Sep 17 00:00:00 2001
+From c96e927ffb7a0e315ee0cb2dfb71e48f48c0fe9b Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 11:55:09 -0400
-Subject: [PATCH] Interfaces: a minimal Grand Exchange (offers at the guide
- price, collection)
+Subject: [PATCH] feat: a minimal Grand Exchange (offers at the guide price,
+ collection)
 
 ---
  .../grand-exchange/build.gradle.kts           |  16 +
@@ -75,60 +75,60 @@ index 000000000..8c752b7d7
 +class GrandExchangePluginPack : PluginPack()
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..be6d4b7d1
+index 000000000..8a91635a9
 --- /dev/null
 +++ b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
 @@ -0,0 +1,50 @@
 +[gamevals.varp]
-+ge_slot0_item = 63920
-+ge_slot0_price = 63921
-+ge_slot0_count = 63922
-+ge_slot0_done = 63923
-+ge_slot0_gold = 63924
-+ge_slot0_state = 63925
-+ge_slot1_item = 63926
-+ge_slot1_price = 63927
-+ge_slot1_count = 63928
-+ge_slot1_done = 63929
-+ge_slot1_gold = 63930
-+ge_slot1_state = 63931
-+ge_slot2_item = 63932
-+ge_slot2_price = 63933
-+ge_slot2_count = 63934
-+ge_slot2_done = 63935
-+ge_slot2_gold = 63936
-+ge_slot2_state = 63937
-+ge_slot3_item = 63938
-+ge_slot3_price = 63939
-+ge_slot3_count = 63940
-+ge_slot3_done = 63941
-+ge_slot3_gold = 63942
-+ge_slot3_state = 63943
-+ge_slot4_item = 63944
-+ge_slot4_price = 63945
-+ge_slot4_count = 63946
-+ge_slot4_done = 63947
-+ge_slot4_gold = 63948
-+ge_slot4_state = 63949
-+ge_slot5_item = 63950
-+ge_slot5_price = 63951
-+ge_slot5_count = 63952
-+ge_slot5_done = 63953
-+ge_slot5_gold = 63954
-+ge_slot5_state = 63955
-+ge_slot6_item = 63956
-+ge_slot6_price = 63957
-+ge_slot6_count = 63958
-+ge_slot6_done = 63959
-+ge_slot6_gold = 63960
-+ge_slot6_state = 63961
-+ge_slot7_item = 63962
-+ge_slot7_price = 63963
-+ge_slot7_count = 63964
-+ge_slot7_done = 63965
-+ge_slot7_gold = 63966
-+ge_slot7_state = 63967
-+ge_setup_price = 63970
++ge_slot0_item = 63956
++ge_slot0_price = 63957
++ge_slot0_count = 63958
++ge_slot0_done = 63959
++ge_slot0_gold = 63960
++ge_slot0_state = 63961
++ge_slot1_item = 63962
++ge_slot1_price = 63963
++ge_slot1_count = 63964
++ge_slot1_done = 63965
++ge_slot1_gold = 63966
++ge_slot1_state = 63967
++ge_slot2_item = 63968
++ge_slot2_price = 63969
++ge_slot2_count = 63970
++ge_slot2_done = 63971
++ge_slot2_gold = 63972
++ge_slot2_state = 63973
++ge_slot3_item = 63974
++ge_slot3_price = 63975
++ge_slot3_count = 63976
++ge_slot3_done = 63977
++ge_slot3_gold = 63978
++ge_slot3_state = 63979
++ge_slot4_item = 63980
++ge_slot4_price = 63981
++ge_slot4_count = 63982
++ge_slot4_done = 63983
++ge_slot4_gold = 63984
++ge_slot4_state = 63985
++ge_slot5_item = 63986
++ge_slot5_price = 63987
++ge_slot5_count = 63988
++ge_slot5_done = 63989
++ge_slot5_gold = 63990
++ge_slot5_state = 63991
++ge_slot6_item = 63992
++ge_slot6_price = 63993
++ge_slot6_count = 63994
++ge_slot6_done = 63995
++ge_slot6_gold = 63996
++ge_slot6_state = 63997
++ge_slot7_item = 63998
++ge_slot7_price = 63999
++ge_slot7_count = 64000
++ge_slot7_done = 64001
++ge_slot7_gold = 64002
++ge_slot7_state = 64003
++ge_setup_price = 64004
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
 new file mode 100644
 index 000000000..ee624f52c
@@ -941,7 +941,7 @@ index 000000000..8b7f11775
 +}
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 new file mode 100644
-index 000000000..86dd2b946
+index 000000000..9bba549fd
 --- /dev/null
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 @@ -0,0 +1,443 @@
@@ -959,10 +959,10 @@ index 000000000..86dd2b946
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.player.startInvTransmit
 +import org.rsmod.api.player.ui.ifSetEvents
++import org.rsmod.api.script.onApNpc3
 +import org.rsmod.api.script.onIfClose
 +import org.rsmod.api.script.onIfModalButton
 +import org.rsmod.api.script.onIfOpen
-+import org.rsmod.api.script.onApNpc3
 +import org.rsmod.api.script.onOpNpc3
 +import org.rsmod.api.script.onPlayerLogin
 +import org.rsmod.api.script.onPlayerSoftTimer
@@ -1390,12 +1390,9 @@ index 000000000..86dd2b946
 +}
 diff --git a/content/interfaces/grand-exchange/src/main/resources/gamevals.toml b/content/interfaces/grand-exchange/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..4308bc7ef
+index 000000000..391d15a94
 --- /dev/null
 +++ b/content/interfaces/grand-exchange/src/main/resources/gamevals.toml
 @@ -0,0 +1,2 @@
 +[gamevals.timer]
-+ge_offer_fill = 480
--- 
-2.43.0
-
++ge_offer_fill = 437

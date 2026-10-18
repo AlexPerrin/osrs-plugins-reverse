@@ -1,0 +1,34 @@
+Content area from OpenRune/OpenRune-Server#353 (answers there: all of it, one PR per row, ids renumbered against main, wiki data is fine).
+
+From our per-feature patch `16-genie-random-event` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`1be5dfb5f`).
+
+**Problem.** There were no random events.
+
+**Change.** New module `content/events/random-events`:
+- Every 1-2 hours of play a Genie appears beside the player, faces them and calls them by name.
+- Talk-to gives a lamp (10 x the chosen skill's level in XP), Dismiss sends him away, and he leaves after a minute when ignored.
+- `::randomevent` summons him (like `::star`).
+
+Server-only ids, numbered after the ids already on main and not shared with any of our other PRs, so they merge in any order: timers `random_event` 433, `random_event_genie` 434.
+
+**Tests.** `GenieRandomEventTest` (2, integration). Manual, on our own server build: the lamp's Rub on a client.
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): buildCache pass, `spotlessCheck` pass, `assemble` pass, `test` pass, `integration` pass, boot pass (Server ready in 7.568869463s). `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch, nor with all of our open content PRs merged together.
+
+Nothing was checked in game from this exact branch; the in-game checks above were on our own server build (an older main plus these and our other patches).
+
+**Data sources.** OSRS Wiki (by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/): the event's behaviour and lines (Random events, Genie, Transcript:Genie pages).
+
+**Caveats.**
+- Only the Genie; other random events could build on the same timer.
+
+**Release note.** The Genie random event.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

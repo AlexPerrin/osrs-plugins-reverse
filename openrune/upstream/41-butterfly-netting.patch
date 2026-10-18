@@ -1,7 +1,7 @@
-From 940ebb84ed9468bd40f9c07a7eb4db5511ff07b3 Mon Sep 17 00:00:00 2001
+From 087b609315d1fb173f7419f892ef2d6b9a5ce7c9 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 08:50:37 -0400
-Subject: [PATCH] Hunter: butterfly and moth netting, their Hunters' Rumours
+Subject: [PATCH] feat: butterfly and moth netting, their Hunters' Rumours
 
 Catching butterflies and moths (wiki): a wielded butterfly net or magic
 butterfly net, or barehanded at 10 levels above the requirement; the OSRS
@@ -469,36 +469,33 @@ index 8c419e2c5..50ddfc78d 100644
  
          /** Wiki: (Hunter level + 5) * modifier (50 novice/adept, 55 expert, 60 master). */
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
-index 8dd35ad12..eaffc4892 100644
+index a10df4186..89ff42d11 100644
 --- a/content/skills/hunter/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
-@@ -9,6 +9,7 @@ herbiboar_tunnels = 60015
- herbiboar_herbs = 60016
- hunter_rumour_hunters = 60017
- hunter_rumours = 60018
-+hunter_butterflies = 60019
+@@ -9,6 +9,7 @@ herbiboar_tunnels = 56008
+ herbiboar_herbs = 56009
+ hunter_rumour_hunters = 56010
+ hunter_rumours = 56011
++hunter_butterflies = 56012
  
  [gamevals.dbrow]
- impling_type_baby = 60124
-@@ -139,6 +140,18 @@ hunter_rumour_tropical_wagtail = 60480
- hunter_rumour_grey_chinchompa = 60481
- hunter_rumour_carnivorous_chinchompa = 60482
- hunter_rumour_herbiboar = 60483
-+hunter_butterfly_ruby_harvest = 60484
-+hunter_butterfly_sapphire_glacialis = 60485
-+hunter_butterfly_snowy_knight = 60486
-+hunter_butterfly_black_warlock = 60487
-+hunter_butterfly_sunlight_moth = 60488
-+hunter_butterfly_moonlight_moth = 60489
-+hunter_butterfly_moonlight_moth_low_wander = 60490
-+hunter_rumour_sapphire_glacialis = 60491
-+hunter_rumour_snowy_knight = 60492
-+hunter_rumour_black_warlock = 60493
-+hunter_rumour_sunlight_moth = 60494
-+hunter_rumour_moonlight_moth = 60495
+ impling_type_baby = 60152
+@@ -139,6 +140,18 @@ hunter_rumour_tropical_wagtail = 60277
+ hunter_rumour_grey_chinchompa = 60278
+ hunter_rumour_carnivorous_chinchompa = 60279
+ hunter_rumour_herbiboar = 60280
++hunter_butterfly_ruby_harvest = 60281
++hunter_butterfly_sapphire_glacialis = 60282
++hunter_butterfly_snowy_knight = 60283
++hunter_butterfly_black_warlock = 60284
++hunter_butterfly_sunlight_moth = 60285
++hunter_butterfly_moonlight_moth = 60286
++hunter_butterfly_moonlight_moth_low_wander = 60287
++hunter_rumour_sapphire_glacialis = 60288
++hunter_rumour_snowy_knight = 60289
++hunter_rumour_black_warlock = 60290
++hunter_rumour_sunlight_moth = 60291
++hunter_rumour_moonlight_moth = 60292
  
  [gamevals.timer]
- hunter_traps = 470
--- 
-2.43.0
-
+ hunter_traps = 436

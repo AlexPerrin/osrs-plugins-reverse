@@ -1,0 +1,42 @@
+Fork PR (same branch, for browsing): https://github.com/AlexPerrin/OpenRune-Server/pull/15
+
+**Stacked:** includes #366's commit (`f69c8ed4c`, Sheep Shearer / Romeo & Juliet); please review and merge after #366. Only the last commit is new.
+
+Content area from OpenRune/OpenRune-Server#353 (answers there: all of it, one PR per row, ids renumbered against main, wiki data is fine).
+
+From our per-feature patches `12-quests-sheep-shearer-romeo-juliet`, `65-witchs-potion` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`1be5dfb5f`).
+
+Stacked on the Sheep Shearer / Romeo & Juliet PR (its `QuestTalkFixture`); only the last commit is new here. Merged after that PR, this one shows only its own commit.
+
+**Problem.** Witch's Potion was not implemented.
+
+**Change.** New quest. Progress is varp 67 (`hetty`) through a server-only varbit: 0, 1 started, 2 ingredients given, 3 complete (drunk from the cauldron), the values Quest Helper reads.
+- Hetty's dialogue, including the player's line for every combination of held ingredients; the hand-in takes one of each in one transaction.
+- Rewards: 1 QP, 325 Magic XP.
+- Hetty's after-quest lines move from `RimmingtonTownsfolkScript` into the quest.
+- The rat's tail comes from a new rat drop table with the usual quest gate (`quest_mode = "during"`).
+
+Server-only ids, numbered after the ids already on main and not shared with any of our other PRs, so they merge in any order: varbit `witchs_potion_progress` 63718.
+
+**Tests.** `WitchsPotionInteractionTest`, plus the quest suites it builds on.
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): buildCache pass, `spotlessCheck` pass, `assemble` pass, `test` pass, `integration` pass, boot pass (Server ready in 8.412380001s). `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch, nor with all of our open content PRs merged together.
+
+Nothing was checked in game from this exact branch; the in-game checks above were on our own server build (an older main plus these and our other patches).
+
+**Data sources.** OSRS Wiki (by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/): the dialogue follows the wiki transcript. Step values: Quest Helper (BSD).
+
+**Caveats.**
+- With the default quest-requirements mode (assume-completed) the drop-table quest gate never passes, so the rat's tail only drops under respect-progress or virtual-completions. Our own server uses an `NpcDeathKillHook` on the quest stage instead; happy to switch to that if you prefer.
+- Guesses: the journal text and the quest scroll item.
+
+**Release note.** Witch's Potion is playable.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

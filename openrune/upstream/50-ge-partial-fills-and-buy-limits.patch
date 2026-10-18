@@ -1,7 +1,7 @@
-From c9e8b04dca692a09bc5245187f5a74060b494267 Mon Sep 17 00:00:00 2001
+From 32a33c527f41d6fb8f9a5657be4481cb6df140f8 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 14:17:03 -0400
-Subject: [PATCH] Grand Exchange: partial fills and 4-hour buy limits
+Subject: [PATCH] feat: Grand Exchange partial fills and 4-hour buy limits
 
 Fills come in up to four parts (2 ticks after Confirm, then every 5 ticks), each sent
 as a partial UPDATE_STOCKMARKET_SLOT with a "Grand Exchange: Bought/Sold n / total"
@@ -19,70 +19,70 @@ which differs from OpenRune's licence; upstream may prefer to source the limits 
  .../resources/pack/configs/ge_buy_limits.toml | 4199 +++++++++++++++++
  .../pack/configs/grand_exchange.toml          |  240 +
  .../grandexchange/GrandExchangeScriptTest.kt  |  109 +-
- .../interfaces/grandexchange/GrandExchange.kt |  143 +-
+ .../interfaces/grandexchange/GrandExchange.kt |  144 +-
  .../grandexchange/GrandExchangeScript.kt      |   18 +-
- 6 files changed, 4725 insertions(+), 35 deletions(-)
+ 6 files changed, 4726 insertions(+), 35 deletions(-)
  create mode 100644 content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_buy_limits.toml
 
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
-index be6d4b7d1..63e1de86e 100644
+index 8a91635a9..a87df5c5e 100644
 --- a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
 +++ b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
-@@ -48,3 +48,54 @@ ge_slot7_done = 63965
- ge_slot7_gold = 63966
- ge_slot7_state = 63967
- ge_setup_price = 63970
-+ge_limit0_item = 63985
-+ge_limit0_start = 63986
-+ge_limit0_bought = 63987
-+ge_limit1_item = 63988
-+ge_limit1_start = 63989
-+ge_limit1_bought = 63990
-+ge_limit2_item = 63991
-+ge_limit2_start = 63992
-+ge_limit2_bought = 63993
-+ge_limit3_item = 63994
-+ge_limit3_start = 63995
-+ge_limit3_bought = 63996
-+ge_limit4_item = 63997
-+ge_limit4_start = 63998
-+ge_limit4_bought = 63999
-+ge_limit5_item = 64000
-+ge_limit5_start = 64001
-+ge_limit5_bought = 64002
-+ge_limit6_item = 64003
-+ge_limit6_start = 64004
-+ge_limit6_bought = 64005
-+ge_limit7_item = 64006
-+ge_limit7_start = 64007
-+ge_limit7_bought = 64008
-+ge_limit8_item = 64009
-+ge_limit8_start = 64010
-+ge_limit8_bought = 64011
-+ge_limit9_item = 64012
-+ge_limit9_start = 64013
-+ge_limit9_bought = 64014
-+ge_limit10_item = 64015
-+ge_limit10_start = 64016
-+ge_limit10_bought = 64017
-+ge_limit11_item = 64018
-+ge_limit11_start = 64019
-+ge_limit11_bought = 64020
-+ge_limit12_item = 64021
-+ge_limit12_start = 64022
-+ge_limit12_bought = 64023
-+ge_limit13_item = 64024
-+ge_limit13_start = 64025
-+ge_limit13_bought = 64026
-+ge_limit14_item = 64027
-+ge_limit14_start = 64028
-+ge_limit14_bought = 64029
-+ge_limit15_item = 64030
-+ge_limit15_start = 64031
-+ge_limit15_bought = 64032
+@@ -48,3 +48,54 @@ ge_slot7_done = 64001
+ ge_slot7_gold = 64002
+ ge_slot7_state = 64003
+ ge_setup_price = 64004
++ge_limit0_item = 64005
++ge_limit0_start = 64006
++ge_limit0_bought = 64007
++ge_limit1_item = 64008
++ge_limit1_start = 64009
++ge_limit1_bought = 64010
++ge_limit2_item = 64011
++ge_limit2_start = 64012
++ge_limit2_bought = 64013
++ge_limit3_item = 64014
++ge_limit3_start = 64015
++ge_limit3_bought = 64016
++ge_limit4_item = 64017
++ge_limit4_start = 64018
++ge_limit4_bought = 64019
++ge_limit5_item = 64020
++ge_limit5_start = 64021
++ge_limit5_bought = 64022
++ge_limit6_item = 64023
++ge_limit6_start = 64024
++ge_limit6_bought = 64025
++ge_limit7_item = 64026
++ge_limit7_start = 64027
++ge_limit7_bought = 64028
++ge_limit8_item = 64029
++ge_limit8_start = 64030
++ge_limit8_bought = 64031
++ge_limit9_item = 64032
++ge_limit9_start = 64033
++ge_limit9_bought = 64034
++ge_limit10_item = 64035
++ge_limit10_start = 64036
++ge_limit10_bought = 64037
++ge_limit11_item = 64038
++ge_limit11_start = 64039
++ge_limit11_bought = 64040
++ge_limit12_item = 64041
++ge_limit12_start = 64042
++ge_limit12_bought = 64043
++ge_limit13_item = 64044
++ge_limit13_start = 64045
++ge_limit13_bought = 64046
++ge_limit14_item = 64047
++ge_limit14_start = 64048
++ge_limit14_bought = 64049
++ge_limit15_item = 64050
++ge_limit15_start = 64051
++ge_limit15_bought = 64052
 +
 +[gamevals.enum]
-+ge_buy_limits = 65380
++ge_buy_limits = 64441
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_buy_limits.toml b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_buy_limits.toml
 new file mode 100644
 index 000000000..bbb8cc3c1
@@ -4693,7 +4693,7 @@ index 4f0cb6e66..2ff6a066a 100644
 +    }
  }
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
-index 8b7f11775..5d5fe4f08 100644
+index 8b7f11775..37739113f 100644
 --- a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
 @@ -19,11 +19,15 @@ import org.rsmod.game.type.uncert
@@ -4717,13 +4717,14 @@ index 8b7f11775..5d5fe4f08 100644
   *
   * Offer state lives in server varps (`ge_slotN_*`, perm) and goes to the client only through
   * UPDATE_STOCKMARKET_SLOT; the collected items sit in the slot's inv from enum 150
-@@ -46,6 +50,19 @@ object GrandExchange {
+@@ -46,6 +50,20 @@ object GrandExchange {
      const val TAX_MIN_PRICE = 50
  
      const val FILL_TIMER = "timer.ge_offer_fill"
 +    const val FILL_DELAY = 2
 +    const val FILL_INTERVAL = 5
 +    const val FILL_STEPS = 4
++
 +    /** How often a limit-blocked offer looks again (100 ticks = 1 minute). */
 +    const val LIMIT_RECHECK = 100
 +
@@ -4737,7 +4738,7 @@ index 8b7f11775..5d5fe4f08 100644
      private val newOfferPriceVarp: Int by lazy {
          "varp.ge_newoffer_price".asRSCM(RSCMType.VARP)
      }
-@@ -166,36 +183,110 @@ object GrandExchange {
+@@ -166,36 +184,110 @@ object GrandExchange {
      fun canFill(offer: Offer, guide: Int): Boolean =
          offer.state == STATE_OPEN && if (offer.sell) offer.price <= guide else offer.price >= guide
  
@@ -4870,7 +4871,7 @@ index 8b7f11775..5d5fe4f08 100644
  
      /** Aborts an open offer: what was put in waits in the collection inv. */
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
-index 86dd2b946..193d0d9f5 100644
+index 9bba549fd..0adc84134 100644
 --- a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 @@ -47,7 +47,13 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
@@ -4922,6 +4923,3 @@ index 86dd2b946..193d0d9f5 100644
  
          const val CHOOSE_ITEM = 0
          const val ENTER_QUANTITY = 7
--- 
-2.43.0
-

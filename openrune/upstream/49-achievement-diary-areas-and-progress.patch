@@ -1,8 +1,8 @@
-From c745b61876f046f81990c5a6cc1cd869a31d3b26 Mon Sep 17 00:00:00 2001
+From 033772a9597e154c60ccc05ba0724c765de70570 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 13:06:21 -0400
-Subject: [PATCH] Interfaces: achievement diary journals for all areas;
- Lumbridge & Draynor and Varrock task progress (11 tasks)
+Subject: [PATCH] feat: achievement diary journals for all areas; Lumbridge &
+ Draynor and Varrock task progress (11 tasks)
 
 ---
  content/areas/city/lumbridge/build.gradle.kts |   1 +
@@ -21,13 +21,13 @@ Subject: [PATCH] Interfaces: achievement diary journals for all areas;
  content/skills/cooking/build.gradle.kts       |   1 +
  .../content/skills/cooking/CookingEvents.kt   |   3 +
  content/skills/firemaking/build.gradle.kts    |   1 +
- .../skills/firemaking/BurnLogEvents.kt        |   2 +
+ .../skills/firemaking/BurnLogEvents.kt        |   3 +-
  .../magic/spell-teleports/build.gradle.kts    |   1 +
  .../spell/teleports/SpellTeleportScript.kt    |   2 +
  content/skills/runecrafting/build.gradle.kts  |   1 +
- .../runecrafting/action/RunecraftAction.kt    |   2 +
+ .../runecrafting/action/RunecraftAction.kt    |   6 +-
  .../essence/RuneEssenceTeleport.kt            |   2 +
- 22 files changed, 1315 insertions(+), 8 deletions(-)
+ 22 files changed, 1317 insertions(+), 11 deletions(-)
  create mode 100644 content/interfaces/achievement-diary/pack/src/main/resources/gamevals.toml
  create mode 100644 content/interfaces/achievement-diary/pack/src/main/resources/pack/configs/diary_task_vars.toml
  create mode 100644 content/interfaces/achievement-diary/src/integration/kotlin/org/rsmod/content/interfaces/diary/DiaryTasksTest.kt
@@ -47,16 +47,17 @@ index fc0645dfe..83857982d 100644
      implementation(projects.content.quest)
  }
 diff --git a/content/areas/city/lumbridge/src/main/kotlin/org/rsmod/content/areas/city/lumbridge/npcs/Hans.kt b/content/areas/city/lumbridge/src/main/kotlin/org/rsmod/content/areas/city/lumbridge/npcs/Hans.kt
-index 21e4bd7c4..a292950bf 100644
+index 21e4bd7c4..c889b7d2e 100644
 --- a/content/areas/city/lumbridge/src/main/kotlin/org/rsmod/content/areas/city/lumbridge/npcs/Hans.kt
 +++ b/content/areas/city/lumbridge/src/main/kotlin/org/rsmod/content/areas/city/lumbridge/npcs/Hans.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.areas.city.lumbridge.npcs
- 
+@@ -6,6 +6,7 @@ import org.rsmod.api.player.dialogue.Dialogue
+ import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.api.script.onOpNpc1
+ import org.rsmod.api.script.onOpNpc3
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import java.time.LocalDateTime
- import java.time.temporal.ChronoUnit
- import org.rsmod.api.player.dialogue.Dialogue
+ import org.rsmod.game.entity.Npc
+ import org.rsmod.plugin.scripts.PluginScript
+ import org.rsmod.plugin.scripts.ScriptContext
 @@ -13,7 +14,10 @@ import org.rsmod.plugin.scripts.ScriptContext
  class Hans : PluginScript() {
      override fun ScriptContext.startup() {
@@ -679,20 +680,20 @@ index 3e24e23c7..7e28c8f6b 100644
                  tiers.forEachIndexed { tier, tasks ->
 diff --git a/content/interfaces/achievement-diary/pack/src/main/resources/gamevals.toml b/content/interfaces/achievement-diary/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..3c75ab264
+index 000000000..71c33b132
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/pack/src/main/resources/gamevals.toml
 @@ -0,0 +1,10 @@
 +[gamevals.varp]
-+diary_tasks_lumbridge_easy = 63976
-+diary_tasks_lumbridge_medium = 63977
-+diary_tasks_lumbridge_hard = 63978
-+diary_tasks_lumbridge_elite = 63979
-+diary_tasks_varrock_easy = 63980
-+diary_tasks_varrock_medium = 63981
-+diary_tasks_varrock_hard = 63982
-+diary_tasks_varrock_elite = 63983
-+diary_progress_lumbridge = 63984
++diary_tasks_lumbridge_easy = 63787
++diary_tasks_lumbridge_medium = 63788
++diary_tasks_lumbridge_hard = 63789
++diary_tasks_lumbridge_elite = 63790
++diary_tasks_varrock_easy = 63791
++diary_tasks_varrock_medium = 63792
++diary_tasks_varrock_hard = 63793
++diary_tasks_varrock_elite = 63794
++diary_progress_lumbridge = 63795
 diff --git a/content/interfaces/achievement-diary/pack/src/main/resources/pack/configs/diary_task_vars.toml b/content/interfaces/achievement-diary/pack/src/main/resources/pack/configs/diary_task_vars.toml
 new file mode 100644
 index 000000000..2a681102b
@@ -814,17 +815,20 @@ index 000000000..b253d5176
 +    }
 +}
 diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
-index 84d1d3d4e..a4b8150dc 100644
+index 84d1d3d4e..400805bc6 100644
 --- a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
 +++ b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
-@@ -8,7 +8,12 @@ import dev.openrune.types.aconverted.interf.IfButtonOp
- import org.rsmod.api.player.protect.ProtectedAccess
- import org.rsmod.api.player.ui.ifSetEvents
- import org.rsmod.api.script.onIfOpen
+@@ -5,10 +5,15 @@ import dev.openrune.definition.type.FontType
+ import dev.openrune.definition.type.widget.IfEvent
+ import dev.openrune.rscm.RSCM.asRSCM
+ import dev.openrune.types.aconverted.interf.IfButtonOp
 +import org.rsmod.api.player.events.skilling.SkillingActionCompleteEvent
 +import org.rsmod.api.player.events.skilling.SkillingActionContext
 +import org.rsmod.api.player.events.skilling.SkillingProductSource
+ import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.api.player.ui.ifSetEvents
 +import org.rsmod.api.script.onEvent
+ import org.rsmod.api.script.onIfOpen
  import org.rsmod.api.script.onIfOverlayButton
 +import org.rsmod.api.script.onPlayerLogin
  import org.rsmod.api.table.AchievementDiariesRow
@@ -905,15 +909,15 @@ index 84d1d3d4e..a4b8150dc 100644
  }
 diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt
 new file mode 100644
-index 000000000..67c0e8918
+index 000000000..3bcc912e8
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt
 @@ -0,0 +1,81 @@
 +package org.rsmod.content.interfaces.diary
 +
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
 +import org.rsmod.content.interfaces.diary.DiaryTasks.Area
 +import org.rsmod.content.interfaces.diary.DiaryTasks.Tier
-+import org.rsmod.api.player.vars.VarPlayerIntMapSetter
 +import org.rsmod.game.entity.Player
 +import org.rsmod.map.CoordGrid
 +
@@ -1072,439 +1076,439 @@ index 000000000..69a02e2d9
 +    private fun tasksVarp(area: Area, tier: Tier) = "varp.diary_tasks_${area.key}_${tier.key}"
 +}
 diff --git a/content/interfaces/achievement-diary/src/main/resources/gamevals.toml b/content/interfaces/achievement-diary/src/main/resources/gamevals.toml
-index ebe03f3d9..fde4f5b40 100644
+index 9c8a9f6ba..2f9103c3d 100644
 --- a/content/interfaces/achievement-diary/src/main/resources/gamevals.toml
 +++ b/content/interfaces/achievement-diary/src/main/resources/gamevals.toml
-@@ -5,6 +5,16 @@ achievement_diary_tasks = 60023
+@@ -5,6 +5,16 @@ achievement_diary_tasks = 56016
  [gamevals.dbrow]
- achievement_diary_lumbridge = 60560
- achievement_diary_varrock = 60561
-+achievement_diary_ardougne = 61500
-+achievement_diary_desert = 61501
-+achievement_diary_falador = 61502
-+achievement_diary_fremennik = 61503
-+achievement_diary_kandarin = 61504
-+achievement_diary_karamja = 61505
-+achievement_diary_morytania = 61506
-+achievement_diary_western = 61507
-+achievement_diary_wilderness = 61508
-+achievement_diary_kourend = 61509
- achievement_diary_lumbridge_easy_1 = 60570
- achievement_diary_lumbridge_easy_2 = 60571
- achievement_diary_lumbridge_easy_3 = 60572
-@@ -88,3 +98,412 @@ achievement_diary_varrock_elite_2 = 60649
- achievement_diary_varrock_elite_3 = 60650
- achievement_diary_varrock_elite_4 = 60651
- achievement_diary_varrock_elite_5 = 60652
-+achievement_diary_ardougne_easy_1 = 61510
-+achievement_diary_ardougne_easy_2 = 61511
-+achievement_diary_ardougne_easy_3 = 61512
-+achievement_diary_ardougne_easy_4 = 61513
-+achievement_diary_ardougne_easy_5 = 61514
-+achievement_diary_ardougne_easy_6 = 61515
-+achievement_diary_ardougne_easy_7 = 61516
-+achievement_diary_ardougne_easy_8 = 61517
-+achievement_diary_ardougne_easy_9 = 61518
-+achievement_diary_ardougne_easy_10 = 61519
-+achievement_diary_ardougne_medium_1 = 61520
-+achievement_diary_ardougne_medium_2 = 61521
-+achievement_diary_ardougne_medium_3 = 61522
-+achievement_diary_ardougne_medium_4 = 61523
-+achievement_diary_ardougne_medium_5 = 61524
-+achievement_diary_ardougne_medium_6 = 61525
-+achievement_diary_ardougne_medium_7 = 61526
-+achievement_diary_ardougne_medium_8 = 61527
-+achievement_diary_ardougne_medium_9 = 61528
-+achievement_diary_ardougne_medium_10 = 61529
-+achievement_diary_ardougne_medium_11 = 61530
-+achievement_diary_ardougne_medium_12 = 61531
-+achievement_diary_ardougne_hard_1 = 61532
-+achievement_diary_ardougne_hard_2 = 61533
-+achievement_diary_ardougne_hard_3 = 61534
-+achievement_diary_ardougne_hard_4 = 61535
-+achievement_diary_ardougne_hard_5 = 61536
-+achievement_diary_ardougne_hard_6 = 61537
-+achievement_diary_ardougne_hard_7 = 61538
-+achievement_diary_ardougne_hard_8 = 61539
-+achievement_diary_ardougne_hard_9 = 61540
-+achievement_diary_ardougne_hard_10 = 61541
-+achievement_diary_ardougne_hard_11 = 61542
-+achievement_diary_ardougne_hard_12 = 61543
-+achievement_diary_ardougne_elite_1 = 61544
-+achievement_diary_ardougne_elite_2 = 61545
-+achievement_diary_ardougne_elite_3 = 61546
-+achievement_diary_ardougne_elite_4 = 61547
-+achievement_diary_ardougne_elite_5 = 61548
-+achievement_diary_ardougne_elite_6 = 61549
-+achievement_diary_ardougne_elite_7 = 61550
-+achievement_diary_ardougne_elite_8 = 61551
-+achievement_diary_desert_easy_1 = 61552
-+achievement_diary_desert_easy_2 = 61553
-+achievement_diary_desert_easy_3 = 61554
-+achievement_diary_desert_easy_4 = 61555
-+achievement_diary_desert_easy_5 = 61556
-+achievement_diary_desert_easy_6 = 61557
-+achievement_diary_desert_easy_7 = 61558
-+achievement_diary_desert_easy_8 = 61559
-+achievement_diary_desert_easy_9 = 61560
-+achievement_diary_desert_easy_10 = 61561
-+achievement_diary_desert_easy_11 = 61562
-+achievement_diary_desert_medium_1 = 61563
-+achievement_diary_desert_medium_2 = 61564
-+achievement_diary_desert_medium_3 = 61565
-+achievement_diary_desert_medium_4 = 61566
-+achievement_diary_desert_medium_5 = 61567
-+achievement_diary_desert_medium_6 = 61568
-+achievement_diary_desert_medium_7 = 61569
-+achievement_diary_desert_medium_8 = 61570
-+achievement_diary_desert_medium_9 = 61571
-+achievement_diary_desert_medium_10 = 61572
-+achievement_diary_desert_medium_11 = 61573
-+achievement_diary_desert_medium_12 = 61574
-+achievement_diary_desert_hard_1 = 61575
-+achievement_diary_desert_hard_2 = 61576
-+achievement_diary_desert_hard_3 = 61577
-+achievement_diary_desert_hard_4 = 61578
-+achievement_diary_desert_hard_5 = 61579
-+achievement_diary_desert_hard_6 = 61580
-+achievement_diary_desert_hard_7 = 61581
-+achievement_diary_desert_hard_8 = 61582
-+achievement_diary_desert_hard_9 = 61583
-+achievement_diary_desert_hard_10 = 61584
-+achievement_diary_desert_elite_1 = 61585
-+achievement_diary_desert_elite_2 = 61586
-+achievement_diary_desert_elite_3 = 61587
-+achievement_diary_desert_elite_4 = 61588
-+achievement_diary_desert_elite_5 = 61589
-+achievement_diary_desert_elite_6 = 61590
-+achievement_diary_falador_easy_1 = 61591
-+achievement_diary_falador_easy_2 = 61592
-+achievement_diary_falador_easy_3 = 61593
-+achievement_diary_falador_easy_4 = 61594
-+achievement_diary_falador_easy_5 = 61595
-+achievement_diary_falador_easy_6 = 61596
-+achievement_diary_falador_easy_7 = 61597
-+achievement_diary_falador_easy_8 = 61598
-+achievement_diary_falador_easy_9 = 61599
-+achievement_diary_falador_easy_10 = 61600
-+achievement_diary_falador_easy_11 = 61601
-+achievement_diary_falador_medium_1 = 61602
-+achievement_diary_falador_medium_2 = 61603
-+achievement_diary_falador_medium_3 = 61604
-+achievement_diary_falador_medium_4 = 61605
-+achievement_diary_falador_medium_5 = 61606
-+achievement_diary_falador_medium_6 = 61607
-+achievement_diary_falador_medium_7 = 61608
-+achievement_diary_falador_medium_8 = 61609
-+achievement_diary_falador_medium_9 = 61610
-+achievement_diary_falador_medium_10 = 61611
-+achievement_diary_falador_medium_11 = 61612
-+achievement_diary_falador_medium_12 = 61613
-+achievement_diary_falador_medium_13 = 61614
-+achievement_diary_falador_medium_14 = 61615
-+achievement_diary_falador_hard_1 = 61616
-+achievement_diary_falador_hard_2 = 61617
-+achievement_diary_falador_hard_3 = 61618
-+achievement_diary_falador_hard_4 = 61619
-+achievement_diary_falador_hard_5 = 61620
-+achievement_diary_falador_hard_6 = 61621
-+achievement_diary_falador_hard_7 = 61622
-+achievement_diary_falador_hard_8 = 61623
-+achievement_diary_falador_hard_9 = 61624
-+achievement_diary_falador_hard_10 = 61625
-+achievement_diary_falador_hard_11 = 61626
-+achievement_diary_falador_elite_1 = 61627
-+achievement_diary_falador_elite_2 = 61628
-+achievement_diary_falador_elite_3 = 61629
-+achievement_diary_falador_elite_4 = 61630
-+achievement_diary_falador_elite_5 = 61631
-+achievement_diary_falador_elite_6 = 61632
-+achievement_diary_fremennik_easy_1 = 61633
-+achievement_diary_fremennik_easy_2 = 61634
-+achievement_diary_fremennik_easy_3 = 61635
-+achievement_diary_fremennik_easy_4 = 61636
-+achievement_diary_fremennik_easy_5 = 61637
-+achievement_diary_fremennik_easy_6 = 61638
-+achievement_diary_fremennik_easy_7 = 61639
-+achievement_diary_fremennik_easy_8 = 61640
-+achievement_diary_fremennik_easy_9 = 61641
-+achievement_diary_fremennik_easy_10 = 61642
-+achievement_diary_fremennik_medium_1 = 61643
-+achievement_diary_fremennik_medium_2 = 61644
-+achievement_diary_fremennik_medium_3 = 61645
-+achievement_diary_fremennik_medium_4 = 61646
-+achievement_diary_fremennik_medium_5 = 61647
-+achievement_diary_fremennik_medium_6 = 61648
-+achievement_diary_fremennik_medium_7 = 61649
-+achievement_diary_fremennik_medium_8 = 61650
-+achievement_diary_fremennik_medium_9 = 61651
-+achievement_diary_fremennik_hard_1 = 61652
-+achievement_diary_fremennik_hard_2 = 61653
-+achievement_diary_fremennik_hard_3 = 61654
-+achievement_diary_fremennik_hard_4 = 61655
-+achievement_diary_fremennik_hard_5 = 61656
-+achievement_diary_fremennik_hard_6 = 61657
-+achievement_diary_fremennik_hard_7 = 61658
-+achievement_diary_fremennik_hard_8 = 61659
-+achievement_diary_fremennik_hard_9 = 61660
-+achievement_diary_fremennik_elite_1 = 61661
-+achievement_diary_fremennik_elite_2 = 61662
-+achievement_diary_fremennik_elite_3 = 61663
-+achievement_diary_fremennik_elite_4 = 61664
-+achievement_diary_fremennik_elite_5 = 61665
-+achievement_diary_fremennik_elite_6 = 61666
-+achievement_diary_kandarin_easy_1 = 61667
-+achievement_diary_kandarin_easy_2 = 61668
-+achievement_diary_kandarin_easy_3 = 61669
-+achievement_diary_kandarin_easy_4 = 61670
-+achievement_diary_kandarin_easy_5 = 61671
-+achievement_diary_kandarin_easy_6 = 61672
-+achievement_diary_kandarin_easy_7 = 61673
-+achievement_diary_kandarin_easy_8 = 61674
-+achievement_diary_kandarin_easy_9 = 61675
-+achievement_diary_kandarin_easy_10 = 61676
-+achievement_diary_kandarin_easy_11 = 61677
-+achievement_diary_kandarin_medium_1 = 61678
-+achievement_diary_kandarin_medium_2 = 61679
-+achievement_diary_kandarin_medium_3 = 61680
-+achievement_diary_kandarin_medium_4 = 61681
-+achievement_diary_kandarin_medium_5 = 61682
-+achievement_diary_kandarin_medium_6 = 61683
-+achievement_diary_kandarin_medium_7 = 61684
-+achievement_diary_kandarin_medium_8 = 61685
-+achievement_diary_kandarin_medium_9 = 61686
-+achievement_diary_kandarin_medium_10 = 61687
-+achievement_diary_kandarin_medium_11 = 61688
-+achievement_diary_kandarin_medium_12 = 61689
-+achievement_diary_kandarin_medium_13 = 61690
-+achievement_diary_kandarin_medium_14 = 61691
-+achievement_diary_kandarin_hard_1 = 61692
-+achievement_diary_kandarin_hard_2 = 61693
-+achievement_diary_kandarin_hard_3 = 61694
-+achievement_diary_kandarin_hard_4 = 61695
-+achievement_diary_kandarin_hard_5 = 61696
-+achievement_diary_kandarin_hard_6 = 61697
-+achievement_diary_kandarin_hard_7 = 61698
-+achievement_diary_kandarin_hard_8 = 61699
-+achievement_diary_kandarin_hard_9 = 61700
-+achievement_diary_kandarin_hard_10 = 61701
-+achievement_diary_kandarin_hard_11 = 61702
-+achievement_diary_kandarin_elite_1 = 61703
-+achievement_diary_kandarin_elite_2 = 61704
-+achievement_diary_kandarin_elite_3 = 61705
-+achievement_diary_kandarin_elite_4 = 61706
-+achievement_diary_kandarin_elite_5 = 61707
-+achievement_diary_kandarin_elite_6 = 61708
-+achievement_diary_kandarin_elite_7 = 61709
-+achievement_diary_karamja_easy_1 = 61710
-+achievement_diary_karamja_easy_2 = 61711
-+achievement_diary_karamja_easy_3 = 61712
-+achievement_diary_karamja_easy_4 = 61713
-+achievement_diary_karamja_easy_5 = 61714
-+achievement_diary_karamja_easy_6 = 61715
-+achievement_diary_karamja_easy_7 = 61716
-+achievement_diary_karamja_easy_8 = 61717
-+achievement_diary_karamja_easy_9 = 61718
-+achievement_diary_karamja_easy_10 = 61719
-+achievement_diary_karamja_medium_1 = 61720
-+achievement_diary_karamja_medium_2 = 61721
-+achievement_diary_karamja_medium_3 = 61722
-+achievement_diary_karamja_medium_4 = 61723
-+achievement_diary_karamja_medium_5 = 61724
-+achievement_diary_karamja_medium_6 = 61725
-+achievement_diary_karamja_medium_7 = 61726
-+achievement_diary_karamja_medium_8 = 61727
-+achievement_diary_karamja_medium_9 = 61728
-+achievement_diary_karamja_medium_10 = 61729
-+achievement_diary_karamja_medium_11 = 61730
-+achievement_diary_karamja_medium_12 = 61731
-+achievement_diary_karamja_medium_13 = 61732
-+achievement_diary_karamja_medium_14 = 61733
-+achievement_diary_karamja_medium_15 = 61734
-+achievement_diary_karamja_medium_16 = 61735
-+achievement_diary_karamja_medium_17 = 61736
-+achievement_diary_karamja_medium_18 = 61737
-+achievement_diary_karamja_medium_19 = 61738
-+achievement_diary_karamja_hard_1 = 61739
-+achievement_diary_karamja_hard_2 = 61740
-+achievement_diary_karamja_hard_3 = 61741
-+achievement_diary_karamja_hard_4 = 61742
-+achievement_diary_karamja_hard_5 = 61743
-+achievement_diary_karamja_hard_6 = 61744
-+achievement_diary_karamja_hard_7 = 61745
-+achievement_diary_karamja_hard_8 = 61746
-+achievement_diary_karamja_hard_9 = 61747
-+achievement_diary_karamja_hard_10 = 61748
-+achievement_diary_karamja_elite_1 = 61749
-+achievement_diary_karamja_elite_2 = 61750
-+achievement_diary_karamja_elite_3 = 61751
-+achievement_diary_karamja_elite_4 = 61752
-+achievement_diary_karamja_elite_5 = 61753
-+achievement_diary_morytania_easy_1 = 61754
-+achievement_diary_morytania_easy_2 = 61755
-+achievement_diary_morytania_easy_3 = 61756
-+achievement_diary_morytania_easy_4 = 61757
-+achievement_diary_morytania_easy_5 = 61758
-+achievement_diary_morytania_easy_6 = 61759
-+achievement_diary_morytania_easy_7 = 61760
-+achievement_diary_morytania_easy_8 = 61761
-+achievement_diary_morytania_easy_9 = 61762
-+achievement_diary_morytania_easy_10 = 61763
-+achievement_diary_morytania_easy_11 = 61764
-+achievement_diary_morytania_medium_1 = 61765
-+achievement_diary_morytania_medium_2 = 61766
-+achievement_diary_morytania_medium_3 = 61767
-+achievement_diary_morytania_medium_4 = 61768
-+achievement_diary_morytania_medium_5 = 61769
-+achievement_diary_morytania_medium_6 = 61770
-+achievement_diary_morytania_medium_7 = 61771
-+achievement_diary_morytania_medium_8 = 61772
-+achievement_diary_morytania_medium_9 = 61773
-+achievement_diary_morytania_medium_10 = 61774
-+achievement_diary_morytania_medium_11 = 61775
-+achievement_diary_morytania_hard_1 = 61776
-+achievement_diary_morytania_hard_2 = 61777
-+achievement_diary_morytania_hard_3 = 61778
-+achievement_diary_morytania_hard_4 = 61779
-+achievement_diary_morytania_hard_5 = 61780
-+achievement_diary_morytania_hard_6 = 61781
-+achievement_diary_morytania_hard_7 = 61782
-+achievement_diary_morytania_hard_8 = 61783
-+achievement_diary_morytania_hard_9 = 61784
-+achievement_diary_morytania_hard_10 = 61785
-+achievement_diary_morytania_elite_1 = 61786
-+achievement_diary_morytania_elite_2 = 61787
-+achievement_diary_morytania_elite_3 = 61788
-+achievement_diary_morytania_elite_4 = 61789
-+achievement_diary_morytania_elite_5 = 61790
-+achievement_diary_morytania_elite_6 = 61791
-+achievement_diary_western_easy_1 = 61792
-+achievement_diary_western_easy_2 = 61793
-+achievement_diary_western_easy_3 = 61794
-+achievement_diary_western_easy_4 = 61795
-+achievement_diary_western_easy_5 = 61796
-+achievement_diary_western_easy_6 = 61797
-+achievement_diary_western_easy_7 = 61798
-+achievement_diary_western_easy_8 = 61799
-+achievement_diary_western_easy_9 = 61800
-+achievement_diary_western_easy_10 = 61801
-+achievement_diary_western_easy_11 = 61802
-+achievement_diary_western_medium_1 = 61803
-+achievement_diary_western_medium_2 = 61804
-+achievement_diary_western_medium_3 = 61805
-+achievement_diary_western_medium_4 = 61806
-+achievement_diary_western_medium_5 = 61807
-+achievement_diary_western_medium_6 = 61808
-+achievement_diary_western_medium_7 = 61809
-+achievement_diary_western_medium_8 = 61810
-+achievement_diary_western_medium_9 = 61811
-+achievement_diary_western_medium_10 = 61812
-+achievement_diary_western_medium_11 = 61813
-+achievement_diary_western_medium_12 = 61814
-+achievement_diary_western_medium_13 = 61815
-+achievement_diary_western_hard_1 = 61816
-+achievement_diary_western_hard_2 = 61817
-+achievement_diary_western_hard_3 = 61818
-+achievement_diary_western_hard_4 = 61819
-+achievement_diary_western_hard_5 = 61820
-+achievement_diary_western_hard_6 = 61821
-+achievement_diary_western_hard_7 = 61822
-+achievement_diary_western_hard_8 = 61823
-+achievement_diary_western_hard_9 = 61824
-+achievement_diary_western_hard_10 = 61825
-+achievement_diary_western_hard_11 = 61826
-+achievement_diary_western_hard_12 = 61827
-+achievement_diary_western_hard_13 = 61828
-+achievement_diary_western_elite_1 = 61829
-+achievement_diary_western_elite_2 = 61830
-+achievement_diary_western_elite_3 = 61831
-+achievement_diary_western_elite_4 = 61832
-+achievement_diary_western_elite_5 = 61833
-+achievement_diary_western_elite_6 = 61834
-+achievement_diary_western_elite_7 = 61835
-+achievement_diary_wilderness_easy_1 = 61836
-+achievement_diary_wilderness_easy_2 = 61837
-+achievement_diary_wilderness_easy_3 = 61838
-+achievement_diary_wilderness_easy_4 = 61839
-+achievement_diary_wilderness_easy_5 = 61840
-+achievement_diary_wilderness_easy_6 = 61841
-+achievement_diary_wilderness_easy_7 = 61842
-+achievement_diary_wilderness_easy_8 = 61843
-+achievement_diary_wilderness_easy_9 = 61844
-+achievement_diary_wilderness_easy_10 = 61845
-+achievement_diary_wilderness_easy_11 = 61846
-+achievement_diary_wilderness_easy_12 = 61847
-+achievement_diary_wilderness_medium_1 = 61848
-+achievement_diary_wilderness_medium_2 = 61849
-+achievement_diary_wilderness_medium_3 = 61850
-+achievement_diary_wilderness_medium_4 = 61851
-+achievement_diary_wilderness_medium_5 = 61852
-+achievement_diary_wilderness_medium_6 = 61853
-+achievement_diary_wilderness_medium_7 = 61854
-+achievement_diary_wilderness_medium_8 = 61855
-+achievement_diary_wilderness_medium_9 = 61856
-+achievement_diary_wilderness_medium_10 = 61857
-+achievement_diary_wilderness_medium_11 = 61858
-+achievement_diary_wilderness_hard_1 = 61859
-+achievement_diary_wilderness_hard_2 = 61860
-+achievement_diary_wilderness_hard_3 = 61861
-+achievement_diary_wilderness_hard_4 = 61862
-+achievement_diary_wilderness_hard_5 = 61863
-+achievement_diary_wilderness_hard_6 = 61864
-+achievement_diary_wilderness_hard_7 = 61865
-+achievement_diary_wilderness_hard_8 = 61866
-+achievement_diary_wilderness_hard_9 = 61867
-+achievement_diary_wilderness_hard_10 = 61868
-+achievement_diary_wilderness_elite_1 = 61869
-+achievement_diary_wilderness_elite_2 = 61870
-+achievement_diary_wilderness_elite_3 = 61871
-+achievement_diary_wilderness_elite_4 = 61872
-+achievement_diary_wilderness_elite_5 = 61873
-+achievement_diary_wilderness_elite_6 = 61874
-+achievement_diary_wilderness_elite_7 = 61875
-+achievement_diary_kourend_easy_1 = 61876
-+achievement_diary_kourend_easy_2 = 61877
-+achievement_diary_kourend_easy_3 = 61878
-+achievement_diary_kourend_easy_4 = 61879
-+achievement_diary_kourend_easy_5 = 61880
-+achievement_diary_kourend_easy_6 = 61881
-+achievement_diary_kourend_easy_7 = 61882
-+achievement_diary_kourend_easy_8 = 61883
-+achievement_diary_kourend_easy_9 = 61884
-+achievement_diary_kourend_easy_10 = 61885
-+achievement_diary_kourend_easy_11 = 61886
-+achievement_diary_kourend_easy_12 = 61887
-+achievement_diary_kourend_medium_1 = 61888
-+achievement_diary_kourend_medium_2 = 61889
-+achievement_diary_kourend_medium_3 = 61890
-+achievement_diary_kourend_medium_4 = 61891
-+achievement_diary_kourend_medium_5 = 61892
-+achievement_diary_kourend_medium_6 = 61893
-+achievement_diary_kourend_medium_7 = 61894
-+achievement_diary_kourend_medium_8 = 61895
-+achievement_diary_kourend_medium_9 = 61896
-+achievement_diary_kourend_medium_10 = 61897
-+achievement_diary_kourend_medium_11 = 61898
-+achievement_diary_kourend_medium_12 = 61899
-+achievement_diary_kourend_medium_13 = 61900
-+achievement_diary_kourend_hard_1 = 61901
-+achievement_diary_kourend_hard_2 = 61902
-+achievement_diary_kourend_hard_3 = 61903
-+achievement_diary_kourend_hard_4 = 61904
-+achievement_diary_kourend_hard_5 = 61905
-+achievement_diary_kourend_hard_6 = 61906
-+achievement_diary_kourend_hard_7 = 61907
-+achievement_diary_kourend_hard_8 = 61908
-+achievement_diary_kourend_hard_9 = 61909
-+achievement_diary_kourend_hard_10 = 61910
-+achievement_diary_kourend_elite_1 = 61911
-+achievement_diary_kourend_elite_2 = 61912
-+achievement_diary_kourend_elite_3 = 61913
-+achievement_diary_kourend_elite_4 = 61914
-+achievement_diary_kourend_elite_5 = 61915
-+achievement_diary_kourend_elite_6 = 61916
-+achievement_diary_kourend_elite_7 = 61917
-+achievement_diary_kourend_elite_8 = 61918
+ achievement_diary_lumbridge = 60351
+ achievement_diary_varrock = 60352
++achievement_diary_ardougne = 60436
++achievement_diary_desert = 60437
++achievement_diary_falador = 60438
++achievement_diary_fremennik = 60439
++achievement_diary_kandarin = 60440
++achievement_diary_karamja = 60441
++achievement_diary_morytania = 60442
++achievement_diary_western = 60443
++achievement_diary_wilderness = 60444
++achievement_diary_kourend = 60445
+ achievement_diary_lumbridge_easy_1 = 60353
+ achievement_diary_lumbridge_easy_2 = 60354
+ achievement_diary_lumbridge_easy_3 = 60355
+@@ -88,3 +98,412 @@ achievement_diary_varrock_elite_2 = 60432
+ achievement_diary_varrock_elite_3 = 60433
+ achievement_diary_varrock_elite_4 = 60434
+ achievement_diary_varrock_elite_5 = 60435
++achievement_diary_ardougne_easy_1 = 60446
++achievement_diary_ardougne_easy_2 = 60447
++achievement_diary_ardougne_easy_3 = 60448
++achievement_diary_ardougne_easy_4 = 60449
++achievement_diary_ardougne_easy_5 = 60450
++achievement_diary_ardougne_easy_6 = 60451
++achievement_diary_ardougne_easy_7 = 60452
++achievement_diary_ardougne_easy_8 = 60453
++achievement_diary_ardougne_easy_9 = 60454
++achievement_diary_ardougne_easy_10 = 60455
++achievement_diary_ardougne_medium_1 = 60456
++achievement_diary_ardougne_medium_2 = 60457
++achievement_diary_ardougne_medium_3 = 60458
++achievement_diary_ardougne_medium_4 = 60459
++achievement_diary_ardougne_medium_5 = 60460
++achievement_diary_ardougne_medium_6 = 60461
++achievement_diary_ardougne_medium_7 = 60462
++achievement_diary_ardougne_medium_8 = 60463
++achievement_diary_ardougne_medium_9 = 60464
++achievement_diary_ardougne_medium_10 = 60465
++achievement_diary_ardougne_medium_11 = 60466
++achievement_diary_ardougne_medium_12 = 60467
++achievement_diary_ardougne_hard_1 = 60468
++achievement_diary_ardougne_hard_2 = 60469
++achievement_diary_ardougne_hard_3 = 60470
++achievement_diary_ardougne_hard_4 = 60471
++achievement_diary_ardougne_hard_5 = 60472
++achievement_diary_ardougne_hard_6 = 60473
++achievement_diary_ardougne_hard_7 = 60474
++achievement_diary_ardougne_hard_8 = 60475
++achievement_diary_ardougne_hard_9 = 60476
++achievement_diary_ardougne_hard_10 = 60477
++achievement_diary_ardougne_hard_11 = 60478
++achievement_diary_ardougne_hard_12 = 60479
++achievement_diary_ardougne_elite_1 = 60480
++achievement_diary_ardougne_elite_2 = 60481
++achievement_diary_ardougne_elite_3 = 60482
++achievement_diary_ardougne_elite_4 = 60483
++achievement_diary_ardougne_elite_5 = 60484
++achievement_diary_ardougne_elite_6 = 60485
++achievement_diary_ardougne_elite_7 = 60486
++achievement_diary_ardougne_elite_8 = 60487
++achievement_diary_desert_easy_1 = 60488
++achievement_diary_desert_easy_2 = 60489
++achievement_diary_desert_easy_3 = 60490
++achievement_diary_desert_easy_4 = 60491
++achievement_diary_desert_easy_5 = 60492
++achievement_diary_desert_easy_6 = 60493
++achievement_diary_desert_easy_7 = 60494
++achievement_diary_desert_easy_8 = 60495
++achievement_diary_desert_easy_9 = 60496
++achievement_diary_desert_easy_10 = 60497
++achievement_diary_desert_easy_11 = 60498
++achievement_diary_desert_medium_1 = 60499
++achievement_diary_desert_medium_2 = 60500
++achievement_diary_desert_medium_3 = 60501
++achievement_diary_desert_medium_4 = 60502
++achievement_diary_desert_medium_5 = 60503
++achievement_diary_desert_medium_6 = 60504
++achievement_diary_desert_medium_7 = 60505
++achievement_diary_desert_medium_8 = 60506
++achievement_diary_desert_medium_9 = 60507
++achievement_diary_desert_medium_10 = 60508
++achievement_diary_desert_medium_11 = 60509
++achievement_diary_desert_medium_12 = 60510
++achievement_diary_desert_hard_1 = 60511
++achievement_diary_desert_hard_2 = 60512
++achievement_diary_desert_hard_3 = 60513
++achievement_diary_desert_hard_4 = 60514
++achievement_diary_desert_hard_5 = 60515
++achievement_diary_desert_hard_6 = 60516
++achievement_diary_desert_hard_7 = 60517
++achievement_diary_desert_hard_8 = 60518
++achievement_diary_desert_hard_9 = 60519
++achievement_diary_desert_hard_10 = 60520
++achievement_diary_desert_elite_1 = 60521
++achievement_diary_desert_elite_2 = 60522
++achievement_diary_desert_elite_3 = 60523
++achievement_diary_desert_elite_4 = 60524
++achievement_diary_desert_elite_5 = 60525
++achievement_diary_desert_elite_6 = 60526
++achievement_diary_falador_easy_1 = 60527
++achievement_diary_falador_easy_2 = 60528
++achievement_diary_falador_easy_3 = 60529
++achievement_diary_falador_easy_4 = 60530
++achievement_diary_falador_easy_5 = 60531
++achievement_diary_falador_easy_6 = 60532
++achievement_diary_falador_easy_7 = 60533
++achievement_diary_falador_easy_8 = 60534
++achievement_diary_falador_easy_9 = 60535
++achievement_diary_falador_easy_10 = 60536
++achievement_diary_falador_easy_11 = 60537
++achievement_diary_falador_medium_1 = 60538
++achievement_diary_falador_medium_2 = 60539
++achievement_diary_falador_medium_3 = 60540
++achievement_diary_falador_medium_4 = 60541
++achievement_diary_falador_medium_5 = 60542
++achievement_diary_falador_medium_6 = 60543
++achievement_diary_falador_medium_7 = 60544
++achievement_diary_falador_medium_8 = 60545
++achievement_diary_falador_medium_9 = 60546
++achievement_diary_falador_medium_10 = 60547
++achievement_diary_falador_medium_11 = 60548
++achievement_diary_falador_medium_12 = 60549
++achievement_diary_falador_medium_13 = 60550
++achievement_diary_falador_medium_14 = 60551
++achievement_diary_falador_hard_1 = 60552
++achievement_diary_falador_hard_2 = 60553
++achievement_diary_falador_hard_3 = 60554
++achievement_diary_falador_hard_4 = 60555
++achievement_diary_falador_hard_5 = 60556
++achievement_diary_falador_hard_6 = 60557
++achievement_diary_falador_hard_7 = 60558
++achievement_diary_falador_hard_8 = 60559
++achievement_diary_falador_hard_9 = 60560
++achievement_diary_falador_hard_10 = 60561
++achievement_diary_falador_hard_11 = 60562
++achievement_diary_falador_elite_1 = 60563
++achievement_diary_falador_elite_2 = 60564
++achievement_diary_falador_elite_3 = 60565
++achievement_diary_falador_elite_4 = 60566
++achievement_diary_falador_elite_5 = 60567
++achievement_diary_falador_elite_6 = 60568
++achievement_diary_fremennik_easy_1 = 60569
++achievement_diary_fremennik_easy_2 = 60570
++achievement_diary_fremennik_easy_3 = 60571
++achievement_diary_fremennik_easy_4 = 60572
++achievement_diary_fremennik_easy_5 = 60573
++achievement_diary_fremennik_easy_6 = 60574
++achievement_diary_fremennik_easy_7 = 60575
++achievement_diary_fremennik_easy_8 = 60576
++achievement_diary_fremennik_easy_9 = 60577
++achievement_diary_fremennik_easy_10 = 60578
++achievement_diary_fremennik_medium_1 = 60579
++achievement_diary_fremennik_medium_2 = 60580
++achievement_diary_fremennik_medium_3 = 60581
++achievement_diary_fremennik_medium_4 = 60582
++achievement_diary_fremennik_medium_5 = 60583
++achievement_diary_fremennik_medium_6 = 60584
++achievement_diary_fremennik_medium_7 = 60585
++achievement_diary_fremennik_medium_8 = 60586
++achievement_diary_fremennik_medium_9 = 60587
++achievement_diary_fremennik_hard_1 = 60588
++achievement_diary_fremennik_hard_2 = 60589
++achievement_diary_fremennik_hard_3 = 60590
++achievement_diary_fremennik_hard_4 = 60591
++achievement_diary_fremennik_hard_5 = 60592
++achievement_diary_fremennik_hard_6 = 60593
++achievement_diary_fremennik_hard_7 = 60594
++achievement_diary_fremennik_hard_8 = 60595
++achievement_diary_fremennik_hard_9 = 60596
++achievement_diary_fremennik_elite_1 = 60597
++achievement_diary_fremennik_elite_2 = 60598
++achievement_diary_fremennik_elite_3 = 60599
++achievement_diary_fremennik_elite_4 = 60600
++achievement_diary_fremennik_elite_5 = 60601
++achievement_diary_fremennik_elite_6 = 60602
++achievement_diary_kandarin_easy_1 = 60603
++achievement_diary_kandarin_easy_2 = 60604
++achievement_diary_kandarin_easy_3 = 60605
++achievement_diary_kandarin_easy_4 = 60606
++achievement_diary_kandarin_easy_5 = 60607
++achievement_diary_kandarin_easy_6 = 60608
++achievement_diary_kandarin_easy_7 = 60609
++achievement_diary_kandarin_easy_8 = 60610
++achievement_diary_kandarin_easy_9 = 60611
++achievement_diary_kandarin_easy_10 = 60612
++achievement_diary_kandarin_easy_11 = 60613
++achievement_diary_kandarin_medium_1 = 60614
++achievement_diary_kandarin_medium_2 = 60615
++achievement_diary_kandarin_medium_3 = 60616
++achievement_diary_kandarin_medium_4 = 60617
++achievement_diary_kandarin_medium_5 = 60618
++achievement_diary_kandarin_medium_6 = 60619
++achievement_diary_kandarin_medium_7 = 60620
++achievement_diary_kandarin_medium_8 = 60621
++achievement_diary_kandarin_medium_9 = 60622
++achievement_diary_kandarin_medium_10 = 60623
++achievement_diary_kandarin_medium_11 = 60624
++achievement_diary_kandarin_medium_12 = 60625
++achievement_diary_kandarin_medium_13 = 60626
++achievement_diary_kandarin_medium_14 = 60627
++achievement_diary_kandarin_hard_1 = 60628
++achievement_diary_kandarin_hard_2 = 60629
++achievement_diary_kandarin_hard_3 = 60630
++achievement_diary_kandarin_hard_4 = 60631
++achievement_diary_kandarin_hard_5 = 60632
++achievement_diary_kandarin_hard_6 = 60633
++achievement_diary_kandarin_hard_7 = 60634
++achievement_diary_kandarin_hard_8 = 60635
++achievement_diary_kandarin_hard_9 = 60636
++achievement_diary_kandarin_hard_10 = 60637
++achievement_diary_kandarin_hard_11 = 60638
++achievement_diary_kandarin_elite_1 = 60639
++achievement_diary_kandarin_elite_2 = 60640
++achievement_diary_kandarin_elite_3 = 60641
++achievement_diary_kandarin_elite_4 = 60642
++achievement_diary_kandarin_elite_5 = 60643
++achievement_diary_kandarin_elite_6 = 60644
++achievement_diary_kandarin_elite_7 = 60645
++achievement_diary_karamja_easy_1 = 60646
++achievement_diary_karamja_easy_2 = 60647
++achievement_diary_karamja_easy_3 = 60648
++achievement_diary_karamja_easy_4 = 60649
++achievement_diary_karamja_easy_5 = 60650
++achievement_diary_karamja_easy_6 = 60651
++achievement_diary_karamja_easy_7 = 60652
++achievement_diary_karamja_easy_8 = 60653
++achievement_diary_karamja_easy_9 = 60654
++achievement_diary_karamja_easy_10 = 60655
++achievement_diary_karamja_medium_1 = 60656
++achievement_diary_karamja_medium_2 = 60657
++achievement_diary_karamja_medium_3 = 60658
++achievement_diary_karamja_medium_4 = 60659
++achievement_diary_karamja_medium_5 = 60660
++achievement_diary_karamja_medium_6 = 60661
++achievement_diary_karamja_medium_7 = 60662
++achievement_diary_karamja_medium_8 = 60663
++achievement_diary_karamja_medium_9 = 60664
++achievement_diary_karamja_medium_10 = 60665
++achievement_diary_karamja_medium_11 = 60666
++achievement_diary_karamja_medium_12 = 60667
++achievement_diary_karamja_medium_13 = 60668
++achievement_diary_karamja_medium_14 = 60669
++achievement_diary_karamja_medium_15 = 60670
++achievement_diary_karamja_medium_16 = 60671
++achievement_diary_karamja_medium_17 = 60672
++achievement_diary_karamja_medium_18 = 60673
++achievement_diary_karamja_medium_19 = 60674
++achievement_diary_karamja_hard_1 = 60675
++achievement_diary_karamja_hard_2 = 60676
++achievement_diary_karamja_hard_3 = 60677
++achievement_diary_karamja_hard_4 = 60678
++achievement_diary_karamja_hard_5 = 60679
++achievement_diary_karamja_hard_6 = 60680
++achievement_diary_karamja_hard_7 = 60681
++achievement_diary_karamja_hard_8 = 60682
++achievement_diary_karamja_hard_9 = 60683
++achievement_diary_karamja_hard_10 = 60684
++achievement_diary_karamja_elite_1 = 60685
++achievement_diary_karamja_elite_2 = 60686
++achievement_diary_karamja_elite_3 = 60687
++achievement_diary_karamja_elite_4 = 60688
++achievement_diary_karamja_elite_5 = 60689
++achievement_diary_morytania_easy_1 = 60690
++achievement_diary_morytania_easy_2 = 60691
++achievement_diary_morytania_easy_3 = 60692
++achievement_diary_morytania_easy_4 = 60693
++achievement_diary_morytania_easy_5 = 60694
++achievement_diary_morytania_easy_6 = 60695
++achievement_diary_morytania_easy_7 = 60696
++achievement_diary_morytania_easy_8 = 60697
++achievement_diary_morytania_easy_9 = 60698
++achievement_diary_morytania_easy_10 = 60699
++achievement_diary_morytania_easy_11 = 60700
++achievement_diary_morytania_medium_1 = 60701
++achievement_diary_morytania_medium_2 = 60702
++achievement_diary_morytania_medium_3 = 60703
++achievement_diary_morytania_medium_4 = 60704
++achievement_diary_morytania_medium_5 = 60705
++achievement_diary_morytania_medium_6 = 60706
++achievement_diary_morytania_medium_7 = 60707
++achievement_diary_morytania_medium_8 = 60708
++achievement_diary_morytania_medium_9 = 60709
++achievement_diary_morytania_medium_10 = 60710
++achievement_diary_morytania_medium_11 = 60711
++achievement_diary_morytania_hard_1 = 60712
++achievement_diary_morytania_hard_2 = 60713
++achievement_diary_morytania_hard_3 = 60714
++achievement_diary_morytania_hard_4 = 60715
++achievement_diary_morytania_hard_5 = 60716
++achievement_diary_morytania_hard_6 = 60717
++achievement_diary_morytania_hard_7 = 60718
++achievement_diary_morytania_hard_8 = 60719
++achievement_diary_morytania_hard_9 = 60720
++achievement_diary_morytania_hard_10 = 60721
++achievement_diary_morytania_elite_1 = 60722
++achievement_diary_morytania_elite_2 = 60723
++achievement_diary_morytania_elite_3 = 60724
++achievement_diary_morytania_elite_4 = 60725
++achievement_diary_morytania_elite_5 = 60726
++achievement_diary_morytania_elite_6 = 60727
++achievement_diary_western_easy_1 = 60728
++achievement_diary_western_easy_2 = 60729
++achievement_diary_western_easy_3 = 60730
++achievement_diary_western_easy_4 = 60731
++achievement_diary_western_easy_5 = 60732
++achievement_diary_western_easy_6 = 60733
++achievement_diary_western_easy_7 = 60734
++achievement_diary_western_easy_8 = 60735
++achievement_diary_western_easy_9 = 60736
++achievement_diary_western_easy_10 = 60737
++achievement_diary_western_easy_11 = 60738
++achievement_diary_western_medium_1 = 60739
++achievement_diary_western_medium_2 = 60740
++achievement_diary_western_medium_3 = 60741
++achievement_diary_western_medium_4 = 60742
++achievement_diary_western_medium_5 = 60743
++achievement_diary_western_medium_6 = 60744
++achievement_diary_western_medium_7 = 60745
++achievement_diary_western_medium_8 = 60746
++achievement_diary_western_medium_9 = 60747
++achievement_diary_western_medium_10 = 60748
++achievement_diary_western_medium_11 = 60749
++achievement_diary_western_medium_12 = 60750
++achievement_diary_western_medium_13 = 60751
++achievement_diary_western_hard_1 = 60752
++achievement_diary_western_hard_2 = 60753
++achievement_diary_western_hard_3 = 60754
++achievement_diary_western_hard_4 = 60755
++achievement_diary_western_hard_5 = 60756
++achievement_diary_western_hard_6 = 60757
++achievement_diary_western_hard_7 = 60758
++achievement_diary_western_hard_8 = 60759
++achievement_diary_western_hard_9 = 60760
++achievement_diary_western_hard_10 = 60761
++achievement_diary_western_hard_11 = 60762
++achievement_diary_western_hard_12 = 60763
++achievement_diary_western_hard_13 = 60764
++achievement_diary_western_elite_1 = 60765
++achievement_diary_western_elite_2 = 60766
++achievement_diary_western_elite_3 = 60767
++achievement_diary_western_elite_4 = 60768
++achievement_diary_western_elite_5 = 60769
++achievement_diary_western_elite_6 = 60770
++achievement_diary_western_elite_7 = 60771
++achievement_diary_wilderness_easy_1 = 60772
++achievement_diary_wilderness_easy_2 = 60773
++achievement_diary_wilderness_easy_3 = 60774
++achievement_diary_wilderness_easy_4 = 60775
++achievement_diary_wilderness_easy_5 = 60776
++achievement_diary_wilderness_easy_6 = 60777
++achievement_diary_wilderness_easy_7 = 60778
++achievement_diary_wilderness_easy_8 = 60779
++achievement_diary_wilderness_easy_9 = 60780
++achievement_diary_wilderness_easy_10 = 60781
++achievement_diary_wilderness_easy_11 = 60782
++achievement_diary_wilderness_easy_12 = 60783
++achievement_diary_wilderness_medium_1 = 60784
++achievement_diary_wilderness_medium_2 = 60785
++achievement_diary_wilderness_medium_3 = 60786
++achievement_diary_wilderness_medium_4 = 60787
++achievement_diary_wilderness_medium_5 = 60788
++achievement_diary_wilderness_medium_6 = 60789
++achievement_diary_wilderness_medium_7 = 60790
++achievement_diary_wilderness_medium_8 = 60791
++achievement_diary_wilderness_medium_9 = 60792
++achievement_diary_wilderness_medium_10 = 60793
++achievement_diary_wilderness_medium_11 = 60794
++achievement_diary_wilderness_hard_1 = 60795
++achievement_diary_wilderness_hard_2 = 60796
++achievement_diary_wilderness_hard_3 = 60797
++achievement_diary_wilderness_hard_4 = 60798
++achievement_diary_wilderness_hard_5 = 60799
++achievement_diary_wilderness_hard_6 = 60800
++achievement_diary_wilderness_hard_7 = 60801
++achievement_diary_wilderness_hard_8 = 60802
++achievement_diary_wilderness_hard_9 = 60803
++achievement_diary_wilderness_hard_10 = 60804
++achievement_diary_wilderness_elite_1 = 60805
++achievement_diary_wilderness_elite_2 = 60806
++achievement_diary_wilderness_elite_3 = 60807
++achievement_diary_wilderness_elite_4 = 60808
++achievement_diary_wilderness_elite_5 = 60809
++achievement_diary_wilderness_elite_6 = 60810
++achievement_diary_wilderness_elite_7 = 60811
++achievement_diary_kourend_easy_1 = 60812
++achievement_diary_kourend_easy_2 = 60813
++achievement_diary_kourend_easy_3 = 60814
++achievement_diary_kourend_easy_4 = 60815
++achievement_diary_kourend_easy_5 = 60816
++achievement_diary_kourend_easy_6 = 60817
++achievement_diary_kourend_easy_7 = 60818
++achievement_diary_kourend_easy_8 = 60819
++achievement_diary_kourend_easy_9 = 60820
++achievement_diary_kourend_easy_10 = 60821
++achievement_diary_kourend_easy_11 = 60822
++achievement_diary_kourend_easy_12 = 60823
++achievement_diary_kourend_medium_1 = 60824
++achievement_diary_kourend_medium_2 = 60825
++achievement_diary_kourend_medium_3 = 60826
++achievement_diary_kourend_medium_4 = 60827
++achievement_diary_kourend_medium_5 = 60828
++achievement_diary_kourend_medium_6 = 60829
++achievement_diary_kourend_medium_7 = 60830
++achievement_diary_kourend_medium_8 = 60831
++achievement_diary_kourend_medium_9 = 60832
++achievement_diary_kourend_medium_10 = 60833
++achievement_diary_kourend_medium_11 = 60834
++achievement_diary_kourend_medium_12 = 60835
++achievement_diary_kourend_medium_13 = 60836
++achievement_diary_kourend_hard_1 = 60837
++achievement_diary_kourend_hard_2 = 60838
++achievement_diary_kourend_hard_3 = 60839
++achievement_diary_kourend_hard_4 = 60840
++achievement_diary_kourend_hard_5 = 60841
++achievement_diary_kourend_hard_6 = 60842
++achievement_diary_kourend_hard_7 = 60843
++achievement_diary_kourend_hard_8 = 60844
++achievement_diary_kourend_hard_9 = 60845
++achievement_diary_kourend_hard_10 = 60846
++achievement_diary_kourend_elite_1 = 60847
++achievement_diary_kourend_elite_2 = 60848
++achievement_diary_kourend_elite_3 = 60849
++achievement_diary_kourend_elite_4 = 60850
++achievement_diary_kourend_elite_5 = 60851
++achievement_diary_kourend_elite_6 = 60852
++achievement_diary_kourend_elite_7 = 60853
++achievement_diary_kourend_elite_8 = 60854
 diff --git a/content/other/sawmill/build.gradle.kts b/content/other/sawmill/build.gradle.kts
 index 7a33bad04..75301d3d7 100644
 --- a/content/other/sawmill/build.gradle.kts
@@ -1518,16 +1522,17 @@ index 7a33bad04..75301d3d7 100644
      implementation(projects.content.skills.utils)
  }
 diff --git a/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt b/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt
-index 9701b14db..3671463a1 100644
+index 9701b14db..0e3484bc2 100644
 --- a/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt
 +++ b/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.other.sawmill
- 
+@@ -16,6 +16,7 @@ import org.rsmod.api.script.onOpNpc4
+ import org.rsmod.api.shops.Shops
+ import org.rsmod.api.table.SawmillOperatorsRow
+ import org.rsmod.api.table.SawmillPlanksRow
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import dev.openrune.rscm.RSCM.asRSCM
- import dev.openrune.rscm.RSCMType
- import jakarta.inject.Inject
+ import org.rsmod.content.skills.SkillMultiConfig
+ import org.rsmod.content.skills.SkillMultiEntry
+ import org.rsmod.content.skills.SkillingActionType
 @@ -151,7 +152,7 @@ constructor(private val shops: Shops, private val hooks: SawmillHooks) : PluginS
              )
              return
@@ -1558,20 +1563,21 @@ index a4307abb6..ce10f6c69 100644
      implementation(projects.content.skills.utils)
      implementation(projects.content.generic.genericLocs)
 diff --git a/content/skills/cooking/src/main/kotlin/org/rsmod/content/skills/cooking/CookingEvents.kt b/content/skills/cooking/src/main/kotlin/org/rsmod/content/skills/cooking/CookingEvents.kt
-index 5ad59359d..d39f5a6b2 100644
+index dc68e7964..5dfb5decb 100644
 --- a/content/skills/cooking/src/main/kotlin/org/rsmod/content/skills/cooking/CookingEvents.kt
 +++ b/content/skills/cooking/src/main/kotlin/org/rsmod/content/skills/cooking/CookingEvents.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.skills.cooking
- 
+@@ -11,6 +11,7 @@ import org.rsmod.api.script.onPlayerQueueWithArgs
+ import org.rsmod.api.stats.xpmod.XpModifiers
+ import org.rsmod.api.table.FiremakingColoredLogsRow
+ import org.rsmod.api.table.cooking.CookingFoodsRow
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import jakarta.inject.Inject
- import org.rsmod.api.player.protect.ProtectedAccess
- import org.rsmod.api.player.stat.cookingLvl
+ import org.rsmod.content.quest.manager.QuestRequirements
+ import org.rsmod.content.skills.Material
+ import org.rsmod.content.skills.SkillMultiConfig
 @@ -219,6 +220,8 @@ class CookingEvents @Inject constructor(
              val xpModifier = xpMods.get(player, "stat.cooking")
              statAdvance("stat.cooking", food.xp.toDouble() * xpModifier)
-             spam("You successfully cook the ${food.cooked.name.lowercase()}.")
+             mes("You successfully cook the ${food.raw.name}.")
 +            val lumbridgeRange = surface is CookingSurface.Range && surface.rangeType == RangeType.LUMBRIDGE
 +            DiaryHooks.cooked(player, food.cooked.internalName, lumbridgeRange)
          }
@@ -1590,17 +1596,26 @@ index 24c8f424c..234001586 100644
      implementation(projects.content.skills.utils)
  }
 diff --git a/content/skills/firemaking/src/main/kotlin/org/rsmod/content/skills/firemaking/BurnLogEvents.kt b/content/skills/firemaking/src/main/kotlin/org/rsmod/content/skills/firemaking/BurnLogEvents.kt
-index 3819d1409..af99f4f2c 100644
+index 3819d1409..f677d2005 100644
 --- a/content/skills/firemaking/src/main/kotlin/org/rsmod/content/skills/firemaking/BurnLogEvents.kt
 +++ b/content/skills/firemaking/src/main/kotlin/org/rsmod/content/skills/firemaking/BurnLogEvents.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.skills.firemaking
- 
+@@ -16,6 +16,7 @@ import org.rsmod.api.script.onPlayerQueueWithArgs
+ import org.rsmod.api.stats.xpmod.XpModifiers
+ import org.rsmod.api.table.FiremakingColoredLogsRow
+ import org.rsmod.api.table.FiremakingLogsRow
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import dev.openrune.map.MapSingletons.collision
- import dev.openrune.rscm.RSCM
- import dev.openrune.rscm.RSCMType
-@@ -173,6 +174,7 @@ public class BurnLogEvents @Inject constructor(
+ import org.rsmod.game.MapClock
+ import org.rsmod.game.loc.LocAngle
+ import org.rsmod.game.loc.LocShape
+@@ -27,7 +28,6 @@ import org.rsmod.plugin.scripts.PluginScript
+ import org.rsmod.plugin.scripts.ScriptContext
+ import skillSuccess
+ 
+-
+ public class BurnLogEvents @Inject constructor(
+     private val objRepo: ObjRegistry,
+     private val objRegistry: ObjRegistry,
+@@ -173,6 +173,7 @@ public class BurnLogEvents @Inject constructor(
          val xp = task.log.xp * task.method.xpMultiplier(task.log.input.internalName) * xpModifier
          statAdvance("stat.firemaking", xp)
          mes("The fire catches and the logs begin to burn.")
@@ -1621,16 +1636,17 @@ index 519249e46..2dc9f078f 100644
      implementation(projects.api.spells)
      implementation(projects.api.spellsRunes)
 diff --git a/content/skills/magic/spell-teleports/src/main/kotlin/org/rsmod/content/skills/magic/spell/teleports/SpellTeleportScript.kt b/content/skills/magic/spell-teleports/src/main/kotlin/org/rsmod/content/skills/magic/spell/teleports/SpellTeleportScript.kt
-index 19a899e21..db84c3795 100644
+index 19a899e21..df8febc98 100644
 --- a/content/skills/magic/spell-teleports/src/main/kotlin/org/rsmod/content/skills/magic/spell/teleports/SpellTeleportScript.kt
 +++ b/content/skills/magic/spell-teleports/src/main/kotlin/org/rsmod/content/skills/magic/spell/teleports/SpellTeleportScript.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.skills.magic.spell.teleports
- 
+@@ -23,6 +23,7 @@ import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.api.script.onIfOverlayButton
+ import org.rsmod.api.script.onPlayerQueueWithArgs
+ import org.rsmod.api.spells.MagicSpellRegistry
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import dev.openrune.ServerCacheManager
- import dev.openrune.rscm.RSCM
- import dev.openrune.rscm.RSCM.asRSCM
+ import org.rsmod.content.quest.manager.QuestRequirements
+ import org.rsmod.game.inv.isType
+ import org.rsmod.map.CoordGrid
 @@ -95,6 +96,7 @@ constructor(
              return
          }
@@ -1652,16 +1668,24 @@ index 4a83c1a41..44a632ab4 100644
      implementation(projects.api.script)
      implementation(projects.api.scriptAdvanced)
 diff --git a/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/action/RunecraftAction.kt b/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/action/RunecraftAction.kt
-index 01597306e..73bd18d43 100644
+index 01597306e..a2f057949 100644
 --- a/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/action/RunecraftAction.kt
 +++ b/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/action/RunecraftAction.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.skills.runecrafting.action
- 
+@@ -7,11 +7,12 @@ import org.rsmod.api.player.stat.baseRunecraftingLvl
+ import org.rsmod.api.stats.xpmod.XpModifiers
+ import org.rsmod.api.table.ComboruneRecipeRow
+ import org.rsmod.api.table.runecrafting.RunecraftingRunesRow
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import dev.openrune.types.ItemServerType
- import kotlin.math.floor
- import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.content.skills.runecrafting.essencepouch.EssencePouch
+-import org.rsmod.content.skills.runecrafting.items.BloodEssence
+-import org.rsmod.content.skills.runecrafting.items.BloodEssence.applyBloodRuneBonus
+ import org.rsmod.content.skills.runecrafting.items.BindingNecklace.consumeChargeAfterCombo
+ import org.rsmod.content.skills.runecrafting.items.BindingNecklace.isWearing
++import org.rsmod.content.skills.runecrafting.items.BloodEssence
++import org.rsmod.content.skills.runecrafting.items.BloodEssence.applyBloodRuneBonus
+ import org.rsmod.content.skills.runecrafting.items.RaimentsOfTheEye.applyBonus
+ import org.rsmod.content.skills.runecrafting.magic.MagicImbue.isActive
+ 
 @@ -192,6 +193,7 @@ object RunecraftAction {
  
          invAdd(inv, rune.output.internalName, totalRunes)
@@ -1671,16 +1695,17 @@ index 01597306e..73bd18d43 100644
  
      private suspend fun ProtectedAccess.canCraftRune(rune: RunecraftingRunesRow): Boolean {
 diff --git a/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/essence/RuneEssenceTeleport.kt b/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/essence/RuneEssenceTeleport.kt
-index 2837bdc85..c4ed5b447 100644
+index 2837bdc85..50faa7e2a 100644
 --- a/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/essence/RuneEssenceTeleport.kt
 +++ b/content/skills/runecrafting/src/main/kotlin/org/rsmod/content/skills/runecrafting/essence/RuneEssenceTeleport.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.skills.runecrafting.essence
- 
-+import org.rsmod.content.interfaces.diary.DiaryHooks
- import org.rsmod.api.player.dialogue.Dialogue
+@@ -4,6 +4,7 @@ import org.rsmod.api.player.dialogue.Dialogue
  import org.rsmod.api.player.output.soundSynth
  import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.api.script.onOpLoc1
++import org.rsmod.content.interfaces.diary.DiaryHooks
+ import org.rsmod.game.entity.Npc
+ import org.rsmod.map.CoordGrid
+ import org.rsmod.plugin.scripts.PluginScript
 @@ -64,6 +65,7 @@ suspend fun Dialogue.teleportToRuneEssenceMine() {
      player.soundSynth("synth.curse_hit", delay = 15)
      delay(1)
@@ -1689,6 +1714,3 @@ index 2837bdc85..c4ed5b447 100644
  }
  
  suspend fun Dialogue.teleportToMainLand() {
--- 
-2.43.0
-

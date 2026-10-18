@@ -1,7 +1,7 @@
-From c64a510f50290baa94b518f8e75adc6f46d7053d Mon Sep 17 00:00:00 2001
+From d748554aaaeeacc2ff658ebc6ffabb2124c1586a Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 14:47:16 -0400
-Subject: [PATCH] Grand Exchange: trade history
+Subject: [PATCH] feat: Grand Exchange trade history
 
 The clerks' History op and the GE interface's History button open ge_history (383),
 filled with ge_history_init / ge_history_addline / ge_history_finish (1644-1646):
@@ -12,181 +12,181 @@ slot; the Exchange button goes back. History lives in 160 perm varps.
  .../pack/src/main/resources/gamevals.toml     | 160 ++++
  .../pack/configs/grand_exchange.toml          | 800 ++++++++++++++++++
  .../grandexchange/GrandExchangeScriptTest.kt  |  42 +
- .../interfaces/grandexchange/GrandExchange.kt |  47 +-
+ .../interfaces/grandexchange/GrandExchange.kt |  48 +-
  .../grandexchange/GrandExchangeScript.kt      |  61 ++
- 5 files changed, 1108 insertions(+), 2 deletions(-)
+ 5 files changed, 1109 insertions(+), 2 deletions(-)
 
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
-index 63e1de86e..87f8b3e3a 100644
+index a87df5c5e..a60ceec75 100644
 --- a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
 +++ b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
-@@ -96,6 +96,166 @@ ge_limit14_bought = 64029
- ge_limit15_item = 64030
- ge_limit15_start = 64031
- ge_limit15_bought = 64032
-+ge_history0_obj = 63000
-+ge_history0_count = 63001
-+ge_history0_gold = 63002
-+ge_history0_tax = 63003
-+ge_history1_obj = 63004
-+ge_history1_count = 63005
-+ge_history1_gold = 63006
-+ge_history1_tax = 63007
-+ge_history2_obj = 63008
-+ge_history2_count = 63009
-+ge_history2_gold = 63010
-+ge_history2_tax = 63011
-+ge_history3_obj = 63012
-+ge_history3_count = 63013
-+ge_history3_gold = 63014
-+ge_history3_tax = 63015
-+ge_history4_obj = 63016
-+ge_history4_count = 63017
-+ge_history4_gold = 63018
-+ge_history4_tax = 63019
-+ge_history5_obj = 63020
-+ge_history5_count = 63021
-+ge_history5_gold = 63022
-+ge_history5_tax = 63023
-+ge_history6_obj = 63024
-+ge_history6_count = 63025
-+ge_history6_gold = 63026
-+ge_history6_tax = 63027
-+ge_history7_obj = 63028
-+ge_history7_count = 63029
-+ge_history7_gold = 63030
-+ge_history7_tax = 63031
-+ge_history8_obj = 63032
-+ge_history8_count = 63033
-+ge_history8_gold = 63034
-+ge_history8_tax = 63035
-+ge_history9_obj = 63036
-+ge_history9_count = 63037
-+ge_history9_gold = 63038
-+ge_history9_tax = 63039
-+ge_history10_obj = 63040
-+ge_history10_count = 63041
-+ge_history10_gold = 63042
-+ge_history10_tax = 63043
-+ge_history11_obj = 63044
-+ge_history11_count = 63045
-+ge_history11_gold = 63046
-+ge_history11_tax = 63047
-+ge_history12_obj = 63048
-+ge_history12_count = 63049
-+ge_history12_gold = 63050
-+ge_history12_tax = 63051
-+ge_history13_obj = 63052
-+ge_history13_count = 63053
-+ge_history13_gold = 63054
-+ge_history13_tax = 63055
-+ge_history14_obj = 63056
-+ge_history14_count = 63057
-+ge_history14_gold = 63058
-+ge_history14_tax = 63059
-+ge_history15_obj = 63060
-+ge_history15_count = 63061
-+ge_history15_gold = 63062
-+ge_history15_tax = 63063
-+ge_history16_obj = 63064
-+ge_history16_count = 63065
-+ge_history16_gold = 63066
-+ge_history16_tax = 63067
-+ge_history17_obj = 63068
-+ge_history17_count = 63069
-+ge_history17_gold = 63070
-+ge_history17_tax = 63071
-+ge_history18_obj = 63072
-+ge_history18_count = 63073
-+ge_history18_gold = 63074
-+ge_history18_tax = 63075
-+ge_history19_obj = 63076
-+ge_history19_count = 63077
-+ge_history19_gold = 63078
-+ge_history19_tax = 63079
-+ge_history20_obj = 63080
-+ge_history20_count = 63081
-+ge_history20_gold = 63082
-+ge_history20_tax = 63083
-+ge_history21_obj = 63084
-+ge_history21_count = 63085
-+ge_history21_gold = 63086
-+ge_history21_tax = 63087
-+ge_history22_obj = 63088
-+ge_history22_count = 63089
-+ge_history22_gold = 63090
-+ge_history22_tax = 63091
-+ge_history23_obj = 63092
-+ge_history23_count = 63093
-+ge_history23_gold = 63094
-+ge_history23_tax = 63095
-+ge_history24_obj = 63096
-+ge_history24_count = 63097
-+ge_history24_gold = 63098
-+ge_history24_tax = 63099
-+ge_history25_obj = 63100
-+ge_history25_count = 63101
-+ge_history25_gold = 63102
-+ge_history25_tax = 63103
-+ge_history26_obj = 63104
-+ge_history26_count = 63105
-+ge_history26_gold = 63106
-+ge_history26_tax = 63107
-+ge_history27_obj = 63108
-+ge_history27_count = 63109
-+ge_history27_gold = 63110
-+ge_history27_tax = 63111
-+ge_history28_obj = 63112
-+ge_history28_count = 63113
-+ge_history28_gold = 63114
-+ge_history28_tax = 63115
-+ge_history29_obj = 63116
-+ge_history29_count = 63117
-+ge_history29_gold = 63118
-+ge_history29_tax = 63119
-+ge_history30_obj = 63120
-+ge_history30_count = 63121
-+ge_history30_gold = 63122
-+ge_history30_tax = 63123
-+ge_history31_obj = 63124
-+ge_history31_count = 63125
-+ge_history31_gold = 63126
-+ge_history31_tax = 63127
-+ge_history32_obj = 63128
-+ge_history32_count = 63129
-+ge_history32_gold = 63130
-+ge_history32_tax = 63131
-+ge_history33_obj = 63132
-+ge_history33_count = 63133
-+ge_history33_gold = 63134
-+ge_history33_tax = 63135
-+ge_history34_obj = 63136
-+ge_history34_count = 63137
-+ge_history34_gold = 63138
-+ge_history34_tax = 63139
-+ge_history35_obj = 63140
-+ge_history35_count = 63141
-+ge_history35_gold = 63142
-+ge_history35_tax = 63143
-+ge_history36_obj = 63144
-+ge_history36_count = 63145
-+ge_history36_gold = 63146
-+ge_history36_tax = 63147
-+ge_history37_obj = 63148
-+ge_history37_count = 63149
-+ge_history37_gold = 63150
-+ge_history37_tax = 63151
-+ge_history38_obj = 63152
-+ge_history38_count = 63153
-+ge_history38_gold = 63154
-+ge_history38_tax = 63155
-+ge_history39_obj = 63156
-+ge_history39_count = 63157
-+ge_history39_gold = 63158
-+ge_history39_tax = 63159
+@@ -96,6 +96,166 @@ ge_limit14_bought = 64049
+ ge_limit15_item = 64050
+ ge_limit15_start = 64051
+ ge_limit15_bought = 64052
++ge_history0_obj = 63796
++ge_history0_count = 63797
++ge_history0_gold = 63798
++ge_history0_tax = 63799
++ge_history1_obj = 63800
++ge_history1_count = 63801
++ge_history1_gold = 63802
++ge_history1_tax = 63803
++ge_history2_obj = 63804
++ge_history2_count = 63805
++ge_history2_gold = 63806
++ge_history2_tax = 63807
++ge_history3_obj = 63808
++ge_history3_count = 63809
++ge_history3_gold = 63810
++ge_history3_tax = 63811
++ge_history4_obj = 63812
++ge_history4_count = 63813
++ge_history4_gold = 63814
++ge_history4_tax = 63815
++ge_history5_obj = 63816
++ge_history5_count = 63817
++ge_history5_gold = 63818
++ge_history5_tax = 63819
++ge_history6_obj = 63820
++ge_history6_count = 63821
++ge_history6_gold = 63822
++ge_history6_tax = 63823
++ge_history7_obj = 63824
++ge_history7_count = 63825
++ge_history7_gold = 63826
++ge_history7_tax = 63827
++ge_history8_obj = 63828
++ge_history8_count = 63829
++ge_history8_gold = 63830
++ge_history8_tax = 63831
++ge_history9_obj = 63832
++ge_history9_count = 63833
++ge_history9_gold = 63834
++ge_history9_tax = 63835
++ge_history10_obj = 63836
++ge_history10_count = 63837
++ge_history10_gold = 63838
++ge_history10_tax = 63839
++ge_history11_obj = 63840
++ge_history11_count = 63841
++ge_history11_gold = 63842
++ge_history11_tax = 63843
++ge_history12_obj = 63844
++ge_history12_count = 63845
++ge_history12_gold = 63846
++ge_history12_tax = 63847
++ge_history13_obj = 63848
++ge_history13_count = 63849
++ge_history13_gold = 63850
++ge_history13_tax = 63851
++ge_history14_obj = 63852
++ge_history14_count = 63853
++ge_history14_gold = 63854
++ge_history14_tax = 63855
++ge_history15_obj = 63856
++ge_history15_count = 63857
++ge_history15_gold = 63858
++ge_history15_tax = 63859
++ge_history16_obj = 63860
++ge_history16_count = 63861
++ge_history16_gold = 63862
++ge_history16_tax = 63863
++ge_history17_obj = 63864
++ge_history17_count = 63865
++ge_history17_gold = 63866
++ge_history17_tax = 63867
++ge_history18_obj = 63868
++ge_history18_count = 63869
++ge_history18_gold = 63870
++ge_history18_tax = 63871
++ge_history19_obj = 63872
++ge_history19_count = 63873
++ge_history19_gold = 63874
++ge_history19_tax = 63875
++ge_history20_obj = 63876
++ge_history20_count = 63877
++ge_history20_gold = 63878
++ge_history20_tax = 63879
++ge_history21_obj = 63880
++ge_history21_count = 63881
++ge_history21_gold = 63882
++ge_history21_tax = 63883
++ge_history22_obj = 63884
++ge_history22_count = 63885
++ge_history22_gold = 63886
++ge_history22_tax = 63887
++ge_history23_obj = 63888
++ge_history23_count = 63889
++ge_history23_gold = 63890
++ge_history23_tax = 63891
++ge_history24_obj = 63892
++ge_history24_count = 63893
++ge_history24_gold = 63894
++ge_history24_tax = 63895
++ge_history25_obj = 63896
++ge_history25_count = 63897
++ge_history25_gold = 63898
++ge_history25_tax = 63899
++ge_history26_obj = 63900
++ge_history26_count = 63901
++ge_history26_gold = 63902
++ge_history26_tax = 63903
++ge_history27_obj = 63904
++ge_history27_count = 63905
++ge_history27_gold = 63906
++ge_history27_tax = 63907
++ge_history28_obj = 63908
++ge_history28_count = 63909
++ge_history28_gold = 63910
++ge_history28_tax = 63911
++ge_history29_obj = 63912
++ge_history29_count = 63913
++ge_history29_gold = 63914
++ge_history29_tax = 63915
++ge_history30_obj = 63916
++ge_history30_count = 63917
++ge_history30_gold = 63918
++ge_history30_tax = 63919
++ge_history31_obj = 63920
++ge_history31_count = 63921
++ge_history31_gold = 63922
++ge_history31_tax = 63923
++ge_history32_obj = 63924
++ge_history32_count = 63925
++ge_history32_gold = 63926
++ge_history32_tax = 63927
++ge_history33_obj = 63928
++ge_history33_count = 63929
++ge_history33_gold = 63930
++ge_history33_tax = 63931
++ge_history34_obj = 63932
++ge_history34_count = 63933
++ge_history34_gold = 63934
++ge_history34_tax = 63935
++ge_history35_obj = 63936
++ge_history35_count = 63937
++ge_history35_gold = 63938
++ge_history35_tax = 63939
++ge_history36_obj = 63940
++ge_history36_count = 63941
++ge_history36_gold = 63942
++ge_history36_tax = 63943
++ge_history37_obj = 63944
++ge_history37_count = 63945
++ge_history37_gold = 63946
++ge_history37_tax = 63947
++ge_history38_obj = 63948
++ge_history38_count = 63949
++ge_history38_gold = 63950
++ge_history38_tax = 63951
++ge_history39_obj = 63952
++ge_history39_count = 63953
++ge_history39_gold = 63954
++ge_history39_tax = 63955
  
  [gamevals.enum]
- ge_buy_limits = 65380
+ ge_buy_limits = 64441
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
 index be5b35798..30feb177a 100644
 --- a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
@@ -1059,21 +1059,22 @@ index 2ff6a066a..2d61696b6 100644
          const val NOW = 29_000_000
      }
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
-index 5d5fe4f08..9f1a21864 100644
+index 37739113f..bfd9369dd 100644
 --- a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
-@@ -56,6 +56,10 @@ object GrandExchange {
+@@ -57,6 +57,11 @@ object GrandExchange {
      /** How often a limit-blocked offer looks again (100 ticks = 1 minute). */
      const val LIMIT_RECHECK = 100
  
 +    const val HISTORY_SIZE = 40
++
 +    /** Bit set in `ge_historyN_obj` for a sale (the low bits hold obj + 1). */
 +    private const val HISTORY_SOLD_BIT = 1 shl 30
 +
      const val LIMIT_WINDOW_MINUTES = 240
      const val LIMIT_TRACKERS = 16
  
-@@ -226,6 +230,41 @@ object GrandExchange {
+@@ -227,6 +232,41 @@ object GrandExchange {
          set(player, limitVarp(index, "bought"), count)
      }
  
@@ -1115,7 +1116,7 @@ index 5d5fe4f08..9f1a21864 100644
      fun stepSize(count: Int): Int = ((count + FILL_STEPS - 1) / FILL_STEPS).coerceAtLeast(1)
  
      sealed interface StepResult {
-@@ -277,8 +316,10 @@ object GrandExchange {
+@@ -278,8 +318,10 @@ object GrandExchange {
          val done = offer.done + amount
          val finished = done >= offer.count
          val status = if (finished) finishedStatus(offer.sell) else offer.status
@@ -1127,7 +1128,7 @@ index 5d5fe4f08..9f1a21864 100644
          val verb = if (offer.sell) "selling" else "buying"
          if (finished) {
              player.mes("Grand Exchange: Finished $verb ${offer.count.commas()} x ${type.name}.")
-@@ -299,8 +340,10 @@ object GrandExchange {
+@@ -300,8 +342,10 @@ object GrandExchange {
          } else {
              addTo(inv, 1, coinsId, (offer.count - offer.done) * offer.price)
          }
@@ -1140,14 +1141,17 @@ index 5d5fe4f08..9f1a21864 100644
      }
  
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
-index 193d0d9f5..d0bd96378 100644
+index 0adc84134..00cb31f6b 100644
 --- a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
-@@ -16,7 +16,9 @@ import org.rsmod.api.script.onIfClose
- import org.rsmod.api.script.onIfModalButton
- import org.rsmod.api.script.onIfOpen
+@@ -13,10 +13,12 @@ import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.api.player.startInvTransmit
+ import org.rsmod.api.player.ui.ifSetEvents
  import org.rsmod.api.script.onApNpc3
 +import org.rsmod.api.script.onApNpc4
+ import org.rsmod.api.script.onIfClose
+ import org.rsmod.api.script.onIfModalButton
+ import org.rsmod.api.script.onIfOpen
  import org.rsmod.api.script.onOpNpc3
 +import org.rsmod.api.script.onOpNpc4
  import org.rsmod.api.script.onPlayerLogin
@@ -1240,6 +1244,3 @@ index 193d0d9f5..d0bd96378 100644
          val SETDESC_SCRIPT: Int by lazy {
              "clientscript.[clientscript,ge_offers_setdesc]".asRSCM(RSCMType.CLIENTSCRIPT)
          }
--- 
-2.43.0
-

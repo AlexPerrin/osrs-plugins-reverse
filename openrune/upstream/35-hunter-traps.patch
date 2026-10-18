@@ -1,7 +1,7 @@
-From e149154da549f8339a48147015cc33cc230c8dd1 Mon Sep 17 00:00:00 2001
+From 6a258ebe708c902e26c20436c33d1c254f26b4e7 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 07:04:14 -0400
-Subject: [PATCH] Hunter: bird snares and box traps
+Subject: [PATCH] feat: Hunter bird snares and box traps
 
 Lay a bird snare or box trap (Hunter level per trap and creature, 1-5 traps at Hunter
 1/20/40/60/80); every 3 ticks a set trap with a matching creature within 2 tiles rolls the
@@ -9,7 +9,7 @@ catch on the crimson swift's skilling curve (wiki) at the player's level above t
 requirement; the trap goes through the trapping/failing locs to full or broken. Check gives
 the loot, the trap and the XP ("You've caught a <creature>."), Dismantle/Reset/Investigate.
 Five birds (crimson swift to tropical wagtail) and ferrets/chinchompas (grey, red, black).
-dbtables hunter_traps (60011) and hunter_trap_creatures (60012), rows 60350-60360, timer 470.
+dbtables hunter_traps (56004) and hunter_trap_creatures (56005), rows 60172-60182, timer 436.
 Trap locs are the ones RuneLite's Hunter plugin tracks. Collapse after 200 ticks, the
 catch curve for creatures other than the crimson swift and most messages are best guesses.
 Integration tests.
@@ -17,9 +17,9 @@ Integration tests.
  .../skills/hunter/pack/HunterPluginPack.kt    |   8 +-
  .../skills/hunter/pack/HunterTrapTables.kt    | 152 +++++++
  .../skills/hunter/HunterTrapScriptTest.kt     | 138 +++++++
- .../content/skills/hunter/HunterTrapScript.kt | 385 ++++++++++++++++++
+ .../content/skills/hunter/HunterTrapScript.kt | 384 ++++++++++++++++++
  .../hunter/src/main/resources/gamevals.toml   |  16 +
- 5 files changed, 698 insertions(+), 1 deletion(-)
+ 5 files changed, 697 insertions(+), 1 deletion(-)
  create mode 100644 content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapTables.kt
  create mode 100644 content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterTrapScriptTest.kt
  create mode 100644 content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
@@ -345,10 +345,10 @@ index 000000000..0e3b8fe60
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
 new file mode 100644
-index 000000000..712864fe1
+index 000000000..246850dcd
 --- /dev/null
 +++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
-@@ -0,0 +1,385 @@
+@@ -0,0 +1,384 @@
 +package org.rsmod.content.skills.hunter
 +
 +import dev.openrune.rscm.RSCM
@@ -731,40 +731,36 @@ index 000000000..712864fe1
 +
 +        private const val LOW = 100
 +        private const val HIGH = 419
-+
 +    }
 +}
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
-index d8e0b6f99..8b47beb7e 100644
+index 72db58384..ec59f3444 100644
 --- a/content/skills/hunter/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
 @@ -1,6 +1,8 @@
  [gamevals.dbtable]
- impling_types = 60000
- birdhouse_types = 60001
-+hunter_traps = 60011
-+hunter_trap_creatures = 60012
+ impling_types = 56002
+ birdhouse_types = 56003
++hunter_traps = 56004
++hunter_trap_creatures = 56005
  
  [gamevals.dbrow]
- impling_type_baby = 60124
-@@ -23,3 +25,17 @@ birdhouse_type_mahogany = 60145
- birdhouse_type_yew = 60146
- birdhouse_type_magic = 60147
- birdhouse_type_redwood = 60148
-+hunter_trap_bird_snare = 60350
-+hunter_trap_box_trap = 60351
-+hunter_trap_creature_crimson_swift = 60352
-+hunter_trap_creature_golden_warbler = 60353
-+hunter_trap_creature_copper_longtail = 60354
-+hunter_trap_creature_cerulean_twitch = 60355
-+hunter_trap_creature_tropical_wagtail = 60356
-+hunter_trap_creature_ferret = 60357
-+hunter_trap_creature_chinchompa = 60358
-+hunter_trap_creature_chinchompa_big = 60359
-+hunter_trap_creature_chinchompa_black = 60360
+ impling_type_baby = 60152
+@@ -23,3 +25,17 @@ birdhouse_type_mahogany = 60168
+ birdhouse_type_yew = 60169
+ birdhouse_type_magic = 60170
+ birdhouse_type_redwood = 60171
++hunter_trap_bird_snare = 60172
++hunter_trap_box_trap = 60173
++hunter_trap_creature_crimson_swift = 60174
++hunter_trap_creature_golden_warbler = 60175
++hunter_trap_creature_copper_longtail = 60176
++hunter_trap_creature_cerulean_twitch = 60177
++hunter_trap_creature_tropical_wagtail = 60178
++hunter_trap_creature_ferret = 60179
++hunter_trap_creature_chinchompa = 60180
++hunter_trap_creature_chinchompa_big = 60181
++hunter_trap_creature_chinchompa_black = 60182
 +
 +[gamevals.timer]
-+hunter_traps = 470
--- 
-2.43.0
-
++hunter_traps = 436

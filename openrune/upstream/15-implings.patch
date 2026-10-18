@@ -1,11 +1,11 @@
-From de12a27f370402a0f8aac63fe801b334097e4edf Mon Sep 17 00:00:00 2001
+From 9b92760078e393483410cba7aadf687767ac5666 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Fri, 16 Oct 2026 20:36:47 -0400
-Subject: [PATCH] Add implings: catching, jar loot and crystal implings
+Subject: [PATCH] feat: implings (catching, jar loot and crystal implings)
 
 Catching implings in Puro-Puro and Gielinor with a wielded butterfly net (or
 10 extra Hunter levels barehanded) and an impling jar. Impling data is a
-server-only dbtable impling_types (60000, rows 60124-60134) in the new
+server-only dbtable impling_types (56002, rows 60152-60162) in the new
 content/skills/hunter pack: npc, Puro-Puro npc, jar, level, Puro-Puro and
 Gielinor XP, respawn ticks.
 
@@ -1147,25 +1147,22 @@ index 000000000..8227019c6
 +}
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..77a8628d3
+index 000000000..89309478e
 --- /dev/null
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
 @@ -0,0 +1,15 @@
 +[gamevals.dbtable]
-+impling_types = 60000
++impling_types = 56002
 +
 +[gamevals.dbrow]
-+impling_type_baby = 60124
-+impling_type_young = 60125
-+impling_type_gourmet = 60126
-+impling_type_earth = 60127
-+impling_type_essence = 60128
-+impling_type_eclectic = 60129
-+impling_type_nature = 60130
-+impling_type_magpie = 60131
-+impling_type_ninja = 60132
-+impling_type_dragon = 60133
-+impling_type_lucky = 60134
--- 
-2.43.0
-
++impling_type_baby = 60152
++impling_type_young = 60153
++impling_type_gourmet = 60154
++impling_type_earth = 60155
++impling_type_essence = 60156
++impling_type_eclectic = 60157
++impling_type_nature = 60158
++impling_type_magpie = 60159
++impling_type_ninja = 60160
++impling_type_dragon = 60161
++impling_type_lucky = 60162

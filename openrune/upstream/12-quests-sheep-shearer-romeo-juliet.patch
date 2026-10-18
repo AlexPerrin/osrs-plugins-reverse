@@ -1,7 +1,7 @@
-From 829961076ec7abc8af4b8244fa25bcc80914635a Mon Sep 17 00:00:00 2001
+From f69c8ed4c49825cd89305497f82a3bd88ee3dcd0 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Fri, 16 Oct 2026 20:35:39 -0400
-Subject: [PATCH] Add Sheep Shearer and Romeo & Juliet
+Subject: [PATCH] feat: Sheep Shearer and Romeo & Juliet quests
 
 Both on the quest framework, with the OSRS progress varps Quest Helper reads:
 - Sheep Shearer: varp 179 (sheep), 0 not started, 1 started, 1 + balls of wool
@@ -29,14 +29,14 @@ for both quests.
  create mode 100644 content/quest/src/test/kotlin/org/rsmod/content/quest/area/varrock/romeoandjuliet/RomeoAndJulietInteractionTest.kt
 
 diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml
-index 0a6cb3169..d4e0954bf 100644
+index 0a6cb3169..b4e41d645 100644
 --- a/content/quest/pack/src/main/resources/gamevals.toml
 +++ b/content/quest/pack/src/main/resources/gamevals.toml
 @@ -73,6 +73,7 @@ misthalin_puzzle_state = 63702
  cooks_assistant_ingredients = 63705
  gertrudes_cat_state = 63711
  daddyshome_state = 64064
-+sheep_shearer_state = 63740
++sheep_shearer_state = 63712
  
  [gamevals.varbit]
  restless_ghost_progress = 63702
@@ -44,9 +44,9 @@ index 0a6cb3169..d4e0954bf 100644
  gertrudes_cat_met_fluffs = 63713
  gertrudes_cat_told_sardines = 63714
  daddyshome_crate_opened = 64064
-+sheep_shearer_progress = 63740
-+sheep_shearer_saw_thing = 63741
-+romeo_juliet_progress = 63742
++sheep_shearer_progress = 63715
++sheep_shearer_saw_thing = 63716
++romeo_juliet_progress = 63717
  
  [gamevals.models]
  misthalin_gem_diamond = 32333
@@ -1381,6 +1381,3 @@ index 000000000..9d34fde68
 +        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
 +    }
 +}
--- 
-2.43.0
-

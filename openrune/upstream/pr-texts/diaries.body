@@ -1,0 +1,35 @@
+Content area from OpenRune/OpenRune-Server#353 (answers there: all of it, one PR per row, ids renumbered against main, wiki data is fine).
+
+From our per-feature patches `47-achievement-diary-journals`, `49-achievement-diary-areas-and-progress`, `53-diary-task-hooks-lumbridge-varrock` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`c2492318d`).
+
+**Problem.** Open <area> Journal in the Achievement Diaries tab did nothing, and no diary task progress was tracked.
+
+**Change.** New modules `content/interfaces/achievement-diary` + pack, in three commits, one per patch, each on the one before:
+- **Journals (47, 49):** the journal scroll (741) with each area's tasks per tier, word-wrapped by p12 widths, for all 12 areas. RuneLite's Diary Requirements plugin annotates these lines (checked on a client).
+- **Progress (49, 53):** 31 Lumbridge & Draynor / Varrock tasks drive the client's diary count varbits and strike done tasks in the journal, through one-line hooks in existing content (Hans, sawmill, cooking, firemaking, teleports, runecrafting, essence mine, thieving, crafting, Thessalia, Gertrude, the Stronghold of Security, slayer masters, the canoe...). This touches those modules' build files for the hook dependency.
+
+Server-only ids, numbered after the ids already on main and not shared with any of our other PRs, so they merge in any order: dbtables `achievement_diaries` 56015, `achievement_diary_tasks` 56016 (rows 60351-60854); varps 63786-63795 (task bits and progress).
+
+**Tests.** `DiaryTasksTest` (integration).
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): RESULTS_PENDING. `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch, nor with all of our open content PRs merged together.
+
+Nothing was checked in game from this exact branch; the in-game checks above were on our own server build (an older main plus these and our other patches).
+
+**Data sources.** OSRS Wiki (by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/): the task lists of the journals (the Diary Requirements plugin's wording where it has one).
+
+**Caveats.**
+- Per-task bits are in server varps; the real `*_achievement_diary` bit layout is not mapped.
+- No task-complete chat message (wording unknown); title and tier heading wording are guesses; area boxes (Lumbridge, the Al Kharid mine, others) are approximate.
+- In `CookingEvents.kt` the hook is added after main's own "You successfully cook" message.
+
+**Release note.** Achievement diary journals for all areas, with Lumbridge & Draynor and Varrock task progress.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

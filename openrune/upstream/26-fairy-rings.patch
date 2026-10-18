@@ -1,7 +1,8 @@
-From 6dd65790b5c7df6644bd719b0dd22b60e6692cf4 Mon Sep 17 00:00:00 2001
+From ad64f781698eef2016e6f5ced5b65c32ab776af5 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 03:02:47 -0400
-Subject: [PATCH] Fairy rings: dial, travel log, Zanaris and Last-destination
+Subject: [PATCH] feat: fairy rings (dial, travel log, Zanaris and
+ Last-destination)
 
 New module on the cache's fairyring dbtable: Configure (Dramen or Lunar staff) opens the dial
 (398) with the travel log (381); dial buttons and 'Use code' set fairyring_1..3; Confirm,
@@ -73,13 +74,13 @@ index 000000000..aaebf7bb7
 +class FairyRingsPluginPack : PluginPack()
 diff --git a/content/travel/fairy-rings/pack/src/main/resources/gamevals.toml b/content/travel/fairy-rings/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..96ddf35a0
+index 000000000..48416e2cd
 --- /dev/null
 +++ b/content/travel/fairy-rings/pack/src/main/resources/gamevals.toml
 @@ -0,0 +1,3 @@
 +[gamevals.varp]
-+fairyring_travel_log_a = 63860
-+fairyring_travel_log_b = 63861
++fairyring_travel_log_a = 63784
++fairyring_travel_log_b = 63785
 diff --git a/content/travel/fairy-rings/pack/src/main/resources/pack/configs/fairy_ring_vars.toml b/content/travel/fairy-rings/pack/src/main/resources/pack/configs/fairy_ring_vars.toml
 new file mode 100644
 index 000000000..5dfce83ca
@@ -334,6 +335,3 @@ index 000000000..93d62a658
 +        }
 +    }
 +}
--- 
-2.43.0
-

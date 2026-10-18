@@ -1,13 +1,13 @@
-From 8dd9923eac2839bfe446a6c4c5396a1dbc6327bd Mon Sep 17 00:00:00 2001
+From 1d9b6fa49fe2d2f073f86813e7176be064030070 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Fri, 16 Oct 2026 20:37:02 -0400
-Subject: [PATCH] Add the Genie random event
+Subject: [PATCH] feat: Genie random event
 
 Every 1-2 hours of play a Genie appears beside the player, faces them and calls
 them by name. Talk-to gives a lamp (10 x the chosen skill's level in XP),
 Dismiss sends him away, and he leaves after a minute when ignored. New module
-content/events/random-events, timers random_event (450) and
-random_event_genie (451), ::randomevent to summon him. Integration tests in
+content/events/random-events, timers random_event (433) and
+random_event_genie (434), ::randomevent to summon him. Integration tests in
 GenieRandomEventTest.
 ---
  content/events/random-events/build.gradle.kts |  15 ++
@@ -288,13 +288,10 @@ index 000000000..7cdc4199e
 +}
 diff --git a/content/events/random-events/src/main/resources/gamevals.toml b/content/events/random-events/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..962cd9ab3
+index 000000000..586c05a0c
 --- /dev/null
 +++ b/content/events/random-events/src/main/resources/gamevals.toml
 @@ -0,0 +1,3 @@
 +[gamevals.timer]
-+random_event = 450
-+random_event_genie = 451
--- 
-2.43.0
-
++random_event = 433
++random_event_genie = 434

@@ -1,8 +1,8 @@
-Discussion: OpenRune/OpenRune-Server#353
+Content area from OpenRune/OpenRune-Server#353 (answers there: all of it, one PR per row, ids renumbered against main, wiki data is fine).
 
-From our per-feature patches `12-quests-sheep-shearer-romeo-juliet`, `21-treasure-trails`, `22-music-tab-play`, `64-dorics-quest`, `66-goblin-diplomacy`, `67-vampyre-slayer` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), applied with `git am` on `main` (`1be5dfb5f`); commits kept as they are except for the `feat:`/`fix:` subject.
+From our per-feature patches `12-quests-sheep-shearer-romeo-juliet`, `67-vampyre-slayer` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`1be5dfb5f`).
 
-Stacked on the Doric's Quest branch (12, 21, 22, 64) plus Goblin Diplomacy (66), as the patch depends on them. Only the last commit is Vampyre Slayer.
+Stacked on the Sheep Shearer / Romeo & Juliet PR (its `QuestTalkFixture`); only the last commit is new here. Merged after that PR, this one shows only its own commit.
 
 **Problem.** Vampyre Slayer was not implemented. Morgan always gave his after-quest lines (the Draynor script asked "completed?", which the default assume-completed quest mode always answers with yes), and the Blue Moon Inn had no bartender, so the quest's beer step could not be done.
 
@@ -12,18 +12,19 @@ Stacked on the Doric's Quest branch (12, 21, 22, 64) plus Goblin Diplomacy (66),
 - Morgan's after-quest dialogue moves from `DraynorVillageNpcs` into the quest.
 - New `BlueMoonBartender`: "A glass of your finest ale please." sells a beer for 2 coins, plus the fortune and equipment topics.
 
+Server-only ids, numbered after the ids already on main and not shared with any of our other PRs, so they merge in any order: varp `vampyre_slayer_state` 63713; varbits `vampyre_slayer_progress` 63720, `vampyre_asked_harlow` 63721.
+
 **Tests.** `VampyreSlayerInteractionTest` (5): start, decline, Harlow's beer before the stake, a lost stake replaced, Morgan's garlic hint; plus the suites it builds on. Manual, on our own server build: a full run with Quest Helper 4.18 on the RuneLite desktop client (fresh account): every step showed the right QH text, varp 178 went 0-1-2-3, the bartender's beer turned QH's requirement green, and the kill completed the quest.
 
-On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`; `assemble`, `test` and `integration` as separate runs in a 4 GB container): cache build pass, `spotlessCheck` pass, `assemble test integration` pass, boot: Server ready in 8.639919005s.
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): RESULTS_PENDING. `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch, nor with all of our open content PRs merged together.
 
-Nothing was checked in game from this exact branch; in-game checks mentioned above were on our own server build (main's pin `9a8b338a8` plus these and our other patches).
+Nothing was checked in game from this exact branch; the in-game checks above were on our own server build (an older main plus these and our other patches).
 
-**Data sources.** Wiki-derived data or text (OSRS Wiki, by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/; OpenRune is ISC): dialogue from the wiki transcripts (Morgan, Dr Harlow, Bartender (Blue Moon Inn), Vampyre Slayer); rewards, garlic effects and locations from the quest page. See question 4 in #353 on how upstream wants to handle that. Step values: Quest Helper's `VampyreSlayer` (BSD) and the cache dbrow `quest_vampyreslayer`.
+**Data sources.** OSRS Wiki (by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/): dialogue from the wiki transcripts (Morgan, Dr Harlow, Bartender (Blue Moon Inn), Vampyre Slayer); rewards, garlic effects and locations from the quest page. Step values: Quest Helper's `VampyreSlayer` (BSD) and the cache dbrow `quest_vampyreslayer`.
 
 **Caveats.**
 - Guesses: the cupboard's take message, "The coffin is sealed shut." outside the quest, the Count's attack animation, keeping the stake after the kill.
 - Simplified: the garlic weakening lasts until he respawns (the wiki ties it to the first melee hit and 30 seconds); his fast regeneration and return to the coffin are not implemented.
-- Conflict resolved when applying: the quest pack `gamevals.toml` gets only its own lines (the original patch's context had Witch's Potion's line, which is not on this branch).
 
 **Release note.** Vampyre Slayer is playable; the Blue Moon Inn has its bartender.
 

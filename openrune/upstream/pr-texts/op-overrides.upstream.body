@@ -1,0 +1,34 @@
+Fork PR (same branch, for browsing): FORK_PR_URL
+
+Content area from OpenRune/OpenRune-Server#353 (answers there: all of it, one PR per row, ids renumbered against main, wiki data is fine).
+
+From our per-feature patch `20a-npc-loc-op-overrides` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`1be5dfb5f`).
+
+**Problem.** Content sometimes needs an npc or loc op for some players only, ahead of that npc's or loc's own handler. Doric's Quest is the first case: until the quest is done, Smith on Doric's anvils brings Doric over instead of smithing. A second handler on the same event key is not possible, and putting the check into the existing handler ties unrelated content together.
+
+**Change.** Two small singletons in `api/player`:
+- `LocOpOverrides.register(locType, op) { player, loc -> claims }` and `NpcOpOverrides.register(npcType, op) { player, npc -> claims }`.
+- `LocInteractions` / `NpcInteractions` ask them first. When a claim matches and a `LocOverrideEvents.Op` / `NpcOverrideEvents.Op` handler is registered for that type and op, that event is published instead of the usual one; otherwise nothing changes (one map lookup per interaction).
+- Both constructors keep working without the new argument (default instance), so existing call sites and tests are unchanged.
+
+**Tests.** No dedicated test; the first user, Doric's Quest (its own PR, stacked on this one), covers the loc path in `DoricsQuestInteractionTest`.
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): buildCache pass, `spotlessCheck` pass, `assemble` pass, `test` pass, `integration` pass, boot pass (Server ready in 7.742870071s). `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch, nor with all of our open content PRs merged together.
+
+Nothing was checked in game from this exact branch; the in-game checks above were on our own server build (an older main plus these and our other patches).
+
+**Data sources.** None.
+
+**Caveats.**
+- `NpcOpOverrides` has no user in this PR; it is the npc twin of the loc one (our Treasure Trails work used it, which is on hold while you work on clue scrolls). Happy to drop it and keep only the loc half.
+
+**Release note.** Content can claim an npc or loc op for some players ahead of its default handler.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

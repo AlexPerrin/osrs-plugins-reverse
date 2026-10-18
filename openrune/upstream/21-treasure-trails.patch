@@ -17,16 +17,11 @@ scroll boxes; ::clue [tier] [row|list] [steps left]. Small server-only tables
 fill what the cache leaves out (Charlie's items, map interfaces, emote seqs,
 casket tables).
 
-NpcOpOverrides and LocOpOverrides let content take an npc or loc op ahead of
-its own handler for the players it claims, so a clue step can take Talk-to or
-Search on npcs and locs that already have content.
+Uses NpcOpOverrides and LocOpOverrides (patch 20a, split out of this patch
+on 2026-10-18) so a clue step can take Talk-to or Search on npcs and locs
+that already have content. Needs 20a and 22. On hold: upstream is writing
+its own clue scrolls; ids here are still the old ranges (see README).
 ---
- .../api/player/events/interact/LocEvents.kt   |  14 +
- .../api/player/events/interact/NpcEvents.kt   |  12 +
- .../api/player/interact/LocInteractions.kt    |  14 +-
- .../api/player/interact/LocOpOverrides.kt     |  29 +
- .../api/player/interact/NpcInteractions.kt    |  15 +-
- .../api/player/interact/NpcOpOverrides.kt     |  29 +
  .../other/treasure-trails/build.gradle.kts    |  15 +
  .../treasure-trails/pack/build.gradle.kts     |   7 +
  .../pack/BeginnerCasketTable.kt               | 140 ++++
@@ -41,9 +36,7 @@ Search on npcs and locs that already have content.
  .../content/other/treasuretrails/TrailTier.kt |  55 ++
  .../treasuretrails/TreasureTrailScript.kt     | 667 ++++++++++++++++++
  .../treasuretrails/TreasureTrailsModule.kt    |  11 +
- 20 files changed, 2415 insertions(+), 2 deletions(-)
- create mode 100644 api/player/src/main/kotlin/org/rsmod/api/player/interact/LocOpOverrides.kt
- create mode 100644 api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcOpOverrides.kt
+ 14 files changed, 2304 insertions(+)
  create mode 100644 content/other/treasure-trails/build.gradle.kts
  create mode 100644 content/other/treasure-trails/pack/build.gradle.kts
  create mode 100644 content/other/treasure-trails/pack/src/main/kotlin/org/rsmod/content/other/treasuretrails/pack/BeginnerCasketTable.kt
@@ -59,207 +52,6 @@ Search on npcs and locs that already have content.
  create mode 100644 content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailScript.kt
  create mode 100644 content/other/treasure-trails/src/main/kotlin/org/rsmod/content/other/treasuretrails/TreasureTrailsModule.kt
 
-diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/LocEvents.kt b/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/LocEvents.kt
-index 766a7edad..13bad9717 100644
---- a/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/LocEvents.kt
-+++ b/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/LocEvents.kt
-@@ -608,3 +608,17 @@ public class LocUCategoryEvents {
-         category: Int = type.category,
-     ) : ApEvent(EventBus.composeLongKey(category, objType.id))
- }
-+
-+/** A loc op taken over through [org.rsmod.api.player.interact.LocOpOverrides]. */
-+public class LocOverrideEvents {
-+    public class Op(
-+        public val loc: BoundLocInfo,
-+        public val type: ObjectServerType,
-+        public val op: org.rsmod.game.interact.InteractionOp,
-+    ) : OpEvent(key(type.id, op))
-+
-+    public companion object {
-+        public fun key(locType: Int, op: org.rsmod.game.interact.InteractionOp): Long =
-+            EventBus.composeLongKey(locType, op.slot)
-+    }
-+}
-diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/NpcEvents.kt b/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/NpcEvents.kt
-index ef93f420a..493c153e6 100644
---- a/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/NpcEvents.kt
-+++ b/api/player/src/main/kotlin/org/rsmod/api/player/events/interact/NpcEvents.kt
-@@ -5,6 +5,7 @@ import dev.openrune.types.ItemServerType
- import dev.openrune.types.NpcServerType
- import org.rsmod.events.EventBus
- import org.rsmod.game.entity.Npc
-+import org.rsmod.game.interact.InteractionOp
- 
- public sealed class NpcEvents {
-     public sealed class Op(public val npc: Npc, public val type: NpcServerType) :
-@@ -34,6 +35,17 @@ public sealed class NpcEvents {
-     public class Ap5(npc: Npc, type: NpcServerType = npc.visType) : Ap(npc, type)
- }
- 
-+/** An npc op taken over through [org.rsmod.api.player.interact.NpcOpOverrides]. */
-+public class NpcOverrideEvents {
-+    public class Op(public val npc: Npc, public val type: NpcServerType, public val op: InteractionOp) :
-+        OpEvent(key(type.id, op))
-+
-+    public companion object {
-+        public fun key(npcType: Int, op: InteractionOp): Long =
-+            EventBus.composeLongKey(npcType, op.slot)
-+    }
-+}
-+
- public sealed class NpcContentEvents {
-     public sealed class Op(public val npc: Npc, contentGroup: Int) : OpEvent(contentGroup.toLong())
- 
-diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt
-index 56803cfbc..38bd6305c 100644
---- a/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt
-+++ b/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt
-@@ -10,6 +10,7 @@ import org.rsmod.api.player.events.interact.LocCategoryEvents
- import org.rsmod.api.player.events.interact.LocContentEvents
- import org.rsmod.api.player.events.interact.LocDefaultEvents
- import org.rsmod.api.player.events.interact.LocEvents
-+import org.rsmod.api.player.events.interact.LocOverrideEvents
- import org.rsmod.api.player.events.interact.LocUnimplementedEvents
- import org.rsmod.api.player.events.interact.OpEvent
- import org.rsmod.api.route.BoundValidator
-@@ -25,7 +26,11 @@ import org.rsmod.utils.bits.getBits
- 
- public class LocInteractions
- @Inject
--constructor(private val boundValidator: BoundValidator, private val eventBus: EventBus) {
-+constructor(
-+    private val boundValidator: BoundValidator,
-+    private val eventBus: EventBus,
-+    private val overrides: LocOpOverrides = LocOpOverrides(),
-+) {
-     public fun interact(
-         player: Player,
-         loc: BoundLocInfo,
-@@ -62,6 +67,13 @@ constructor(private val boundValidator: BoundValidator, private val eventBus: Ev
-         type: ObjectServerType = ServerCacheManager.getObject(loc.id)!!,
-         base: BoundLocInfo = loc,
-     ): OpEvent? {
-+        if (base === loc && overrides.claims(player, loc, type.id, op)) {
-+            val overrideEvent = LocOverrideEvents.Op(loc, type, op)
-+            if (eventBus.contains(overrideEvent::class.java, overrideEvent.id)) {
-+                return overrideEvent
-+            }
-+        }
-+
-         val multiLoc = multiLoc(loc, type, player.vars)
-         if (multiLoc != null) {
-             val multiLocType = ServerCacheManager.getObject(multiLoc.id)!!
-diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocOpOverrides.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocOpOverrides.kt
-new file mode 100644
-index 000000000..4fe46d3e4
---- /dev/null
-+++ b/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocOpOverrides.kt
-@@ -0,0 +1,29 @@
-+package org.rsmod.api.player.interact
-+
-+import jakarta.inject.Singleton
-+import org.rsmod.game.entity.Player
-+import org.rsmod.game.interact.InteractionOp
-+import org.rsmod.game.loc.BoundLocInfo
-+
-+/**
-+ * Lets content take a loc op ahead of that loc's own handler, but only for the players it claims:
-+ * a treasure trail step that searches a crate, for example, while everyone else gets the crate's
-+ * usual op. A claimed op is published as an [org.rsmod.api.player.events.interact.
-+ * LocOverrideEvents.Op] keyed by the loc type.
-+ */
-+@Singleton
-+public class LocOpOverrides {
-+    private val claims = HashMap<Long, MutableList<(Player, BoundLocInfo) -> Boolean>>()
-+
-+    public fun register(locType: Int, op: InteractionOp, claim: (Player, BoundLocInfo) -> Boolean) {
-+        claims.getOrPut(key(locType, op)) { mutableListOf() } += claim
-+    }
-+
-+    public fun claims(player: Player, loc: BoundLocInfo, locType: Int, op: InteractionOp): Boolean {
-+        val list = claims[key(locType, op)] ?: return false
-+        return list.any { it(player, loc) }
-+    }
-+
-+    private fun key(locType: Int, op: InteractionOp): Long =
-+        (locType.toLong() shl 8) or op.ordinal.toLong()
-+}
-diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcInteractions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcInteractions.kt
-index 3306d3f12..bcbacc71f 100644
---- a/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcInteractions.kt
-+++ b/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcInteractions.kt
-@@ -9,6 +9,7 @@ import org.rsmod.api.player.events.interact.ApEvent
- import org.rsmod.api.player.events.interact.NpcContentEvents
- import org.rsmod.api.player.events.interact.NpcDefaultEvents
- import org.rsmod.api.player.events.interact.NpcEvents
-+import org.rsmod.api.player.events.interact.NpcOverrideEvents
- import org.rsmod.api.player.events.interact.NpcUnimplementedEvents
- import org.rsmod.api.player.events.interact.OpEvent
- import org.rsmod.events.EventBus
-@@ -20,7 +21,12 @@ import org.rsmod.game.movement.RouteRequestPathingEntity
- import org.rsmod.game.vars.VarPlayerIntMap
- import org.rsmod.utils.bits.getBits
- 
--public class NpcInteractions @Inject constructor(private val eventBus: EventBus) {
-+public class NpcInteractions
-+@Inject
-+constructor(
-+    private val eventBus: EventBus,
-+    private val overrides: NpcOpOverrides = NpcOpOverrides(),
-+) {
-     public fun interact(player: Player, npc: Npc, op: InteractionOp) {
-         val opTrigger = hasOpTrigger(player, npc, op)
-         val apTrigger = hasApTrigger(player, npc, op)
-@@ -43,6 +49,13 @@ public class NpcInteractions @Inject constructor(private val eventBus: EventBus)
-         op: InteractionOp,
-         type: NpcServerType = npc.visType,
-     ): OpEvent? {
-+        if (overrides.claims(player, npc, type.id, op)) {
-+            val overrideEvent = NpcOverrideEvents.Op(npc, type, op)
-+            if (eventBus.contains(overrideEvent::class.java, overrideEvent.id)) {
-+                return overrideEvent
-+            }
-+        }
-+
-         val multiNpcType = multiNpc(type, player.vars)
-         if (multiNpcType != null) {
-             val multiNpcTrigger = opTrigger(player, npc, op, multiNpcType)
-diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcOpOverrides.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcOpOverrides.kt
-new file mode 100644
-index 000000000..48d1d61cd
---- /dev/null
-+++ b/api/player/src/main/kotlin/org/rsmod/api/player/interact/NpcOpOverrides.kt
-@@ -0,0 +1,29 @@
-+package org.rsmod.api.player.interact
-+
-+import jakarta.inject.Singleton
-+import org.rsmod.game.entity.Npc
-+import org.rsmod.game.entity.Player
-+import org.rsmod.game.interact.InteractionOp
-+
-+/**
-+ * Lets content take an npc op ahead of that npc's own handler, but only for the players it
-+ * claims: a treasure trail step on the Cook, for example, while everyone else still gets the
-+ * Cook's usual dialogue. A claimed op is published as an [org.rsmod.api.player.events.interact.
-+ * NpcOverrideEvents.Op] keyed by the npc type.
-+ */
-+@Singleton
-+public class NpcOpOverrides {
-+    private val claims = HashMap<Long, MutableList<(Player, Npc) -> Boolean>>()
-+
-+    public fun register(npcType: Int, op: InteractionOp, claim: (Player, Npc) -> Boolean) {
-+        claims.getOrPut(key(npcType, op)) { mutableListOf() } += claim
-+    }
-+
-+    public fun claims(player: Player, npc: Npc, npcType: Int, op: InteractionOp): Boolean {
-+        val list = claims[key(npcType, op)] ?: return false
-+        return list.any { it(player, npc) }
-+    }
-+
-+    private fun key(npcType: Int, op: InteractionOp): Long =
-+        (npcType.toLong() shl 8) or op.ordinal.toLong()
-+}
 diff --git a/content/other/treasure-trails/build.gradle.kts b/content/other/treasure-trails/build.gradle.kts
 new file mode 100644
 index 000000000..0f221f676

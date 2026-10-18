@@ -1,7 +1,7 @@
-From ed6d00fb3c2a347bd9cd09986bdab063ffb133be Mon Sep 17 00:00:00 2001
+From b5f8feebe9781cac07115665f6ab43e87a14ce20 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Fri, 16 Oct 2026 22:35:21 -0400
-Subject: [PATCH] Add allotment, flower and herb patches at six farms
+Subject: [PATCH] feat: allotment, flower and herb patches at six farms
 
 Catherby, Falador, Ardougne, Morytania (Port Phasmatys), Hosidius and Civitas
 illa Fortis. Rake, plant with a seed dibber, growth on the farming clock
@@ -10,8 +10,8 @@ harvest with the OSRS Wiki's harvest lives, chance-to-save constants and XP.
 Each patch's state is the farming_transmit value the patch multilocs show (and
 RuneLite's Time Tracking reads), written to farming_transmit_a-d while the
 player is in that farm's area. New module content/skills/farming with the
-server-only dbtable farming_crops (60002, rows 60160-60187), server varps
-63780-63827, timer farming_transmit (460) and ::growpatches. Integration tests
+server-only dbtable farming_crops (56001, rows 60124-60151), server varps
+63714-63761, timer farming_transmit (435) and ::growpatches. Integration tests
 in FarmingScriptTest. No disease, compost, watering, payments, weed regrowth or
 tool leprechaun.
 ---
@@ -232,59 +232,59 @@ index 000000000..d72a86acb
 +}
 diff --git a/content/skills/farming/pack/src/main/resources/gamevals.toml b/content/skills/farming/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..72303504e
+index 000000000..3d894201c
 --- /dev/null
 +++ b/content/skills/farming/pack/src/main/resources/gamevals.toml
 @@ -0,0 +1,49 @@
 +[gamevals.varp]
-+farming_catherby_a_state = 63780
-+farming_catherby_a_time = 63781
-+farming_catherby_b_state = 63782
-+farming_catherby_b_time = 63783
-+farming_catherby_c_state = 63784
-+farming_catherby_c_time = 63785
-+farming_catherby_d_state = 63786
-+farming_catherby_d_time = 63787
-+farming_falador_a_state = 63788
-+farming_falador_a_time = 63789
-+farming_falador_b_state = 63790
-+farming_falador_b_time = 63791
-+farming_falador_c_state = 63792
-+farming_falador_c_time = 63793
-+farming_falador_d_state = 63794
-+farming_falador_d_time = 63795
-+farming_ardougne_a_state = 63796
-+farming_ardougne_a_time = 63797
-+farming_ardougne_b_state = 63798
-+farming_ardougne_b_time = 63799
-+farming_ardougne_c_state = 63800
-+farming_ardougne_c_time = 63801
-+farming_ardougne_d_state = 63802
-+farming_ardougne_d_time = 63803
-+farming_morytania_a_state = 63804
-+farming_morytania_a_time = 63805
-+farming_morytania_b_state = 63806
-+farming_morytania_b_time = 63807
-+farming_morytania_c_state = 63808
-+farming_morytania_c_time = 63809
-+farming_morytania_d_state = 63810
-+farming_morytania_d_time = 63811
-+farming_hosidius_a_state = 63812
-+farming_hosidius_a_time = 63813
-+farming_hosidius_b_state = 63814
-+farming_hosidius_b_time = 63815
-+farming_hosidius_c_state = 63816
-+farming_hosidius_c_time = 63817
-+farming_hosidius_d_state = 63818
-+farming_hosidius_d_time = 63819
-+farming_civitas_a_state = 63820
-+farming_civitas_a_time = 63821
-+farming_civitas_b_state = 63822
-+farming_civitas_b_time = 63823
-+farming_civitas_c_state = 63824
-+farming_civitas_c_time = 63825
-+farming_civitas_d_state = 63826
-+farming_civitas_d_time = 63827
++farming_catherby_a_state = 63714
++farming_catherby_a_time = 63715
++farming_catherby_b_state = 63716
++farming_catherby_b_time = 63717
++farming_catherby_c_state = 63718
++farming_catherby_c_time = 63719
++farming_catherby_d_state = 63720
++farming_catherby_d_time = 63721
++farming_falador_a_state = 63722
++farming_falador_a_time = 63723
++farming_falador_b_state = 63724
++farming_falador_b_time = 63725
++farming_falador_c_state = 63726
++farming_falador_c_time = 63727
++farming_falador_d_state = 63728
++farming_falador_d_time = 63729
++farming_ardougne_a_state = 63730
++farming_ardougne_a_time = 63731
++farming_ardougne_b_state = 63732
++farming_ardougne_b_time = 63733
++farming_ardougne_c_state = 63734
++farming_ardougne_c_time = 63735
++farming_ardougne_d_state = 63736
++farming_ardougne_d_time = 63737
++farming_morytania_a_state = 63738
++farming_morytania_a_time = 63739
++farming_morytania_b_state = 63740
++farming_morytania_b_time = 63741
++farming_morytania_c_state = 63742
++farming_morytania_c_time = 63743
++farming_morytania_d_state = 63744
++farming_morytania_d_time = 63745
++farming_hosidius_a_state = 63746
++farming_hosidius_a_time = 63747
++farming_hosidius_b_state = 63748
++farming_hosidius_b_time = 63749
++farming_hosidius_c_state = 63750
++farming_hosidius_c_time = 63751
++farming_hosidius_d_state = 63752
++farming_hosidius_d_time = 63753
++farming_civitas_a_state = 63754
++farming_civitas_a_time = 63755
++farming_civitas_b_state = 63756
++farming_civitas_b_time = 63757
++farming_civitas_c_state = 63758
++farming_civitas_c_time = 63759
++farming_civitas_d_state = 63760
++farming_civitas_d_time = 63761
 diff --git a/content/skills/farming/pack/src/main/resources/pack/configs/farming_vars.toml b/content/skills/farming/pack/src/main/resources/pack/configs/farming_vars.toml
 new file mode 100644
 index 000000000..84fea1ae8
@@ -1134,45 +1134,42 @@ index 000000000..fd32f89c4
 +}
 diff --git a/content/skills/farming/src/main/resources/gamevals.toml b/content/skills/farming/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..4733c1bef
+index 000000000..a80c98c13
 --- /dev/null
 +++ b/content/skills/farming/src/main/resources/gamevals.toml
 @@ -0,0 +1,35 @@
 +[gamevals.dbtable]
-+farming_crops = 60002
++farming_crops = 56001
 +
 +[gamevals.dbrow]
-+farming_crop_potato = 60160
-+farming_crop_onion = 60161
-+farming_crop_cabbage = 60162
-+farming_crop_tomato = 60163
-+farming_crop_sweetcorn = 60164
-+farming_crop_strawberry = 60165
-+farming_crop_watermelon = 60166
-+farming_crop_snape_grass = 60167
-+farming_crop_marigold = 60168
-+farming_crop_rosemary = 60169
-+farming_crop_nasturtium = 60170
-+farming_crop_woad = 60171
-+farming_crop_limpwurt = 60172
-+farming_crop_white_lily = 60173
-+farming_crop_guam = 60174
-+farming_crop_marrentill = 60175
-+farming_crop_tarromin = 60176
-+farming_crop_harralander = 60177
-+farming_crop_ranarr = 60178
-+farming_crop_toadflax = 60179
-+farming_crop_irit = 60180
-+farming_crop_avantoe = 60181
-+farming_crop_kwuarm = 60182
-+farming_crop_snapdragon = 60183
-+farming_crop_cadantine = 60184
-+farming_crop_lantadyme = 60185
-+farming_crop_dwarf_weed = 60186
-+farming_crop_torstol = 60187
++farming_crop_potato = 60124
++farming_crop_onion = 60125
++farming_crop_cabbage = 60126
++farming_crop_tomato = 60127
++farming_crop_sweetcorn = 60128
++farming_crop_strawberry = 60129
++farming_crop_watermelon = 60130
++farming_crop_snape_grass = 60131
++farming_crop_marigold = 60132
++farming_crop_rosemary = 60133
++farming_crop_nasturtium = 60134
++farming_crop_woad = 60135
++farming_crop_limpwurt = 60136
++farming_crop_white_lily = 60137
++farming_crop_guam = 60138
++farming_crop_marrentill = 60139
++farming_crop_tarromin = 60140
++farming_crop_harralander = 60141
++farming_crop_ranarr = 60142
++farming_crop_toadflax = 60143
++farming_crop_irit = 60144
++farming_crop_avantoe = 60145
++farming_crop_kwuarm = 60146
++farming_crop_snapdragon = 60147
++farming_crop_cadantine = 60148
++farming_crop_lantadyme = 60149
++farming_crop_dwarf_weed = 60150
++farming_crop_torstol = 60151
 +
 +[gamevals.timer]
-+farming_transmit = 460
--- 
-2.43.0
-
++farming_transmit = 435

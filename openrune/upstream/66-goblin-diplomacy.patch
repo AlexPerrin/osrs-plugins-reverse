@@ -1,7 +1,10 @@
-From de07685f962357a9ceaa4c5b1882dae007ed8fb9 Mon Sep 17 00:00:00 2001
+From 5398c608777cbec90485b2bac3bad15c233cd3b4 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 23:51:25 -0400
-Subject: [PATCH 66/66] Goblin Diplomacy; Goblin Village lookout ladder
+Subject: [PATCH] feat: Goblin Diplomacy quest; Goblin Village lookout ladder
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
 New quest. Progress is the client varbit gobdip_main (2378): 0, 3 started
 (orange wanted), 4 blue wanted, 5 brown wanted, 6 complete; Quest Helper
@@ -1141,6 +1144,3 @@ index 000000000..457c8c103
 +        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
 +    }
 +}
--- 
-2.43.0
-

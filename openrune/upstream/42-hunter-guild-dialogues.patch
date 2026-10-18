@@ -1,8 +1,8 @@
-From f9f29007933c1d4dea3a6da7f04d5ef6be6983ea Mon Sep 17 00:00:00 2001
+From b51135e3d76295dfa067aa7eb3d7556156ddd29a Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 09:00:33 -0400
-Subject: [PATCH] Hunter: guild hunter and Verity dialogues for Hunters'
- Rumours, jerboas
+Subject: [PATCH] feat: guild hunter and Verity dialogues for Hunters' Rumours,
+ jerboas
 
 The Burrow's guild hunters (Gilman, Cervus, Ornus, Aco, Teco, Wolf) and
 Guild Scribe Verity from the wiki transcripts: Talk-to and the Rumour op
@@ -74,14 +74,14 @@ index d053182ba..a045d68ee 100644
              boxed("chinchompa_big", "carnivorous chinchompa", "npc.hunting_chinchompa_big", 63, 2650, "obj.chinchompa_big_captured"),
              boxed("chinchompa_black", "black chinchompa", "npc.hunting_chinchompa_black", 73, 3150, "obj.chinchompa_black"),
 diff --git a/content/skills/hunter/pack/src/main/resources/gamevals.toml b/content/skills/hunter/pack/src/main/resources/gamevals.toml
-index e82d7f469..8fb23cbc8 100644
+index 5a4d66855..e64d4fd47 100644
 --- a/content/skills/hunter/pack/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/pack/src/main/resources/gamevals.toml
-@@ -20,3 +20,4 @@ hunter_rumour_pity = 63899
- hunter_rumour_unlocked = 63900
- hunter_rumours_completed = 63901
- hunter_rumour_back_to_back = 63902
-+hunter_rumour_last = 63903
+@@ -20,3 +20,4 @@ hunter_rumour_pity = 63779
+ hunter_rumour_unlocked = 63780
+ hunter_rumours_completed = 63781
+ hunter_rumour_back_to_back = 63782
++hunter_rumour_last = 63783
 diff --git a/content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml b/content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml
 index 5082a7317..e4cca3045 100644
 --- a/content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml
@@ -818,7 +818,7 @@ index 50ddfc78d..ac9899389 100644
              "<col=229628>You find a rare piece of the creature! You should take it back to the Hunter Guild.</col>"
          const val NO_RUMOUR_MESSAGE = "You don't have a rumour to investigate at the moment."
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
-index 892091ff5..7a2c4f8f2 100644
+index 9593753da..610bd597f 100644
 --- a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
 +++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
 @@ -159,7 +159,8 @@ constructor(
@@ -840,25 +840,22 @@ index 892091ff5..7a2c4f8f2 100644
          const val LAY_TICKS = 3
          const val ATTEMPT_TICKS = 3
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
-index eaffc4892..dbbd7ad4b 100644
+index 89ff42d11..f5bcecaa6 100644
 --- a/content/skills/hunter/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
-@@ -43,6 +43,7 @@ hunter_trap_creature_ferret = 60357
- hunter_trap_creature_chinchompa = 60358
- hunter_trap_creature_chinchompa_big = 60359
- hunter_trap_creature_chinchompa_black = 60360
-+hunter_trap_creature_jerboa = 60361
- herbiboar_leg_0 = 60370
- herbiboar_leg_1 = 60371
- herbiboar_leg_2 = 60372
-@@ -152,6 +153,7 @@ hunter_rumour_snowy_knight = 60492
- hunter_rumour_black_warlock = 60493
- hunter_rumour_sunlight_moth = 60494
- hunter_rumour_moonlight_moth = 60495
-+hunter_rumour_embertailed_jerboa = 60496
+@@ -43,6 +43,7 @@ hunter_trap_creature_ferret = 60179
+ hunter_trap_creature_chinchompa = 60180
+ hunter_trap_creature_chinchompa_big = 60181
+ hunter_trap_creature_chinchompa_black = 60182
++hunter_trap_creature_jerboa = 60183
+ herbiboar_leg_0 = 60184
+ herbiboar_leg_1 = 60185
+ herbiboar_leg_2 = 60186
+@@ -152,6 +153,7 @@ hunter_rumour_snowy_knight = 60289
+ hunter_rumour_black_warlock = 60290
+ hunter_rumour_sunlight_moth = 60291
+ hunter_rumour_moonlight_moth = 60292
++hunter_rumour_embertailed_jerboa = 60293
  
  [gamevals.timer]
- hunter_traps = 470
--- 
-2.43.0
-
+ hunter_traps = 436

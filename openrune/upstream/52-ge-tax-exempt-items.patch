@@ -1,7 +1,7 @@
-From 26718b8138c7d5c3cac415bafc6e3cce156482bc Mon Sep 17 00:00:00 2001
+From 437d07c98428b06a6de68db7d0dfd7f9d575bf8e Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 15:11:29 -0400
-Subject: [PATCH] Grand Exchange: tax-exempt items
+Subject: [PATCH] feat: Grand Exchange tax-exempt items
 
 Sales of the items OSRS exempts from the 2% tax (bonds, low-level ammo and food,
 teleport tablets, basic tools, ...) pay no tax; enum ge_tax_exempt.
@@ -21,14 +21,14 @@ which differs from OpenRune's licence.
  create mode 100644 content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_tax_exempt.toml
 
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
-index 87f8b3e3a..2883cc6cb 100644
+index a60ceec75..45cdfc70b 100644
 --- a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
 +++ b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
-@@ -259,3 +259,4 @@ ge_history39_tax = 63159
+@@ -259,3 +259,4 @@ ge_history39_tax = 63955
  
  [gamevals.enum]
- ge_buy_limits = 65380
-+ge_tax_exempt = 65381
+ ge_buy_limits = 64441
++ge_tax_exempt = 64442
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_tax_exempt.toml b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_tax_exempt.toml
 new file mode 100644
 index 000000000..2c99c4352
@@ -132,7 +132,7 @@ index 2d61696b6..afdb89cc4 100644
  
              repeat(GrandExchange.HISTORY_SIZE) {
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
-index 9f1a21864..cf58f77e4 100644
+index bfd9369dd..5e517e66d 100644
 --- a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
 @@ -22,7 +22,7 @@ import org.rsmod.game.type.uncert
@@ -144,7 +144,7 @@ index 9f1a21864..cf58f77e4 100644
   * - fills come in up to [FILL_STEPS] parts ([FILL_DELAY] ticks after Confirm, then every
   *   [FILL_INTERVAL] ticks), each one sent as a partial update;
   * - buys count against the item's 4-hour buy limit (`enum.ge_buy_limits`, from the wiki); an offer
-@@ -67,6 +67,7 @@ object GrandExchange {
+@@ -69,6 +69,7 @@ object GrandExchange {
      var clock: () -> Int = { (System.currentTimeMillis() / 60_000L).toInt() }
  
      private val buyLimitsEnum: Int by lazy { "enum.ge_buy_limits".asRSCM(RSCMType.ENUM) }
@@ -152,7 +152,7 @@ index 9f1a21864..cf58f77e4 100644
      private val newOfferPriceVarp: Int by lazy {
          "varp.ge_newoffer_price".asRSCM(RSCMType.VARP)
      }
-@@ -173,6 +174,12 @@ object GrandExchange {
+@@ -175,6 +176,12 @@ object GrandExchange {
      fun taxPerItem(price: Int): Int =
          if (price < TAX_MIN_PRICE) 0 else minOf(price / 50, TAX_CAP) // 2%, floored
  
@@ -165,7 +165,7 @@ index 9f1a21864..cf58f77e4 100644
      /** Held count of [item] including its noted form. */
      fun heldCount(inv: Inventory, item: Int): Int {
          val base = type(item) ?: return 0
-@@ -251,7 +258,7 @@ object GrandExchange {
+@@ -253,7 +260,7 @@ object GrandExchange {
      /** Adds a finished offer with at least one item traded to the front of the history. */
      fun recordHistory(player: Player, offer: Offer) {
          if (offer.done <= 0) return
@@ -174,7 +174,7 @@ index 9f1a21864..cf58f77e4 100644
          val entries =
              listOf(Trade(offer.item, offer.sell, offer.done, offer.gold, tax)) +
                  history(player).take(HISTORY_SIZE - 1)
-@@ -306,7 +313,7 @@ object GrandExchange {
+@@ -308,7 +315,7 @@ object GrandExchange {
          val inv = collectionInv(player, offer.slot)
          val gold = amount * guide
          if (offer.sell) {
@@ -183,6 +183,3 @@ index 9f1a21864..cf58f77e4 100644
          } else {
              addTo(inv, 0, offer.item, amount)
              val refund = amount * (offer.price - guide)
--- 
-2.43.0
-

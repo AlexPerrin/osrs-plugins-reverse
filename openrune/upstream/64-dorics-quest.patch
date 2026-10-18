@@ -1,7 +1,10 @@
-From b53bb4e28f48dd8d6d5ba54bd8b9dd353d33a8fd Mon Sep 17 00:00:00 2001
+From e71437e6936cbdf458d069c9f60251a9240da3bc Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 23:51:25 -0400
-Subject: [PATCH 64/66] Doric's Quest
+Subject: [PATCH] feat: Doric's Quest
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
 New quest on OpenRune's quest framework. Progress is varp 31 (doricquest)
 through a server-only varbit: 0, 10 started, 100 complete, the values the
@@ -10,14 +13,14 @@ transcript: the opening topics, the start (with a bronze pickaxe), the
 6 clay / 4 copper ore / 2 iron ore hand-in (one transaction), and the
 shortcut when the player already carries them. Rewards: 1 QP, 1,300
 Mining XP, 180 coins. Until the quest is done, Smith on Doric's anvils
-brings Doric over instead (LocOpOverrides from the treasure trails patch).
+brings Doric over instead (the npc and loc op overrides patch).
 
 The quest start prompt reads "Start Doric's Quest?" for names that end
 in "Quest" (as in OSRS), "Start the X quest?" otherwise.
 
 Guesses: the journal text, the after-quest talk, the split of the long
 start line into two boxes, the quest scroll item.
-Needs 12 (QuestTalkFixture) and 21 (LocOpOverrides).
+Needs 12 (QuestTalkFixture) and the npc and loc op overrides patch.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
@@ -32,17 +35,17 @@ Needs 12 (QuestTalkFixture) and 21 (LocOpOverrides).
  create mode 100644 content/quest/src/test/kotlin/org/rsmod/content/quest/area/falador/DoricsQuestInteractionTest.kt
 
 diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml
-index d4e0954bf..f3d3f4fb4 100644
+index b4e41d645..89d34299d 100644
 --- a/content/quest/pack/src/main/resources/gamevals.toml
 +++ b/content/quest/pack/src/main/resources/gamevals.toml
-@@ -92,6 +92,7 @@ daddyshome_crate_opened = 64064
- sheep_shearer_progress = 63740
- sheep_shearer_saw_thing = 63741
- romeo_juliet_progress = 63742
-+doric_quest_progress = 63743
- 
- [gamevals.models]
- misthalin_gem_diamond = 32333
+@@ -79,6 +79,7 @@ sheep_shearer_state = 63712
+ restless_ghost_progress = 63702
+ imp_catcher_progress = 63703
+ misthalin_reflections = 63700
++doric_quest_progress = 63719
+ misthalin_gem_row_slot = 63701
+ cooks_assistant_progress = 63704
+ cooks_assistant_milk = 63705
 diff --git a/content/quest/pack/src/main/resources/pack/configs/dorics_quest_vars.toml b/content/quest/pack/src/main/resources/pack/configs/dorics_quest_vars.toml
 new file mode 100644
 index 000000000..0cfdfd870
@@ -555,6 +558,3 @@ index 000000000..892852b06
 +        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
 +    }
 +}
--- 
-2.43.0
-

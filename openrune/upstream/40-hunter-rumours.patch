@@ -1,7 +1,7 @@
-From dac8ed6a9a657d170c95d3cbf967d5eae7fc551b Mon Sep 17 00:00:00 2001
+From b89eda8189d762b703c7b250ea0775f1a68bd923 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 08:35:27 -0400
-Subject: [PATCH] Hunter: Hunters' Rumours state, rare parts, turn-in, whistle
+Subject: [PATCH] feat: Hunters' Rumours state, rare parts, turn-in, whistle
 
 Hunters' Rumours (wiki) without the guild hunters' dialogues yet: per-hunter
 rumours in server varps, assignment rules (each hunter's list, level, no
@@ -181,24 +181,24 @@ index 000000000..87ee9ab02
 +        }
 +}
 diff --git a/content/skills/hunter/pack/src/main/resources/gamevals.toml b/content/skills/hunter/pack/src/main/resources/gamevals.toml
-index 661edc681..e82d7f469 100644
+index be749e231..5a4d66855 100644
 --- a/content/skills/hunter/pack/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/pack/src/main/resources/gamevals.toml
-@@ -9,3 +9,14 @@ birdhouse_seeds_c = 63766
- birdhouse_seeds_d = 63767
- herbiboar_harvested = 63890
- herbiboar_route_length = 63891
-+hunter_rumour_gilman = 63892
-+hunter_rumour_cervus = 63893
-+hunter_rumour_ornus = 63894
-+hunter_rumour_aco = 63895
-+hunter_rumour_teco = 63896
-+hunter_rumour_wolf = 63897
-+hunter_rumour_current = 63898
-+hunter_rumour_pity = 63899
-+hunter_rumour_unlocked = 63900
-+hunter_rumours_completed = 63901
-+hunter_rumour_back_to_back = 63902
+@@ -9,3 +9,14 @@ birdhouse_seeds_c = 63768
+ birdhouse_seeds_d = 63769
+ herbiboar_harvested = 63770
+ herbiboar_route_length = 63771
++hunter_rumour_gilman = 63772
++hunter_rumour_cervus = 63773
++hunter_rumour_ornus = 63774
++hunter_rumour_aco = 63775
++hunter_rumour_teco = 63776
++hunter_rumour_wolf = 63777
++hunter_rumour_current = 63778
++hunter_rumour_pity = 63779
++hunter_rumour_unlocked = 63780
++hunter_rumours_completed = 63781
++hunter_rumour_back_to_back = 63782
 diff --git a/content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml b/content/skills/hunter/pack/src/main/resources/pack/configs/hunter_rumour_vars.toml
 new file mode 100644
 index 000000000..5082a7317
@@ -616,7 +616,7 @@ index 000000000..8c419e2c5
 +    }
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
-index 712864fe1..892091ff5 100644
+index 246850dcd..9593753da 100644
 --- a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
 +++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
 @@ -62,6 +62,7 @@ constructor(
@@ -636,35 +636,32 @@ index 712864fe1..892091ff5 100644
      }
  
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
-index 31bb55bca..8dd35ad12 100644
+index b60f95bbd..a10df4186 100644
 --- a/content/skills/hunter/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
-@@ -7,6 +7,8 @@ herbiboar_legs = 60013
- herbiboar_spots = 60014
- herbiboar_tunnels = 60015
- herbiboar_herbs = 60016
-+hunter_rumour_hunters = 60017
-+hunter_rumours = 60018
+@@ -7,6 +7,8 @@ herbiboar_legs = 56006
+ herbiboar_spots = 56007
+ herbiboar_tunnels = 56008
+ herbiboar_herbs = 56009
++hunter_rumour_hunters = 56010
++hunter_rumours = 56011
  
  [gamevals.dbrow]
- impling_type_baby = 60124
-@@ -127,6 +129,16 @@ herbiboar_herb_tarromin = 60459
- herbiboar_herb_harralander = 60460
- herbiboar_herb_marentill = 60461
- herbiboar_herb_guam = 60462
-+hunter_rumour_hunter_gilman = 60470
-+hunter_rumour_hunter_cervus = 60471
-+hunter_rumour_hunter_ornus = 60472
-+hunter_rumour_hunter_aco = 60473
-+hunter_rumour_hunter_teco = 60474
-+hunter_rumour_hunter_wolf = 60475
-+hunter_rumour_tropical_wagtail = 60480
-+hunter_rumour_grey_chinchompa = 60481
-+hunter_rumour_carnivorous_chinchompa = 60482
-+hunter_rumour_herbiboar = 60483
+ impling_type_baby = 60152
+@@ -127,6 +129,16 @@ herbiboar_herb_tarromin = 60267
+ herbiboar_herb_harralander = 60268
+ herbiboar_herb_marentill = 60269
+ herbiboar_herb_guam = 60270
++hunter_rumour_hunter_gilman = 60271
++hunter_rumour_hunter_cervus = 60272
++hunter_rumour_hunter_ornus = 60273
++hunter_rumour_hunter_aco = 60274
++hunter_rumour_hunter_teco = 60275
++hunter_rumour_hunter_wolf = 60276
++hunter_rumour_tropical_wagtail = 60277
++hunter_rumour_grey_chinchompa = 60278
++hunter_rumour_carnivorous_chinchompa = 60279
++hunter_rumour_herbiboar = 60280
  
  [gamevals.timer]
- hunter_traps = 470
--- 
-2.43.0
-
+ hunter_traps = 436

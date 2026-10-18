@@ -1,7 +1,7 @@
-From ceb67b9cc076855a4f4d825f4d4a9f65270c2ce1 Mon Sep 17 00:00:00 2001
+From e84d12543b3b01ab56aef74bb8001de3abf18ff7 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 08:12:02 -0400
-Subject: [PATCH] Hunter: herbiboar tracking on Fossil Island
+Subject: [PATCH] feat: Herbiboar tracking on Fossil Island
 
 Herbiboar tracking in the Mushroom Forest, driven by the client's own trail
 varbits (the footprint multilocs on the map) so RuneLite's Herbiboar plugin
@@ -300,15 +300,15 @@ index c5b78f791..300c697d3 100644
          )
  }
 diff --git a/content/skills/hunter/pack/src/main/resources/gamevals.toml b/content/skills/hunter/pack/src/main/resources/gamevals.toml
-index d64495096..661edc681 100644
+index 4e82cb1a3..be749e231 100644
 --- a/content/skills/hunter/pack/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/pack/src/main/resources/gamevals.toml
-@@ -7,3 +7,5 @@ birdhouse_seeds_a = 63764
- birdhouse_seeds_b = 63765
- birdhouse_seeds_c = 63766
- birdhouse_seeds_d = 63767
-+herbiboar_harvested = 63890
-+herbiboar_route_length = 63891
+@@ -7,3 +7,5 @@ birdhouse_seeds_a = 63766
+ birdhouse_seeds_b = 63767
+ birdhouse_seeds_c = 63768
+ birdhouse_seeds_d = 63769
++herbiboar_harvested = 63770
++herbiboar_route_length = 63771
 diff --git a/content/skills/hunter/pack/src/main/resources/pack/configs/herbiboar_vars.toml b/content/skills/hunter/pack/src/main/resources/pack/configs/herbiboar_vars.toml
 new file mode 100644
 index 000000000..8d58a42d7
@@ -777,114 +777,111 @@ index 000000000..329f642e4
 +    }
 +}
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
-index 8b47beb7e..31bb55bca 100644
+index ec59f3444..b60f95bbd 100644
 --- a/content/skills/hunter/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
-@@ -3,6 +3,10 @@ impling_types = 60000
- birdhouse_types = 60001
- hunter_traps = 60011
- hunter_trap_creatures = 60012
-+herbiboar_legs = 60013
-+herbiboar_spots = 60014
-+herbiboar_tunnels = 60015
-+herbiboar_herbs = 60016
+@@ -3,6 +3,10 @@ impling_types = 56002
+ birdhouse_types = 56003
+ hunter_traps = 56004
+ hunter_trap_creatures = 56005
++herbiboar_legs = 56006
++herbiboar_spots = 56007
++herbiboar_tunnels = 56008
++herbiboar_herbs = 56009
  
  [gamevals.dbrow]
- impling_type_baby = 60124
-@@ -36,6 +40,93 @@ hunter_trap_creature_ferret = 60357
- hunter_trap_creature_chinchompa = 60358
- hunter_trap_creature_chinchompa_big = 60359
- hunter_trap_creature_chinchompa_black = 60360
-+herbiboar_leg_0 = 60370
-+herbiboar_leg_1 = 60371
-+herbiboar_leg_2 = 60372
-+herbiboar_leg_3 = 60373
-+herbiboar_leg_4 = 60374
-+herbiboar_leg_5 = 60375
-+herbiboar_leg_6 = 60376
-+herbiboar_leg_7 = 60377
-+herbiboar_leg_8 = 60378
-+herbiboar_leg_9 = 60379
-+herbiboar_leg_10 = 60380
-+herbiboar_leg_11 = 60381
-+herbiboar_leg_12 = 60382
-+herbiboar_leg_13 = 60383
-+herbiboar_leg_14 = 60384
-+herbiboar_leg_15 = 60385
-+herbiboar_leg_16 = 60386
-+herbiboar_leg_17 = 60387
-+herbiboar_leg_18 = 60388
-+herbiboar_leg_19 = 60389
-+herbiboar_leg_20 = 60390
-+herbiboar_leg_21 = 60391
-+herbiboar_leg_22 = 60392
-+herbiboar_leg_23 = 60393
-+herbiboar_leg_24 = 60394
-+herbiboar_leg_25 = 60395
-+herbiboar_leg_26 = 60396
-+herbiboar_leg_27 = 60397
-+herbiboar_leg_28 = 60398
-+herbiboar_leg_29 = 60399
-+herbiboar_leg_30 = 60400
-+herbiboar_leg_31 = 60401
-+herbiboar_leg_32 = 60402
-+herbiboar_leg_33 = 60403
-+herbiboar_leg_34 = 60404
-+herbiboar_leg_35 = 60405
-+herbiboar_leg_36 = 60406
-+herbiboar_leg_37 = 60407
-+herbiboar_leg_38 = 60408
-+herbiboar_leg_39 = 60409
-+herbiboar_leg_40 = 60410
-+herbiboar_leg_41 = 60411
-+herbiboar_leg_42 = 60412
-+herbiboar_leg_43 = 60413
-+herbiboar_leg_44 = 60414
-+herbiboar_leg_45 = 60415
-+herbiboar_spot_a_mushroom = 60420
-+herbiboar_spot_a_patch = 60421
-+herbiboar_spot_b_seaweed = 60422
-+herbiboar_spot_c_mushroom = 60423
-+herbiboar_spot_c_patch = 60424
-+herbiboar_spot_d_patch = 60425
-+herbiboar_spot_d_seaweed = 60426
-+herbiboar_spot_e_mushroom = 60427
-+herbiboar_spot_e_patch = 60428
-+herbiboar_spot_f_mushroom = 60429
-+herbiboar_spot_f_patch = 60430
-+herbiboar_spot_g_mushroom = 60431
-+herbiboar_spot_g_patch = 60432
-+herbiboar_spot_h_seaweed_east = 60433
-+herbiboar_spot_h_seaweed_west = 60434
-+herbiboar_spot_i_mushroom = 60435
-+herbiboar_spot_i_patch = 60436
-+herbiboar_spot_j_patch = 60437
-+herbiboar_spot_k_patch = 60438
-+herbiboar_tunnel_1 = 60440
-+herbiboar_tunnel_2 = 60441
-+herbiboar_tunnel_3 = 60442
-+herbiboar_tunnel_4 = 60443
-+herbiboar_tunnel_5 = 60444
-+herbiboar_tunnel_6 = 60445
-+herbiboar_tunnel_7 = 60446
-+herbiboar_tunnel_8 = 60447
-+herbiboar_tunnel_9 = 60448
-+herbiboar_herb_ranarr = 60450
-+herbiboar_herb_torstol = 60451
-+herbiboar_herb_snapdragon = 60452
-+herbiboar_herb_dwarf_weed = 60453
-+herbiboar_herb_lantadyme = 60454
-+herbiboar_herb_cadantine = 60455
-+herbiboar_herb_kwuarm = 60456
-+herbiboar_herb_avantoe = 60457
-+herbiboar_herb_irit = 60458
-+herbiboar_herb_tarromin = 60459
-+herbiboar_herb_harralander = 60460
-+herbiboar_herb_marentill = 60461
-+herbiboar_herb_guam = 60462
+ impling_type_baby = 60152
+@@ -36,6 +40,93 @@ hunter_trap_creature_ferret = 60179
+ hunter_trap_creature_chinchompa = 60180
+ hunter_trap_creature_chinchompa_big = 60181
+ hunter_trap_creature_chinchompa_black = 60182
++herbiboar_leg_0 = 60184
++herbiboar_leg_1 = 60185
++herbiboar_leg_2 = 60186
++herbiboar_leg_3 = 60187
++herbiboar_leg_4 = 60188
++herbiboar_leg_5 = 60189
++herbiboar_leg_6 = 60190
++herbiboar_leg_7 = 60191
++herbiboar_leg_8 = 60192
++herbiboar_leg_9 = 60193
++herbiboar_leg_10 = 60194
++herbiboar_leg_11 = 60195
++herbiboar_leg_12 = 60196
++herbiboar_leg_13 = 60197
++herbiboar_leg_14 = 60198
++herbiboar_leg_15 = 60199
++herbiboar_leg_16 = 60200
++herbiboar_leg_17 = 60201
++herbiboar_leg_18 = 60202
++herbiboar_leg_19 = 60203
++herbiboar_leg_20 = 60204
++herbiboar_leg_21 = 60205
++herbiboar_leg_22 = 60206
++herbiboar_leg_23 = 60207
++herbiboar_leg_24 = 60208
++herbiboar_leg_25 = 60209
++herbiboar_leg_26 = 60210
++herbiboar_leg_27 = 60211
++herbiboar_leg_28 = 60212
++herbiboar_leg_29 = 60213
++herbiboar_leg_30 = 60214
++herbiboar_leg_31 = 60215
++herbiboar_leg_32 = 60216
++herbiboar_leg_33 = 60217
++herbiboar_leg_34 = 60218
++herbiboar_leg_35 = 60219
++herbiboar_leg_36 = 60220
++herbiboar_leg_37 = 60221
++herbiboar_leg_38 = 60222
++herbiboar_leg_39 = 60223
++herbiboar_leg_40 = 60224
++herbiboar_leg_41 = 60225
++herbiboar_leg_42 = 60226
++herbiboar_leg_43 = 60227
++herbiboar_leg_44 = 60228
++herbiboar_leg_45 = 60229
++herbiboar_spot_a_mushroom = 60230
++herbiboar_spot_a_patch = 60231
++herbiboar_spot_b_seaweed = 60232
++herbiboar_spot_c_mushroom = 60233
++herbiboar_spot_c_patch = 60234
++herbiboar_spot_d_patch = 60235
++herbiboar_spot_d_seaweed = 60236
++herbiboar_spot_e_mushroom = 60237
++herbiboar_spot_e_patch = 60238
++herbiboar_spot_f_mushroom = 60239
++herbiboar_spot_f_patch = 60240
++herbiboar_spot_g_mushroom = 60241
++herbiboar_spot_g_patch = 60242
++herbiboar_spot_h_seaweed_east = 60243
++herbiboar_spot_h_seaweed_west = 60244
++herbiboar_spot_i_mushroom = 60245
++herbiboar_spot_i_patch = 60246
++herbiboar_spot_j_patch = 60247
++herbiboar_spot_k_patch = 60248
++herbiboar_tunnel_1 = 60249
++herbiboar_tunnel_2 = 60250
++herbiboar_tunnel_3 = 60251
++herbiboar_tunnel_4 = 60252
++herbiboar_tunnel_5 = 60253
++herbiboar_tunnel_6 = 60254
++herbiboar_tunnel_7 = 60255
++herbiboar_tunnel_8 = 60256
++herbiboar_tunnel_9 = 60257
++herbiboar_herb_ranarr = 60258
++herbiboar_herb_torstol = 60259
++herbiboar_herb_snapdragon = 60260
++herbiboar_herb_dwarf_weed = 60261
++herbiboar_herb_lantadyme = 60262
++herbiboar_herb_cadantine = 60263
++herbiboar_herb_kwuarm = 60264
++herbiboar_herb_avantoe = 60265
++herbiboar_herb_irit = 60266
++herbiboar_herb_tarromin = 60267
++herbiboar_herb_harralander = 60268
++herbiboar_herb_marentill = 60269
++herbiboar_herb_guam = 60270
  
  [gamevals.timer]
- hunter_traps = 470
--- 
-2.43.0
-
+ hunter_traps = 436

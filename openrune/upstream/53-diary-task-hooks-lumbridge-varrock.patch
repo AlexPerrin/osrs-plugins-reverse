@@ -1,7 +1,7 @@
-From bfb49f11f46f6c0ceec6665f4d7ead30b9dc731d Mon Sep 17 00:00:00 2001
+From 2feb89602845b1ea769364bbab984515850e64e2 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 16:32:43 -0400
-Subject: [PATCH] Achievement diaries: 20 more Lumbridge & Draynor / Varrock
+Subject: [PATCH] feat: 20 more Lumbridge & Draynor / Varrock achievement diary
  task hooks
 
 Hooks in existing content: pickpocketing (a man or woman in Lumbridge, Martin), fishing
@@ -14,7 +14,7 @@ canoe (Lumbridge to Edgeville; shaped at Edgeville). Area boxes are approximate.
 ---
  content/areas/city/varrock/build.gradle.kts   |   1 +
  .../areas/city/varrock/npcs/Gertrude.kt       |   2 +
- .../varrock/npcs/shops/FineClothesShop.kt     |   2 +
+ .../varrock/npcs/shops/FineClothesShop.kt     |   3 +-
  .../stronghold_of_security/build.gradle.kts   |   1 +
  .../StrongholdTravel.kt                       |   6 +-
  .../achievement-diary/build.gradle.kts        |   2 +
@@ -34,7 +34,7 @@ canoe (Lumbridge to Edgeville; shaped at Edgeville). Area boxes are approximate.
  content/travel/canoe/build.gradle.kts         |   1 +
  .../travel/canoe/scripts/CanoeShaping.kt      |   2 +
  .../travel/canoe/scripts/CanoeTravelling.kt   |   2 +
- 22 files changed, 275 insertions(+), 9 deletions(-)
+ 22 files changed, 275 insertions(+), 10 deletions(-)
  create mode 100644 content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryModule.kt
 
 diff --git a/content/areas/city/varrock/build.gradle.kts b/content/areas/city/varrock/build.gradle.kts
@@ -50,16 +50,17 @@ index 2aaa78852..0fb793ade 100644
      testImplementation(projects.api.gameProcess)
      testImplementation(projects.api.invStorage)
 diff --git a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
-index 375f66a3b..ff8eeffd4 100644
+index efaa614cd..7c8fa3f4b 100644
 --- a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
 +++ b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.areas.city.varrock.npcs
- 
+@@ -6,6 +6,7 @@ import org.rsmod.api.player.dialogue.Dialogue
+ import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.api.script.onOpNpc1
+ import org.rsmod.api.script.onOpNpc3
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import jakarta.inject.Inject
- import org.rsmod.api.invtx.invTakeFee
- import org.rsmod.api.player.dialogue.Dialogue
+ import org.rsmod.content.other.pets.cats.CatCare
+ import org.rsmod.content.other.pets.cats.CatColour
+ import org.rsmod.content.other.pets.cats.CatStage
 @@ -165,6 +166,7 @@ constructor(private val care: CatCare, private val gertrudesCat: GertrudesCatQue
                  chatNpc(happy, "Well okay, but they're all just as cuddly as each other.")
                  val colour = pickColour() ?: return
@@ -69,16 +70,17 @@ index 375f66a3b..ff8eeffd4 100644
                  }
              }
 diff --git a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/shops/FineClothesShop.kt b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/shops/FineClothesShop.kt
-index f1164c104..2b5275bef 100644
+index f1164c104..08948d12c 100644
 --- a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/shops/FineClothesShop.kt
 +++ b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/shops/FineClothesShop.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.areas.city.varrock.npcs.shops
- 
+@@ -6,6 +6,7 @@ import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.api.script.onOpNpc1
+ import org.rsmod.api.script.onOpNpc3
+ import org.rsmod.api.shops.Shops
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import jakarta.inject.Inject
- import org.rsmod.api.player.dialogue.Dialogue
- import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.game.entity.Npc
+ import org.rsmod.game.entity.Player
+ import org.rsmod.plugin.scripts.PluginScript
 @@ -21,6 +22,7 @@ class FineClothesShop @Inject constructor(private val shops: Shops) : PluginScri
  
      private fun Player.openFineClothesShop(npc: Npc) {
@@ -87,6 +89,14 @@ index f1164c104..2b5275bef 100644
      }
  
      private suspend fun ProtectedAccess.shopDialogue(npc: Npc) =
+@@ -29,7 +31,6 @@ class FineClothesShop @Inject constructor(private val shops: Shops) : PluginScri
+     private suspend fun Dialogue.shopKeeper(npc: Npc) {
+         chatNpc(happy, "Do you want to buy any fine clothes?")
+ 
+-
+         val choice = choice3(
+             "What have you got?", 1,
+             "I'd just like to buy some clothes.", 2,
 diff --git a/content/areas/misc/stronghold_of_security/build.gradle.kts b/content/areas/misc/stronghold_of_security/build.gradle.kts
 index 4e4b6bef3..57416995e 100644
 --- a/content/areas/misc/stronghold_of_security/build.gradle.kts
@@ -100,16 +110,17 @@ index 4e4b6bef3..57416995e 100644
      testImplementation(projects.api.gameProcess)
      testImplementation(projects.api.invStorage)
 diff --git a/content/areas/misc/stronghold_of_security/src/main/kotlin/org/rsmod/content/areas/misc/stronghold_of_security/StrongholdTravel.kt b/content/areas/misc/stronghold_of_security/src/main/kotlin/org/rsmod/content/areas/misc/stronghold_of_security/StrongholdTravel.kt
-index b75b262fc..1e7152334 100644
+index b75b262fc..197b3811b 100644
 --- a/content/areas/misc/stronghold_of_security/src/main/kotlin/org/rsmod/content/areas/misc/stronghold_of_security/StrongholdTravel.kt
 +++ b/content/areas/misc/stronghold_of_security/src/main/kotlin/org/rsmod/content/areas/misc/stronghold_of_security/StrongholdTravel.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.areas.misc.stronghold_of_security
- 
-+import org.rsmod.content.interfaces.diary.DiaryHooks
+@@ -3,6 +3,7 @@ package org.rsmod.content.areas.misc.stronghold_of_security
  import org.rsmod.api.player.protect.ProtectedAccess
  import org.rsmod.api.script.onOpLoc1
  import org.rsmod.api.table.StrongholdFloorsRow
++import org.rsmod.content.interfaces.diary.DiaryHooks
+ import org.rsmod.game.entity.Player
+ import org.rsmod.map.CoordGrid
+ import org.rsmod.plugin.scripts.PluginScript
 @@ -12,7 +13,10 @@ class StrongholdTravel : PluginScript() {
      override fun ScriptContext.startup() {
          onOpLoc1("loc.sos_dung_ent_open") { climb(WarArrival) }
@@ -136,14 +147,14 @@ index 6eb9d5aea..fe2291ad0 100644
  }
  
 diff --git a/content/interfaces/achievement-diary/pack/src/main/resources/gamevals.toml b/content/interfaces/achievement-diary/pack/src/main/resources/gamevals.toml
-index 3c75ab264..4c8177e60 100644
+index 71c33b132..61dbd12f7 100644
 --- a/content/interfaces/achievement-diary/pack/src/main/resources/gamevals.toml
 +++ b/content/interfaces/achievement-diary/pack/src/main/resources/gamevals.toml
-@@ -8,3 +8,4 @@ diary_tasks_varrock_medium = 63981
- diary_tasks_varrock_hard = 63982
- diary_tasks_varrock_elite = 63983
- diary_progress_lumbridge = 63984
-+diary_progress_varrock = 63160
+@@ -8,3 +8,4 @@ diary_tasks_varrock_medium = 63792
+ diary_tasks_varrock_hard = 63793
+ diary_tasks_varrock_elite = 63794
+ diary_progress_lumbridge = 63795
++diary_progress_varrock = 63786
 diff --git a/content/interfaces/achievement-diary/pack/src/main/resources/pack/configs/diary_task_vars.toml b/content/interfaces/achievement-diary/pack/src/main/resources/pack/configs/diary_task_vars.toml
 index 2a681102b..04cbbab06 100644
 --- a/content/interfaces/achievement-diary/pack/src/main/resources/pack/configs/diary_task_vars.toml
@@ -226,20 +237,27 @@ index b253d5176..f160db527 100644
 +    }
  }
 diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
-index a4b8150dc..e7ac60140 100644
+index 400805bc6..8ca0209b4 100644
 --- a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
 +++ b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
-@@ -3,7 +3,10 @@ package org.rsmod.content.interfaces.diary
+@@ -3,7 +3,9 @@ package org.rsmod.content.interfaces.diary
  import dev.openrune.ServerCacheManager
  import dev.openrune.definition.type.FontType
  import dev.openrune.definition.type.widget.IfEvent
 +import dev.openrune.rscm.RSCM
  import dev.openrune.rscm.RSCM.asRSCM
 +import dev.openrune.rscm.RSCMType
-+import org.rsmod.content.interfaces.emotes.PlayEmote
  import dev.openrune.types.aconverted.interf.IfButtonOp
- import org.rsmod.api.player.protect.ProtectedAccess
- import org.rsmod.api.player.ui.ifSetEvents
+ import org.rsmod.api.player.events.skilling.SkillingActionCompleteEvent
+ import org.rsmod.api.player.events.skilling.SkillingActionContext
+@@ -16,6 +18,7 @@ import org.rsmod.api.script.onIfOverlayButton
+ import org.rsmod.api.script.onPlayerLogin
+ import org.rsmod.api.table.AchievementDiariesRow
+ import org.rsmod.api.table.AchievementDiaryTasksRow
++import org.rsmod.content.interfaces.emotes.PlayEmote
+ import org.rsmod.plugin.scripts.PluginScript
+ import org.rsmod.plugin.scripts.ScriptContext
+ 
 @@ -39,10 +42,14 @@ class AchievementDiaryScript : PluginScript() {
              val product = context as? SkillingActionContext.Product ?: return@onEvent
              when (val source = product.source) {
@@ -258,7 +276,7 @@ index a4b8150dc..e7ac60140 100644
          onIfOverlayButton(TASKBOX) {
              if (it.op == IfButtonOp.Op1) openJournal(it.comsub)
 diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt
-index 67c0e8918..aced22882 100644
+index 3bcc912e8..1b30123d4 100644
 --- a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt
 +++ b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt
 @@ -12,6 +12,17 @@ import org.rsmod.map.CoordGrid
@@ -475,7 +493,7 @@ index 000000000..b45905a84
 +    }
 +}
 diff --git a/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt b/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt
-index 3671463a1..64c180fbd 100644
+index 0e3484bc2..6f23a1ea8 100644
 --- a/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt
 +++ b/content/other/sawmill/src/main/kotlin/org/rsmod/content/other/sawmill/SawmillOperatorScript.kt
 @@ -170,7 +170,7 @@ constructor(private val shops: Shops, private val hooks: SawmillHooks) : PluginS
@@ -500,16 +518,17 @@ index 61d75d887..1a5e4de43 100644
      implementation(projects.api.player)
      implementation(projects.api.pluginCommons)
 diff --git a/content/skills/crafting/src/main/kotlin/org/rsmod/content/skills/crafting/CraftingWorker.kt b/content/skills/crafting/src/main/kotlin/org/rsmod/content/skills/crafting/CraftingWorker.kt
-index 882d17e4e..334ae27a1 100644
+index 882d17e4e..57a05875f 100644
 --- a/content/skills/crafting/src/main/kotlin/org/rsmod/content/skills/crafting/CraftingWorker.kt
 +++ b/content/skills/crafting/src/main/kotlin/org/rsmod/content/skills/crafting/CraftingWorker.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.skills.crafting
- 
+@@ -10,6 +10,7 @@ import org.rsmod.api.player.stat.craftingLvl
+ import org.rsmod.api.player.vars.intVarBit
+ import org.rsmod.api.repo.world.WorldRepository
+ import org.rsmod.api.script.onPlayerQueueWithArgs
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import dev.openrune.ServerCacheManager
- import dev.openrune.rscm.RSCM.asRSCM
- import dev.openrune.rscm.RSCMType
+ import org.rsmod.content.skills.SkillMultiConfig
+ import org.rsmod.content.skills.SkillMultiEntry
+ import org.rsmod.content.skills.crafting.util.CraftingConfig
 @@ -236,6 +237,7 @@ suspend fun ProtectedAccess.craftOnce(product: CraftingProduct): Boolean {
      }
  
@@ -519,7 +538,7 @@ index 882d17e4e..334ae27a1 100644
      if (product.consumesThread && !holdsCostumeNeedle()) {
          consumeThreadCharge()
 diff --git a/content/skills/slayer/build.gradle.kts b/content/skills/slayer/build.gradle.kts
-index b587c8d62..dc57c703d 100644
+index 3d20c293c..58469a54a 100644
 --- a/content/skills/slayer/build.gradle.kts
 +++ b/content/skills/slayer/build.gradle.kts
 @@ -4,6 +4,7 @@ plugins {
@@ -531,17 +550,18 @@ index b587c8d62..dc57c703d 100644
      implementation(projects.api.areaChecker)
      implementation(projects.api.config)
 diff --git a/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt b/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt
-index a6bd09958..90052b1cb 100644
+index 39eb8404d..95724e66d 100644
 --- a/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt
 +++ b/content/skills/slayer/src/main/kotlin/org/rsmod/content/slayer/core/SlayerTaskManager.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.slayer.core
- 
+@@ -22,6 +22,7 @@ import org.rsmod.api.table.slayer.SlayerMasterTaskRow
+ import org.rsmod.api.table.slayer.SlayerMastersRow
+ import org.rsmod.api.table.slayer.SlayerTaskRow
+ import org.rsmod.api.table.slayer.SlayerUnlockRow
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import dev.openrune.ServerCacheManager
- import dev.openrune.definition.type.DBRowType
- import dev.openrune.rscm.RSCM
-@@ -626,6 +627,7 @@ object SlayerTaskManager {
+ import org.rsmod.game.entity.Npc
+ import org.rsmod.game.entity.Player
+ 
+@@ -619,6 +620,7 @@ object SlayerTaskManager {
          VarPlayerIntMapSetter.set(player, "varp.slayer_count_original", amount)
          VarPlayerIntMapSetter.set(player, "varp.slayer_count", amount)
          VarPlayerIntMapSetter.set(player, "varp.slayer_target", task.task.id)
@@ -561,16 +581,17 @@ index a7e5cb889..81add35c9 100644
      implementation(projects.api.pluginCommons)
  }
 diff --git a/content/skills/thieving/src/main/kotlin/org/rsmod/content/skills/thieving/ThievingScript.kt b/content/skills/thieving/src/main/kotlin/org/rsmod/content/skills/thieving/ThievingScript.kt
-index b6a6539cd..203790fea 100644
+index b6a6539cd..ef2bd67a0 100644
 --- a/content/skills/thieving/src/main/kotlin/org/rsmod/content/skills/thieving/ThievingScript.kt
 +++ b/content/skills/thieving/src/main/kotlin/org/rsmod/content/skills/thieving/ThievingScript.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.skills.thieving
- 
+@@ -14,6 +14,7 @@ import org.rsmod.api.script.onOpHeld1
+ import org.rsmod.api.script.onOpHeld2
+ import org.rsmod.api.script.onOpLoc2
+ import org.rsmod.api.script.onOpNpc3
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import dev.openrune.ServerCacheManager
- import dev.openrune.rscm.RSCM.asRSCM
- import dev.openrune.rscm.RSCMType
+ import org.rsmod.game.entity.Npc
+ import org.rsmod.game.hit.HitType
+ import org.rsmod.game.loc.BoundLocInfo
 @@ -143,6 +144,7 @@ constructor(
              mes("You steal ${describe(loot.obj, count)}.", ChatType.Spam)
          }
@@ -591,16 +612,17 @@ index 6022e3c66..7fe1f7341 100644
      implementation(projects.api.pluginCommons)
  }
 diff --git a/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeShaping.kt b/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeShaping.kt
-index a6853ed68..724f62468 100644
+index a6853ed68..92b9dc49b 100644
 --- a/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeShaping.kt
 +++ b/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeShaping.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.travel.canoe.scripts
- 
+@@ -17,6 +17,7 @@ import org.rsmod.api.script.onOpLoc1
+ import org.rsmod.api.script.onOpLoc3
+ import org.rsmod.api.stats.levelmod.InvisibleLevels
+ import org.rsmod.api.stats.xpmod.XpModifiers
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import dev.openrune.ServerCacheManager
- import dev.openrune.definition.type.widget.IfEvent
- import dev.openrune.rscm.RSCM
+ import org.rsmod.game.loc.BoundLocInfo
+ import org.rsmod.game.loc.LocShape
+ import org.rsmod.map.CoordGrid
 @@ -150,6 +151,7 @@ constructor(
              val station = resolveStation()
              this[station, canoe] = CanoeState.Ready
@@ -610,16 +632,17 @@ index a6853ed68..724f62468 100644
              val xp = lcParam(ServerCacheManager.getObject(canoe.loc.asRSCM(RSCMType.LOC))!!, params.skill_xp) * xpMods.get(player, "stat.woodcutting")
              resetAnim()
 diff --git a/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeTravelling.kt b/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeTravelling.kt
-index d1c973f07..8210e1fd8 100644
+index d1c973f07..c45f3fe3a 100644
 --- a/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeTravelling.kt
 +++ b/content/travel/canoe/src/main/kotlin/org/rsmod/content/travel/canoe/scripts/CanoeTravelling.kt
-@@ -1,5 +1,6 @@
- package org.rsmod.content.travel.canoe.scripts
- 
+@@ -17,6 +17,7 @@ import org.rsmod.api.repo.region.RegionTemplate
+ import org.rsmod.api.script.onAiTimer
+ import org.rsmod.api.script.onIfModalButton
+ import org.rsmod.api.script.onOpLoc1
 +import org.rsmod.content.interfaces.diary.DiaryHooks
- import dev.openrune.ServerCacheManager
- import dev.openrune.definition.type.widget.IfEvent
- import dev.openrune.rscm.RSCM.asRSCM
+ import org.rsmod.game.entity.Npc
+ import org.rsmod.game.loc.LocAngle
+ import org.rsmod.game.loc.LocShape
 @@ -134,6 +135,7 @@ class CanoeTravelling @Inject private constructor(private val cutscene: CanoeCut
  
          val cutsceneType = if (wilderness) CutsceneType.Wilderness else CutsceneType.Grass
@@ -628,6 +651,3 @@ index d1c973f07..8210e1fd8 100644
      }
  
      private fun resolveValidDestinations(station: Station, canoe: Canoe): List<CanoeDestination> {
--- 
-2.43.0
-

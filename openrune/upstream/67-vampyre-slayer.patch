@@ -1,7 +1,10 @@
-From bdd64d7acc846554f7385272d63793a5104b728c Mon Sep 17 00:00:00 2001
+From b3f1f321d6b18571c6e86f61f87d5fe2a6899795 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sun, 18 Oct 2026 00:54:20 -0400
 Subject: [PATCH] feat: Vampyre Slayer quest and the Blue Moon Inn bartender
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
 Problem. Vampyre Slayer was not implemented. Morgan always gave his
 after-quest lines (the draynor script asked "completed?", which the
@@ -43,7 +46,7 @@ shut." outside the quest, the Count's attack animation, and keeping the
 stake after the kill. Simplified: the garlic weakening lasts until he
 respawns (the wiki ties it to the first melee hit and 30 seconds); his
 fast regeneration and return to the coffin are not implemented. Needs
-the quest-module patches 12 (QuestTalkFixture), 64 and 66.
+the quest-module patch 12 (QuestTalkFixture).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
@@ -214,26 +217,25 @@ index 000000000..d6fc9c726
 +    }
 +}
 diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml
-index 343f32c75..5ff85d833 100644
+index b4e41d645..b0ece4531 100644
 --- a/content/quest/pack/src/main/resources/gamevals.toml
 +++ b/content/quest/pack/src/main/resources/gamevals.toml
-@@ -74,6 +74,7 @@ cooks_assistant_ingredients = 63705
+@@ -70,12 +70,15 @@ restless_ghost_return_tile = 63704
+ misthalin_return_tile = 63700
+ misthalin_mirror_blocker = 63701
+ misthalin_puzzle_state = 63702
++vampyre_slayer_state = 63713
+ cooks_assistant_ingredients = 63705
  gertrudes_cat_state = 63711
  daddyshome_state = 64064
- sheep_shearer_state = 63740
-+vampyre_slayer_state = 63745
+ sheep_shearer_state = 63712
  
  [gamevals.varbit]
++vampyre_slayer_progress = 63720
++vampyre_asked_harlow = 63721
  restless_ghost_progress = 63702
-@@ -94,6 +95,8 @@ sheep_shearer_saw_thing = 63741
- romeo_juliet_progress = 63742
- doric_quest_progress = 63743
- witchs_potion_progress = 63744
-+vampyre_slayer_progress = 63745
-+vampyre_asked_harlow = 63746
- 
- [gamevals.models]
- misthalin_gem_diamond = 32333
+ imp_catcher_progress = 63703
+ misthalin_reflections = 63700
 diff --git a/content/quest/pack/src/main/resources/pack/configs/vampyre_slayer_npcs.toml b/content/quest/pack/src/main/resources/pack/configs/vampyre_slayer_npcs.toml
 new file mode 100644
 index 000000000..b2e159330
@@ -978,6 +980,3 @@ index 000000000..be3c8e2d3
 +        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
 +    }
 +}
--- 
-2.43.0
-

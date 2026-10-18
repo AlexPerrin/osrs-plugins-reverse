@@ -1307,6 +1307,83 @@ index 5f98d35e1..5331cfc7b 100644
 +    public fun redirect(player: Player, obj: Obj, objType: ItemServerType): Inventory? =
 +        hooks.firstNotNullOfOrNull { it.takeInto(player, obj, objType) }
 +}
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/HeldUInteractions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/HeldUInteractions.kt
+index 8b0e1bb7f..f21aaef17 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/interact/HeldUInteractions.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/interact/HeldUInteractions.kt
+@@ -45,23 +45,36 @@ public class HeldUInteractions @Inject constructor(private val eventBus: EventBu
+         access.opHeldU(selectedItemServerType, selectedSlot, targetItemServerType, targetSlot)
+     }
+ 
++    /**
++     * Picks the script for [selectedItemServerType] used on [targetItemServerType]. Scripts for the
++     * pair (type or content group, in either order) win over "used on anything" defaults, so a
++     * default can never shadow a pair registered the other way round. Of the defaults, the
++     * target's comes first (like RuneScript's `[opheldu,<target obj>]` trigger, which gets the
++     * used obj as `last_useitem`), then the selected obj's.
++     */
+     private suspend fun ProtectedAccess.opHeldU(
+         selectedItemServerType: ItemServerType,
+         selectedSlot: Int,
+         targetItemServerType: ItemServerType,
+         targetSlot: Int,
+     ) {
+-        val firstCombination =
+-            opTrigger(selectedItemServerType, selectedSlot, targetItemServerType, targetSlot)
+-        if (firstCombination != null) {
+-            eventBus.publish(this, firstCombination)
+-            return
+-        }
+-
+-        val secondCombination =
+-            opTrigger(targetItemServerType, targetSlot, selectedItemServerType, selectedSlot)
+-        if (secondCombination != null) {
+-            eventBus.publish(this, secondCombination)
++        val trigger =
++            pairTrigger(selectedItemServerType, selectedSlot, targetItemServerType, targetSlot)
++                ?: pairTrigger(targetItemServerType, targetSlot, selectedItemServerType, selectedSlot)
++                ?: defaultTrigger(
++                    targetItemServerType,
++                    targetSlot,
++                    selectedItemServerType,
++                    selectedSlot,
++                )
++                ?: defaultTrigger(
++                    selectedItemServerType,
++                    selectedSlot,
++                    targetItemServerType,
++                    targetSlot,
++                )
++        if (trigger != null) {
++            eventBus.publish(this, trigger)
+             return
+         }
+ 
+@@ -72,7 +85,7 @@ public class HeldUInteractions @Inject constructor(private val eventBus: EventBu
+         }
+     }
+ 
+-    private fun opTrigger(
++    private fun pairTrigger(
+         first: ItemServerType,
+         firstSlot: Int,
+         second: ItemServerType,
+@@ -93,6 +106,15 @@ public class HeldUInteractions @Inject constructor(private val eventBus: EventBu
+             return contentScript
+         }
+ 
++        return null
++    }
++
++    private fun defaultTrigger(
++        first: ItemServerType,
++        firstSlot: Int,
++        second: ItemServerType,
++        secondSlot: Int,
++    ): SuspendEvent<ProtectedAccess>? {
+         val defaultTypeScript = HeldUDefaultEvents.Type(first, firstSlot, second, secondSlot)
+         if (eventBus.contains(defaultTypeScript::class.java, defaultTypeScript.id)) {
+             return defaultTypeScript
 diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt
 index 56803cfbc..38bd6305c 100644
 --- a/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt
@@ -14547,10 +14624,10 @@ index 000000000..6c0589979
 +protect = false
 diff --git a/content/other/looting-bag/src/integration/kotlin/org/rsmod/content/other/lootingbag/LootingBagScriptTest.kt b/content/other/looting-bag/src/integration/kotlin/org/rsmod/content/other/lootingbag/LootingBagScriptTest.kt
 new file mode 100644
-index 000000000..00432f887
+index 000000000..f25af1d54
 --- /dev/null
 +++ b/content/other/looting-bag/src/integration/kotlin/org/rsmod/content/other/lootingbag/LootingBagScriptTest.kt
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,132 @@
 +package org.rsmod.content.other.lootingbag
 +
 +import dev.openrune.ServerCacheManager
@@ -14564,12 +14641,17 @@ index 000000000..00432f887
 +import org.junit.jupiter.api.Test
 +import org.junit.jupiter.api.parallel.Execution
 +import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.player.interact.HeldUInteractions
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.script.onOpHeldU
 +import org.rsmod.api.testing.GameTestState
 +import org.rsmod.content.other.lootingbag.LootingBagScript.Companion.BAG
 +import org.rsmod.content.other.lootingbag.LootingBagScript.Companion.BAG_INV
 +import org.rsmod.content.other.lootingbag.LootingBagScript.Companion.BAG_OPEN
 +import org.rsmod.game.inv.InvObj
 +import org.rsmod.map.CoordGrid
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
 +
 +@Execution(ExecutionMode.SAME_THREAD)
 +class LootingBagScriptTest {
@@ -14643,6 +14725,35 @@ index 000000000..00432f887
 +            player.teleport(LUMBRIDGE)
 +            assertNull(player.openBagFor(dagger))
 +        }
++
++    @Test
++    fun GameTestState.`an item with its own used-on-anything script still goes into the bag`() =
++        runInjectedGameTest(
++            HeldUInteractions::class,
++            null,
++            LootingBagScript::class,
++            DaggerOnAnythingScript::class,
++        ) { interactions ->
++            val dagger = ServerCacheManager.getItem("obj.bronze_dagger".asRSCM())!!
++            val bagType = ServerCacheManager.getItem(BAG_OPEN.asRSCM())!!
++            player.teleport(WILDERNESS)
++            VarPlayerIntMapSetter.set(player, "varbit.lootingbag_useallitems", 1)
++            player.inv[0] = InvObj(BAG_OPEN, 1)
++            player.inv[1] = InvObj(dagger)
++            player.inv[2] = InvObj(dagger)
++            // The dagger used on the bag: the bag's script, not the dagger's default, gets the op.
++            player.withProtectedAccess { interactions.interact(this, player.inv, dagger, 1, bagType, 0) }
++            val bag = player.invMap.getOrPut(BAG_INV)
++            assertEquals(2, bag.count("obj.bronze_dagger"))
++            assertEquals(0, player.inv.count("obj.bronze_dagger"))
++        }
++
++    /** Stands in for a "used on anything" script such as firemaking's on logs. */
++    class DaggerOnAnythingScript : PluginScript() {
++        override fun ScriptContext.startup() {
++            onOpHeldU("obj.bronze_dagger") {}
++        }
++    }
 +
 +    private companion object {
 +        val WILDERNESS = CoordGrid(3100, 3600)

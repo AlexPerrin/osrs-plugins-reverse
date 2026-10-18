@@ -16,11 +16,18 @@ import java.util.concurrent.ConcurrentHashMap
  * at the param 11 base: POST sessions {idToken} -> {sessionId}, GET accounts -> characters,
  * POST tokens -> {token}. The token ends up in the game login (auth type 7), which this server
  * accepts regardless. Tokens here are opaque and unsigned; nothing is validated.
+ *
+ * Account choice (test tooling): `GET /local-auth/user?name=qhand1` (or an OAuth `login_hint`)
+ * makes the following sign-ins use that account; tokens then carry the name as
+ * `lu-<hex name>-<random>`, which OpenRune's token login decodes. With no name set (or after
+ * `/local-auth/user?name=`), tokens stay plain and the server maps them to its default account.
  */
 class LocalAuth(private val config: Config) {
     private val log = InlineLogger()
     private val random = SecureRandom()
     private val nonces = ConcurrentHashMap<String, String?>()
+
+    @Volatile private var localUser: String? = null
 
     val issuer get() = "${config.httpBase}/"
 
@@ -29,6 +36,7 @@ class LocalAuth(private val config: Config) {
     fun handle(method: String, path: String, query: Map<String, String>, body: String): Response? {
         log.info { "auth: $method $path ${if (body.isNotEmpty()) "(${body.length} bytes)" else ""}" }
         return when {
+            path.endsWith("/local-auth/user") -> json(selectUser(query["name"]))
             path.endsWith("/.well-known/openid-configuration") -> json(discovery())
             path.endsWith("/oauth2/auth") -> authorize(query)
             path.endsWith("/oauth2/token") -> json(token(form(body)))
@@ -36,8 +44,8 @@ class LocalAuth(private val config: Config) {
             path.endsWith("/jwks") -> json("""{"keys":[]}""")
             path.endsWith("game-session/v1/sessions") -> json("""{"sessionId":"${randomId()}"}""")
             path.endsWith("game-session/v1/accounts") ->
-                json("""[{"accountId":"$ACCOUNT_ID","displayName":"${config.localDisplayName}","userHash":"$ACCOUNT_ID"}]""")
-            path.endsWith("game-session/v1/tokens") -> json("""{"token":"${randomId()}"}""")
+                json("""[{"accountId":"$ACCOUNT_ID","displayName":"${displayName()}","userHash":"$ACCOUNT_ID"}]""")
+            path.endsWith("game-session/v1/tokens") -> json("""{"token":"${gameToken()}"}""")
             else -> null
         }
     }
@@ -50,6 +58,7 @@ class LocalAuth(private val config: Config) {
 
     /** Signs in immediately: redirects straight back to the app with a code. */
     private fun authorize(query: Map<String, String>): Response {
+        query["login_hint"]?.let { selectUser(it) }
         val redirect = query["redirect_uri"] ?: return Response("400 Bad Request", "text/plain", "missing redirect_uri".toByteArray())
         val code = randomId()
         nonces[code] = query["nonce"]
@@ -72,12 +81,28 @@ class LocalAuth(private val config: Config) {
             """"refresh_token":"${randomId()}","id_token":"$idToken","scope":"openid offline gamesso.token.create"}"""
     }
 
+    /** Sets the account for the next sign-ins; a blank or invalid name goes back to the default. */
+    private fun selectUser(name: String?): String {
+        val clean = name?.trim()?.lowercase()?.takeIf { USER_NAME.matches(it) }
+        localUser = clean
+        log.info { "auth: local user is now ${clean ?: "the default"}" }
+        return """{"user":${clean?.let { "\"$it\"" } ?: "null"}}"""
+    }
+
+    private fun displayName(): String = localUser ?: config.localDisplayName
+
+    private fun gameToken(): String {
+        val user = localUser ?: return randomId()
+        return "lu-" + user.toByteArray().joinToString("") { "%02x".format(it) } + "-" + randomId()
+    }
+
     private fun json(body: String) = Response("200 OK", "application/json", body.toByteArray())
 
     private fun randomId(): String = ByteArray(16).also(random::nextBytes).joinToString("") { "%02x".format(it) }
 
     private companion object {
         private const val ACCOUNT_ID = "100000001"
+        private val USER_NAME = Regex("[a-z0-9_]{1,12}")
 
         fun form(body: String): Map<String, String> =
             body.split('&').filter { '=' in it }.associate {

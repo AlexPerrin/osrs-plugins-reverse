@@ -2030,3 +2030,25 @@ Redbeard left `RustyAnchorScript`.
 - Tests: `PiratesTreasureInteractionTest` (10): start/decline, rum -> key (talk and use), lost key, chest -> message,
   casket contents and full-inventory refusal, the whole crate path (stash, pack, fill, pay, Wydin's crate), no
   stash before the job.
+
+### Pirate's Treasure desktop run and the fixes after it (twentieth server dev)
+- **Run (05:19 deploy of 981f490, fresh qhtest10, QH 4.18): complete.** Every QH step and dialogue highlight matched
+  (journal sync, Zembo's rum highlighted in the shop, crate rum/fill, Luthas "[2] Thank you", customs options, apron,
+  Wydin's crate, Frank, Blue Moon chest, message -> 3, dig with the Gardener, casket -> 4). The journal lines QH reads
+  showed as intended. Count check on the same account: "The vampyre seems to weaken." every 50 ticks, HP regenerating.
+- **Wydin's back-room door** let a non-employee in: `entering` compared Chebyshev distances, which tie for the two
+  door tiles. Now Manhattan distance to the crate picks the inside tile; a one-tile telejump follows if the walk did
+  not land (the employed pass stalled on the door tile once; cause not found).
+- **Blue Moon Inn stairs** (`loc.fai_varrock_stairs`, 11796) had no handler; added to `StraightStaircaseScript` with
+  the plain stairs' offsets (**guess**, check in game).
+- **New characters got the realm's 150x XP** on their first session: `AccountLoadResponseHook.applyConfigTransforms`
+  set `xpRate = config.baseXpRate` after `CharacterAccountApplier` forced 1x (only later logins were 1x). Now 1x
+  there too (our choice; upstream's realm default is 150x).
+- **Login message:** realm 255's `login_message` is now "Welcome to Old School RuneScape." in the database
+  (orchestrator, `tools/openrune-sql.sh`); our LoginScript mapping is dropped (back to upstream's code).
+- **Android account choice (test tooling):** the LOCAL_AUTH sidecar (`server/.../LocalAuth.kt`) takes
+  `GET http://<host>:8080/local-auth/user?name=qhand1` (or an OAuth `login_hint`); the next sign-ins issue game
+  tokens `lu-<hex name>-<random>`, which `ConnectionHandler.tokenLogin` decodes to that local account (created on
+  first login, password `SPIKE_TOKEN_PASSWORD`/"android-local"). `?name=` (empty) goes back to the default, and plain
+  tokens still map to "tester". Names: `[a-z0-9_]{1,12}`. Token length with a name is up to 60 characters (**not yet
+  checked** that the app passes such a token through unchanged).

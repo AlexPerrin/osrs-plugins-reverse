@@ -575,7 +575,7 @@ index f426d43f6..aa1e21577 100644
      client.write(FriendListLoaded)
      client.write(ChatFilterSettingsPrivateChat(0))
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
-index 5fafd3b35..845691f9e 100644
+index 5fafd3b35..b4bac5282 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
 +++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
 @@ -16,6 +16,7 @@ import org.rsmod.api.db.jdbc.GameDatabase
@@ -594,7 +594,15 @@ index 5fafd3b35..845691f9e 100644
  ) : GameConnectionHandler<Player> {
      private val logger = InlineLogger()
  
-@@ -85,7 +87,7 @@ private constructor(
+@@ -51,6 +53,7 @@ private constructor(
+ 
+     private companion object {
+         private const val PASSWORD_HASH_TIMING_INFO_MS = 50L
++        private val TOKEN_USERNAME = Regex("[a-z0-9_]{1,12}")
+     }
+ 
+     override fun onLogin(
+@@ -85,7 +88,7 @@ private constructor(
      ) {
          val password = auth.password.asCharArray()
          try {
@@ -603,7 +611,7 @@ index 5fafd3b35..845691f9e 100644
          } finally {
              // `password` char array is already cleared during `computePasswordHash`, but that is
              // an implementation detail in the password hashing interface; we ensure to clear it
-@@ -98,7 +100,8 @@ private constructor(
+@@ -98,7 +101,8 @@ private constructor(
      private fun passLogin(
          responseHandler: GameLoginResponseHandler<Player>,
          block: LoginBlock<AuthenticationType>,
@@ -613,7 +621,7 @@ index 5fafd3b35..845691f9e 100644
          password: CharArray,
      ) {
          // This may be filtered earlier at the protocol layer (e.g., rsprot), but we defensively
-@@ -118,8 +121,7 @@ private constructor(
+@@ -118,8 +122,7 @@ private constructor(
              responseHandler.writeFailedResponse(LoginResponse.LoginServerOffline)
              return
          }
@@ -623,7 +631,7 @@ index 5fafd3b35..845691f9e 100644
  
          val responseHook =
              AccountLoadResponseHook(
-@@ -188,14 +190,21 @@ private constructor(
+@@ -188,14 +191,35 @@ private constructor(
          }
      }
  
@@ -638,7 +646,9 @@ index 5fafd3b35..845691f9e 100644
      ) {
 -        logger.warn { "Unhandled login authentication for: $block" }
 -        responseHandler.writeFailedResponse(LoginResponse.InvalidLoginPacket)
-+        val username = System.getenv("SPIKE_TOKEN_USERNAME") ?: "tester"
++        val username = tokenUsername(auth.token.asString())
++            ?: System.getenv("SPIKE_TOKEN_USERNAME")
++            ?: "tester"
 +        val password = (System.getenv("SPIKE_TOKEN_PASSWORD") ?: "android-local").toCharArray()
 +        logger.info { "Token login (${block.header.clientType}) mapped to local account '$username'" }
 +        try {
@@ -646,10 +656,22 @@ index 5fafd3b35..845691f9e 100644
 +        } finally {
 +            password.fill('\u0000')
 +        }
++    }
++
++    /**
++     * osrs-plugins-reverse: the LOCAL_AUTH sidecar's tokens for a chosen account are
++     * `lu-<hex username>-<random>` (`/local-auth/user?name=...`); others carry no account.
++     */
++    private fun tokenUsername(token: String): String? {
++        if (!token.startsWith("lu-")) return null
++        val hex = token.removePrefix("lu-").substringBefore('-')
++        if (hex.isEmpty() || hex.length % 2 != 0) return null
++        val name = runCatching { hex.chunked(2).map { it.toInt(16).toChar() }.joinToString("") }.getOrNull()
++        return name?.takeIf { TOKEN_USERNAME.matches(it) }
      }
  
      private fun OtpAuthenticationType.toAccountLoadAuth(): AccountLoadAuth =
-@@ -218,7 +227,10 @@ private constructor(
+@@ -218,7 +242,10 @@ private constructor(
          responseHandler: GameLoginResponseHandler<Player>,
          block: LoginBlock<XteaKey>,
      ) {
@@ -816,10 +838,21 @@ index 000000000..dc9224eca
 +    }
 +}
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/player/AccountLoadResponseHook.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/player/AccountLoadResponseHook.kt
-index 50b519566..75d8defb0 100644
+index 50b519566..68c028d25 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/player/AccountLoadResponseHook.kt
 +++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/player/AccountLoadResponseHook.kt
-@@ -421,8 +421,7 @@ class AccountLoadResponseHook(
+@@ -324,7 +324,9 @@ class AccountLoadResponseHook(
+         }
+ 
+         coords = config.spawnCoord
+-        xpRate = config.baseXpRate
++        // osrs-plugins-reverse: OSRS rates (1x) for new characters too, not the realm's base rate
++        // (CharacterAccountApplier forces 1x for existing ones), so XP plugins see real values.
++        xpRate = 1.0
+         // A first visit needs the new-account initialisation, or the empty stat map reads as
+         // level 1 everywhere. The flag is a varp, so it stays scoped to this mode.
+         if (firstVisitToWorldType) {
+@@ -421,8 +423,7 @@ class AccountLoadResponseHook(
          val session = channelResponses.writeSuccessfulResponse(response, loginBlock)
          val responseMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - responseStart)
  
@@ -1599,10 +1632,16 @@ index 21e4bd7c4..a292950bf 100644
  
      private suspend fun ProtectedAccess.hansDialogue(npc: Npc) =
 diff --git a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/PortSarimLocScript.kt b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/PortSarimLocScript.kt
-index 3884e35b5..c32daab93 100644
+index 3884e35b5..4b6a23d29 100644
 --- a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/PortSarimLocScript.kt
 +++ b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/PortSarimLocScript.kt
-@@ -6,6 +6,9 @@ import org.rsmod.api.player.stat.agilityLvl
+@@ -1,11 +1,15 @@
+ package org.rsmod.content.areas.city.portsarim
+ 
+ import jakarta.inject.Inject
++import kotlin.math.abs
+ import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.api.player.stat.agilityLvl
  import org.rsmod.api.repo.loc.LocRepository
  import org.rsmod.api.script.onOpLoc1
  import org.rsmod.content.generic.locs.doors.DoorTranslations
@@ -1612,7 +1651,7 @@ index 3884e35b5..c32daab93 100644
  import org.rsmod.game.loc.BoundLocInfo
  import org.rsmod.game.loc.LocAngle
  import org.rsmod.map.CoordGrid
-@@ -18,6 +21,7 @@ class PortSarimLocScript @Inject constructor(private val locRepo: LocRepository)
+@@ -18,6 +22,7 @@ class PortSarimLocScript @Inject constructor(private val locRepo: LocRepository)
          onOpLoc1("loc.vc_manhole_open") { climbDownManhole() }
          onOpLoc1("loc.vc_ladder") { climbUpFromSewer() }
          onOpLoc1("loc.jewellersdoor") { walkThroughDoor(it.loc) }
@@ -1620,7 +1659,7 @@ index 3884e35b5..c32daab93 100644
          onOpLoc1("loc.cavewall_shortcut_wyvern_west") { wyvernTunnel() }
          onOpLoc1("loc.draynor_diary_under_wall_w") { underwallTunnel(UNDERWALL_EAST_EXIT) }
          onOpLoc1("loc.draynor_diary_under_wall_e") { underwallTunnel(UNDERWALL_WEST_EXIT) }
-@@ -49,13 +53,53 @@ class PortSarimLocScript @Inject constructor(private val locRepo: LocRepository)
+@@ -49,13 +54,59 @@ class PortSarimLocScript @Inject constructor(private val locRepo: LocRepository)
          arriveDelay()
          val inside = door.coords.translateX(-1)
          val dest = if (coords.x >= door.coords.x) inside else door.coords
@@ -1646,9 +1685,11 @@ index 3884e35b5..c32daab93 100644
 +                LocAngle.East -> door.coords.translateX(1)
 +                else -> door.coords.translateZ(-1)
 +            }
-+        val dest = if (coords == door.coords) beyond else door.coords
-+        val entering =
-+            dest.chebyshevDistance(WYDIN_BACK_ROOM) < coords.chebyshevDistance(WYDIN_BACK_ROOM)
++        val (inside, outside) =
++            if (backRoomDistance(door.coords) < backRoomDistance(beyond)) door.coords to beyond
++            else beyond to door.coords
++        val entering = backRoomDistance(coords) > backRoomDistance(inside)
++        val dest = if (entering) inside else outside
 +        if (entering && !PiratesTreasureState.employedAtWydin(player)) {
 +            startDialogue {
 +                wydin(
@@ -1670,12 +1711,16 @@ index 3884e35b5..c32daab93 100644
 +            return
 +        }
 +        passDoor(door, dest, "loc.wydindooropen")
++        if (coords != dest) telejump(dest)
 +    }
++
++    private fun backRoomDistance(coords: CoordGrid): Int =
++        abs(coords.x - WYDIN_BACK_ROOM.x) + abs(coords.z - WYDIN_BACK_ROOM.z)
 +
      private suspend fun ProtectedAccess.wyvernTunnel() {
          arriveDelay()
          if (player.agilityLvl < WYVERN_TUNNEL_LEVEL) {
-@@ -121,5 +165,6 @@ class PortSarimLocScript @Inject constructor(private val locRepo: LocRepository)
+@@ -121,5 +172,6 @@ class PortSarimLocScript @Inject constructor(private val locRepo: LocRepository)
          val MANHOLE_EXIT = CoordGrid(3018, 3233, 0)
          val UNDERWALL_EAST_EXIT = CoordGrid(3070, 3257, 0)
          val UNDERWALL_WEST_EXIT = CoordGrid(3066, 3257, 0)
@@ -2790,14 +2835,15 @@ index b27372c5d..a7bf7550d 100644
      }
  }
 diff --git a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
-index d64463d3d..a8ea51729 100644
+index d64463d3d..93bceff93 100644
 --- a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
 +++ b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
-@@ -19,6 +19,8 @@ private enum class StraightStairs(val loc: String, val dx: Int, val dz: Int, val
+@@ -19,6 +19,9 @@ private enum class StraightStairs(val loc: String, val dx: Int, val dz: Int, val
      Down("loc.stairstop", 1, -2, -1),
      NarrowWoodenUp("loc.narrowstairs_wooden_bottom", 0, -1, 1),
      NarrowWoodenDown("loc.narrowstairs_wooden_top", 0, 3, -1),
 +    VarrockTallUp("loc.fai_varrock_stairs_taller", 1, 3, 1),
++    VarrockUp("loc.fai_varrock_stairs", 1, 3, 1),
 +    VarrockTallDown("loc.fai_varrock_stairs_top", 1, -2, -1),
  }
  
@@ -14076,7 +14122,7 @@ index 000000000..724a884e2
 +mcannon_fire = 440
 +mcannon_decay = 441
 diff --git a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
-index a325cee80..576dc5af4 100644
+index a325cee80..487843c79 100644
 --- a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 +++ b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 @@ -12,6 +12,8 @@ import net.rsprot.protocol.game.outgoing.misc.client.HideObjOps
@@ -14181,24 +14227,7 @@ index a325cee80..576dc5af4 100644
      }
  
      private fun Player.sendHighPriority() {
-@@ -107,10 +169,15 @@ constructor(
-         client.write(HideObjOps(false))
-     }
- 
-+    private val OSRS_WELCOME = "Welcome to Old School RuneScape."
-+
-     private fun Player.sendWelcomeMessage() {
-         val message = realm.config.loginMessage
-         message?.let {
--            mes(it.replace("RS Mod", config.name), ChatType.Welcome)
-+            // RuneLite's Chat History restores the chat only after "Welcome to Old School RuneScape".
-+            val text =
-+                if (it.startsWith("Welcome to ")) OSRS_WELCOME else it.replace("RS Mod", config.name)
-+            mes(text, ChatType.Welcome)
-         }
- 
-         val broadcast = realm.config.loginBroadcast
-@@ -186,6 +253,8 @@ constructor(
+@@ -186,6 +248,8 @@ constructor(
          }
  
      private companion object {

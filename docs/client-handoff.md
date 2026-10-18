@@ -1346,7 +1346,7 @@ session; its notes are in `docs/android-protocol.md`.
     native sync URLs zeroed; Singular never starts; Firebase Analytics deactivated; Crashlytics collection off.
     Verified: no *.jagex.com DNS lookups and no sockets to Jagex across sign-in/relog/restart. Remaining by
     decision: OneTrust banner GET, Braze (left on), the host's runelite.net GETs. Pending: payments param 2
-    (sidecar rewrite, orchestrator), the GIM score host -> `x.invalid` (patched in the working tree, awaiting OK).
+    (sidecar rewrite, orchestrator), the GIM score host -> `x.invalid` (5befe07, approved, not yet device-checked).
     Normal builds now decode resources (`apktool d` without -r). Never open store/membership/bond UIs until
     param 2 is rewritten.
   - **Projectile API** (4685867, verified): Client +0xcb30 list (offsets.md "Projectiles"); getProjectiles and
@@ -1364,8 +1364,8 @@ session; its notes are in `docs/android-protocol.md`.
     reinstall Play Now often shows "Try again" (tap 958,668 only on that screen, then Play Now). Socket check:
     `adb shell cat /proc/net/tcp /proc/net/tcp6`, state 01, app uid 10071.
   - **Next (gen 38)**:
-    1. Get approval and commit the GIM `x.invalid` change (tools/patch_telemetry.py working tree), then device-check with the
-       sidecar's param 2 fix: still no Jagex sockets.
+    1. Device-check the build with the GIM `x.invalid` rewrite (5befe07, approved) and the sidecar's param 2 fix:
+       no Jagex sockets, and no `pp-*.x.invalid` DNS lookup during normal play.
     2. `::mapanim` once deployed: GraphicsObject fields/finished flag (projlog dump), Random Event Hider.
     3. Slayer Assistant task tabs on device (58c0525); Menu Swapper Extended stray-dog swap (Varrock dogs absent).
     4. Line of Sight desktop A/B (desktop lock), Path Marker settings; more hub plugins from the ranking.

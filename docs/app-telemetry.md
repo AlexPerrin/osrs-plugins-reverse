@@ -184,7 +184,7 @@ per-day count.
 | `account.jagex.com/consent/sync` (+ dev) | CMP consent POST | **patched** (above) |
 | `auth.jagex.com`, `social.auth.jagex.com`, `auth.runescape.com`, `account.jagex.com/` (game-session) | jav_config params 11/20/22/28 | rewritten to the sidecar (`server/…/Http.kt` AUTH_PARAMS) |
 | `payments.jagex.com` | jav_config param 2 → payments SDK: `operator/v1/shop/<shop>`, `operator/v1/initiate/...` (price + android_id), `operator/v2/completion/...` | **not rewritten in template mode**; the orchestrator is adding param 2 to the sidecar's AUTH_PARAMS. Until then, don't open store/membership/bond UIs |
-| `pp-%s.%s.jagex.com:13406/v1/groupScoreDetails/...` | native, group-ironman score lookup (FUN_0064da14) | only when a GIM score interface asks; planned: zero the format string after checking that an empty URL fails cleanly |
+| `pp-%s.%s.jagex.com:13406/v1/groupScoreDetails/...` | native, group-ironman score lookup (FUN_0064da14) | only when a GIM score interface asks; **patched** (5befe07): the one full format string's host -> `pp-%s.%s.x.invalid` (RFC 2606, never resolves; same length, exactly-one-match assert). The regular hiscore branch builds `secure` + jav_config param 13 domain, i.e. not Jagex under our config |
 | `legal.jagex.com`, `support.runescape.com`, `secure.runescape.com`, `www.jagex.com/terms`, `oldschool.runescape.com/play` | browser links on tap | no automatic traffic |
 | `www.runescape.com` / `www.jagex.com` (`adverturl`, `termsurl`, `privacyurl`), `secure.runescape.com` (`gedigesturl`) | desktop-loader jav_config keys | not seen used by the Android app (no lookups) |
 | `res/values` `com_jagex_mobilesdk_runeScapeAuthURL`, `paymentUri` (a billing dev host) | only referenced from R | unused |

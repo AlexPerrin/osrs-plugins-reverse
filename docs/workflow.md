@@ -138,6 +138,28 @@ overlapping owners. From now on:
   - `tools/device-lock.sh` for the Android device and desktop RuneLite. A grant per holder with an expiry is
     planned, so a newer grant can't replace an older one.
 
+## Capacity and token efficiency
+
+The machine has 16 threads. Windows (the host) and WSL each have about 16 GB.
+
+- **Windows side:** several BlueStacks instances (about 2-3 GB each) and desktop RuneLite clients (about 1 GB
+  each) can run at once. Each dev/QA pair gets its own BlueStacks instance and its own desktop client (its own
+  isolated profile and port), so pairs never wait for each other's device. The device lock becomes one lock per
+  instance (`LOCK_NAME=<instance>`). Only a server restart reserves all of them.
+- **WSL side:**
+  - the live server (about 3 GB);
+  - the sidecars;
+  - up to 2-3 build containers at 4 GB (`BUILDQ_SLOTS`), each with its own Gradle home volume (a shared one
+    deadlocks on Gradle's journal lock);
+  - QA branch servers on spare ports.
+- **Token efficiency:**
+  - **Briefs:** short, one task and its definition of done, linking STATE.md rather than restating it.
+  - **Reports:** agents report milestones only. No routine status pings, and no long reports of passing checks:
+    pass/fail plus evidence paths.
+  - **Builds:** wait for a build with a background command that notifies on completion, not polling.
+  - **Gate failures:** QA activities read only what they check, and stop at the first gate failure.
+  - **Orchestrator:** it relays only decisions, never full reports, and it batches pushes and grants.
+
 ## Shared rules
 - **Builds** go through `tools/buildq.sh <owner> -- docker run ...` (2 slots, 4 GB per container,
   `-Pkotlin.compiler.execution.strategy=in-process`).

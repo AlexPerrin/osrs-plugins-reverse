@@ -1,4 +1,4 @@
-From 3200f1758b3fddd5f8508a2857805c34cca59ca9 Mon Sep 17 00:00:00 2001
+From 46bc3ab31d147910709f4c94253add75ef5f2cb6 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sun, 18 Oct 2026 12:15:25 -0400
 Subject: [PATCH] feat: npc and loc op overrides for content that claims an op
@@ -30,6 +30,12 @@ path in `DoricsQuestInteractionTest`. `assemble`, `test`, `integration`
 and `spotlessCheck` pass on main with this change alone.
 
 Data sources. None.
+
+Caveats. The overrides are consulted on the op path only. If the
+overridden npc or loc also has an Ap handler (`onApNpcN` / `onApLocN`),
+that handler can still run first when the player is in approach range;
+Doric's anvils use an op handler, so the first user is not affected. An
+ap-side check (or `*OverrideEvents.Ap`) can follow when content needs it.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---

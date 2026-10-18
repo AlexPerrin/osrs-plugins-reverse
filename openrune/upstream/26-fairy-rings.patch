@@ -1,25 +1,67 @@
-From ad64f781698eef2016e6f5ced5b65c32ab776af5 Mon Sep 17 00:00:00 2001
+From 140f9d393f98f912b3551fde6dbf5e0f5e23c36c Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 03:02:47 -0400
 Subject: [PATCH] feat: fairy rings (dial, travel log, Zanaris and
  Last-destination)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-New module on the cache's fairyring dbtable: Configure (Dramen or Lunar staff) opens the dial
-(398) with the travel log (381); dial buttons and 'Use code' set fairyring_1..3; Confirm,
-Zanaris and Last-destination teleport (fairyring_lastloc_opvis drives the op text); the log
-lists visited codes (server varps). A code with no ring, or the ring you stand in, does not
-move you (OSRS Wiki). Favourites, the hideout sequence and per-ring requirements are not done.
+Problem:
+Fairy rings have no content: the rings' Zanaris, Configure and Last-destination ops do nothing.
 
-On teleport the travel log's mobile search input (meslayer mode 28, opened by the client) is closed with meslayer_close: meslayer_ondialogabort does not cover mode 28.
+Change:
+- New module on the cache's fairyring dbtable: Configure opens the dial (398) with the travel
+  log (381); dial buttons and 'Use code' set fairyring_1..3; Confirm, Zanaris and
+  Last-destination teleport (fairyring_lastloc_opvis drives the op text); the log lists visited
+  codes (server varps 63784-63785).
+- A code with no ring, or the ring you stand in, does not move you and the player says "Wow,
+  fairy magic sure is useful, I hardly moved at all!".
+- The network needs a Dramen staff, the Lunar staff, or an unfinished Lunar staff (pt1..pt3)
+  in hand; with the elite Lumbridge & Draynor diary (varbit lumbridge_diary_elite_complete) no
+  staff is needed. Without either: "The fairy rings only work for those who wield fairy magic."
+  Zanaris also works without a staff from the rings only the network reaches (cache column).
+- Quest gate: Fairytale I complete and Fairytale II at least past the Fairy Godfather's
+  permission (stage 40), through QuestRequirements like the other quest-gated content: the
+  default assume-completed mode lets everyone in; respect-progress reads the real stages (the
+  two quests are not implemented, so it refuses everyone).
+- On teleport the travel log's mobile search input (meslayer mode 28, opened by the client) is
+  closed with meslayer_close: meslayer_ondialogabort does not cover mode 28.
+
+Tests:
+- FairyRingScriptTest (integration): dbtable row ids match the dial positions; the nine unused
+  codes and the house ring have no fixed destination; each staff (Dramen, Lunar, pt1..pt3)
+  opens the dial; no staff is refused with the message; the elite diary needs no staff;
+  respect-progress refuses players without the Fairytale quests; the gate needs both quests.
+
+Data sources:
+- OSRS Wiki: Fairy ring (intro, Using fairy rings, Combinations, Unused combinations, Changes,
+  Trivia), Zanaris, Dramen staff, Lunar staff, Lunar staff - pt1.
+- Quest Helper FairytaleII.java: quest varbit 2326 (fairy2_queencure_quest) >= 40 once the Fairy
+  Godfather has been spoken to for the fairy rings.
+- Cache: fairyring dbtable; interfaces fairyrings / fairyrings_log; loc 29495/29560 ops and the
+  fairyring_lastloc_opvis op text; obj 772, 9084, 9091-9093.
+
+Caveats:
+- No refusal line for a player without the quests is documented: the no-staff line is reused.
+- The teleport timing (vanish anim + flower-ring spotanim, 3 ticks, appear anim) is a guess;
+  whether "hardly moved" also plays them is a guess too.
+- "The ring you stand in" is a guess: within 3 tiles (Chebyshev) of a ring's destination tile.
+- Last-destination with no previous code silently does nothing (the op is hidden then).
+- Favourites, the Fairy Resistance Hideout sequence (AIR, DLR, DJQ, AJS), per-ring quest
+  requirements (AJQ, BJR, BJS, AIS/AJP, AKP, ...), the 1/6 ambient NPC spawns at seven rings and
+  the off-hand item hiding during the teleport are not done.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
- content/travel/fairy-rings/build.gradle.kts   |  14 ++
+ content/travel/fairy-rings/build.gradle.kts   |  16 ++
  .../travel/fairy-rings/pack/build.gradle.kts  |   7 +
  .../fairyrings/pack/FairyRingsPluginPack.kt   |   5 +
  .../pack/src/main/resources/gamevals.toml     |   3 +
  .../pack/configs/fairy_ring_vars.toml         |  11 +
- .../travel/fairyrings/FairyRingScriptTest.kt  |  34 ++++
- .../travel/fairyrings/FairyRingScript.kt      | 191 ++++++++++++++++++
- 7 files changed, 265 insertions(+)
+ .../travel/fairyrings/FairyRingScriptTest.kt  | 143 +++++++++++
+ .../travel/fairyrings/FairyRingScript.kt      | 231 ++++++++++++++++++
+ 7 files changed, 416 insertions(+)
  create mode 100644 content/travel/fairy-rings/build.gradle.kts
  create mode 100644 content/travel/fairy-rings/pack/build.gradle.kts
  create mode 100644 content/travel/fairy-rings/pack/src/main/kotlin/org/rsmod/content/travel/fairyrings/pack/FairyRingsPluginPack.kt
@@ -30,10 +72,10 @@ On teleport the travel log's mobile search input (meslayer mode 28, opened by th
 
 diff --git a/content/travel/fairy-rings/build.gradle.kts b/content/travel/fairy-rings/build.gradle.kts
 new file mode 100644
-index 000000000..6eb9d5aea
+index 000000000..4fd939583
 --- /dev/null
 +++ b/content/travel/fairy-rings/build.gradle.kts
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,16 @@
 +plugins {
 +    id("base-conventions")
 +    id("integration-test-suite")
@@ -41,11 +83,13 @@ index 000000000..6eb9d5aea
 +
 +dependencies {
 +    implementation(projects.api.pluginCommons)
++    implementation(projects.content.quest)
 +}
 +
 +testing.suites.named<JvmTestSuite>("integration") {
 +    dependencies {
 +        implementation(projects.api.pluginCommons)
++        implementation(projects.content.quest)
 +    }
 +}
 diff --git a/content/travel/fairy-rings/pack/build.gradle.kts b/content/travel/fairy-rings/pack/build.gradle.kts
@@ -100,20 +144,41 @@ index 000000000..5dfce83ca
 +transmit = "Never"
 diff --git a/content/travel/fairy-rings/src/integration/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScriptTest.kt b/content/travel/fairy-rings/src/integration/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScriptTest.kt
 new file mode 100644
-index 000000000..6a9e7a50f
+index 000000000..839753fd4
 --- /dev/null
 +++ b/content/travel/fairy-rings/src/integration/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScriptTest.kt
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,143 @@
 +package org.rsmod.content.travel.fairyrings
 +
++import org.junit.jupiter.api.AfterEach
 +import org.junit.jupiter.api.Assertions.assertEquals
 +import org.junit.jupiter.api.Assertions.assertFalse
 +import org.junit.jupiter.api.Assertions.assertTrue
 +import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.ResourceLock
++import org.rsmod.api.player.righthand
 +import org.rsmod.api.table.FairyringRow
++import org.rsmod.api.testing.GameTestState
++import org.rsmod.api.testing.scope.GameTestScope
++import org.rsmod.content.quest.manager.QuestRequirementMode
++import org.rsmod.content.quest.manager.QuestRequirementPolicy
++import org.rsmod.content.quest.manager.QuestRequirements
++import org.rsmod.content.travel.fairyrings.FairyRingScript.Companion.FAIRYTALE_I
++import org.rsmod.content.travel.fairyrings.FairyRingScript.Companion.FAIRYTALE_II
++import org.rsmod.content.travel.fairyrings.FairyRingScript.Companion.NO_STAFF
 +import org.rsmod.content.travel.fairyrings.FairyRingScript.Companion.isDestination
++import org.rsmod.game.inv.InvObj
++import org.rsmod.map.CoordGrid
 +
++@ResourceLock("QuestRequirements")
 +class FairyRingScriptTest {
++    private val previousPolicy = QuestRequirements.activePolicy()
++
++    @AfterEach
++    fun restorePolicy() {
++        QuestRequirements.install(previousPolicy)
++    }
++
 +    private val left = listOf('A', 'D', 'C', 'B')
 +    private val middle = listOf('I', 'L', 'K', 'J')
 +    private val right = listOf('P', 'S', 'R', 'Q')
@@ -137,13 +202,101 @@ index 000000000..6a9e7a50f
 +        assertTrue(isDestination(FairyringRow.all().single { it.code == FairyRingScript.ZANARIS_CODE }))
 +        assertFalse(FairyringRow.all().filter(::isDestination).any { it.destCoord.x < 1000 })
 +    }
++
++    @Test
++    fun GameTestState.`the dramen staff, the lunar staff and its unfinished stages open the dial`() {
++        install(QuestRequirementMode.AssumeCompleted)
++        for (staff in STAVES) {
++            runGameTest(FairyRingScript::class) {
++                val ring = placeRing()
++                player.righthand = InvObj(staff)
++                player.opLoc2(ring)
++                advance(ticks = 2)
++                assertModalOpen(FairyRingScript.DIAL_INTERFACE)
++                assertMessageNotSent(NO_STAFF)
++            }
++        }
++    }
++
++    @Test
++    fun GameTestState.`no staff is refused`() {
++        install(QuestRequirementMode.AssumeCompleted)
++        runGameTest(FairyRingScript::class) {
++            val ring = placeRing()
++            player.righthand = null
++            player.opLoc2(ring)
++            assertRefused()
++        }
++    }
++
++    @Test
++    fun GameTestState.`the elite Lumbridge and Draynor diary needs no staff`() {
++        install(QuestRequirementMode.AssumeCompleted)
++        runGameTest(FairyRingScript::class) {
++            val ring = placeRing()
++            player.righthand = null
++            player.setVarBit("varbit.lumbridge_diary_elite_complete", 1)
++            player.opLoc2(ring)
++            advance(ticks = 2)
++            assertModalOpen(FairyRingScript.DIAL_INTERFACE)
++        }
++    }
++
++    @Test
++    fun GameTestState.`respect-progress refuses players without the Fairytale quests`() {
++        install(QuestRequirementMode.RespectProgress)
++        runGameTest(FairyRingScript::class) {
++            val ring = placeRing()
++            player.righthand = InvObj("obj.dramen_staff")
++            player.opLoc2(ring)
++            assertRefused()
++        }
++    }
++
++    @Test
++    fun GameTestState.`the quest gate needs Fairytale I and Fairytale II`() {
++        install(QuestRequirementMode.VirtualCompletions, setOf(FAIRYTALE_I))
++        runGameTest(FairyRingScript::class) {
++            player.righthand = InvObj("obj.dramen_staff")
++            assertFalse(FairyRingScript.canUseNetwork(player))
++            install(QuestRequirementMode.VirtualCompletions, setOf(FAIRYTALE_II))
++            assertFalse(FairyRingScript.canUseNetwork(player))
++            install(QuestRequirementMode.VirtualCompletions, setOf(FAIRYTALE_I, FAIRYTALE_II))
++            assertTrue(FairyRingScript.canUseNetwork(player))
++        }
++    }
++
++    /** Messages are captured per tick, so advance until the refusal (or give up after 3 ticks). */
++    private fun GameTestScope.assertRefused() {
++        var refused = false
++        repeat(3) {
++            if (!refused) {
++                advance()
++                refused = runCatching { assertMessageSent(NO_STAFF) }.isSuccess
++            }
++        }
++        assertTrue(refused)
++        assertModalNotOpen(FairyRingScript.DIAL_INTERFACE)
++    }
++
++    private fun install(mode: QuestRequirementMode, completions: Set<String> = emptySet()) {
++        QuestRequirements.install(QuestRequirementPolicy(mode, virtualCompletions = completions))
++    }
++
++    private fun GameTestScope.placeRing() =
++        placeMapLoc(RING_COORDS, FairyRingScript.HOME_HUB).also { player.teleport(RING_COORDS.translateX(-1)) }
++
++    private companion object {
++        val RING_COORDS = CoordGrid(0, 50, 50, 34, 31)
++        val STAVES = FairyRingScript.STAVES
++    }
 +}
 diff --git a/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
 new file mode 100644
-index 000000000..93d62a658
+index 000000000..0d8b4d429
 --- /dev/null
 +++ b/content/travel/fairy-rings/src/main/kotlin/org/rsmod/content/travel/fairyrings/FairyRingScript.kt
-@@ -0,0 +1,191 @@
+@@ -0,0 +1,231 @@
 +package org.rsmod.content.travel.fairyrings
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -154,12 +307,15 @@ index 000000000..93d62a658
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.player.righthand
 +import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.player.vars.boolVarBit
 +import org.rsmod.api.player.vars.intVarBit
 +import org.rsmod.api.script.onIfModalButton
 +import org.rsmod.api.script.onOpLoc1
 +import org.rsmod.api.script.onOpLoc2
 +import org.rsmod.api.script.onOpLoc3
 +import org.rsmod.api.table.FairyringRow
++import org.rsmod.content.quest.manager.Quest
++import org.rsmod.content.quest.manager.QuestRequirements
 +import org.rsmod.game.entity.Player
 +import org.rsmod.map.CoordGrid
 +import org.rsmod.plugin.scripts.PluginScript
@@ -171,6 +327,10 @@ index 000000000..93d62a658
 + * `fairyring_1..3`, which the dial buttons' clientscript also turns on the client. The travel log
 + * lists the codes the player has travelled to (server varps), and Last-destination uses
 + * `fairyring_lastloc_opvis` (64 + the row's multiloc state), which the loc's op text reads.
++ *
++ * The network needs Fairytale I complete and Fairytale II past the Fairy Godfather's permission
++ * (through the quest requirement policy), and a Dramen or Lunar staff in hand unless the elite
++ * Lumbridge & Draynor diary is done (OSRS Wiki, Fairy ring).
 + */
 +class FairyRingScript : PluginScript() {
 +    private var Player.dial1 by intVarBit("varbit.fairyring_1")
@@ -195,7 +355,7 @@ index 000000000..93d62a658
 +    }
 +
 +    private fun ProtectedAccess.configure() {
-+        if (!wieldsFairyMagic(player)) {
++        if (!canUseNetwork(player)) {
 +            mes(NO_STAFF)
 +            return
 +        }
@@ -239,7 +399,7 @@ index 000000000..93d62a658
 +
 +    private suspend fun ProtectedAccess.zanaris() {
 +        val here = ringAt(player.coords)
-+        if (!wieldsFairyMagic(player) && here?.noStaffReturn != true) {
++        if (!hasNetworkAccess(player) || !hasFairyMagic(player) && here?.noStaffReturn != true) {
 +            mes(NO_STAFF)
 +            return
 +        }
@@ -247,7 +407,7 @@ index 000000000..93d62a658
 +    }
 +
 +    private suspend fun ProtectedAccess.lastDestination() {
-+        if (!wieldsFairyMagic(player)) {
++        if (!canUseNetwork(player)) {
 +            mes(NO_STAFF)
 +            return
 +        }
@@ -309,13 +469,46 @@ index 000000000..93d62a658
 +                2 to ("2_clockwise" to "2_anticlockwise"),
 +                3 to ("3_clockwise" to "3_anticlockwise"),
 +            )
++        const val FAIRYTALE_I = "quest_fairytale1"
++        const val FAIRYTALE_II = "quest_fairytale2"
++
++        /** Fairytale II stage after the Fairy Godfather's permission (Quest Helper: `>= 40`). */
++        const val FAIRYTALE_II_PERMISSION = 40
++
++        /** Dramen staff, Lunar staff, and Lunar staff - pt1..pt3 (OSRS Wiki, Lunar staff - pt1). */
 +        val STAVES =
-+            setOf("obj.dramen_staff", "obj.dramen_staff_air", "obj.dramen_staff_fire", "obj.dramen_staff_water")
++            setOf(
++                "obj.dramen_staff",
++                "obj.lunar_moonclan_liminal_staff",
++                "obj.dramen_staff_air",
++                "obj.dramen_staff_fire",
++                "obj.dramen_staff_water",
++            )
++
++        private val Player.lumbridgeEliteDiary: Boolean by boolVarBit("varbit.lumbridge_diary_elite_complete")
 +
 +        fun logComponent(row: FairyringRow): String = "component.fairyrings_log:${row.textComponent.internalName}"
 +
 +        /** Unused codes have no destination: Jagex fills them with the 1_1_1_1_1 placeholder. */
 +        fun isDestination(row: FairyringRow): Boolean = row.desc != null && row.destCoord.x > PLACEHOLDER_X
++
++        /** Quest gate and fairy magic: what Configure, Last-destination and Zanaris need. */
++        fun canUseNetwork(player: Player): Boolean = hasNetworkAccess(player) && hasFairyMagic(player)
++
++        /**
++         * Fairytale I complete and Fairytale II at least past the Godfather's permission. Both go
++         * through [QuestRequirements], so `assume-completed` lets everyone in and `respect-progress`
++         * reads the real stages (no stage, as for a quest not implemented, means not started).
++         */
++        fun hasNetworkAccess(player: Player): Boolean {
++            if (!QuestRequirements.hasCompleted(player, FAIRYTALE_I)) return false
++            if (QuestRequirements.hasCompleted(player, FAIRYTALE_II)) return true
++            val stage = Quest.get(FAIRYTALE_II)?.getQuestStage(player) ?: 0
++            return stage >= FAIRYTALE_II_PERMISSION
++        }
++
++        /** A staff in hand, or the elite Lumbridge & Draynor diary (no staff needed). */
++        fun hasFairyMagic(player: Player): Boolean = wieldsFairyMagic(player) || player.lumbridgeEliteDiary
 +
 +        fun wieldsFairyMagic(player: Player): Boolean {
 +            val weapon = player.righthand ?: return false

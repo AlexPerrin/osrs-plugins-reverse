@@ -1,20 +1,83 @@
-From c96e927ffb7a0e315ee0cb2dfb71e48f48c0fe9b Mon Sep 17 00:00:00 2001
+From 41bcba9a467af3eb21c43f6291d51d3bbe91b0e1 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 11:55:09 -0400
 Subject: [PATCH] feat: a minimal Grand Exchange (offers at the guide price,
  collection)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
+Problem:
+OpenRune has no Grand Exchange: the clerks' Exchange op does nothing, so
+players cannot buy or sell through the GE interfaces at all.
+
+Change:
+- The clerks' Exchange op (op3) opens ge_offers with ge_offers_side; 8 offer
+  slots. Buy searches an item (the last searched item is remembered), Sell
+  takes an item from the inventory (noted or unnoted; quantity defaults to
+  all held). The +/-1, +/-5%, quantity and guide-price buttons follow client
+  scripts 777/778.
+- The server is the only counterparty and trades at the guide price
+  (MarketPrices, the obj's store cost). A buy at or above the guide fills at
+  the guide and the overpayment comes back as coins; a sell at or below the
+  guide fills at the guide less the 2% tax (rounded down, none below 50 gp,
+  capped at 5M per item). Other offers stay open until aborted.
+- Buy offers pay with the coins in the inventory first and take the rest
+  from the bank; "Buy all that you can afford" counts inventory and bank
+  coins.
+- Abort returns what is left to the slot's collection; collect to the
+  inventory (notes or items) or to the bank, Collect all, and the Collection
+  Box at bankers.
+- Offer state lives in server-only perm varps ge_slotN_* and ge_setup_price
+  (63956-64004) and reaches the client only through UPDATE_STOCKMARKET_SLOT;
+  collected items sit in the slot invs from enum 150. Fill timer
+  ge_offer_fill (437).
+
+Tests:
+GrandExchangeScriptTest (integration): buy at/above guide with refund, sell
+of noted and unnoted items with tax, buy below guide until abort, offers the
+player cannot pay for or that overflow, a buy paid from inventory then bank
+coins (and refused when both together fall short), collecting into a full
+inventory, quantity/price button maths.
+
+Data sources:
+OSRS Wiki "Grand Exchange" (Operation, Guide prices, Convenience fee and item
+sink, Changes: 14 June 2023 "Buy offers can now use the coins from the
+player's bank as payment; coins in the player's inventory take precedence
+...", 13 December 2022 "Buy all that you can afford", 8 April 2020 last
+searched item); client scripts 777/778 (cache); clerk ops from the cache
+(npc 2148).
+
+Caveats:
+- The server, not other players, is the market; guide prices are store
+  costs.
+- Every player gets 8 slots: no F2P 3-slot limit or F2P members'-item rule
+  (OpenRune has no F2P worlds).
+- No warning for a sell offer below 10% of the guide price (13 December
+  2022), no custom +x%/-x% buttons, no platinum tokens or offers above
+  2,147,483,647 coins, no item sets (clerk op5).
+- No ironman restrictions (OSRS lets ironmen buy only bonds) and no
+  new-account sell restrictions.
+- Error lines ("You don't have enough coins.", "That offer is worth too much
+  money.", ...) and the prompts are unsourced; "That button is not available
+  on this server." is ours.
+- Needs the long-varp compiler fix (#352) and the RSProt bump
+  (1.0.0-ALPHA-20261014, stock market slot reset) to work in game.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  .../grand-exchange/build.gradle.kts           |  16 +
  .../grand-exchange/pack/build.gradle.kts      |   9 +
  .../pack/GrandExchangePluginPack.kt           |   5 +
  .../pack/src/main/resources/gamevals.toml     |  50 ++
  .../pack/configs/grand_exchange.toml          | 357 ++++++++++++++
- .../grandexchange/GrandExchangeScriptTest.kt  | 197 ++++++++
- .../interfaces/grandexchange/GrandExchange.kt | 238 ++++++++++
- .../grandexchange/GrandExchangeScript.kt      | 443 ++++++++++++++++++
+ .../grandexchange/GrandExchangeScriptTest.kt  | 226 +++++++++
+ .../interfaces/grandexchange/GrandExchange.kt | 238 +++++++++
+ .../grandexchange/GrandExchangeScript.kt      | 460 ++++++++++++++++++
  .../src/main/resources/gamevals.toml          |   2 +
- 9 files changed, 1317 insertions(+)
+ 9 files changed, 1363 insertions(+)
  create mode 100644 content/interfaces/grand-exchange/build.gradle.kts
  create mode 100644 content/interfaces/grand-exchange/pack/build.gradle.kts
  create mode 100644 content/interfaces/grand-exchange/pack/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/pack/GrandExchangePluginPack.kt
@@ -494,10 +557,10 @@ index 000000000..ee624f52c
 +protect = false
 diff --git a/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt b/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt
 new file mode 100644
-index 000000000..4f0cb6e66
+index 000000000..945fda03c
 --- /dev/null
 +++ b/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt
-@@ -0,0 +1,197 @@
+@@ -0,0 +1,226 @@
 +package org.rsmod.content.interfaces.grandexchange
 +
 +import dev.openrune.ServerCacheManager
@@ -656,6 +719,35 @@ index 000000000..4f0cb6e66
 +            }
 +            assertEquals(10, player.inv.count("obj.coins"))
 +            assertTrue(GrandExchange.offer(player, 0).empty)
++        }
++
++    @Test
++    fun GameTestState.`a buy takes inventory coins first and the rest from the bank`() =
++        runInjectedGameTest(GrandExchangeScript::class, null, GrandExchangeScript::class) { script ->
++            resetGe(player)
++            val bank = player.invMap.getOrPut("inv.bank")
++            player.inv[0] = InvObj(id("obj.coins"), 7)
++            bank[0] = InvObj(id("obj.coins"), 10 * guide)
++            with(script) {
++                player.withProtectedAccess {
++                    setUp(slot = 0, sell = false, item = lobster.id, count = 10, price = guide)
++                    assertTrue(confirm())
++                }
++            }
++            assertEquals(0, player.inv.count("obj.coins"))
++            assertEquals(7, bank.count("obj.coins"))
++            assertEquals(GrandExchange.STATE_OPEN, GrandExchange.offer(player, 0).state)
++
++            player.inv[0] = InvObj(id("obj.coins"), 3)
++            with(script) {
++                player.withProtectedAccess {
++                    setUp(slot = 1, sell = false, item = lobster.id, count = 1, price = 11)
++                    assertFalse(confirm())
++                }
++            }
++            assertEquals(3, player.inv.count("obj.coins"))
++            assertEquals(7, bank.count("obj.coins"))
++            assertTrue(GrandExchange.offer(player, 1).empty)
 +        }
 +
 +    @Test
@@ -941,10 +1033,10 @@ index 000000000..8b7f11775
 +}
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 new file mode 100644
-index 000000000..9bba549fd
+index 000000000..36ca41644
 --- /dev/null
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
-@@ -0,0 +1,443 @@
+@@ -0,0 +1,460 @@
 +package org.rsmod.content.interfaces.grandexchange
 +
 +import dev.openrune.definition.type.widget.IfEvent
@@ -1182,7 +1274,8 @@ index 000000000..9bba549fd
 +            }
 +            ENTER_QUANTITY -> {
 +                if (op == IfButtonOp.Op2 && !sell) {
-+                    setQuantity((inv.count("obj.coins") / price.coerceAtLeast(1)).coerceAtLeast(1))
++                    val affordable = coinsHeld() / price.coerceAtLeast(1)
++                    setQuantity(affordable.coerceIn(1L, Int.MAX_VALUE.toLong()).toInt())
 +                    return
 +                }
 +                val verb = if (sell) "sell" else "buy"
@@ -1227,11 +1320,11 @@ index 000000000..9bba549fd
 +            }
 +            if (!takeItems(inv, item, quantity)) return false
 +        } else {
-+            if (inv.count("obj.coins") < total) {
++            if (coinsHeld() < total) {
 +                mes("You don't have enough coins.")
 +                return false
 +            }
-+            if (invDel(inv, "obj.coins", total.toInt()).failure) return false
++            if (!takeCoins(total.toInt())) return false
 +        }
 +        val offer =
 +            GrandExchange.Offer(
@@ -1247,6 +1340,22 @@ index 000000000..9bba549fd
 +        GrandExchange.sendSlot(player, slot)
 +        resetSetup(player, slot = 0)
 +        softTimer(GrandExchange.FILL_TIMER, FILL_DELAY)
++        return true
++    }
++
++    private fun ProtectedAccess.coinsHeld(): Long =
++        inv.count("obj.coins").toLong() + bank.count("obj.coins")
++
++    /** Buy offers pay from the inventory first and take the rest from the bank. */
++    private fun ProtectedAccess.takeCoins(total: Int): Boolean {
++        val fromInv = minOf(inv.count("obj.coins"), total)
++        val fromBank = total - fromInv
++        if (bank.count("obj.coins") < fromBank) return false
++        if (fromInv > 0 && invDel(inv, "obj.coins", fromInv).failure) return false
++        if (fromBank > 0 && invDel(bank, "obj.coins", fromBank).failure) {
++            invAdd(inv, "obj.coins", fromInv)
++            return false
++        }
 +        return true
 +    }
 +

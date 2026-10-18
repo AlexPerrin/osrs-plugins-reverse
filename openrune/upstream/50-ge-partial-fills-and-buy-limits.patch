@@ -1,34 +1,79 @@
-From 32a33c527f41d6fb8f9a5657be4481cb6df140f8 Mon Sep 17 00:00:00 2001
+From e17641646746e7044d13c7e3698869506a43225e Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 14:17:03 -0400
 Subject: [PATCH] feat: Grand Exchange partial fills and 4-hour buy limits
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-Fills come in up to four parts (2 ticks after Confirm, then every 5 ticks), each sent
-as a partial UPDATE_STOCKMARKET_SLOT with a "Grand Exchange: Bought/Sold n / total"
-line. Buys count against the item's buy limit (enum ge_buy_limits); an offer over the
-limit stays open until the 4-hour window that began with the first buy ends. Limits
-are tracked in 16 per-player entries.
+Problem:
+The minimal GE fills every offer at once and has no buy limits, so any
+quantity of an item can be bought straight away.
 
-Licence note: ge_buy_limits.toml is generated from the Old School RuneScape Wiki's
-"Module:GELimits/data.json" (https://oldschool.runescape.wiki/w/Module:GELimits/data.json,
-17 October 2026), by the wiki's contributors, licensed CC BY-NC-SA 3.0
-(https://creativecommons.org/licenses/by-nc-sa/3.0/). That file stays under CC BY-NC-SA,
-which differs from OpenRune's licence; upstream may prefer to source the limits elsewhere.
+Change:
+- Fills come in up to four parts (2 ticks after Confirm, then every 5
+  ticks), each sent as a partial UPDATE_STOCKMARKET_SLOT with a "Grand
+  Exchange: Bought/Sold n / total x Item." line, and "Grand Exchange:
+  Finished buying/selling n x Item." at the end.
+- Buys count against the item's buy limit (enum ge_buy_limits, 64441); an
+  offer over the limit stays open until the 4-hour window that began with the
+  first item bought ends. Selling has no limit.
+- Limits are tracked in 16 per-player entries (varps 64005-64052); a live
+  window is never dropped. When all 16 hold live windows, a buy of a 17th
+  limited item waits until one ends.
+- Offers keep filling while the player is logged out: the logout minute is
+  kept (varp ge_logout_minute, 64054) and the login applies every fill since
+  then, restarting limit windows at the minute the old ones ran out, before
+  it sends the slots, so the slots show the progress and collection works at
+  once.
+
+Tests:
+GrandExchangeScriptTest: partial fills (3 of 10 after the first step), abort
+of a partly filled buy, a buy over the limit waiting for the 4-hour window, a
+full set of limit trackers never dropping a live window, offers filling while
+logged out with limit windows restarting on time.
+
+Data sources:
+OSRS Wiki "Grand Exchange/Buying limits" (4 hours from the first purchase,
+no limit on selling); limit values generated from the wiki's
+Module:GELimits/data.json (17 October 2026); OSRS Wiki "Grand Exchange"
+intro (traders do not need to wait at the GE for trades to finish).
+
+Caveats:
+- The fill pacing (four parts, 2/5 ticks, a 1-minute recheck for
+  limit-blocked offers) and the chat line wording are unsourced.
+- No chat line at login for offers that changed while logged out (the
+  wording is not on the wiki); no pause of offers after several days logged
+  out.
+- Connected limits (e.g. potion doses) are not shared.
+- At most 16 limited items in live windows at once (OSRS has no cap).
+
+Licence note: ge_buy_limits.toml is generated from the Old School RuneScape
+Wiki's "Module:GELimits/data.json"
+(https://oldschool.runescape.wiki/w/Module:GELimits/data.json, 17 October
+2026), by the wiki's contributors, licensed CC BY-NC-SA 3.0
+(https://creativecommons.org/licenses/by-nc-sa/3.0/). That file stays under
+CC BY-NC-SA, which differs from OpenRune's licence; upstream may prefer to
+source the limits elsewhere.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- .../pack/src/main/resources/gamevals.toml     |   51 +
+ .../pack/src/main/resources/gamevals.toml     |   52 +
  .../resources/pack/configs/ge_buy_limits.toml | 4199 +++++++++++++++++
- .../pack/configs/grand_exchange.toml          |  240 +
- .../grandexchange/GrandExchangeScriptTest.kt  |  109 +-
- .../interfaces/grandexchange/GrandExchange.kt |  144 +-
- .../grandexchange/GrandExchangeScript.kt      |   18 +-
- 6 files changed, 4726 insertions(+), 35 deletions(-)
+ .../pack/configs/grand_exchange.toml          |  246 +
+ .../grandexchange/GrandExchangeScriptTest.kt  |  145 +-
+ .../interfaces/grandexchange/GrandExchange.kt |  189 +-
+ .../grandexchange/GrandExchangeScript.kt      |   23 +-
+ 6 files changed, 4819 insertions(+), 35 deletions(-)
  create mode 100644 content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/ge_buy_limits.toml
 
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
-index 8a91635a9..a87df5c5e 100644
+index 8a91635a9..890744b0a 100644
 --- a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
 +++ b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
-@@ -48,3 +48,54 @@ ge_slot7_done = 64001
+@@ -48,3 +48,55 @@ ge_slot7_done = 64001
  ge_slot7_gold = 64002
  ge_slot7_state = 64003
  ge_setup_price = 64004
@@ -80,6 +125,7 @@ index 8a91635a9..a87df5c5e 100644
 +ge_limit15_item = 64050
 +ge_limit15_start = 64051
 +ge_limit15_bought = 64052
++ge_logout_minute = 64054
 +
 +[gamevals.enum]
 +ge_buy_limits = 64441
@@ -4289,10 +4335,10 @@ index 000000000..bbb8cc3c1
 +"obj.venator_tooth" = 10000
 +"obj.hallowfell" = 100
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
-index ee624f52c..be5b35798 100644
+index ee624f52c..7b62c07c2 100644
 --- a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
 +++ b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
-@@ -292,6 +292,246 @@ id = "varp.ge_setup_price"
+@@ -292,6 +292,252 @@ id = "varp.ge_setup_price"
  scope = "Temp"
  transmit = "Never"
  
@@ -4536,11 +4582,17 @@ index ee624f52c..be5b35798 100644
 +scope = "Perm"
 +transmit = "Never"
 +
++[[varp]]
++isServerOnly = true
++id = "varp.ge_logout_minute"
++scope = "Perm"
++transmit = "Never"
++
  [[inventory]]
  isServerOnly = true
  id = "inv.tradingpost_sell_0"
 diff --git a/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt b/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt
-index 4f0cb6e66..2ff6a066a 100644
+index 945fda03c..b9d6f1f42 100644
 --- a/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt
 +++ b/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt
 @@ -45,6 +45,18 @@ class GrandExchangeScriptTest {
@@ -4598,7 +4650,7 @@ index 4f0cb6e66..2ff6a066a 100644
              assertTrue(GrandExchange.abort(player, 1))
              assertFalse(GrandExchange.abort(player, 1))
              val aborted = GrandExchange.offer(player, 1)
-@@ -169,7 +190,7 @@ class GrandExchangeScriptTest {
+@@ -198,7 +219,7 @@ class GrandExchangeScriptTest {
                      assertTrue(confirm())
                  }
              }
@@ -4607,7 +4659,7 @@ index 4f0cb6e66..2ff6a066a 100644
              player.fillInv()
              with(script) {
                  player.withProtectedAccess { assertFalse(collect(0, 0, IfButtonOp.Op2)) }
-@@ -194,4 +215,84 @@ class GrandExchangeScriptTest {
+@@ -223,4 +244,120 @@ class GrandExchangeScriptTest {
          assertEquals(1, GrandExchange.taxPerItem(50))
          assertEquals(GrandExchange.TAX_CAP, GrandExchange.taxPerItem(Int.MAX_VALUE))
      }
@@ -4670,22 +4722,58 @@ index 4f0cb6e66..2ff6a066a 100644
 +        }
 +
 +    @Test
-+    fun GameTestState.`buy limit trackers reuse expired entries and evict the oldest`() =
++    fun GameTestState.`a full set of limit trackers never drops a live window`() =
 +        runInjectedGameTest(GrandExchangeScript::class, null, GrandExchangeScript::class) {
 +            resetGe(player)
 +            val limited =
 +                ServerCacheManager.getItems().keys.filter { GrandExchange.buyLimit(it) != null }
 +                    .take(GrandExchange.LIMIT_TRACKERS + 1)
++            val newest = limited.last()
 +            limited.dropLast(1).forEachIndexed { i, item -> GrandExchange.recordBought(player, item, 1, NOW + i) }
++            assertEquals(0, GrandExchange.limitRemaining(player, newest, NOW + 20))
++            GrandExchange.recordBought(player, newest, 1, NOW + 20)
 +            limited.dropLast(1).forEach {
 +                assertEquals(GrandExchange.buyLimit(it)!! - 1, GrandExchange.limitRemaining(player, it, NOW + 20))
 +            }
-+            GrandExchange.recordBought(player, limited.last(), 1, NOW + 20)
-+            assertEquals(GrandExchange.buyLimit(limited[0]), GrandExchange.limitRemaining(player, limited[0], NOW + 20))
-+            assertEquals(
-+                GrandExchange.buyLimit(limited.last())!! - 1,
-+                GrandExchange.limitRemaining(player, limited.last(), NOW + 20),
-+            )
++            assertEquals(NOW + GrandExchange.LIMIT_WINDOW_MINUTES, GrandExchange.nextLimitExpiry(player, NOW + 20))
++
++            val expired = NOW + GrandExchange.LIMIT_WINDOW_MINUTES
++            assertEquals(GrandExchange.buyLimit(newest), GrandExchange.limitRemaining(player, newest, expired))
++            GrandExchange.recordBought(player, newest, 1, expired)
++            assertEquals(GrandExchange.buyLimit(newest)!! - 1, GrandExchange.limitRemaining(player, newest, expired))
++            assertEquals(GrandExchange.buyLimit(limited[1])!! - 1, GrandExchange.limitRemaining(player, limited[1], expired))
++        }
++
++    @Test
++    fun GameTestState.`offers fill while logged out, with limit windows restarting on time`() =
++        runInjectedGameTest(GrandExchangeScript::class, null, GrandExchangeScript::class) { script ->
++            resetGe(player)
++            val pickaxe = checkNotNull(ServerCacheManager.getItem(id("obj.rune_pickaxe")))
++            val price = pickaxe.cost.coerceAtLeast(1)
++            player.inv[0] = InvObj(id("obj.coins"), 100 * price + 10 * guide)
++            with(script) {
++                player.withProtectedAccess {
++                    setUp(slot = 0, sell = false, item = pickaxe.id, count = 100, price = price)
++                    assertTrue(confirm())
++                    setUp(slot = 1, sell = false, item = lobster.id, count = 10, price = guide)
++                    assertTrue(confirm())
++                }
++            }
++            val window = GrandExchange.LIMIT_WINDOW_MINUTES
++            GrandExchange.catchUp(player, since = NOW, now = NOW + window + 30) { it.cost }
++            assertEquals(GrandExchange.STATE_FINISHED, GrandExchange.offer(player, 1).state)
++            assertEquals(InvObj(lobster.id, 10), GrandExchange.collectionInv(player, 1)[0])
++            val pickaxes = GrandExchange.offer(player, 0)
++            assertEquals(GrandExchange.STATE_OPEN, pickaxes.state)
++            assertEquals(80, pickaxes.done)
++            assertEquals(InvObj(pickaxe.id, 80), GrandExchange.collectionInv(player, 0)[0])
++            assertEquals(NOW + 2 * window, GrandExchange.nextLimitExpiry(player, NOW + window + 30))
++
++            GrandExchange.catchUp(player, since = NOW + window + 30, now = NOW + 2 * window) { it.cost }
++            val finished = GrandExchange.offer(player, 0)
++            assertEquals(GrandExchange.STATE_FINISHED, finished.state)
++            assertEquals(100, finished.done)
++            assertEquals(20, GrandExchange.limitRemaining(player, pickaxe.id, NOW + 2 * window))
 +        }
 +
 +    private companion object {
@@ -4693,10 +4781,10 @@ index 4f0cb6e66..2ff6a066a 100644
 +    }
  }
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
-index 8b7f11775..37739113f 100644
+index 8b7f11775..2a4ebc8f3 100644
 --- a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
-@@ -19,11 +19,15 @@ import org.rsmod.game.type.uncert
+@@ -19,11 +19,17 @@ import org.rsmod.game.type.uncert
  /**
   * A minimal Grand Exchange. The server is the only counterparty and trades at the guide price
   * (`MarketPrices`, the obj's store cost):
@@ -4713,11 +4801,13 @@ index 8b7f11775..37739113f 100644
 + *   [FILL_INTERVAL] ticks), each one sent as a partial update;
 + * - buys count against the item's 4-hour buy limit (`enum.ge_buy_limits`, from the wiki); an offer
 + *   over the limit stays BUYING until the window that started with the first buy runs out;
++ * - offers keep filling while the player is logged out: the login applies those fills
++ *   ([catchUp]) before it sends the slots;
 + * - any other offer stays open (BUYING/SELLING) until aborted.
   *
   * Offer state lives in server varps (`ge_slotN_*`, perm) and goes to the client only through
   * UPDATE_STOCKMARKET_SLOT; the collected items sit in the slot's inv from enum 150
-@@ -46,6 +50,20 @@ object GrandExchange {
+@@ -46,6 +52,21 @@ object GrandExchange {
      const val TAX_MIN_PRICE = 50
  
      const val FILL_TIMER = "timer.ge_offer_fill"
@@ -4730,6 +4820,7 @@ index 8b7f11775..37739113f 100644
 +
 +    const val LIMIT_WINDOW_MINUTES = 240
 +    const val LIMIT_TRACKERS = 16
++    const val LOGOUT_VARP = "varp.ge_logout_minute"
 +
 +    /** Epoch minutes; tests replace it. */
 +    var clock: () -> Int = { (System.currentTimeMillis() / 60_000L).toInt() }
@@ -4738,7 +4829,7 @@ index 8b7f11775..37739113f 100644
      private val newOfferPriceVarp: Int by lazy {
          "varp.ge_newoffer_price".asRSCM(RSCMType.VARP)
      }
-@@ -166,36 +184,110 @@ object GrandExchange {
+@@ -166,36 +187,152 @@ object GrandExchange {
      fun canFill(offer: Offer, guide: Int): Boolean =
          offer.state == STATE_OPEN && if (offer.sell) offer.price <= guide else offer.price >= guide
  
@@ -4754,12 +4845,31 @@ index 8b7f11775..37739113f 100644
 +                now - player.vars[limitVarp(i, "start")] < LIMIT_WINDOW_MINUTES
 +        }
 +
-+    /** How many more of [item] may be bought now (Int.MAX_VALUE without a limit). */
++    private fun freeTracker(player: Player, now: Int): Int? =
++        (0 until LIMIT_TRACKERS).firstOrNull { i ->
++            player.vars[limitVarp(i, "item")] == 0 ||
++                now - player.vars[limitVarp(i, "start")] >= LIMIT_WINDOW_MINUTES
++        }
++
++    /**
++     * How many more of [item] may be bought now (Int.MAX_VALUE without a limit). A live window is
++     * never dropped: with all [LIMIT_TRACKERS] in use, a new limited item waits for one to end.
++     */
 +    fun limitRemaining(player: Player, item: Int, now: Int = clock()): Int {
 +        val limit = buyLimit(item) ?: return Int.MAX_VALUE
-+        val tracker = activeTracker(player, item, now) ?: return limit
++        val tracker =
++            activeTracker(player, item, now)
++                ?: return if (freeTracker(player, now) != null) limit else 0
 +        return (limit - player.vars[limitVarp(tracker, "bought")]).coerceAtLeast(0)
 +    }
++
++    /** The first moment after [after] at which a running limit window ends, or null. */
++    fun nextLimitExpiry(player: Player, after: Int): Int? =
++        (0 until LIMIT_TRACKERS)
++            .filter { player.vars[limitVarp(it, "item")] != 0 }
++            .map { player.vars[limitVarp(it, "start")] + LIMIT_WINDOW_MINUTES }
++            .filter { it > after }
++            .minOrNull()
 +
 +    /** Minutes until [item]'s limit window ends, or 0 when no window is running. */
 +    fun limitResetMinutes(player: Player, item: Int, now: Int = clock()): Int {
@@ -4775,11 +4885,7 @@ index 8b7f11775..37739113f 100644
 +            set(player, limitVarp(active, "bought"), bought.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
 +            return
 +        }
-+        val index =
-+            (0 until LIMIT_TRACKERS).firstOrNull { i ->
-+                player.vars[limitVarp(i, "item")] == 0 ||
-+                    now - player.vars[limitVarp(i, "start")] >= LIMIT_WINDOW_MINUTES
-+            } ?: (0 until LIMIT_TRACKERS).minBy { player.vars[limitVarp(it, "start")] }
++        val index = freeTracker(player, now) ?: return
 +        set(player, limitVarp(index, "item"), item + 1)
 +        set(player, limitVarp(index, "start"), now)
 +        set(player, limitVarp(index, "bought"), count)
@@ -4808,6 +4914,7 @@ index 8b7f11775..37739113f 100644
 +    fun fillOpenOffers(
 +        player: Player,
 +        now: Int = clock(),
++        announce: Boolean = true,
 +        guidePrice: (ItemServerType) -> Int,
 +    ): Map<Int, StepResult> {
 +        val results = mutableMapOf<Int, StepResult>()
@@ -4832,12 +4939,19 @@ index 8b7f11775..37739113f 100644
 -            )
 -            sendSlot(player, slot)
 -            val verb = if (offer.sell) "selling" else "buying"
-+            results[slot] = fillStep(player, offer, type, guide, now)
++            results[slot] = fillStep(player, offer, type, guide, now, announce)
 +        }
 +        return results
 +    }
 +
-+    private fun fillStep(player: Player, offer: Offer, type: ItemServerType, guide: Int, now: Int): StepResult {
++    private fun fillStep(
++        player: Player,
++        offer: Offer,
++        type: ItemServerType,
++        guide: Int,
++        now: Int,
++        announce: Boolean,
++    ): StepResult {
 +        val remaining = offer.count - offer.done
 +        var amount = minOf(stepSize(offer.count), remaining)
 +        if (!offer.sell) amount = minOf(amount, limitRemaining(player, offer.item, now))
@@ -4856,6 +4970,7 @@ index 8b7f11775..37739113f 100644
 +        val finished = done >= offer.count
 +        val status = if (finished) finishedStatus(offer.sell) else offer.status
 +        store(player, offer.copy(done = done, gold = offer.gold + gold, status = status))
++        if (!announce) return StepResult.Filled
 +        sendSlot(player, offer.slot)
 +        val verb = if (offer.sell) "selling" else "buying"
 +        if (finished) {
@@ -4864,18 +4979,57 @@ index 8b7f11775..37739113f 100644
 +        } else {
 +            val past = if (offer.sell) "Sold" else "Bought"
 +            player.mes("Grand Exchange: $past ${done.commas()} / ${offer.count.commas()} x ${type.name}.")
++        }
++        return StepResult.Filled
++    }
++
++    /**
++     * Applies what the market filled while the player was logged out, from [since] (the logout
++     * minute) to [now]: every part that fills at once, then again each time a buy limit window
++     * ends, so a new window starts when the old one ran out. No chat lines; the login sends the
++     * slots afterwards.
++     */
++    fun catchUp(player: Player, since: Int, now: Int, guidePrice: (ItemServerType) -> Int) {
++        var time = since.coerceAtMost(now)
++        while (true) {
++            var results: Map<Int, StepResult>
++            do {
++                results = fillOpenOffers(player, time, announce = false, guidePrice)
++            } while (StepResult.Filled in results.values)
++            if (StepResult.LimitBlocked !in results.values) return
++            time = nextLimitExpiry(player, time)?.takeIf { it <= now } ?: return
          }
 -        return filled
-+        return StepResult.Filled
      }
  
      /** Aborts an open offer: what was put in waits in the collection inv. */
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
-index 9bba549fd..0adc84134 100644
+index 36ca41644..b0520ed0d 100644
 --- a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
-@@ -47,7 +47,13 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
+@@ -18,6 +18,7 @@ import org.rsmod.api.script.onIfModalButton
+ import org.rsmod.api.script.onIfOpen
+ import org.rsmod.api.script.onOpNpc3
+ import org.rsmod.api.script.onPlayerLogin
++import org.rsmod.api.script.onPlayerLogout
+ import org.rsmod.api.script.onPlayerSoftTimer
+ import org.rsmod.content.interfaces.grandexchange.GrandExchange.commas
+ import org.rsmod.game.entity.Player
+@@ -38,6 +39,9 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
          }
+ 
+         onPlayerLogin {
++            val now = GrandExchange.clock()
++            val logout = player.vars[GrandExchange.LOGOUT_VARP].takeIf { it > 0 } ?: now
++            GrandExchange.catchUp(player, logout, now) { it.guide }
+             for (slot in 0 until GrandExchange.SLOTS) {
+                 player.startInvTransmit(GrandExchange.collectionInv(player, slot))
+                 GrandExchange.sendSlot(player, slot)
+@@ -45,9 +49,16 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
+             resetItemSinkVars(player)
+             if (hasFillable(player)) player.softTimer(GrandExchange.FILL_TIMER, 1)
+         }
++        onPlayerLogout { GrandExchange.set(player, GrandExchange.LOGOUT_VARP, GrandExchange.clock()) }
          onPlayerSoftTimer(GrandExchange.FILL_TIMER) {
              player.clearSoftTimer(GrandExchange.FILL_TIMER)
 -            GrandExchange.fillOpenOffers(player) { it.guide }
@@ -4889,7 +5043,7 @@ index 9bba549fd..0adc84134 100644
          }
  
          for (slot in 0 until GrandExchange.SLOTS) {
-@@ -76,11 +82,14 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
+@@ -76,11 +87,14 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
          onIfOpen("interface.ge_collect") { setCollectionBoxEvents(player) }
      }
  
@@ -4906,7 +5060,7 @@ index 9bba549fd..0adc84134 100644
          }
  
      private fun resetItemSinkVars(player: Player) {
-@@ -299,7 +308,7 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
+@@ -300,7 +314,7 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
          GrandExchange.store(player, offer)
          GrandExchange.sendSlot(player, slot)
          resetSetup(player, slot = 0)
@@ -4915,7 +5069,7 @@ index 9bba549fd..0adc84134 100644
          return true
      }
  
-@@ -392,7 +401,6 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
+@@ -409,7 +423,6 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
  
          const val BUY_BUTTON = 3
          const val SELL_BUTTON = 4

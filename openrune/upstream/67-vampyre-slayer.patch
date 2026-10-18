@@ -1,4 +1,4 @@
-From b3f1f321d6b18571c6e86f61f87d5fe2a6899795 Mon Sep 17 00:00:00 2001
+From db97ed3102e4c6b68a1c27b1bdab3daaa9a68ab6 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sun, 18 Oct 2026 00:54:20 -0400
 Subject: [PATCH] feat: Vampyre Slayer quest and the Blue Moon Inn bartender
@@ -18,46 +18,70 @@ received, 3 complete (the cache dbrow end state, checked at startup).
 These are the values Quest Helper keys its steps on. Morgan and Dr
 Harlow follow the OSRS Wiki transcripts (start, legends, garlic hint,
 Harlow's beer, stake, topics, a lost stake); Harlow's client varbits
-`harlow_given_beer`/`harlow_given_stake` are set. Morgan's garlic
-cupboard opens and gives garlic. Opening the coffin in the manor
-basement at stages 1-2 raises Count Draynor for that player (500-tick
-lifespan, removed on logout). Garlic in the inventory weakens him
-(-10 hitpoints, -10 Attack/Strength, -40 Defence). At 0 hitpoints a
-stake and a hammer finish him (quest complete: 3 QP, 4,825 Attack XP);
-otherwise he regenerates to full. Morgan's after-quest dialogue moves
-from DraynorVillageNpcs into the quest. New `BlueMoonBartender`
-(transcript): "A glass of your finest ale please." sells a beer for 2
-coins, plus the fortune and equipment topics.
+`harlow_given_beer`/`harlow_given_stake` are set. Players under combat
+level 20 get the transcript's warning before the start prompt, and
+Morgan's first menu asks about "this vampyre" (later talks: "Count
+Draynor"). Morgan's garlic cupboard opens and gives garlic. Opening the
+coffin in the manor basement at stages 1-2 raises Count Draynor for that
+player (removed on logout). He recovers 1 point of every stat per 5 ticks
+(`regenRate = 5`, twenty times the ordinary 100). Garlic: every tick the
+player has an attack queued on him (melee or autocast) while carrying
+garlic, each of his stats that is full is drained: Attack -10 ("The
+vampyre seems to be weakened by the garlic you're carrying." the first
+time, "The vampyre seems to weaken." after), Strength -10, Defence -40
+(to 0), and 10 damage (a hitsplat) when his hitpoints are full; as he
+restores, the drain re-applies. Garlic also adds 1 to the player's
+damage on him. At 0 hitpoints a stake and a hammer finish him (quest
+complete: 3 QP, 4,825 Attack XP); otherwise he regenerates to full. If
+the fight takes too long (500 ticks) he leaves, and reopening the coffin
+raises him at full health. Morgan's after-quest dialogue moves from
+DraynorVillageNpcs into the quest. New `BlueMoonBartender` (transcript):
+"A glass of your finest ale please." sells a beer for 2 coins, plus the
+fortune and equipment topics.
 
-Tests. `VampyreSlayerInteractionTest` (5): start, decline, Harlow's
-beer before the stake, a lost stake replaced, Morgan's garlic hint. `:content:quest:test`. Manual: a
-full run with Quest Helper 4.18 on the RuneLite desktop client (fresh
-account): every step showed the right QH text, varp 178 went 0-1-2-3,
-the bartender's beer turned QH's requirement green, and the kill
-completed the quest.
+Tests. `VampyreSlayerInteractionTest` (12): start, decline, Harlow's
+beer before the stake, a lost stake replaced, Morgan's garlic hint, the
+low-combat warning, Morgan's "this vampyre" / "Count Draynor" menu, the
+Count's regen rate, the garlic drain on attack, its re-application as
+stats restore, no drain without garlic or an attack queued, and the +1
+garlic damage. `:content:quest:test`. Manual: a full run with Quest
+Helper 4.18 on the RuneLite desktop client (fresh account): every step
+showed the right QH text, varp 178 went 0-1-2-3, the bartender's beer
+turned QH's requirement green, and the kill completed the quest.
 
-Data sources. Dialogue: OSRS Wiki transcripts (Morgan, Dr Harlow,
-Bartender (Blue Moon Inn), Vampyre Slayer). Rewards, garlic effects and
-locations: OSRS Wiki quest page. Step values: Quest Helper's
+Data sources. Dialogue, the low-combat warning and the kill messages:
+OSRS Wiki transcripts (Vampyre Slayer, Morgan, Dr Harlow, Bartender
+(Blue Moon Inn)). Garlic (trigger, drains, re-application, "The vampyre
+seems to weaken.", +1 damage) and stat restoration: OSRS Wiki, Count
+Draynor ("Strategy", "Stat restoration"), quoting Mod Ash (Twitter 26
+Jan 2020 and 17 Nov 2020; Discord 13 Aug 2025). Regeneration: Count
+Draynor page ("about twenty times the rate of ordinary monsters"); the
+Vampyre Slayer walkthrough says roughly 6 times, the Count Draynor value
+is used. Returning to the coffin: Vampyre Slayer walkthrough note.
+Rewards and locations: OSRS Wiki quest page. Step values: Quest Helper's
 VampyreSlayer and the cache dbrow `quest_vampyreslayer`.
 
 Caveats. Guesses: the cupboard's take message, "The coffin is sealed
-shut." outside the quest, the Count's attack animation, and keeping the
-stake after the kill. Simplified: the garlic weakening lasts until he
-respawns (the wiki ties it to the first melee hit and 30 seconds); his
-fast regeneration and return to the coffin are not implemented. Needs
-the quest-module patch 12 (QuestTalkFixture).
+shut." outside the quest, the Count's attack animation, the player's
+coffin animation, and keeping the stake after the kill. The 500-tick
+limit before he returns to his coffin is not documented and there is no
+return animation (he disappears). Whether the first garlic drain prints
+both messages is not documented (here only the transcript's). Zero-damage
+hits stay at 0 with garlic (a miss cannot be told from a 0 roll). The
+wiki's "wears off after 30 seconds" is read as the Attack restoring
+(Mod Ash). The fight changes (garlic, regeneration, warning) are
+unit-tested only, not yet checked in a client. Needs the quest-module patch 12 (QuestTalkFixture).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
  .../city/draynor/npcs/DraynorVillageNpcs.kt   |  22 -
  .../city/varrock/npcs/BlueMoonBartender.kt    | 101 +++
  .../pack/src/main/resources/gamevals.toml     |   3 +
- .../pack/configs/vampyre_slayer_npcs.toml     |   7 +
+ .../pack/configs/vampyre_slayer_npcs.toml     |   9 +
  .../pack/configs/vampyre_slayer_vars.toml     |  19 +
- .../quest/area/draynor/VampyreSlayer.kt       | 616 ++++++++++++++++++
- .../draynor/VampyreSlayerInteractionTest.kt   |  78 +++
- 7 files changed, 824 insertions(+), 22 deletions(-)
+ .../quest/area/draynor/VampyreSlayer.kt       | 704 ++++++++++++++++++
+ .../draynor/VampyreSlayerInteractionTest.kt   | 227 ++++++
+ 7 files changed, 1063 insertions(+), 22 deletions(-)
  create mode 100644 content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/BlueMoonBartender.kt
  create mode 100644 content/quest/pack/src/main/resources/pack/configs/vampyre_slayer_npcs.toml
  create mode 100644 content/quest/pack/src/main/resources/pack/configs/vampyre_slayer_vars.toml
@@ -217,10 +241,10 @@ index 000000000..d6fc9c726
 +    }
 +}
 diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml
-index b4e41d645..b0ece4531 100644
+index 0a6cb3169..c64cb1e66 100644
 --- a/content/quest/pack/src/main/resources/gamevals.toml
 +++ b/content/quest/pack/src/main/resources/gamevals.toml
-@@ -70,12 +70,15 @@ restless_ghost_return_tile = 63704
+@@ -70,11 +70,14 @@ restless_ghost_return_tile = 63704
  misthalin_return_tile = 63700
  misthalin_mirror_blocker = 63701
  misthalin_puzzle_state = 63702
@@ -228,7 +252,6 @@ index b4e41d645..b0ece4531 100644
  cooks_assistant_ingredients = 63705
  gertrudes_cat_state = 63711
  daddyshome_state = 64064
- sheep_shearer_state = 63712
  
  [gamevals.varbit]
 +vampyre_slayer_progress = 63720
@@ -238,15 +261,17 @@ index b4e41d645..b0ece4531 100644
  misthalin_reflections = 63700
 diff --git a/content/quest/pack/src/main/resources/pack/configs/vampyre_slayer_npcs.toml b/content/quest/pack/src/main/resources/pack/configs/vampyre_slayer_npcs.toml
 new file mode 100644
-index 000000000..b2e159330
+index 000000000..19d245be9
 --- /dev/null
 +++ b/content/quest/pack/src/main/resources/pack/configs/vampyre_slayer_npcs.toml
-@@ -0,0 +1,7 @@
+@@ -0,0 +1,9 @@
 +[[npc]]
 +isServerOnly = true
 +id = "npc.count_draynor"
 +inherit = "npc.count_draynor"
 +wanderRange = 0
++# OSRS Wiki, Count Draynor: he recovers about twenty times as fast as ordinary monsters (100).
++regenRate = 5
 +[npc.params]
 +"param.attack_anim"="seq.human_unarmedpunch"
 diff --git a/content/quest/pack/src/main/resources/pack/configs/vampyre_slayer_vars.toml b/content/quest/pack/src/main/resources/pack/configs/vampyre_slayer_vars.toml
@@ -276,10 +301,10 @@ index 000000000..0795255d7
 +endBit = 0
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt
 new file mode 100644
-index 000000000..4704ae86d
+index 000000000..b4e791268
 --- /dev/null
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt
-@@ -0,0 +1,616 @@
+@@ -0,0 +1,704 @@
 +package org.rsmod.content.quest.area.draynor
 +
 +import dev.openrune.ServerCacheManager
@@ -291,6 +316,8 @@ index 000000000..4704ae86d
 +import org.rsmod.api.death.NpcDeath
 +import org.rsmod.api.npc.access.StandardNpcAccess
 +import org.rsmod.api.npc.heal
++import org.rsmod.api.npc.hit.modifier.StandardNpcHitModifier
++import org.rsmod.api.npc.hit.queueHit
 +import org.rsmod.api.npc.interact.AiPlayerInteractions
 +import org.rsmod.api.npc.opPlayer2
 +import org.rsmod.api.player.dialogue.Dialogue
@@ -301,6 +328,8 @@ index 000000000..4704ae86d
 +import org.rsmod.api.repo.loc.LocRepository
 +import org.rsmod.api.repo.npc.NpcRepository
 +import org.rsmod.api.repo.obj.ObjRepository
++import org.rsmod.api.script.onAiTimer
++import org.rsmod.api.script.onModifyNpcHit
 +import org.rsmod.api.script.onNpcQueue
 +import org.rsmod.api.script.onOpLoc1
 +import org.rsmod.api.script.onOpLoc2
@@ -313,6 +342,10 @@ index 000000000..4704ae86d
 +import org.rsmod.content.quest.manager.startQuestPrompt
 +import org.rsmod.game.entity.Npc
 +import org.rsmod.game.entity.Player
++import org.rsmod.game.hit.HitBuilder
++import org.rsmod.game.hit.HitType
++import org.rsmod.game.interact.InteractionNpcOp
++import org.rsmod.game.interact.InteractionOp
 +import org.rsmod.game.loc.BoundLocInfo
 +import org.rsmod.plugin.scripts.PluginScript
 +import org.rsmod.plugin.scripts.ScriptContext
@@ -394,6 +427,12 @@ index 000000000..4704ae86d
 +            "It's the evil vampyre, Count Draynor! For too long he's terrorised us from his manor " +
 +                "to the north. Someone finally needs to put a stop to him once and for all!",
 +        )
++        if (player.combatLevel < RECOMMENDED_COMBAT) {
++            mesbox(
++                "Before starting this quest, be aware that your combat level is lower than the " +
++                    "recommended level of $RECOMMENDED_COMBAT."
++            )
++        }
 +        if (!startQuestPrompt(quest)) {
 +            chatPlayer(
 +                worried,
@@ -419,7 +458,7 @@ index 000000000..4704ae86d
 +            "If you speak to him, I'm sure he'll be able to help. I hear he's a bit of an old soak " +
 +                "these days, so he spends most of his time in the Blue Moon Inn.",
 +        )
-+        morganOptions(stillWorking = false)
++        morganOptions(stillWorking = false, about = "this vampyre")
 +    }
 +
 +    private suspend fun Dialogue.morganDuring() {
@@ -434,18 +473,22 @@ index 000000000..4704ae86d
 +                "Ah, yes! I heard vampyres didn't like garlic. I keep some in the cupboard " +
 +                    "upstairs, just in case Count Draynor comes and tries anything!",
 +            )
-+            morganOptions(stillWorking = true)
++            morganOptions(stillWorking = true, about = "Count Draynor")
 +            return
 +        }
 +        chatPlayer(neutral, "I'm still working on it.")
 +        chatNpc(worried, "Please hurry! I'm sure Dr Harlow in Varrock's Blue Moon Inn can help.")
-+        morganOptions(stillWorking = false)
++        morganOptions(stillWorking = false, about = "Count Draynor")
 +    }
 +
-+    private suspend fun Dialogue.morganOptions(stillWorking: Boolean) {
++    /**
++     * Morgan's menu. The first option reads "this vampyre" right after the quest starts and "Count
++     * Draynor" on later talks (wiki transcript, Starting off / Talking to Morgan again).
++     */
++    private suspend fun Dialogue.morganOptions(stillWorking: Boolean, about: String) {
 +        val leave =
 +            if (stillWorking) "Perfect, thanks." else "Alright, I'll see about paying him a visit."
-+        when (choice2("What else can you tell me about Count Draynor?", 1, leave, 2)) {
++        when (choice2("What else can you tell me about $about?", 1, leave, 2)) {
 +            1 -> morganLegends()
 +            2 -> {
 +                chatPlayer(neutral, leave)
@@ -762,15 +805,17 @@ index 000000000..4704ae86d
 +        const val BEER = "obj.beer"
 +        const val GARLIC = "obj.garlic"
 +        private const val ATTACK_XP = 4825.0
++        private const val RECOMMENDED_COMBAT = 20
 +    }
 +}
 +
 +/**
 + * Draynor Manor's side of Vampyre Slayer: Morgan's garlic cupboard, the coffin and Count Draynor.
 + * Count Draynor rises for the player who opens the coffin; at 0 hitpoints he only dies to a stake
-+ * and a hammer, otherwise he heals to full. Garlic weakens him as he rises (wiki: 10 damage, -10
-+ * Attack and Strength, -40 Defence; the wiki times it to the first melee attack, here it is applied
-+ * at once).
++ * and a hammer, otherwise he heals to full. Garlic weakens him while the player attacks him (see
++ * [CountDraynorFight]); his fast regeneration is the npc's `regenRate` (vampyre_slayer_npcs.toml).
++ * If the fight takes too long he returns to his coffin (the lifespan ends) and rises again at full
++ * health when the coffin is reopened.
 + */
 +class VampyreSlayerManor
 +@Inject
@@ -780,10 +825,9 @@ index 000000000..4704ae86d
 +    private val protectedAccess: ProtectedAccessLauncher,
 +    private val npcDeath: NpcDeath,
 +    private val aiPlayerInteractions: AiPlayerInteractions,
++    private val npcHitModifier: StandardNpcHitModifier,
 +) : PluginScript() {
-+    private class Fight(val player: Player, val count: Npc)
-+
-+    private val fights = HashMap<Long, Fight>()
++    private val fights = HashMap<Long, CountDraynorFight>()
 +
 +    private val quest: Quest
 +        get() = checkNotNull(Quest.get(QUEST_KEY)) { "Vampyre Slayer is not registered." }
@@ -793,12 +837,16 @@ index 000000000..4704ae86d
 +    private fun countType(): NpcServerType =
 +        ServerCacheManager.getNpc(COUNT.asRSCM(RSCMType.NPC)) ?: error("Missing npc: $COUNT")
 +
++    private fun fightOf(count: Npc): CountDraynorFight? = fights.values.firstOrNull { it.count === count }
++
 +    override fun ScriptContext.startup() {
 +        onOpLoc1(CUPBOARD_SHUT) { openCupboard(it.loc) }
 +        onOpLoc1(CUPBOARD_OPEN) { searchCupboard() }
 +        onOpLoc2(CUPBOARD_OPEN) { closeCupboard(it.loc) }
 +        onOpLoc1(COFFIN) { openCoffin(it.loc) }
 +        onNpcQueue(countType(), "queue.death") { countDeath() }
++        onAiTimer(countType()) { countTick(npc) }
++        onModifyNpcHit(countType()) { fightOf(npc)?.garlicBonus(hit) }
 +        onPlayerLogout {
 +            val fight = player.uuid?.let(fights::remove) ?: return@onPlayerLogout
 +            if (fight.count.isSlotAssigned) npcRepo.del(fight.count, Int.MAX_VALUE)
@@ -841,17 +889,20 @@ index 000000000..4704ae86d
 +        delay(1)
 +        val count = Npc(COUNT, loc.coords.translateZ(-1))
 +        npcRepo.add(count, COUNT_LIFESPAN)
-+        fights[uuid] = Fight(player, count)
++        fights[uuid] = CountDraynorFight(player, count)
 +        count.anim("seq.vampireslayer_arise")
 +        delay(2)
-+        if (VampyreSlayer.GARLIC in inv) {
-+            mes("The vampyre seems to be weakened by the garlic you're carrying.")
-+            count.hitpoints = (count.hitpoints - GARLIC_DAMAGE).coerceAtLeast(1)
-+            count.attackLvl = (count.attackLvl - 10).coerceAtLeast(1)
-+            count.strengthLvl = (count.strengthLvl - 10).coerceAtLeast(1)
-+            count.defenceLvl = (count.defenceLvl - 40).coerceAtLeast(1)
-+        }
 +        count.opPlayer2(player, aiPlayerInteractions)
++        count.aiTimer(1)
++    }
++
++    private fun countTick(count: Npc) {
++        val fight = fightOf(count) ?: return
++        val damage = fight.garlicCheck()
++        if (damage > 0) {
++            count.queueHit(1, HitType.Typeless, damage, npcHitModifier)
++        }
++        count.aiTimer(1)
 +    }
 +
 +    private suspend fun StandardNpcAccess.countDeath() {
@@ -893,27 +944,99 @@ index 000000000..4704ae86d
 +        const val CUPBOARD_OPEN = "loc.garliccupboardopen"
 +        const val CUPBOARD_OPEN_TICKS = 300
 +        const val COUNT_LIFESPAN = 500
++    }
++}
++
++/**
++ * Garlic in a Count Draynor fight (OSRS Wiki, Count Draynor: "Strategy" and "Stat restoration",
++ * quoting Mod Ash). Every tick that [player] has an attack queued on [count] (melee, or an autocast
++ * spell; a manual cast is a spell-on-npc interaction and does not count) and carries garlic, each
++ * of the Count's stats that is full is drained: Attack -10 (with a message), Strength -10, Defence
++ * -40 (his 30 Defence goes to 0) and, when his hitpoints are full, 10 damage. His regeneration (1
++ * point every 5 ticks) restores them, so the drain comes back: Attack after 50 ticks, Defence after
++ * 150, hitpoints whenever he heals to full. Garlic also adds 1 to the player's damage on him.
++ */
++internal class CountDraynorFight(val player: Player, val count: Npc) {
++    private var ticks = 0
++    private var weakened = false
++    private var lastHitpointsDrain = Int.MIN_VALUE / 2
++
++    /** Runs one tick of the garlic check and returns the garlic damage to deal (0 or 10). */
++    fun garlicCheck(): Int {
++        ticks++
++        if (count.hitpoints <= 0 || !attackQueued() || !hasGarlic()) {
++            return 0
++        }
++        if (count.attackLvl >= count.baseAttackLvl) {
++            count.attackLvl = (count.attackLvl - GARLIC_ATTACK_DRAIN).coerceAtLeast(0)
++            player.mes(if (weakened) REWEAKEN_MESSAGE else WEAKEN_MESSAGE)
++            weakened = true
++        }
++        if (count.strengthLvl >= count.baseStrengthLvl) {
++            count.strengthLvl = (count.strengthLvl - GARLIC_STRENGTH_DRAIN).coerceAtLeast(0)
++        }
++        if (count.defenceLvl >= count.baseDefenceLvl) {
++            count.defenceLvl = (count.defenceLvl - GARLIC_DEFENCE_DRAIN).coerceAtLeast(0)
++        }
++        // The damage lands a tick later; don't queue it twice while it is still in flight.
++        if (count.hitpoints >= count.baseHitpointsLvl && ticks - lastHitpointsDrain > HIT_DELAY) {
++            lastHitpointsDrain = ticks
++            return GARLIC_DAMAGE
++        }
++        return 0
++    }
++
++    /** Garlic adds 1 to the player's damage on the Count (wiki, Mod Ash 17 Nov 2020). */
++    fun garlicBonus(hit: HitBuilder) {
++        if (!hit.isFromPlayer || hit.sourceUid != player.uid.packed || hit.damage <= 0) return
++        if (hasGarlic()) hit.damage++
++    }
++
++    private fun hasGarlic(): Boolean = player.inv.count(VampyreSlayer.GARLIC) > 0
++
++    private fun attackQueued(): Boolean {
++        val interaction = player.interaction as? InteractionNpcOp ?: return false
++        return interaction.op == InteractionOp.Op2 && interaction.target === count
++    }
++
++    companion object {
++        const val WEAKEN_MESSAGE = "The vampyre seems to be weakened by the garlic you're carrying."
++        const val REWEAKEN_MESSAGE = "The vampyre seems to weaken."
 +        const val GARLIC_DAMAGE = 10
++        private const val GARLIC_ATTACK_DRAIN = 10
++        private const val GARLIC_STRENGTH_DRAIN = 10
++        private const val GARLIC_DEFENCE_DRAIN = 40
++        private const val HIT_DELAY = 2
 +    }
 +}
 diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayerInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayerInteractionTest.kt
 new file mode 100644
-index 000000000..be3c8e2d3
+index 000000000..4367fb346
 --- /dev/null
 +++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayerInteractionTest.kt
-@@ -0,0 +1,78 @@
+@@ -0,0 +1,227 @@
 +package org.rsmod.content.quest.area.draynor
 +
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
 +import org.junit.jupiter.api.AfterAll
 +import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
 +import org.junit.jupiter.api.Assertions.assertTrue
 +import org.junit.jupiter.api.BeforeAll
 +import org.junit.jupiter.api.Test
 +import org.junit.jupiter.api.parallel.Execution
 +import org.junit.jupiter.api.parallel.ExecutionMode
 +import org.junit.jupiter.api.parallel.ResourceLock
++import org.rsmod.annotations.InternalApi
 +import org.rsmod.api.player.vars.VarPlayerIntMapSetter
 +import org.rsmod.content.quest.area.QuestTalkFixture
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.hit.HitBuilder
++import org.rsmod.game.hit.HitType
++import org.rsmod.game.interact.InteractionNpcOp
++import org.rsmod.game.interact.InteractionOp
 +import org.rsmod.map.CoordGrid
 +
 +@Execution(ExecutionMode.SAME_THREAD)
@@ -971,9 +1094,148 @@ index 000000000..be3c8e2d3
 +        assertTrue(f.output().contains("cupboard upstairs"), f.output())
 +    }
 +
++    @Test fun `players under combat level 20 are warned before the start prompt`() {
++        val low = fixture()
++        low.player.appearance.combatLevel = 19
++        low.talk(MORGAN, 2)
++        assertTrue(low.output().contains(LOW_COMBAT), low.output())
++
++        val high = fixture()
++        high.player.appearance.combatLevel = 20
++        high.talk(MORGAN, 2)
++        assertFalse(high.output().contains(LOW_COMBAT), high.output())
++    }
++
++    @Test fun `Morgan asks about this vampyre at the start and about Count Draynor later`() {
++        val f = fixture()
++        f.talk(MORGAN, 1, 2)
++        assertTrue(f.output().contains("tell me about this vampyre?"), f.output())
++        assertFalse(f.output().contains("tell me about Count Draynor?"), f.output())
++
++        f.talk(MORGAN, 2)
++        assertTrue(f.output().contains("tell me about Count Draynor?"), f.output())
++    }
++
++    @Test fun `the Count recovers twenty times as fast as ordinary monsters`() {
++        val type = checkNotNull(ServerCacheManager.getNpc(COUNT.asRSCM(RSCMType.NPC)))
++        assertEquals(5, type.regenRate)
++    }
++
++    @Test fun `garlic drains the Count while the player attacks him`() {
++        val f = fixture()
++        val (count, fight) = fight(f)
++        f.give("obj.garlic")
++        assertEquals(0, fight.garlicCheck(), "no attack queued yet")
++        assertEquals(30, count.attackLvl)
++
++        attack(f, count)
++        assertEquals(CountDraynorFight.GARLIC_DAMAGE, fight.garlicCheck())
++        assertEquals(20, count.attackLvl)
++        assertEquals(15, count.strengthLvl)
++        assertEquals(0, count.defenceLvl)
++        assertTrue(f.output().contains(CountDraynorFight.WEAKEN_MESSAGE), f.output())
++
++        // The 10 damage is still in flight (hitpoints still full): no second hit.
++        assertEquals(0, fight.garlicCheck())
++        assertEquals(20, count.attackLvl)
++    }
++
++    @Test fun `garlic re-applies as the Count's stats restore`() {
++        val f = fixture()
++        val (count, fight) = fight(f)
++        f.give("obj.garlic")
++        attack(f, count)
++        fight.garlicCheck()
++        count.hitpoints = count.baseHitpointsLvl - 10
++        repeat(3) { fight.garlicCheck() }
++
++        count.attackLvl = count.baseAttackLvl
++        assertEquals(0, fight.garlicCheck())
++        assertEquals(20, count.attackLvl)
++        assertEquals(15, count.strengthLvl, "Strength is not full yet")
++        assertTrue(f.output().contains(CountDraynorFight.REWEAKEN_MESSAGE), f.output())
++
++        count.defenceLvl = count.baseDefenceLvl
++        count.hitpoints = count.baseHitpointsLvl
++        assertEquals(CountDraynorFight.GARLIC_DAMAGE, fight.garlicCheck())
++        assertEquals(0, count.defenceLvl)
++    }
++
++    @Test fun `without garlic or with a manual cast the Count is not drained`() {
++        val f = fixture()
++        val (count, fight) = fight(f)
++        attack(f, count)
++        assertEquals(0, fight.garlicCheck())
++        assertEquals(30, count.attackLvl)
++
++        f.give("obj.garlic")
++        f.player.interaction = null
++        assertEquals(0, fight.garlicCheck())
++        assertEquals(30, count.defenceLvl)
++    }
++
++    @Test fun `garlic adds 1 to the player's damage on the Count`() {
++        val f = fixture()
++        val (_, fight) = fight(f)
++        val plain = hit(f, 3)
++        fight.garlicBonus(plain)
++        assertEquals(3, plain.damage)
++
++        f.give("obj.garlic")
++        val boosted = hit(f, 3)
++        fight.garlicBonus(boosted)
++        assertEquals(4, boosted.damage)
++
++        val miss = hit(f, 0)
++        fight.garlicBonus(miss)
++        assertEquals(0, miss.damage)
++
++        val other = hit(f, 3, source = f.player.uid.packed + 1)
++        fight.garlicBonus(other)
++        assertEquals(3, other.damage)
++    }
++
++    @OptIn(InternalApi::class)
++    private fun fight(f: QuestTalkFixture): Pair<Npc, CountDraynorFight> {
++        val count = Npc(COUNT, f.player.coords.translateZ(1))
++        count.slotId = 7
++        count.assignUid()
++        return count to CountDraynorFight(f.player, count)
++    }
++
++    private fun attack(f: QuestTalkFixture, count: Npc) {
++        f.player.interaction =
++            InteractionNpcOp(InteractionOp.Op2, count, hasOpTrigger = true, hasApTrigger = true)
++    }
++
++    private fun hit(f: QuestTalkFixture, damage: Int, source: Int = f.player.uid.packed) =
++        HitBuilder(
++            type = HitType.Melee,
++            damage = damage,
++            sourceUid = source,
++            sourceSlot = f.player.slotId,
++            isFromNpc = false,
++            isFromPlayer = true,
++            clientDelay = 0,
++            righthandType = null,
++            secondaryType = null,
++            targetHitmark = 0,
++            sourceHitmark = 0,
++            publicHitmark = null,
++            zeroDamageHitmarkLit = null,
++            zeroDamageHitmarkTint = null,
++            maxDamageHitmarkLit = null,
++            targetMaxDamageThreshold = 0,
++            sourceMaxDamageThreshold = 0,
++        )
++
 +    companion object {
 +        const val MORGAN = "npc.morgan"
 +        const val HARLOW = "npc.dr_harlow"
++        const val COUNT = "npc.count_draynor"
++        const val LOW_COMBAT =
++            "Before starting this quest, be aware that your combat level is lower than the " +
++                "recommended level of 20."
 +
 +        @JvmStatic @BeforeAll fun cache() = QuestTalkFixture.setUpCache()
 +

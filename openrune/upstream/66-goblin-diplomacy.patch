@@ -1,4 +1,4 @@
-From 5398c608777cbec90485b2bac3bad15c233cd3b4 Mon Sep 17 00:00:00 2001
+From c23023014e7a5664cacce616c362bca5560406bf Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 23:51:25 -0400
 Subject: [PATCH] feat: Goblin Diplomacy quest; Goblin Village lookout ladder
@@ -6,34 +6,67 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-New quest. Progress is the client varbit gobdip_main (2378): 0, 3 started
-(orange wanted), 4 blue wanted, 5 brown wanted, 6 complete; Quest Helper
-has steps for 0/3, 4 and 5 (starting at 3 is inferred from that). The
-three armour crates use gobdip_crate1..3_searched and Grubfoot's look the
-multinpc varbit gobdip_grubfoot_vis, so the client and Quest Helper see
-them. Dialogue follows the OSRS Wiki transcript (random openers, topic
-menu, start, the three try-ons as dialogue). Orange/blue dye on goblin
-mail and dye mixing (red+yellow, yellow+blue, red+blue) are one
-transaction each. Rewards: 5 QP, 200 Crafting XP, a gold bar.
+Problem. Goblin Diplomacy is not implemented: the generals and Grubfoot
+only have flavour dialogue, the armour crates and goblin mail dyeing do
+nothing, and the lookout ladder by the south gate has no handler.
+
+Change. New quest. Progress is the client varbit gobdip_main (2378): 0,
+3 started (orange wanted), 4 blue wanted, 5 brown wanted, 6 complete;
+Quest Helper has steps for 0/3, 4 and 5 (starting at 3 is inferred from
+that). The three armour crates use gobdip_crate1..3_searched and
+Grubfoot's look the multinpc varbit gobdip_grubfoot_vis, so the client
+and Quest Helper see them. Dialogue follows the OSRS Wiki transcript:
+the five random openers (the "fat" one with its "I'll leave you to it."
+option), the topic menu (after "Why are you arguing..." its first entry
+becomes "What is the goblin new century?", and "I'll leave you to it."
+always ends the talk), the start, and the three try-ons as dialogue.
+Grubfoot argues about red and green armour until the quest is done and
+has his five random lines after it; the generals have their five
+after-quest dialogues. Every dye the wiki lists turns plain goblin mail
+into its colour (red, yellow, blue, orange, green, purple, pink, black),
+one transaction each, as does dye mixing (red+yellow, yellow+blue,
+red+blue). Rewards: 5 QP, 200 Crafting XP, a gold bar.
 
 The goblin-village generals and Grubfoot scripts are folded into the
-quest (their dialogue is kept as the no-quest / after-quest talk). The
-lookout ladder by the south gate (goblin_ladder_bottom/top) had no
-handler; it now climbs between level 0 and level 2.
+quest. The lookout ladder by the south gate (goblin_ladder_bottom/top)
+now climbs between level 0 and level 2.
 
-QuestTalkFixture gains a fixed random value and a generic interact().
-Guesses: the journal, the dye-mixing message, and "Human! Get us <colour>
-armour!" when asking for a new colour mid-quest.
+Tests. GoblinDiplomacyInteractionTest (9, on QuestTalkFixture): the
+start writes 3; each crate gives one goblin mail once; dye mixing and
+dyeing take one of each and give one result; every dye colour on goblin
+mail; orange, blue then brown complete the quest once (wrong colour
+keeps the armour); the "fat" opener can end the talk; the new-century
+swap and "I'll leave you to it." ending the talk; the fifth after-quest
+dialogue; Grubfoot's lines before and after the quest.
+
+Data sources. OSRS Wiki: Goblin Diplomacy, Transcript:Goblin Diplomacy,
+Transcript:Grubfoot, Transcript:General Wartface, Transcript:General
+Bentnoze, Goblin mail (Products: the dye per colour), Red / Black / Pink
+/ White goblin mail, Orange dye; Quest Helper `GoblinDiplomacy` (varbits,
+steps, item ids, ladder zone); the cache (npc 1965 multinpc order, loc
+ops 16450/16556/16557).
+
+Caveats. Grubfoot's try-on cutscenes are dialogue only. Guesses: the
+start value 3, the journal, the dye-mixing message, "Human! Get us
+<colour> armour!" when asking for a new colour mid-quest, the extra
+"I have some <colour> armour here." talk option, the crate's
+full-inventory message, and "Nothing interesting happens." for armour
+used on a general outside the quest. Only orange and blue have a sourced
+dye message; the other colours use the same wording. Black dye
+(golem_ink) is used up like the other dyes (no vial back; unsourced).
+White goblin mail (Aggie, whitefish) and re-dyeing already dyed mail
+belong to Land of the Goblins and are not included. The generals'
+Another Slice of H.A.M. dialogues and "Where's Bentnoze gone now?"
+(no line of sight) are not included.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
  .../goblinvillage/locs/GoblinCaveLadders.kt   |  11 +
- .../misc/goblinvillage/npcs/GoblinGenerals.kt |  88 ---
+ .../misc/goblinvillage/npcs/GoblinGenerals.kt |  88 --
  .../areas/misc/goblinvillage/npcs/Grubfoot.kt |  62 --
- .../area/goblinvillage/GoblinDiplomacy.kt     | 716 ++++++++++++++++++
- .../content/quest/area/QuestTalkFixture.kt    |  23 +-
- .../GoblinDiplomacyInteractionTest.kt         | 130 ++++
- 6 files changed, 878 insertions(+), 152 deletions(-)
+ .../area/goblinvillage/GoblinDiplomacy.kt     | 756 ++++++++++++++++++
+ .../GoblinDiplomacyInteractionTest.kt         | 201 +++++
+ 5 files changed, 968 insertions(+), 150 deletions(-)
  delete mode 100644 content/areas/misc/goblin-village/src/main/kotlin/org/rsmod/content/areas/misc/goblinvillage/npcs/GoblinGenerals.kt
  delete mode 100644 content/areas/misc/goblin-village/src/main/kotlin/org/rsmod/content/areas/misc/goblinvillage/npcs/Grubfoot.kt
  create mode 100644 content/quest/src/main/kotlin/org/rsmod/content/quest/area/goblinvillage/GoblinDiplomacy.kt
@@ -232,10 +265,10 @@ index 6152e4fa9..000000000
 -}
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/goblinvillage/GoblinDiplomacy.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/goblinvillage/GoblinDiplomacy.kt
 new file mode 100644
-index 000000000..6482f7e6f
+index 000000000..6a8fc01bc
 --- /dev/null
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/goblinvillage/GoblinDiplomacy.kt
-@@ -0,0 +1,716 @@
+@@ -0,0 +1,756 @@
 +package org.rsmod.content.quest.area.goblinvillage
 +
 +import dev.openrune.rscm.RSCM
@@ -292,8 +325,9 @@ index 000000000..6482f7e6f
 +        for (crate in Crate.entries) {
 +            onOpLoc1(crate.loc) { searchCrate(crate) }
 +        }
-+        onOpHeldU(ORANGE_DYE, GOBLIN_MAIL) { dyeMail(ORANGE_DYE, it.firstSlot, it.secondSlot) }
-+        onOpHeldU(BLUE_DYE, GOBLIN_MAIL) { dyeMail(BLUE_DYE, it.firstSlot, it.secondSlot) }
++        for (dye in MailDye.entries) {
++            onOpHeldU(dye.dye, GOBLIN_MAIL) { dyeMail(dye, it.firstSlot, it.secondSlot) }
++        }
 +        onOpHeldU(RED_DYE, YELLOW_DYE) { mixDyes(it.firstSlot, it.secondSlot, ORANGE_DYE, "orange") }
 +        onOpHeldU(YELLOW_DYE, BLUE_DYE) { mixDyes(it.firstSlot, it.secondSlot, GREEN_DYE, "green") }
 +        onOpHeldU(RED_DYE, BLUE_DYE) { mixDyes(it.firstSlot, it.secondSlot, PURPLE_DYE, "purple") }
@@ -345,11 +379,20 @@ index 000000000..6482f7e6f
 +        startDialogue { objbox(GOBLIN_MAIL, "You find some goblin mail in the crate.") }
 +    }
 +
-+    private fun ProtectedAccess.dyeMail(dye: String, dyeSlot: Int, mailSlot: Int) {
-+        val (result, colour) =
-+            if (dye == ORANGE_DYE) ORANGE_MAIL to "orange" else BLUE_MAIL to "blue"
-+        if (combine(dye, dyeSlot, GOBLIN_MAIL, mailSlot, result)) {
-+            mes("You dye the goblin mail $colour.")
++    private enum class MailDye(val dye: String, val mail: String, val colour: String) {
++        Red(RED_DYE, "obj.goblin_armour_red", "red"),
++        Yellow(YELLOW_DYE, "obj.goblin_armour_yellow", "yellow"),
++        Blue(BLUE_DYE, BLUE_MAIL, "blue"),
++        Orange(ORANGE_DYE, ORANGE_MAIL, "orange"),
++        Green(GREEN_DYE, "obj.goblin_armour_green", "green"),
++        Purple(PURPLE_DYE, "obj.goblin_armour_purple", "purple"),
++        Pink("obj.handsand_pink_dye", "obj.goblin_armour_pink", "pink"),
++        Black("obj.golem_ink", "obj.goblin_armour_black", "black"),
++    }
++
++    private fun ProtectedAccess.dyeMail(dye: MailDye, dyeSlot: Int, mailSlot: Int) {
++        if (combine(dye.dye, dyeSlot, GOBLIN_MAIL, mailSlot, dye.mail)) {
++            mes("You dye the goblin mail ${dye.colour}.")
 +        }
 +    }
 +
@@ -443,7 +486,16 @@ index 000000000..6482f7e6f
 +        wartface(angry, "SHUT UP!")
 +        bentnoze(quiz, "Even this human think you look fat! Don't you, human?")
 +        chatPlayer(confused, "Um...")
-+        when (choice2("Yes, he looks fat.", 1, "No, he doesn't look fat.", 2)) {
++        when (
++            choice3(
++                "Yes, he looks fat.",
++                1,
++                "No, he doesn't look fat.",
++                2,
++                "I'll leave you to it.",
++                3,
++            )
++        ) {
 +            1 -> {
 +                chatPlayer(laugh, "Yes, he looks fat!")
 +                bentnoze(laugh, "Ha ha! See, fatty? Even human think you fat!")
@@ -453,6 +505,10 @@ index 000000000..6482f7e6f
 +                chatPlayer(neutral, "No, he doesn't look fat.")
 +                bentnoze(angry, "Shut up human! Wartface fat and human stupid!")
 +                wartface(angry, "Shut up Bentnoze!")
++            }
++            else -> {
++                chatPlayer(neutral, "I'll leave you to it.")
++                return false
 +            }
 +        }
 +        return true
@@ -488,6 +544,7 @@ index 000000000..6482f7e6f
 +    }
 +
 +    private suspend fun Dialogue.mainMenu() {
++        var askedWhy = false
 +        while (true) {
 +            val stage = stage(player)
 +            val wanted = wantedArmour(stage)
@@ -497,14 +554,22 @@ index 000000000..6482f7e6f
 +                }
 +            val options =
 +                buildList {
-+                    add("Why are you arguing about the colour of your armour?" to MenuChoice.Why)
++                    if (askedWhy) {
++                        add("What is the goblin new century?" to MenuChoice.NewCentury)
++                    } else {
++                        add(WHY_ARGUING to MenuChoice.Why)
++                    }
 +                    add("Wouldn't you prefer peace?" to MenuChoice.Peace)
 +                    add("Do you want me to pick an armour colour for you?" to MenuChoice.Pick)
 +                    if (handInText != null) add(handInText to MenuChoice.HandIn)
 +                    add("I'll leave you to it." to MenuChoice.Leave)
 +                }
 +            when (menu(options)) {
-+                MenuChoice.Why -> whyArguing()
++                MenuChoice.Why -> {
++                    whyArguing()
++                    askedWhy = true
++                }
++                MenuChoice.NewCentury -> newCentury()
 +                MenuChoice.Peace -> {
 +                    chatPlayer(quiz, "Wouldn't you prefer peace?")
 +                    wartface(
@@ -529,6 +594,7 @@ index 000000000..6482f7e6f
 +
 +    private enum class MenuChoice {
 +        Why,
++        NewCentury,
 +        Peace,
 +        Pick,
 +        HandIn,
@@ -564,7 +630,7 @@ index 000000000..6482f7e6f
 +        }
 +
 +    private suspend fun Dialogue.whyArguing() {
-+        chatPlayer(quiz, "Why are you arguing about the colour of your armour?")
++        chatPlayer(quiz, WHY_ARGUING)
 +        bentnoze(
 +            neutral,
 +            "We decide to celebrate goblin new century by changing colour of our armour. Brown " +
@@ -581,25 +647,23 @@ index 000000000..6482f7e6f
 +            "Thorobshuun tribe colour is red! Way better than silly green of Garagorshuun tribe.",
 +        )
 +        wartface(angry, "Shut up!")
-+        when (choice2("What is the goblin new century?", 1, "I'll leave you to it.", 2)) {
-+            1 -> {
-+                chatPlayer(quiz, "What is the goblin new century?")
-+                bentnoze(
-+                    neutral,
-+                    "Goblin century mark year of battle on Plain of Mud. That when Big High War " +
-+                        "God give goblin commandments.",
-+                )
-+                chatPlayer(quiz, "Big High War God?")
-+                wartface(
-+                    neutral,
-+                    "Big High War God is god for goblins. He take us and make us strong, not " +
-+                        "stupid like humans.",
-+                )
-+                bentnoze(neutral, "Me bet Big High War God would pick red armour.")
-+                wartface(angry, "Shut up! Big High War God would hate you!")
-+            }
-+            2 -> chatPlayer(neutral, "I'll leave you to it.")
-+        }
++    }
++
++    private suspend fun Dialogue.newCentury() {
++        chatPlayer(quiz, "What is the goblin new century?")
++        bentnoze(
++            neutral,
++            "Goblin century mark year of battle on Plain of Mud. That when Big High War God " +
++                "give goblin commandments.",
++        )
++        chatPlayer(quiz, "Big High War God?")
++        wartface(
++            neutral,
++            "Big High War God is god for goblins. He take us and make us strong, not stupid " +
++                "like humans.",
++        )
++        bentnoze(neutral, "Me bet Big High War God would pick red armour.")
++        wartface(angry, "Shut up! Big High War God would hate you!")
 +    }
 +
 +    /** Returns true when the conversation ends. */
@@ -784,7 +848,7 @@ index 000000000..6482f7e6f
 +                grubfoot(sad, "Makes me feel kind of sad.")
 +            }
 +            else ->
-+                if (stage(player) in 1 until COMPLETE) {
++                if (stage(player) < COMPLETE) {
 +                    grubfoot(angry, "Grubfoot wear red armour! Grubfoot wear green armour!")
 +                    grubfoot(confused, "Why they not make up their minds?")
 +                } else {
@@ -835,7 +899,7 @@ index 000000000..6482f7e6f
 +    }
 +
 +    private suspend fun Dialogue.afterQuest() {
-+        when (access.random.of(maxExclusive = 4)) {
++        when (access.random.of(maxExclusive = 5)) {
 +            0 -> {
 +                bentnoze(angry, "Shut up Grubfoot!")
 +                grubfoot(sad, "But me not say anything!")
@@ -870,10 +934,17 @@ index 000000000..6482f7e6f
 +                chatPlayer(neutral, "Do you want me to...")
 +                wartface(angry, "Shut up human, we sort this one out ourselves!")
 +            }
-+            else -> {
++            3 -> {
 +                wartface(neutral, "Me tell Mudknuckles make worm stew for dinner.")
 +                bentnoze(neutral, "Me not like worm stew! Tell him make beetle pie!")
 +                wartface(happy, "Beetle pie give you wind! You smell bad enough already!")
++            }
++            else -> {
++                wartface(
++                    neutral,
++                    "Now you've solved our argument, we gotta think of something else to do.",
++                )
++                bentnoze(neutral, "Yep, we bored now.")
 +            }
 +        }
 +    }
@@ -899,6 +970,8 @@ index 000000000..6482f7e6f
 +        const val BLUE_WANTED = 4
 +        const val BROWN_WANTED = 5
 +        const val COMPLETE = 6
++
++        private const val WHY_ARGUING = "Why are you arguing about the colour of your armour?"
 +
 +        private const val GRUBFOOT_BROWN = 0
 +        private const val GRUBFOOT_ORANGE = 1
@@ -952,68 +1025,12 @@ index 000000000..6482f7e6f
 +            }
 +    }
 +}
-diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/QuestTalkFixture.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/QuestTalkFixture.kt
-index 10f4a7e98..fa296aa0b 100644
---- a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/QuestTalkFixture.kt
-+++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/QuestTalkFixture.kt
-@@ -17,6 +17,7 @@ import org.rsmod.api.player.interact.NpcInteractions
- import org.rsmod.api.player.protect.ProtectedAccess
- import org.rsmod.api.player.protect.ProtectedAccessContextFactory
- import org.rsmod.api.player.protect.clearPendingAction
-+import org.rsmod.api.random.GameRandom
- import org.rsmod.api.registry.obj.ObjRegistry
- import org.rsmod.api.registry.zone.ZoneUpdateMap
- import org.rsmod.api.repo.obj.ObjRepository
-@@ -44,7 +45,20 @@ class QuestTalkFixture(coords: CoordGrid, script: (ObjRepository) -> PluginScrip
-     private val context = ProtectedAccessContextFactory.empty().copy(
-         getEventBus = { events }, getAlignment = { TextAlignment() },
-         getNpcInteractions = { NpcInteractions(events) },
-+        getRandom = { fixedRandom },
-     )
-+
-+    /** What every random roll returns (clamped into its range). */
-+    var randomValue: Int = 0
-+
-+    private val fixedRandom = object : GameRandom {
-+        override fun of(maxExclusive: Int): Int = randomValue.coerceIn(0, maxExclusive - 1)
-+
-+        override fun of(minInclusive: Int, maxInclusive: Int): Int =
-+            randomValue.coerceIn(minInclusive, maxInclusive)
-+
-+        override fun randomDouble(): Double = 0.0
-+    }
-     val objRepo = ObjRepository(MapClock(100), ObjRegistry(ZoneUpdateMap()))
- 
-     @OptIn(InternalApi::class)
-@@ -77,6 +91,12 @@ class QuestTalkFixture(coords: CoordGrid, script: (ObjRepository) -> PluginScrip
- 
-     /** Talks to [npc] and walks the whole conversation, answering chatmenus with [options]. */
-     fun talk(npc: String, vararg options: Int) {
-+        val target = Npc(npc, player.coords.translateZ(1))
-+        interact(*options) { assertTrue(events.publish(it, NpcEvents.Op1(target))) }
-+    }
-+
-+    /** Runs [publish] (which should publish one interaction event) and walks the conversation. */
-+    fun interact(vararg options: Int, publish: suspend (ProtectedAccess) -> Unit) {
-         while (player.isDelayed) {
-             player.currentMapClock++
-             player.processedMapClock = player.currentMapClock
-@@ -85,8 +105,7 @@ class QuestTalkFixture(coords: CoordGrid, script: (ObjRepository) -> PluginScrip
-         client.messages.clear()
-         result = null
-         player.activeCoroutine = coroutine
--        val target = Npc(npc, player.coords.translateZ(1))
--        val block: suspend () -> Unit = { assertTrue(events.publish(access(), NpcEvents.Op1(target))) }
-+        val block: suspend () -> Unit = { publish(access()) }
-         block.startCoroutine(object : Continuation<Unit> {
-             override val context = EmptyCoroutineContext
-             override fun resumeWith(result: Result<Unit>) { this@QuestTalkFixture.result = result }
 diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/goblinvillage/GoblinDiplomacyInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/goblinvillage/GoblinDiplomacyInteractionTest.kt
 new file mode 100644
-index 000000000..457c8c103
+index 000000000..29ea2c780
 --- /dev/null
 +++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/goblinvillage/GoblinDiplomacyInteractionTest.kt
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,201 @@
 +package org.rsmod.content.quest.area.goblinvillage
 +
 +import dev.openrune.ServerCacheManager
@@ -1021,6 +1038,7 @@ index 000000000..457c8c103
 +import dev.openrune.rscm.RSCMType
 +import org.junit.jupiter.api.AfterAll
 +import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertFalse
 +import org.junit.jupiter.api.Assertions.assertTrue
 +import org.junit.jupiter.api.BeforeAll
 +import org.junit.jupiter.api.Test
@@ -1069,6 +1087,17 @@ index 000000000..457c8c103
 +        val npcType = checkNotNull(ServerCacheManager.getNpc(GENERAL.asRSCM(RSCMType.NPC)))
 +        val npc = Npc(GENERAL, player.coords.translateZ(1))
 +        interact { assertTrue(events.publish(it, NpcUDefaultEvents.OpType(npc, slot(obj), type, npcType))) }
++    }
++
++    private fun QuestTalkFixture.complete() {
++        start()
++        give(ORANGE_MAIL)
++        useOnGeneral(ORANGE_MAIL)
++        give(BLUE_MAIL)
++        useOnGeneral(BLUE_MAIL)
++        give(MAIL)
++        useOnGeneral(MAIL)
++        assertEquals(6, stage)
 +    }
 +
 +    @Test fun `accepting the new colour starts the quest at 3`() {
@@ -1126,7 +1155,66 @@ index 000000000..457c8c103
 +        assertEquals(200, f.player.statMap.getXP("stat.crafting"))
 +    }
 +
++    @Test fun `the fat opener can end the conversation`() {
++        val f = fixture().apply { randomValue = 0 }
++        f.talk(GENERAL, 3)
++        assertTrue(f.output().contains("I'll leave you to it."), f.output())
++        assertEquals(0, f.stage)
++    }
++
++    @Test fun `asking why swaps in the new century question until leaving`() {
++        val f = fixture()
++        f.talk(GENERAL, 1, 1, 1, 4)
++        val output = f.output()
++        val answers = Regex("\\|Shut up! Big High War God would hate you!").findAll(output)
++        assertEquals(2, answers.count(), output)
++        assertTrue(output.contains("I'll leave you to it."), output)
++        f.talk(GENERAL, 1, 4)
++        assertFalse(f.output().contains("Big High War God would hate you!"), f.output())
++    }
++
++    @Test fun `generals after the quest have the fifth dialogue`() {
++        val f = fixture()
++        f.complete()
++        f.randomValue = 4
++        f.talk(GENERAL)
++        assertTrue(f.output().contains("Yep, we bored now."), f.output())
++    }
++
++    @Test fun `grubfoot argues about colours before the quest and chats after it`() {
++        val f = fixture()
++        f.talk(GRUBFOOT)
++        assertTrue(f.output().contains("Grubfoot wear red armour!"), f.output())
++        f.complete()
++        f.talk(GRUBFOOT)
++        assertTrue(f.output().contains("Me not allowed to talk."), f.output())
++        assertFalse(f.output().contains("Grubfoot wear red armour!"), f.output())
++    }
++
++    @Test fun `every dye turns one goblin mail into its colour`() {
++        for ((dye, mail) in DYED_MAIL) {
++            val f = fixture()
++            f.give(dye)
++            f.give(MAIL)
++            f.give(MAIL)
++            f.use(dye, MAIL)
++            assertEquals(listOf(0, 1, 1), listOf(dye, MAIL, mail).map { f.count(it) }, dye)
++        }
++    }
++
 +    companion object {
++        const val GRUBFOOT = "npc.catwalk_goblin"
++        val DYED_MAIL =
++            listOf(
++                "obj.reddye" to "obj.goblin_armour_red",
++                "obj.yellowdye" to "obj.goblin_armour_yellow",
++                "obj.bluedye" to BLUE_MAIL,
++                ORANGE_DYE to ORANGE_MAIL,
++                "obj.greendye" to "obj.goblin_armour_green",
++                "obj.purpledye" to "obj.goblin_armour_purple",
++                "obj.handsand_pink_dye" to "obj.goblin_armour_pink",
++                "obj.golem_ink" to "obj.goblin_armour_black",
++            )
 +        const val GENERAL = "npc.general_bentnoze_red"
 +        const val MAIL = "obj.goblin_armour"
 +        const val ORANGE_MAIL = "obj.goblin_armour_orange"

@@ -1,26 +1,82 @@
-From 96b6393e5d54ce6622fd2c8babb74d3b4d18357d Mon Sep 17 00:00:00 2001
+From 4def51e8325bcb51c4bfa8f1a5feef82fb82de12 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 09:44:11 -0400
 Subject: [PATCH] feat: jewellery teleports (games necklace, dueling, glory,
  skills, combat)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-Rub opens the teleport menu (interface 187 via script 217 with hotkeys, as
-OSRS and RuneLite's Better Teleport Menu expect) and the worn destination
-ops teleport directly, for the games necklace, ring of dueling, amulet of
-glory, skills necklace and combat bracelet. Each use takes a charge with the
-wiki's messages ("You rub the necklace...", "Your games necklace has seven
-uses left.", "...crumbles to dust."); the glory, skills necklace and combat
-bracelet keep an uncharged item. Destinations and tiles from the wiki, in
-dbtables jewellery_teleport_items/dests. Integration tests for the charges.
+Problem. Teleport jewellery did nothing: Rub and the worn destination ops
+of the games necklace, ring of dueling, amulet of glory, skills necklace
+and combat bracelet had no script.
+
+Change. New module content/travel/jewellery-teleports + pack:
+- Rub (held op 4) opens the teleport menu (interface 187 via script 217
+  with hotkeys, as RuneLite's Better Teleport Menu expects); the worn ops
+  after Remove teleport straight to a destination, in the cache's order.
+- Each use takes a charge. Games necklace / ring of dueling: "You rub the
+  necklace...", "Your games necklace has seven uses left.", "Your games
+  necklace crumbles to dust." on the last one. Glory, skills necklace and
+  combat bracelet keep an uncharged item; their lines are "Your amulet has
+  three charges left." / "You use your amulet's last charge." for the
+  glory and "Your skills necklace has ..." / "You use your skills
+  necklace's last charge." (combat bracelet alike) for the others.
+- Games necklace / dueling teleport up to level 20 Wilderness, the
+  dragonstone items up to level 30 (members).
+- Corporeal Beast lands in the lair's safe room at 2964,4382,2 (map square
+  46,68). The wiki's games necklace map draws the teleport at 2967,4254
+  (square 46,66), but Shortest Path's games necklace tile, its lair cave
+  entrance and RuneLite's world map (2967,4384) all put the live lair in
+  square 46,68, so the Shortest Path tile is used.
+- Farming Guild lands inside the guild (1248,3725) with 45 Farming,
+  outside (1248,3719) otherwise.
+- dbtables jewellery_teleport_items / _dests (56013-56014, rows
+  60294-60350).
+
+Tests. JewelleryTeleportScriptTest (integration, 5): a games necklace use
+swaps the item and sends the uses line; the last dueling charge crumbles
+and the last glory charge leaves the amulet; no item means no charge;
+the glory / skills necklace / combat bracelet charge lines; the Farming
+Guild tile at 44 and 45 Farming and the Corporeal Beast tile.
+
+Data sources. OSRS Wiki (by the wiki's contributors, CC BY-NC-SA 3.0):
+Games necklace, Ring of dueling, Amulet of glory, Skills necklace (incl.
+note a, the 45 Farming rule), Combat bracelet, Farming Guild (boosts may be
+used to enter), Wilderness (teleport restrictions). Cache: inventory ops
+and worn-op params of the items. Shortest Path hub plugin
+(teleportation_items.tsv, transports.tsv): tiles, 4-tick duration, the
+Corporeal Beast tile and the Farming Guild inside tile. RuneLite
+worldmap/TeleportLocationData.java: Corporeal Beast cross-check. Supplies
+Tracker hub plugin (onChatMessage): the "Your amulet has", "your amulet's
+last charge", "your skills necklace's last charge", "your combat
+bracelet's last charge" prefixes.
+
+Caveats.
+- Best guesses: the menu title, the rest of the dragonstone charge lines
+  ("... charges left.", "You use ..."; the plugin matches only the
+  prefixes, the wiki quotes none), the "You rub the amulet/bracelet..."
+  line, the purple value, the 714/111 animation and the missing arrival
+  animation.
+- The Farming Guild check uses the boosted level, as the guild's door
+  does; the wiki does not say so for the teleport.
+- The wiki's Corporeal Beast spawn table calls the square 46,68 lair the
+  Ironman one; the teleport tile follows the live-data sources above.
+- No destination requirements (Tears of Guthix quest, Zeah visit, Hero
+  title), landing radius, uncharged Rub message or recharging.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  .../jewellery-teleports/build.gradle.kts      |  14 ++
  .../jewellery-teleports/pack/build.gradle.kts |   7 +
- .../jewellery/pack/JewelleryTeleportTables.kt | 141 ++++++++++++++++++
- .../pack/JewelleryTeleportsPluginPack.kt      |   9 ++
- .../jewellery/JewelleryTeleportScriptTest.kt  |  81 ++++++++++
- .../jewellery/JewelleryTeleportScript.kt      | 127 ++++++++++++++++
- .../src/main/resources/gamevals.toml          |  62 ++++++++
- 7 files changed, 441 insertions(+)
+ .../jewellery/pack/JewelleryTeleportTables.kt | 172 ++++++++++++++++++
+ .../pack/JewelleryTeleportsPluginPack.kt      |   9 +
+ .../jewellery/JewelleryTeleportScriptTest.kt  | 112 ++++++++++++
+ .../jewellery/JewelleryTeleportScript.kt      | 142 +++++++++++++++
+ .../src/main/resources/gamevals.toml          |  62 +++++++
+ 7 files changed, 518 insertions(+)
  create mode 100644 content/travel/jewellery-teleports/build.gradle.kts
  create mode 100644 content/travel/jewellery-teleports/pack/build.gradle.kts
  create mode 100644 content/travel/jewellery-teleports/pack/src/main/kotlin/org/rsmod/content/travel/jewellery/pack/JewelleryTeleportTables.kt
@@ -64,10 +120,10 @@ index 000000000..10c8703c8
 +}
 diff --git a/content/travel/jewellery-teleports/pack/src/main/kotlin/org/rsmod/content/travel/jewellery/pack/JewelleryTeleportTables.kt b/content/travel/jewellery-teleports/pack/src/main/kotlin/org/rsmod/content/travel/jewellery/pack/JewelleryTeleportTables.kt
 new file mode 100644
-index 000000000..51fc9f2fe
+index 000000000..ea722d44b
 --- /dev/null
 +++ b/content/travel/jewellery-teleports/pack/src/main/kotlin/org/rsmod/content/travel/jewellery/pack/JewelleryTeleportTables.kt
-@@ -0,0 +1,141 @@
+@@ -0,0 +1,172 @@
 +package org.rsmod.content.travel.jewellery.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -88,7 +144,9 @@ index 000000000..51fc9f2fe
 + * the last use destroys it ("Your games necklace crumbles to dust."); the glory's last use leaves an
 + * uncharged amulet. [FAMILY] picks the destinations in [JewelleryTeleportDestsTable].
 + * [WILDERNESS_30] is 1 for the glory, skills necklace and combat bracelet (teleports up to level 30
-+ * Wilderness; their messages say "charges" rather than "uses").
++ * Wilderness; their messages say "charges" rather than "uses"). [CHARGE_NAME] is the noun of the
++ * charge lines: "Your amulet has ..." / "...your amulet's last charge" for the glory, the full name
++ * for the others (the chat prefixes the Supplies Tracker hub plugin matches).
 + */
 +object JewelleryTeleportItemsTable {
 +    const val OBJ = 0
@@ -99,6 +157,7 @@ index 000000000..51fc9f2fe
 +    const val NAME = 5
 +    const val RUB_WORD = 6
 +    const val WILDERNESS_30 = 7
++    const val CHARGE_NAME = 8
 +
 +    private data class Family(
 +        val key: String,
@@ -109,13 +168,14 @@ index 000000000..51fc9f2fe
 +        val rub: String,
 +        val spent: String?,
 +        val wilderness30: Int,
++        val chargeName: String = name,
 +    )
 +
 +    private val FAMILIES =
 +        listOf(
 +            Family("games_necklace", GAMES, "obj.necklace_of_minigames_", 8, "games necklace", "necklace", null, 0),
 +            Family("ring_of_dueling", DUELING, "obj.ring_of_dueling_", 8, "ring of dueling", "ring", null, 0),
-+            Family("amulet_of_glory", GLORY, "obj.amulet_of_glory_", 6, "amulet of glory", "amulet", "obj.amulet_of_glory", 1),
++            Family("amulet_of_glory", GLORY, "obj.amulet_of_glory_", 6, "amulet of glory", "amulet", "obj.amulet_of_glory", 1, "amulet"),
 +            Family("skills_necklace", SKILLS, "obj.jewl_necklace_of_skills_", 6, "skills necklace", "necklace", "obj.jewl_necklace_of_skills", 1),
 +            Family("combat_bracelet", COMBAT, "obj.jewl_bracelet_of_combat_", 6, "combat bracelet", "bracelet", "obj.jewl_bracelet_of_combat", 1),
 +        )
@@ -130,6 +190,7 @@ index 000000000..51fc9f2fe
 +            column("name", NAME, VarType.STRING)
 +            column("rub_word", RUB_WORD, VarType.STRING)
 +            column("wilderness_30", WILDERNESS_30, VarType.INT)
++            column("charge_name", CHARGE_NAME, VarType.STRING)
 +
 +            for (family in FAMILIES) {
 +                for (charges in 1..family.max) {
@@ -144,6 +205,7 @@ index 000000000..51fc9f2fe
 +                        column(NAME, family.name)
 +                        column(RUB_WORD, family.rub)
 +                        column(WILDERNESS_30, family.wilderness30)
++                        column(CHARGE_NAME, family.chargeName)
 +                    }
 +                }
 +            }
@@ -152,22 +214,34 @@ index 000000000..51fc9f2fe
 +
 +/**
 + * Destinations in menu order (the item's worn ops after Remove; wiki "Teleportation options").
-+ * Tiles are the wiki's centre tiles; the wiki's random radius is not used. Corporeal Beast and Tears
-+ * of Guthix are on plane 2 (**guess** from the wiki's separate map ids).
++ * Tiles are the Shortest Path hub plugin's (`teleportation_items.tsv`); the wiki's random radius is
++ * not used. Corporeal Beast is the lair's safe room in map square 46,68 (Shortest Path 2964,4382,2,
++ * the same tile its lair cave entrance leads to; RuneLite's world map marks 2967,4384). [INSIDE_COORDS]
++ * replaces [COORDS] when the player's Farming level is at least [INSIDE_FARMING_LEVEL]: the Farming
++ * Guild teleport lands inside the guild with 45 Farming (wiki Skills necklace, note a).
 + */
 +object JewelleryTeleportDestsTable {
 +    const val FAMILY = 0
 +    const val INDEX = 1
 +    const val NAME = 2
 +    const val COORDS = 3
++    const val INSIDE_COORDS = 4
++    const val INSIDE_FARMING_LEVEL = 5
 +
-+    private data class Dest(val key: String, val family: Int, val name: String, val coords: CoordGrid)
++    private data class Dest(
++        val key: String,
++        val family: Int,
++        val name: String,
++        val coords: CoordGrid,
++        val inside: CoordGrid? = null,
++        val insideFarmingLevel: Int = 0,
++    )
 +
 +    private val DESTS =
 +        listOf(
 +            Dest("games_burthorpe", GAMES, "Burthorpe", CoordGrid(2899, 3553, 0)),
 +            Dest("games_barbarian_outpost", GAMES, "Barbarian Outpost", CoordGrid(2520, 3571, 0)),
-+            Dest("games_corporeal_beast", GAMES, "Corporeal Beast", CoordGrid(2967, 4254, 2)),
++            Dest("games_corporeal_beast", GAMES, "Corporeal Beast", CoordGrid(2964, 4382, 2)),
 +            Dest("games_tears_of_guthix", GAMES, "Tears of Guthix", CoordGrid(3245, 9500, 2)),
 +            Dest("games_wintertodt", GAMES, "Wintertodt Camp", CoordGrid(1631, 3940, 0)),
 +            Dest("dueling_emirs_arena", DUELING, "Emir's Arena", CoordGrid(3315, 3235, 0)),
@@ -183,7 +257,14 @@ index 000000000..51fc9f2fe
 +            Dest("skills_crafting_guild", SKILLS, "Crafting Guild", CoordGrid(2933, 3295, 0)),
 +            Dest("skills_cooking_guild", SKILLS, "Cooking Guild", CoordGrid(3144, 3438, 0)),
 +            Dest("skills_woodcutting_guild", SKILLS, "Woodcutting Guild", CoordGrid(1662, 3505, 0)),
-+            Dest("skills_farming_guild", SKILLS, "Farming Guild", CoordGrid(1248, 3719, 0)),
++            Dest(
++                "skills_farming_guild",
++                SKILLS,
++                "Farming Guild",
++                CoordGrid(1248, 3719, 0),
++                inside = CoordGrid(1248, 3725, 0),
++                insideFarmingLevel = 45,
++            ),
 +            Dest("combat_warriors_guild", COMBAT, "Warriors' Guild", CoordGrid(2882, 3547, 0)),
 +            Dest("combat_champions_guild", COMBAT, "Champions' Guild", CoordGrid(3192, 3368, 0)),
 +            Dest("combat_monastery", COMBAT, "Monastery", CoordGrid(3052, 3490, 0)),
@@ -196,6 +277,8 @@ index 000000000..51fc9f2fe
 +            column("index", INDEX, VarType.INT)
 +            column("name", NAME, VarType.STRING)
 +            column("coords", COORDS, VarType.COORDGRID)
++            column("inside_coords", INSIDE_COORDS, VarType.COORDGRID)
++            column("inside_farming_level", INSIDE_FARMING_LEVEL, VarType.INT)
 +
 +            val counts = mutableMapOf<Int, Int>()
 +            for (dest in DESTS) {
@@ -205,6 +288,10 @@ index 000000000..51fc9f2fe
 +                    column(INDEX, index)
 +                    column(NAME, dest.name)
 +                    columnCoord(COORDS, dest.coords)
++                    if (dest.inside != null) {
++                        columnCoord(INSIDE_COORDS, dest.inside)
++                        column(INSIDE_FARMING_LEVEL, dest.insideFarmingLevel)
++                    }
 +                }
 +            }
 +        }
@@ -226,10 +313,10 @@ index 000000000..e7818ef6d
 +}
 diff --git a/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt b/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
 new file mode 100644
-index 000000000..b1db0b25c
+index 000000000..5bd3521df
 --- /dev/null
 +++ b/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,112 @@
 +package org.rsmod.content.travel.jewellery
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -242,6 +329,7 @@ index 000000000..b1db0b25c
 +import org.junit.jupiter.api.Test
 +import org.junit.jupiter.api.parallel.Execution
 +import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.table.JewelleryTeleportDestsRow
 +import org.rsmod.api.table.JewelleryTeleportItemsRow
 +import org.rsmod.api.testing.GameTestState
 +import org.rsmod.api.testing.scope.GameTestScope
@@ -289,6 +377,36 @@ index 000000000..b1db0b25c
 +            assertEquals(0, player.inv.occupiedSpace())
 +        }
 +
++    @Test
++    fun GameTestState.`glory, skills necklace and combat bracelet charge lines`() =
++        runInjectedGameTest(JewelleryTeleportScript::class, null, JewelleryTeleportScript::class) { script ->
++            prepare()
++            player.inv[0] = obj("obj.amulet_of_glory_4")
++            player.inv[1] = obj("obj.jewl_necklace_of_skills_1")
++            player.inv[2] = obj("obj.jewl_bracelet_of_combat_1")
++            assertTrue(use(script, "dbrow.jewellery_teleport_amulet_of_glory_4", inventory = true))
++            assertTrue(use(script, "dbrow.jewellery_teleport_skills_necklace_1", inventory = true))
++            assertTrue(use(script, "dbrow.jewellery_teleport_combat_bracelet_1", inventory = true))
++            assertEquals("obj.jewl_necklace_of_skills".asRSCM(RSCMType.OBJ), player.inv[1]?.id)
++            assertEquals("obj.jewl_bracelet_of_combat".asRSCM(RSCMType.OBJ), player.inv[2]?.id)
++            val sent = client.mapOf(MessageGame::message)
++            assertTrue(sent.any { "Your amulet has three charges left." in it }, sent.toString())
++            assertTrue(sent.any { "You use your skills necklace's last charge." in it }, sent.toString())
++            assertTrue(sent.any { "You use your combat bracelet's last charge." in it }, sent.toString())
++        }
++
++    @Test
++    fun GameTestState.`farming guild lands inside with 45 farming, corp in the lair`() =
++        runInjectedGameTest(JewelleryTeleportScript::class, null, JewelleryTeleportScript::class) { script ->
++            val guild = JewelleryTeleportDestsRow.getRow("dbrow.jewellery_teleport_dest_skills_farming_guild")
++            assertEquals(CoordGrid(1248, 3719, 0), script.landing(guild, 44))
++            assertEquals(CoordGrid(1248, 3725, 0), script.landing(guild, 45))
++            val corp = JewelleryTeleportDestsRow.getRow("dbrow.jewellery_teleport_dest_games_corporeal_beast")
++            assertEquals(CoordGrid(2964, 4382, 2), script.landing(corp, 99))
++            val burthorpe = JewelleryTeleportDestsRow.getRow("dbrow.jewellery_teleport_dest_games_burthorpe")
++            assertEquals(CoordGrid(2899, 3553, 0), script.landing(burthorpe, 99))
++        }
++
 +    private fun GameTestScope.use(script: JewelleryTeleportScript, row: String, inventory: Boolean): Boolean {
 +        var used = false
 +        val item = JewelleryTeleportItemsRow.getRow(row)
@@ -313,10 +431,10 @@ index 000000000..b1db0b25c
 +}
 diff --git a/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
 new file mode 100644
-index 000000000..a62a135cf
+index 000000000..9272303cf
 --- /dev/null
 +++ b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
-@@ -0,0 +1,127 @@
+@@ -0,0 +1,142 @@
 +package org.rsmod.content.travel.jewellery
 +
 +import dev.openrune.rscm.RSCM
@@ -327,6 +445,7 @@ index 000000000..a62a135cf
 +import org.rsmod.api.player.hook.TeleportType
 +import org.rsmod.api.player.output.ChatType
 +import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.player.stat.farmingLvl
 +import org.rsmod.api.script.onOpHeld4
 +import org.rsmod.api.script.onOpWorn2
 +import org.rsmod.api.script.onOpWorn3
@@ -337,6 +456,7 @@ index 000000000..a62a135cf
 +import org.rsmod.api.table.JewelleryTeleportDestsRow
 +import org.rsmod.api.table.JewelleryTeleportItemsRow
 +import org.rsmod.game.inv.Inventory
++import org.rsmod.map.CoordGrid
 +import org.rsmod.plugin.scripts.PluginScript
 +import org.rsmod.plugin.scripts.ScriptContext
 +
@@ -349,9 +469,12 @@ index 000000000..a62a135cf
 + * left." or, on the last charge, "Your games necklace crumbles to dust." (wiki; the glory's last
 + * charge leaves an uncharged amulet).
 + *
-+ * Guesses: the menu title, the glory/skills/combat charge lines ("...has three charges left.", "You
-+ * use your amulet's last charge."), the purple colour value, the teleport timing (the standard 714/111
-+ * jewellery animation, 4 ticks), the plane of the Corporeal Beast and Tears of Guthix tiles. Not
++ * The glory, skills necklace and combat bracelet lines start "Your amulet has", "Your skills necklace
++ * has", "Your combat bracelet has" and end "...your amulet's / skills necklace's / combat bracelet's
++ * last charge" (the chat prefixes the Supplies Tracker hub plugin matches; no wiki quote).
++ *
++ * Guesses: the menu title, the rest of those lines ("... three charges left.", "You use ..."), the
++ * purple colour value, the teleport timing (the standard 714/111 jewellery animation, 4 ticks). Not
 + * done: destination requirements (Tears of Guthix quest, Zeah visit, Colosseum Hero title), the
 + * wiki's random landing radius, the Wilderness 30 glory rule beyond the teleport validator's type.
 + */
@@ -403,7 +526,7 @@ index 000000000..a62a135cf
 +        spotanim(TELEPORT_SPOTANIM, height = TELEPORT_SPOTANIM_HEIGHT)
 +        soundSynth(TELEPORT_SOUND)
 +        delay(TELEPORT_DELAY)
-+        telejump(dest.coords, type)
++        telejump(landing(dest, player.farmingLvl), type)
 +        resetAnim()
 +    }
 +
@@ -418,12 +541,22 @@ index 000000000..a62a135cf
 +        val line =
 +            when {
 +                item.crumbles == 1 -> "Your ${item.name} crumbles to dust."
-+                left == 0 -> "You use your ${item.rubWord}'s last charge."
-+                item.wilderness30 == 1 -> "Your ${item.name} has ${words(left)} charge${plural(left)} left."
++                left == 0 -> "You use your ${item.chargeName}'s last charge."
++                item.wilderness30 == 1 -> "Your ${item.chargeName} has ${words(left)} charge${plural(left)} left."
 +                else -> "Your ${item.name} has ${words(left)} use${plural(left)} left."
 +            }
 +        mes("<col=$PURPLE>$line</col>")
 +        return true
++    }
++
++    /**
++     * The tile [dest] lands on: inside the Farming Guild with 45 Farming. Boosts count, as they do at
++     * the guild's door (wiki Farming Guild); the wiki does not say so for the teleport itself.
++     */
++    fun landing(dest: JewelleryTeleportDestsRow, farmingLevel: Int): CoordGrid {
++        val inside = dest.insideCoords ?: return dest.coords
++        val level = dest.insideFarmingLevel ?: return dest.coords
++        return if (farmingLevel >= level) inside else dest.coords
 +    }
 +
 +    private fun destinations(item: JewelleryTeleportItemsRow): List<JewelleryTeleportDestsRow> =

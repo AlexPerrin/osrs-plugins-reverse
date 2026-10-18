@@ -1,21 +1,56 @@
-From 9ba3600fe0ae06103011c03a16c263d72f0762e3 Mon Sep 17 00:00:00 2001
+From 3f94109006f30d64800d430177babffe85220598 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 11:00:45 -0400
 Subject: [PATCH] feat: achievement diary journals (Lumbridge & Draynor,
  Varrock)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-Open <area> Journal in the Achievement Diaries side tab (area_task) opens the
-journal scroll (741) with the area's tasks per tier, word-wrapped by p12
-widths. RuneLite's Diary Requirements plugin appends each task's skill and
-quest requirements to these lines.
+Problem. Open <area> Journal in the Achievement Diaries side tab (area_task) did nothing.
+
+Change.
+- The tab's rows (259:2, slots 0-11) get OP1 and OP2 (OP2 is the client's own "Wiki").
+- OP1 opens the journal scroll (741) with the area's tasks per tier, as captured: varp pagepos
+  = the line count and varbit busy = 1, script 6844, the title "<col=800000>Achievement Diary -
+  <name>", the lines, toplevel_mainmodal_open (2524), 741 as the main modal, then script 6845
+  (1, line count). Closing it clears busy.
+- Lines as captured: the header "<col=ffff00>Lumbridge & Draynor Tasks", each tier heading
+  "<col=ffff00>Easy" (green 00ff00 once the tier is complete), open tasks "<col=000000>", done
+  ones "<str>", and the journal's own spacer lines (" ", "<col=000000>", Elite's "<str>").
+  Task text word-wrapped by p12_full advances at 331 px, the one width that reproduces every
+  line break of the captured journals; colour tags take no width and a colour open at a break
+  is repeated on the next line.
+- New dbtables achievement_diaries (area index in enum 595, heading, name) and
+  achievement_diary_tasks (area, tier, text), task text worded as the in-game journal.
+- RuneLite's Diary Requirements plugin annotates these lines (its title check is "starts with
+  Achievement Diary").
+
+Tests. Covered by the journal tests of the next commit (all 12 captured journals rebuilt line
+for line, the open/close sequence).
+
+Data sources.
+- Task lists and order: OSRS Wiki, Lumbridge & Draynor Diary and Varrock Diary.
+- Task wording, journal layout and the open/close sequence: rsprox captures of every diary's
+  journal, as recorded by TSPS (https://github.com/RSPSApp/tsps, a TypeScript OSRS server whose
+  content is reconstructed from rsprox captures): docs/achievement-diaries.md,
+  server/plugins/achievements/diaries/data/achievement-diaries.json and
+  server/tests/fixtures/achievement-diary-journals.json.
+
+Caveats.
+- The 331 px wrap width is derived from the captured line breaks (all 492 tasks), not read from
+  the client.
+- Ids: dbtables 56015-56016, dbrows from 60351.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
  .../achievement-diary/build.gradle.kts        |   7 +
  .../achievement-diary/pack/build.gradle.kts   |   7 +
  .../diary/pack/AchievementDiaryPluginPack.kt  |   9 +
- .../diary/pack/AchievementDiaryTables.kt      | 177 ++++++++++++++++++
- .../diary/AchievementDiaryScript.kt           |  95 ++++++++++
+ .../diary/pack/AchievementDiaryTables.kt      | 182 ++++++++++++++++++
+ .../diary/AchievementDiaryScript.kt           | 150 +++++++++++++++
  .../src/main/resources/gamevals.toml          |  90 +++++++++
- 6 files changed, 385 insertions(+)
+ 6 files changed, 445 insertions(+)
  create mode 100644 content/interfaces/achievement-diary/build.gradle.kts
  create mode 100644 content/interfaces/achievement-diary/pack/build.gradle.kts
  create mode 100644 content/interfaces/achievement-diary/pack/src/main/kotlin/org/rsmod/content/interfaces/diary/pack/AchievementDiaryPluginPack.kt
@@ -66,10 +101,10 @@ index 000000000..59e7e25c9
 +}
 diff --git a/content/interfaces/achievement-diary/pack/src/main/kotlin/org/rsmod/content/interfaces/diary/pack/AchievementDiaryTables.kt b/content/interfaces/achievement-diary/pack/src/main/kotlin/org/rsmod/content/interfaces/diary/pack/AchievementDiaryTables.kt
 new file mode 100644
-index 000000000..3e24e23c7
+index 000000000..d425640f7
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/pack/src/main/kotlin/org/rsmod/content/interfaces/diary/pack/AchievementDiaryTables.kt
-@@ -0,0 +1,177 @@
+@@ -0,0 +1,182 @@
 +package org.rsmod.content.interfaces.diary.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -77,36 +112,41 @@ index 000000000..3e24e23c7
 +
 +/**
 + * Achievement diary journals (the journal scroll opened from the Achievement Diaries side tab).
-+ * [AchievementDiariesTable] has one row per area: its index in enum 595 (the side tab's order) and
-+ * the heading line of its journal. [AchievementDiaryTasksTable] has the tasks in the OSRS Wiki's
-+ * order per tier (0 easy .. 3 elite). Task wording follows the in-game journal where RuneLite's
-+ * Diary Requirements plugin quotes it, otherwise the wiki's task tables.
++ * [AchievementDiariesTable] has one row per area: its index in enum 595 (the side tab's order), the
++ * diary's name (journal title, chat messages) and the heading line of its journal.
++ * [AchievementDiaryTasksTable] has the tasks in the OSRS Wiki's order per tier (0 easy .. 3 elite),
++ * worded as the in-game journal writes them (rsprox capture of every journal).
 + */
 +object AchievementDiariesTable {
 +    const val AREA = 0
 +    const val HEADING = 1
++    const val NAME = 2
 +
 +    const val LUMBRIDGE = 6
 +    const val VARROCK = 8
 +
 +    private val DIARIES =
 +        listOf(
-+            Triple("lumbridge", LUMBRIDGE, "Lumbridge & Draynor Tasks"),
-+            Triple("varrock", VARROCK, "Varrock Tasks"),
++            Diary("lumbridge", LUMBRIDGE, "Lumbridge & Draynor", "Lumbridge & Draynor Tasks"),
++            Diary("varrock", VARROCK, "Varrock", "Varrock Tasks"),
 +        )
 +
 +    fun diaries() =
 +        dbTable("dbtable.achievement_diaries", serverOnly = true) {
 +            column("area", AREA, VarType.INT)
 +            column("heading", HEADING, VarType.STRING)
++            column("name", NAME, VarType.STRING)
 +
-+            for ((key, area, heading) in DIARIES) {
++            for ((key, area, name, heading) in DIARIES) {
 +                row("dbrow.achievement_diary_$key") {
 +                    column(AREA, area)
 +                    column(HEADING, heading)
++                    column(NAME, name)
 +                }
 +            }
 +        }
++
++    private data class Diary(val key: String, val area: Int, val name: String, val heading: String)
 +}
 +
 +object AchievementDiaryTasksTable {
@@ -210,7 +250,7 @@ index 000000000..3e24e23c7
 +                "Have the Varrock estate agent decorate your house with Fancy Stone.",
 +                "Collect at least 2 yew roots from the Tree patch in Varrock Palace.",
 +                "Pray at the altar in Varrock palace with Smite active.",
-+                "Squeeze through the obstacle pipe in Edgeville dungeon.",
++                "Squeeze through an obstacle pipe in Edgeville dungeon.",
 +            ),
 +            listOf(
 +                "Create a super combat potion in Varrock west bank.",
@@ -249,10 +289,10 @@ index 000000000..3e24e23c7
 +}
 diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
 new file mode 100644
-index 000000000..84d1d3d4e
+index 000000000..030e01ed0
 --- /dev/null
 +++ b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,150 @@
 +package org.rsmod.content.interfaces.diary
 +
 +import dev.openrune.ServerCacheManager
@@ -262,6 +302,8 @@ index 000000000..84d1d3d4e
 +import dev.openrune.types.aconverted.interf.IfButtonOp
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.player.ui.ifSetEvents
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.script.onIfClose
 +import org.rsmod.api.script.onIfOpen
 +import org.rsmod.api.script.onIfOverlayButton
 +import org.rsmod.api.table.AchievementDiariesRow
@@ -277,14 +319,22 @@ index 000000000..84d1d3d4e
 + * (joined across wrapped lines) against its own task texts. No task progress is tracked yet, so no
 + * line is struck through.
 + *
-+ * Guesses: the title wording, the tier heading lines and their colour. Areas without a row in
-+ * `achievement_diaries` say so in the chat.
++ * As captured (rsprox, opening every diary from the tab): the rows get OP1 and OP2 (the client's
++ * "Wiki"); opening sets `pagepos` to the line count and `busy`, runs script 6844, writes the title
++ * `<col=800000>Achievement Diary - <name>` and the lines, runs `toplevel_mainmodal_open` (2524),
++ * opens 741 as the main modal and runs script 6845 with the line count; closing clears `busy`. The
++ * header is yellow, each tier heading yellow (green once the tier is complete), open tasks
++ * `<col=000000>`, done ones `<str>`, with each diary's own spacer lines ([JournalLayout]). Areas
++ * without a row in `achievement_diaries` say so in the chat.
 + */
 +class AchievementDiaryScript : PluginScript() {
 +    private val font: FontType by lazy { ServerCacheManager.getFont("font.p12_full".asRSCM())!! }
 +
 +    override fun ScriptContext.startup() {
-+        onIfOpen("interface.area_task") { player.ifSetEvents(TASKBOX, 0 until AREAS, IfEvent.Op1) }
++        onIfOpen("interface.area_task") {
++            player.ifSetEvents(TASKBOX, 0 until AREAS, IfEvent.Op1, IfEvent.Op2)
++        }
++        onIfClose(JOURNAL) { VarPlayerIntMapSetter.set(player, "varbit.busy", 0) }
 +        onIfOverlayButton(TASKBOX) {
 +            if (it.op == IfButtonOp.Op1) openJournal(it.comsub)
 +        }
@@ -296,56 +346,101 @@ index 000000000..84d1d3d4e
 +            mes("That diary's journal isn't available yet.")
 +            return
 +        }
-+        val lines = journalLines(diary)
-+        ifOpenMain("interface.journalscroll")
-+        ifSetText("component.journalscroll:title", TITLE)
-+        val shown = lines.take(MAX_LINES)
++        val shown = journalLines(diary).take(MAX_LINES)
++        VarPlayerIntMapSetter.set(player, "varp.pagepos", shown.size)
++        VarPlayerIntMapSetter.set(player, "varbit.busy", 1)
++        runClientScript(JOURNAL_RESET)
++        ifSetText("component.journalscroll:title", "<col=800000>Achievement Diary - ${diary.name}")
 +        shown.forEachIndexed { index, line -> ifSetText("component.journalscroll:qj${index + 1}", line) }
++        ifOpenMainModal(JOURNAL)
 +        runClientScript(JOURNAL_SCROLL_SETUP, 1, shown.size)
 +    }
 +
-+    fun journalLines(diary: AchievementDiariesRow): List<String> {
-+        val lines = mutableListOf(diary.heading)
++    fun journalLines(
++        diary: AchievementDiariesRow,
++        isDone: (tier: Int, task: Int) -> Boolean = { _, _ -> false },
++        isTierComplete: (tier: Int) -> Boolean = { false },
++    ): List<String> {
++        val layout = LAYOUTS[diary.area] ?: JournalLayout()
++        val lines = mutableListOf("<col=$YELLOW>${diary.heading}", layout.afterHeader)
 +        val tasks = AchievementDiaryTasksRow.all().filter { it.area == diary.area }
 +        for ((tier, name) in TIER_NAMES.withIndex()) {
 +            val tierTasks = tasks.filter { it.tier == tier }
 +            if (tierTasks.isEmpty()) continue
-+            lines += ""
-+            lines += "<col=$TIER_COLOUR>$name</col>"
-+            for (task in tierTasks) {
-+                lines += wrap(task.text)
++            val elite = tier == TIER_NAMES.lastIndex
++            lines += "<col=${if (isTierComplete(tier)) GREEN else YELLOW}>$name"
++            lines += if (elite) layout.eliteBefore else layout.before
++            for ((index, task) in tierTasks.withIndex()) {
++                val wrapped = wrap(task.text)
++                lines +=
++                    if (isDone(tier, index + 1)) {
++                        wrapped.map { "<str>$it" }
++                    } else {
++                        wrapped.mapIndexed { i, line ->
++                            val prefix = if (line.startsWith("<col=")) "" else "<col=000000>"
++                            val suffix = if (i == wrapped.lastIndex) layout.openSuffix else ""
++                            "$prefix$line$suffix"
++                        }
++                    }
 +            }
++            lines += if (elite) layout.eliteAfter else layout.after
 +        }
 +        return lines
 +    }
 +
-+    private fun wrap(text: String): List<String> {
++    /**
++     * Word-wraps [text] to the journal's width: p12_full advances, at most [LINE_WIDTH] px (the
++     * width every wrapped line of the captured journals fits, and no wider). Colour tags take no width; a colour still open at a
++     * break is repeated at the start of the next line (as the game does: "...Logs.<col=800000>
++     * (Requires Chewed" / "<col=800000>Bones.)<col=000000>").
++     */
++    fun wrap(text: String): List<String> {
 +        val lines = mutableListOf<String>()
-+        var line = StringBuilder()
++        var line = ""
 +        for (word in text.split(' ')) {
 +            val candidate = if (line.isEmpty()) word else "$line $word"
 +            if (line.isNotEmpty() && width(candidate) > LINE_WIDTH) {
-+                lines += line.toString()
-+                line = StringBuilder(word)
++                lines += line
++                line = (COLOUR_TAG.findAll(line).lastOrNull()?.value ?: "") + word
 +            } else {
-+                line = StringBuilder(candidate)
++                line = candidate
 +            }
 +        }
-+        if (line.isNotEmpty()) lines += line.toString()
++        if (line.isNotEmpty()) lines += line
 +        return lines
 +    }
 +
-+    private fun width(text: String): Int = text.sumOf { font.glyphAdvances[it.code and 0xFF] }
++    private fun width(text: String): Int =
++        text.replace(TAG, "").sumOf { font.glyphAdvances[it.code and 0xFF] }
++
++    /**
++     * The spacer lines each diary's journal has around its header and tiers (captured; they differ
++     * per diary). [eliteBefore] / [eliteAfter] are the Elite tier's, [openSuffix] ends an open task.
++     */
++    private class JournalLayout(
++        val afterHeader: String = " ",
++        val before: List<String> = listOf("<col=000000>", " "),
++        val eliteBefore: List<String> = before,
++        val after: List<String> = listOf(" "),
++        val eliteAfter: List<String> = emptyList(),
++        val openSuffix: String = "",
++    )
 +
 +    private companion object {
 +        const val TASKBOX = "component.area_task:taskbox"
++        const val JOURNAL = "interface.journalscroll"
 +        const val AREAS = 12
-+        const val TITLE = "Achievement Diary"
-+        const val TIER_COLOUR = "800000"
-+        const val LINE_WIDTH = 404
++        const val YELLOW = "ffff00"
++        const val GREEN = "00ff00"
++        const val LINE_WIDTH = 331
 +        const val MAX_LINES = 200
++        const val JOURNAL_RESET = 6844
 +        const val JOURNAL_SCROLL_SETUP = 6845
 +        val TIER_NAMES = listOf("Easy", "Medium", "Hard", "Elite")
++        val TAG = Regex("<[^>]*>")
++        val COLOUR_TAG = Regex("<col=[0-9a-f]{6}>")
++        val ELITE_STR = listOf("<str>", " ")
++        val LAYOUTS = mapOf(6 to JournalLayout(eliteBefore = ELITE_STR), 8 to JournalLayout(eliteBefore = ELITE_STR))
 +    }
 +}
 diff --git a/content/interfaces/achievement-diary/src/main/resources/gamevals.toml b/content/interfaces/achievement-diary/src/main/resources/gamevals.toml

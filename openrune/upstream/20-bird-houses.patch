@@ -1,37 +1,85 @@
-From 6d8ff309e8b535a97501377898c2a3d0e2f0036c Mon Sep 17 00:00:00 2001
+From 4843ba93dc1d3af3a733a48a3ea8f22d44a0a91c Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
-Date: Fri, 16 Oct 2026 22:30:48 -0400
+Date: Sun, 18 Oct 2026 17:07:54 -0400
 Subject: [PATCH] feat: bird house trapping on Fossil Island
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-The four bird house spaces (multilocs on varps 1626-1629, the values RuneLite's
-Time Tracking reads): build (or use a bird house on the space), add 10 seeds,
-and after 50 minutes Empty or Reset for the clockwork, raw bird meat, feathers,
-nests (the OSRS Wiki's seed-nest and nest-table chances) and the Hunter XP,
-with the collect message RuneLite's Loot Tracker parses. Tier data in the
-server-only dbtable birdhouse_types (56003, rows 60163-60171), server varps
-63762-63769, ::birdhouses makes seeded houses full. Integration tests in
-BirdHouseScriptTest. Needs patch 15 (the hunter module).
+Problem. Bird house trapping on Fossil Island was not implemented.
+
+Change. The four bird house spaces (multilocs on varps 1626-1629, the
+values RuneLite's Time Tracking reads): build (or use a bird house on the
+space) and add seeds: 10 low-level seeds, or 5 wildblood hop or
+ranarr-and-higher herb seeds (mixing allowed). After 50 minutes Empty or
+Reset gives the clockwork, 10 raw bird meat (always dropped to the
+ground), 30-60 feathers, nests and the Hunter XP, with the collect
+message RuneLite's Loot Tracker parses. The seed nest chance is the
+skilling formula over the wiki chart (1/256 at level 1, 101/256 at 50,
+201/256 at 99), then five rolls on the nest table. Emptying a house
+early asks first, then keeps the clockwork and loses the house, seeds
+and loot. Reset places a new house one tick later: a carried bird house
+first, otherwise one built from logs and the clockwork with a hammer and
+chisel (the bird house's Crafting level and XP). Tier data in the
+server-only dbtable birdhouse_types (56003, rows 60163-60171; logs and
+Crafting level/XP columns for Reset), server varps 63762-63769,
+::birdhouses makes seeded houses full, own BirdHousePluginPack. Needs
+the Hunter module skeleton PR.
+
+Tests. Integration suite BirdHouseScriptTest (11): the Loot Tracker
+pattern, the multiloc varps, tier order, nest and seed-nest chances
+against the wiki charts, build/seed/wait/empty with the raw bird meat on
+the ground, five high-level seeds and mixed seeds, emptying early, Reset
+building an oak house from logs at Crafting 20, a full inventory.
+
+Data sources. OSRS Wiki: Bird house trapping (levels, XP, seeds, nest
+charts, early emptying, Reset), Bird house trapping/Seeds, Birdhouse
+(scenery) (raw bird meat note, seed nest chart), the nine bird house
+item pages (Crafting level, XP, logs). Varps from the cache; RuneLite
+Time Tracking and Loot Tracker (BSD) for the values and the message.
+
+Caveats. Guesses: the early-empty warning's wording, the other game
+messages, the op layout per state. With several log types Reset builds
+the best house the player can place instead of asking for the log type.
+Not done: clue nests, the strung rabbit foot, crafting bird houses from
+the inventory, building from materials on an empty space.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
- .../skills/hunter/pack/BirdHouseTypesTable.kt |  57 ++++
- .../skills/hunter/pack/HunterPluginPack.kt    |   2 +-
- .../pack/src/main/resources/gamevals.toml     |   9 +
+ .../skills/hunter/pack/BirdHousePluginPack.kt |   8 +
+ .../skills/hunter/pack/BirdHouseTypesTable.kt |  71 ++++
+ .../pack/src/main/resources/gamevals.toml     |   8 +
  .../pack/configs/birdhouse_vars.toml          |  47 +++
- .../skills/hunter/BirdHouseScriptTest.kt      | 153 ++++++++++
- .../content/skills/hunter/BirdHouseScript.kt  | 284 ++++++++++++++++++
+ .../skills/hunter/BirdHouseScriptTest.kt      | 241 ++++++++++++
+ .../content/skills/hunter/BirdHouseScript.kt  | 343 ++++++++++++++++++
  .../hunter/src/main/resources/gamevals.toml   |  10 +
- 7 files changed, 561 insertions(+), 1 deletion(-)
+ 7 files changed, 728 insertions(+)
+ create mode 100644 content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHousePluginPack.kt
  create mode 100644 content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHouseTypesTable.kt
- create mode 100644 content/skills/hunter/pack/src/main/resources/gamevals.toml
  create mode 100644 content/skills/hunter/pack/src/main/resources/pack/configs/birdhouse_vars.toml
  create mode 100644 content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/BirdHouseScriptTest.kt
  create mode 100644 content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/BirdHouseScript.kt
 
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHousePluginPack.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHousePluginPack.kt
+new file mode 100644
+index 000000000..24391055d
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHousePluginPack.kt
+@@ -0,0 +1,8 @@
++package org.rsmod.content.skills.hunter.pack
++
++import dev.openrune.definition.dbtables.DBTable
++import dev.openrune.pack.PluginPack
++
++class BirdHousePluginPack : PluginPack() {
++    override fun dbTables(): List<DBTable> = listOf(BirdHouseTypesTable.birdHouseTypes())
++}
 diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHouseTypesTable.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHouseTypesTable.kt
 new file mode 100644
-index 000000000..155016bf0
+index 000000000..a005fcbd6
 --- /dev/null
 +++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/BirdHouseTypesTable.kt
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,71 @@
 +package org.rsmod.content.skills.hunter.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -40,7 +88,9 @@ index 000000000..155016bf0
 +/**
 + * Bird houses, from the OSRS Wiki (Bird house trapping): the item, the Hunter level to place it
 + * and XP when it is emptied, and the top of the wiki's nest-roll chart (per mille at level 99, half that at 50).
-+ * [TIER] is the tier index in the space's varp value.
++ * [TIER] is the tier index in the space's varp value. [LOGS], [CRAFTING_LEVEL] and [CRAFTING_XP] are
++ * the item's Crafting recipe (logs on a clockwork with a hammer and chisel; the bird house item pages),
++ * which Reset uses to build a new house.
 + */
 +object BirdHouseTypesTable {
 +    const val TIER = 0
@@ -48,6 +98,9 @@ index 000000000..155016bf0
 +    const val HUNTER_LEVEL = 2
 +    const val HUNTER_XP = 3
 +    const val NEST_CHANCE = 4
++    const val LOGS = 5
++    const val CRAFTING_LEVEL = 6
++    const val CRAFTING_XP = 7
 +
 +    private data class Row(
 +        val name: String,
@@ -55,19 +108,22 @@ index 000000000..155016bf0
 +        val hunterLevel: Int,
 +        val hunterXp: Int,
 +        val nestChance: Int,
++        val logs: String,
++        val craftingLevel: Int,
++        val craftingXp: Int,
 +    )
 +
 +    private val ROWS =
 +        listOf(
-+            Row("normal", "obj.birdhouse_normal", 5, 112, 300),
-+            Row("oak", "obj.birdhouse_oak", 14, 168, 375),
-+            Row("willow", "obj.birdhouse_willow", 24, 224, 384),
-+            Row("teak", "obj.birdhouse_teak", 34, 280, 390),
-+            Row("maple", "obj.birdhouse_maple", 44, 369, 420),
-+            Row("mahogany", "obj.birdhouse_mahogany", 49, 480, 450),
-+            Row("yew", "obj.birdhouse_yew", 59, 612, 480),
-+            Row("magic", "obj.birdhouse_magic", 74, 969, 510),
-+            Row("redwood", "obj.birdhouse_redwood", 89, 1200, 525),
++            Row("normal", "obj.birdhouse_normal", 5, 112, 300, "obj.logs", 5, 15),
++            Row("oak", "obj.birdhouse_oak", 14, 168, 375, "obj.oak_logs", 15, 20),
++            Row("willow", "obj.birdhouse_willow", 24, 224, 384, "obj.willow_logs", 25, 25),
++            Row("teak", "obj.birdhouse_teak", 34, 280, 390, "obj.teak_logs", 35, 30),
++            Row("maple", "obj.birdhouse_maple", 44, 369, 420, "obj.maple_logs", 45, 35),
++            Row("mahogany", "obj.birdhouse_mahogany", 49, 480, 450, "obj.mahogany_logs", 50, 40),
++            Row("yew", "obj.birdhouse_yew", 59, 612, 480, "obj.yew_logs", 60, 45),
++            Row("magic", "obj.birdhouse_magic", 74, 969, 510, "obj.magic_logs", 75, 50),
++            Row("redwood", "obj.birdhouse_redwood", 89, 1200, 525, "obj.redwood_logs", 90, 55),
 +        )
 +
 +    fun birdHouseTypes() =
@@ -77,6 +133,9 @@ index 000000000..155016bf0
 +            column("hunter_level", HUNTER_LEVEL, VarType.INT)
 +            column("hunter_xp", HUNTER_XP, VarType.INT)
 +            column("nest_chance", NEST_CHANCE, VarType.INT)
++            column("logs", LOGS, VarType.OBJ)
++            column("crafting_level", CRAFTING_LEVEL, VarType.INT)
++            column("crafting_xp", CRAFTING_XP, VarType.INT)
 +
 +            for ((tier, r) in ROWS.withIndex()) {
 +                row("dbrow.birdhouse_type_${r.name}") {
@@ -85,28 +144,21 @@ index 000000000..155016bf0
 +                    column(HUNTER_LEVEL, r.hunterLevel)
 +                    column(HUNTER_XP, r.hunterXp)
 +                    column(NEST_CHANCE, r.nestChance)
++                    columnRSCM(LOGS, r.logs)
++                    column(CRAFTING_LEVEL, r.craftingLevel)
++                    column(CRAFTING_XP, r.craftingXp)
 +                }
 +            }
 +        }
 +}
-diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
-index f3397313a..20f8fa9d8 100644
---- a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
-+++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
-@@ -4,5 +4,5 @@ import dev.openrune.definition.dbtables.DBTable
- import dev.openrune.pack.PluginPack
- 
- class HunterPluginPack : PluginPack() {
--    override fun dbTables(): List<DBTable> = listOf(ImplingTypesTable.implingTypes())
-+    override fun dbTables(): List<DBTable> = listOf(ImplingTypesTable.implingTypes(), BirdHouseTypesTable.birdHouseTypes())
- }
 diff --git a/content/skills/hunter/pack/src/main/resources/gamevals.toml b/content/skills/hunter/pack/src/main/resources/gamevals.toml
-new file mode 100644
-index 000000000..4e82cb1a3
---- /dev/null
+index 4389d218e..090107426 100644
+--- a/content/skills/hunter/pack/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/pack/src/main/resources/gamevals.toml
-@@ -0,0 +1,9 @@
-+[gamevals.varp]
+@@ -2,6 +2,14 @@
+ # implings
+ 
+ # bird houses
 +birdhouse_seeded_a = 63762
 +birdhouse_seeded_b = 63763
 +birdhouse_seeded_c = 63764
@@ -115,6 +167,9 @@ index 000000000..4e82cb1a3
 +birdhouse_seeds_b = 63767
 +birdhouse_seeds_c = 63768
 +birdhouse_seeds_d = 63769
+ 
+ # traps
+ 
 diff --git a/content/skills/hunter/pack/src/main/resources/pack/configs/birdhouse_vars.toml b/content/skills/hunter/pack/src/main/resources/pack/configs/birdhouse_vars.toml
 new file mode 100644
 index 000000000..1b8d0d8a7
@@ -170,10 +225,10 @@ index 000000000..1b8d0d8a7
 +transmit = "Never"
 diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/BirdHouseScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/BirdHouseScriptTest.kt
 new file mode 100644
-index 000000000..b5b114f63
+index 000000000..78f7869d7
 --- /dev/null
 +++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/BirdHouseScriptTest.kt
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,241 @@
 +package org.rsmod.content.skills.hunter
 +
 +import dev.openrune.ServerCacheManager
@@ -283,7 +338,10 @@ index 000000000..b5b114f63
 +                assertTrue(emptied)
 +                assertEquals(0, script.state(player, space))
 +                assertEquals(1, player.inv.count(CLOCKWORK))
-+                assertEquals(10, player.inv.count(RAW_BIRD_MEAT))
++                // Raw bird meat always goes to the ground (wiki).
++                assertEquals(0, player.inv.count(RAW_BIRD_MEAT))
++                val meat = script.objRepo.findAll(player.coords).filter { it.type == RAW_BIRD_MEAT.asRSCM(RSCMType.OBJ) }
++                assertEquals(10, meat.sumOf { it.count })
 +                assertTrue(player.inv.count(FEATHER) in 30..60)
 +                assertTrue(player.statMap.getXP("stat.hunter") > xpBefore)
 +            }
@@ -291,6 +349,90 @@ index 000000000..b5b114f63
 +            advance(ticks = 1)
 +            sent += client.mapOf(MessageGame::message)
 +            assertTrue(sent.any { lootTrackerPattern.matches(it) }, sent.toString())
++        }
++
++    @Test
++    fun `the seed nest follows the wiki chart`() {
++        assertEquals(1, BirdHouseScript.chance(1, 0, 200))
++        assertEquals(101, BirdHouseScript.chance(50, 0, 200))
++        assertEquals(201, BirdHouseScript.chance(99, 0, 200))
++    }
++
++    @Test
++    fun GameTestState.`five high-level seeds fill a house, and seeds mix`() =
++        runInjectedGameTest(BirdHouseScript::class, null, BirdHouseScript::class) { script ->
++            script.clock = Clock.fixed(Instant.parse("2026-10-16T12:00:00Z"), ZoneOffset.UTC)
++            val (first, second) = SPACES
++            prepare()
++            player.inv[0] = InvObj("obj.birdhouse_normal".asRSCM(RSCMType.OBJ), 1)
++            player.inv[1] = InvObj("obj.ranarr_seed".asRSCM(RSCMType.OBJ), 7)
++            player.inv[3] = InvObj("obj.birdhouse_normal".asRSCM(RSCMType.OBJ), 1)
++            with(script) {
++                player.withProtectedAccess { build(first, TIERS.first()) }
++                player.withProtectedAccess { addSeeds(first, "obj.ranarr_seed") }
++                assertEquals(3, script.state(player, first))
++                assertEquals(2, player.inv.count("obj.ranarr_seed"))
++
++                player.inv[2] = InvObj("obj.barley_seed".asRSCM(RSCMType.OBJ), 9)
++                player.withProtectedAccess { build(second, TIERS.first()) }
++                player.withProtectedAccess { addSeeds(second, "obj.barley_seed") }
++                // 9 barley and then one ranarr (worth 2) fill it.
++                assertEquals(3, script.state(player, second))
++                assertEquals(0, player.inv.count("obj.barley_seed"))
++                assertEquals(1, player.inv.count("obj.ranarr_seed"))
++            }
++        }
++
++    @Test
++    fun GameTestState.`emptying early keeps only the clockwork`() =
++        runInjectedGameTest(BirdHouseScript::class, null, BirdHouseScript::class) { script ->
++            script.clock = Clock.fixed(Instant.parse("2026-10-16T12:00:00Z"), ZoneOffset.UTC)
++            val space = SPACES.first()
++            prepare()
++            player.inv[0] = InvObj("obj.birdhouse_normal".asRSCM(RSCMType.OBJ), 1)
++            player.inv[1] = InvObj("obj.barley_seed".asRSCM(RSCMType.OBJ), 10)
++            val xpBefore = player.statMap.getXP("stat.hunter")
++            with(script) {
++                player.withProtectedAccess { build(space, TIERS.first()) }
++                player.withProtectedAccess { addSeeds(space, null) }
++                player.withProtectedAccess { emptyEarly(space) }
++            }
++            assertEquals(0, script.state(player, space))
++            assertEquals(1, player.inv.count(CLOCKWORK))
++            assertEquals(0, player.inv.count(FEATHER))
++            assertEquals(0, player.inv.count("obj.birdhouse_normal"))
++            assertEquals(xpBefore, player.statMap.getXP("stat.hunter"))
++        }
++
++    @Test
++    fun GameTestState.`reset builds a new house from logs and the clockwork`() =
++        runInjectedGameTest(BirdHouseScript::class, null, BirdHouseScript::class) { script ->
++            val start = Instant.parse("2026-10-16T12:00:00Z")
++            script.clock = Clock.fixed(start, ZoneOffset.UTC)
++            val space = SPACES.first()
++            prepare()
++            player.setBaseLevel("stat.crafting", 20)
++            player.setCurrentLevel("stat.crafting", 20)
++            player.inv[0] = InvObj("obj.birdhouse_normal".asRSCM(RSCMType.OBJ), 1)
++            player.inv[1] = InvObj("obj.barley_seed".asRSCM(RSCMType.OBJ), 10)
++            player.inv[2] = InvObj("obj.hammer".asRSCM(RSCMType.OBJ), 1)
++            player.inv[3] = InvObj("obj.chisel".asRSCM(RSCMType.OBJ), 1)
++            player.inv[4] = InvObj("obj.oak_logs".asRSCM(RSCMType.OBJ), 1)
++            player.inv[5] = InvObj("obj.willow_logs".asRSCM(RSCMType.OBJ), 1)
++            with(script) {
++                player.withProtectedAccess { build(space, TIERS.first()) }
++                player.withProtectedAccess { addSeeds(space, null) }
++                script.clock = Clock.fixed(start.plus(Duration.ofMinutes(50)), ZoneOffset.UTC)
++                val craftingXp = player.statMap.getXP("stat.crafting")
++                player.withProtectedAccess { reset(space) }
++                advance(ticks = 2)
++                // Crafting 20: oak (15) but not willow (25).
++                assertEquals(TIERS[1].tier * 3 + 1, script.state(player, space))
++                assertEquals(0, player.inv.count("obj.oak_logs"))
++                assertEquals(1, player.inv.count("obj.willow_logs"))
++                assertEquals(0, player.inv.count(CLOCKWORK))
++                assertTrue(player.statMap.getXP("stat.crafting") > craftingXp)
++            }
 +        }
 +
 +    @Test
@@ -320,6 +462,7 @@ index 000000000..b5b114f63
 +        val center = CoordGrid(0, 50, 50, 20, 20)
 +        allocZoneCollision(center)
 +        player.teleport(center)
++        player.observerUUID = 793L
 +        player.clearInv()
 +        for (stat in listOf("stat.hunter")) {
 +            player.setBaseLevel(stat, 99)
@@ -329,14 +472,16 @@ index 000000000..b5b114f63
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/BirdHouseScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/BirdHouseScript.kt
 new file mode 100644
-index 000000000..ed11a889d
+index 000000000..a2ba28827
 --- /dev/null
 +++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/BirdHouseScript.kt
-@@ -0,0 +1,284 @@
+@@ -0,0 +1,343 @@
 +package org.rsmod.content.skills.hunter
 +
 +import jakarta.inject.Inject
 +import java.time.Clock
++import kotlin.math.roundToInt
++import org.rsmod.api.config.constants
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.player.vars.VarPlayerIntMapSetter
 +import org.rsmod.api.repo.obj.ObjRepository
@@ -347,6 +492,7 @@ index 000000000..ed11a889d
 +import org.rsmod.api.script.onOpLoc4
 +import org.rsmod.api.script.onOpLocU
 +import org.rsmod.api.table.BirdhouseTypesRow
++import org.rsmod.api.utils.skills.SkillingSuccessRate
 +import org.rsmod.game.cheat.Cheat
 +import org.rsmod.game.entity.Player
 +import org.rsmod.plugin.scripts.PluginScript
@@ -358,17 +504,21 @@ index 000000000..ed11a889d
 + * reads: 0 = space, `tier*3+1` = built, `+2` = some seeds, `+3` = seeded (catching, then full).
 + *
 + * - Build (op1, or the bird house used on the space), Hunter level per tier, no XP.
-+ * - Seeds: 10 hop, allotment, herb, flower or bush seeds (fewer leave it partly seeded).
-+ * - After 50 minutes (wall clock): Empty (op3) or Reset (op4, which builds a carried bird house
-+ *   again) gives the clockwork, 10 raw bird meat, 30-60 feathers, nests and the Hunter XP, with the
-+ *   message RuneLite's Loot Tracker parses. Interact (op1) says whether it is full.
++ * - Seeds: 10 hop, allotment, herb, flower or bush seeds, or 5 wildblood hop or ranarr-and-higher
++ *   herb seeds (wiki: Seeds); mixing is allowed, fewer leave it partly seeded.
++ * - After 50 minutes (wall clock): Empty (op3) or Reset (op4) gives the clockwork, 10 raw bird meat
++ *   (always to the ground, wiki), 30-60 feathers, nests and the Hunter XP, with the message
++ *   RuneLite's Loot Tracker parses. Interact (op1) says whether it is full.
++ * - Emptying early, after a warning, keeps the clockwork and loses the house, seeds and loot (wiki).
++ * - Reset then places a new house one tick later: a carried bird house first, else one built from
++ *   logs and the clockwork with a hammer and chisel (the Crafting recipe's level and XP; wiki).
 + *
-+ * Deviations: no clue nests or strung rabbit foot, raw bird meat goes to the inventory when there is
-+ * room, and emptying early just says it isn't full yet.
++ * Deviations: no clue nests or strung rabbit foot; with several log types Reset builds the best one
++ * the player can place instead of asking.
 + */
 +class BirdHouseScript
 +@Inject
-+constructor(private val objRepo: ObjRepository) : PluginScript() {
++constructor(val objRepo: ObjRepository) : PluginScript() {
 +    var clock: Clock = Clock.systemUTC()
 +
 +    override fun ScriptContext.startup() {
@@ -436,14 +586,16 @@ index 000000000..ed11a889d
 +            mes("The bird house is already full of seeds.")
 +            return
 +        }
++        // In units: a low-level seed is 1, a high-level seed 2 (5 of them fill a house).
 +        var have = player.vars[space.seedsVarp]
 +        val order = listOfNotNull(preferred) + SEEDS
 +        for (seed in order) {
 +            if (have >= SEEDS_NEEDED) break
-+            val count = minOf(inv.count(seed), SEEDS_NEEDED - have)
++            val weight = seedWeight(seed)
++            val count = minOf(inv.count(seed), (SEEDS_NEEDED - have + weight - 1) / weight)
 +            if (count <= 0) continue
 +            if (invDel(inv, seed, count).failure) continue
-+            have += count
++            have = minOf(SEEDS_NEEDED, have + count * weight)
 +        }
 +        if (have == player.vars[space.seedsVarp]) {
 +            mes("You need some seeds to put in the bird house.")
@@ -461,13 +613,29 @@ index 000000000..ed11a889d
 +        }
 +    }
 +
-+    private fun ProtectedAccess.op3(space: Space) {
++    private suspend fun ProtectedAccess.op3(space: Space) {
 +        val state = state(player, space)
 +        when {
 +            state == 0 -> return
-+            state % 3 == 0 -> empty(space)
++            state % 3 == 0 && isFull(player, space) -> empty(space)
++            state % 3 == 0 -> confirmEmptyEarly(space)
 +            else -> dismantle(space)
 +        }
++    }
++
++    private suspend fun ProtectedAccess.confirmEmptyEarly(space: Space) {
++        val title = "Empty the bird house? It isn't full yet."
++        if (!choice2("Yes - lose the bird house, its seeds and birds.", true, "No.", false, title)) return
++        emptyEarly(space)
++    }
++
++    /** Empties a seeded house that isn't full: only the clockwork comes back (wiki). */
++    fun ProtectedAccess.emptyEarly(space: Space) {
++        val state = state(player, space)
++        if (state == 0 || state % 3 != 0) return
++        clear(player, space)
++        invAddOrDrop(objRepo, CLOCKWORK)
++        mes("You dismantle the bird house.")
 +    }
 +
 +    private fun ProtectedAccess.dismantle(space: Space) {
@@ -487,7 +655,8 @@ index 000000000..ed11a889d
 +        val loot = rollLoot(tier, stat(HUNTER)) { bound -> random.of(bound) }
 +        clear(player, space)
 +        invAddOrDrop(objRepo, CLOCKWORK)
-+        invAddOrDrop(objRepo, RAW_BIRD_MEAT, BIRDS)
++        // Always to the ground, even with room in the inventory (wiki, Guaranteed drops).
++        objRepo.add(RAW_BIRD_MEAT, player.coords, constants.lootdrop_duration, receiver = player, count = BIRDS)
 +        invAddOrDrop(objRepo, FEATHER, loot.feathers)
 +        for (nest in loot.nests) invAddOrDrop(objRepo, nest)
 +        statAdvance(HUNTER, tier.hunterXp.toDouble())
@@ -495,10 +664,30 @@ index 000000000..ed11a889d
 +        return true
 +    }
 +
-+    private fun ProtectedAccess.reset(space: Space) {
++    suspend fun ProtectedAccess.reset(space: Space) {
 +        if (!empty(space)) return
-+        val tier = TIERS.lastOrNull { it.item.internalName in inv && stat(HUNTER) >= it.hunterLevel }
-+        if (tier != null) build(space, tier)
++        // One tick slower than doing it by hand (wiki).
++        delay(1)
++        val carried = TIERS.lastOrNull { it.item.internalName in inv && stat(HUNTER) >= it.hunterLevel }
++        if (carried != null) {
++            build(space, carried)
++            return
++        }
++        val tier = buildableTier() ?: return
++        if (invDel(inv, tier.logs.internalName, 1, CLOCKWORK, 1).failure) return
++        statAdvance(CRAFTING, tier.craftingXp.toDouble())
++        setState(player, space, tier.tier * 3 + 1)
++        VarPlayerIntMapSetter.set(player, space.seedsVarp, 0)
++        VarPlayerIntMapSetter.set(player, space.seededVarp, 0)
++        mes("You place the bird house.")
++    }
++
++    /** The best tier the player can craft (logs, clockwork, hammer, chisel) and place. */
++    private fun ProtectedAccess.buildableTier(): BirdhouseTypesRow? {
++        if (CLOCKWORK !in inv || HAMMER !in inv || CHISEL !in inv) return null
++        return TIERS.lastOrNull {
++            it.logs.internalName in inv && stat(CRAFTING) >= it.craftingLevel && stat(HUNTER) >= it.hunterLevel
++        }
 +    }
 +
 +    private fun Cheat.fastForward() {
@@ -536,6 +725,9 @@ index 000000000..ed11a889d
 +
 +    companion object {
 +        const val HUNTER = "stat.hunter"
++        const val CRAFTING = "stat.crafting"
++        const val HAMMER = "obj.hammer"
++        const val CHISEL = "obj.chisel"
 +        const val CLOCKWORK = "obj.poh_clockwork_mechanism"
 +        const val RAW_BIRD_MEAT = "obj.spit_raw_bird_meat"
 +        const val FEATHER = "obj.feather"
@@ -574,9 +766,19 @@ index 000000000..ed11a889d
 +                "torstol_seed",
 +            ).map { "obj.$it" }
 +
-+        /** Out of 256, linear from [low] at level 1 to [high] at 99 (wiki skilling charts). */
++        /** Wildblood hop and ranarr-and-higher herb seeds: 5 fill a house (wiki: Seeds). */
++        val HIGH_LEVEL_SEEDS =
++            setOf(
++                "wildblood_hop_seed", "ranarr_seed", "toadflax_seed", "irit_seed", "avantoe_seed",
++                "kwuarm_seed", "snapdragon_seed", "cadantine_seed", "lantadyme_seed", "dwarf_weed_seed",
++                "torstol_seed",
++            ).map { "obj.$it" }.toSet()
++
++        fun seedWeight(seed: String): Int = if (seed in HIGH_LEVEL_SEEDS) 2 else 1
++
++        /** Out of 256: the OSRS skilling formula with [low] at level 1 and [high] at 99 (wiki charts). */
 +        fun chance(level: Int, low: Int, high: Int): Int =
-+            low + (high - low) * (level.coerceIn(1, 99) - 1) / 98
++            (SkillingSuccessRate.successRate(low, high, level.coerceIn(1, 99), 99) * 256).roundToInt()
 +
 +        /**
 +         * Per mille: [high] at level 99, scaling linearly down to half at level 50 and flat below
@@ -618,20 +820,21 @@ index 000000000..ed11a889d
 +    }
 +}
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
-index 89309478e..72db58384 100644
+index 4ac29ce25..9e8e2e2a7 100644
 --- a/content/skills/hunter/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
-@@ -1,5 +1,6 @@
- [gamevals.dbtable]
- impling_types = 56002
+@@ -2,6 +2,7 @@
+ # implings
+ 
+ # bird houses
 +birdhouse_types = 56003
  
- [gamevals.dbrow]
- impling_type_baby = 60152
-@@ -13,3 +14,12 @@ impling_type_magpie = 60159
- impling_type_ninja = 60160
- impling_type_dragon = 60161
- impling_type_lucky = 60162
+ # traps
+ 
+@@ -15,6 +16,15 @@
+ # implings
+ 
+ # bird houses
 +birdhouse_type_normal = 60163
 +birdhouse_type_oak = 60164
 +birdhouse_type_willow = 60165
@@ -641,3 +844,6 @@ index 89309478e..72db58384 100644
 +birdhouse_type_yew = 60169
 +birdhouse_type_magic = 60170
 +birdhouse_type_redwood = 60171
+ 
+ # traps
+ 

@@ -1,4 +1,4 @@
-From 18afab0a7b037b85932783015343636c85469816 Mon Sep 17 00:00:00 2001
+From fddf71474ecbdab1beb071421f909824dd67efeb Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 23:51:25 -0400
 Subject: [PATCH] feat: Witch's Potion quest
@@ -6,32 +6,59 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-New quest. Progress is varp 67 (hetty) through a server-only varbit: 0,
-1 started, 2 ingredients given, 3 complete (drunk from the cauldron), the
-values Quest Helper reads. Dialogue follows the OSRS Wiki transcript,
-including the player's line for every combination of held ingredients.
-The hand-in takes one of each in one transaction. Rewards: 1 QP, 325
-Magic XP. Hetty's after-quest lines move from the Rimmington townsfolk
-script into the quest.
+Problem. Witch's Potion (Hetty, Rimmington) was not implemented.
 
-The rat's tail comes from a new rat drop table with the usual quest gate
-(quest_mode = "during"). With the default quest-requirements mode
-(assume-completed) that gate never passes, so the tail only drops under
-respect-progress or virtual-completions; our own server, which keeps
-assume-completed, uses an NpcDeathKillHook on the quest stage instead.
+Change. New quest. Progress is varp 67 (hetty) through a server-only
+varbit: 0, 1 started, 2 ingredients given, 3 complete (drunk from the
+cauldron), the values Quest Helper reads. Dialogue follows the OSRS Wiki
+transcript, including the player's line for every combination of held
+ingredients. The hand-in takes one of each in one transaction and shows
+the transcript's single message box; drinking from the cauldron shows its
+line as a message box, then completes the quest. Rewards: 1 QP, 325 Magic
+XP. Hetty's after-quest lines move from the Rimmington townsfolk script
+into the quest.
 
-Guesses: the journal text and the quest scroll item.
+The rat's tail drops for the killer from every standard rat the wiki
+lists (regular and Stronghold of Security rats, dungeon rats, the level-26
+Stronghold giant rats) while the quest is in progress. It comes from an
+NpcDeathKillHook on the quest's own stage, not a drop-table quest gate:
+under the default quest-requirements mode (assume-completed) an
+in-progress gate never passes, so a table entry would make the quest
+uncompletable on a default server. The hook reads the real stage, so the
+drop works in every mode.
+
+Tests. WitchsPotionInteractionTest (9): start, decline and witch topic,
+partial ingredients, the hand-in (one of each taken, stage 2), the
+hand-in as one message box, the cauldron before the hand-in, drinking (a
+message box, stage 3), the tail from every listed rat id only while the
+quest is in progress (none before, none from a regular giant rat, none
+after completion), and the ingredient line wording.
+
+Data sources. OSRS Wiki: Witch's Potion, Transcript:Witch's Potion,
+Transcript:Hetty, Rat's tail (item sources; "100% chance to drop once you
+begin the quest"; unobtainable after completion), Rat (ids 2854, 2855,
+2492, 2513), Dungeon rat (2865-2867, 3607-3609), Giant rat (level 26,
+2510-2512). Quest Helper WitchsPotion (varp 67 steps, cauldron loc 2024).
+Cache npc names and ids.
+
+Caveats. The tail also drops at stage 2 (ingredients given, not yet
+drunk): the wiki says only "during the quest". Rat 13624 (rat_lowwander)
+is not in the wiki's rat ids and does not drop it. The journal text, the
+quest scroll item, chathead expressions and the cauldron line after
+completion are guesses.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  .../npcs/RimmingtonTownsfolkScript.kt         |   7 -
- .../resources/drops/tables/monsters/rat.toml  |   8 +
+ content/quest/build.gradle.kts                |   1 +
  .../pack/src/main/resources/gamevals.toml     |   1 +
  .../pack/configs/witchs_potion_vars.toml      |   6 +
- .../quest/area/rimmington/WitchsPotion.kt     | 220 ++++++++++++++++++
- .../rimmington/WitchsPotionInteractionTest.kt |  79 +++++++
- 6 files changed, 314 insertions(+), 7 deletions(-)
- create mode 100644 content/drops/src/main/resources/drops/tables/monsters/rat.toml
+ .../quest/area/rimmington/WitchsPotion.kt     | 275 ++++++++++++++++++
+ .../content/quest/manager/QuestModule.kt      |   3 +
+ .../rimmington/WitchsPotionInteractionTest.kt | 162 +++++++++++
+ 7 files changed, 448 insertions(+), 7 deletions(-)
  create mode 100644 content/quest/pack/src/main/resources/pack/configs/witchs_potion_vars.toml
  create mode 100644 content/quest/src/main/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotion.kt
  create mode 100644 content/quest/src/test/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotionInteractionTest.kt
@@ -61,25 +88,23 @@ index 975bdbd03..f7c700eb4 100644
      private suspend fun Dialogue.chemist() {
          if (choice2("Yes.", true, "No.", false, title = "Do you want to talk about lamps?")) {
              chatPlayer(quiz, "Hi, I need fuel for a lamp.")
-diff --git a/content/drops/src/main/resources/drops/tables/monsters/rat.toml b/content/drops/src/main/resources/drops/tables/monsters/rat.toml
-new file mode 100644
-index 000000000..c79cab127
---- /dev/null
-+++ b/content/drops/src/main/resources/drops/tables/monsters/rat.toml
-@@ -0,0 +1,8 @@
-+id = "Rat Drops"
-+npcs = ["npc.rat", "npc.rat_indoors"]
-+
-+[[guaranteed]]
-+obj = "obj.rats_tail"
-+count = 1
-+quest = "quest_witchspotion"
-+quest_mode = "during"
+diff --git a/content/quest/build.gradle.kts b/content/quest/build.gradle.kts
+index 56cd1bf0e..5a8ac6198 100644
+--- a/content/quest/build.gradle.kts
++++ b/content/quest/build.gradle.kts
+@@ -12,6 +12,7 @@ dependencies {
+     implementation(projects.content.other.sawmill)
+     implementation(projects.api.pluginCommons)
+     implementation(projects.api.attr)
++    implementation(projects.api.death)
+     implementation(projects.api.serverConfig)
+     implementation(libs.rsprot.api)
+ }
 diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml
-index b4e41d645..3a5452a08 100644
+index 0a6cb3169..3fc33b5b1 100644
 --- a/content/quest/pack/src/main/resources/gamevals.toml
 +++ b/content/quest/pack/src/main/resources/gamevals.toml
-@@ -84,6 +84,7 @@ cooks_assistant_progress = 63704
+@@ -83,6 +83,7 @@ cooks_assistant_progress = 63704
  cooks_assistant_milk = 63705
  cooks_assistant_egg = 63706
  cooks_assistant_flour = 63707
@@ -101,18 +126,23 @@ index 000000000..4b0647503
 +endBit = 1
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotion.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotion.kt
 new file mode 100644
-index 000000000..d0c15e082
+index 000000000..0f4b393bd
 --- /dev/null
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotion.kt
-@@ -0,0 +1,220 @@
+@@ -0,0 +1,275 @@
 +package org.rsmod.content.quest.area.rimmington
 +
 +import dev.openrune.rscm.RSCM.asRSCM
 +import dev.openrune.rscm.RSCMType
++import jakarta.inject.Inject
++import org.rsmod.api.config.constants
++import org.rsmod.api.death.NpcDeathKillContext
++import org.rsmod.api.death.NpcDeathKillHook
 +import org.rsmod.api.invtx.invTransaction
 +import org.rsmod.api.invtx.select
 +import org.rsmod.api.player.dialogue.Dialogue
 +import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.repo.obj.ObjRepository
 +import org.rsmod.api.script.onOpLoc1
 +import org.rsmod.api.script.onOpNpc1
 +import org.rsmod.content.quest.manager.ItemRewardDisplay
@@ -126,14 +156,14 @@ index 000000000..d0c15e082
 + * Witch's Potion. Progress is varp 67 (`varp.hetty`), as in OSRS and as
 + * Quest Helper reads it: 0 not started, 1 started, 2 ingredients given, 3 complete (drunk from the
 + * cauldron). Dialogue follows the wiki transcript; the journal text is ours. Rats drop a rat's tail
-+ * while the quest is in progress (drop table `rat.toml`).
++ * while the quest is in progress ([WitchsPotionRatTail]).
 + */
 +class WitchsPotion : QuestScript(
 +    "quest_witchspotion",
 +    "varp.hetty",
 +    rewards { xp("stat.magic", MAGIC_XP) },
 +    ItemRewardDisplay(EYE_OF_NEWT, zoom = 250),
-+    questVarbit = "varbit.witchs_potion_progress",
++    questVarbit = WitchsPotion.PROGRESS_VARBIT,
 +) {
 +
 +    override fun ScriptContext.init() {
@@ -283,8 +313,10 @@ index 000000000..d0c15e082
 +            return
 +        }
 +        quest.setQuestStage(access, INGREDIENTS_GIVEN)
-+        mesbox("You pass the ingredients to Hetty and she puts them all into her cauldron.")
-+        mesbox("Hetty closes her eyes and begins to chant. The cauldron bubbles mysteriously.")
++        mesbox(
++            "You pass the ingredients to Hetty and she puts them all into her cauldron. Hetty " +
++                "closes her eyes and begins to chant. The cauldron bubbles mysteriously."
++        )
 +        chatPlayer(quiz, "Well, is it ready?")
 +        chatNpc(happy, "Ok, now drink from the cauldron.")
 +    }
@@ -296,7 +328,12 @@ index 000000000..d0c15e082
 +            }
 +            return
 +        }
-+        mes("You drink from the cauldron. It tastes horrible! You feel yourself imbued with power.")
++        startDialogue {
++            mesbox(
++                "You drink from the cauldron. It tastes horrible! You feel yourself imbued with " +
++                    "power."
++            )
++        }
 +        quest.completeQuest(this)
 +    }
 +
@@ -304,6 +341,7 @@ index 000000000..d0c15e082
 +        const val STARTED = 1
 +        const val INGREDIENTS_GIVEN = 2
 +        const val COMPLETE = 3
++        const val PROGRESS_VARBIT = "varbit.witchs_potion_progress"
 +
 +        private const val HETTY = "npc.hetty"
 +        private const val CAULDRON = "loc.hettycauldron"
@@ -325,14 +363,82 @@ index 000000000..d0c15e082
 +        }
 +    }
 +}
++
++/**
++ * Every standard rat drops a rat's tail for its killer while Witch's Potion is in progress (OSRS
++ * Wiki, Rat's tail: "100% chance to drop once you begin the quest"; item sources: Rat (regular and
++ * Stronghold of Security), Dungeon rat, Giant rat (level 26)). A kill hook on the quest's own stage
++ * rather than a drop-table quest gate, so the drop works in every quest-requirements mode
++ * (assume-completed never satisfies an in-progress gate).
++ */
++class WitchsPotionRatTail @Inject constructor(private val objRepo: ObjRepository) :
++    NpcDeathKillHook {
++    override fun onKill(context: NpcDeathKillContext) {
++        if (RATS.none(context.npc::isType)) return
++        val player = context.hero
++        val stage = player.vars[WitchsPotion.PROGRESS_VARBIT]
++        if (stage < WitchsPotion.STARTED || stage >= WitchsPotion.COMPLETE) return
++        objRepo.add(WitchsPotion.RATS_TAIL, context.dropCoords, constants.lootdrop_duration, player)
++    }
++
++    companion object {
++        /** The wiki's rat's tail sources: Rat, Dungeon rat, and the level-26 Giant rat. */
++        val RATS =
++            listOf(
++                // Rat (regular).
++                "npc.rat",
++                "npc.rat_indoors",
++                // Rat (Stronghold of Security).
++                "npc.sos_war_rat",
++                "npc.sos_fam_rat",
++                // Dungeon rat.
++                "npc.dungeon_rat",
++                "npc.dungeon_rat2",
++                "npc.dungeon_rat3",
++                "npc.clocktower_rat",
++                "npc.clocktower_rat2",
++                "npc.clocktower_rat3",
++                // Giant rat (level 26, Stronghold of Security).
++                "npc.sos_fam_giantrat",
++                "npc.sos_fam_giantrat2",
++                "npc.sos_fam_giantrat3",
++            )
++    }
++}
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestModule.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestModule.kt
+index d79502cef..c14eb0f7e 100644
+--- a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestModule.kt
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestModule.kt
+@@ -1,9 +1,11 @@
+ package org.rsmod.content.quest.manager
+ 
+ import org.rsmod.api.combat.commons.magic.SpellQuestRequirement
++import org.rsmod.api.death.NpcDeathKillHook
+ import org.rsmod.api.player.hook.SpadeDigHook
+ import org.rsmod.content.quest.area.lumbridge.RuneMysteriesQuest
+ import org.rsmod.content.quest.area.lumbridge.xmarksthespot.XMarksTheSpotQuest
++import org.rsmod.content.quest.area.rimmington.WitchsPotionRatTail
+ import org.rsmod.content.quest.area.varrock.daddyshome.DaddysHomeQuest
+ import org.rsmod.content.quest.area.varrock.gertrudescat.GertrudesCatQuest
+ import org.rsmod.plugin.module.PluginModule
+@@ -17,5 +19,6 @@ public class QuestModule : PluginModule() {
+         bindInstance<XMarksTheSpotQuest>()
+         addSetBinding<SpellQuestRequirement>(PolicySpellQuestRequirement::class.java)
+         addSetBinding<SpadeDigHook>(XMarksTheSpotQuest::class.java)
++        addSetBinding<NpcDeathKillHook>(WitchsPotionRatTail::class.java)
+     }
+ }
 diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotionInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotionInteractionTest.kt
 new file mode 100644
-index 000000000..d9f8e357a
+index 000000000..dedbe6b6d
 --- /dev/null
 +++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotionInteractionTest.kt
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,162 @@
 +package org.rsmod.content.quest.area.rimmington
 +
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
 +import org.junit.jupiter.api.AfterAll
 +import org.junit.jupiter.api.Assertions.assertEquals
 +import org.junit.jupiter.api.Assertions.assertTrue
@@ -341,7 +447,13 @@ index 000000000..d9f8e357a
 +import org.junit.jupiter.api.parallel.Execution
 +import org.junit.jupiter.api.parallel.ExecutionMode
 +import org.junit.jupiter.api.parallel.ResourceLock
++import org.rsmod.api.death.NpcDeathKillContext
++import org.rsmod.api.player.events.interact.LocEvents
 +import org.rsmod.content.quest.area.QuestTalkFixture
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.loc.BoundLocInfo
++import org.rsmod.game.loc.LocEntity
++import org.rsmod.game.loc.LocInfo
 +import org.rsmod.map.CoordGrid
 +
 +@Execution(ExecutionMode.SAME_THREAD)
@@ -396,6 +508,57 @@ index 000000000..d9f8e357a
 +        assertEquals(1, f.count("obj.onion"))
 +    }
 +
++    @Test fun `the hand-in is one message box with the whole transcript text`() {
++        val f = fixture()
++        f.talk("npc.hetty", 1, 1)
++        ingredients.forEach { f.give(it) }
++        f.talk("npc.hetty")
++        assertEquals(1, mesboxes(f, "You pass the ingredients"), f.output())
++        assertEquals(1, mesboxes(f, "The cauldron bubbles mysteriously."), f.output())
++        assertTrue(
++            mesboxOpens(f).any {
++                it.contains("You pass the ingredients") && it.contains("bubbles mysteriously")
++            },
++            f.output(),
++        )
++    }
++
++    @Test fun `drinking from the cauldron shows a message box and completes the quest`() {
++        val f = fixture()
++        f.talk("npc.hetty", 1, 1)
++        ingredients.forEach { f.give(it) }
++        f.talk("npc.hetty")
++        drink(f)
++        assertEquals(1, mesboxes(f, "You drink from the cauldron."), f.output())
++        assertEquals(3, f.player.vars["varp.hetty"])
++    }
++
++    @Test fun `the cauldron before the hand-in is a miss`() {
++        val f = fixture()
++        f.talk("npc.hetty", 1, 1)
++        drink(f)
++        assertTrue(f.output().contains("I think I'll give it a miss for now."), f.output())
++        assertEquals(1, f.player.vars["varp.hetty"])
++    }
++
++    @Test fun `every wiki rat drops a tail for its killer once the quest has started`() {
++        val f = fixture()
++        f.player.observerUUID = 791L
++        val hook = WitchsPotionRatTail(f.objRepo)
++        assertEquals(0, kill(f, hook, "npc.rat"), "not started")
++        f.talk("npc.hetty", 1, 1)
++        for (rat in WitchsPotionRatTail.RATS) {
++            assertTrue(ServerCacheManager.getNpc(rat.asRSCM(RSCMType.NPC)) != null, rat)
++            assertEquals(1, kill(f, hook, rat), rat)
++        }
++        assertEquals(0, kill(f, hook, "npc.giantrat"), "regular giant rat")
++        ingredients.forEach { f.give(it) }
++        f.talk("npc.hetty")
++        assertEquals(1, kill(f, hook, "npc.dungeon_rat"), "ingredients given, not drunk")
++        drink(f)
++        assertEquals(0, kill(f, hook, "npc.rat"), "complete")
++    }
++
 +    @Test fun `the ingredient line follows the transcript wording`() {
 +        assertEquals(
 +            "I don't have a rat's tail, I have the burnt meat, I have an onion, and I don't " +
@@ -403,6 +566,29 @@ index 000000000..d9f8e357a
 +            WitchsPotion.ingredientsLine(tail = false, meat = true, onion = true, newt = false),
 +        )
 +    }
++
++    private var killTile = CoordGrid(2970, 3210, 0)
++
++    /** Kills [npc] on a fresh tile and returns how many rat's tails landed for the player. */
++    private fun kill(f: QuestTalkFixture, hook: WitchsPotionRatTail, npc: String): Int {
++        killTile = killTile.translateX(1)
++        hook.onKill(NpcDeathKillContext(f.player, Npc(npc, killTile), lootTrackerEventId = 0))
++        val tail = "obj.rats_tail".asRSCM(RSCMType.OBJ)
++        return f.objRepo.findAll(killTile).count { it.type == tail && it.isPrivate }
++    }
++
++    private fun drink(f: QuestTalkFixture) {
++        val type = checkNotNull(ServerCacheManager.getObject("loc.hettycauldron".asRSCM(RSCMType.LOC)))
++        val loc = BoundLocInfo(LocInfo(0, CoordGrid(2967, 3205, 0), LocEntity(type.id, 10, 0)), type)
++        f.interact { assertTrue(f.events.publish(it, LocEvents.Op1(loc, loc, type))) }
++    }
++
++    /** The text of every message box shown in the last interaction (its unwrapped chat echo). */
++    private fun mesboxOpens(f: QuestTalkFixture): List<String> =
++        f.output().lines().filter { it.startsWith("MessageGame(type=115,") }
++
++    private fun mesboxes(f: QuestTalkFixture, text: String): Int =
++        mesboxOpens(f).count { it.contains(text) }
 +
 +    companion object {
 +        @JvmStatic @BeforeAll fun cache() = QuestTalkFixture.setUpCache()

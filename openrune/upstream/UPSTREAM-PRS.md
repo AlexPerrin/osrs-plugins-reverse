@@ -1,174 +1,111 @@
-# Upstream content PRs (OpenRune/OpenRune-Server#353)
+# Upstream content PRs (OpenRune/OpenRune-Server#353): branch record
 
-Prepared 2026-10-18 after the maintainer's answers in #353: all of it, one PR per row, ids renumbered against
-upstream `main`, wiki data is fine. Treasure Trails is **on hold** (the maintainer is writing clue scrolls), so
-it has no branch here. Pirate's Treasure (68) is not prepared either (not in the list).
+State at the wrap-up of 2026-10-18 (fresh start ordered by the user). This file is the record of every `fin/*` and
+`content/*` branch in the local clone `re/upstream-pr/or` (git-ignored). The `fin/*` refs are the current work;
+`content/<x>` is the name a branch gets on the fork once it is green and has passed QA. Upstream main is
+`c2492318d` (fetched at the wrap-up). Nothing here was pushed by the PR-prep agent; the orchestrator pushes.
 
-Branches live in the local clone `re/upstream-pr/or` (git-ignored). Bases: the first ten rows (cannon to Vampyre
-Slayer) are on upstream `main` `1be5dfb5f` (the quest PRs must share #366's commit `f69c8ed4c`); the standalone
-branches not yet pushed when main moved (farming to Grand Exchange) were rebased onto `c2492318d` (after #344-#346,
-#360, #363-#365 merged; no gamevals changed, so no id moved). Every branch merges cleanly with `c2492318d`.
-The `NN-*.patch` files here are the source of truth: each content patch is `git format-patch` of its branch commit
-(against that branch's base). Commits keep the patch authorship. The pre-renumbering branch tips are kept in the clone
-as `refs/backup/pre-renumber/content/*`. The orchestrator pushes and opens the PRs; the agent that prepared this did not.
+Maintainer's answers in #353: all of it, one PR per row, ids renumbered against main, wiki data is fine; they
+write clue scrolls themselves, so Treasure Trails is on hold. The user then asked for OSRS-accurate mechanics
+(audits in `accuracy/<slug>.md`), independent PRs on shared infrastructure, all opened at once after QA
+(`QA.md`).
 
-PR texts: `pr-texts/<slug>.title`, `pr-texts/<slug>.body` (fork PR, the full text) and `pr-texts/<slug>.upstream.body`
-(the same plus a `FORK_PR_URL` line to fill in). Slug = branch name without `content/`.
+## Gate
 
-## Order and status
+"Gate" = `scratchpad/test.sh <ref>`: a fresh `git clone --shared` of the branch, the clean `freshCache` of main
+restored, then `clean`, `:or-cache:buildCache :or-cache:mergePluginGamevals`, `spotlessCheck`, `assemble`, `test`,
+`integration` as separate Gradle runs, then `run` until "Server ready in". Docker `eclipse-temurin:21`,
+`--cpus=4 --memory=4g`, `--max-workers=2`, `-Xmx2g`, `--no-build-cache --no-configuration-cache`,
+`-Pkotlin.compiler.execution.strategy=in-process`, through `tools/buildq.sh`, one of two Gradle home volumes
+(`upstream-pr-gradle-prs`, `-prs2`) per container. Why so strict: upstream's `gradle.properties` enables the build
+and configuration caches, and branch switching in a shared tree gave FROM-CACHE test classes of other branches; two
+containers on one Gradle home fail with "Timeout waiting to lock journal cache"; Gradle + the 2 GB Kotlin daemon +
+a test JVM get OOM-killed (137) in 4 GB.
 
-Posting order is the table order. Tests per branch, each in its own `git worktree` with its own Gradle home volume and
-`clean`, `--no-build-cache --no-configuration-cache` (see the note below): Docker `eclipse-temurin:21`, upstream's `./gradlew`,
-`--cpus=4 --memory=4g`, `--max-workers=2`, `-Xmx2g` (cache tasks `-Xmx2600m`), one container at a time; a clean
-`:or-cache:freshCache :or-cache:mergePluginGamevals` of main restored before each branch, then
-`:or-cache:buildCache :or-cache:mergePluginGamevals`, `spotlessCheck`, `assemble`, `test`, `integration` as
-separate runs, then `run` until "Server ready in". Nothing was checked in game from these branches.
+**No branch below has a complete gate on its final commit.** Every failure seen on the final commits was
+infrastructure (OOM 137 in modules the branch doesn't touch, the journal-lock clash, killed at wrap-up); the
+helpers' module-level runs in their own clones passed. Next step for each: run the full gate once, then QA.
 
-Why no caches: upstream's `gradle.properties` enables the build cache and the configuration cache. Switching branches
-in one shared working tree made `compileTestKotlin` come back FROM-CACHE with another branch's classes (tests of
-quests not on the branch ran, and upstream tests failed with `NoSuchMethodError` on the old `NpcInteractions` /
-`LocInteractions` constructors). The first seven PRs were re-verified this way after it was found.
+## Branches
 
-| # | Branch | Patches | Commits (oldest first) | Tests | Fork PR | Upstream PR |
-|---|---|---|---|---|---|---|
-| 1 | `content/cannon` | 13 | `7b62ce683` | pending (no-cache run) | https://github.com/AlexPerrin/OpenRune-Server/pull/9 | https://github.com/OpenRune/OpenRune-Server/pull/354 |
-| 2 | `content/genie` | 16 | `1d9b6fa49` | pending (no-cache run) | https://github.com/AlexPerrin/OpenRune-Server/pull/10 | https://github.com/OpenRune/OpenRune-Server/pull/355 |
-| 3 | `content/rune-pouch` | 29 | `af57c4ad8` | pending (no-cache run) | https://github.com/AlexPerrin/OpenRune-Server/pull/11 | https://github.com/OpenRune/OpenRune-Server/pull/356 |
-| 4 | `content/plank-sack` | 30 | `081f7af6c` | pending (no-cache run) | https://github.com/AlexPerrin/OpenRune-Server/pull/12 | https://github.com/OpenRune/OpenRune-Server/pull/357 |
-| 5 | `content/quests-sheep-romeo` | 12 | `f69c8ed4c` | pending (no-cache run) | https://github.com/AlexPerrin/OpenRune-Server/pull/13 | https://github.com/OpenRune/OpenRune-Server/pull/366 |
-| 6 | `content/witchs-potion` | 12, 65 | `f69c8ed4c` `18afab0a7` | pending (no-cache run) | https://github.com/AlexPerrin/OpenRune-Server/pull/15 | https://github.com/OpenRune/OpenRune-Server/pull/368 |
-| 7 | `content/goblin-diplomacy` | 12, 66 | `f69c8ed4c` `5398c6087` | pending (no-cache run) | https://github.com/AlexPerrin/OpenRune-Server/pull/14 | https://github.com/OpenRune/OpenRune-Server/pull/367 |
-| 8 | `content/op-overrides` | 20a | `3200f1758` | all pass; boot ready 7.742870071s | _(URL)_ | _(URL)_ |
-| 9 | `content/doric` | 12, 20a, 64 | `f69c8ed4c` `1bc35aa3d` `e71437e69` | pending (no-cache run) | _(URL)_ | _(URL)_ |
-| 10 | `content/vampyre-slayer` | 12, 67 | `f69c8ed4c` `b3f1f321d` | pending (no-cache run) | _(URL)_ | _(URL)_ |
-| 11 | `content/farming` | 19 | `b5f8feebe` | pending (no-cache run) | _(URL)_ | _(URL)_ |
-| 12 | `content/hunter` | 15, 20, 35, 39, 40, 41, 42 | `9b9276007` `6d8ff309e` `6a258ebe7` `e84d12543` `b89eda818` `087b60931` `b51135e3d` | pending (no-cache run) | _(URL)_ | _(URL)_ |
-| 13 | `content/fairy-rings` | 26 | `ad64f7816` | pending (no-cache run) | _(URL)_ | _(URL)_ |
-| 14 | `content/jewellery` | 44, 45 | `96b6393e5` `6ece8ea13` | pending (no-cache run) | _(URL)_ | _(URL)_ |
-| 15 | `content/diaries` | 47, 49, 53 | `9ba3600fe` `033772a95` `2feb89602` | pending (no-cache run) | _(URL)_ | _(URL)_ |
-| 16 | `content/grand-exchange` | 48, 50, 51, 52 | `c96e927ff` `32a33c527` `d748554aa` `437d07c98` | pending (no-cache run) | _(URL)_ | _(URL)_ |
+| Push as | Ref | Base | Commits (oldest first) | Patches | Gate on final commit | Accuracy fixes | Left |
+|---|---|---|---|---|---|---|---|
+| `content/quest-test-fixture` | `fin/quest-test-fixture` | c2492318d | `35900b277` | 12-quest-test-fixture | clean, cache, spotless, assemble, test pass; integration FAIL (OOM 137 in `:api:stats-plugin`, not touched); boot pass 8.2 s | n/a (test code) | integration re-run; QA; new PR (text not written) |
+| `content/op-overrides` | `fin/op-overrides` | c2492318d | `46bc3ab31` | 20a | not run on this commit (runs hit the lock clash / cache FAIL); the same diff on 1be5dfb5f passed all steps (clean tree, 7.7 s boot) | y (Ap-path caveat in the message) | gate; QA; PR text: add the caveat |
+| `content/quests-sheep-romeo` (keeps #366) | `fin/sheep-shearer` | c2492318d | `35900b277` `9c5213810` | 12a | not run on 9c5213810 (the earlier 36b9858e8: clean..assemble pass, test OOM 137); clone: SheepShearer 9/9 | y (D1-D5, coin-overflow refund) | gate; QA; retitle #366 and new body; force-push needs the user's OK |
+| `content/romeo-juliet` | `fin/romeo-juliet` | c2492318d | `35900b277` `67dbb95e7` | 12b | not run; clone: R&J 14/14, ApothecaryPotions 6/6 | y (D6-D14, potions interface 556, cadava) | gate; QA; new PR; cutscene staging caveated |
+| `content/witchs-potion` (#368) | `fin/witchs-potion` | c2492318d | `35900b277` `fddf71474` | 65 | clean, cache, spotless, assemble pass; test FAIL (journal lock); clone: WitchsPotion 9/9 | y (rat's tail kill hook in every mode for all wiki rats, mesboxes) | gate (boot checks the new QuestModule binding); QA; force-push #368 with the user's OK |
+| `content/goblin-diplomacy` (#367) | `fin/goblin-diplomacy` | c2492318d | `35900b277` `c23023014` | 66 | clean, cache, spotless, assemble, test pass; integration, boot not run | y (D1-D4, all wiki dye colours) | integration + boot; QA; force-push #367 with the user's OK |
+| `content/doric` | `fin/doric` | c2492318d | `35900b277` `8d05fb9de` (op-overrides, same patch-id as 46bc3ab31) `01539b85a` | 64 | not run (killed twice); clone: Doric 13/13 | y (D1-D3, whetstone, coin-overflow refund) | gate; QA; new PR (merge after op-overrides and the fixture) |
+| `content/vampyre-slayer` | `fin/vampyre-slayer` | c2492318d | `35900b277` `db97ed310` | 67 | clean, cache, spotless, assemble, test pass (first run); integration, boot not run; clone: quest tests 190 pass (VS 12) | y (garlic per Mod Ash, +1 from a504b83, regenRate 5, warning, wording, return to coffin) | integration + boot; QA; in-client check of the fight |
+| `content/farming` | `fin/farming` | c2492318d | `1788d0561` | 19 | clean, cache, spotless, assemble, test, boot (8.2 s) pass; integration FAIL (OOM 137 in `:api:stats-plugin`); clone: farming integration 11/11 | y (growth offset varp 64053, Inspect line, ripe countdown, wrong-patch message, caveats) | integration re-run; QA |
+| `content/fairy-rings` | `fin/fairy-rings` | c2492318d | `140f9d393` | 26 | clean, cache, spotless pass; rest not run; clone: fairy-rings integration 7/7 | y (Lunar staff, Fairytale I/II gate via `QuestRequirements` like Martin in Draynor, elite L&D diary no-staff, caveats) | gate; QA |
+| `content/jewellery` | `fin/jewellery` | c2492318d | `4def51e83` `eb28c879b` | 44, 45 | clean, cache, spotless, assemble, test pass; integration, boot not run; clone: jewellery integration 5/5 | y (Corp 2964,4382,2 per Shortest Path, Farming Guild inside at 45 Farming, charge-line prefixes) | integration + boot; QA |
+| `content/diaries` | `fin/diaries` | c2492318d | `3f9410900` `a5643b737` `c42291076` | 47, 49, 53 | clean, cache, spotless, assemble pass; test, integration, boot not run; clone: diary integration 10/10, varrock test 22/22 | y (D1-D6 from the TSPS captures: text, layout, 331 px wrap, open/close scripts, task message, 3-tick tier box, kitten paths) | gate; QA; PR text update (no longer "wording unknown") |
+| `content/grand-exchange` | `fin/grand-exchange` | c2492318d | `41bcba9a4` `e17641646` `b472c4de3` `a9a8d1ade` | 48, 50, 51, 52 | clean, cache, spotless, assemble, boot (8.0 s) pass; test + integration FAIL (OOM 137 in `:content:quest:test`, `:api:stats-plugin`); clone: GE integration 13/13 | y (bank shortfall + buy-max with bank coins, live limit windows kept, offline fills via varp 64054) | test + integration re-run; QA; in game it still needs #352 and the RSProt bump |
+| `content/hunter-module` | `fin/hunter-module` | c2492318d | `28dbbf734` | 15a | not run | n/a (skeleton) | gate; QA; PR text (base for the hunter PRs, no content) |
+| `content/hunter-implings` | `fin/hunter-implings` | c2492318d | `28dbbf734` `d302ecc3e` | 15 | clean pass, cache FAIL (lock clash); rest not run | y (crystal curve 8/141 + 28/161, MM2 gate, no clue while one of the tier is held) | gate; QA |
+| `content/hunter-bird-houses` | `fin/hunter-bird-houses` | c2492318d | `28dbbf734` `4843ba93d` | 20 | not run | y (5-seed rule, meat to the ground, nest chance, early Empty, Reset rebuilds) | gate; QA |
+| `content/hunter-traps` | `fin/hunter-traps` | c2492318d | `28dbbf734` `18e5ae439` | 35 | not run | y (per-creature curves, 7-tick respawn, stack-aware Check, jerboa moved in) | gate; QA |
+| `content/hunter-herbiboar` | `fin/hunter-herbiboar` | c2492318d | `28dbbf734` `ed2c91db7` | 39 | not run | y (none needed beyond the split) | gate; QA |
+| `content/hunter-butterflies` | `fin/hunter-butterflies` | c2492318d | `28dbbf734` `790b9f046` | 41 | not run | y (sunlight moth: no Sailing restore, jarless +5% run) | gate; QA |
+| `content/hunter-rumours` | `fin/hunter-rumours` | c2492318d | traps `18e5ae439` + octopus merge `a629d0f93` (Herbiboar, butterflies) + `0edc4a533` | 40 (rumours + guild + butterfly rumours; 42 folded in) | not run | y (rumour quest gates, dialogue fixes, XP conflicts caveated) | gate; QA. The linear fixed tree (`re/upstream-pr/dev-hunter`, branch `work`) passed hunter integration 56/56 |
+| (retired) | `fin/hunter` | c2492318d | 7 commits, tip `b51135e3d` | - | - | n (pre-audit) | superseded by the 7 hunter branches; integration may use it until those are green |
+| (retired) | `fin/quests-sheep-romeo` = `content/quests-sheep-romeo` | 1be5dfb5f | `f69c8ed4c` | - | old cached run green | n | superseded by fixture + Sheep + R&J; delete after #366's head moves to the Sheep commit |
+| accuracy agent | `content/cannon` = `fin/cannon` | 1be5dfb5f | `7b62ce683` | 13 | green (no-cache re-verify) | see `acc/cannon` below | owned by the accuracy agent |
+| accuracy agent | `content/genie` = `fin/genie` | 1be5dfb5f | `1d9b6fa49` | 16 | green (cached run only) | see `acc/genie` | accuracy agent |
+| accuracy agent | `content/rune-pouch` = `fin/rune-pouch` | 1be5dfb5f | `af57c4ad8` | 29 | green (no-cache re-verify) | see `acc/rune-pouch` | accuracy agent |
+| accuracy agent | `content/plank-sack` = `fin/plank-sack` | 1be5dfb5f | `081f7af6c` | 30 | green (no-cache re-verify) | see `acc/plank-sack` | accuracy agent |
+| (old, pre-renumber) | `content/doric`, `content/vampyre-slayer`, `content/farming`, `content/fairy-rings`, `content/jewellery`, `content/diaries`, `content/grand-exchange`, `content/hunter`, `content/goblin-diplomacy` `5398c6087`, `content/witchs-potion` `18afab0a7` | 1be5dfb5f | old commits (also on the fork, pushed by the orchestrator) | - | - | n | replace with the `fin/*` above (`--force-with-lease`) once green; goblin/witch are open as #367/#368 |
+| on hold | `content/treasure-trails` | 1be5dfb5f | `544a89fd1` | 21-24, 28, 32-34 | old run green | n | not renumbered (its ids collide with the new allocation); keep out of integration |
 
-Stacking: the four quest branches after Sheep Shearer / Romeo & Juliet carry its commit (same hash) for
-`QuestTalkFixture`; Doric's Quest also carries the op-overrides change as its own commit on top of that one (same diff
-as `content/op-overrides`, different hash, since `content/op-overrides` itself sits on main).
-Once those are merged, the stacked PRs show only their own commit. Doric's Quest and Vampyre Slayer no longer
-carry Treasure Trails (21) or the music tab (22): `NpcOpOverrides`/`LocOpOverrides` moved out of 21 into the new
-small patch `20a-npc-loc-op-overrides` (its own PR), and Vampyre Slayer turned out to need only 12 (it was stacked on
-64 and 66 for patch context only). Witch's Potion needs 12 (test fixture), as found before.
+Details per branch (what was fixed, sources, caveats) are in each commit message (CONTRIBUTING format) and in
+the regenerated patch files. Accuracy items listed as not done are caveats in those messages.
 
-Merging: the 16 branches merge with each other without conflicts in table order, reverse order and a shuffled
-order (checked), and `tools/scripts/fix_gameval_conflicts.py --check` (upstream's CI check) is clean on the merged
-tree. The quest pack `gamevals.toml` is the one file several quest PRs touch; each quest's lines sit at a
-different place in its `[gamevals.varp]` / `[gamevals.varbit]` sections (at least three unchanged lines apart), so
-they merge in any order.
+## PR texts
 
-## Commands (per row, in this order)
+`pr-texts/<slug>.title` / `.body` / `.upstream.body` were written for the pre-audit commits. They are **stale**
+for every branch above except the four owned by the accuracy agent: the bodies need the new Change / Tests /
+Data sources / Caveats from the commit messages, the gate results, the new stacking (`QuestTalkFixture` PR,
+op-overrides PR, hunter module PR) and new texts for `quest-test-fixture`, `romeo-juliet`, `hunter-module`,
+`hunter-implings`, `hunter-bird-houses`, `hunter-traps`, `hunter-herbiboar`, `hunter-butterflies` and
+`hunter-rumours`. The helpers' PR-text bullets are summarised in the commit messages.
+
+## Merge order constraints
+
+All 24 current branches (the 20 above plus the four accuracy-agent `content/*`) merge with each other over
+`c2492318d` without conflicts in forward, reverse and a shuffled order (checked 2026-10-18), and
+`tools/scripts/fix_gameval_conflicts.py --check` is clean on the merged tree. Real dependencies:
+- every quest PR (Sheep Shearer, R&J, Witch's Potion, Goblin Diplomacy, Doric, Vampyre Slayer) needs
+  `quest-test-fixture` (tests only);
+- Doric's Quest needs `op-overrides` (code);
+- every hunter PR needs `hunter-module`; `hunter-rumours` needs `hunter-traps`, `hunter-herbiboar` and
+  `hunter-butterflies` (it contains their commits through the octopus merge);
+- everything else is independent.
+The quest pack and hunter `gamevals.toml` lines of each PR sit at their own anchors, so these files don't
+conflict in any order.
+
+## Commands (per row, in this order; the orchestrator runs them after QA PASS)
 
 ```
-# cannon
-git -C re/upstream-pr/or push --force-with-lease fork content/cannon
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/cannon --title "$(cat openrune/upstream/pr-texts/cannon.title)" --body-file openrune/upstream/pr-texts/cannon.body
-#   then put the fork PR URL into pr-texts/cannon.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/cannon --title "$(cat openrune/upstream/pr-texts/cannon.title)" --body-file openrune/upstream/pr-texts/cannon.upstream.body
-
-# genie
-git -C re/upstream-pr/or push --force-with-lease fork content/genie
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/genie --title "$(cat openrune/upstream/pr-texts/genie.title)" --body-file openrune/upstream/pr-texts/genie.body
-#   then put the fork PR URL into pr-texts/genie.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/genie --title "$(cat openrune/upstream/pr-texts/genie.title)" --body-file openrune/upstream/pr-texts/genie.upstream.body
-
-# rune-pouch
-git -C re/upstream-pr/or push --force-with-lease fork content/rune-pouch
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/rune-pouch --title "$(cat openrune/upstream/pr-texts/rune-pouch.title)" --body-file openrune/upstream/pr-texts/rune-pouch.body
-#   then put the fork PR URL into pr-texts/rune-pouch.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/rune-pouch --title "$(cat openrune/upstream/pr-texts/rune-pouch.title)" --body-file openrune/upstream/pr-texts/rune-pouch.upstream.body
-
-# plank-sack
-git -C re/upstream-pr/or push --force-with-lease fork content/plank-sack
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/plank-sack --title "$(cat openrune/upstream/pr-texts/plank-sack.title)" --body-file openrune/upstream/pr-texts/plank-sack.body
-#   then put the fork PR URL into pr-texts/plank-sack.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/plank-sack --title "$(cat openrune/upstream/pr-texts/plank-sack.title)" --body-file openrune/upstream/pr-texts/plank-sack.upstream.body
-
-# quests-sheep-romeo
-git -C re/upstream-pr/or push --force-with-lease fork content/quests-sheep-romeo
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/quests-sheep-romeo --title "$(cat openrune/upstream/pr-texts/quests-sheep-romeo.title)" --body-file openrune/upstream/pr-texts/quests-sheep-romeo.body
-#   then put the fork PR URL into pr-texts/quests-sheep-romeo.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/quests-sheep-romeo --title "$(cat openrune/upstream/pr-texts/quests-sheep-romeo.title)" --body-file openrune/upstream/pr-texts/quests-sheep-romeo.upstream.body
-
-# witchs-potion
-git -C re/upstream-pr/or push --force-with-lease fork content/witchs-potion
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/witchs-potion --title "$(cat openrune/upstream/pr-texts/witchs-potion.title)" --body-file openrune/upstream/pr-texts/witchs-potion.body
-#   then put the fork PR URL into pr-texts/witchs-potion.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/witchs-potion --title "$(cat openrune/upstream/pr-texts/witchs-potion.title)" --body-file openrune/upstream/pr-texts/witchs-potion.upstream.body
-
-# goblin-diplomacy
-git -C re/upstream-pr/or push --force-with-lease fork content/goblin-diplomacy
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/goblin-diplomacy --title "$(cat openrune/upstream/pr-texts/goblin-diplomacy.title)" --body-file openrune/upstream/pr-texts/goblin-diplomacy.body
-#   then put the fork PR URL into pr-texts/goblin-diplomacy.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/goblin-diplomacy --title "$(cat openrune/upstream/pr-texts/goblin-diplomacy.title)" --body-file openrune/upstream/pr-texts/goblin-diplomacy.upstream.body
-
-# op-overrides
-git -C re/upstream-pr/or push --force-with-lease fork content/op-overrides
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/op-overrides --title "$(cat openrune/upstream/pr-texts/op-overrides.title)" --body-file openrune/upstream/pr-texts/op-overrides.body
-#   then put the fork PR URL into pr-texts/op-overrides.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/op-overrides --title "$(cat openrune/upstream/pr-texts/op-overrides.title)" --body-file openrune/upstream/pr-texts/op-overrides.upstream.body
-
-# doric
-git -C re/upstream-pr/or push --force-with-lease fork content/doric
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/doric --title "$(cat openrune/upstream/pr-texts/doric.title)" --body-file openrune/upstream/pr-texts/doric.body
-#   then put the fork PR URL into pr-texts/doric.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/doric --title "$(cat openrune/upstream/pr-texts/doric.title)" --body-file openrune/upstream/pr-texts/doric.upstream.body
-
-# vampyre-slayer
-git -C re/upstream-pr/or push --force-with-lease fork content/vampyre-slayer
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/vampyre-slayer --title "$(cat openrune/upstream/pr-texts/vampyre-slayer.title)" --body-file openrune/upstream/pr-texts/vampyre-slayer.body
-#   then put the fork PR URL into pr-texts/vampyre-slayer.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/vampyre-slayer --title "$(cat openrune/upstream/pr-texts/vampyre-slayer.title)" --body-file openrune/upstream/pr-texts/vampyre-slayer.upstream.body
-
-# farming
-git -C re/upstream-pr/or push --force-with-lease fork content/farming
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/farming --title "$(cat openrune/upstream/pr-texts/farming.title)" --body-file openrune/upstream/pr-texts/farming.body
-#   then put the fork PR URL into pr-texts/farming.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/farming --title "$(cat openrune/upstream/pr-texts/farming.title)" --body-file openrune/upstream/pr-texts/farming.upstream.body
-
-# hunter
-git -C re/upstream-pr/or push --force-with-lease fork content/hunter
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/hunter --title "$(cat openrune/upstream/pr-texts/hunter.title)" --body-file openrune/upstream/pr-texts/hunter.body
-#   then put the fork PR URL into pr-texts/hunter.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/hunter --title "$(cat openrune/upstream/pr-texts/hunter.title)" --body-file openrune/upstream/pr-texts/hunter.upstream.body
-
-# fairy-rings
-git -C re/upstream-pr/or push --force-with-lease fork content/fairy-rings
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/fairy-rings --title "$(cat openrune/upstream/pr-texts/fairy-rings.title)" --body-file openrune/upstream/pr-texts/fairy-rings.body
-#   then put the fork PR URL into pr-texts/fairy-rings.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/fairy-rings --title "$(cat openrune/upstream/pr-texts/fairy-rings.title)" --body-file openrune/upstream/pr-texts/fairy-rings.upstream.body
-
-# jewellery
-git -C re/upstream-pr/or push --force-with-lease fork content/jewellery
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/jewellery --title "$(cat openrune/upstream/pr-texts/jewellery.title)" --body-file openrune/upstream/pr-texts/jewellery.body
-#   then put the fork PR URL into pr-texts/jewellery.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/jewellery --title "$(cat openrune/upstream/pr-texts/jewellery.title)" --body-file openrune/upstream/pr-texts/jewellery.upstream.body
-
-# diaries
-git -C re/upstream-pr/or push --force-with-lease fork content/diaries
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/diaries --title "$(cat openrune/upstream/pr-texts/diaries.title)" --body-file openrune/upstream/pr-texts/diaries.body
-#   then put the fork PR URL into pr-texts/diaries.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/diaries --title "$(cat openrune/upstream/pr-texts/diaries.title)" --body-file openrune/upstream/pr-texts/diaries.upstream.body
-
-# grand-exchange
-git -C re/upstream-pr/or push --force-with-lease fork content/grand-exchange
-gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/grand-exchange --title "$(cat openrune/upstream/pr-texts/grand-exchange.title)" --body-file openrune/upstream/pr-texts/grand-exchange.body
-#   then put the fork PR URL into pr-texts/grand-exchange.upstream.body (FORK_PR_URL)
-gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/grand-exchange --title "$(cat openrune/upstream/pr-texts/grand-exchange.title)" --body-file openrune/upstream/pr-texts/grand-exchange.upstream.body
+git -C re/upstream-pr/or branch -f content/<x> fin/<x>
+git -C re/upstream-pr/or push --force-with-lease fork content/<x>
+gh pr create -R AlexPerrin/OpenRune-Server --base main --head content/<x> --title "$(cat openrune/upstream/pr-texts/<x>.title)" --body-file openrune/upstream/pr-texts/<x>.body
+#   fill FORK_PR_URL in pr-texts/<x>.upstream.body
+gh pr create -R OpenRune/OpenRune-Server --base main --head AlexPerrin:content/<x> --title "$(cat openrune/upstream/pr-texts/<x>.title)" --body-file openrune/upstream/pr-texts/<x>.upstream.body
 ```
+Sheep Shearer goes to the existing `content/quests-sheep-romeo` name (keeps #366); Witch's Potion and Goblin
+Diplomacy update #368/#367 (pushes to open upstream PRs need the user's confirmation).
+
+Open PRs so far: cannon fork #9 / upstream #354 (draft), genie #10 / #355 (draft), rune pouch #11 / #356,
+plank sack #12 / #357, sheep/romeo #13 / #366 (draft), goblin #14 / #367, witch #15 / #368 (draft).
 
 ## Id allocation
 
 Rule: for each kind, the next free ids directly after main's highest id below our old range (so they continue
-main's own blocks), skipping anything main uses, allocated row by row in the order above; within a row the old
-relative order is kept. All ids are above `.data/gamevals-binary/max-ids.toml` and at most 65535 (upstream's
-`fix_gameval_conflicts.py` range). Ids are matched by gameval name, so code and data that use names are
-unchanged; no code used the numbers.
+main's own blocks), skipping anything main uses, allocated row by row; within a row the old relative order is
+kept. All ids are above `.data/gamevals-binary/max-ids.toml` and at most 65535 (upstream's
+`fix_gameval_conflicts.py` range). Ids are matched by gameval name; no code uses the numbers.
 
 Main's neighbours: timers ... 400-403, 420, 430; varps 63700-63705, 63711 (quest pack), next used 64060;
 varbits 63700-63707, 63711-63714, next used 64060; dbtables 55520-55537, 56000, next used 63510; dbrows
@@ -201,14 +138,18 @@ varbits 63700-63707, 63711-63714, next used 64060; dbtables 55520-55537, 56000, 
 | grand-exchange | enum | 64441-64442 | 65380-65381 | 2 |
 | grand-exchange | timer | 437 | 480 | 1 |
 | grand-exchange | varp | 63796-64052 | 63000-64032 (with gaps) | 257 |
+| farming | varp | 64053 (`farming_growth_offset`, new in the audit fix) | - | 1 |
+| grand-exchange | varp | 64054 (`ge_logout_minute`, new in the audit fix) | - | 1 |
+| pirates-treasure (not prepared) | varp | 64083 (`pirates_treasure_state`) | 63747 | 1 |
 
-Rows with no server-only ids: rune pouch, plank sack, goblin diplomacy, op-overrides (client varbits or none).
-The full name-by-name table is `id-allocation.json` next to this file.
+The old rows "quests-sheep-romeo" now belong to Sheep Shearer (varp 63712, varbits 63715-63716) and Romeo & Juliet
+(varbit 63717); "hunter" is spread over the hunter branches with the same values. Rows with no server-only ids:
+rune pouch, plank sack, Goblin Diplomacy, op-overrides, the fixture. Reserved for the audit fixes but unused:
+varbits 63722-63727, varps 64055-64059, 64065-64082, 64084-64085, dbrows 60855-60969, dbtables
+56017-56018, timers 438-439. Name-by-name table: `id-allocation.json`.
 
-Next free after this allocation: timer 438, varp 64053 (to 64059), varbit 63722, dbtable 56017, dbrow 60855, enum 64443.
-
-Our own server tree (`../openrune.patch`, the live server) keeps the old ids, because saved player data uses them;
-see the README.
+Our own server tree (`../openrune.patch`, the live server) keeps the old ids, because saved player data uses them
+(see the README); with the integration-branch migration the live server moves to these branches and their ids.
 
 ## Accuracy fixes (OSRS-accuracy agent, 2026-10-18)
 

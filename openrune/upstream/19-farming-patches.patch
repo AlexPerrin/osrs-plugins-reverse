@@ -1,30 +1,80 @@
-From b5f8feebe9781cac07115665f6ab43e87a14ce20 Mon Sep 17 00:00:00 2001
+From 1788d0561e255580814a5c7d3897714958fd3aad Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Fri, 16 Oct 2026 22:35:21 -0400
 Subject: [PATCH] feat: allotment, flower and herb patches at six farms
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-Catherby, Falador, Ardougne, Morytania (Port Phasmatys), Hosidius and Civitas
-illa Fortis. Rake, plant with a seed dibber, growth on the farming clock
-(allotments every 10 minutes, flowers 5, herbs 20, also while logged out) and
-harvest with the OSRS Wiki's harvest lives, chance-to-save constants and XP.
-Each patch's state is the farming_transmit value the patch multilocs show (and
-RuneLite's Time Tracking reads), written to farming_transmit_a-d while the
-player is in that farm's area. New module content/skills/farming with the
-server-only dbtable farming_crops (56001, rows 60124-60151), server varps
-63714-63761, timer farming_transmit (435) and ::growpatches. Integration tests
-in FarmingScriptTest. No disease, compost, watering, payments, weed regrowth or
-tool leprechaun.
+Problem
+OpenRune has no Farming: the allotment, flower and herb patches at the six
+main farms cannot be raked, planted or harvested.
+
+Change
+- Catherby, Falador, Ardougne, Morytania (Port Phasmatys), Hosidius and
+  Civitas illa Fortis: rake, plant with a seed dibber, harvest with a spade
+  (flowers by hand), with the OSRS Wiki's levels, XP, harvest lives,
+  chance-to-save constants and limpwurt/woad yields for 8 allotment crops,
+  6 flowers and 14 herbs.
+- Growth on the farming clock (allotments every 10 minutes, flowers 5, herbs
+  20 of UTC time), also while logged out, shifted earlier by a per-player
+  offset of 0-31 minutes that is rolled once and kept across logins.
+- Each patch's state is the farming_transmit value the patch multilocs show
+  (and RuneLite's Time Tracking reads), written to farming_transmit_a-e while
+  the player is in that farm's area. Ripe allotments and herbs show their
+  highest ripe value and count down by one as each harvest life is used.
+- Inspect: "This is an allotment. The soil has not been treated. <state>".
+- Wrong patch: "You can only plant potato seeds in an allotment."
+- New module content/skills/farming with the server-only dbtable
+  farming_crops (56001, rows 60124-60151), server varps 63714-63761 (patch
+  state and last growth minute) and 64053 (growth offset), timer
+  farming_transmit (435) and ::growpatches.
+
+Tests
+FarmingScriptTest (11 integration tests): chance to save, growth up to the
+highest ripe value, the ripe value counting down with harvest lives, every
+patch loc's multiloc and ripe ops, rake/plant/grow/harvest of an allotment
+(ripe value and transmit varbit follow the remaining lives), a full
+inventory, planting checks and the wrong-patch message, area transmit, the
+growth offset (rolled once in 0-31, kept, ticks crops earlier) and the
+Inspect text.
+
+Data sources
+- OSRS Wiki: Farming (Mechanics: Growth timing, incl. Mod Ash 30 Mar 2019 and
+  16 Nov 2022 on the per-player offset; Variable crop yield), Allotment
+  patch(/Seeds), Flower patch(/Seeds), Herb patch(/Seeds), each seed's yield
+  calculator, Limpwurt plant, Weeds, Rake, Seed dibber, Grape seed (Changes:
+  "You can only plant grape seeds in a vine patch.").
+- RuneLite Time Tracking PatchImplementation / FarmingWorld (transmit values,
+  ripe ranges, farm areas).
+- Did I Compost (RuneLite hub plugin): Inspect "The soil has not been
+  treated." and "The allotment/herb patch is now empty." formats.
+
+Caveats
+- Not implemented: disease, compost, watering, protection payments, weed
+  regrowth, tool leprechaun, digging up a growing crop, the Guide op,
+  scarecrows and flower protection of allotments.
+- No yield boosts: magic secateurs, Farming/Max cape, Kandarin and Kourend &
+  Kebos diary herb boosts, attas plant, Falador diary XP bonus.
+- No Huasca or goutweed, no other farms (Farming Guild, Harmony, Trollheim,
+  Weiss, Kastori), no amulet of bounty/nature, herb sack or Tangleroot rolls.
+- Unsourced (best guess): the planting, tool and inventory-space messages,
+  the Inspect state sentences, "The flower patch is now empty.", action
+  timings and animations, the 5-tick transmit refresh, and the countdown
+  direction of the ripe values (highest when fully grown).
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
  content/skills/farming/build.gradle.kts       |  14 +
  content/skills/farming/pack/build.gradle.kts  |   3 +
- .../skills/farming/pack/FarmingCropsTable.kt  | 146 ++++++++
+ .../skills/farming/pack/FarmingCropsTable.kt  | 147 +++++++
  .../skills/farming/pack/FarmingPluginPack.kt  |   8 +
- .../pack/src/main/resources/gamevals.toml     |  49 +++
- .../resources/pack/configs/farming_vars.toml  | 287 ++++++++++++++++
- .../skills/farming/FarmingScriptTest.kt       | 218 ++++++++++++
- .../content/skills/farming/FarmingScript.kt   | 324 ++++++++++++++++++
+ .../pack/src/main/resources/gamevals.toml     |  50 +++
+ .../resources/pack/configs/farming_vars.toml  | 293 ++++++++++++++
+ .../skills/farming/FarmingScriptTest.kt       | 298 ++++++++++++++
+ .../content/skills/farming/FarmingScript.kt   | 363 ++++++++++++++++++
  .../farming/src/main/resources/gamevals.toml  |  35 ++
- 9 files changed, 1084 insertions(+)
+ 9 files changed, 1211 insertions(+)
  create mode 100644 content/skills/farming/build.gradle.kts
  create mode 100644 content/skills/farming/pack/build.gradle.kts
  create mode 100644 content/skills/farming/pack/src/main/kotlin/org/rsmod/content/skills/farming/pack/FarmingCropsTable.kt
@@ -66,10 +116,10 @@ index 000000000..92f804a7e
 +}
 diff --git a/content/skills/farming/pack/src/main/kotlin/org/rsmod/content/skills/farming/pack/FarmingCropsTable.kt b/content/skills/farming/pack/src/main/kotlin/org/rsmod/content/skills/farming/pack/FarmingCropsTable.kt
 new file mode 100644
-index 000000000..cf0d1f951
+index 000000000..3844e78e8
 --- /dev/null
 +++ b/content/skills/farming/pack/src/main/kotlin/org/rsmod/content/skills/farming/pack/FarmingCropsTable.kt
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,147 @@
 +package org.rsmod.content.skills.farming.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -80,8 +130,9 @@ index 000000000..cf0d1f951
 + * and each seed's yield calculator for the chance-to-save constants).
 + *
 + * [PLANT_VALUE] is the patch's `farming_transmit` value right after planting; each growth cycle adds
-+ * one until [STAGES] cycles have passed, and the crop then shows [HARVEST_VALUE]. These are the
-+ * values RuneLite's Time Tracking decodes (PatchImplementation). XP is in tenths. [CTS_LOW] and
++ * one until [STAGES] cycles have passed. A ripe flower shows [HARVEST_VALUE]; a ripe allotment or
++ * herb shows [HARVEST_VALUE] + 2 and counts down to [HARVEST_VALUE] as its harvest lives are used.
++ * These are the values RuneLite's Time Tracking decodes (PatchImplementation). XP is in tenths. [CTS_LOW] and
 + * [CTS_HIGH] are the wiki's chance-to-save constants (out of 256, at level 1 and 99) for crops that
 + * use harvest lives; flowers give [FIXED_YIELD] items once, limpwurt with a level bonus.
 + */
@@ -232,10 +283,10 @@ index 000000000..d72a86acb
 +}
 diff --git a/content/skills/farming/pack/src/main/resources/gamevals.toml b/content/skills/farming/pack/src/main/resources/gamevals.toml
 new file mode 100644
-index 000000000..3d894201c
+index 000000000..a7f31bd2d
 --- /dev/null
 +++ b/content/skills/farming/pack/src/main/resources/gamevals.toml
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,50 @@
 +[gamevals.varp]
 +farming_catherby_a_state = 63714
 +farming_catherby_a_time = 63715
@@ -285,12 +336,13 @@ index 000000000..3d894201c
 +farming_civitas_c_time = 63759
 +farming_civitas_d_state = 63760
 +farming_civitas_d_time = 63761
++farming_growth_offset = 64053
 diff --git a/content/skills/farming/pack/src/main/resources/pack/configs/farming_vars.toml b/content/skills/farming/pack/src/main/resources/pack/configs/farming_vars.toml
 new file mode 100644
-index 000000000..84fea1ae8
+index 000000000..63c8c42e5
 --- /dev/null
 +++ b/content/skills/farming/pack/src/main/resources/pack/configs/farming_vars.toml
-@@ -0,0 +1,287 @@
+@@ -0,0 +1,293 @@
 +[[varp]]
 +isServerOnly = true
 +id = "varp.farming_catherby_a_state"
@@ -578,12 +630,18 @@ index 000000000..84fea1ae8
 +id = "varp.farming_civitas_d_time"
 +scope = "Perm"
 +transmit = "Never"
++
++[[varp]]
++isServerOnly = true
++id = "varp.farming_growth_offset"
++scope = "Perm"
++transmit = "Never"
 diff --git a/content/skills/farming/src/integration/kotlin/org/rsmod/content/skills/farming/FarmingScriptTest.kt b/content/skills/farming/src/integration/kotlin/org/rsmod/content/skills/farming/FarmingScriptTest.kt
 new file mode 100644
-index 000000000..095205a0e
+index 000000000..2b8858dc0
 --- /dev/null
 +++ b/content/skills/farming/src/integration/kotlin/org/rsmod/content/skills/farming/FarmingScriptTest.kt
-@@ -0,0 +1,218 @@
+@@ -0,0 +1,298 @@
 +package org.rsmod.content.skills.farming
 +
 +import dev.openrune.ServerCacheManager
@@ -601,17 +659,24 @@ index 000000000..095205a0e
 +import org.junit.jupiter.api.Test
 +import org.junit.jupiter.api.parallel.Execution
 +import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
 +import org.rsmod.api.testing.GameTestState
 +import org.rsmod.api.testing.scope.GameTestScope
 +import org.rsmod.content.skills.farming.FarmingScript.Companion.AREAS
 +import org.rsmod.content.skills.farming.FarmingScript.Companion.CROPS
 +import org.rsmod.content.skills.farming.FarmingScript.Companion.DIBBER
++import org.rsmod.content.skills.farming.FarmingScript.Companion.GROWTH_OFFSET_VARP
++import org.rsmod.content.skills.farming.FarmingScript.Companion.HARVEST_LIVES
++import org.rsmod.content.skills.farming.FarmingScript.Companion.LIVES_SHIFT
 +import org.rsmod.content.skills.farming.FarmingScript.Companion.RAKE
 +import org.rsmod.content.skills.farming.FarmingScript.Companion.SPADE
++import org.rsmod.content.skills.farming.FarmingScript.Companion.VALUE_MASK
 +import org.rsmod.content.skills.farming.FarmingScript.Companion.WEEDS
 +import org.rsmod.content.skills.farming.FarmingScript.Companion.cropAt
 +import org.rsmod.content.skills.farming.FarmingScript.Companion.flowerYield
 +import org.rsmod.content.skills.farming.FarmingScript.Companion.growth
++import org.rsmod.content.skills.farming.FarmingScript.Companion.ripe
++import org.rsmod.content.skills.farming.FarmingScript.Companion.ripeValue
 +import org.rsmod.content.skills.farming.FarmingScript.Companion.saveChance
 +import org.rsmod.game.inv.InvObj
 +import org.rsmod.map.CoordGrid
@@ -635,13 +700,30 @@ index 000000000..095205a0e
 +    }
 +
 +    @Test
-+    fun `growth stops at the harvest value`() {
++    fun `growth stops at the highest ripe value`() {
 +        val potato = crop("potato")
 +        assertEquals(7, growth(potato, 6, 1))
 +        assertEquals(9, growth(potato, 6, 3))
-+        assertEquals(10, growth(potato, 6, 4))
-+        assertEquals(10, growth(potato, 8, Int.MAX_VALUE))
-+        assertEquals(138, growth(crop("snape_grass"), 69, 1))
++        assertEquals(12, growth(potato, 6, 4))
++        assertEquals(12, growth(potato, 8, Int.MAX_VALUE))
++        assertEquals(11, growth(potato, 11, 5))
++        assertEquals(140, growth(crop("snape_grass"), 69, 1))
++        assertEquals(10, growth(crop("guam"), 4, 4))
++        assertEquals(12, growth(crop("marigold"), 8, 4))
++    }
++
++    @Test
++    fun `the ripe value counts down with the harvest lives`() {
++        val potato = crop("potato")
++        assertEquals(12, ripeValue(potato, 3))
++        assertEquals(11, ripeValue(potato, 2))
++        assertEquals(10, ripeValue(potato, 1))
++        assertEquals(12, ripeValue(potato, 5))
++        assertEquals(8, ripeValue(crop("guam"), 1))
++        assertEquals(12, ripeValue(crop("marigold"), 3))
++        assertTrue((10..12).all { ripe(potato, it) })
++        assertTrue(!ripe(potato, 9) && !ripe(potato, 13))
++        assertTrue(!ripe(crop("marigold"), 13))
 +    }
 +
 +    @Test
@@ -658,9 +740,12 @@ index 000000000..095205a0e
 +            val type = checkNotNull(ServerCacheManager.getObject(patch.loc.asRSCM(RSCMType.LOC)))
 +            assertEquals(patch.transmitVarbit.asRSCM(RSCMType.VARBIT), type.multiVarBit, patch.loc)
 +            for (crop in CROPS.filter { it.patch == patch.type.id }) {
-+                val ripe = ServerCacheManager.getObject(type.multiLoc[crop.harvestValue])
-+                val op = ripe?.actions?.getOpOrNull(0)
-+                assertTrue(op == "Harvest" || op == "Pick", "${patch.loc} ${crop.seed.internalName}: $op")
++                for (value in (crop.harvestValue until crop.harvestValue + HARVEST_LIVES).filter { ripe(crop, it) }) {
++                    val ripeLoc = ServerCacheManager.getObject(type.multiLoc[value])
++                    val op = ripeLoc?.actions?.getOpOrNull(0)
++                    assertTrue(op == "Harvest" || op == "Pick", "${patch.loc} ${crop.seed.internalName} $value: $op")
++                    assertEquals(crop, cropAt(patch, value))
++                }
 +                for (value in crop.plantValue until crop.plantValue + crop.stages) {
 +                    assertEquals(crop, cropAt(patch, value))
 +                }
@@ -694,7 +779,7 @@ index 000000000..095205a0e
 +                script.clock = Clock.fixed(start.plus(Duration.ofMinutes(7)), ZoneOffset.UTC)
 +                assertEquals(7, script.value(player, patch))
 +                script.clock = Clock.fixed(start.plus(Duration.ofMinutes(37)), ZoneOffset.UTC)
-+                assertEquals(10, script.value(player, patch))
++                assertEquals(12, script.value(player, patch))
 +
 +                val xpBefore = player.statMap.getFineXP("stat.farming")
 +                var harvests = 0
@@ -702,6 +787,12 @@ index 000000000..095205a0e
 +                while (result == FarmingScript.Harvest.MORE) {
 +                    player.withProtectedAccess { result = harvestOnce(patch, crop("potato")) }
 +                    harvests++
++                    if (result == FarmingScript.Harvest.MORE) {
++                        val state = player.vars[patch.stateVarp]
++                        val lives = state shr LIVES_SHIFT
++                        assertEquals(9 + lives, state and VALUE_MASK)
++                        assertEquals(9 + lives, player.vars[patch.transmitVarbit])
++                    }
 +                }
 +                assertEquals(FarmingScript.Harvest.EMPTY, result)
 +                assertTrue(harvests >= 3)
@@ -725,14 +816,14 @@ index 000000000..095205a0e
 +                player.withProtectedAccess { plant(patch, "obj.guam_seed") }
 +                assertEquals(0, player.inv.count("obj.guam_seed"))
 +                script.clock = Clock.fixed(start.plus(Duration.ofMinutes(80)), ZoneOffset.UTC)
-+                assertEquals(8, script.value(player, patch))
++                assertEquals(10, script.value(player, patch))
 +                for (slot in 0 until player.inv.size) {
 +                    player.inv[slot] = InvObj("obj.logs".asRSCM(RSCMType.OBJ), 1)
 +                }
 +                var result = FarmingScript.Harvest.MORE
 +                player.withProtectedAccess { result = harvestOnce(patch, crop("guam")) }
 +                assertEquals(FarmingScript.Harvest.NONE, result)
-+                assertEquals(8, script.value(player, patch))
++                assertEquals(10, script.value(player, patch))
 +                assertEquals(player.inv.size, player.inv.count("obj.logs"))
 +                assertEquals(3, player.vars[patch.stateVarp] shr FarmingScript.LIVES_SHIFT)
 +            }
@@ -753,6 +844,10 @@ index 000000000..095205a0e
 +                player.withProtectedAccess { repeat(3) { rakeOnce(patch) } }
 +                player.withProtectedAccess { planted = plant(patch, "obj.marigold_seed") }
 +                assertEquals(false, planted)
++                player.inv[3] = InvObj("obj.potato_seed".asRSCM(RSCMType.OBJ), 3)
++                player.withProtectedAccess { planted = plant(patch, "obj.potato_seed") }
++                assertEquals(false, planted)
++                assertMessageSent("You can only plant potato seeds in an allotment.")
 +                player.inv[2] = InvObj(DIBBER.asRSCM(RSCMType.OBJ), 1)
 +                player.withProtectedAccess { planted = plant(patch, "obj.white_lily_seed") }
 +                assertEquals(false, planted)
@@ -794,20 +889,63 @@ index 000000000..095205a0e
 +            }
 +        }
 +
++    @Test
++    fun GameTestState.`the growth offset ticks crops earlier and is kept`() =
++        runInjectedGameTest(FarmingScript::class, null, FarmingScript::class) { script ->
++            script.clock = Clock.fixed(start, ZoneOffset.UTC)
++            prepare()
++            VarPlayerIntMapSetter.set(player, GROWTH_OFFSET_VARP, 0)
++            val rolled = script.growthOffset(player)
++            assertTrue(rolled in 0..31)
++            assertEquals(rolled + 1, player.vars[GROWTH_OFFSET_VARP])
++            assertEquals(rolled, script.growthOffset(player))
++
++            // Offset 5: the 12:10 allotment tick comes at 12:05.
++            VarPlayerIntMapSetter.set(player, GROWTH_OFFSET_VARP, 5 + 1)
++            val patch = catherby[0]
++            player.inv[0] = InvObj(DIBBER.asRSCM(RSCMType.OBJ), 1)
++            player.inv[1] = InvObj("obj.potato_seed".asRSCM(RSCMType.OBJ), 3)
++            with(script) {
++                player.withProtectedAccess { repeat(3) { rakeOnce(patch) } }
++                player.withProtectedAccess { plant(patch, "obj.potato_seed") }
++                script.clock = Clock.fixed(start.plus(Duration.ofMinutes(1)), ZoneOffset.UTC)
++                assertEquals(6, script.value(player, patch))
++                script.clock = Clock.fixed(start.plus(Duration.ofMinutes(2)), ZoneOffset.UTC)
++                assertEquals(7, script.value(player, patch))
++                script.clock = Clock.fixed(start.plus(Duration.ofMinutes(32)), ZoneOffset.UTC)
++                assertEquals(12, script.value(player, patch))
++            }
++        }
++
++    @Test
++    fun GameTestState.`inspect says the soil has not been treated`() =
++        runInjectedGameTest(FarmingScript::class, null, FarmingScript::class) { script ->
++            script.clock = Clock.fixed(start, ZoneOffset.UTC)
++            prepare()
++            with(script) {
++                player.withProtectedAccess { inspect(catherby[0]) }
++                assertMessageSent("This is an allotment. The soil has not been treated. The patch needs weeding.")
++                player.withProtectedAccess { repeat(3) { rakeOnce(catherby[3]) } }
++                player.withProtectedAccess { inspect(catherby[3]) }
++                assertMessageSent("This is a herb patch. The soil has not been treated. The patch is empty and weeded.")
++            }
++        }
++
 +    private fun GameTestScope.prepare(level: Int = 99) {
 +        allocZoneCollision(catherbyTile)
 +        player.teleport(catherbyTile)
 +        player.clearInv()
 +        player.setBaseLevel("stat.farming", level)
 +        player.setCurrentLevel("stat.farming", level)
++        VarPlayerIntMapSetter.set(player, GROWTH_OFFSET_VARP, 1)
 +    }
 +}
 diff --git a/content/skills/farming/src/main/kotlin/org/rsmod/content/skills/farming/FarmingScript.kt b/content/skills/farming/src/main/kotlin/org/rsmod/content/skills/farming/FarmingScript.kt
 new file mode 100644
-index 000000000..fd32f89c4
+index 000000000..35f2369c6
 --- /dev/null
 +++ b/content/skills/farming/src/main/kotlin/org/rsmod/content/skills/farming/FarmingScript.kt
-@@ -0,0 +1,324 @@
+@@ -0,0 +1,363 @@
 +package org.rsmod.content.skills.farming
 +
 +import jakarta.inject.Inject
@@ -815,6 +953,7 @@ index 000000000..fd32f89c4
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.random.GameRandom
 +import org.rsmod.api.repo.obj.ObjRepository
 +import org.rsmod.api.script.onCommand
 +import org.rsmod.api.script.onOpLoc1
@@ -835,14 +974,18 @@ index 000000000..fd32f89c4
 + * illa Fortis (OSRS Wiki, Farming). Each patch keeps its `farming_transmit` value (weeds 0-3, then
 + * the crop's growth values from [FarmingCropsRow]) and harvest lives in a server varp, and the
 + * minute it last grew in another. Crops grow on the farming clock (every 10/5/20 minutes of UTC time
-+ * for allotments/flowers/herbs), also while logged out. While the player is in a farming area the
++ * for allotments/flowers/herbs), also while logged out, shifted earlier by a per-player offset of
++ * 0-31 minutes that is rolled once and kept (OSRS Wiki, Farming: Growth timing). Ripe allotments and
++ * herbs count their value down by one as each harvest life is used. While the player is in a farming area the
 + * area's patches are written to `farming_transmit_a-e`, exactly what the patch multilocs and
 + * RuneLite's Time Tracking read.
 + *
-+ * Deviations: no disease, compost, watering, protection payments, weed regrowth, tool leprechaun or
-+ * digging up growing crops.
++ * Deviations: no disease, compost, watering, protection payments, weed regrowth, tool leprechaun,
++ * digging up growing crops, scarecrows, Guide op, magic secateurs, cape or diary boosts.
 + */
-+class FarmingScript @Inject constructor(private val objRepo: ObjRepository) : PluginScript() {
++class FarmingScript
++@Inject
++constructor(private val objRepo: ObjRepository, private val gameRandom: GameRandom) : PluginScript() {
 +    var clock: Clock = Clock.systemUTC()
 +
 +    override fun ScriptContext.startup() {
@@ -866,7 +1009,7 @@ index 000000000..fd32f89c4
 +        val value = value(player, patch)
 +        when {
 +            value < WEEDS_CLEAR -> rake(patch, loc)
-+            cropAt(patch, value)?.let { value == it.harvestValue } == true -> harvest(patch, loc)
++            cropAt(patch, value)?.let { ripe(it, value) } == true -> harvest(patch, loc)
 +        }
 +    }
 +
@@ -912,7 +1055,7 @@ index 000000000..fd32f89c4
 +
 +    fun ProtectedAccess.harvestOnce(patch: Patch, crop: FarmingCropsRow): Harvest {
 +        val state = player.vars[patch.stateVarp]
-+        if (state and VALUE_MASK != crop.harvestValue || inv.isFull()) return Harvest.NONE
++        if (!ripe(crop, state and VALUE_MASK) || inv.isFull()) return Harvest.NONE
 +        if (patch.type == FLOWER) {
 +            val count = flowerYield(crop, stat(FARMING)) { bound -> random.of(bound) }
 +            invAddOrDrop(objRepo, crop.produce.internalName, count)
@@ -923,7 +1066,7 @@ index 000000000..fd32f89c4
 +        val saved = random.of(256) < saveChance(crop, stat(FARMING))
 +        val lives = (state shr LIVES_SHIFT) - if (saved) 0 else 1
 +        if (lives <= 0) return empty(patch, crop, harvestXp = false)
-+        setState(player, patch, crop.harvestValue, lives)
++        setState(player, patch, ripeValue(crop, lives), lives)
 +        return Harvest.MORE
 +    }
 +
@@ -954,7 +1097,10 @@ index 000000000..fd32f89c4
 +        val seeds = if (patch.type == ALLOTMENT) ALLOTMENT_SEEDS else 1
 +        val seedName = crop.seed.name.lowercase()
 +        when {
-+            crop.patch != patch.type.id -> mes("You can't plant a $seedName in this patch.")
++            crop.patch != patch.type.id -> {
++                val type = PatchType.entries.first { it.id == crop.patch }
++                mes("You can only plant ${seedName}s in ${type.article} ${type.patchName}.")
++            }
 +            value < WEEDS_CLEAR -> mes("This patch needs weeding first.")
 +            value > WEEDS_CLEAR -> mes("You can only plant ${seedName}s in an empty patch.")
 +            DIBBER !in inv -> mes("You need a seed dibber to plant seeds.")
@@ -964,6 +1110,7 @@ index 000000000..fd32f89c4
 +            invDel(inv, seed, seeds).failure -> return false
 +            else -> {
 +                setState(player, patch, crop.plantValue, HARVEST_LIVES)
++                growthOffset(player)
 +                VarPlayerIntMapSetter.set(player, patch.timeVarp, nowMinutes())
 +                val what = if (seeds == 1) "a $seedName" else "$seeds ${seedName}s"
 +                mes("You plant $what in the ${patch.type.patchName}.")
@@ -973,17 +1120,17 @@ index 000000000..fd32f89c4
 +        return false
 +    }
 +
-+    private fun ProtectedAccess.inspect(patch: Patch) {
++    fun ProtectedAccess.inspect(patch: Patch) {
 +        val value = value(player, patch)
 +        val crop = cropAt(patch, value)
 +        val text =
 +            when {
 +                value < WEEDS_CLEAR -> "The patch needs weeding."
 +                crop == null -> "The patch is empty and weeded."
-+                value == crop.harvestValue -> "The patch is fully grown."
++                ripe(crop, value) -> "The patch is fully grown."
 +                else -> "The patch has something growing in it."
 +            }
-+        mes("This is ${patch.type.article} ${patch.type.patchName}. $text")
++        mes("This is ${patch.type.article} ${patch.type.patchName}. $SOIL_UNTREATED $text")
 +    }
 +
 +    private fun Cheat.fastForward() {
@@ -1006,10 +1153,11 @@ index 000000000..fd32f89c4
 +        val state = player.vars[patch.stateVarp]
 +        val value = state and VALUE_MASK
 +        val crop = cropAt(patch, value) ?: return
-+        if (value == crop.harvestValue) return
++        if (ripe(crop, value)) return
 +        val now = nowMinutes()
 +        val rate = patch.type.cycleMinutes
-+        val cycles = now / rate - player.vars[patch.timeVarp] / rate
++        val offset = growthOffset(player)
++        val cycles = (now + offset) / rate - (player.vars[patch.timeVarp] + offset) / rate
 +        if (cycles <= 0) return
 +        VarPlayerIntMapSetter.set(player, patch.timeVarp, now)
 +        setState(player, patch, growth(crop, value, cycles), state shr LIVES_SHIFT)
@@ -1028,6 +1176,19 @@ index 000000000..fd32f89c4
 +        if (AREAS.first { patch in it.patches }.contains(player.coords)) {
 +            VarPlayerIntMapSetter.set(player, patch.transmitVarbit, value)
 +        }
++    }
++
++    /**
++     * The player's growth offset in minutes (0-31): every growth tick comes this much earlier than the
++     * UTC boundary. Rolled on first use and kept across logins (OSRS Wiki, Farming: Growth timing,
++     * Mod Ash 16 Nov 2022). Stored plus one so that 0 means "not rolled yet".
++     */
++    fun growthOffset(player: Player): Int {
++        val stored = player.vars[GROWTH_OFFSET_VARP]
++        if (stored != 0) return stored - 1
++        val offset = gameRandom.of(GROWTH_OFFSET_MAX + 1)
++        VarPlayerIntMapSetter.set(player, GROWTH_OFFSET_VARP, offset + 1)
++        return offset
 +    }
 +
 +    private fun nowMinutes(): Int = (clock.millis() / 60_000L).toInt()
@@ -1061,6 +1222,9 @@ index 000000000..fd32f89c4
 +        const val DIG_ANIM = "seq.human_dig"
 +        const val PICK_ANIM = "seq.picking_low"
 +        const val TRANSMIT_TIMER = "timer.farming_transmit"
++        const val GROWTH_OFFSET_VARP = "varp.farming_growth_offset"
++        const val GROWTH_OFFSET_MAX = 31
++        const val SOIL_UNTREATED = "The soil has not been treated."
 +        const val TRANSMIT_INTERVAL = 5
 +        const val RAKE_DELAY = 3
 +        const val HARVEST_DELAY = 2
@@ -1111,13 +1275,26 @@ index 000000000..fd32f89c4
 +        fun cropAt(patch: Patch, value: Int): FarmingCropsRow? =
 +            CROPS.firstOrNull {
 +                it.patch == patch.type.id &&
-+                    (value == it.harvestValue || value in it.plantValue until it.plantValue + it.stages)
++                    (ripe(it, value) || value in it.plantValue until it.plantValue + it.stages)
 +            }
 +
++        /**
++         * Allotments and herbs have one ripe value per harvest life (RuneLite PatchImplementation: potato
++         * 10-12, guam 8-10); flowers are picked in one go and have one.
++         */
++        private fun ripeValues(crop: FarmingCropsRow): Int = if (crop.patch == FLOWER.id) 1 else HARVEST_LIVES
++
++        fun ripe(crop: FarmingCropsRow, value: Int): Boolean =
++            value in crop.harvestValue until crop.harvestValue + ripeValues(crop)
++
++        /** The ripe value with [lives] harvest lives left: the highest when fully grown, counting down. */
++        fun ripeValue(crop: FarmingCropsRow, lives: Int): Int =
++            crop.harvestValue + lives.coerceIn(1, ripeValues(crop)) - 1
++
 +        fun growth(crop: FarmingCropsRow, value: Int, cycles: Int): Int {
-+            if (value == crop.harvestValue) return value
++            if (ripe(crop, value)) return value
 +            val stage = value - crop.plantValue + cycles.toLong()
-+            return if (stage >= crop.stages) crop.harvestValue else stage.toInt() + crop.plantValue
++            return if (stage >= crop.stages) ripeValue(crop, HARVEST_LIVES) else stage.toInt() + crop.plantValue
 +        }
 +
 +        /** Out of 256 (OSRS Wiki, Farming: Variable crop yield). */

@@ -1,20 +1,46 @@
-From 2feb89602845b1ea769364bbab984515850e64e2 Mon Sep 17 00:00:00 2001
+From c4229107663505bc23a3b89e768a6b12fe9202da Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 16:32:43 -0400
 Subject: [PATCH] feat: 20 more Lumbridge & Draynor / Varrock achievement diary
  task hooks
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-Hooks in existing content: pickpocketing (a man or woman in Lumbridge, Martin), fishing
-(anchovies in Al Kharid, salmon in Lumbridge, trout at Barbarian Village), willow logs in
-Draynor, iron in the south-east Varrock mine, cave bug and Draynor Sewers zombie kills
+Problem. Most Lumbridge & Draynor and Varrock diary tasks could not be completed.
+
+Change. Hooks in existing content: pickpocketing (a man or woman in Lumbridge, Martin),
+fishing (anchovies in Al Kharid, salmon in Lumbridge, trout at Barbarian Village), willow logs
+in Draynor, iron in the south-east Varrock mine, cave bug and Draynor Sewers zombie kills
 (NpcDeathKillHook), a coif in the Lumbridge cow pen, a bowl spun and fired in Barbarian
 Village, Thessalia's store, the Stronghold of Security's second level and its four emotes,
-Chaeldar and Vannaka tasks, picking a kitten colour, 20 mahogany planks at once, and the Waka
-canoe (Lumbridge to Edgeville; shaped at Edgeville). Area boxes are approximate.
+Chaeldar and Vannaka tasks, 20 mahogany planks at once, the Waka canoe (Lumbridge to
+Edgeville; shaped at Edgeville), and picking a kitten's colour with a Ring of Charos(a) on every
+path that offers it (Gertrude's Kitten quick-buy, the "[Charm]" option, the quest's reward
+kitten).
+
+Tests. DiaryTasksTest (integration): the skilling, kill and Slayer hooks check the item and the
+area; a bowl spun and fired in Barbarian Village; the four Stronghold emotes and the Waka
+canoe tasks. GertrudesCatInteractionTest: picking a kitten's colour completes the task on the
+quick-buy, the "[Charm]" option and the quest reward, and a random-colour kitten does not.
+
+Data sources. OSRS Wiki: Lumbridge & Draynor Diary and Varrock Diary (task texts,
+requirements, Changes: the Draynor Sewers zombies, Lumbridge fishing spots no longer counting
+for the trout, 20 planks in one go, four distinct emotes); Gertrude (choosing the colour with a
+Ring of Charos(a) completes the task).
+
+Caveats.
+- Area boxes are approximate (the Wiki gives no bounds).
+- The Stronghold emotes count anywhere; Hans's Talk-to "how long I've been here" option does not
+  count (only the Age option), unverified.
+- Slayer master ids 3 (Vannaka) and 4 (Chaeldar) are not checked against the cache table.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
  content/areas/city/varrock/build.gradle.kts   |   1 +
- .../areas/city/varrock/npcs/Gertrude.kt       |   2 +
+ .../areas/city/varrock/npcs/Gertrude.kt       |  26 ++-
  .../varrock/npcs/shops/FineClothesShop.kt     |   3 +-
+ .../varrock/GertrudesCatInteractionTest.kt    |  51 +++++-
  .../stronghold_of_security/build.gradle.kts   |   1 +
  .../StrongholdTravel.kt                       |   6 +-
  .../achievement-diary/build.gradle.kts        |   2 +
@@ -34,7 +60,7 @@ canoe (Lumbridge to Edgeville; shaped at Edgeville). Area boxes are approximate.
  content/travel/canoe/build.gradle.kts         |   1 +
  .../travel/canoe/scripts/CanoeShaping.kt      |   2 +
  .../travel/canoe/scripts/CanoeTravelling.kt   |   2 +
- 22 files changed, 275 insertions(+), 10 deletions(-)
+ 23 files changed, 344 insertions(+), 16 deletions(-)
  create mode 100644 content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryModule.kt
 
 diff --git a/content/areas/city/varrock/build.gradle.kts b/content/areas/city/varrock/build.gradle.kts
@@ -50,7 +76,7 @@ index 2aaa78852..0fb793ade 100644
      testImplementation(projects.api.gameProcess)
      testImplementation(projects.api.invStorage)
 diff --git a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
-index efaa614cd..7c8fa3f4b 100644
+index efaa614cd..970348755 100644
 --- a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
 +++ b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/Gertrude.kt
 @@ -6,6 +6,7 @@ import org.rsmod.api.player.dialogue.Dialogue
@@ -61,14 +87,64 @@ index efaa614cd..7c8fa3f4b 100644
  import org.rsmod.content.other.pets.cats.CatCare
  import org.rsmod.content.other.pets.cats.CatColour
  import org.rsmod.content.other.pets.cats.CatStage
-@@ -165,6 +166,7 @@ constructor(private val care: CatCare, private val gertrudesCat: GertrudesCatQue
+@@ -89,12 +90,15 @@ constructor(private val care: CatCare, private val gertrudesCat: GertrudesCatQue
+             "Oh, by the way: the kitten can live in your backpack, but to make it grow you must " +
+                 "take it out and feed and stroke it often.",
+         )
+-        val colour = if (wearingCharos(player)) pickColour() ?: access.randomColour() else access.randomColour()
++        val picked = if (wearingCharos(player)) pickColour() else null
++        val colour = picked ?: access.randomColour()
+         val kitten = Cats.of(CatStage.Kitten, colour).obj
+         objbox(kitten, "Gertrude gives you a kitten.")
+         mesbox("...and some food!")
+         if (!rewardQuest(kitten)) {
+             chatNpc(neutral, "You'll need $REWARD_SLOTS free spaces in your pack. Come straight back!")
++        } else if (picked != null) {
++            DiaryHooks.kittenColourSelected(player)
+         }
+     }
+ 
+@@ -164,7 +168,7 @@ constructor(private val care: CatCare, private val gertrudesCat: GertrudesCatQue
+                 chatPlayer(happy, "I'm quite fussy over cats - can I pick my own?")
                  chatNpc(happy, "Well okay, but they're all just as cuddly as each other.")
                  val colour = pickColour() ?: return
-                 if (access.giveKitten(colour)) {
-+                    DiaryHooks.kittenColourSelected(access.player)
+-                if (access.giveKitten(colour)) {
++                if (access.giveChosenKitten(colour)) {
                      mesbox("Gertrude gives you another kitten.")
                  }
              }
+@@ -191,8 +195,13 @@ constructor(private val care: CatCare, private val gertrudesCat: GertrudesCatQue
+             return
+         }
+         startDialogue(npc) {
+-            val colour = if (wearingCharos(player)) pickColour() ?: return@startDialogue else access.randomColour()
+-            if (access.giveKitten(colour)) {
++            val given =
++                if (wearingCharos(player)) {
++                    access.giveChosenKitten(pickColour() ?: return@startDialogue)
++                } else {
++                    access.giveKitten(access.randomColour())
++                }
++            if (given) {
+                 mesbox("Gertrude gives you another kitten.")
+             }
+         }
+@@ -206,6 +215,15 @@ constructor(private val care: CatCare, private val gertrudesCat: GertrudesCatQue
+ 
+     private fun ProtectedAccess.randomColour(): CatColour = CatColour.natural[random.of(CatColour.natural.size)]
+ 
++    /** A kitten of the colour the player picked (Ring of Charos): Varrock Diary medium 3. */
++    private fun ProtectedAccess.giveChosenKitten(colour: CatColour): Boolean {
++        if (!giveKitten(colour)) {
++            return false
++        }
++        DiaryHooks.kittenColourSelected(player)
++        return true
++    }
++
+     private fun ProtectedAccess.giveKitten(colour: CatColour): Boolean {
+         if (inv.isFull()) {
+             mes("You don't have enough inventory space.")
 diff --git a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/shops/FineClothesShop.kt b/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/shops/FineClothesShop.kt
 index f1164c104..08948d12c 100644
 --- a/content/areas/city/varrock/src/main/kotlin/org/rsmod/content/areas/city/varrock/npcs/shops/FineClothesShop.kt
@@ -97,6 +173,96 @@ index f1164c104..08948d12c 100644
          val choice = choice3(
              "What have you got?", 1,
              "I'd just like to buy some clothes.", 2,
+diff --git a/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt b/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt
+index ae0ba7098..4829a1a09 100644
+--- a/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt
++++ b/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt
+@@ -35,6 +35,7 @@ import org.rsmod.api.registry.zone.ZoneUpdateMap
+ import org.rsmod.api.repo.npc.NpcRepository
+ import org.rsmod.api.repo.world.WorldRepository
+ import org.rsmod.content.areas.city.varrock.npcs.Gertrude
++import org.rsmod.content.interfaces.diary.DiaryTasks
+ import org.rsmod.content.other.pets.PetFollowers
+ import org.rsmod.content.other.pets.cats.CatCare
+ import org.rsmod.content.other.pets.cats.CatStage
+@@ -299,6 +300,38 @@ class GertrudesCatInteractionTest {
+         assertEquals(100, early.player.inv.count(Coins))
+     }
+ 
++    @Test fun `picking a kitten's colour completes the Varrock diary task on every path`() {
++        val quickBuy = Fixture(6)
++        quickBuy.player.inv[0] = InvObj(Coins, 100)
++        quickBuy.wearCharos()
++        quickBuy.quickBuyKitten()
++        quickBuy.finish()
++        assertEquals(1, quickBuy.kittens())
++        assertTrue(quickBuy.kittenColourTaskDone())
++
++        val random = Fixture(6)
++        random.player.inv[0] = InvObj(Coins, 100)
++        random.quickBuyKitten()
++        random.finish()
++        assertEquals(1, random.kittens())
++        assertFalse(random.kittenColourTaskDone())
++
++        val charm = Fixture(6)
++        charm.player.inv[0] = InvObj(Coins, 100)
++        charm.wearCharos()
++        charm.talkToGertrude()
++        charm.finish(listOf(1, 3))
++        assertEquals(1, charm.kittens())
++        assertTrue(charm.kittenColourTaskDone())
++
++        val reward = Fixture(5)
++        reward.wearCharos()
++        reward.talkToGertrude()
++        reward.finish()
++        assertEquals(1, reward.kittens())
++        assertTrue(reward.kittenColourTaskDone())
++    }
++
+     @Test fun `owning a kitten blocks buying another one after the quest`() {
+         val f = Fixture(6)
+         f.player.inv[0] = InvObj(Cats.objsOf(CatStage.Kitten).first(), 1)
+@@ -445,6 +478,13 @@ class GertrudesCatInteractionTest {
+         fun slotOf(obj: String): Int =
+             (0 until 28).firstOrNull { player.inv[it]?.id == obj.asRSCM() } ?: 0
+ 
++        fun wearCharos() {
++            player.worn[RING_SLOT] = InvObj("obj.ring_of_charos_unlocked", 1)
++        }
++
++        fun kittenColourTaskDone(): Boolean =
++            DiaryTasks.isDone(player, DiaryTasks.Area.Varrock, DiaryTasks.Tier.Medium, 3)
++
+         fun kittens(): Int = Cats.objsOf(CatStage.Kitten).sumOf { player.inv.count(it) }
+ 
+         fun removeKittens() {
+@@ -548,8 +588,14 @@ class GertrudesCatInteractionTest {
+                             val parent =
+                                 listOf("chat_left", "chat_right", "messagebox").firstOrNull {
+                                     player.ui.containsModal("interface.$it")
+-                                } ?: error("Unknown dialogue: ${output()}")
+-                            ResumePauseButtonInput("component.$parent:continue", -1)
++                                }
++                            when {
++                                parent != null -> ResumePauseButtonInput("component.$parent:continue", -1)
++                                // The colour menu (main modal) stays open behind later chatbox dialogues.
++                                player.ui.containsModal("interface.menu") ->
++                                    ResumePauseButtonInput("component.menu:lj_layer1", 0)
++                                else -> error("Unknown dialogue: ${output()}")
++                            }
+                         }
+                     }
+                 coroutine.resumeWith(input)
+@@ -592,6 +638,7 @@ class GertrudesCatInteractionTest {
+         private const val FluffsKitten = "obj.gertrudekittens"
+         private const val Cake = "obj.chocolate_cake"
+         private const val Stew = "obj.stew"
++        private const val RING_SLOT = 12
+         private val restored = mutableListOf<() -> Unit>()
+ 
+         @OptIn(InternalApi::class)
 diff --git a/content/areas/misc/stronghold_of_security/build.gradle.kts b/content/areas/misc/stronghold_of_security/build.gradle.kts
 index 4e4b6bef3..57416995e 100644
 --- a/content/areas/misc/stronghold_of_security/build.gradle.kts
@@ -171,14 +337,13 @@ index 2a681102b..04cbbab06 100644
 +transmit = "Never"
 +
 diff --git a/content/interfaces/achievement-diary/src/integration/kotlin/org/rsmod/content/interfaces/diary/DiaryTasksTest.kt b/content/interfaces/achievement-diary/src/integration/kotlin/org/rsmod/content/interfaces/diary/DiaryTasksTest.kt
-index b253d5176..f160db527 100644
+index db1c0713b..b29375f2f 100644
 --- a/content/interfaces/achievement-diary/src/integration/kotlin/org/rsmod/content/interfaces/diary/DiaryTasksTest.kt
 +++ b/content/interfaces/achievement-diary/src/integration/kotlin/org/rsmod/content/interfaces/diary/DiaryTasksTest.kt
-@@ -52,4 +52,61 @@ class DiaryTasksTest {
-         assertTrue(lines.contains("<str>Learn your age from Hans in Lumbridge.</str>"))
-         assertTrue(lines.contains("Have Sedridor teleport you to the Essence Mine."))
+@@ -147,6 +147,63 @@ class DiaryTasksTest {
+         return result
      }
-+
+ 
 +    @Test
 +    fun GameTestState.`skilling hooks check the item and the area`() = runGameTest {
 +        DiaryHooks.fishCaught(player, "obj.raw_anchovies", CoordGrid(3000, 3400, 0))
@@ -235,9 +400,12 @@ index b253d5176..f160db527 100644
 +        DiaryHooks.canoeShaped(player, waka = true, station = "Edgeville")
 +        assertTrue(DiaryTasks.isDone(player, Area.Varrock, Tier.Hard, 3))
 +    }
- }
++
+     private companion object {
+         val TIER_HEADING = Regex("<col=(ffff00|00ff00)>(Easy|Medium|Hard|Elite)")
+     }
 diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
-index 400805bc6..8ca0209b4 100644
+index c6c4369fd..d9837ef82 100644
 --- a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
 +++ b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/AchievementDiaryScript.kt
 @@ -3,7 +3,9 @@ package org.rsmod.content.interfaces.diary
@@ -250,7 +418,7 @@ index 400805bc6..8ca0209b4 100644
  import dev.openrune.types.aconverted.interf.IfButtonOp
  import org.rsmod.api.player.events.skilling.SkillingActionCompleteEvent
  import org.rsmod.api.player.events.skilling.SkillingActionContext
-@@ -16,6 +18,7 @@ import org.rsmod.api.script.onIfOverlayButton
+@@ -18,6 +20,7 @@ import org.rsmod.api.script.onIfOverlayButton
  import org.rsmod.api.script.onPlayerLogin
  import org.rsmod.api.table.AchievementDiariesRow
  import org.rsmod.api.table.AchievementDiaryTasksRow
@@ -258,7 +426,7 @@ index 400805bc6..8ca0209b4 100644
  import org.rsmod.plugin.scripts.PluginScript
  import org.rsmod.plugin.scripts.ScriptContext
  
-@@ -39,10 +42,14 @@ class AchievementDiaryScript : PluginScript() {
+@@ -46,10 +49,14 @@ class AchievementDiaryScript : PluginScript() {
              val product = context as? SkillingActionContext.Product ?: return@onEvent
              when (val source = product.source) {
                  is SkillingProductSource.Mining -> DiaryHooks.oreMined(player, product.item, source.rock.coords)
@@ -272,9 +440,9 @@ index 400805bc6..8ca0209b4 100644
              }
          }
 +        onEvent<PlayEmote> { DiaryHooks.emotePerformed(player, RSCM.getReverseMapping(RSCMType.SEQ, seq.id)) }
-         onIfOpen("interface.area_task") { player.ifSetEvents(TASKBOX, 0 until AREAS, IfEvent.Op1) }
-         onIfOverlayButton(TASKBOX) {
-             if (it.op == IfButtonOp.Op1) openJournal(it.comsub)
+         onIfOpen("interface.area_task") {
+             player.ifSetEvents(TASKBOX, 0 until AREAS, IfEvent.Op1, IfEvent.Op2)
+         }
 diff --git a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt b/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt
 index 3bcc912e8..1b30123d4 100644
 --- a/content/interfaces/achievement-diary/src/main/kotlin/org/rsmod/content/interfaces/diary/DiaryHooks.kt

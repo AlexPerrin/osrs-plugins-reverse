@@ -1,52 +1,96 @@
-From 6a258ebe708c902e26c20436c33d1c254f26b4e7 Mon Sep 17 00:00:00 2001
+From 18e5ae439d012bbd2d1bbef17403caa882edbe6d Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
-Date: Sat, 17 Oct 2026 07:04:14 -0400
+Date: Sun, 18 Oct 2026 17:07:54 -0400
 Subject: [PATCH] feat: Hunter bird snares and box traps
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-Lay a bird snare or box trap (Hunter level per trap and creature, 1-5 traps at Hunter
-1/20/40/60/80); every 3 ticks a set trap with a matching creature within 2 tiles rolls the
-catch on the crimson swift's skilling curve (wiki) at the player's level above the creature's
-requirement; the trap goes through the trapping/failing locs to full or broken. Check gives
-the loot, the trap and the XP ("You've caught a <creature>."), Dismantle/Reset/Investigate.
-Five birds (crimson swift to tropical wagtail) and ferrets/chinchompas (grey, red, black).
-dbtables hunter_traps (56004) and hunter_trap_creatures (56005), rows 60172-60182, timer 436.
-Trap locs are the ones RuneLite's Hunter plugin tracks. Collapse after 200 ticks, the
-catch curve for creatures other than the crimson swift and most messages are best guesses.
-Integration tests.
+Problem. Bird snares and box traps were not implemented.
+
+Change. Lay a bird snare or box trap (Hunter level per trap and
+creature, 1-5 traps at Hunter 1/20/40/60/80); every 3 ticks a set trap
+with a matching creature within 2 tiles rolls the catch on that
+creature's own skilling curve at the player's Hunter level, from the
+"Skilling success chart" on each creature's wiki page (out of 256, low at
+level 1 / high at 99): crimson swift 100/420, golden warbler 92/400,
+copper longtail 85/390, cerulean twitch 82/380, tropical wagtail 75/370,
+grey chinchompa 6/268, carnivorous and black chinchompa -78/228 (the
+values Mod Ash gave). The trap goes through the trapping/failing locs to
+full or broken. A caught chinchompa or embertailed jerboa comes back
+after 7 ticks. Check gives the loot, the trap and the XP ("You've caught
+a <creature>."; the jerboa's "...or maybe not."), and only needs room for
+what doesn't stack (box traps, bird snares and chinchompas stack);
+Dismantle/Reset/Investigate. Five birds (crimson swift to tropical
+wagtail), ferrets, embertailed jerboas (Hunter 39, 137 XP, jerboa tail)
+and grey, red and black chinchompas. Server-only dbtables hunter_traps
+(56004) and hunter_trap_creatures (56005; per-creature low/high/respawn
+columns), rows 60172-60183, timer hunter_traps 436, own
+HunterTrapPluginPack. Trap locs are the ones RuneLite's Hunter plugin
+tracks. Needs the Hunter module skeleton PR.
+
+Tests. Integration suite HunterTrapScriptTest (7): each creature's catch
+curve against its wiki chart and Mod Ash's numbers, 7-tick chinchompa
+respawns, lay/catch/check a crimson swift, a full inventory leaves the
+trap, Check with a full inventory when the box trap and the chinchompa
+stack, the level-1 trap limit.
+
+Data sources. OSRS Wiki: Bird snare, Box trap, Crimson swift, Golden
+warbler, Copper longtail, Cerulean twitch, Tropical wagtail, Ferret
+(Hunter), Chinchompa (Hunter), Carnivorous chinchompa, Black chinchompa
+(Hunter), Embertailed jerboa (levels, XP, loot, charts, respawn times,
+the jerboa message), and the Mod Ash posts quoted there (bird rates
+15 Feb 2022, chinchompa rates 23 Sep 2015, 3-tick attempts). Trap locs
+from the cache; RuneLite Hunter plugin (BSD).
+
+Caveats. XP where the wiki disagrees with itself (unsourced, needs a
+game check): cerulean twitch 64.5 (creature page; Bird snare page says
+64.6), tropical wagtail 95.2 (creature page; Bird snare 95), ferret
+115.2 (creature page; Box trap 115); the creature pages' values are
+used. Guesses: the ferret and jerboa catch curves (no wiki chart; the
+crimson swift curve shifted to their level: 15/335 and -24/296), the
+50-tick respawn of birds and ferrets, the snare attempt cadence, the
+200-tick collapse, most trap messages, traps dropped on logout. Not
+done: Eagles' Peak requirement, smoking and baiting, the extra
+Wilderness trap, the baby chinchompa pet.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ---
- .../skills/hunter/pack/HunterPluginPack.kt    |   8 +-
- .../skills/hunter/pack/HunterTrapTables.kt    | 152 +++++++
- .../skills/hunter/HunterTrapScriptTest.kt     | 138 +++++++
- .../content/skills/hunter/HunterTrapScript.kt | 384 ++++++++++++++++++
- .../hunter/src/main/resources/gamevals.toml   |  16 +
- 5 files changed, 697 insertions(+), 1 deletion(-)
+ .../hunter/pack/HunterTrapPluginPack.kt       |  12 +
+ .../skills/hunter/pack/HunterTrapTables.kt    | 201 +++++++++
+ .../skills/hunter/HunterTrapScriptTest.kt     | 186 ++++++++
+ .../content/skills/hunter/HunterTrapScript.kt | 397 ++++++++++++++++++
+ .../hunter/src/main/resources/gamevals.toml   |  15 +
+ 5 files changed, 811 insertions(+)
+ create mode 100644 content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapPluginPack.kt
  create mode 100644 content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapTables.kt
  create mode 100644 content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterTrapScriptTest.kt
  create mode 100644 content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
 
-diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
-index 20f8fa9d8..c5b78f791 100644
---- a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
-+++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterPluginPack.kt
-@@ -4,5 +4,11 @@ import dev.openrune.definition.dbtables.DBTable
- import dev.openrune.pack.PluginPack
- 
- class HunterPluginPack : PluginPack() {
--    override fun dbTables(): List<DBTable> = listOf(ImplingTypesTable.implingTypes(), BirdHouseTypesTable.birdHouseTypes())
+diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapPluginPack.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapPluginPack.kt
+new file mode 100644
+index 000000000..1441450b1
+--- /dev/null
++++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapPluginPack.kt
+@@ -0,0 +1,12 @@
++package org.rsmod.content.skills.hunter.pack
++
++import dev.openrune.definition.dbtables.DBTable
++import dev.openrune.pack.PluginPack
++
++class HunterTrapPluginPack : PluginPack() {
 +    override fun dbTables(): List<DBTable> =
 +        listOf(
-+            ImplingTypesTable.implingTypes(),
-+            BirdHouseTypesTable.birdHouseTypes(),
 +            HunterTrapsTable.hunterTraps(),
 +            HunterTrapCreaturesTable.hunterTrapCreatures(),
 +        )
- }
++}
 diff --git a/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapTables.kt b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapTables.kt
 new file mode 100644
-index 000000000..d053182ba
+index 000000000..49b38187c
 --- /dev/null
 +++ b/content/skills/hunter/pack/src/main/kotlin/org/rsmod/content/skills/hunter/pack/HunterTrapTables.kt
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,201 @@
 +package org.rsmod.content.skills.hunter.pack
 +
 +import dev.openrune.definition.dbtables.dbTable
@@ -94,9 +138,17 @@ index 000000000..d053182ba
 +}
 +
 +/**
-+ * [XP_TENTHS] is the wiki's Hunter XP times ten. Birds also give bones and raw bird meat (wiki);
-+ * [LOOT] is the feather (5-10 for the crimson swift on the wiki; the same range for the other birds
-+ * is a guess) or the caught creature. The trapping loc is the `_n` variant for box traps.
++ * [XP_TENTHS] is the Hunter XP times ten from each creature's wiki infobox. Birds also give bones and
++ * raw bird meat (wiki); [LOOT] is the feather (5-10, each bird's page) or the caught creature. The
++ * trapping loc is the `_n` variant for box traps.
++ *
++ * [LOW] and [HIGH] are the creature's catch curve: the OSRS skilling formula (out of 256, [LOW] at
++ * Hunter 1, [HIGH] at 99, at the player's own level) from the "Skilling success chart" on each
++ * creature's wiki page, which match Mod Ash's quoted rates (birds: 15 Feb 2022; chinchompas: grey
++ * 6/268, red and black -78/228, 23 Sep 2015). The ferret and the embertailed jerboa have no chart:
++ * their curves are guesses (the crimson swift's curve shifted to their requirement).
++ * [RESPAWN_TICKS] is how long a caught creature takes to come back: 7 for chinchompas and jerboas
++ * (infobox respawn time), a guess of 50 for the birds and the ferret (not documented).
 + */
 +object HunterTrapCreaturesTable {
 +    const val TRAP = 0
@@ -109,6 +161,9 @@ index 000000000..d053182ba
 +    const val LOOT = 7
 +    const val LOOT_MIN = 8
 +    const val LOOT_MAX = 9
++    const val LOW = 10
++    const val HIGH = 11
++    const val RESPAWN_TICKS = 12
 +
 +    private const val SNARE = 0
 +    private const val BOX = 1
@@ -125,9 +180,24 @@ index 000000000..d053182ba
 +        val loot: String,
 +        val lootMin: Int,
 +        val lootMax: Int,
++        val low: Int,
++        val high: Int,
++        val respawnTicks: Int,
 +    )
 +
-+    private fun bird(key: String, name: String, npc: String, level: Int, xpTenths: Int, loc: String, feather: String) =
++    private const val UNKNOWN_RESPAWN = 50
++
++    private fun bird(
++        key: String,
++        name: String,
++        npc: String,
++        level: Int,
++        xpTenths: Int,
++        loc: String,
++        feather: String,
++        low: Int,
++        high: Int,
++    ) =
 +        Row(
 +            key,
 +            SNARE,
@@ -140,9 +210,22 @@ index 000000000..d053182ba
 +            feather,
 +            5,
 +            10,
++            low,
++            high,
++            UNKNOWN_RESPAWN,
 +        )
 +
-+    private fun boxed(key: String, name: String, npc: String, level: Int, xpTenths: Int, obj: String) =
++    private fun boxed(
++        key: String,
++        name: String,
++        npc: String,
++        level: Int,
++        xpTenths: Int,
++        obj: String,
++        low: Int,
++        high: Int,
++        respawnTicks: Int,
++    ) =
 +        Row(
 +            key,
 +            BOX,
@@ -155,19 +238,23 @@ index 000000000..d053182ba
 +            obj,
 +            1,
 +            1,
++            low,
++            high,
++            respawnTicks,
 +        )
 +
 +    private val ROWS =
 +        listOf(
-+            bird("crimson_swift", "crimson swift", "npc.hunting_bird_jungle", 1, 340, "jungle", "obj.hunting_jungle_feather"),
-+            bird("golden_warbler", "golden warbler", "npc.hunting_bird_desert", 5, 470, "desert", "obj.hunting_desert_feather"),
-+            bird("copper_longtail", "copper longtail", "npc.hunting_bird_woodland", 9, 612, "woodland", "obj.hunting_woodland_feather"),
-+            bird("cerulean_twitch", "cerulean twitch", "npc.hunting_bird_polar", 11, 646, "polar", "obj.hunting_polar_feather"),
-+            bird("tropical_wagtail", "tropical wagtail", "npc.multicoloured_bird", 19, 950, "coloured", "obj.hunting_stripy_bird_feather"),
-+            boxed("ferret", "ferret", "npc.hunting_ferret", 27, 1150, "obj.hunting_ferret"),
-+            boxed("chinchompa", "chinchompa", "npc.hunting_chinchompa", 53, 1984, "obj.chinchompa_captured"),
-+            boxed("chinchompa_big", "carnivorous chinchompa", "npc.hunting_chinchompa_big", 63, 2650, "obj.chinchompa_big_captured"),
-+            boxed("chinchompa_black", "black chinchompa", "npc.hunting_chinchompa_black", 73, 3150, "obj.chinchompa_black"),
++            bird("crimson_swift", "crimson swift", "npc.hunting_bird_jungle", 1, 340, "jungle", "obj.hunting_jungle_feather", 100, 420),
++            bird("golden_warbler", "golden warbler", "npc.hunting_bird_desert", 5, 470, "desert", "obj.hunting_desert_feather", 92, 400),
++            bird("copper_longtail", "copper longtail", "npc.hunting_bird_woodland", 9, 612, "woodland", "obj.hunting_woodland_feather", 85, 390),
++            bird("cerulean_twitch", "cerulean twitch", "npc.hunting_bird_polar", 11, 645, "polar", "obj.hunting_polar_feather", 82, 380),
++            bird("tropical_wagtail", "tropical wagtail", "npc.multicoloured_bird", 19, 952, "coloured", "obj.hunting_stripy_bird_feather", 75, 370),
++            boxed("ferret", "ferret", "npc.hunting_ferret", 27, 1152, "obj.hunting_ferret", 15, 335, UNKNOWN_RESPAWN),
++            boxed("jerboa", "embertailed jerboa", "npc.varlamore_hunterjerboa01", 39, 1370, "obj.hunting_jerboa_tail", -24, 296, 7),
++            boxed("chinchompa", "chinchompa", "npc.hunting_chinchompa", 53, 1984, "obj.chinchompa_captured", 6, 268, 7),
++            boxed("chinchompa_big", "carnivorous chinchompa", "npc.hunting_chinchompa_big", 63, 2650, "obj.chinchompa_big_captured", -78, 228, 7),
++            boxed("chinchompa_black", "black chinchompa", "npc.hunting_chinchompa_black", 73, 3150, "obj.chinchompa_black", -78, 228, 7),
 +        )
 +
 +    fun hunterTrapCreatures() =
@@ -182,6 +269,9 @@ index 000000000..d053182ba
 +            column("loot", LOOT, VarType.OBJ)
 +            column("loot_min", LOOT_MIN, VarType.INT)
 +            column("loot_max", LOOT_MAX, VarType.INT)
++            column("low", LOW, VarType.INT)
++            column("high", HIGH, VarType.INT)
++            column("respawn_ticks", RESPAWN_TICKS, VarType.INT)
 +
 +            for (r in ROWS) {
 +                row("dbrow.hunter_trap_creature_${r.key}") {
@@ -195,16 +285,19 @@ index 000000000..d053182ba
 +                    columnRSCM(LOOT, r.loot)
 +                    column(LOOT_MIN, r.lootMin)
 +                    column(LOOT_MAX, r.lootMax)
++                    column(LOW, r.low)
++                    column(HIGH, r.high)
++                    column(RESPAWN_TICKS, r.respawnTicks)
 +                }
 +            }
 +        }
 +}
 diff --git a/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterTrapScriptTest.kt b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterTrapScriptTest.kt
 new file mode 100644
-index 000000000..0e3b8fe60
+index 000000000..483e1b21d
 --- /dev/null
 +++ b/content/skills/hunter/src/integration/kotlin/org/rsmod/content/skills/hunter/HunterTrapScriptTest.kt
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,186 @@
 +package org.rsmod.content.skills.hunter
 +
 +import dev.openrune.ServerCacheManager
@@ -219,6 +312,7 @@ index 000000000..0e3b8fe60
 +import org.junit.jupiter.api.Test
 +import org.junit.jupiter.api.parallel.Execution
 +import org.junit.jupiter.api.parallel.ExecutionMode
++import org.rsmod.api.table.hunter.HunterTrapCreaturesRow
 +import org.rsmod.api.testing.GameTestState
 +import org.rsmod.api.testing.scope.GameTestScope
 +import org.rsmod.content.skills.hunter.HunterTrapScript.Companion.HUNTER
@@ -232,9 +326,29 @@ index 000000000..0e3b8fe60
 +@Execution(ExecutionMode.SAME_THREAD)
 +class HunterTrapScriptTest {
 +    @Test
-+    fun `catch curve matches the crimson swift on the wiki`() {
-+        assertEquals(101, catchChance256(1))
-+        assertEquals(420, catchChance256(99))
++    fun `each creature's catch curve matches its wiki chart`() {
++        fun at(key: String, level: Int): Int {
++            val row = HunterTrapCreaturesRow.all().single { it.name == key }
++            return catchChance256(row.low, row.high, level)
++        }
++        // Mod Ash: crimson swift 39% at 1, 164% at 99.
++        assertEquals(101, at("crimson swift", 1))
++        assertEquals(421, at("crimson swift", 99))
++        assertEquals(106, at("golden warbler", 5))
++        assertEquals(130, at("tropical wagtail", 19))
++        // Chinchompas (the chart's 256 formula; Mod Ash's approximations: grey 145/255 at 53,
++        // red 115/255 at 63, black 148/255 at 73, 228/255 at 99).
++        assertEquals(146, at("chinchompa", 53))
++        assertEquals(117, at("carnivorous chinchompa", 63))
++        assertEquals(148, at("black chinchompa", 73))
++        assertEquals(229, at("black chinchompa", 99))
++    }
++
++    @Test
++    fun `chinchompas respawn after 7 ticks`() {
++        val rows = HunterTrapCreaturesRow.all().filter { "chinchompa" in it.name }
++        assertEquals(3, rows.size)
++        assertTrue(rows.all { it.respawnTicks == 7 })
 +    }
 +
 +    @Test
@@ -300,6 +414,31 @@ index 000000000..0e3b8fe60
 +        }
 +
 +    @Test
++    fun GameTestState.`check needs no free slot when the trap and the chinchompa stack`() =
++        runInjectedGameTest(HunterTrapScript::class, null, HunterTrapScript::class) { script ->
++            val center = prepare(level = 99)
++            player.inv[0] = InvObj(BOX_TRAP.asRSCM(RSCMType.OBJ), 2)
++            val chin = spawnNpc(center.translate(2, 0), npcType("npc.hunting_chinchompa"))
++            with(script) { player.withProtectedAccess { lay(kind("box trap")) } }
++            advance(ticks = 5)
++            stepOff(center)
++            val trap = script.trapAt(center)!!
++            advanceUntil({ trap.state == TrapState.Full }, timeoutTicks = 30)
++            assertFalse(chin.isSlotAssigned && chin.isVisible)
++            player.inv[1] = InvObj(CHINCHOMPA.asRSCM(RSCMType.OBJ), 5)
++            for (slot in 2 until player.inv.size) {
++                player.inv[slot] = InvObj("obj.logs".asRSCM(RSCMType.OBJ), 1)
++            }
++            var checked = false
++            with(script) { player.withProtectedAccess { checked = check(center) } }
++            advance(ticks = 2)
++            assertTrue(checked)
++            assertNull(script.trapAt(center))
++            assertEquals(2, player.inv.count(BOX_TRAP))
++            assertEquals(6, player.inv.count(CHINCHOMPA))
++        }
++
++    @Test
 +    fun GameTestState.`level 1 lays one trap only`() =
 +        runInjectedGameTest(HunterTrapScript::class, null, HunterTrapScript::class) { script ->
 +            val center = prepare(level = 1)
@@ -341,14 +480,16 @@ index 000000000..0e3b8fe60
 +
 +    private companion object {
 +        const val SNARE = "obj.hunting_ojibway_bird_snare"
++        const val BOX_TRAP = "obj.hunting_box_trap"
++        const val CHINCHOMPA = "obj.chinchompa_captured"
 +    }
 +}
 diff --git a/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
 new file mode 100644
-index 000000000..246850dcd
+index 000000000..5405d6c0a
 --- /dev/null
 +++ b/content/skills/hunter/src/main/kotlin/org/rsmod/content/skills/hunter/HunterTrapScript.kt
-@@ -0,0 +1,384 @@
+@@ -0,0 +1,397 @@
 +package org.rsmod.content.skills.hunter
 +
 +import dev.openrune.rscm.RSCM
@@ -358,6 +499,10 @@ index 000000000..246850dcd
 +import jakarta.inject.Singleton
 +import kotlin.math.abs
 +import kotlin.math.max
++import kotlin.math.roundToInt
++import org.rsmod.api.invtx.add
++import org.rsmod.api.invtx.invTransaction
++import org.rsmod.api.invtx.select
 +import org.rsmod.api.player.output.mes
 +import org.rsmod.api.player.protect.ProtectedAccess
 +import org.rsmod.api.player.stat.statAdvance
@@ -373,6 +518,7 @@ index 000000000..246850dcd
 +import org.rsmod.api.script.onPlayerSoftTimer
 +import org.rsmod.api.table.hunter.HunterTrapCreaturesRow
 +import org.rsmod.api.table.hunter.HunterTrapsRow
++import org.rsmod.api.utils.skills.SkillingSuccessRate
 +import org.rsmod.game.MapClock
 +import org.rsmod.game.entity.Npc
 +import org.rsmod.game.entity.Player
@@ -393,11 +539,11 @@ index 000000000..246850dcd
 + *
 + * - Lay (item op 1): Hunter level per creature/trap, up to 1/2/3/4/5 traps at Hunter 1/20/40/60/80.
 + * - Every 3 ticks (wiki for box traps; the same for snares is a guess) a set trap with a matching
-+ *   creature within 2 tiles, and its owner not standing on it, rolls the catch: the OSRS skilling
-+ *   curve of the crimson swift (39% at level 1, 164% at 99, wiki) at the player's level above the
-+ *   creature's requirement (guess for the other creatures). Caught: the creature despawns and the
-+ *   trap fills; missed: the trap breaks.
-+ * - Check (full, op 1): loot, XP, the trap back, "You've caught a <creature>.". Dismantle (set or
++ *   creature within 2 tiles, and its owner not standing on it, rolls the catch on that creature's
++ *   own skilling curve at the player's Hunter level (wiki charts; see HunterTrapCreaturesTable).
++ *   Caught: the creature despawns for its respawn time and the trap fills; missed: the trap breaks.
++ * - Check (full, op 1): loot, XP, the trap back, "You've caught a <creature>." Needs room only for
++ *   what doesn't stack (box traps, bird snares and chinchompas stack). Dismantle (set or
 + *   broken, op 1) gives the trap back. Reset (op 2 on full/broken) does the same and lays it again
 + *   on its tile. Investigate (op 2 on a set trap).
 + * - A trap left alone for [COLLAPSE_TICKS] collapses and drops its item (guess: duration and
@@ -496,21 +642,31 @@ index 000000000..246850dcd
 +        val trap = ownTrap(coords) ?: return false
 +        val creature = trap.creature
 +        if (trap.state != TrapState.Full || creature == null) return false
-+        if (inv.freeSpace() < creature.loot.size + 1) {
++        val items = listOf(trap.kind.item to 1) + creature.loot.map { it.obj to random.of(it.min, it.max) }
++        if (!canAdd(items)) {
 +            mes("You don't have enough inventory space.")
 +            return false
 +        }
 +        anim(LAY_SEQ)
 +        delay(1)
-+        if (traps[coords] !== trap) return false
++        if (traps[coords] !== trap || !canAdd(items)) return false
 +        removeTrap(trap)
-+        invAdd(inv, trap.kind.item)
-+        for (drop in creature.loot) {
-+            invAdd(inv, drop.obj, random.of(drop.min, drop.max))
-+        }
++        for ((obj, count) in items) invAdd(inv, obj, count)
 +        statAdvance(HUNTER, creature.xp)
-+        mes("You've caught ${creature.article} ${creature.name}.")
++        val caught = "You've caught ${creature.article} ${creature.name}"
++        mes(if (creature.npc == JERBOA) "$caught... or maybe not." else "$caught.")
 +        return true
++    }
++
++    /** Whether all of [items] fit in the inventory together (stacking ones need no free slot). */
++    private fun ProtectedAccess.canAdd(items: List<Pair<String, Int>>): Boolean {
++        val into = inv
++        return player
++            .invTransaction(into, autoCommit = false) {
++                val target = select(into)
++                for ((obj, count) in items) add(target, obj.asRSCM(RSCMType.OBJ), count)
++            }
++            .success
 +    }
 +
 +    private suspend fun ProtectedAccess.reset(coords: CoordGrid) {
@@ -567,8 +723,8 @@ index 000000000..246850dcd
 +            trap.kind.creatures.filter { level >= it.level }.associateBy { it.npc.asRSCM(RSCMType.NPC) }
 +        val npc = nearbyCreature(trap.coords, candidates.keys) ?: return
 +        val creature = candidates.getValue(npc.id)
-+        if (random.of(256) < catchChance256(level - creature.level + 1)) {
-+            if (npc.respawns) npcRepo.despawn(npc, CREATURE_RESPAWN_TICKS) else npcRepo.del(npc, Int.MAX_VALUE)
++        if (random.of(256) < catchChance256(creature.low, creature.high, level)) {
++            if (npc.respawns) npcRepo.despawn(npc, creature.respawnTicks) else npcRepo.del(npc, Int.MAX_VALUE)
 +            trap.creature = creature
 +            setState(trap, TrapState.Trapping)
 +        } else {
@@ -651,6 +807,9 @@ index 000000000..246850dcd
 +                            trappingLoc = locName(c.trappingLoc.id),
 +                            fullLoc = locName(c.fullLoc.id),
 +                            loot = loot,
++                            low = c.low,
++                            high = c.high,
++                            respawnTicks = c.respawnTicks,
 +                        )
 +                    },
 +            )
@@ -687,6 +846,9 @@ index 000000000..246850dcd
 +        val trappingLoc: String,
 +        val fullLoc: String,
 +        val loot: List<Drop>,
++        val low: Int,
++        val high: Int,
++        val respawnTicks: Int,
 +    ) {
 +        val article: String
 +            get() = if (name.first() in "aeiou") "an" else "a"
@@ -705,13 +867,13 @@ index 000000000..246850dcd
 +    companion object {
 +        const val HUNTER = "stat.hunter"
 +        const val TIMER = "timer.hunter_traps"
++        const val JERBOA = "npc.varlamore_hunterjerboa01"
 +        const val LAY_SEQ = "seq.hunting_setting_trap_small"
 +        const val LAY_TICKS = 3
 +        const val ATTEMPT_TICKS = 3
 +        const val SETTLE_TICKS = 2
 +        const val RANGE = 2
 +        const val COLLAPSE_TICKS = 200
-+        const val CREATURE_RESPAWN_TICKS = 50
 +        const val OBJ_DURATION = 200
 +        const val BIRD_SNARE_INDEX = 0
 +        const val BONES = "obj.bones"
@@ -720,36 +882,28 @@ index 000000000..246850dcd
 +        /** 1 trap, plus one at Hunter 20, 40, 60 and 80 (wiki). */
 +        fun maxTraps(level: Int): Int = 1 + listOf(20, 40, 60, 80).count { level >= it }
 +
-+        /**
-+         * Out of 256: the crimson swift's catch curve (wiki: 39.45% at level 1, 164% at 99, i.e. the
-+         * OSRS skilling formula with low 100, high 419) at [effectiveLevel].
-+         */
-+        fun catchChance256(effectiveLevel: Int): Int {
-+            val l = effectiveLevel.coerceIn(1, 99)
-+            return 1 + (LOW * (99 - l) / 98.0 + HIGH * (l - 1) / 98.0 + 0.5).toInt()
-+        }
-+
-+        private const val LOW = 100
-+        private const val HIGH = 419
++        /** Out of 256: the OSRS skilling formula, [low] at Hunter 1 and [high] at 99, at [level]. */
++        fun catchChance256(low: Int, high: Int, level: Int): Int =
++            (SkillingSuccessRate.successRate(low, high, level.coerceIn(1, 99), 99) * 256).roundToInt()
 +    }
 +}
 diff --git a/content/skills/hunter/src/main/resources/gamevals.toml b/content/skills/hunter/src/main/resources/gamevals.toml
-index 72db58384..ec59f3444 100644
+index 4ac29ce25..7898bf545 100644
 --- a/content/skills/hunter/src/main/resources/gamevals.toml
 +++ b/content/skills/hunter/src/main/resources/gamevals.toml
-@@ -1,6 +1,8 @@
- [gamevals.dbtable]
- impling_types = 56002
- birdhouse_types = 56003
+@@ -4,6 +4,8 @@
+ # bird houses
+ 
+ # traps
 +hunter_traps = 56004
 +hunter_trap_creatures = 56005
  
- [gamevals.dbrow]
- impling_type_baby = 60152
-@@ -23,3 +25,17 @@ birdhouse_type_mahogany = 60168
- birdhouse_type_yew = 60169
- birdhouse_type_magic = 60170
- birdhouse_type_redwood = 60171
+ # herbiboar
+ 
+@@ -17,6 +19,18 @@
+ # bird houses
+ 
+ # traps
 +hunter_trap_bird_snare = 60172
 +hunter_trap_box_trap = 60173
 +hunter_trap_creature_crimson_swift = 60174
@@ -761,6 +915,15 @@ index 72db58384..ec59f3444 100644
 +hunter_trap_creature_chinchompa = 60180
 +hunter_trap_creature_chinchompa_big = 60181
 +hunter_trap_creature_chinchompa_black = 60182
-+
-+[gamevals.timer]
++hunter_trap_creature_jerboa = 60183
+ 
+ # herbiboar
+ 
+@@ -30,6 +44,7 @@
+ # bird houses
+ 
+ # traps
 +hunter_traps = 436
+ 
+ # herbiboar
+ 

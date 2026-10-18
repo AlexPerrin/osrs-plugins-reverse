@@ -1,13 +1,39 @@
-From d748554aaaeeacc2ff658ebc6ffabb2124c1586a Mon Sep 17 00:00:00 2001
+From b472c4de35f3c0e457e8f3df7bb91148bd5bb5d3 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 14:47:16 -0400
 Subject: [PATCH] feat: Grand Exchange trade history
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-The clerks' History op and the GE interface's History button open ge_history (383),
-filled with ge_history_init / ge_history_addline / ge_history_finish (1644-1646):
-the last 40 finished offers (and aborted ones with something traded), newest first,
-with the sale tax. A line's Buy-offer starts a buy offer for its item in the first free
-slot; the Exchange button goes back. History lives in 160 perm varps.
+Problem:
+The clerks' History op and the GE interface's History button do nothing.
+
+Change:
+- History opens ge_history (383), filled with ge_history_init /
+  ge_history_addline / ge_history_finish (1644-1646): the last 40 finished
+  offers (and aborted ones with something traded), newest first, with the
+  sale tax.
+- A line's Buy-offer starts a buy offer for its item in the first free slot;
+  the Exchange button goes back.
+- History lives in 160 server perm varps (63796-63955).
+
+Tests:
+GrandExchangeScriptTest: finished and partly filled aborted offers go into
+the history newest first; the list keeps 40 entries.
+
+Data sources:
+OSRS Wiki "Grand Exchange", Changes: 7 March 2019 (40 entries; confirming
+again adds no entry), 25 August 2016 (buy offers from the history); client
+scripts 1644-1646 (cache).
+
+Caveats:
+- The moment an entry is recorded (when the offer finishes or is aborted)
+  and leaving out aborted offers with nothing traded are unsourced.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  .../pack/src/main/resources/gamevals.toml     | 160 ++++
  .../pack/configs/grand_exchange.toml          | 800 ++++++++++++++++++
@@ -17,13 +43,13 @@ slot; the Exchange button goes back. History lives in 160 perm varps.
  5 files changed, 1109 insertions(+), 2 deletions(-)
 
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
-index a87df5c5e..a60ceec75 100644
+index 890744b0a..5f7ffc3ae 100644
 --- a/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
 +++ b/content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml
-@@ -96,6 +96,166 @@ ge_limit14_bought = 64049
- ge_limit15_item = 64050
+@@ -97,6 +97,166 @@ ge_limit15_item = 64050
  ge_limit15_start = 64051
  ge_limit15_bought = 64052
+ ge_logout_minute = 64054
 +ge_history0_obj = 63796
 +ge_history0_count = 63797
 +ge_history0_gold = 63798
@@ -188,10 +214,10 @@ index a87df5c5e..a60ceec75 100644
  [gamevals.enum]
  ge_buy_limits = 64441
 diff --git a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
-index be5b35798..30feb177a 100644
+index 7b62c07c2..79c693b82 100644
 --- a/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
 +++ b/content/interfaces/grand-exchange/pack/src/main/resources/pack/configs/grand_exchange.toml
-@@ -532,6 +532,806 @@ id = "varp.ge_limit15_bought"
+@@ -538,6 +538,806 @@ id = "varp.ge_logout_minute"
  scope = "Perm"
  transmit = "Never"
  
@@ -999,7 +1025,7 @@ index be5b35798..30feb177a 100644
  isServerOnly = true
  id = "inv.tradingpost_sell_0"
 diff --git a/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt b/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt
-index 2ff6a066a..2d61696b6 100644
+index b9d6f1f42..c77a57d6d 100644
 --- a/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt
 +++ b/content/interfaces/grand-exchange/src/integration/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScriptTest.kt
 @@ -45,6 +45,11 @@ class GrandExchangeScriptTest {
@@ -1014,8 +1040,8 @@ index 2ff6a066a..2d61696b6 100644
          for (i in 0 until GrandExchange.LIMIT_TRACKERS) {
              for (field in listOf("item", "start", "bought")) {
                  GrandExchange.set(player, "varp.ge_limit${i}_$field", 0)
-@@ -292,6 +297,43 @@ class GrandExchangeScriptTest {
-             )
+@@ -357,6 +362,43 @@ class GrandExchangeScriptTest {
+             assertEquals(20, GrandExchange.limitRemaining(player, pickaxe.id, NOW + 2 * window))
          }
  
 +    @Test
@@ -1059,10 +1085,10 @@ index 2ff6a066a..2d61696b6 100644
          const val NOW = 29_000_000
      }
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
-index 37739113f..bfd9369dd 100644
+index 2a4ebc8f3..8d27d07f3 100644
 --- a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchange.kt
-@@ -57,6 +57,11 @@ object GrandExchange {
+@@ -59,6 +59,11 @@ object GrandExchange {
      /** How often a limit-blocked offer looks again (100 ticks = 1 minute). */
      const val LIMIT_RECHECK = 100
  
@@ -1073,8 +1099,8 @@ index 37739113f..bfd9369dd 100644
 +
      const val LIMIT_WINDOW_MINUTES = 240
      const val LIMIT_TRACKERS = 16
- 
-@@ -227,6 +232,41 @@ object GrandExchange {
+     const val LOGOUT_VARP = "varp.ge_logout_minute"
+@@ -245,6 +250,41 @@ object GrandExchange {
          set(player, limitVarp(index, "bought"), count)
      }
  
@@ -1116,19 +1142,18 @@ index 37739113f..bfd9369dd 100644
      fun stepSize(count: Int): Int = ((count + FILL_STEPS - 1) / FILL_STEPS).coerceAtLeast(1)
  
      sealed interface StepResult {
-@@ -278,8 +318,10 @@ object GrandExchange {
+@@ -304,7 +344,9 @@ object GrandExchange {
          val done = offer.done + amount
          val finished = done >= offer.count
          val status = if (finished) finishedStatus(offer.sell) else offer.status
 -        store(player, offer.copy(done = done, gold = offer.gold + gold, status = status))
 +        val updated = offer.copy(done = done, gold = offer.gold + gold, status = status)
 +        store(player, updated)
-         sendSlot(player, offer.slot)
 +        if (finished) recordHistory(player, updated)
+         if (!announce) return StepResult.Filled
+         sendSlot(player, offer.slot)
          val verb = if (offer.sell) "selling" else "buying"
-         if (finished) {
-             player.mes("Grand Exchange: Finished $verb ${offer.count.commas()} x ${type.name}.")
-@@ -300,8 +342,10 @@ object GrandExchange {
+@@ -345,8 +387,10 @@ object GrandExchange {
          } else {
              addTo(inv, 1, coinsId, (offer.count - offer.done) * offer.price)
          }
@@ -1141,7 +1166,7 @@ index 37739113f..bfd9369dd 100644
      }
  
 diff --git a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
-index 0adc84134..00cb31f6b 100644
+index b0520ed0d..220e8ad28 100644
 --- a/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 +++ b/content/interfaces/grand-exchange/src/main/kotlin/org/rsmod/content/interfaces/grandexchange/GrandExchangeScript.kt
 @@ -13,10 +13,12 @@ import org.rsmod.api.player.protect.ProtectedAccess
@@ -1155,9 +1180,9 @@ index 0adc84134..00cb31f6b 100644
  import org.rsmod.api.script.onOpNpc3
 +import org.rsmod.api.script.onOpNpc4
  import org.rsmod.api.script.onPlayerLogin
+ import org.rsmod.api.script.onPlayerLogout
  import org.rsmod.api.script.onPlayerSoftTimer
- import org.rsmod.content.interfaces.grandexchange.GrandExchange.commas
-@@ -35,6 +37,8 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
+@@ -36,6 +38,8 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
          for (clerk in CLERKS) {
              onOpNpc3(clerk) { openExchange() }
              onApNpc3(clerk) { if (isWithinApRange(it.npc, distance = 2)) openExchange() }
@@ -1166,7 +1191,7 @@ index 0adc84134..00cb31f6b 100644
          }
  
          onPlayerLogin {
-@@ -63,6 +67,9 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
+@@ -68,6 +72,9 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
              }
          }
          onIfModalButton("component.ge_offers:back") { backToIndex() }
@@ -1176,7 +1201,7 @@ index 0adc84134..00cb31f6b 100644
          onIfModalButton("component.ge_offers:setup") { setupOp(it.comsub, it.op) }
          onIfModalButton("component.ge_offers:setup_confirm") { confirm() }
          onIfModalButton("component.ge_offers:details_status") {
-@@ -129,6 +136,48 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
+@@ -134,6 +141,48 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
          ifSetEvents("component.ge_offers_side:items", inv.indices, IfEvent.Op1, IfEvent.Op10)
      }
  
@@ -1225,7 +1250,7 @@ index 0adc84134..00cb31f6b 100644
      private fun setCollectionBoxEvents(player: Player) {
          for (slot in 0 until GrandExchange.SLOTS) {
              player.ifSetEvents(
-@@ -409,6 +458,18 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
+@@ -431,6 +480,18 @@ class GrandExchangeScript @Inject constructor(private val marketPrices: MarketPr
          val QUANTITY_DELTAS = mapOf(1 to -1, 2 to 1, 3 to 1, 4 to 10, 5 to 100, 6 to Int.MAX_VALUE)
          val PRICE_DELTAS = mapOf(8 to -1, 9 to 1, 10 to -5, 13 to 5)
  

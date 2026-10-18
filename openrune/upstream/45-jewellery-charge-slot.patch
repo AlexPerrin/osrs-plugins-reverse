@@ -1,20 +1,38 @@
-From 6ece8ea133e240caf6de22b121b92c1835490679 Mon Sep 17 00:00:00 2001
+From eb28c879bffa20d17d9d68cb6761d861baa5e4c6 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 10:12:22 -0400
 Subject: [PATCH] fix: jewellery charges keep their inventory or worn slot
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-A charge swap used invReplace, which puts the next charge in the first free
-slot: a worn games necklace moved to the head slot. Replace in place.
+Problem. A charge swap used invReplace, which puts the next charge in the
+first free slot: a worn games necklace moved to the head slot (seen on a
+client).
+
+Change. useCharge replaces the item in its own slot (invReplaceSlot), in
+the inventory and in the worn inventory.
+
+Tests. JewelleryTeleportScriptTest: the games necklace in inventory slot
+5 and the worn glory in the neck slot keep their slots.
+
+Data sources. None (normal OSRS item replacement keeps the slot).
+
+Caveats. None.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  .../travel/jewellery/JewelleryTeleportScriptTest.kt      | 4 +++-
  .../content/travel/jewellery/JewelleryTeleportScript.kt  | 9 +++++++--
  2 files changed, 10 insertions(+), 3 deletions(-)
 
 diff --git a/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt b/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
-index b1db0b25c..13247e365 100644
+index 5bd3521df..b787724cc 100644
 --- a/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
 +++ b/content/travel/jewellery-teleports/src/integration/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScriptTest.kt
-@@ -23,10 +23,11 @@ class JewelleryTeleportScriptTest {
+@@ -24,10 +24,11 @@ class JewelleryTeleportScriptTest {
      fun GameTestState.`a use swaps the necklace for one charge less`() =
          runInjectedGameTest(JewelleryTeleportScript::class, null, JewelleryTeleportScript::class) { script ->
              prepare()
@@ -27,7 +45,7 @@ index b1db0b25c..13247e365 100644
              val sent = client.mapOf(MessageGame::message)
              assertTrue("You rub the necklace..." in sent, sent.toString())
              assertTrue(sent.any { "Your games necklace has seven uses left." in it }, sent.toString())
-@@ -44,6 +45,7 @@ class JewelleryTeleportScriptTest {
+@@ -45,6 +46,7 @@ class JewelleryTeleportScriptTest {
              assertTrue(use(script, "dbrow.jewellery_teleport_amulet_of_glory_1", inventory = false))
              assertEquals(0, player.worn.count("obj.amulet_of_glory_1"))
              assertEquals(1, player.worn.count("obj.amulet_of_glory"))
@@ -36,10 +54,10 @@ index b1db0b25c..13247e365 100644
              assertTrue(sent.any { "Your ring of dueling crumbles to dust." in it }, sent.toString())
              assertTrue(sent.any { "You use your amulet's last charge." in it }, sent.toString())
 diff --git a/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
-index a62a135cf..12fd7a433 100644
+index 9272303cf..f60e43d6c 100644
 --- a/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
 +++ b/content/travel/jewellery-teleports/src/main/kotlin/org/rsmod/content/travel/jewellery/JewelleryTeleportScript.kt
-@@ -90,9 +90,14 @@ constructor(private val validator: PlayerTeleportValidator, private val areaChec
+@@ -95,9 +95,14 @@ constructor(private val validator: PlayerTeleportValidator, private val areaChec
  
      /** Swaps [item] in [from] for its next charge (or removes it) and sends the charge messages. */
      fun ProtectedAccess.useCharge(item: JewelleryTeleportItemsRow, from: Inventory): Boolean {

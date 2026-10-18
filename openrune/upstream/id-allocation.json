@@ -15662,5 +15662,21 @@
   "new": 64082,
   "row": "treasure-trails",
   "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "farming_growth_offset",
+  "old": null,
+  "new": 64053,
+  "row": "farming",
+  "file": "content/skills/farming/pack/src/main/resources/gamevals.toml"
+ },
+ {
+  "type": "varp",
+  "name": "ge_logout_minute",
+  "old": null,
+  "new": 64054,
+  "row": "grand-exchange",
+  "file": "content/interfaces/grand-exchange/pack/src/main/resources/gamevals.toml"
  }
 ]

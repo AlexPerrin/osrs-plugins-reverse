@@ -1954,3 +1954,28 @@ Draynor (coffin `vampcoffin` 46237 at (3078,9776), npc 3481).
 - **Blue Moon Inn bartender** (new, `varrock/npcs/BlueMoonBartender.kt`, wiki transcript): "A glass of your finest
   ale please." -> 2 coins -> beer (QH's beer step), plus the fortune / equipment topics.
 - Tests: `VampyreSlayerInteractionTest` (5). The Count fight is only checked in game.
+
+## Pirate's Treasure: research for the next dev (not started)
+
+QH 4.18 `PiratesTreasure` (varp `piratequest` 71 in OSRS; check the gameval and the cache endstate first): keys 0 talk
+to Redbeard Frank (Port Sarim; "I'm in search of treasure.", "Yes."), 1 rum smuggling (`RumSmugglingStep`), 2 Blue
+Moon Inn upstairs chest with the chest key / pirate message, 3 dig in the middle of Falador Park's cross, kill the
+Gardener (level 4) who appears, dig again. Rewards in QH: a gold ring, an emerald, coins.
+- **QH reads the quest journal** for the rum sub-state: `RumSmugglingStep` scans the journal text (widgets 7798789 /
+  7798790 = journal 119 lines) for "I have taken employment" / "I have taken a job at", "I have hidden my", "in the
+  crate and filled it with", "the crate has been shipped", "I need to go to", "I should take it to", "I seem to have
+  lost it.", and shows "Please open Pirate Treasure's Quest Journal to sync the current quest state." until it has
+  read it. So the journal for stage 1 must use OSRS's own wording (fetch `Pirate's Treasure/Journal` from the wiki).
+- Messages QH also matches: "You stash the rum in the crate.", "There is also some rum stashed in here too.",
+  "There's already some rum in here...", "There is some rum in here, although with no bananas to cover it. It is a
+  little obvious.", "You fill the crate with bananas.", "You pack all your bananas into the crate.", "The crate is
+  full of bananas.", "The crate is already full.", "Luthas hands you 30 coins.", "There is already some rum in
+  Wydin's store, I should go and get that first."; dialogue options "Could you offer me employment on your
+  plantation?", "Well, can I get a job here?", "Will you pay me for another crate full?", "Have you completed your
+  task yet?", "Ok, I will bring you some rum.", "Search away, I have nothing to hide." (customs officer),
+  "Can I journey on this ship?", "Yes please.".
+- **Missing content** (none of it exists in OpenRune): Redbeard Frank, Luthas and the banana plantation (tree
+  picking, the crate on Karamja), Zembo's bar (Karamjan rum), the customs officer's rum confiscation on the way
+  back, Wydin's back room (white apron gate) and its crate, the Blue Moon Inn upstairs chest, the Falador Park dig
+  and the Gardener. Present: the Karamja ferry (`KaramjaFerryScript`), Wydin's shop, the Fishing Shop.
+- Estimate: about a day with tests, the largest of the five.

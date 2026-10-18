@@ -1239,6 +1239,41 @@ session; its notes are in `docs/android-protocol.md`.
        the server dev carries a username from the local sign-in into the token login (orchestrator asked for it);
        varp trails in docs/openrune-port.md. Never use `::empty` on the tester.
     4. Monster Menu HP with a low-level account (same per-login accounts).
+- **2026-10-18 (client dev gen 34)**, commits f39c794..cfef142 (progress at start: core 89/90, hub 37/44, API 655/866;
+  now core 89/90, hub 44/50, API 655/866).
+  - **Message-inventory snapshot off-by-one** (f39c794, verified): the Message constructor `0x3f0a04` takes id = counter
+    and then increments it; the hook keyed snapshots to next+1, so every chat line replayed the previous line's
+    inventories (stale ItemContainerChanged in packet order; Consumable Cooldowns AIOOBE). Loot Tracker's casket rechecked
+    after the fix.
+  - **getAccountHash** uses the raw game state (LOGGED_IN or LOADING): the login UsernameChanged is posted while
+    getGameState still reads LOADING (Mahogany Homes' saved contract).
+  - **MenuEntryAdded sees desktop's growing menu** (007d26f, verified): `AndroidMenu.postAdded` (long-press and tap) shows
+    getMenuEntries() ending with the entry just added; setMenuEntries within the pass keeps the not-yet-added entries
+    (Monster Menu HP).
+  - **Login ItemContainerChanged held** until the local player exists, like StatChanged (e21e882, verified: Looting Bag).
+  - **Plugin startUp runs as the EDT** before cycles start (`Edt.runAsEdtAtStartup`; desktop SwingUtil.syncExec), **ClientUI
+    bound to an unconstructed instance** (Unsafe.allocateInstance; RuneLite's constructor casts Client to Component),
+    **GenHeadless JList(ListModel)** keeps the model (cfef142).
+  - Runs now: Mahogany Homes, Consumable Cooldowns, Monster Menu HP, Looting Bag, Visual Ticks, Player Outline, Tree
+    Count; Wiki search no longer NPEs. Starts: Ground Object Hider (`Tile.setGroundObject` gap), Annoyance Mute, Bank
+    Memory (sidebar doesn't render JList items).
+  - **QH on Android on a fresh account** (qhand1): Doric's Quest, Witch's Potion, Goblin Diplomacy, Vampyre Slayer,
+    Pirate's Treasure complete and match desktop (docs/multi-client.md "QH on Android, gen 34", with the not-covered
+    steps). Account choice: `docker exec osrs-openrune-http sh -c 'echo <name> > /tmp/local-auth-user'` before Play Now;
+    `rm -f` it to return to tester. OpenRune commands: `::mypos`/`::pos`, `::heal`, `::god` (toggle), `::master`,
+    `::tele`, `::item`, `::varbit`, `::quest`; unknown commands are silently ignored.
+  - Device driving this gen: devtools (`setprop debug.osrsrl.devtools 1`, push `devtools.jar`, `tools/devtools_mcp.py
+    --call tools/call '{"name":..,"arguments":..}'`): `interact_npc {npcIndex|npcName, option}`, `get_dialogue`,
+    `continue_dialogue`, `select_option {option}`, `interact_object {objectId, option}`, `get_var`, `walk_to` (minimap,
+    short legs only), `get_combat_history`. devtools `canvasX/Y` don't map to screen pixels (use screenshots).
+    `get_inventory` threw a Gson null error. QH helper: `sbclick` fires once per value and needs the RL panel's quest list;
+    `sbtext <quest>` + a tap on the filtered row works any time. The RL panel close button (43,26) is the game's logout
+    button when the panel is closed. QH drops the active helper on relog on desktop too (checked; not a host gap).
+  - **Next (gen 35)**:
+    1. Ground Object Hider: `Tile.setGroundObject` (remove/restore a scene tile's ground decoration; RE the scene tile).
+    2. Bank Memory's item list: render JList (and its cell renderer) in the sidebar model.
+    3. Annoyance Mute: AmbientSoundEffectCreated / `AmbientSoundEffect` getters.
+    4. More hub plugins by install count (ranked list: `api.runelite.net/runelite-1.13.1/pluginhub`, skip GPU/upload ones).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

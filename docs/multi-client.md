@@ -368,8 +368,9 @@ once per value, so reusing a quest name needs another value in between). Dialogu
   Pirate message" -> 3, "Dig in the middle of the cross in Falador Park, and kill the Gardener" (spade tile marked), the
   Gardener spawned on the first dig and died to auto-retaliate (99 stats), the second dig -> 4 and the casket scroll.
   **Not covered:** the whole Karamja smuggling path (the rum was spawned) and the Blue Moon stairs (`::tele` upstairs).
-- After a relog the active helper was gone (QH's own behaviour: it doesn't restore the selected helper on Android's login;
-  desktop not compared) and had to be started again.
+- After a relog the active helper was gone and had to be started again. **Desktop does the same** (checked 2026-10-18
+  gen 34: desktop QH 4.18 on `desktop`, Cook's Assistant started from the quest list, logout + login: no helper overlay),
+  so it is QH's behaviour, not a host gap.
 - Found on the way (server, relayed): Doomsayer Talk-to threw "Error Loading MesAnim" and dropped the session (fixed
   in ed9cd76, rechecked: full dialogue); `::pos`/`::heal` were missing on OpenRune (added in ed9cd76: "3223 3395 0",
   "Restored."). Tiles `::tele` puts you on can be unreachable from (Blue Moon chest from 3219,3397,1: "I can't reach

@@ -1,3 +1,5 @@
+**Discussion issue opened 2026-10-18:** https://github.com/OpenRune/OpenRune-Server/issues/353. The 8 fix PRs are held until batch 1 (#343-#351) gets a first review.
+
 # Upstream PR batch 2: the remaining small fixes, and a content discussion issue
 
 Prepared 2026-10-18 against OpenRune-Server main

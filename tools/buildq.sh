@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# First-in, first-out queue for heavy build containers shared by all agents (one build at a time;
-# flock alone is not fair). Each call takes a ticket, waits until it is the oldest live ticket, runs
-# the command, then gives the slot to the next ticket.
+# First-in, first-out queue for heavy build containers shared by all agents (BUILDQ_SLOTS at a time,
+# default 2: each build container is capped at 4 GB and WSL has 15 GB; flock alone is not fair).
+# Each call takes a ticket, waits until it is among the oldest BUILDQ_SLOTS live tickets, runs the
+# command, then gives the slot to the next ticket.
 #   tools/buildq.sh <owner> -- <command...>    e.g. tools/buildq.sh acc-genie -- docker run ...
 #   tools/buildq.sh status                     the queue, oldest first
 # A ticket whose waiting process has died is dropped automatically.
@@ -30,8 +31,9 @@ shift
 ticket="$(date +%s%N)-$$-$owner"
 printf '%s waiting since %s\n' "$*" "$(date +%H:%M:%S)" > "$Q/$ticket"
 trap 'rm -f "$Q/$ticket"' EXIT
+SLOTS=${BUILDQ_SLOTS:-2}
 announced=
-while [[ $(live | head -1) != "$ticket" ]]; do
+while ! live | head -"$SLOTS" | grep -qx -- "$ticket"; do
     if [[ -z $announced ]]; then
         echo "buildq: $owner queued at position $(live | grep -n -- "$ticket" | cut -d: -f1)" >&2
         announced=1
@@ -39,8 +41,4 @@ while [[ $(live | head -1) != "$ticket" ]]; do
     sleep 5
 done
 printf '%s running since %s\n' "$*" "$(date +%H:%M:%S)" > "$Q/$ticket"
-# Also hold the old gradle.lock while running, so scripts not yet switched to the queue still
-# exclude us.
-exec 9>"$(dirname "$Q")/gradle.lock"
-flock 9
 "$@"

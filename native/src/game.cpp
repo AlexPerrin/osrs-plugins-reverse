@@ -1367,6 +1367,80 @@ bool world_map_jump(int level, int x, int z) {
     return true;
 }
 
+// Map regions and their icons. Static RE gen 32: worldmap_listelement_start (6639, ELF 0x4b8f0c)
+// requires the loaded byte *(wm+0xd8)+0x14 and *(*(wm+0xd0)+8), then has the icon map rebuilt from
+// the region grid of the manager *(wm+0xd0) (0x5caf1c): rows at +0x68 (count +0x60), 0x18-byte
+// {?, count +8, Region** +0x10}; a region holds a std::list of icon entries at +0x38 (node: +0 next,
+// +0x10 icon) and a hash table at +0x58 (buckets) / +0x60 (bucket count; buckets[count] is the end
+// sentinel; node: +8 icon, +0x18 next, a null next continues with the next bucket). Icon: vtable
+// slot 1 = element (map element id, -1 = none), +8 level, +0xc x, +0x10 y (the coordinate 6639
+// pushes). Out: per icon {row, col, element, level, x, y}.
+bool world_map_icons(int& rows, int& cols, std::vector<int>& out) {
+    rows = cols = 0;
+    uintptr_t wm = world_map();
+    if (!g_build || !wm) return false;
+    uintptr_t r = read_at<uintptr_t>(wm + 0xd8), mgr = read_at<uintptr_t>(wm + 0xd0);
+    if (!r || !mgr || !read_at<uint8_t>(r + 0x14) || !read_at<uint8_t>(mgr + 8)) return false;
+    uint64_t nrows = read_at<uint64_t>(mgr + 0x60);
+    uintptr_t rowp = read_at<uintptr_t>(mgr + 0x68);
+    if (!rowp || nrows > 512) return false;
+    rows = static_cast<int>(nrows);
+    auto add = [&](int row, int col, uintptr_t icon) {
+        if (!icon || out.size() > 6 * 50000) return;
+        uintptr_t vt = read_at<uintptr_t>(icon);
+        if (!vt) return;
+        int element = reinterpret_cast<int (*)(uintptr_t)>(read_at<uintptr_t>(vt + 8))(icon);
+        if (element < 0) return;
+        out.insert(out.end(), {row, col, element, read_at<int32_t>(icon + 8), read_at<int32_t>(icon + 0xc),
+                               read_at<int32_t>(icon + 0x10)});
+    };
+    for (uint64_t i = 0; i < nrows; i++) {
+        uint64_t ncols = read_at<uint64_t>(rowp + i * 0x18 + 8);
+        uintptr_t regs = read_at<uintptr_t>(rowp + i * 0x18 + 0x10);
+        if (!regs || ncols > 512) continue;
+        if (static_cast<int>(ncols) > cols) cols = static_cast<int>(ncols);
+        for (uint64_t j = 0; j < ncols; j++) {
+            uintptr_t reg = read_at<uintptr_t>(regs + j * 8);
+            if (!reg) continue;
+            int guard = 0;
+            for (uintptr_t n = read_at<uintptr_t>(reg + 0x38); n && n != reg + 0x38 && guard < 4096; guard++) {
+                add(static_cast<int>(i), static_cast<int>(j), read_at<uintptr_t>(n + 0x10));
+                n = read_at<uintptr_t>(n);
+            }
+            uintptr_t buckets = read_at<uintptr_t>(reg + 0x58);
+            uint64_t nb = read_at<uint64_t>(reg + 0x60);
+            if (!buckets || nb == 0 || nb > 65536) continue;
+            // As 0x5caf1c: from the first non-null bucket follow +0x18, skipping to the next
+            // non-null bucket on null, until the end sentinel buckets[nb].
+            uintptr_t end = read_at<uintptr_t>(buckets + nb * 8);
+            uint64_t b = 0;
+            uintptr_t n = 0;
+            while (b < nb && !(n = read_at<uintptr_t>(buckets + b * 8))) b++;
+            for (guard = 0; b < nb && n && n != end && guard < 65536; guard++) {
+                add(static_cast<int>(i), static_cast<int>(j), read_at<uintptr_t>(n + 8));
+                n = read_at<uintptr_t>(n + 0x18);
+                while (!n && ++b <= nb) n = read_at<uintptr_t>(buckets + b * 8);
+            }
+        }
+    }
+    return true;
+}
+
+// Map element (mel) configs, static RE gen 32: CS2 MEC_TEXT/TEXTSIZE/CATEGORY/SPRITE (6693-6696 in
+// 0x4c3cf8) read 0x63529c(id) = table[id], the table being the vector {+8 count, +0x10 data} at ELF
+// 0x1212620 (filled by the config loader 0x634394; opcode 19 = category +0x180, sprite +4, textsize +0x30).
+bool map_element(int id, int& category, int& sprite) {
+    if (!g_build || id < 0) return false;
+    uint64_t count = read_at<uint64_t>(g_base + 0x1212628);
+    uintptr_t data = read_at<uintptr_t>(g_base + 0x1212630);
+    if (!data || static_cast<uint64_t>(id) >= count) return false;
+    uintptr_t mel = read_at<uintptr_t>(data + static_cast<uintptr_t>(id) * 8);
+    if (!mel) return false;
+    category = read_at<int32_t>(mel + 0x180);
+    sprite = read_at<int32_t>(mel + 4);
+    return true;
+}
+
 int afk_timeout_minutes() {
     uintptr_t c = client();
     if (!g_build || !c) return -1;

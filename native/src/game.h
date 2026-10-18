@@ -464,6 +464,11 @@ WorldMapState world_map_state();
 int world_map_contains(int map, int level, int x, int z);
 // worldmap_jumptosourcecoord (smooth). Game thread.
 bool world_map_jump(int level, int x, int z);
+// The current map's region grid (rows x cols) and its icons, {row, col, element, level, x, y} each;
+// false when the map isn't loaded. Game thread.
+bool world_map_icons(int& rows, int& cols, std::vector<int>& out);
+// Map element config: category and sprite. False for an unknown id.
+bool map_element(int id, int& category, int& sprite);
 int afk_timeout_minutes();
 bool set_afk_timeout_minutes(int minutes);
 // Client varcs (VarClientInt/VarClientStr); false when unset. Game thread only.

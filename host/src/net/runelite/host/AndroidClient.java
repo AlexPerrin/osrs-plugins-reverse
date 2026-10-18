@@ -579,7 +579,7 @@ public class AndroidClient extends ClientStub {
     /**
      * The game's world map (Client +0x418660, the object behind the CS2 worldmap_* opcodes; static RE
      * gen 31, docs/offsets.md "World map"): position, zoom, loaded flag, the surface map area test and
-     * the smooth jump. Map regions (WorldMapRegion tiles/icons) are not read.
+     * the smooth jump, and the regions' map icons (gen 32; region tiles are not read).
      */
     static final int SURFACE_MAP = 0;  // map area id 0 = the main surface map // unverified: from desktop
     private final WorldMapBag worldMap = new WorldMapBag() {
@@ -617,12 +617,63 @@ public class AndroidClient extends ClientStub {
                 int[] s = state();
                 return s != null && s[1] != 0;
             }
-            // Regions (per-region tiles and map icons) aren't read. // unverified: default
-            @Override public net.runelite.api.worldmap.WorldMapRegion[][] getMapRegions() { return new net.runelite.api.worldmap.WorldMapRegion[0][0]; }
+            private net.runelite.api.worldmap.WorldMapRegion[][] regions = new net.runelite.api.worldmap.WorldMapRegion[0][0];
+            private int regionsCycle = Integer.MIN_VALUE, regionsMap = Integer.MIN_VALUE;
+            /**
+             * The current map's region grid with its icons (game.cpp world_map_icons; outer index =
+             * the game's row array). World Map reads it every client tick while loaded, so it is
+             * re-read when the map changes and otherwise every 50 cycles. Tiles aren't read.
+             */
+            @Override public net.runelite.api.worldmap.WorldMapRegion[][] getMapRegions() {
+                int[] s = state();
+                int map = s == null ? -1 : s[5];
+                int cycle = Native.gameCycle();
+                if (map == regionsMap && regionsCycle != Integer.MIN_VALUE && cycle >= regionsCycle && cycle - regionsCycle < 50) return regions;
+                int[] v = Native.worldMapIcons();
+                if (v == null) return regions;  // off the client thread or not loaded: last result
+                regionsCycle = cycle;
+                regionsMap = map;
+                int rows = v[0], cols = v[1];
+                @SuppressWarnings("unchecked")
+                java.util.List<net.runelite.api.worldmap.WorldMapIcon>[][] icons = new java.util.List[rows][cols];
+                for (int i = 2; i + 5 < v.length; i += 6) {
+                    int r = v[i], c = v[i + 1];
+                    if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
+                    if (icons[r][c] == null) icons[r][c] = new java.util.ArrayList<>();
+                    final int type = v[i + 2];
+                    final net.runelite.api.coords.WorldPoint at = new net.runelite.api.coords.WorldPoint(v[i + 4], v[i + 5], v[i + 3]);
+                    icons[r][c].add(new net.runelite.api.worldmap.WorldMapIcon() {
+                        @Override public int getType() { return type; }
+                        @Override public net.runelite.api.coords.WorldPoint getCoordinate() { return at; }
+                        @Override public String toString() { return "WorldMapIcon(" + type + " @ " + at + ")"; }
+                    });
+                }
+                net.runelite.api.worldmap.WorldMapRegion[][] out = new net.runelite.api.worldmap.WorldMapRegion[rows][cols];
+                for (int r = 0; r < rows; r++) {
+                    for (int c = 0; c < cols; c++) {
+                        final java.util.Collection<net.runelite.api.worldmap.WorldMapIcon> list = icons[r][c] == null
+                            ? java.util.Collections.<net.runelite.api.worldmap.WorldMapIcon>emptyList()
+                            : java.util.Collections.unmodifiableList(icons[r][c]);
+                        out[r][c] = () -> list;
+                    }
+                }
+                regions = out;
+                return out;
+            }
         };
         @Override public net.runelite.api.worldmap.WorldMapRenderer getWorldMapRenderer() { return renderer; }
     };
     @Override public net.runelite.api.worldmap.WorldMap getWorldMap() { return worldMap; }
+    /** Map element (mel) config: category from the game's table (game.cpp map_element); null for an unknown id. */
+    @Override public net.runelite.api.worldmap.MapElementConfig getMapElementConfig(int id) {
+        int[] m = Native.mapElement(id);
+        if (m == null) return null;
+        final int category = m[0];
+        return new net.runelite.api.worldmap.MapElementConfig() {
+            @Override public int getCategory() { return category; }
+            @Override public net.runelite.api.SpritePixels getMapIcon(boolean large) { return null; }  // unverified: default (sprite id m[1] not decoded)
+        };
+    }
     /** Minimap zoom isn't read from the game; RuneLite's default. */
     @Override public double getMinimapZoom() { return 4.0; }
     @Override public void setMinimapZoom(double zoom) { }  // unverified: the mobile minimap zoom isn't mapped

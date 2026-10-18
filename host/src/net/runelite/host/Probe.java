@@ -338,6 +338,23 @@ final class Probe {
                             sb.append(" | 595:").append(child).append(w == null ? " null" : " " + w.getBounds() + " hidden " + w.isHidden() + " type " + w.getType());
                         }
                         Log.i(TAG, sb.toString());
+                        // Region icons, and those whose map element category is 1056 (quest start, as World Map tests).
+                        net.runelite.api.worldmap.WorldMapRegion[][] regs = wm.getWorldMapRenderer().getMapRegions();
+                        int n = 0, quests = 0;
+                        StringBuilder q = new StringBuilder();
+                        java.util.Map<Integer, Integer> cats = new java.util.TreeMap<>();
+                        for (net.runelite.api.worldmap.WorldMapRegion[] row : regs) for (net.runelite.api.worldmap.WorldMapRegion r : row) {
+                            if (r == null) continue;
+                            for (net.runelite.api.worldmap.WorldMapIcon ic : r.getMapIcons()) {
+                                n++;
+                                net.runelite.api.worldmap.MapElementConfig mc = c.getMapElementConfig(ic.getType());
+                                int cat = mc == null ? -2 : mc.getCategory();
+                                cats.merge(cat, 1, Integer::sum);
+                                if (cat == 1056 && quests++ < 4) q.append(' ').append(ic);
+                            }
+                        }
+                        Log.i(TAG, "wmap regions " + regs.length + "x" + (regs.length > 0 ? regs[0].length : 0) + " icons " + n
+                            + " quest starts " + quests + q + " categories " + cats);
                     } catch (Throwable t) {
                         Log.e(TAG, "wmap points", t);
                     }

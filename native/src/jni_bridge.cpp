@@ -296,6 +296,26 @@ jint n_world_map_contains(JNIEnv*, jclass, jint map, jint level, jint x, jint z)
 jboolean n_world_map_jump(JNIEnv*, jclass, jint level, jint x, jint z) {
     return client_thread::on_client_thread() && game::world_map_jump(level, x, z);
 }
+// {rows, cols, then per icon row, col, element, level, x, y}, or null (off the client thread / not loaded).
+jintArray n_world_map_icons(JNIEnv* env, jclass) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    int rows = 0, cols = 0;
+    std::vector<int> v;
+    if (!game::world_map_icons(rows, cols, v)) return nullptr;
+    v.insert(v.begin(), {rows, cols});
+    jintArray out = env->NewIntArray(static_cast<jsize>(v.size()));
+    env->SetIntArrayRegion(out, 0, static_cast<jsize>(v.size()), v.data());
+    return out;
+}
+// {category, sprite}, or null for an unknown element.
+jintArray n_map_element(JNIEnv* env, jclass, jint id) {
+    int category = -1, sprite = -1;
+    if (!game::map_element(id, category, sprite)) return nullptr;
+    jint v[2] = {category, sprite};
+    jintArray out = env->NewIntArray(2);
+    env->SetIntArrayRegion(out, 0, 2, v);
+    return out;
+}
 jint n_afk_timeout(JNIEnv*, jclass) { return game::afk_timeout_minutes(); }
 jboolean n_set_afk_timeout(JNIEnv*, jclass, jint minutes) {
     return client_thread::on_client_thread() && game::set_afk_timeout_minutes(minutes);
@@ -1554,6 +1574,8 @@ const JNINativeMethod kNatives[] = {
     {"worldMap", "()[I", reinterpret_cast<void*>(n_world_map)},
     {"worldMapContains", "(IIII)I", reinterpret_cast<void*>(n_world_map_contains)},
     {"worldMapJump", "(III)Z", reinterpret_cast<void*>(n_world_map_jump)},
+    {"worldMapIcons", "()[I", reinterpret_cast<void*>(n_world_map_icons)},
+    {"mapElement", "(I)[I", reinterpret_cast<void*>(n_map_element)},
     {"afkTimeout", "()I", reinterpret_cast<void*>(n_afk_timeout)},
     {"setAfkTimeout", "(I)Z", reinterpret_cast<void*>(n_set_afk_timeout)},
     {"serverVarp", "(I)I", reinterpret_cast<void*>(n_server_varp)},

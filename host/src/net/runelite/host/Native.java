@@ -208,6 +208,10 @@ final class Native {
     static native int worldMapContains(int map, int level, int x, int z);
     /** Client thread: worldmap_jumptosourcecoord (smooth scroll). */
     static native boolean worldMapJump(int level, int x, int z);
+    /** Client thread: {rows, cols, then per icon row, col, element, level, x, y} of the current map's regions, null when not loaded. */
+    static native int[] worldMapIcons();
+    /** Map element config {category, sprite}, null for an unknown id. */
+    static native int[] mapElement(int id);
     /** Sprite by id, frame 0: {width, height, ARGB pixels...}, null while not loaded; client thread only. */
     static native int[] sprite(int id);
     /** Writes same-size ARGB pixels into the game's cached sprite; client thread only. */

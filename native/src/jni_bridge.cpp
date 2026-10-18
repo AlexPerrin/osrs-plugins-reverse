@@ -1011,6 +1011,9 @@ jintArray n_ambient_sounds(JNIEnv* env, jclass) {
     return out;
 }
 jboolean n_ambient_clear(JNIEnv* env, jclass) { return require_client_thread(env, "ambientClear") && game::ambient_clear(); }
+jboolean n_ambient_remove(JNIEnv* env, jclass, jlong obj) {
+    return require_client_thread(env, "ambientRemove") && game::ambient_remove(static_cast<uintptr_t>(obj));
+}
 jboolean n_ambient_restore(JNIEnv* env, jclass, jlong obj) {
     return require_client_thread(env, "ambientRestore") && game::ambient_restore(static_cast<uintptr_t>(obj));
 }
@@ -1552,6 +1555,7 @@ const JNINativeMethod kNatives[] = {
     {"ambientSounds", "()[I", reinterpret_cast<void*>(n_ambient_sounds)},
     {"ambientClear", "()Z", reinterpret_cast<void*>(n_ambient_clear)},
     {"ambientRestore", "(J)Z", reinterpret_cast<void*>(n_ambient_restore)},
+    {"ambientRemove", "(J)Z", reinterpret_cast<void*>(n_ambient_remove)},
     {"subInterfaces", "()[I", reinterpret_cast<void*>(n_sub_interfaces)},
     {"drawMinimap", "(I)[I", reinterpret_cast<void*>(n_draw_minimap)},
     {"closeSubInterface", "(IIZ)Z", reinterpret_cast<void*>(n_close_sub_interface)},

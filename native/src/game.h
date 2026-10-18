@@ -531,6 +531,8 @@ struct AmbientSound {
 };
 std::vector<AmbientSound> ambient_sounds();
 bool ambient_clear();
+// Moves one live entry to the pending vector (as 0x4b065c does for all of them). Game thread.
+bool ambient_remove(uintptr_t obj);
 // Moves an entry cleared in this cycle (still in the pending vector) back into the live vector.
 bool ambient_restore(uintptr_t obj);
 

@@ -68,7 +68,14 @@ final class AmbientSounds implements net.runelite.api.Deque<AmbientSoundEffect> 
         return out;
     }
 
-    /** Posts AmbientSoundEffectCreated for entries not seen before (client thread, logged in). */
+    /**
+     * Entries not announced yet while poll posts AmbientSoundEffectCreated; null otherwise. Desktop
+     * posts the event as each sound is added, so a handler sees (and clears) only the sounds added
+     * so far: during the batch, iteration and clear() leave the not-yet-announced ones alone.
+     */
+    private java.util.Set<Long> unannounced;
+
+    /** Posts AmbientSoundEffectCreated for entries not seen before, in list order (client thread, logged in). */
     synchronized void poll(EventBus bus) {
         Map<Long, Effect> before = known;
         List<Effect> now = read();
@@ -81,20 +88,43 @@ final class AmbientSounds implements net.runelite.api.Deque<AmbientSoundEffect> 
         known = next;
         if (!created.isEmpty() || before.size() != next.size())
             android.util.Log.i(Host.TAG, "ambient sounds: " + next.size() + " (" + created.size() + " new"
-                    + (created.isEmpty() ? "" : ", first " + created.get(0)) + ")");
-        for (Effect e : created) bus.post(new AmbientSoundEffectCreated(e));
+                    + (created.isEmpty() ? "" : ", ids " + ids(created)) + ")");
+        if (created.isEmpty()) return;
+        unannounced = new java.util.HashSet<>();
+        for (Effect e : created) unannounced.add(e.key());
+        try {
+            for (Effect e : created) {
+                unannounced.remove(e.key());
+                bus.post(new AmbientSoundEffectCreated(e));
+            }
+        } finally {
+            unannounced = null;
+        }
+    }
+
+    private static String ids(List<Effect> l) {
+        java.util.TreeMap<Integer, Integer> n = new java.util.TreeMap<>();
+        for (Effect e : l) n.put(e.id, n.containsKey(e.id) ? n.get(e.id) + 1 : 1);
+        return n.toString();
     }
 
     synchronized void reset() { known = new HashMap<>(); }
 
     @Override public void addLast(AmbientSoundEffect e) {
-        if (e instanceof Effect && !Native.ambientRestore(((Effect) e).obj))
-            android.util.Log.d(Host.TAG, "ambient sound " + e + " not restored (not cleared this cycle)");
+        boolean ok = e instanceof Effect && Native.ambientRestore(((Effect) e).obj);
+        if (ok && "1".equals(Native.property("debug.osrsrl.soundlog"))) android.util.Log.i(Host.TAG, "ambient sound " + e + " restored");
+        if (!ok) android.util.Log.w(Host.TAG, "ambient sound " + e + " not restored (not cleared this cycle)");
     }
 
-    @Override public void clear() { Native.ambientClear(); }
+    @Override public synchronized void clear() {
+        if (unannounced == null) Native.ambientClear();
+        else for (Effect e : read()) if (!unannounced.contains(e.key())) Native.ambientRemove(e.obj);
+        if ("1".equals(Native.property("debug.osrsrl.soundlog"))) android.util.Log.i(Host.TAG, "ambient sounds cleared, " + read().size() + " left");
+    }
 
-    @Override public Iterator<AmbientSoundEffect> iterator() {
-        return new ArrayList<AmbientSoundEffect>(read()).iterator();
+    @Override public synchronized Iterator<AmbientSoundEffect> iterator() {
+        List<AmbientSoundEffect> out = new ArrayList<>();
+        for (Effect e : read()) if (unannounced == null || !unannounced.contains(e.key())) out.add(e);
+        return out.iterator();
     }
 }

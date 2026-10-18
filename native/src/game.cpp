@@ -3102,6 +3102,32 @@ bool ambient_clear() {
     return true;
 }
 
+bool ambient_remove(uintptr_t obj) {
+    uintptr_t wv = top_world_view();
+    if (!wv || !obj) return false;
+    auto* live = reinterpret_cast<uintptr_t*>(wv + kAmbientLive);
+    auto* pending = reinterpret_cast<uintptr_t*>(wv + kAmbientPending);
+    for (uintptr_t p = live[0]; p && p < live[1]; p += 16) {
+        if (read_at<uintptr_t>(p + 8) != obj) continue;
+        uintptr_t ctrl = read_at<uintptr_t>(p);
+        // Copy into pending (+1 owner), as 0x4b065c: inline when there is room, else its push_back 0x4bb59c.
+        if (pending[0] && pending[1] + 16 <= pending[2]) {
+            std::memcpy(reinterpret_cast<void*>(pending[1]), reinterpret_cast<void*>(p), 16);
+            pending[1] += 16;
+            if (ctrl) __atomic_fetch_add(reinterpret_cast<int32_t*>(ctrl + 8), 1, __ATOMIC_ACQ_REL);
+        } else {
+            reinterpret_cast<void (*)(uintptr_t, uintptr_t)>(g_base + 0x4bb59c)(wv + kAmbientPending, p);
+        }
+        // Erase from live (-1 owner; pending still holds one, so it never reaches zero here).
+        std::memmove(reinterpret_cast<void*>(p), reinterpret_cast<void*>(p + 16), live[1] - p - 16);
+        live[1] -= 16;
+        std::memset(reinterpret_cast<void*>(live[1]), 0, 16);
+        if (ctrl) __atomic_fetch_sub(reinterpret_cast<int32_t*>(ctrl + 8), 1, __ATOMIC_ACQ_REL);
+        return true;
+    }
+    return false;
+}
+
 bool ambient_restore(uintptr_t obj) {
     uintptr_t wv = top_world_view();
     if (!wv || !obj) return false;

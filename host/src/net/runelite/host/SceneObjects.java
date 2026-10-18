@@ -175,11 +175,15 @@ final class SceneObjects {
      * GroundObjectDespawned at once (desktop's tile hook does the same); the next refresh doesn't
      * see it again. The game re-adds it only when the scene is rebuilt (setGameState(LOADING)).
      */
+    private int groundRemovals;
+
     synchronized void removeGround(int plane, int x, int y) {
         if (plane < 0 || plane >= 4 || x < 0 || x >= SIZE || y < 0 || y >= SIZE) return;
         Contents c = tiles[plane][x][y];
         AndroidTileObject.Ground g = c != null ? c.ground : null;
-        Native.removeGroundObject(plane, x, y);
+        boolean removed = Native.removeGroundObject(plane, x, y);
+        if (++groundRemovals % 500 == 1)
+            android.util.Log.i(Host.TAG, "setGroundObject(null) #" + groundRemovals + ": " + g + " removed " + removed);
         if (g == null) return;
         c.ground = null;
         objects.remove(g.key());

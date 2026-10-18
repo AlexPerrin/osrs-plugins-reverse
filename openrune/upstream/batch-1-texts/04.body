@@ -1,0 +1,15 @@
+**Problem.** After the first cast, the catch cycle in `Fishing.attemptCatch` re-queues itself and
+only checks that the spot npc is still the same one (`uid`). If the player teleports away, the
+weak queue keeps running: the animation and the catches go on from the other side of the map.
+
+**Change.** The cycle also stops when the player is not within one tile of the spot
+(`isWithinDistance(task.npc, 1)`, which also needs the same level).
+
+**Tests.** None added. The bug was seen in game (teleport while fishing, catches went on); the
+fix was not re-checked in game on this branch.
+
+**Caveats.** On live a teleport interrupts the action itself; here the cycle notices on its next
+roll, so one extra cycle may pass silently before it stops (no catch is awarded, since the check
+runs before the roll).
+
+On this branch `spotlessCheck` and `./gradlew assemble test integration` pass.

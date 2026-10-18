@@ -1,0 +1,21 @@
+**Problem.** `Banker.kt` binds Talk-to, Bank, Collect and item-on-npc noting to
+`content.banker`, but on main only `deadman_banker_blue_south` has that group
+(`.data/raw-cache/server/npcs.toml`). `bankers.toml` lists `banker1`/`banker2` without it, and
+the Al Kharid bankers don't have it either, so clicking a banker across a booth gives
+"I can't reach that!" and nothing opens.
+
+**Change.** `content.banker` on every npc type named "Banker" with Talk-to (op1), Bank (op3) and
+Collect (op4) in the rev 241 cache: 94 types in `generic-npcs`' `bankers.toml`, plus
+`kharidbanker1/2` in the Al Kharid pack, where they are already defined. The list was checked
+against the osrs-dumps npc dump (96 types, no extras, none missing). The new entries have
+`moveRestrict = "NoMove"` like the two existing ones.
+
+**Tests.** Data only, so no unit test (per AGENTS.md). The cache builds and the server tests pass
+(see below). The "I can't reach that!" was seen in game; the fix was not re-checked in game on
+this branch.
+
+**Caveats.** The 94 types include bankers in places that are not implemented yet; with the group
+they open the bank there too, as in OSRS. Bankers with other ops (e.g. "Banker" npcs without
+Collect, or tutors) are left alone.
+
+On this branch `spotlessCheck` and `./gradlew assemble test integration` pass.

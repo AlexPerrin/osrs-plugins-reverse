@@ -1,0 +1,23 @@
+**Problem.** `VarPlayerIntMapSetter.set` and `VarPlayerIntMapDelegate` don't transmit while
+`processedMapClock <= 0`. Varps set after the login varp sync but before the player's first
+processed tick (EngineLogin handlers that run after the sync, post-tick hooks on the login tick)
+are stored and never sent, so the client keeps the login value. Seen with followers:
+`follower_npc` (varp 447) stayed 0 on the client after a relog although the follower respawned, so
+the Kitten Tracker plugin (RuneLite Plugin Hub) saw no follower.
+
+**Change.** The setters record changed varp ids in `Player.varpsSetBeforeFirstTick` while not yet
+processed; `PlayerMainProcess` resends them (`resyncVar`, which respects `transmit = never`) right
+after setting `processedMapClock` on the first processed tick.
+
+**Tests.** `VarpsBeforeFirstTickTest` (2): a changed varp is sent once on the first tick, an
+unchanged one is not. Checked in game on our build: after two relogs the Kitten Tracker overlay
+shows the kitten.
+
+The diff also fixes `if(` / `?:` spacing on two existing lines of
+`VarPlayerIntMapDelegate.kt`, which the spotless ratchet flags once the file is touched.
+
+**Caveats.** Varps changed before the login sync are also recorded and so sent twice (same value);
+harmless but redundant. A cleaner fix would be to make the setters transmit once the login sync
+has gone out; we didn't find a flag for that.
+
+On this branch `spotlessCheck` and `./gradlew assemble test integration` pass.

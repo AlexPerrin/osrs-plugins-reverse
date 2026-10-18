@@ -1,0 +1,16 @@
+**Problem.** The client sends `IDLE` after five minutes without mouse or keyboard input (rsprot's
+`Idle` doc: 15,000 client cycles). On OSRS that logs the player out. OpenRune has no listener for
+it, so idle players stay logged in.
+
+**Change.** `IdleHandler` sets `manualLogout`, the same flag as the logout button, so
+`PlayerLogoutProcess` applies the same checks (combat etc.). Ignored while a logout is already
+pending.
+
+**Tests.** `IdleHandlerTest` (2): IDLE sets `manualLogout`; IDLE during a pending logout does
+nothing.
+
+**Caveats.** If logout is blocked (in combat), the player gets the logout button's message, and the
+client won't send IDLE again until the next five idle minutes. We have not checked what live does
+in that case.
+
+On this branch `spotlessCheck` and `./gradlew assemble test integration` pass.

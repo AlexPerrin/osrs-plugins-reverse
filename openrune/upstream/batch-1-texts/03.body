@@ -1,0 +1,13 @@
+**Problem.** `0_50_50_freshfish` (Lure/Bait, the Lumbridge river spot) and `0_50_49_saltfish`
+(Net/Bait, Lumbridge Swamp) have no `contentGroup` in `.data/raw-cache/server/npcs.toml`, so
+Fishing never sees their ops and clicking them does nothing. The other freshfish/saltfish spots
+with the same ops have the groups.
+
+**Change.** `content.lure_bait_fishing_spot` and `content.net_bait_fishing_spot`, the groups
+`FishingConfig` binds for those op sets.
+
+**Tests.** Data only. The dead ops were seen in game; not re-checked in game on this branch.
+
+**Caveats.** None known.
+
+On this branch `spotlessCheck` and `./gradlew assemble test integration` pass.

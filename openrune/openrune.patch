@@ -19963,10 +19963,10 @@ index 8fba8cb4d..a8e9c8029 100644
          private const val OilCan = "obj.oil_can"
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt
 new file mode 100644
-index 000000000..1482eda5e
+index 000000000..dabf8ea3b
 --- /dev/null
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt
-@@ -0,0 +1,652 @@
+@@ -0,0 +1,662 @@
 +package org.rsmod.content.quest.area.draynor
 +
 +import dev.openrune.ServerCacheManager
@@ -19989,6 +19989,7 @@ index 000000000..1482eda5e
 +import org.rsmod.api.repo.npc.NpcRepository
 +import org.rsmod.api.repo.obj.ObjRepository
 +import org.rsmod.api.script.onAiTimer
++import org.rsmod.api.script.onModifyNpcHit
 +import org.rsmod.api.script.onNpcQueue
 +import org.rsmod.api.script.onOpLoc1
 +import org.rsmod.api.script.onOpLoc2
@@ -20000,6 +20001,7 @@ index 000000000..1482eda5e
 +import org.rsmod.content.quest.manager.rewards
 +import org.rsmod.content.quest.manager.startQuestPrompt
 +import org.rsmod.game.entity.Npc
++import org.rsmod.game.hit.HitBuilder
 +import org.rsmod.game.entity.Player
 +import org.rsmod.game.loc.BoundLocInfo
 +import org.rsmod.plugin.scripts.PluginScript
@@ -20490,6 +20492,7 @@ index 000000000..1482eda5e
 +        onOpLoc1(COFFIN) { openCoffin(it.loc) }
 +        onNpcQueue(countType(), "queue.death") { countDeath() }
 +        onAiTimer(countType()) { countTick(npc) }
++        onModifyNpcHit(countType()) { garlicBonus(npc, hit) }
 +        onPlayerLogout {
 +            val fight = player.uuid?.let(fights::remove) ?: return@onPlayerLogout
 +            if (fight.count.isSlotAssigned) npcRepo.del(fight.count, Int.MAX_VALUE)
@@ -20537,6 +20540,13 @@ index 000000000..1482eda5e
 +        delay(2)
 +        count.opPlayer2(player, aiPlayerInteractions)
 +        count.aiTimer(1)
++    }
++
++    /** Garlic adds 1 to the player's damage on the Count (wiki, Mod Ash 17 Nov 2020). */
++    private fun garlicBonus(count: Npc, hit: HitBuilder) {
++        val fight = fights.values.firstOrNull { it.count === count } ?: return
++        if (!hit.isFromPlayer || hit.sourceUid != fight.player.uid.packed || hit.damage <= 0) return
++        if (fight.player.inv.count(VampyreSlayer.GARLIC) > 0) hit.damage++
 +    }
 +
 +    /**

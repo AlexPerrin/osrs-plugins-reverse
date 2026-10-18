@@ -2149,3 +2149,10 @@ gamevals (varbit 6068 `lootingbag_useallitems`).
   disconnected. Op 1 is now ignored. Upstream candidate.
 - Tests: `LootingBagScriptTest` (5; new: an open bag takes tradeable pickups only in the Wilderness). The bank's
   integration tests are not wired to a suite upstream, so the bank paths still need a desktop check.
+
+### Count Draynor: garlic +1 damage (twenty-first server dev)
+The wiki's Count Draynor page cites Mod Ash (Twitter, 17 Nov 2020): carrying garlic makes the player hit 1 higher
+on the Count, in addition to the stat drain. `VampyreSlayerManor` adds 1 to every hit by the fighting player that
+deals damage while garlic is in the inventory (`onModifyNpcHit`). **Simplified:** zero-damage hits stay at 0 (a
+miss cannot be told apart from a 0 roll). The wiki also says the garlic effect "will wear off after 30 seconds";
+that is not modelled. Returning to the coffin: still no source, not done. Not yet checked in a client.

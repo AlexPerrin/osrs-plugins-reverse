@@ -93,3 +93,61 @@ and a few minutes of play (walking, tabs, `::nproj`), then a second restart:
     which the app looked up right after Play Now, next to its billing client starting ("In-app billing
     API version 3 is not supported"). Whether a connection followed is not visible in logcat. netd only
     logs some lookups, so this list is not exhaustive.
+
+## account.jagex.com consent sync (found gen 37; nothing changed yet)
+
+**The app contacts Jagex at Play Now.** In the gen 37 15:11 run, netd logged a DNS lookup of
+`account.jagex.com` right after Play Now, and the app logged `D ConsentSync: Consent sync failed with
+HTTP 401`. So an HTTPS request reached Jagex's server, and Jagex rejected it.
+
+- **What**: `POST https://account.jagex.com/consent/sync`, `Authorization: Bearer <token>`,
+  `Content-Type: application/json`. The body is the OneTrust consent record (`za.g`: a timestamp plus five
+  consent booleans), serialised with Gson. Client: `za.l` (an AsyncTask on `HttpURLConnection`; the
+  result is only logged).
+- **Where the URL comes from**: native string `"https://account.jagex.com/consent/sync"` (ELF `0x0aa6b4`,
+  used by Ghidra `FUN_00847014`), passed to `JagexMobileSDKWrapper` as its sync URL (`f11852i`).
+  There is also a dev variant, `https://account.development.jxp.jagex.com/consent/sync`.
+- **When**: `initialiseMobileCMP` (from native) → `za.p.a(..., syncUrl, AppAuth state, ...)` when an SSO
+  identity is present, which is always the case after a LOCAL_AUTH sign-in. `za.f.b` gets the token
+  from the AppAuth state (`ta.l.m`: refreshed if needed), then `za.l.a` posts. It skips with "sync client
+  is not configured" when the URL is empty, or with "no authenticated identity token" when there is
+  no token.
+- **What leaked**: in LOCAL_AUTH builds the bearer token is the test server's token
+  (`server/src/main/kotlin/rsps/LocalAuth.kt`): issuer = our local server URL, `sub` = the fixed test
+  account id `100000001`, `aud` = the app's client id, `nickname` = the local display name,
+  `login_provider` = `jagex`, and a fake signature (`.local`). There is no email or password. Jagex also
+  received the consent flags and the device's public IP, and it rejects the token (401).
+- **LOCAL_AUTH does not suppress it**: `tools/patch_local_auth.py` only redirects the AppAuth
+  endpoints; the consent sync URL stays Jagex's. This has very likely happened at every LOCAL_AUTH
+  Play Now since this CMP flow shipped. Normal (non-LOCAL_AUTH) builds would send the user's real Jagex
+  token, which is the app's intended behaviour when the user signs in for real.
+- **Whether a connection followed**: yes. The 401 is Jagex's HTTP response.
+
+Options (for the user to decide):
+
+| Option | What | Risk |
+|---|---|---|
+| S1. smali: `za.l.a(String, String, String)` returns at once | never POSTs; the CMP flow continues (the result was only logged anyway) | **very low** |
+| S2. native string patch: blank the sync URL (zero the first byte) | `za.f.b` takes the "sync client is not configured" path | low (touches the game library; one byte) |
+| S3. point the URL at the test server (same length or shorter, e.g. `http://10.0.2.2:8080/consent/sync`) | the POST goes to our server, which would need a stub endpoint | low-medium (server change, and cleartext is allowed only because of LOCAL_AUTH) |
+| S4. leave it | Jagex keeps receiving the test token and consent flags at each Play Now | violates the never-connect-to-Jagex rule |
+
+Recommended: **S1** (same patch step as the telemetry switches, applied to every build).
+
+## Braze (what it sends; nothing changed yet)
+
+- Configured from resources: `com_braze_api_key`, `com_braze_custom_endpoint` = `sdk.fra-01.braze.eu`.
+  Logged at start: it registers the FCM push token ("registered and immediately being flushed"),
+  "Requesting immediate data flush to Braze", and `change current user <id>`. So the app sets a Braze
+  user id (a numeric account-derived id) and Braze uploads its session data, device data (model, OS,
+  locale, time zone, carrier, resolution), the push token and any custom events to the EU endpoint.
+- Whether bytes went out: the DNS lookup of `sdk.fra-01.braze.eu` was logged and Braze requested a
+  flush, so very likely yes. Braze logs no HTTP status at the default log level.
+- Options:
+
+| Option | What | Risk |
+|---|---|---|
+| B1. blank `com_braze_api_key` (res/values/strings.xml) | the SDK can't authenticate; current Braze SDKs log an error and do not send without a key | low; in-app messages and push from Braze stop (none matter here); the app's Braze calls stay no-ops |
+| B2. point `com_braze_custom_endpoint` at an unroutable host (e.g. `127.0.0.1`) | requests fail fast | low; retries add log noise |
+| B3. both B1 and B2 | belt and braces | low |
+| B4. leave it | device data, the account-derived user id and the push token keep going to Braze | — |

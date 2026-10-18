@@ -56,6 +56,15 @@ final class AndroidScene extends SceneStub {
         }
         return extSettings;
     }
+    @Override public int[] getMapRegions() { return wv.getMapRegions(); }
+    // Roof removal: the mode is stored only. The mobile renderer's roof hiding isn't mapped, so
+    // buildRoofs does nothing and getRoofs is empty. // unverified: default (Roof Removal starts
+    // but hides no roofs)
+    private volatile int roofRemovalMode;
+    @Override public void setRoofRemovalMode(int mode) { roofRemovalMode = mode; }
+    @Override public int getRoofRemovalMode() { return roofRemovalMode; }
+    @Override public void buildRoofs() {}
+    @Override public int[][][] getRoofs() { return new int[4][SIZE][SIZE]; }
     @Override public int getBaseX() { return wv.getBaseX(); }
     @Override public int getBaseY() { return wv.getBaseY(); }
     @Override public int getWorldViewId() { return -1; }

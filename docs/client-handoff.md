@@ -1,7 +1,7 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 36 entry (2026-10-18) at the end of "Where things stand".
-> **Start here (gen 37):** see the gen 36 entry's "Next".
+> Latest state: see the gen 37 entry (2026-10-18) at the end of "Where things stand".
+> **Start here (gen 38):** see the gen 37 entry's "Next", and docs/app-telemetry.md (privacy patches in every build).
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1338,6 +1338,37 @@ session; its notes are in `docs/android-protocol.md`.
     3. FlatLaf shim for Slayer Assistant (`FlatTabbedPaneUI` etc.), GraphicsObject/Projectile API (Random Event Hider, Supplies Tracker).
     4. More hub plugins from the ranking (next generic ones: time-tracking done; tasks-tracker, door-kicker, gemstone-crab-timer,
        startierindicator, barrows-potential, pyramid-plunder-counter); device-check the 11 that only start.
+- **2026-10-18 (client dev gen 37)**, commits bafb538..(this entry).
+  - **Privacy (top priority this gen, docs/app-telemetry.md)**: the official app POSTed the OneTrust consent record
+    with the AppAuth bearer token (on LOCAL_AUTH: the sidecar's unsigned test token) to
+    `account.jagex.com/consent/sync` at every Play Now (Jagex answered 401). Fixed and verified: `tools/patch_telemetry.py`
+    (repack step 1b for the APK + step 3 `--native` for the game library, every build): za.l.a no-op, both
+    native sync URLs zeroed; Singular never starts; Firebase Analytics deactivated; Crashlytics collection off.
+    Verified: no *.jagex.com DNS lookups and no sockets to Jagex across sign-in/relog/restart. Remaining by
+    decision: OneTrust banner GET, Braze (left on), the host's runelite.net GETs. Pending: payments param 2
+    (sidecar rewrite, orchestrator), the GIM score host -> `x.invalid` (patched in the working tree, awaiting OK).
+    Normal builds now decode resources (`apktool d` without -r). Never open store/membership/bond UIs until
+    param 2 is rewritten.
+  - **Projectile API** (4685867, verified): Client +0xcb30 list (offsets.md "Projectiles"); getProjectiles and
+    ProjectileMoved per client tick. `debug.osrsrl.projlog 1` logs projectiles (and graphics objects).
+  - **GraphicsObject** (7ba86aa, unverified): top-level WorldView +0x160 list, GraphicsObjectCreated; needs the
+    sidecar/server `::mapanim` (in the re-pin bundle) to verify fields and the finished flag (Random Event Hider).
+  - **Sidebar/Swing**: Container.add reparents (Supplies Tracker's triple empty panel); Shift toggle -> VK_SHIFT key
+    events (Line Markers "Add line" works); FlatTabbedPaneUI stand-in + FlatLaf compile-only for hub builds;
+    stateful JTable/DefaultTableModel/column model, JList.setListData, JTextPane styled document, JTabbedPane
+    (58c0525, tab headers + selected tab, not device-checked). Slayer Assistant starts and lists tasks.
+  - Hub: 8 new pins (one-tick-flick, afk-countdown, ring-of-recoil-notifier, spamfilter, effective-level,
+    path-marker, line-of-sight, dropsounds); plugin-host.md rows updated.
+  - Tester: 1 coin pouch, coins 100,289 (6 gp from an accidental Open-all, left as is), home tile 3219,3222.
+  - Gotchas: the plugin strip under the long-press menu needs a held tap (`input swipe x y x y 150`); after a
+    reinstall Play Now often shows "Try again" (tap 958,668 only on that screen, then Play Now). Socket check:
+    `adb shell cat /proc/net/tcp /proc/net/tcp6`, state 01, app uid 10071.
+  - **Next (gen 38)**:
+    1. Get approval and commit the GIM `x.invalid` change (tools/patch_telemetry.py working tree), then device-check with the
+       sidecar's param 2 fix: still no Jagex sockets.
+    2. `::mapanim` once deployed: GraphicsObject fields/finished flag (projlog dump), Random Event Hider.
+    3. Slayer Assistant task tabs on device (58c0525); Menu Swapper Extended stray-dog swap (Varrock dogs absent).
+    4. Line of Sight desktop A/B (desktop lock), Path Marker settings; more hub plugins from the ranking.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

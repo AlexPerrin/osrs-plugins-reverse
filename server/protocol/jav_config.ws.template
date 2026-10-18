@@ -64,7 +64,7 @@ param=3=false
 param=16=false
 param=7=0
 param=10=5
-param=2=https://payments.jagex.com/
+param=2={{HTTP_BASE}}/
 param=25=241
 param=14=0
 param=11=https://auth.jagex.com/

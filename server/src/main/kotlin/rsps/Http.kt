@@ -81,6 +81,11 @@ class Http(private val config: Config, private val online: () -> Int) {
     fun javConfig(): String {
         val template = config.javConfigTemplate?.takeIf { Files.exists(it) } ?: return minimalJavConfig()
         var text = Files.readString(template)
+        // payments.jagex.com (shop catalogue, purchase initiate/completion): never the live host,
+        // the same as the minimal config.
+        text = text.lines().joinToString("\n") { line ->
+            if (line.startsWith("param=$PAYMENTS_PARAM=")) "param=$PAYMENTS_PARAM=${config.httpBase}/" else line
+        }
         if (localAuth != null) {
             // Point the sign-in (issuers, game-session API, account/social URLs) at this server.
             text = text.lines().joinToString("\n") { line ->
@@ -159,6 +164,8 @@ class Http(private val config: Config, private val online: () -> Int) {
     private companion object {
         /** jav_config params holding auth.jagex.com, social.auth.jagex.com, auth.runescape.com, account.jagex.com. */
         private val AUTH_PARAMS = listOf(11, 20, 22, 28)
+        /** jav_config param holding payments.jagex.com. */
+        private const val PAYMENTS_PARAM = 2
         private val log = com.github.michaelbull.logging.InlineLogger()
     }
 }

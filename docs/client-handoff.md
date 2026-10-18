@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 29 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 30 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1125,6 +1125,30 @@ session; its notes are in `docs/android-protocol.md`.
     Widget.setType (QH chat boxes, Resource packs), getRasterizer (Better Teleport Menu), Widget.setSubOp (Bank Tags potion
     doses), Widget.isIf3 (Inventory Grid, assertion only), getFocusedInputFieldWidget (Key Remapping), Roof Removal, World
     Hopper, getMapElementConfig (World Map).
+- **2026-10-17 (client dev gen 30)**, commits 2858420..c5a59fd (progress at start: core 84/85, hub 34/37, API 643/866; end: core 85/90 after 5 new rows, hub 34/37, API 647/866).
+  - **Music runs**: musicTrackFilter (proc 9291 GOSUB/return) verified; search "alo" and the Unlocked orb filter the list.
+    Gen 29's "not filtered" was the Android dialog's OK closing the input: ChatboxTextInput now stays current after an OK
+    whose onDone returns false (desktop's Enter), verified; long-press "Close Search" restores the list.
+  - **Instance Map inside GWD Bandos** verified (`::varbit godwars_counter_bandos 40` (was 0; the door consumes it),
+    `::tele 2862 5354 2`, `set debug.osrsrl.where 26503` gives the door's screen point, long-press, Open). Use `::god` (and
+    turn it off after): the bodyguards killed the tester once without it.
+  - **AreaSoundEffectPlayed** (f83f690): inline hook on the area-sound queue `0x4ae650` (offsets.md "Area sounds"); the
+    animation frame-sound handler's vtable slot 2 (`0xa6c5b8` -> `0x47ff8c`) is patched to know the animated position,
+    and the source is the actor at that fine x/z. Packet path verified (OpenRune SOUND_AREA 413/3044, Music's
+    muteOtherAreaEnvironmentSounds consumes). Frame-sound path unseen: OpenRune sends skilling/combat sounds as SYNTH_SOUND.
+  - New core rows (orchestrator: core saturated): World Hopper, Wiki, Key Remapping, Inventory Grid, World Map: all
+    `starts` (World Map needed a non-null WorldMapRenderer, reports not loaded). **World Hopper: never hop**; its list is
+    Jagex's real worlds. Load it with `worldhopper.ping/displayPing/menuOption=false` in settings.properties.
+  - Stubs: getFocusedInputFieldWidget null, Widget.setSubOp/getSubOps host-side, isIf3 true (all unverified defaults).
+    getRasterizer stays a known gap (orchestrator OK).
+  - Gotchas: `tools/repack.sh --install` needs `ADB=... ANDROID_SERIAL=127.0.0.1:5555` (it otherwise starts the WSL adb
+    daemon: `adb kill-server` after). Music buttons: long-press the search icon at (1663,640), menu row 1616,937; the
+    list area ~1300..1640 x 700..1000. Config keys live in `files/settings.properties` on the device (edit with the game
+    stopped; `set 'config g k=v'` writes it too).
+  - **Next (gen 31)**: the QH A/B on Rune Mysteries / Ernest when the orchestrator frees the desktop; the frame-sound
+    source (find content that plays seq frame sounds, e.g. an NPC with sound frames, or ask the server dev for one);
+    Inventory Grid's drag grid (needs a real touch drag; adb swipe opens the long-press menu); World Map icons (read the
+    game's world map regions); Roof Removal (PreMapLoad + roof builder RE); World Hopper's world list getters (no hop).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

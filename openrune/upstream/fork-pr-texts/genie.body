@@ -1,0 +1,33 @@
+Discussion: OpenRune/OpenRune-Server#353
+
+From our per-feature patches `16-genie-random-event` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), applied with `git am` on `main` (`1be5dfb5f`); commits kept as they are except for the `feat:`/`fix:` subject.
+
+**Problem.** There were no random events.
+
+**Change.** New module `content/events/random-events`:
+- Every 1-2 hours of play a Genie appears beside the player, faces them and calls them by name.
+- Talk-to gives a lamp (10 x the chosen skill's level in XP), Dismiss sends him away, and he leaves after a minute when ignored.
+- Timers `random_event` (450) and `random_event_genie` (451); `::randomevent` summons him (like `::star`).
+
+**Tests.** `GenieRandomEventTest` (2, integration). Manual, on our own server build: the lamp's Rub on a client.
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`; `assemble`, `test` and `integration` as separate runs in a 4 GB container): cache build pass, `spotlessCheck` pass, `assemble test integration` pass, boot: Server ready in 7.268255836s.
+
+Nothing was checked in game from this exact branch; in-game checks mentioned above were on our own server build (main's pin `9a8b338a8` plus these and our other patches).
+
+**Data sources.** Wiki-derived data or text (OSRS Wiki, by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/; OpenRune is ISC): the event's behaviour and lines (Random events, Genie, Transcript:Genie pages). See question 4 in #353 on how upstream wants to handle that.
+
+**Caveats.**
+- Timer ids 450/451 are our choice.
+- Only the Genie; a random-event framework for others would build on the same timer.
+
+**Release note.** The Genie random event.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

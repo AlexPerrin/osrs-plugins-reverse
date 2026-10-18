@@ -1,0 +1,33 @@
+Discussion: OpenRune/OpenRune-Server#353
+
+From our per-feature patches `30-plank-sack` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), applied with `git am` on `main` (`1be5dfb5f`); commits kept as they are except for the `feat:`/`fix:` subject.
+
+**Problem.** The plank sack had no Fill, Check or Empty.
+
+**Change.** New module `content/other/plank-sack`:
+- Up to 28 planks of the seven types in the `plank_sack_*` varbits RuneLite's Plank Sack plugin reads.
+- Fill (or a plank used on the sack), Check ('Oak planks: 3' per type, 'Your sack is currently empty.'), Empty into the inventory.
+- A `PlayerItemStorageHook` lets content use planks straight from the sack while it is in the inventory (inventory first).
+
+**Tests.** `PlankSackScriptTest` (3, integration).
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`; `assemble`, `test` and `integration` as separate runs in a 4 GB container): cache build pass, `spotlessCheck` pass, `assemble test integration` pass, boot: Server ready in 7.071947733s.
+
+Nothing was checked in game from this exact branch; in-game checks mentioned above were on our own server build (main's pin `9a8b338a8` plus these and our other patches).
+
+**Data sources.** Varbits from the cache; Check wording as RuneLite's Plank Sack plugin parses it (BSD).
+
+**Caveats.**
+- Fill/full/no-space messages are best guesses.
+- The sawmill does not fill the sack yet.
+
+**Release note.** The plank sack can be filled, checked and emptied, and building can use planks from it.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

@@ -1,0 +1,37 @@
+Discussion: OpenRune/OpenRune-Server#353
+
+From our per-feature patches `12-quests-sheep-shearer-romeo-juliet`, `21-treasure-trails`, `22-music-tab-play`, `64-dorics-quest` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), applied with `git am` on `main` (`1be5dfb5f`); commits kept as they are except for the `feat:`/`fix:` subject.
+
+Stacked: the first three commits are the Sheep Shearer / Romeo & Juliet branch (for `QuestTalkFixture`) and the Treasure Trails beginner/easy and music-tab commits (for `LocOpOverrides`, which 21 adds to `api/player`; 21 needs 22). Only the last commit is Doric's Quest.
+
+**Problem.** Doric's Quest was not implemented; Doric's anvils could be used without it.
+
+**Change.** New quest on OpenRune's quest framework. Progress is varp 31 (`doricquest`) through a server-only varbit: 0, 10 started, 100 complete, the values the client and Quest Helper read.
+- The opening topics, the start (with a bronze pickaxe), the 6 clay / 4 copper ore / 2 iron ore hand-in (one transaction), and the shortcut when the player already carries them.
+- Rewards: 1 QP, 1,300 Mining XP, 180 coins.
+- Until the quest is done, Smith on Doric's anvils brings Doric over instead (`LocOpOverrides`).
+- The quest start prompt reads "Start Doric's Quest?" for names ending in "Quest" (as in OSRS), "Start the X quest?" otherwise.
+
+**Tests.** `DoricsQuestInteractionTest`, plus the quest suites it builds on.
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`; `assemble`, `test` and `integration` as separate runs in a 4 GB container): cache build pass, `spotlessCheck` pass, `assemble test integration` pass, boot: Server ready in 7.160229819s.
+
+Nothing was checked in game from this exact branch; in-game checks mentioned above were on our own server build (main's pin `9a8b338a8` plus these and our other patches).
+
+**Data sources.** Wiki-derived data or text (OSRS Wiki, by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/; OpenRune is ISC): the dialogue follows the OSRS Wiki transcript of Doric's Quest. See question 4 in #353 on how upstream wants to handle that. Step values: Quest Helper (BSD).
+
+**Caveats.**
+- Overlaps #334 (Doric's Quest, open upstream). Happy to drop ours or compare notes.
+- Guesses: the journal text, the after-quest talk, splitting the long start line into two boxes, the quest scroll item.
+- Carries 21 and 22 only for `LocOpOverrides`; if upstream takes Treasure Trails separately, this reduces to the last commit.
+
+**Release note.** Doric's Quest is playable; Doric's anvils need the quest.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

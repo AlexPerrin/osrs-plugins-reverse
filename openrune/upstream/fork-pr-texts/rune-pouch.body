@@ -1,0 +1,33 @@
+Discussion: OpenRune/OpenRune-Server#353
+
+From our per-feature patches `29-rune-pouch` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), applied with `git am` on `main` (`1be5dfb5f`); commits kept as they are except for the `feat:`/`fix:` subject.
+
+**Problem.** Rune pouches had no Open, Empty or store.
+
+**Change.** New module `content/skills/magic/rune-pouch`:
+- The rune pouch and divine rune pouch (and locked variants) store runes in the client-visible `rune_pouch_type_n` / `rune_pouch_quantity_n` varbits (compact ids from enum 55, up to 16,000 per type, 3 or 4 types), which spells already cast from and RuneLite's Rune Pouch plugin reads.
+- Open shows interface 190 (varp `if1` = slot count): Store/Withdraw 1/5/X/All/custom following the client's left-click quantity buttons, drag to reorder, Examine.
+- Empty and use-rune-on-pouch from the inventory.
+
+**Tests.** `RunePouchScriptTest` (5, integration).
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`; `assemble`, `test` and `integration` as separate runs in a 4 GB container): cache build pass, `spotlessCheck` pass, `assemble test integration` pass, boot: Server ready in 7.054562582s.
+
+Nothing was checked in game from this exact branch; in-game checks mentioned above were on our own server build (main's pin `9a8b338a8` plus these and our other patches).
+
+**Data sources.** Interface, varbits and enum from the cache.
+
+**Caveats.**
+- No loadouts (Configure).
+- Messages for a full pouch or a non-rune are best guesses.
+
+**Release note.** Rune pouches work: store, withdraw, reorder, empty.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

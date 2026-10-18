@@ -1,0 +1,34 @@
+Discussion: OpenRune/OpenRune-Server#353
+
+From our per-feature patches `12-quests-sheep-shearer-romeo-juliet` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), applied with `git am` on `main` (`1be5dfb5f`); commits kept as they are except for the `feat:`/`fix:` subject.
+
+**Problem.** Sheep Shearer and Romeo & Juliet were not implemented, so Quest Helper and the quest list had nothing to track.
+
+**Change.** Both quests on OpenRune's quest framework, with the OSRS progress varps Quest Helper reads:
+- Sheep Shearer: varp 179 (`sheep`): 0 not started, 1 started, 1 + balls of wool handed in, 21 complete; Fred, The Thing and the hand-in.
+- Romeo & Juliet: varp 144 (`rjquest`) with the OSRS stages 0-100; Romeo, Juliet, Father Lawrence, the Apothecary and the cadava potion.
+
+Adds `QuestTalkFixture` (test fixture for dialogue-driven quest tests), which the other quest branches build on.
+
+**Tests.** `SheepShearerInteractionTest`, `RomeoAndJulietInteractionTest` (`:content:quest:test`).
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`; `assemble test integration` in one run in a 4 GB container): cache build pass, `spotlessCheck` pass, `assemble test integration` pass, boot: Server ready in 8.458180081s.
+
+Nothing was checked in game from this exact branch; in-game checks mentioned above were on our own server build (main's pin `9a8b338a8` plus these and our other patches).
+
+**Data sources.** Step values from Quest Helper (BSD) and the cache's quest dbrows. The patch does not record where each dialogue line came from; some of it may follow the wiki transcripts.
+
+**Caveats.**
+- Overlaps #299 (Romeo & Juliet, open upstream). Happy to drop ours or compare notes.
+- Server-only varbits/varp 63740-63742 (our id range; see question 3 in #353).
+
+**Release note.** Sheep Shearer and Romeo & Juliet are playable, with the progress values Quest Helper reads.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

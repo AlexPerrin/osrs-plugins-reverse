@@ -1,0 +1,41 @@
+Discussion: OpenRune/OpenRune-Server#353
+
+From our per-feature patches `12-quests-sheep-shearer-romeo-juliet`, `65-witchs-potion` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), applied with `git am` on `main` (`1be5dfb5f`); commits kept as they are except for the `feat:`/`fix:` subject.
+
+Stacked on the Sheep Shearer / Romeo & Juliet commit (the test uses its `QuestTalkFixture`). Only the last commit is Witch's Potion.
+
+**Build status: this branch does not pass all checks** (cache build pass, `spotlessCheck` **FAIL**, `assemble test integration` pass, boot: Server ready in 7.120464066s). Details under Tests.
+
+**Problem.** Witch's Potion was not implemented.
+
+**Change.** New quest. Progress is varp 67 (`hetty`) through a server-only varbit: 0, 1 started, 2 ingredients given, 3 complete (drunk from the cauldron), the values Quest Helper reads.
+- Hetty's dialogue, including the player's line for every combination of held ingredients; the hand-in takes one of each in one transaction.
+- Rewards: 1 QP, 325 Magic XP.
+- Hetty's after-quest lines move from `RimmingtonTownsfolkScript` into the quest.
+- The rat's tail comes from a new rat drop table with the usual quest gate (`quest_mode = "during"`).
+
+**Tests.** `WitchsPotionInteractionTest`, plus the quest suites it builds on.
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`; `assemble`, `test` and `integration` as separate runs in a 4 GB container): cache build pass, `spotlessCheck` **FAIL**, `assemble test integration` pass, boot: Server ready in 7.120464066s.
+
+`spotlessCheck` fails on one line: patch 65 leaves a trailing blank line at the end of `WitchsPotion.kt` (`:content:quest:spotlessKotlinCheck`; `spotlessApply` fixes it). The commit is kept as the patch is; the fix belongs in the patch before anything goes upstream. Compile, tests and boot pass.
+
+Nothing was checked in game from this exact branch; in-game checks mentioned above were on our own server build (main's pin `9a8b338a8` plus these and our other patches).
+
+**Data sources.** Wiki-derived data or text (OSRS Wiki, by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/; OpenRune is ISC): the dialogue follows the OSRS Wiki transcript. See question 4 in #353 on how upstream wants to handle that. Step values: Quest Helper (BSD).
+
+**Caveats.**
+- With the default quest-requirements mode (assume-completed) the drop-table quest gate never passes, so the rat's tail only drops under respect-progress or virtual-completions. Our own server uses an `NpcDeathKillHook` on the quest stage instead; happy to switch to that if you prefer.
+- Conflict resolved when applying on main: the quest pack `gamevals.toml` only gets its own line (the original patch's context had Doric's line).
+- Guesses: the journal text and the quest scroll item.
+
+**Release note.** Witch's Potion is playable.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

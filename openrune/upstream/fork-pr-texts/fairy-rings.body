@@ -1,0 +1,34 @@
+Discussion: OpenRune/OpenRune-Server#353
+
+From our per-feature patches `26-fairy-rings` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), applied with `git am` on `main` (`1be5dfb5f`); commits kept as they are except for the `feat:`/`fix:` subject.
+
+**Problem.** Fairy rings did nothing.
+
+**Change.** New modules `content/travel/fairy-rings` + pack, on the cache's `fairyring` dbtable:
+- Configure (Dramen or Lunar staff) opens the dial (398) with the travel log (381); dial buttons and 'Use code' set `fairyring_1..3`.
+- Confirm, Zanaris and Last-destination teleport (`fairyring_lastloc_opvis` drives the op text); the log lists visited codes (server varps 63860-63861).
+- A code with no ring, or the ring you stand in, does not move you.
+- On teleport the travel log's search input (meslayer mode 28, which the client opens) is closed with `meslayer_close`: `meslayer_ondialogabort` does not cover mode 28.
+
+**Tests.** `FairyRingScriptTest` (integration).
+
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`; `assemble`, `test` and `integration` as separate runs in a 4 GB container): cache build pass, `spotlessCheck` pass, `assemble test integration` pass, boot: Server ready in 7.185355388s.
+
+Nothing was checked in game from this exact branch; in-game checks mentioned above were on our own server build (main's pin `9a8b338a8` plus these and our other patches).
+
+**Data sources.** Codes and destinations from the cache's `fairyring` dbtable. The no-move rule follows the OSRS Wiki's Fairy ring page (a fact, nothing copied).
+
+**Caveats.**
+- No favourites, hideout sequence or per-ring quest requirements.
+- Server varps 63860-63861 (our range).
+
+**Release note.** Fairy rings work: dial, travel log, Zanaris and Last-destination.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

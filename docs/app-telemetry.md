@@ -231,3 +231,22 @@ Fix options for the builder paths (not applied): patch `runescape.com` at 0xd681
 (for example `x.invalid` padded with NULs; the format's `%s.%s` then gives `secure.x.invalid`), in `patch_telemetry.py --native`
 with an exactly-one-match assert like the GIM rewrite. That would cover 0x4101d4, 0x47b548 and 0x3ec1a0/0x3ec558 at once.
 The gedigesturl fix is server-side (sidecar).
+
+### runescape.com builder patch: applied and verified (gen 38, 16:05-16:11)
+
+Approved by the orchestrator under the user's "patch it out" decision; commit 85f7d62. `patch_telemetry.py --native`
+rewrites `"\0runescape.com\0"` (ELF 0xd6812) to `"\0x.invalid"` plus NULs, with an exactly-one-match assert. Safety:
+Ghidra finds one reference into those 14 bytes, a `%s` vararg of the std::string vsnprintf-style formatter
+(Ghidra FUN_00505ef0), so nothing reads the buffer past its NUL. At the same time the sidecar now serves
+`gedigesturl`, `adverturl`, `termsurl` and `privacyurl` from 10.0.2.2:8080.
+
+Verified on BlueStacks (socket sampler every 0.5 s): Sign out -> "Sign in with Email / Username" -> Play Now
+(LOGGED_IN), play, app restart -> "Try again" -> Play Now, play. netd DNS: only `api.runelite.net`, `static.runelite.net`,
+`sdk.fra-01.braze.eu`. There were no `*.runescape.com`, `*.jagex.com`, `secure.x.invalid`, `services.x.invalid` or
+`pp-*.x.invalid` lookups. Sockets: 10.0.2.2 (43594, 8080), runelite, braze, onetrust and a Google 443 address only.
+Sign-in, the login screen and Play Now work.
+
+**Caveat: the source of the 15:51:42 secure.runescape.com contact is not confirmed.** In this run the client fetched
+no GE digest: the sidecar logged no `digest.csv` request. The digest download is evidently periodic or cached, not
+once per sign-in, so this capture doesn't exercise the gedigesturl redirect. Both candidates are now covered (the
+sidecar's gedigesturl rewrite and the native builder patch), but neither was observed firing.

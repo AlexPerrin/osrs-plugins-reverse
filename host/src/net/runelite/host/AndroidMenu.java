@@ -34,7 +34,28 @@ final class AndroidMenu implements Menu {
         return session.clone();
     }
 
-    void endSession() { session = null; }
+    void endSession() { session = null; visible = -1; }
+
+    /**
+     * During the MenuEntryAdded pass: how many of the session's entries (bottom first) have been
+     * added. Desktop posts MenuEntryAdded as each entry is inserted, so getMenuEntries() then ends
+     * with the entry just added; plugins edit `getMenuEntries()[length - 1]` (Monster Menu HP).
+     * -1 outside the pass.
+     */
+    private int visible = -1;
+
+    /** Posts MenuEntryAdded for each of `entries` (the session's, bottom first) with desktop's growing menu. */
+    void postAdded(net.runelite.client.eventbus.EventBus bus, MenuEntry[] entries) {
+        visible = 0;
+        try {
+            for (MenuEntry m : entries) {
+                visible++;
+                bus.post(new net.runelite.api.events.MenuEntryAdded(m));
+            }
+        } finally {
+            visible = -1;
+        }
+    }
 
     /** Desktop bank item layers whose items have an "Examine" entry (bank 12:12, group storage 724:10). */
     private static final int[] EXAMINE_LAYERS = {12 << 16 | 12, 724 << 16 | 10};
@@ -125,7 +146,7 @@ final class AndroidMenu implements Menu {
         MenuEntry[] entries = beginSession();
         boolean reordered = false;
         try {
-            for (MenuEntry m : entries) bus.post(new net.runelite.api.events.MenuEntryAdded(m));
+            postAdded(bus, entries);
             postMissingExamine(bus, entries);
             postDesktopAliases(bus, entries);
             presorting = true;
@@ -167,7 +188,8 @@ final class AndroidMenu implements Menu {
     }
 
     @Override public MenuEntry[] getMenuEntries() {
-        if (session != null) return session.clone();
+        if (session != null)
+            return visible >= 0 ? java.util.Arrays.copyOf(session, Math.min(visible, session.length)) : session.clone();
         AndroidMenuEntry[] game = AndroidMenuEntry.fromNative(Native.menuEntries());
         // RuneLite order: the last element is the top (default) entry.
         List<MenuEntry> out = new ArrayList<>(added);
@@ -293,7 +315,14 @@ final class AndroidMenu implements Menu {
 
 
     @Override public void setMenuEntries(MenuEntry[] entries) {
-        if (session != null) session = entries.clone();
+        if (session != null && visible >= 0) {
+            // Within the MenuEntryAdded pass the entries not yet added stay above the plugin's array.
+            int rest = Math.max(0, session.length - visible);
+            MenuEntry[] grown = java.util.Arrays.copyOf(entries, entries.length + rest);
+            System.arraycopy(session, session.length - rest, grown, entries.length, rest);
+            session = grown;
+            visible = entries.length;
+        } else if (session != null) session = entries.clone();
         added.clear();
         for (MenuEntry e : entries)
             if (e instanceof AndroidMenuEntry && ((AndroidMenuEntry) e).synthetic) added.add((AndroidMenuEntry) e);

@@ -704,7 +704,7 @@ public final class Host {
                 menu.clearAdded();
                 net.runelite.api.MenuEntry[] entries = menu.beginSession();
                 try {
-                    for (net.runelite.api.MenuEntry m : entries) bus.post(new net.runelite.api.events.MenuEntryAdded(m));
+                    menu.postAdded(bus, entries);
                     AndroidMenu.postDesktopAliases(bus, entries);
                     bus.post(new net.runelite.api.events.PostMenuSort());
                     net.runelite.api.MenuEntry[] sorted = menu.getMenuEntries();

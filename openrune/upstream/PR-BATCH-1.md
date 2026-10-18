@@ -14,6 +14,26 @@ CONTRIBUTING.md is still the Alter template and the merged commits don't use it.
 To open one later: fork, `git push <fork> fix/NN-...`, open the PR with the title and description
 below. Upstream squash-merges, so the PR description becomes the commit body.
 
+## Opened (2026-10-18)
+
+Opened from AlexPerrin/OpenRune-Server, following upstream's `.github/CONTRIBUTING.md`: commit
+subjects in `type: summary` form (`fix: ...`), and each body has a release note, the PR checklist
+and, for data changes, the data source and validation steps. The final titles and bodies are in
+`batch-1-texts/`.
+
+| # | PR |
+|---|---|
+| 01 | https://github.com/OpenRune/OpenRune-Server/pull/343 |
+| 02 | https://github.com/OpenRune/OpenRune-Server/pull/344 |
+| 03 | https://github.com/OpenRune/OpenRune-Server/pull/345 |
+| 04 | https://github.com/OpenRune/OpenRune-Server/pull/346 |
+| 05 | https://github.com/OpenRune/OpenRune-Server/pull/347 |
+| 18 | https://github.com/OpenRune/OpenRune-Server/pull/348 |
+| 43 | https://github.com/OpenRune/OpenRune-Server/pull/349 |
+| 46 | https://github.com/OpenRune/OpenRune-Server/pull/350 |
+| 55 | https://github.com/OpenRune/OpenRune-Server/pull/351 |
+| long-varp compiler issue | https://github.com/OpenRune/OpenRune-Server/issues/352 |
+
 ## Status
 
 | # | Branch (commit) | Applies on main | Changes vs the old patch | spotless | tests | boot |

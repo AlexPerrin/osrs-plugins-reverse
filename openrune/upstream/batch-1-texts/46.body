@@ -12,4 +12,11 @@ coins.
 **Caveats.** That 0 means "available by default" is inferred from which rows have it, not
 checked row by row against live.
 
-On this branch `spotlessCheck` and `./gradlew assemble test integration` pass.
+**Release note.** Adopting the default dog breeds from Chase no longer disconnects the player.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.

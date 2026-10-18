@@ -14,4 +14,13 @@ variants. They look the same; it only matters if something later looks for the `
 there (Recipe for Disaster is not implemented). A door pair for these in `doors.toml` would fix
 that if wanted.
 
-On this branch `spotlessCheck` and `./gradlew assemble test integration` pass.
+**Data.** Data source: the rev 241 cache loc definitions (models, recolours and ops compared with `elfdoor` / `castledoubledoor*`). Validation: the cache builds and the server boots to "Server ready"; the kitchen door was opened in game on our build.
+
+**Release note.** The Lumbridge castle kitchen and dining room doors open.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.

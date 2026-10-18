@@ -1,1 +1,1 @@
-Serialize transactions on the shared database connection
+fix: serialize transactions on the shared database connection

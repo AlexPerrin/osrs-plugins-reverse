@@ -18,4 +18,13 @@ this branch.
 they open the bank there too, as in OSRS. Bankers with other ops (e.g. "Banker" npcs without
 Collect, or tutors) are left alone.
 
-On this branch `spotlessCheck` and `./gradlew assemble test integration` pass.
+**Data.** Data source: the rev 241 cache npc definitions (names and ops), cross-checked against the osrs-dumps npc dump. Validation: the cache builds (`buildCache`), the server boots to "Server ready", and the 96-entry list was diffed against the dump (no missing or extra types).
+
+**Release note.** Bankers can be used across the booth again (Talk-to, Bank, Collect, noting).
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.

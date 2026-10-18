@@ -10,4 +10,13 @@ with the same ops have the groups.
 
 **Caveats.** None known.
 
-On this branch `spotlessCheck` and `./gradlew assemble test integration` pass.
+**Data.** Data source: the rev 241 cache npc definitions (op sets of the two spots) and the groups `FishingConfig` binds. Validation: the cache builds and the server boots to "Server ready".
+
+**Release note.** The Lumbridge river and Lumbridge Swamp fishing spots can be fished.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.

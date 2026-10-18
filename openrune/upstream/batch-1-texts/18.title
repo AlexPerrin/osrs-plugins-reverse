@@ -1,1 +1,1 @@
-Log the player out on the client's IDLE packet
+fix: log the player out on the client's IDLE packet

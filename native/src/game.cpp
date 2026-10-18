@@ -9,6 +9,7 @@
 #include <sys/system_properties.h>
 #include <unistd.h>
 #include <cstdlib>
+#include <cstring>
 #include <algorithm>
 #include <cstring>
 #include <memory>
@@ -3053,6 +3054,71 @@ std::vector<SceneObject> scene_objects() {
                 }
             }
     return out;
+}
+
+bool remove_ground_decoration(int plane, int x, int y) {
+    uintptr_t wv = top_world_view();
+    uintptr_t scene = wv ? read_at<uintptr_t>(wv + 0x10) : 0;
+    if (!scene) return false;
+    int planes = read_at<int32_t>(scene + 0x944), sx = read_at<int32_t>(scene + 0x948), sy = read_at<int32_t>(scene + 0x94c);
+    uintptr_t slots = read_at<uintptr_t>(scene + 0x968);
+    if (!slots || plane < 0 || plane >= planes || x < 0 || x >= sx || y < 0 || y >= sy) return false;
+    uintptr_t tile = read_at<uintptr_t>(slots + ((static_cast<size_t>(plane) * sx + x) * sy + y) * 0x10 + 8);
+    if (!tile || !read_at<uintptr_t>(tile + 0x118)) return false;
+    reinterpret_cast<void (*)(uintptr_t, int, int, int)>(g_base + 0x6dca24)(scene, plane, x, y);
+    return read_at<uintptr_t>(tile + 0x118) == 0;
+}
+
+namespace {
+constexpr uint32_t kAmbientLive = 0xb78, kAmbientPending = 0xb90;
+}  // namespace
+
+std::vector<AmbientSound> ambient_sounds() {
+    std::vector<AmbientSound> out;
+    uintptr_t wv = top_world_view();
+    if (!wv) return out;
+    uintptr_t b = read_at<uintptr_t>(wv + kAmbientLive), e = read_at<uintptr_t>(wv + kAmbientLive + 8);
+    if (!b || e < b || (e - b) / 16 > 4096) return out;
+    for (uintptr_t p = b; p < e; p += 16) {
+        uintptr_t obj = read_at<uintptr_t>(p + 8);
+        if (!obj) continue;
+        AmbientSound a{obj, -1, read_at<int32_t>(obj + 0x40), {}};
+        if (uintptr_t snd = read_at<uintptr_t>(obj + 0x20)) a.id = read_at<int32_t>(snd);
+        if (uintptr_t rnd = read_at<uintptr_t>(obj + 0x38)) {
+            uint64_t n = read_at<uint64_t>(rnd + 8);
+            uintptr_t ids = read_at<uintptr_t>(rnd + 0x10);
+            if (ids && n > 0 && n < 256)
+                for (uint64_t i = 0; i < n; i++) a.background.push_back(read_at<int32_t>(ids + i * 4));
+        }
+        out.push_back(std::move(a));
+    }
+    return out;
+}
+
+bool ambient_clear() {
+    uintptr_t wv = top_world_view();
+    if (!wv) return false;
+    reinterpret_cast<void (*)(uintptr_t)>(g_base + 0x4b065c)(wv);
+    return true;
+}
+
+bool ambient_restore(uintptr_t obj) {
+    uintptr_t wv = top_world_view();
+    if (!wv || !obj) return false;
+    auto* live = reinterpret_cast<uintptr_t*>(wv + kAmbientLive);        // begin, end, cap
+    auto* pending = reinterpret_cast<uintptr_t*>(wv + kAmbientPending);
+    if (!live[0] || live[1] + 16 > live[2]) return false;  // no spare capacity (a cleared vector keeps its own)
+    for (uintptr_t p = pending[0]; p && p < pending[1]; p += 16) {
+        if (read_at<uintptr_t>(p + 8) != obj) continue;
+        // Raw move of the {ctrl, obj} pair: the reference goes with it, no count changes.
+        std::memcpy(reinterpret_cast<void*>(live[1]), reinterpret_cast<void*>(p), 16);
+        live[1] += 16;
+        std::memmove(reinterpret_cast<void*>(p), reinterpret_cast<void*>(p + 16), pending[1] - p - 16);
+        pending[1] -= 16;
+        std::memset(reinterpret_cast<void*>(pending[1]), 0, 16);
+        return true;
+    }
+    return false;
 }
 
 // Ground items: WorldView +0x140 → planes (0x18 each, +0x10 → x columns (0x18 each, +0x10 → y

@@ -257,6 +257,14 @@ final class Native {
     static native boolean endTargetMode();
     /** The game's settings-changed scene reload (state 30 -> 25); client thread only. */
     static native boolean reloadScene();
+    /** Removes the top-level scene tile's ground decoration with the game's remover; client thread only. */
+    static native boolean removeGroundObject(int plane, int x, int y);
+    /** Ambient (loc) sounds: per entry obj low, obj high, sound id, plane, n, n background ids; client thread. */
+    static native int[] ambientSounds();
+    /** Clears the live ambient sound list (the game stops and frees them next cycle); client thread. */
+    static native boolean ambientClear();
+    /** Puts an ambient sound cleared this cycle back into the live list; client thread. */
+    static native boolean ambientRestore(long obj);
     /** Writes an actor's overhead text (null keeps it) and timer (-1 keeps it); client thread only. */
     static native boolean actorSetOverhead(boolean player, int index, String text, int cycle);
     /** Open sub-interfaces: {component, group, modal mode} triples. */

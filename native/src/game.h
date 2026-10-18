@@ -55,6 +55,11 @@ bool end_target_mode();  // probe: widget target mode state
 // setGameState(LOADING): the game's own settings-changed reload (0x429900(client): when logged in,
 // game state 30 -> 25 and the scene is rebuilt). Client thread only; false when not logged in.
 bool reload_scene();
+// Tile.setGroundObject(null): the game's own ground-decoration remover 0x6dca24(scene, plane, x, y)
+// (LOC_DEL layer 3 calls it from 0x473a10): clears tile +0x118, queues (tag, 3) on the scene's
+// removal list when the renderer flag 0x1d7ddc0 is set, and frees the object. Top-level scene,
+// game thread only; false when there is no tile or no ground decoration there.
+bool remove_ground_decoration(int plane, int x, int y);
 // Actor overhead text (+0x2d8, assigned with the game's string assign 0x3f1498) and its timer
 // (+0x2f4, ticks left). `text` null keeps the string. Game thread only.
 bool actor_set_overhead(uintptr_t actor, const std::string* text, int cycle);
@@ -512,6 +517,22 @@ struct GroundItem {
     bool is_private;
 };
 std::vector<GroundItem> ground_items();  // per tile in stack order (top first)
+
+// Ambient (loc) sounds, RuneLite's AmbientSoundEffect: the top-level WorldView's vector of
+// {ctrl, ObjectSound*} at +0xb78 (begin/end/cap), filled by 0x4b1424 (LOC_ADD and loads; LocType
+// +0x1a8/+0x1b0 sound {id, range, ..}, +0x1b8/+0x1c0 random sounds {+0x08 count, +0x10 int* ids,
+// +0x18/+0x1c min/max delay}). ObjectSound: +0x20 sound struct (id at +0), +0x38 random sounds,
+// +0x40 plane, +0x60..+0x6c bounds (local units). 0x4b065c(wv) moves every entry to the pending
+// vector +0xb90, which the per-cycle updater 0x4b1e90 stops and frees. Game thread only.
+struct AmbientSound {
+    uintptr_t obj;  // identity (never dereferenced from Java)
+    int32_t id, plane;
+    std::vector<int32_t> background;  // empty = none
+};
+std::vector<AmbientSound> ambient_sounds();
+bool ambient_clear();
+// Moves an entry cleared in this cycle (still in the pending vector) back into the live vector.
+bool ambient_restore(uintptr_t obj);
 
 // Mod icons (font <img=N> table): game_index >= 0 keeps the game's icon, else a palette sprite
 // (index 0 transparent, palette ARGB with alpha 0xff). Applied by mod_icons_cycle on the game thread.

@@ -460,12 +460,8 @@ public class AndroidClient extends ClientStub {
         @Override public java.util.Iterator<net.runelite.api.Projectile> iterator() { return java.util.Collections.emptyIterator(); }
     };
     @Override public net.runelite.api.Deque<net.runelite.api.Projectile> getProjectiles() { return projectiles; }
-    private final net.runelite.api.Deque<net.runelite.api.AmbientSoundEffect> ambientSounds = new net.runelite.api.Deque<net.runelite.api.AmbientSoundEffect>() {
-        @Override public void addLast(net.runelite.api.AmbientSoundEffect e) { }
-        @Override public void clear() { }
-        @Override public java.util.Iterator<net.runelite.api.AmbientSoundEffect> iterator() { return java.util.Collections.emptyIterator(); }
-    };
-    /** Area sounds aren't read from the game: always empty (Music's area-sound muting has nothing to act on). */
+    /** The game's ambient (loc) sound list (AmbientSounds). */
+    final AmbientSounds ambientSounds = new AmbientSounds();
     @Override public net.runelite.api.Deque<net.runelite.api.AmbientSoundEffect> getAmbientSoundEffects() { return ambientSounds; }
     /** Desktop's world-map loading percentage; the mobile world map isn't modelled. */
     @Override public int getExpandedMapLoading() { return 0; }

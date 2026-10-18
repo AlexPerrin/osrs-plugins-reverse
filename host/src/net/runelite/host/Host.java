@@ -419,6 +419,14 @@ public final class Host {
         Edt.runAsEdtAtStartup(r);
     }
 
+    private static void pollAmbientSounds(EventBus bus) {
+        try {
+            ((AndroidClient) client).ambientSounds.poll(bus);
+        } catch (Throwable t) {
+            Log.e(TAG, "ambient sounds failed", t);
+        }
+    }
+
     private static void postGameState(EventBus bus, GameState s) {
         GameStateChanged e = new GameStateChanged();
         // Desktop's ConfigManager switches the RuneScape profile while logging in; plugins
@@ -438,7 +446,11 @@ public final class Host {
         // the LOADING -> LOGGED_IN change (Ground Markers/Object Indicators reload their points
         // for the new regions, Wilderness Lines rebuilds its paths).
         if (s == GameState.LOGGED_IN) postWorldViewLoaded(bus);
+        if (s == GameState.LOADING && worldView != null) worldView.androidScene().objects.forgetObjects();
         else if (s == GameState.LOGIN_SCREEN || s == GameState.HOPPING) loadedBase = Long.MIN_VALUE;
+        // Desktop creates the scene's ambient sounds while loading, before LOGGED_IN.
+        if (s == GameState.LOGGED_IN) pollAmbientSounds(bus);
+        else if (s == GameState.LOGIN_SCREEN || s == GameState.HOPPING) ((AndroidClient) client).ambientSounds.reset();
         e.setGameState(s != null ? s : GameState.UNKNOWN);
         loggedInPosted = e.getGameState() == GameState.LOGGED_IN;
         lastPostedState = e.getGameState();
@@ -511,6 +523,7 @@ public final class Host {
                 WidgetListeners.runTargetMode(client);
                 postActorChanges(bus);
                 if (pendingLoggedIn && localPlayer() != null) postLoggedIn(bus);
+                if (loggedInPosted) pollAmbientSounds(bus);
                 if (pendingSceneCycles >= 0 && (sceneBaseChanged() || ++pendingSceneCycles > 50)) {
                     pendingSceneCycles = -1;
                     postGameState(bus, GameState.LOGGED_IN);  // WorldViewLoaded, then LOGGED_IN

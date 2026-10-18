@@ -990,6 +990,30 @@ jintArray n_sub_interfaces(JNIEnv* env, jclass) {
     return arr;
 }
 jboolean n_reload_scene(JNIEnv*, jclass) { return client_thread::on_client_thread() && game::reload_scene(); }
+bool require_client_thread(JNIEnv* env, const char* what);
+jboolean n_remove_ground_object(JNIEnv* env, jclass, jint plane, jint x, jint y) {
+    return require_client_thread(env, "removeGroundObject") && game::remove_ground_decoration(plane, x, y);
+}
+// Per ambient sound: obj low, obj high, sound id, plane, n, n background ids.
+jintArray n_ambient_sounds(JNIEnv* env, jclass) {
+    if (!require_client_thread(env, "ambientSounds")) return nullptr;
+    std::vector<jint> packed;
+    for (const auto& a : game::ambient_sounds()) {
+        packed.push_back(static_cast<jint>(a.obj & 0xffffffffu));
+        packed.push_back(static_cast<jint>(static_cast<uint64_t>(a.obj) >> 32));
+        packed.push_back(a.id);
+        packed.push_back(a.plane);
+        packed.push_back(static_cast<jint>(a.background.size()));
+        packed.insert(packed.end(), a.background.begin(), a.background.end());
+    }
+    jintArray out = env->NewIntArray(static_cast<jsize>(packed.size()));
+    if (out && !packed.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(packed.size()), packed.data());
+    return out;
+}
+jboolean n_ambient_clear(JNIEnv* env, jclass) { return require_client_thread(env, "ambientClear") && game::ambient_clear(); }
+jboolean n_ambient_restore(JNIEnv* env, jclass, jlong obj) {
+    return require_client_thread(env, "ambientRestore") && game::ambient_restore(static_cast<uintptr_t>(obj));
+}
 
 constexpr int kMenuInts = 12;  // per entry: kind, hasChildren, raw[10]
 jobjectArray menu_array(JNIEnv* env, const std::vector<game::MenuEntry>& entries) {
@@ -1524,6 +1548,10 @@ const JNINativeMethod kNatives[] = {
     {"targetMode", "()[I", reinterpret_cast<void*>(n_target_mode)},
     {"endTargetMode", "()Z", reinterpret_cast<void*>(n_end_target_mode)},
     {"reloadScene", "()Z", reinterpret_cast<void*>(n_reload_scene)},
+    {"removeGroundObject", "(III)Z", reinterpret_cast<void*>(n_remove_ground_object)},
+    {"ambientSounds", "()[I", reinterpret_cast<void*>(n_ambient_sounds)},
+    {"ambientClear", "()Z", reinterpret_cast<void*>(n_ambient_clear)},
+    {"ambientRestore", "(J)Z", reinterpret_cast<void*>(n_ambient_restore)},
     {"subInterfaces", "()[I", reinterpret_cast<void*>(n_sub_interfaces)},
     {"drawMinimap", "(I)[I", reinterpret_cast<void*>(n_draw_minimap)},
     {"closeSubInterface", "(IIZ)Z", reinterpret_cast<void*>(n_close_sub_interface)},

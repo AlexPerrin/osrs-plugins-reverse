@@ -372,6 +372,11 @@ final class Sidebar {
         if (kind != 2 || index < 0 || index >= nodes.size()) return;
         Component c = nodes.get(index);
         Log.i(TAG, "sidebar tap on " + c.getClass().getName() + " '" + text(c) + "'");
+        if (c instanceof ListRow) {  // select the row, then the list's own mouse listeners (locationToIndex = it)
+            ListRow row = (ListRow) c;
+            row.list.setSelectedIndex(row.index);
+            c = row.list;
+        }
         if (c instanceof AbstractButton) {
             AbstractButton b = (AbstractButton) c;
             if (b instanceof JToggleButton) b.setSelected(!b.isSelected());
@@ -510,6 +515,10 @@ final class Sidebar {
             walk(scrollPaneView((JScrollPane) c), depth, sb);
             return;
         }
+        if (c instanceof javax.swing.JList) {
+            walkList((javax.swing.JList) c, depth, sb);
+            return;
+        }
         if (c.getMouseListeners().length > 0) {
             String t = labelText(c, new StringBuilder(), 0).toString().trim();
             if (!t.isEmpty()) add(sb, 'H', depth, c, t);
@@ -522,6 +531,51 @@ final class Sidebar {
             }
             for (Component child : k.getComponents()) walk(child, depth + 1, sb);
         }
+    }
+
+    /** A JList row in the model: a tap selects it (Sidebar.handle). Text and colour from the cell renderer. */
+    static final class ListRow extends JLabel {
+        final javax.swing.JList list;
+        final int index;
+
+        ListRow(javax.swing.JList list, int index) {
+            this.list = list;
+            this.index = index;
+        }
+    }
+
+    private static final int MAX_LIST_ROWS = 400;
+
+    /**
+     * JList: one selectable line per model element, the text the list's cell renderer produces
+     * (desktop paints the renderer component per row; without a renderer, the element's toString).
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void walkList(javax.swing.JList list, int depth, StringBuilder sb) {
+        javax.swing.ListModel m = list.getModel();
+        javax.swing.ListCellRenderer r = list.getCellRenderer();
+        int n = m == null ? 0 : m.getSize(), sel = list.getSelectedIndex();
+        for (int i = 0; i < n && i < MAX_LIST_ROWS && nodes.size() <= 3000; i++) {
+            Object v = m.getElementAt(i);
+            String t = "";
+            java.awt.Color fg = null;
+            if (r != null) {
+                try {
+                    Component rc = r.getListCellRendererComponent(list, v, i, i == sel, false);
+                    if (rc != null) {
+                        t = labelText(rc, new StringBuilder(), 0).toString().trim();
+                        if (rc instanceof JLabel) fg = rc.getForeground();
+                    }
+                } catch (Throwable e) {
+                    Log.w(TAG, "list cell renderer threw: " + e);
+                }
+            }
+            if (t.isEmpty()) t = clean(String.valueOf(v));
+            ListRow row = new ListRow(list, i);
+            if (fg != null) row.setForeground(fg);
+            add(sb, 'H', depth, row, (i == sel ? "> " : "") + t);
+        }
+        if (n > MAX_LIST_ROWS) add(sb, 'L', depth, list, "(" + (n - MAX_LIST_ROWS) + " more)");
     }
 
     private static StringBuilder labelText(Component c, StringBuilder out, int found) {

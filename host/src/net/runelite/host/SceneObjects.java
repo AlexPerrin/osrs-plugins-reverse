@@ -160,6 +160,34 @@ final class SceneObjects {
         }
     }
 
+    /**
+     * A scene load the host saw as LOADING (login, setGameState(LOADING) reloads): desktop's scene is
+     * rebuilt and every object spawns again with no despawns (plugins clear their lists on LOADING),
+     * so the next refresh posts spawns for all objects (Ground Object Hider re-hides after a reload).
+     */
+    synchronized void forgetObjects() {
+        objects = new HashMap<>();
+        refreshedTick = Integer.MIN_VALUE;
+    }
+
+    /**
+     * Tile.setGroundObject(null): removes the game's ground decoration on the tile and posts
+     * GroundObjectDespawned at once (desktop's tile hook does the same); the next refresh doesn't
+     * see it again. The game re-adds it only when the scene is rebuilt (setGameState(LOADING)).
+     */
+    synchronized void removeGround(int plane, int x, int y) {
+        if (plane < 0 || plane >= 4 || x < 0 || x >= SIZE || y < 0 || y >= SIZE) return;
+        Contents c = tiles[plane][x][y];
+        AndroidTileObject.Ground g = c != null ? c.ground : null;
+        Native.removeGroundObject(plane, x, y);
+        if (g == null) return;
+        c.ground = null;
+        objects.remove(g.key());
+        EventBus bus = this.bus;
+        AndroidWorldView wv = Host.worldView();
+        if (bus != null) postDespawn(bus, g, wv.getBaseX(), wv.getBaseY());
+    }
+
     private static Contents contents(Contents[][][] t, int plane, int x, int y) {
         Contents c = t[plane][x][y];
         if (c == null) t[plane][x][y] = c = new Contents();

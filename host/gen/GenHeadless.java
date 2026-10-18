@@ -642,6 +642,21 @@ public class GenHeadless {
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[1] == Object.class) return "if (a1 instanceof String) __cards.put(a1, a0);";
         }
         if (c == javax.swing.JPopupMenu.class && n.equals("show") && ps.length == 3) return "__shown = this;";
+        // JList selection (the sidebar lists rows and selects one on a tap): -1 when nothing is
+        // selected, values come from the model, setSelectedIndex notifies the selection listeners.
+        // The headless list has no geometry; a tap selects its row before the list's mouse listeners
+        // run, so locationToIndex maps any point to the selected row.
+        if (c == javax.swing.JList.class && props.containsKey("SelectedIndex")) {
+            if (n.equals("getSelectedIndex") && ps.length == 0) return "return __SelectedIndexSet ? __SelectedIndex : -1;";
+            if (n.equals("clearSelection") && ps.length == 0) return "__SelectedIndex = -1; __SelectedIndexSet = true;";
+            if (n.equals("locationToIndex") && ps.length == 1) return "return getSelectedIndex();";
+            if (n.equals("getSelectedValue") && ps.length == 0)
+                return "int i = getSelectedIndex(); javax.swing.ListModel m = getModel(); return i >= 0 && i < m.getSize() ? m.getElementAt(i) : null;";
+            if (n.equals("getSelectedValuesList") && ps.length == 0)
+                return "java.util.List l = new java.util.ArrayList(); Object v = getSelectedValue(); if (v != null) l.add(v); return l;";
+            if (n.equals("setSelectedIndex") && ps.length == 1 && listenerKinds.contains("ListSelectionListener"))
+                return "__SelectedIndex = a0; __SelectedIndexSet = true; for (Object l : __ListSelectionListeners.toArray()) ((javax.swing.event.ListSelectionListener) l).valueChanged(new javax.swing.event.ListSelectionEvent());";
+        }
         if (c == javax.swing.border.CompoundBorder.class && n.equals("getInsideBorder") && ps.length == 0) return "return __inside;";
         if (c == javax.swing.border.CompoundBorder.class && n.equals("getOutsideBorder") && ps.length == 0) return "return __outside;";
         if (c == javax.swing.border.MatteBorder.class && n.equals("getMatteColor") && ps.length == 0) return "return __matte != null ? __matte : java.awt.Color.BLACK;";

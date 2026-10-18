@@ -102,6 +102,14 @@ final class AndroidScene extends SceneStub {
             SceneObjects.Contents c = contents();
             return c != null ? c.ground : null;
         }
+        /** Only null (remove) is supported: the game's scene can't take a host-made object. */
+        @Override public void setGroundObject(net.runelite.api.GroundObject g) {
+            if (g == null) {
+                objects.removeGround(z, x, y);
+                return;
+            }
+            if (g != getGroundObject()) throw new UnsupportedOperationException("Tile.setGroundObject(non-null)");
+        }
         @Override public net.runelite.api.DecorativeObject getDecorativeObject() {
             SceneObjects.Contents c = contents();
             return c != null ? c.decorative : null;

@@ -87,6 +87,8 @@ final class AndroidNPCComposition extends NPCCompositionStub {
     // unverified: static RE (NpcType +0x120/+0x124, compared with 128 in NpcType::getModel)
     @Override public int getWidthScale() { return v.length > 8 ? v[7] : 128; }
     @Override public int getHeightScale() { return v.length > 8 ? v[8] : 128; }
+    /** Attack, defence, strength, hitpoints, ranged, magic (NpcType +0x1a0.., cache ops 74-79). */
+    @Override public int[] getStats() { return v.length > 14 ? java.util.Arrays.copyOfRange(v, 9, 15) : new int[] {1, 1, 1, 1, 1, 1}; }
 
     @Override
     public String toString() {

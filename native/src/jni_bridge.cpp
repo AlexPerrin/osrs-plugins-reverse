@@ -470,10 +470,10 @@ jobjectArray n_npc_def(JNIEnv* env, jclass, jint id) {
     }
     game::NpcDef d;
     if (!game::npc_def(id, d)) return nullptr;
-    jint v[9] = {d.id, d.size, d.combat_level, d.minimap_visible, d.interactable, d.varbit, d.varp,
-                 d.width_scale, d.height_scale};
-    jintArray ints = env->NewIntArray(9);
-    env->SetIntArrayRegion(ints, 0, 9, v);
+    jint v[15] = {d.id, d.size, d.combat_level, d.minimap_visible, d.interactable, d.varbit, d.varp,
+                  d.width_scale, d.height_scale, d.stats[0], d.stats[1], d.stats[2], d.stats[3], d.stats[4], d.stats[5]};
+    jintArray ints = env->NewIntArray(15);
+    env->SetIntArrayRegion(ints, 0, 15, v);
     jclass string = env->FindClass("java/lang/String");
     jobjectArray strs = env->NewObjectArray(6, string, nullptr);
     for (int i = 0; i < 6; i++) {

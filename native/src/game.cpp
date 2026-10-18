@@ -2643,6 +2643,7 @@ bool npc_def(int id, NpcDef& out) {
     shorts(o + 0xa8, out.recolor_from);
     shorts(o + 0xc0, out.recolor_to);
     out.width_scale = read_at<int32_t>(o + 0x120);
+    for (int i = 0; i < 6; i++) out.stats[i] = read_at<int32_t>(o + 0x1a0 + 4 * i);  // ops 74-79 (static RE gen 39)
     out.height_scale = read_at<int32_t>(o + 0x124);
     release_shared(ctrl);
     return true;

@@ -314,6 +314,7 @@ struct NpcDef {
     std::vector<int32_t> models, chathead_models;
     std::vector<int16_t> recolor_from, recolor_to;
     int width_scale = 128, height_scale = 128;
+    int stats[6] = {1, 1, 1, 1, 1, 1};  // attack, defence, strength, hitpoints, ranged, magic (ops 74-79)
 };
 bool npc_def(int id, NpcDef& out);
 // Vertices {x, y, z}* of an Npc/Player's posed model this frame (unrotated, local units, y

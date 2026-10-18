@@ -294,7 +294,8 @@ final class Probe {
                     break;
                 }
                 case "npcdef": {  // "npcdef <npc id> 0": the NPCComposition, models and recolours included
-                    Log.i(TAG, "npc " + id + " " + c.getNpcDefinition(id));
+                    net.runelite.api.NPCComposition nc = c.getNpcDefinition(id);
+                    Log.i(TAG, "npc " + id + " " + nc + (nc != null ? " stats " + java.util.Arrays.toString(nc.getStats()) : ""));
                     break;
                 }
                 case "wlisten": {  // "wlisten <group:child> <index|-1>": the game's onDrag/onDragComplete/onOp/onTimer listeners, drag dead time/zone

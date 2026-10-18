@@ -1,3 +1,5 @@
+<!-- Posted 2026-10-18 16:03 UTC, deleted by the user; do not repost. -->
+
 Thanks, that's clear. Plan on our side:
 
 - One PR per row, opened against `main` directly, a few at a time so review isn't flooded. The independent ones go first (cannon, genie random event, rune pouch, plank sack), then the quests, farming, hunter, fairy rings, jewellery, diaries and the Grand Exchange in that order.

@@ -178,7 +178,7 @@ Pushed to the fork and opened as PRs within it (base AlexPerrin:main); upstream 
 | 27 | fix/27-essence-pouch-check-wording | AlexPerrin/OpenRune-Server#3 | OpenRune/OpenRune-Server#360 (merged 2026-10-18) |
 | 38 | fix/38-varrock-platebody-smelting | AlexPerrin/OpenRune-Server#4 | OpenRune/OpenRune-Server#361 |
 | 57 | fix/57-gameframe-fullscreen-map | AlexPerrin/OpenRune-Server#5 | OpenRune/OpenRune-Server#362 |
-| 58 | fix/58-children-of-the-sun-report-stage | AlexPerrin/OpenRune-Server#6 | OpenRune/OpenRune-Server#363 |
+| 58 | fix/58-children-of-the-sun-report-stage | AlexPerrin/OpenRune-Server#6 | OpenRune/OpenRune-Server#363 (merged 2026-10-18) |
 | 60 | fix/60-daddys-home-waxwood-cap | AlexPerrin/OpenRune-Server#7 | OpenRune/OpenRune-Server#364 (merged 2026-10-18) |
 | 62 | fix/62-item-command-cache-name-fallback | AlexPerrin/OpenRune-Server#8 | OpenRune/OpenRune-Server#365 (merged 2026-10-18) |
 

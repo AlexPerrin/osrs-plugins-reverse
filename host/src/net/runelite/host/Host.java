@@ -267,6 +267,14 @@ public final class Host {
             File copy = new File(cacheDir, jar.getName());
             java.nio.file.Files.copy(jar.toPath(), copy.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             copy.setReadOnly();
+            // R1 (docs/app-telemetry.md): scan the copy that would be loaded, so the checked bytes are the loaded bytes.
+            String refused = NetScan.refusal(copy);
+            if (refused != null) {
+                Log.w(TAG, "netscan: refused " + jar.getName() + ": " + refused
+                        + " (vet it, or list it in debug.osrsrl.netallow)");
+                copy.delete();
+                return;
+            }
             ClassLoader loader = new DexClassLoader(copy.getPath(), cacheDir, null, Host.class.getClassLoader());
             // Plugin classes are found by scanning the jar's class list (kept beside the dex
             // by tools/dex-plugin.sh) for @PluginDescriptor.

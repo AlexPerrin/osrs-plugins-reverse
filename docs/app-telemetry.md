@@ -303,7 +303,8 @@ Scan of all 99 built hub jars (gen 39): 85 clean, 7 LINKS, 5 NET-OKHTTP (c-engin
 equipment-inspector, resource-packs), and 2 NET-RAW:
 - multi-lines: dropped.
 - loot-lookup: the raw references are only in its bundled jsoup (`org/jsoup/Connection`, `HttpConnection`). The plugin fetches through the
-  injected OkHttp client and parses with jsoup, so it doesn't call `Jsoup.connect`. Rebuilt with `ALLOW_NET=1`; this needs the orchestrator to confirm.
+  injected OkHttp client and parses with jsoup, so it doesn't call `Jsoup.connect`. Rebuilt with `ALLOW_NET=1`; **approved by the orchestrator
+  (gen 40)** and on R1's vetted list for that reason.
 
 **Runtime guard for java.net: proposal (not implemented).** Options, rated by risk to the game process:
 
@@ -318,3 +319,20 @@ equipment-inspector, resource-packs), and 2 NET-RAW:
 The game's own networking is native (libc sockets in the game library). None of R1-R5 touches it, but R3-R5 do reach the app's
 Java SDKs, including the AppAuth sign-in. **Recommended: R1** (deny by default, allow-list per plugin), plus the build-time netcheck.
 R2 only if a plugin that needs java.net is wanted. R3-R5 are not recommended.
+
+### R1 load-time gate: implemented (gen 40)
+
+Approved by the orchestrator. `Host.loadJar` copies each plugin jar to the cache dir as before, then calls
+`NetScan.refusal(copy)` on that copy (so the checked bytes are the loaded bytes) before `new DexClassLoader`. It searches every
+`classes*.dex` for the descriptors listed under R1 (the same list as netcheck.sh). A refused jar is not loaded; its cache copy is
+deleted, and the host logs `W osrsrl-host: netscan: refused <jar>: java.net outside NetGuard: [...] (vet it, or list it in debug.osrsrl.netallow)`.
+
+- **Vetted** (hard-coded in `NetScan.VETTED`, by jar name without `.jar`):
+  - `hub-loot-lookup`: its raw references are only in bundled jsoup (`HttpConnection`); the plugin fetches through the injected OkHttp client (approved, gen 40).
+  - `devtools`: the devtools bridge's local server (`InetAddress`/`InetSocketAddress`), reached over adb only.
+- **Allow-list for testing**: `setprop debug.osrsrl.netallow <name>[,<name>...]` (jar names without `.jar`). Clear it after the slot.
+- Core plugin jars (grounditems, opponentinfo, quest-helper) hold only `plugin-classes.txt`, so they never trip it.
+- **Off-device check**: `host/plugins/hub/netscan-check.sh <jar>...` compiles NetScan with a stub `Native`, runs a self-test on
+  synthetic jars (clean, Socket, java.net.http, URL as a value vs. URL+openStream, a reference only in classes2.dex, allow-list
+  matching, vetted name), then prints `load` / `REFUSE <reason>` per jar. On gen 40's 189 dexed jars (`re/host/plugins`, `re/host/plugins-extra`)
+  all load (loot-lookup and devtools through the vetted list; copies of either under another name are refused).

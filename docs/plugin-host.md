@@ -225,7 +225,7 @@ ones. Same status words as the core table. 2026-10-16: all 17 built ones start t
 | Door Kicker | starts | `door-kicker` (67k): plays a kick animation on the local player when opening doors. Pinned gen 38; uses `Player.setAnimation/setActionFrame` (host stubs, so the kick won't show). Starts |
 | Gemstone Crab | starts | `gemstone-crab-timer` (65k). Pinned gen 38; no stub calls. Starts |
 | Star Info | starts | `startierindicator` (57k): shooting star tier info. Pinned gen 38; no stub calls. Starts |
-| Max Hit Calculator | runs | `max-hit-calculator` (34k installs). Pinned gen 39. Device: its overlay shows "Max Hit: 11" for the tester. Static gap: `NPCComposition.getStats` is a stub (NpcType stats are not mapped), so NPC-defence parts read nothing |
+| Max Hit Calculator | runs | `max-hit-calculator` (34k installs). Pinned gen 39. Device: its overlay shows "Max Hit: 11" for the tester. `NPCComposition.getStats` is mapped (dc9a9c6, NpcType +0x1a0..+0x1b4) and device-verified gen 40: `npcdef 3108` Man [1,1,1,7,1,1], `npcdef 2` Aberrant spectre [1,90,1,90,1,105] (att, def, str, hp, rng, mag, as on the wiki). The plugin reads it only for the Twisted bow bonus (magic level of `getInteracting()`); the path returned a non-null int[] while attacking a Man, with no errors. The tbow branch itself is not exercised (it needs ammo, and spawned ammo isn't wielded) |
 | Tick Tracker | runs | `ticktracker` (51k). Pinned gen 39; no stub calls. Device: its tick-accuracy readout ("100.00%") shows top-right |
 | Fishing Notifier | starts | `fishing-notifier` (53k). Pinned gen 39; no stub calls. Starts; not exercised (no fishing) |
 | Slayer Task Sorter | starts | `slayer-task-sorter` (50k). Pinned gen 39; no stub calls. Starts; not exercised |

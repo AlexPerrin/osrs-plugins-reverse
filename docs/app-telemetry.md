@@ -284,3 +284,37 @@ Always, even without QA: every build goes through `tools/repack.sh` (with `patch
    `secure.x.invalid` / `services.x.invalid` lookups; no `ConsentSync` or `Singular` log lines; no socket to Jagex addresses
    (104.18.40.92, 172.64.147.164, 104.18.35.117, 18.67.39.x).
 6. Record the build, the time window, the DNS list and the distinct socket addresses here, under a dated heading.
+
+### Plugins and java.net (gen 39)
+
+NetGuard only guards the host's shared OkHttp client. Plugin code that uses `java.net` directly (`URL.openConnection`/`openStream`,
+`HttpURLConnection`, `Socket`, `InetAddress`, `java.net.http.HttpClient`, `javax.net.*`) would bypass it. The case that showed this:
+`multi-lines` fetches its area data from raw.githubusercontent.com with `java.net.http.HttpClient`. That class doesn't exist on
+Android, so the plugin threw before sending anything; its pin was removed.
+
+**Static check (in place): `host/plugins/hub/netcheck.sh <jar>...`**, which `host/plugins/hub/build.sh` runs on every hub build.
+It reads each class's constant pool and gives a verdict per jar:
+- `NET-RAW`: java.net/javax.net I/O classes. A bare `java/net/URL` counts only when the class also references `openConnection`/`openStream`.
+  The build stops and doesn't dex the jar unless `ALLOW_NET=1`, which needs the orchestrator's OK.
+- `NET-OKHTTP`: okhttp3 only. Requests go through the injected client, so NetGuard applies, but the plugin still counts as a network plugin (Network QA).
+- `LINKS`: only `LinkBrowser` (a browser opens on a tap). `clean`: none of these.
+
+Scan of all 99 built hub jars (gen 39): 85 clean, 7 LINKS, 5 NET-OKHTTP (c-engineer-completed, collection-log, dropsounds,
+equipment-inspector, resource-packs), and 2 NET-RAW:
+- multi-lines: dropped.
+- loot-lookup: the raw references are only in its bundled jsoup (`org/jsoup/Connection`, `HttpConnection`). The plugin fetches through the
+  injected OkHttp client and parses with jsoup, so it doesn't call `Jsoup.connect`. Rebuilt with `ALLOW_NET=1`; this needs the orchestrator to confirm.
+
+**Runtime guard for java.net: proposal (not implemented).** Options, rated by risk to the game process:
+
+| Option | Scope | Risk |
+|---|---|---|
+| R1. Host plugin loader refuses NET-RAW jars: before `new DexClassLoader`, scan the jar's `classes.dex` string table for the same descriptors (`Ljava/net/HttpURLConnection;`, `Ljava/net/Socket;`, `Ljava/net/http/`, `Ljavax/net/`, plus `Ljava/net/URL;` with `openConnection`/`openStream`), and skip the plugin with a log line unless it's on an allow-list (`debug.osrsrl.netallow`, comma-separated plugin names) | plugin jars only | **none for the game**: nothing process-wide changes. Cost: a byte scan per jar at start. Bundled libraries (jsoup) trip it, hence the allow-list |
+| R2. Rewrite at dex time (`tools/dex-plugin.sh`): redirect plugin calls to `URL.openConnection/openStream` and `new Socket` to a host shim that applies NetGuard's rule (GET/HEAD, no xp/update) and logs, or throws | plugin bytecode only | low for the game; medium effort (a bytecode rewrite step, e.g. ASM before d8). Needed only if a wanted plugin really uses java.net |
+| R3. `URL.setURLStreamHandlerFactory` wrapping the default http/https handlers, with a stack check (`plugin classloader on the stack` -> apply the rule) | **whole process** | **high**: the app's own Java SDKs use `HttpURLConnection` in the same process: AppAuth token exchange with the sidecar (sign-in), the OneTrust banner, Braze, the payments SDK. The factory can be set only once per process (an SDK that sets one first makes ours throw). Wrapping needs hidden-API reflection into `com.android.okhttp` on Pie. A bug here breaks sign-in |
+| R4. `ProxySelector.setDefault` returning an unreachable proxy for plugin callers | whole process (HttpURLConnection) | medium-high: the same shared path as R3. It sees only the URI, not the method, so it can't express GET-only. Raw sockets mostly skip it |
+| R5. `Socket.setSocketImplFactory` / a default `SocketFactory` | whole process (Java sockets) | high: catches every Java socket the app's SDKs open. The game's native sockets (game server, sidecar) are not Java, so they are untouched either way |
+
+The game's own networking is native (libc sockets in the game library). None of R1-R5 touches it, but R3-R5 do reach the app's
+Java SDKs, including the AppAuth sign-in. **Recommended: R1** (deny by default, allow-list per plugin), plus the build-time netcheck.
+R2 only if a plugin that needs java.net is wanted. R3-R5 are not recommended.

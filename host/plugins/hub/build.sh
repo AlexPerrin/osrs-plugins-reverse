@@ -8,6 +8,8 @@
 # tools/dex-plugin.sh into re/host/plugins-extra/hub-<name>.jar. Never part of the default plugin set.
 # Extra Maven dependencies a plugin declares in build.gradle are not fetched: the build stops and
 # lists them, so they can be reviewed and added to host.jar (or the plugin skipped).
+# Every built jar goes through host/plugins/hub/netcheck.sh; NET-RAW (java.net/javax.net I/O, which
+# NetGuard doesn't see) stops the build unless ALLOW_NET=1.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 PINS=$ROOT/host/plugins/hub/plugins.txt
@@ -84,5 +86,13 @@ for name in "$@"; do
     printf 'Manifest-Version: 1.0\nImplementation-Title: %s\nImplementation-Version: %s\n' "$name" "${commit:0:10}" > "$w/MANIFEST.MF"
     rm -f "$OUT/$name.jar"
     jar cfm "$OUT/$name.jar" "$w/MANIFEST.MF" -C "$w/jar" .
+    # Network check (netcheck.sh): NET-RAW plugins bypass NetGuard; they are not dexed unless
+    # ALLOW_NET=1 (orchestrator's OK). NET-OKHTTP ones go through NetGuard but still need Network QA.
+    if ! "$ROOT/host/plugins/hub/netcheck.sh" "$OUT/$name.jar"; then
+        if [[ -z ${ALLOW_NET:-} ]]; then
+            echo "$name: NET-RAW (network outside NetGuard); not dexed. Review; ALLOW_NET=1 to build anyway"
+            rm -f "$ROOT/re/host/plugins-extra/hub-$name.jar"; exit 1
+        fi
+    fi
     "$ROOT/tools/dex-plugin.sh" "$OUT/$name.jar" "$ROOT/re/host/plugins-extra/hub-$name.jar"
 done

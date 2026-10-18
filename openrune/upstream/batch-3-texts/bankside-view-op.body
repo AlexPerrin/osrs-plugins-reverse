@@ -1,0 +1,26 @@
+Found while working on the content discussed in #353.
+
+**Problem.** With the bank open, the client's `bankside_drawitem` gives some inventory items op 1:
+- the looting bag: "View", when the bag holds something;
+- rune pouches and pre-pot devices: "Configure".
+
+Clicking it runs `bankside_switchview` client-side, which swaps the side panel. The op is also sent to the server, because `BankOpenScript` enables op 1 on `bankside:items`. `BankInvScript.sideInvOp` has no case for op 1, so it throws `IllegalStateException("Invalid main inv op: Op1")` and the player is disconnected.
+
+**Change.** `sideInvOp` returns early on op 1. The panel switch is client-side, so the server has nothing to do.
+
+**Tests.** No automated test. The bank module's integration sources aren't wired to a suite on main, and they reference config objects that no longer exist, so they don't compile. Checked in game on our build (rev 241, desktop RuneLite): "View" on a looting bag holding two oak logs opened the "Bank your loot" panel with no disconnect and no server exception. Not re-checked in game on this branch.
+
+**Data sources.** osrs-dumps rev 241: `[proc,bankside_drawitem]` (the op 1 names and the `bankside_switchview` handlers) and `[proc,bankside_build]` (View appears only when `inv.looting_bag` is not empty).
+
+**Caveats.** None known. The looting bag panel's own ops (`bankside:lootingbag_items`) and the rune pouch configuration panel aren't handled on main. This fix only stops the disconnect.
+
+**Release note.** Clicking "View" or "Configure" on an item in the bank's inventory side no longer disconnects you.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble`, `test`, `integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

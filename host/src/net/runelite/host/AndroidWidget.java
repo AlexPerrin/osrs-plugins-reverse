@@ -180,7 +180,7 @@ public class AndroidWidget extends WidgetBag {
     }
     // Sub-ops (desktop's op sub-menus, e.g. Bank Tags' "1 Dose".."4 Dose" under op 10) are stored
     // host-side only: the mobile menu's sub-menu support isn't mapped, so the game doesn't show them.
-    // // unverified: whether mobile 241 has op sub-menus at all
+    // unverified: whether mobile 241 has op sub-menus at all
     private static final java.util.Map<Long, String[][]> SUB_OPS = new java.util.HashMap<>();
     private long subOpKey() { return ((long) id << 32) | (childIndex() & 0xffffffffL); }
     @Override public void setSubOp(int op, int sub, String text) {
@@ -194,7 +194,7 @@ public class AndroidWidget extends WidgetBag {
     @Override public String[][] getSubOps() {
         synchronized (SUB_OPS) { return SUB_OPS.get(subOpKey()); }
     }
-    // // unverified: default (desktop's flag is true for the IF3 interfaces plugins touch; Inventory
+    // unverified: default (desktop's flag is true for the IF3 interfaces plugins touch; Inventory
     // Grid only asserts it)
     @Override public boolean isIf3() { return true; }
     @Override public void clearActions() {

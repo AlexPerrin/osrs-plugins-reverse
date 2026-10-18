@@ -208,5 +208,5 @@ Patch 08 (item examine chat type 27) was withdrawn 2026-10-17 (nineteenth server
 upstream's `examine_item` behaviour; `git am` of the remaining 61 patches on the pin applies.
 
 Patches 64-66 were added 2026-10-17 (nineteenth server dev, after desktop Quest Helper runs of all three): `git am` of all
-64 remaining patches (08 withdrawn) on the pin applies. Compiled and tested in our tree (our tree's Witch's Potion uses a kill
+65 remaining patches (08 withdrawn) on the pin applies. Compiled and tested in our tree (our tree's Witch's Potion uses a kill
 hook instead of 65's drop table); the patch versions were not compiled on a pin-only clone.

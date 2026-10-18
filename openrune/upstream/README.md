@@ -76,6 +76,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 60 | `60-daddys-home-waxwood-cap` | `content/quest/.../daddyshome/DaddysHomeFurniture.kt`, `DaddysHomeInteractionTest.kt` | Each crate search gave three more waxwood logs; the wiki says duplicates cannot be obtained, so it tops up to three (logs + planks, inventory + bank) | The "nothing interesting" reply once three are held is a guess |
 | 61 | `61-gameframe-fullscreen-map-keeps-stone-choice` | `content/interfaces/gameframe/.../GameframeScript.kt`, `build.gradle.kts` | Opening the fullscreen map overwrote `resizable_stone_arrangement`; closing to a fixed frame or logging out with the map open kept the map's value | Needs 57 |
 | 62 | `62-item-command-cache-name-fallback` | `content/other/commands/.../AdminCommands.kt` | `::item saw` threw "Missing mapping" (the gameval is `obj.poh_saw`); unknown names fall back to the cache name | Debug command only |
+| 63 | `63-gertrudes-cat-shilop-line` | `content/quest/.../gertrudescat/GertrudesCatQuest.kt`, `GertrudesCatInteractionTest.kt` | After the boys are paid, Gertrude repeated the stage-1 "What about Shilop?" lines; the wiki transcript has its own exchange for that stage | Applies alone on the pin |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.

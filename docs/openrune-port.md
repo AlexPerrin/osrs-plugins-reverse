@@ -1809,3 +1809,9 @@ QH 4.18's follow step (`followGuard`) draws a line along the guard's path and ma
 Our type-27 item examine (upstream patch 08) is reverted: `Player.objExamine` again runs the `examine_item`
 clientscript (chat type 0, with the price/alch line), `ObjExamineTest` is dropped and patch 08 is withdrawn from
 `openrune/upstream` (README note). The client now emulates RuneLite's item-examine handling.
+
+### Gertrude's "Shilop" line (upstream 63)
+At stage 2 (boys paid, Fluffs not found) Gertrude now uses the transcript's own exchange ("Hello again, did you
+manage to find Shilop? I can't keep an eye on him for the life of me." ... "Thanks again, adventurer.") instead of
+the stage-1 "What about Shilop?" lines. Once Fluffs is found she gives the sardine advice as before. Test added
+(24 in `GertrudesCatInteractionTest`). Expressions are our choice.

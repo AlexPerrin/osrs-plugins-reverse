@@ -1351,7 +1351,7 @@ index f1164c104..2b5275bef 100644
  
      private suspend fun ProtectedAccess.shopDialogue(npc: Npc) =
 diff --git a/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt b/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt
-index ae0ba7098..ff9f26b6f 100644
+index ae0ba7098..26f0b25e5 100644
 --- a/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt
 +++ b/content/areas/city/varrock/src/test/kotlin/org/rsmod/content/areas/city/varrock/GertrudesCatInteractionTest.kt
 @@ -175,6 +175,26 @@ class GertrudesCatInteractionTest {
@@ -1381,7 +1381,26 @@ index ae0ba7098..ff9f26b6f 100644
      @Test fun `doogle leaves season a raw sardine`() {
          val f = Fixture(0)
          f.player.inv[1] = InvObj(DoogleLeaves, 1)
-@@ -466,6 +486,17 @@ class GertrudesCatInteractionTest {
+@@ -230,6 +250,18 @@ class GertrudesCatInteractionTest {
+         assertEquals(3, f.stage())
+     }
+ 
++    @Test fun `after paying the boys Gertrude asks about Shilop, not Fluffs`() {
++        val f = Fixture(2)
++        f.talkToGertrude()
++        f.finish()
++        assertTrue(f.output().contains("did you manage to find Shilop?"), f.output())
++        assertFalse(f.output().contains("What about Shilop?"), f.output())
++        val before = Fixture(1)
++        before.talkToGertrude()
++        before.finish()
++        assertTrue(before.output().contains("What about Shilop?"), before.output())
++    }
++
+     @Test fun `the journal follows the stage`() {
+         val f = Fixture(2)
+         f.player.metFluffs = true
+@@ -466,6 +498,17 @@ class GertrudesCatInteractionTest {
              assertTrue(events.publish(this, NpcEvents.Op1(Npc(kid, coords.translateZ(1)))))
          }
  
@@ -18627,6 +18646,45 @@ index 60b374b08..0c70a8e91 100644
              mes("You don't have enough inventory space.")
              return
          }
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/GertrudesCatQuest.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/GertrudesCatQuest.kt
+index 7c9209e5d..faf783439 100644
+--- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/GertrudesCatQuest.kt
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/GertrudesCatQuest.kt
+@@ -113,8 +113,8 @@ class GertrudesCatQuest :
+     suspend fun Dialogue.gertrudeDialogue(): Boolean {
+         when (stage(player)) {
+             0 -> beforeQuest()
+-            STAGE_STARTED,
+-            STAGE_PAID_KIDS -> lookingForFluffs()
++            STAGE_STARTED -> lookingForFluffs()
++            STAGE_PAID_KIDS -> afterPayingKids()
+             STAGE_GAVE_MILK -> sardineAdvice()
+             STAGE_GAVE_SARDINE -> afterSardine()
+             else -> return false
+@@ -163,6 +163,23 @@ class GertrudesCatQuest :
+         chatNpc(confused, "Hmmm... strange. He should be at the market.")
+     }
+ 
++    /** After paying the boys (stage 2), from the wiki transcript ("Talking to Gertrude again"). */
++    private suspend fun Dialogue.afterPayingKids() {
++        if (player.metFluffs) {
++            sardineAdvice()
++            return
++        }
++        chatPlayer(happy, "Hello Gertrude.")
++        chatNpc(
++            quiz,
++            "Hello again, did you manage to find Shilop? I can't keep an eye on him for the life of me.",
++        )
++        chatPlayer(neutral, "He does seem quite a handful.")
++        chatNpc(angry, "You have no idea! Did he help at all?")
++        chatPlayer(happy, "I think so, I'm just going to look now.")
++        chatNpc(happy, "Thanks again, adventurer.")
++    }
++
+     private suspend fun Dialogue.sardineAdvice() {
+         chatPlayer(happy, "Hello again.")
+         chatNpc(quiz, "Hello. How's it going? Any luck?")
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/npcs/Fluffs.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/npcs/Fluffs.kt
 index 2320ae79e..3fac8fc0a 100644
 --- a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/varrock/gertrudescat/npcs/Fluffs.kt

@@ -39,12 +39,13 @@ Details in `docs/openrune-port.md`, "Eighteenth server dev" and the sections aft
   first login (QH behaviour); teleport once before "Start Quest Helper".
 - **Deployed** 23:57 UTC: 43e944f + 330dc44.
 - **Test accounts:** qhtest1 (Misthalin stage 25), qhtest2 (Misthalin done),
-  qhtest3 (Ernest stage 2, fullscreen-map repro), qhtest4 (Children of the Sun done). qhtest1/qhtest3 recovered after the 57 deploy (log in to 164).
+  qhtest3 (Ernest stage 2, fullscreen-map repro), qhtest4 (Children of the Sun, Daddy's Home, HFS done; 99 stats from `::master`). qhtest1/qhtest3 recovered after the 57 deploy (log in to 164).
 - Upstream: 58 patches; all `git am` on the pin (scratch clone `up` in this session's scratchpad has 01-58).
 - **Children of the Sun: complete** with QH on fresh qhtest4 (deployed 330dc44): the 4th correct mark sets 14 and QH
   shows "Report back to Sergeant Tobyn"; Tobyn -> roof 16 -> 24, scroll 1 QP. The guard tail (stage 6) was skipped
   with `::quest children 10` (real-time line-of-sight stealth; unit-tested).
-- **Next candidates:** runs of Daddy's Home (qhtest4 at stage 1), His Faithful Servants on fresh accounts (HFS needs
+- **Daddy's Home and His Faithful Servants: complete** with QH on qhtest4 (details in the port doc).
+- **Next candidates:** (HFS needs
   `::god` for the Barrows run; turn it off); Gertrude's Cat leftovers (shared Fluffs hide for 100 ticks, Stroke =
   pick-up) - check whether the cache's Fluffs is a multinpc on the quest varbit before changing the hide.
 

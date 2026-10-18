@@ -1726,3 +1726,21 @@ Stage keys, varbits and step ids were read from the QH jar's bytecode (`loadStep
   at 14 ("Report back to Sergeant Tobyn"), which the server never set. **Fixed (upstream 58):** the fourth correct
   mark sets 14, an unmark goes back to 12, and Tobyn's marking dialogue answers at 14. Setting 14 on the mark rather
   than on the report talk is a **guess** from QH's step text. Unit tests: `ChildrenOfTheSunInteractionTest` 36.
+
+### Desktop QH runs after the 57/58 deploy (eighteenth server dev, fresh account qhtest4)
+
+- **Children of the Sun: complete.** Alina ("When will this delegation arrive?") -> 2, delegation scene -> 6
+  (tailing). The tail was skipped with `::quest children 10`: it is a real-time line-of-sight puzzle and is
+  unit-tested. Tobyn -> 12; marking the four bandits (`vmq1_guard_1..4`, npcs 12668/12671/12674/12677) -> 14, and
+  QH shows "Report back to Sergeant Tobyn" (upstream 58 confirmed); Tobyn -> roof 16 -> interrogation -> 24. Scroll:
+  1 QP, Access to Varlamore.
+- **Daddy's Home: complete.** Marlo -> 1, Yarlo -> 2. Demolish 6 pieces (op 1) and the carpet (op 5, origin
+  (3238,3393)) -> furniture varbits 10563-10569 go 1 -> 2, stage 3. Yarlo (skipped the lecture) -> 5. Build via the
+  POH build menu (interface 458, key "1") -> varbits 3; crates (40214) give 3 waxwood logs per search (no cap while
+  the bed is unbuilt; OSRS behaviour unverified); the sawmill operator makes waxwood planks for free; bed built;
+  Yarlo -> 10; Marlo -> 13 (crate, Rimmington house, 400 Construction XP). `::item saw` throws ("Missing mapping
+  for key: 'obj.saw'", debug command only).
+- **His Faithful Servants: complete.** Strange Old Man -> 2 (crumbling tome). All six barrows (Ahrim had the
+  tunnel); chest (client id 20973 at (3551,9695)) -> stage 4, Strange icon, QH "Return to the Strange Old Man with
+  the strange icon"; the old man -> 10 (Dusty lamp, Crypt map). Done with `::god`/`::maxhit`/`::master` (turned off;
+  qhtest4 keeps 99s).

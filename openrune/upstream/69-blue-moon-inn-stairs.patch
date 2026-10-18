@@ -1,0 +1,40 @@
+From 1c5d76ce31bb62bba2d652093414f2beb7fe76a0 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sun, 18 Oct 2026 02:35:26 -0400
+Subject: [PATCH 69/70] fix: Blue Moon Inn staircase in Varrock had no handler
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Problem. Climb-up on the Blue Moon Inn's staircase (`loc.fai_varrock_stairs`, 11796) answered "Nothing
+interesting happens.", so the inn's upper floor (Pirate's Treasure's chest, Vampyre Slayer's Dr Harlow area)
+could only be reached with a teleport.
+
+Change. `StraightStaircaseScript` gains `fai_varrock_stairs` with the plain straight stairs' landing offsets
+(1, 3, +1 level); its top (`fai_varrock_stairs_top`) was already handled.
+
+Tests. Manual: on the RuneLite desktop client, Climb-up lands on (3230, 3393, 1), which is walkable to the rooms
+upstairs, and Climb-down from the top returns to (3226, 3393, 0).
+
+Data. The offsets copy the existing `stairs` entry (same straight-stair model family); checked in game only.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+---
+ .../content/generic/locs/staircase/StraightStaircaseScript.kt    | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
+index a8ea51729..93bceff93 100644
+--- a/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
++++ b/content/generic/generic-locs/src/main/kotlin/org/rsmod/content/generic/locs/staircase/StraightStaircaseScript.kt
+@@ -20,6 +20,7 @@ private enum class StraightStairs(val loc: String, val dx: Int, val dz: Int, val
+     NarrowWoodenUp("loc.narrowstairs_wooden_bottom", 0, -1, 1),
+     NarrowWoodenDown("loc.narrowstairs_wooden_top", 0, 3, -1),
+     VarrockTallUp("loc.fai_varrock_stairs_taller", 1, 3, 1),
++    VarrockUp("loc.fai_varrock_stairs", 1, 3, 1),
+     VarrockTallDown("loc.fai_varrock_stairs_top", 1, -2, -1),
+ }
+ 
+-- 
+2.43.0
+

@@ -1,0 +1,108 @@
+From 89671e1f94bcfd844d8a42c9af9b22113aef95c5 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sun, 18 Oct 2026 02:39:57 -0400
+Subject: [PATCH] fix: server item configs set stockmarket instead of tradeable
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Problem. `ItemServerCodec.createData` copies an item's server config entry over the cache data, but it assigns the
+entry's `tradeable` to `stockmarket`:
+
+    stockmarket = customData.tradeable
+
+So `ItemServerType.tradeable` keeps its default `true` for every item, even where `items.toml` says
+`tradeable = false` (coal bag, quest items, ...), and every item that has a config entry without a `tradeable`
+line is put on the Grand Exchange (`stockmarket = true`), whatever the cache says. Code that asks "is this
+tradeable" (for example `PlayerDeathDrops.isUntradeable`) gets the wrong answer.
+
+Change. `tradeable = customData.tradeable`; `stockmarket` keeps the cache's value.
+
+Tests. New `ItemServerCodecTest` (`:or-cache:test`): a config entry with `tradeable = false` makes the item
+untradeable; an entry without it keeps a non-GE item off the GE and a GE item on it. The first two fail before
+the change. Found while adding a looting bag (which must refuse untradeable items): on the server, the coal bag
+and a quest key both reported `tradeable = true`.
+
+Caveats. Behaviour changes for every item with a config entry: items the cache does not list on the Grand Exchange
+stop counting as `stockmarket`, and items marked `tradeable = false` become untradeable for the code that checks
+it (death drops, shops that check `tradeable || stockmarket`). That is the intended data, but worth a look at
+anything that relied on the old values. The packed server cache must be rebuilt.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+---
+ .../codec/osrs/impl/ItemServerCodec.kt        |  2 +-
+ .../codec/osrs/impl/ItemServerCodecTest.kt    | 49 +++++++++++++++++++
+ 2 files changed, 50 insertions(+), 1 deletion(-)
+ create mode 100644 or-cache/src/test/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodecTest.kt
+
+diff --git a/or-cache/src/main/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodec.kt b/or-cache/src/main/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodec.kt
+index 5069f4e16..2ef30e792 100644
+--- a/or-cache/src/main/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodec.kt
++++ b/or-cache/src/main/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodec.kt
+@@ -144,7 +144,7 @@ class ItemServerCodec(
+             playerCostDerivedConst = customData.playerCostDerivedConst
+             stockMarketBuyLimit = customData.stockMarketBuyLimit
+             stockMarketRecalcUsers = customData.stockMarketRecalcUsers
+-            stockmarket = customData.tradeable
++            tradeable = customData.tradeable
+             respawnRate = customData.respawnRate
+             dummyitem = customData.dummyitem
+             contentGroup = customData.contentGroup
+diff --git a/or-cache/src/test/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodecTest.kt b/or-cache/src/test/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodecTest.kt
+new file mode 100644
+index 000000000..0657fd0f9
+--- /dev/null
++++ b/or-cache/src/test/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodecTest.kt
+@@ -0,0 +1,49 @@
++package dev.openrune.codec.osrs.impl
++
++import dev.openrune.definition.type.ItemType
++import dev.openrune.types.ItemServerType
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++
++class ItemServerCodecTest {
++    @Test
++    fun `a server config entry with tradeable false makes the item untradeable`() {
++        val base = ItemType(id = ID, stockMarket = false)
++        val overlay = ItemServerType(ID).apply { tradeable = false }
++        val item = ItemServerType(ID)
++
++        with(ItemServerCodec(REV, mapOf(ID to base), mapOf(ID to overlay))) { item.createData() }
++
++        assertFalse(item.tradeable)
++        assertFalse(item.stockmarket)
++    }
++
++    @Test
++    fun `the overlay keeps the cache's grand exchange flag`() {
++        val base = ItemType(id = ID, stockMarket = true)
++        val overlay = ItemServerType(ID)
++        val item = ItemServerType(ID)
++
++        with(ItemServerCodec(REV, mapOf(ID to base), mapOf(ID to overlay))) { item.createData() }
++
++        assertTrue(item.tradeable)
++        assertTrue(item.stockmarket)
++    }
++
++    @Test
++    fun `an overlay does not put a non grand exchange item on the exchange`() {
++        val base = ItemType(id = ID, stockMarket = false)
++        val overlay = ItemServerType(ID)
++        val item = ItemServerType(ID)
++
++        with(ItemServerCodec(REV, mapOf(ID to base), mapOf(ID to overlay))) { item.createData() }
++
++        assertFalse(item.stockmarket)
++    }
++
++    private companion object {
++        const val ID = 1
++        const val REV = 241
++    }
++}
+-- 
+2.43.0
+

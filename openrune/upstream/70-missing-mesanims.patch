@@ -1,0 +1,112 @@
+From 03c17e20d556d46f75164c7c91b6d4565274c200 Mon Sep 17 00:00:00 2001
+From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
+Date: Sun, 18 Oct 2026 02:35:36 -0400
+Subject: [PATCH 70/70] fix: missing server mesanims (scared, sleep) that throw
+ mid-dialogue
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Problem. Talk-to on the Lumbridge Doomsayer throws `IllegalStateException: Error Loading MesAnim` from
+`Dialogue.mesanim` (via `LumbridgeAdvisors.getScared`): `mesanim.scared` is in `mesanim.rscm` (13) but has no entry
+in the server's `mesanim.toml`, so `ServerCacheManager.getMesAnim` returns null. The exception escapes the player's
+cycle and the player is disconnected. Port Sarim's sleeping guard uses `mesanim.sleep`, which exists in neither file
+and fails the same way.
+
+Change. `mesanim.toml` gains `mesanim.scared` with the `chatscared1-4` sequences (the ones `mesanim.worried`
+already uses). The guard uses `bored` instead of the nonexistent `sleep`. New `MesAnimTypesTest` checks that every
+mesanim name used in content resolves.
+
+Tests. `MesAnimTypesTest` (`:content:quest:test`) fails before the change (missing `mesanim.scared`) and passes
+after. Manual: the Doomsayer's dialogue plays to the end on the RuneLite desktop client.
+
+Data. `chatscared1-4` for `scared` mirror `worried` (both are the scared chat-head set in the cache; which one OSRS
+uses for each name is not documented). There is no sleep chat-head animation in the cache; `bored` is a choice.
+Needs patch 12 (QuestTalkFixture) for the test.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+---
+ .data/raw-cache/server/mesanim.toml           |  7 ++++
+ .../npcs/PortSarimTownsfolkScript.kt          |  2 +-
+ .../content/quest/area/MesAnimTypesTest.kt    | 38 +++++++++++++++++++
+ 3 files changed, 46 insertions(+), 1 deletion(-)
+ create mode 100644 content/quest/src/test/kotlin/org/rsmod/content/quest/area/MesAnimTypesTest.kt
+
+diff --git a/.data/raw-cache/server/mesanim.toml b/.data/raw-cache/server/mesanim.toml
+index 8cffae43f..7b5616346 100644
+--- a/.data/raw-cache/server/mesanim.toml
++++ b/.data/raw-cache/server/mesanim.toml
+@@ -75,6 +75,13 @@ len2="seq.chatscared2"
+ len3="seq.chatscared3"
+ len4="seq.chatscared4"
+ 
++[[mesanim]]
++id="mesanim.scared"
++len1="seq.chatscared1"
++len2="seq.chatscared2"
++len3="seq.chatscared3"
++len4="seq.chatscared4"
++
+ [[mesanim]]
+ id="mesanim.drunk"
+ len1="seq.chatdrunk1"
+diff --git a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimTownsfolkScript.kt b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimTownsfolkScript.kt
+index 6fdaae7b3..f09288c9a 100644
+--- a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimTownsfolkScript.kt
++++ b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimTownsfolkScript.kt
+@@ -165,7 +165,7 @@ class PortSarimTownsfolkScript : PluginScript() {
+     }
+ 
+     private suspend fun Dialogue.sleepingGuard() {
+-        chatNpc(mesanim("mesanim.sleep"), "Guh... mwww... zzzzz...")
++        chatNpc(bored, "Guh... mwww... zzzzz...")
+         chatPlayer(neutral, "Maybe I should let him sleep.")
+     }
+ 
+diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/MesAnimTypesTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/MesAnimTypesTest.kt
+new file mode 100644
+index 000000000..836513843
+--- /dev/null
++++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/MesAnimTypesTest.kt
+@@ -0,0 +1,38 @@
++package org.rsmod.content.quest.area
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import org.junit.jupiter.api.AfterAll
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.BeforeAll
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.junit.jupiter.api.parallel.ResourceLock
++
++/**
++ * Every chat-head animation the content asks for must be a server mesanim; a missing one throws
++ * "Error Loading MesAnim" mid-dialogue (the Lumbridge Doomsayer's `mesanim.scared` did).
++ */
++@Execution(ExecutionMode.SAME_THREAD)
++@ResourceLock("ServerCacheManager")
++class MesAnimTypesTest {
++    @Test fun `every mesanim used by content resolves`() {
++        val missing = USED.filter { name ->
++            runCatching { ServerCacheManager.getMesAnim(name.asRSCM()) }.getOrNull() == null
++        }
++        assertTrue(missing.isEmpty(), "Missing server mesanims: $missing")
++    }
++
++    companion object {
++        val USED =
++            listOf(
++                "angry", "bored", "confused", "drunk", "happy", "laugh", "mad_laugh", "neutral",
++                "quiz", "sad", "scared", "shifty", "shocked", "short", "silent", "very_mad", "worried",
++            ).map { "mesanim.$it" }
++
++        @JvmStatic @BeforeAll fun cache() = QuestTalkFixture.setUpCache()
++
++        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
++    }
++}
+-- 
+2.43.0
+

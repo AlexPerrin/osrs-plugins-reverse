@@ -1271,7 +1271,11 @@ public class AndroidClient extends ClientStub {
      * stable per-name value (the game's real account hash isn't read).
      */
     @Override public long getAccountHash() {
-        if (getGameState() != net.runelite.api.GameState.LOGGED_IN) return -1;
+        // The raw state, not getGameState(): that reads LOADING until GameStateChanged(LOGGED_IN) is
+        // posted, and the login's RuneScapeProfileChanged/UsernameChanged are posted just before it
+        // (Mahogany Homes read group "MahoganyHomes.-1" there). Desktop's hash is valid while LOADING.
+        net.runelite.api.GameState s = net.runelite.api.GameState.of(Native.gameState());
+        if (s != net.runelite.api.GameState.LOGGED_IN && s != net.runelite.api.GameState.LOADING) return -1;
         net.runelite.api.Player p = getLocalPlayer();
         String n = p != null ? p.getName() : null;
         return n == null ? -1 : (n.toLowerCase().hashCode() & 0xffffffffL);

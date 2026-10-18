@@ -26,7 +26,7 @@ public class ChatboxPanelManager {
     public ChatboxTextInput openTextInput(String prompt) { return new ChatboxTextInput(this).prompt(prompt); }
     public ChatboxTextMenuInput openTextMenuInput(String title) { return new ChatboxTextMenuInput(this).title(title); }
 
-    /** No chatbox panel: a sink widget, so inputs that build their own chatbox layout (Wiki search) don't NPE. unverified: device. */
+    /** No chatbox panel: a sink widget, so inputs that build their own chatbox layout (Wiki search) don't NPE (verified on the device gen 34). */
     public Widget getContainerWidget() { return net.runelite.host.DetachedWidget.sink(); }
     public boolean shouldTakeInput() { return false; }
     public ChatboxInput getCurrentInput() { return current; }

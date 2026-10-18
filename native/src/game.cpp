@@ -100,7 +100,7 @@ struct Build {
     // 0x518840), the "picked" flag the menu build checks, and the pick mode (2 pending, 3 done).
     uintptr_t pick_set, pick_ready, pick_mode;
     uintptr_t mod_icons;  // global shared_ptr obj of the font's <img=N> table (setModIcons 0x431a84)
-    uintptr_t message_ctor;  // Message(this, type, name*, sender*, text*): every chat line, id = ++next id
+    uintptr_t message_ctor;  // Message(this, type, name*, sender*, text*): every chat line, id = next id++
     // Client: int[32] ring of skill ids changed by UPDATE_STAT (case 2 of 0x541dd4: ring[count++ & 31] = skill);
     // widgets' onStatTransmit listeners run for the skills in it (RuneLite's changedSkills).
     uint32_t f_changed_skills, f_changed_skill_count;
@@ -3216,7 +3216,10 @@ std::mutex g_msg_inv_mutex;
 std::unordered_map<int, std::vector<Inventory>> g_msg_inv;  // message id -> inventories at creation
 
 uintptr_t hook_message_ctor(uintptr_t self, uintptr_t type, uintptr_t name, uintptr_t sender, uintptr_t text) {
-    int id = next_message_id() + 1;  // the constructor increments the counter first
+    // The constructor takes id = counter, then increments it (0x3f0a04: iVar7 = counter; counter++),
+    // so the new line's id is the counter's current value. (Was +1: each line replayed the
+    // inventories of the previous line's creation; Consumable Cooldowns got a pre-spawn inventory.)
+    int id = next_message_id();
     std::vector<Inventory> inv = read_inventories();
     {
         std::lock_guard<std::mutex> lock(g_msg_inv_mutex);

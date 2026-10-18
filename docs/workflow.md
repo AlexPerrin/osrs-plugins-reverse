@@ -81,11 +81,35 @@ overlapping owners. From now on:
 - **Steady-state roster:**
   - one client dev;
   - one or two server devs, each owning its own branches;
-  - one QA agent with the server and client checklists (two if they queue);
+  - one QA companion per dev agent, which runs the activities below as subagents;
   - the orchestrator, which owns pushes, PRs, deploys and decisions.
 
   No standing PR or accuracy agents: renumbering, splitting, rebasing and accuracy specs are part of the server
   dev's task checklist.
+- **QA is a companion to a dev agent.** Each dev agent (client dev, each server dev) is paired with one QA
+  companion, which takes over the shipping process so the dev can move on to the next task. The dev hands over a
+  ready branch or build. The companion:
+  - runs the activities its gate requires;
+  - records the result;
+  - sends fixes back to its dev;
+  - reports PASS or FAIL to the orchestrator.
+
+  A companion never writes the feature code it checks.
+- **QA work is scoped by activity.** A companion runs each activity as a subagent or a workflow with its own brief
+  and record, often several in parallel. The activities are:
+
+  | Activity | What it checks | Resource | Used by |
+  |---|---|---|---|
+  | Unit and integration test | Clean, uncached build; `test`, `integration`, `spotlessCheck`; boot | `buildq` slot | server; client host builds |
+  | Accuracy check | Spec review before code; after code, behaviour against the spec and its sources | none | server |
+  | A/B test | The same feature or plugin on desktop RuneLite and Android, or on the branch server and main | desktop lock, device lock | client; server in-game checks |
+  | Network test | The Network QA procedure: DNS, sockets, expected hosts, telemetry patch log | device lock | client releases, network-relevant changes |
+  | Ghidra session | Native RE checks: offsets, struct layouts, patched bytes and their callers (e.g. the telemetry rewrites' match counts and xrefs) | none (headless) | client native changes |
+  | PR text review | Every claim in a PR or release text is true of the commit | none | server PRs, client releases |
+
+  Each activity has a reusable brief in `docs/qa/activities/<activity>.md` (inputs, steps, evidence, PASS
+  criteria) and writes its part of the record. Running activities through the Workflow tool needs the user's
+  opt-in each time; otherwise they are subagents.
 - **One owner per branch or area at a time.** The orchestrator's brief says who owns what. Another agent that
   needs a change sends it to the owner, through the orchestrator.
 

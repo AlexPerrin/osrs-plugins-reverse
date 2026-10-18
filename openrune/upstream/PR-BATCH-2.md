@@ -166,3 +166,20 @@ All of it is Kotlin in OpenRune's module layout, driven by cache data where the 
    - achievement diary task lists, some quest and hunter guild dialogue transcripts, jewellery teleport messages.
 
    We'd like to know how you handle that before sending any of it. We can keep it out and send only the parts that come from the cache, attribute it in separate data files, or wait for another source if you have one (we have no live captures). `tools/wiki-dumping` suggests you use wiki data already, so maybe there is a policy we missed.
+
+## Fork PRs (2026-10-18)
+
+Pushed to the fork and opened as PRs within it (base AlexPerrin:main); upstream PRs follow, each confirmed.
+
+| Patch | Branch | Fork PR | Upstream PR |
+|---|---|---|---|
+| 09 | fix/09-skilling-message-wording | AlexPerrin/OpenRune-Server#1 | - |
+| 23 | fix/23-openable-drawers-chests | AlexPerrin/OpenRune-Server#2 | - |
+| 27 | fix/27-essence-pouch-check-wording | AlexPerrin/OpenRune-Server#3 | - |
+| 38 | fix/38-varrock-platebody-smelting | AlexPerrin/OpenRune-Server#4 | - |
+| 57 | fix/57-gameframe-fullscreen-map | AlexPerrin/OpenRune-Server#5 | - |
+| 58 | fix/58-children-of-the-sun-report-stage | AlexPerrin/OpenRune-Server#6 | - |
+| 60 | fix/60-daddys-home-waxwood-cap | AlexPerrin/OpenRune-Server#7 | - |
+| 62 | fix/62-item-command-cache-name-fallback | AlexPerrin/OpenRune-Server#8 | - |
+
+The 16 `content/*` branches (pre-renumbering) are pushed too, without PRs; the renumbered branches replace them.

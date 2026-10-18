@@ -21,6 +21,32 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-18, twenty-first server dev, on OpenRune)
+
+Details in `docs/openrune-port.md`, "Twenty-first server dev". Protocol unchanged.
+
+- **Live:** still ed9cd76. The 2f9253b deploy was refused by the permission check ("Blind Apply") and the
+  orchestrator passed the decision to the user. Note: 2f9253b's own outputs carry a **stale item archive** (see
+  below), so deploying them changes nothing for items.
+- **Bundle ready, boot-checked, not deployed:** a504b83, as image `osrs-openrune:bootcheck21` ("Server ready in
+  11.3 s", 07:57 UTC, no exceptions). It was built in a copy of `src` (scratchpad `ctx/src`: buildCache, the three
+  cache scripts, installDist) because the orchestrator asked to keep `src/` outputs equal to the 2f9253b
+  boot-check. To deploy, either retag that image as `osrs-openrune:241` and `up -d --no-build --no-deps
+  openrune`, or rebuild `src/` (`openrune.sh build`) and use the normal deploy line. Both need "OK restart".
+- **Done:** `tradeable` second cause = incremental item pack never repacked after the codec fix (the fingerprint
+  had no codec version); `PackType.codecVersion` fixes it, upstream 71 complete. Looting bag Settings, Store-X,
+  Examine, auto-loot (new `PlayerObjTakeRedirectHook`), bank View panel and deposits; bankside op 1 ("View" /
+  "Configure") no longer throws and disconnects (upstream candidate). Count Draynor garlic +1 damage.
+- **Check in a client after the deploy:** bank View/deposit of the looting bag, auto-loot in the Wilderness,
+  Settings, Store-X, garlic damage. Plus the twentieth dev's list (fletching, looting bag plugin value,
+  Doomsayer, `::heal`).
+- **Not done:** reconnect-login local upstream patch (wait for the client dev's >60 s Android check, then ask the
+  orchestrator; leave `::drop` out); Count returning to the coffin (no source); `LOOTINGBAG_IGNORE_FOOD`.
+- **Leftover:** two empty sqlite sidecars `src/.data/cache/incremental_server-{shm,wal}` from a read-only probe;
+  my `rm` was refused. They are harmless (`.dockerignore` excludes them).
+- **Builds:** `upstream-pr-gradle-*` containers (another agent) run often. Wait for them to finish (one build
+  container at a time).
+
 ## Latest state (2026-10-18, twentieth server dev, on OpenRune)
 
 Details in `docs/openrune-port.md`, "Twentieth server dev" and the sections after it. Protocol unchanged.

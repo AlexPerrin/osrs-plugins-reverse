@@ -151,3 +151,40 @@ Recommended: **S1** (same patch step as the telemetry switches, applied to every
 | B2. point `com_braze_custom_endpoint` at an unroutable host (e.g. `127.0.0.1`) | requests fail fast | low; retries add log noise |
 | B3. both B1 and B2 | belt and braces | low |
 | B4. leave it | device data, the account-derived user id and the push token keep going to Braze | — |
+
+### Consent sync fix: applied and verified (gen 37, 2026-10-18 15:29-15:34)
+
+The user approved "Patch it out". `tools/patch_telemetry.py` (commit e986782) makes `za.l.a` return at
+once and zeroes both native sync URLs; it runs for every build. Verified on BlueStacks with the
+LOCAL_AUTH build across a clean start, Play Now, LOGGED_IN, a `::drop` reconnect, an app restart,
+a second Play Now, and about a minute of play:
+
+- **No `ConsentSync` line at all** (neither the HTTP line nor a "skipped" line) and no `Singular` line.
+- **netd DNS lookups** (whole run): only `sdk.fra-01.braze.eu`, `static.runelite.net` and `api.runelite.net`.
+  **No `*.jagex.com`** (earlier runs had `account.jagex.com` right after Play Now).
+- **Established TCP sockets of the app's uid** (`/proc/net/tcp*`, sampled at the login screen, 2/4/6/8 s
+  after Play Now, after LOGGED_IN, after the reconnect, at the second Play Now and after play), always
+  the same four: `10.0.2.2:43594` (OpenRune game server), `104.26.9.233:443` (Cloudflare, `api`/`static.runelite.net`),
+  `104.18.35.7:443` (`sdk.fra-01.braze.eu`) and `172.64.155.231:443` (`mobile-data.onetrust.io`).
+  There were none to Jagex's addresses (`account`/`auth.jagex.com` 104.18.40.92 / 172.64.147.164,
+  `payments.jagex.com` 18.67.39.x).
+- OneTrust's banner GET still returns 200 (expected). Braze is unchanged (left as is by the user's decision).
+- The game works: sign-in, LOGGED_IN, teleport, tabs, reconnect.
+
+**History**: the consent sync is part of the CMP flow, which runs at every Play Now once an SSO identity
+exists. On LOCAL_AUTH builds (the only kind we install), it most likely ran at every Play Now
+since LOCAL_AUTH sign-in was first used on the device (2026-10-16, docs/client-handoff.md), sending the
+test server's unsigned token described above. No earlier logcat captures were kept to confirm a
+per-day count.
+
+### Remaining Jagex hosts (static audit, gen 37)
+
+| Host | Path | Status under LOCAL_AUTH |
+|---|---|---|
+| `account.jagex.com/consent/sync` (+ dev) | CMP consent POST | **patched** (above) |
+| `auth.jagex.com`, `social.auth.jagex.com`, `auth.runescape.com`, `account.jagex.com/` (game-session) | jav_config params 11/20/22/28 | rewritten to the sidecar (`server/…/Http.kt` AUTH_PARAMS) |
+| `payments.jagex.com` | jav_config param 2 → payments SDK: `operator/v1/shop/<shop>`, `operator/v1/initiate/...` (price + android_id), `operator/v2/completion/...` | **not rewritten in template mode**; the orchestrator is adding param 2 to the sidecar's AUTH_PARAMS. Until then, don't open store/membership/bond UIs |
+| `pp-%s.%s.jagex.com:13406/v1/groupScoreDetails/...` | native, group-ironman score lookup (FUN_0064da14) | only when a GIM score interface asks; planned: zero the format string after checking that an empty URL fails cleanly |
+| `legal.jagex.com`, `support.runescape.com`, `secure.runescape.com`, `www.jagex.com/terms`, `oldschool.runescape.com/play` | browser links on tap | no automatic traffic |
+| `www.runescape.com` / `www.jagex.com` (`adverturl`, `termsurl`, `privacyurl`), `secure.runescape.com` (`gedigesturl`) | desktop-loader jav_config keys | not seen used by the Android app (no lookups) |
+| `res/values` `com_jagex_mobilesdk_runeScapeAuthURL`, `paymentUri` (a billing dev host) | only referenced from R | unused |

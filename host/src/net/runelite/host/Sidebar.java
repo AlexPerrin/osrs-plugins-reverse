@@ -507,8 +507,18 @@ final class Sidebar {
             add(sb, 'A', depth, c, clean(((JTextComponent) c).getText()));
             return;
         }
-        if (c instanceof JTextComponent) {
-            add(sb, 'T', depth, c, clean(((JTextComponent) c).getText()));
+        if (c instanceof JTextComponent) {  // read-only text: one row per paragraph (JTextPane/JTextArea "\n")
+            String t = ((JTextComponent) c).getText();
+            int rows = 0;
+            if (t != null && t.indexOf('<') < 0) {
+                for (String line : t.split("\n")) {
+                    String s = clean(line);
+                    if (s.isEmpty()) continue;
+                    add(sb, 'T', depth, c, s);
+                    if (++rows >= MAX_LIST_ROWS) break;
+                }
+            }
+            if (rows == 0) add(sb, 'T', depth, c, clean(t));
             return;
         }
         if (c instanceof JComboBox) {

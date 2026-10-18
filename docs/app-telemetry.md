@@ -188,3 +188,46 @@ per-day count.
 | `legal.jagex.com`, `support.runescape.com`, `secure.runescape.com`, `www.jagex.com/terms`, `oldschool.runescape.com/play` | browser links on tap | no automatic traffic |
 | `www.runescape.com` / `www.jagex.com` (`adverturl`, `termsurl`, `privacyurl`), `secure.runescape.com` (`gedigesturl`) | desktop-loader jav_config keys | not seen used by the Android app (no lookups) |
 | `res/values` `com_jagex_mobilesdk_runeScapeAuthURL`, `paymentUri` (a billing dev host) | only referenced from R | unused |
+
+## Gen 38 device checks (2026-10-18)
+
+Build: master c531d81 (5befe07 included), LOCAL_AUTH, repacked with `patch_telemetry.py`. The log shows
+`telemetry: group score host -> pp-%s.%s.x.invalid`, which prints only on the "exactly one original, no patched" path.
+The packaged `liblibs.hal.system.osclient.so` has 0 `jagex.com:13406` and 1 `x.invalid:13406`.
+
+**Slot 1 (15:40-15:47)**: 4 app restarts with Play Now (two through "Try again"), ~6 min of play. Socket sampler:
+`/proc/net/tcp*`, uid 10071, every 2 s. netd DNS: only `api.runelite.net`, `static.runelite.net`, `sdk.fra-01.braze.eu`.
+Sockets: 10.0.2.2:43594 and :443 to 104.26.8.233 / 172.67.74.139 (runelite), 104.18.35.7 / 172.64.152.249 (braze),
+172.64.155.231 (onetrust). No `pp-*.x.invalid` lookup, no Jagex address.
+
+**Slot 2 (15:49-15:59)**, after the sidecar's param 2 rewrite (`param=2=http://10.0.2.2:8080/`). Steps: restart, Sign out ->
+"Sign in with Email / Username" (LOCAL_AUTH) -> Play Now ("Try again" once), play, the Account tab's "Upgrade Now"
+(the single allowed store attempt), `::drop` reconnect, restart + Play Now, teleports/walking.
+- **New Jagex contact: `secure.runescape.com`.** At 15:51:42.634 netd logged `asked for "secure.runescape.com IN A"`,
+  during LOADING of the first login after the fresh sign-in (LOGGED_IN at 15:51:43). In the same sample the app uid
+  had an ESTABLISHED socket to 104.18.35.117:443 (= secure.runescape.com), gone 2 s later. It happened once: not on
+  the reconnect, the later restart + login, nor any slot-1 login. Reported; not reproduced (that would contact Jagex again).
+- Everything else was as expected. DNS: runelite and braze only. Sockets: the hosts above plus 104.18.32.25 (onetrust)
+  and 172.217.116.4 (Google, most likely FCM for Braze's push token). No `*.jagex.com`, no `pp-*.x.invalid`, no
+  `ConsentSync`/`Singular`, no `payments.jagex.com` and no 18.67.39.x.
+- **Payments (param 2): served-config-only, not proven in-app.** "Upgrade Now" is a server-handled CC_OP (109:32 op 1).
+  OpenRune doesn't answer it, so the app made no shop request: no `/operator/` line in the sidecar log, and no
+  payments DNS or socket. The in-app path is JNI `requestShopData` -> `GET <param 2>operator/v1/shop/<shop>`
+  (`com.jagex.mobilesdk.payments.f`, `eb.e.d`, bearer token header); it needs a server-side trigger to exercise.
+
+### Where secure.runescape.com can come from (static, gen 38)
+
+| Path (ELF address) | URL | When |
+|---|---|---|
+| `gedigesturl` jav_config key (parsed in 0x40ee18 into Client +0x418628, must start with `http`) -> 0x4d5320 builds the digest object, called from 0x4101d4 right after the config parse | official config: `https://secure.runescape.com/m=itemdb_oldschool/g=oldscape/digest.csv` (GE price digest) | object made at every start; the download evidently happens later and is cached (one fetch seen, at the first login after a sign-in). **Most likely source of the 15:51:42 contact.** The sidecar now serves `http://10.0.2.2:8080/m=itemdb_oldschool/g=oldscape/digest.csv` (orchestrator, 2026-10-18) |
+| URL builder 0x41102c: `"%s%s%s.%s/l=%s/a=%i%s/"` = scheme, subdomain (or `local`), env suffix (`-wtrc`/`-wtqa`/`-wtwip`/`-wti`), hard-coded `"runescape.com"` (0xd6812), language, affiliate, optional `/p=<x>` | `https://secure.runescape.com/l=<lang>/a=<aff>/...` | callers below |
+| 0x4101d4 (same startup step) | `https://secure.runescape.com/l=../a=../` handed to a platform object (vtable +0x40) with five other config strings | at every start; consumer not traced. Not a request by itself (no lookup at most starts) |
+| 0x47b548 (from 0x47bc84, 0x41615c) | `https://secure.runescape.com/l=../a=../m=account-creation/g=oldscape/create_account_funnel.ws` | account creation link (user action) |
+| 0x3ec1a0 / 0x3ec558 (from 0x47c878) | `http://services.runescape.com/l=../a=../m=accountappeal/login.ws?data1=req`, native HTTP GET (`connection: close`, 5 s timeout, reads an 8-byte answer) | login-screen account-appeal/recovery status flow (result codes 2-7 -> login messages); not seen in any capture |
+| 0x54da14 | `https://pp-%s.%s.x.invalid:13406/...` (GIM scores) | patched (5befe07) |
+| static strings `secure.runescape.com/m=offence-appeal/...`, `m=accountappeal/passwordrecovery`, `m=news/...` | browser links | on tap only |
+
+Fix options for the builder paths (not applied): patch `runescape.com` at 0xd6812 to a same-length reserved name
+(for example `x.invalid` padded with NULs; the format's `%s.%s` then gives `secure.x.invalid`), in `patch_telemetry.py --native`
+with an exactly-one-match assert like the GIM rewrite. That would cover 0x4101d4, 0x47b548 and 0x3ec1a0/0x3ec558 at once.
+The gedigesturl fix is server-side (sidecar).

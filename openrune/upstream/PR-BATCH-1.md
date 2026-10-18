@@ -24,7 +24,7 @@ and, for data changes, the data source and validation steps. The final titles an
 | # | PR |
 |---|---|
 | 01 | https://github.com/OpenRune/OpenRune-Server/pull/343 |
-| 02 | https://github.com/OpenRune/OpenRune-Server/pull/344 |
+| 02 | https://github.com/OpenRune/OpenRune-Server/pull/344 (merged 2026-10-18) |
 | 03 | https://github.com/OpenRune/OpenRune-Server/pull/345 (merged 2026-10-18) |
 | 04 | https://github.com/OpenRune/OpenRune-Server/pull/346 (merged 2026-10-18) |
 | 05 | https://github.com/OpenRune/OpenRune-Server/pull/347 |

@@ -580,6 +580,13 @@ public class AndroidClient extends ClientStub {
     private final WorldMapBag worldMap = new WorldMapBag() {
         private final WorldMapDataBag data = new WorldMapDataBag();
         @Override public net.runelite.api.worldmap.WorldMapData getWorldMapData() { return data; }
+        // The game's world map regions aren't read: report it as not loaded, as desktop before its
+        // map is opened (World Map's onClientTick returns early). // unverified: default
+        private final net.runelite.api.worldmap.WorldMapRenderer renderer = new net.runelite.api.worldmap.WorldMapRenderer() {
+            @Override public boolean isLoaded() { return false; }
+            @Override public net.runelite.api.worldmap.WorldMapRegion[][] getMapRegions() { return new net.runelite.api.worldmap.WorldMapRegion[0][0]; }
+        };
+        @Override public net.runelite.api.worldmap.WorldMapRenderer getWorldMapRenderer() { return renderer; }
     };
     @Override public net.runelite.api.worldmap.WorldMap getWorldMap() { return worldMap; }
     /** Minimap zoom isn't read from the game; RuneLite's default. */

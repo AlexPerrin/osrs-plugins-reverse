@@ -1781,3 +1781,31 @@ lowest-id unnoted, non-placeholder obj with that cache name (underscores as spac
 ### Tooling
 `tools/multiclient/desktop.sh login` with no arguments is always desktop/desktop; the script records the account it
 logged in (`C:\osrs-test\desktop-account`) and logs out a different or unknown account first (d8b21ad; not yet run).
+
+### Desktop checks after the acb933a deploy (02:17 UTC, fresh account qhtest5)
+- **Fluffs:** Stroke -> "Ouch!" / "Perhaps the cat wants something?"; Pick-up at stage 2 -> "Maybe the cat is
+  thirsty?". Kitten on Fluffs -> "Fluffs has run off home with her kitten."; Fluffs and the kitten were gone ~4 s
+  and Fluffs was back at (3306,3512) about 6 s later (the 10-tick hide).
+- **Waxwood crates** (crate 40214 at (3243,3398), searched from (3244,3398); the west side says "I can't reach
+  that!"): first search -> the objbox, second -> "You search the crates but find nothing interesting."
+- **Fullscreen map:** `resizable_stone_arrangement` (varbit 4607) set to 0 in the resizable classic frame; opening
+  the fullscreen map (orb op 3) -> 1 with frame 165; closing -> 0 and frame 161. The logout-with-map-open path was
+  not tried.
+- **`::item saw`** -> "Spawned inv obj `Saw` x 1".
+
+### Children of the Sun guard tail: real run (desktop, qhtest5)
+QH 4.18's follow step (`followGuard`) draws a line along the guard's path and marks five hiding tiles:
+(3233,3427), (3240,3417), (3241,3403), (3236,3392), (3247,3397) (then the door (3259,3400)). The server's lookouts
+(`CotsRoute.Lookouts`) are (3240,3429), (3242,3404), (3236,3390), (3248,3390), (3254,3396).
+- A scripted run (`::quest children 6`, Alina, then walk to hiding tile k as soon as the guard leaves lookout
+  k-1) was **never spotted**: the guard stopped at each lookout for ~4-5 s and the tail ended at the door with the
+  eavesdrop scene ("What are you up to in there...?" ... "I'd better let that sergeant know.") and `vmq1` = 10.
+- Standing in the open at (3236,3429) while the guard reached the first lookout -> "You failed to stay hidden from
+  the guard." and the stage stayed 6.
+- So QH's hiding tiles and the server's line-of-sight lookouts agree on this route. Whether OSRS's guard spots the
+  player outside the lookouts too (ours only looks at the five lookouts) is not known.
+
+### Item examine back to upstream (orchestrator request)
+Our type-27 item examine (upstream patch 08) is reverted: `Player.objExamine` again runs the `examine_item`
+clientscript (chat type 0, with the price/alch line), `ObjExamineTest` is dropped and patch 08 is withdrawn from
+`openrune/upstream` (README note). The client now emulates RuneLite's item-examine handling.

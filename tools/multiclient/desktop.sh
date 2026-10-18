@@ -74,11 +74,14 @@ login|relogin)
     for _ in $(seq 12); do [ "$(state)" = LOGGED_IN ] && return 0; sleep 1; done; return 1
   }
   user="${2:-desktop}"; pass="${3:-desktop}"
-  # The account this script last logged in (the client does not report it); unknown = "".
+  # The account last logged in by this script, kept for reference; the check uses the local player.
   acct=/mnt/c/osrs-test/desktop-account
+  me() { "$M" --tool list_players '{}' | python3 -c 'import sys,json
+t=json.loads(json.load(sys.stdin)["result"]["content"][0]["text"])
+print(next((p["name"] for p in t["players"] if p.get("isLocal")), ""))' 2>/dev/null || true; }
   s="$(state)"
   if [ "$s" = LOGGED_IN ]; then
-    cur="$(tr -d '\r\n' < "$acct" 2>/dev/null || true)"
+    cur="$(me)"
     [ "$cur" = "$user" ] && { echo "already logged in as $user"; exit 0; }
     echo "logged in as '${cur:-unknown}', not $user: logging out first" >&2
     "$0" logout >/dev/null; rm -f "$acct"; sleep 5; s="$(state)"

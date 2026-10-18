@@ -21,7 +21,7 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 05 | `05-lumbridge-castle-rfd-doors` | `.data/raw-cache/server/loc/misthalin/lumbridge-castle.toml` (new) | The map's kitchen/dining-room doors are the Recipe for Disaster (`hundred_`) variants, which had no door tag | Opens into `elfdooropen` / `opencastledoubledoor*` (same models), which close to the plain doors |
 | 06 | `06-varrock-single-juliet` | `.data/raw-cache/map/npcs/varrock.toml` | The plain `juliet` spawned beside the multinpc `juliet_multi_visible` | |
 | 07 | `07-juliet-house-stairs` | `generic-locs/.../StraightStaircaseScript.kt` | `fai_varrock_stairs_taller`/`_top` had no handler | |
-| 08 | `08-obj-examine-chat-type` | `api/player-output/.../GameMessage.kt`, `ObjExamineTest.kt` (new) | Item examines went out through the `examine_item` script as chat type 0; OSRS uses 27 (ObjExamine), which RuneLite's Examine plugin matches | Behaviour change: the market price / alch line the script printed is gone; `ClientScripts.examineItem` is left unused |
+| 08 | *(withdrawn 2026-10-17)* `08-obj-examine-chat-type` | | Removed: upstream's `examine_item` script (chat type 0) is kept. Our client now emulates RuneLite's item-examine handling, so the type-27 change is no longer needed | Number left unused |
 | 09 | `09-osrs-skilling-message-wording` | `Mining.kt`, `StarMiningScript.kt`, `Fishing.kt`, `CookingEvents.kt`, `SmeltingScript.kt`, `CannonBallScript.kt` | Small text and chat-type (spam vs game) differences from OSRS that client plugins parse | Touches `Fishing.kt` like 04 (other hunks) |
 | 10 | `10-login-welcome-message` | `login/.../LoginScript.kt` | RuneLite's Chat History restores the chat only after "Welcome to Old School RuneScape." | Policy: any configured login message starting with "Welcome to " is replaced; upstream may prefer a config value |
 | 11 | `11-dense-clientscript-ids` | `or-cache/.../PluginPacks.kt`, spawn + quest `clientscript.sym`/`gamevals.toml`, `.data/gamevals/clientscript.rscm`, `QuestPolicySyncScriptTest.kt` | Renumbers the custom clientscripts 45500-45553 to 9973-9985 and fails the cache build on custom ids above 9999 | Only needed for clients that size the script table from the archive (the official Android client crashes; the desktop client does not). Optional for upstream; the renumbering is part of it, since the guard alone fails upstream's build |
@@ -199,3 +199,6 @@ Tested in our tree (`ChildrenOfTheSunInteractionTest` 36).
 Patches 59-62 were added 2026-10-17 (nineteenth server dev): 59, 60 and 62 apply alone on the pin, 61 on the pin
 plus 57, and `git am` of all 62 on the pin applies. Compiled and tested in our tree (`GertrudesCatInteractionTest`,
 `DaddysHomeInteractionTest`).
+
+Patch 08 (item examine chat type 27) was withdrawn 2026-10-17 (nineteenth server dev) and our tree went back to
+upstream's `examine_item` behaviour; `git am` of the remaining 61 patches on the pin applies.

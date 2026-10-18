@@ -39,10 +39,10 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Open gaps (client)
 
-1. **Decimal Prices breaks chat Enter**: with it loaded, typed `::cmd` stays in the input and Enter does nothing
-   (devtools type_chat and adb keyevent alike). Without it Enter works. Its keyPressed only reads varc MESLAYERMODE
-   (a pure native read). Next: `setprop debug.osrsrl.keylog 1`, load it alone, press Enter, and read the KeyRouter
-   lines. Check whether any hub KeyListener (Set Timer, Herblore Recipes) does the same.
+1. **Chat Enter stopped once (open item)**: in one run with all 9 gen 40 hub plugins loaded, Enter didn't submit (typed
+   `::cmd` piled up in the input). A bisect blamed Decimal Prices, but it relied on devtools `get_chat_history`, which
+   under-reports. A retest with Decimal Prices and keylog on submitted 4/4. Cause unknown; if it recurs, use
+   `setprop debug.osrsrl.keylog 1` and verify by screenshot.
 2. **Removing native menu entries**: plugins that call `setMenuEntries(shorter)` in MenuOpened (No Examine) can't remove
    entries from the open long-press menu; the host only reorders and rewrites them.
 3. **Current World**: NPE because world 255 isn't in WorldService's live list (desktop would do the same); a host-side
@@ -57,13 +57,13 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
   OVERDUE past the granted time). The osrs-devtools MCP drives the Android device; use it only under the lock. It needs
   `devtools.jar` in plugins/ and `setprop debug.osrsrl.devtools 1` plus an app restart.
 - Slot start/end: `tools/device-restore-check.sh pre <dir>` before touching anything, `check <dir>` at the end (prints
-  OK/OFF per item). Remove test jars and files by name, in a plain `adb shell rm` call of their own, never with wildcards.
+  OK/OFF per item; verified on the device gen 40: it flagged every leftover jar, prop and wav, then all OK after cleanup). Remove test jars and files by name, in a plain `adb shell rm` call of their own, never with wildcards.
   Back up with `adb exec-out cat` (`shell cat` adds CRLF). Don't use `tools/plugin-test.sh` for cleanup (it rm's `*.jar`).
 - Login: screenshot first. Signed out: only "Sign in with Email / Username". After a force-stop the server often still
   holds the session: Play Now shows "Either your account is still logged in" -> wait ~30-60 s, "Try again" (958,668),
   Play Now (957,563). **Don't tap 958,668 blind**: on the Play Now screen it's "Sign out" (answer "No" at 1130,625).
 - Chat commands: `server/tools/device.sh cmd` loses text when the soft keyboard is hidden (WSL vsock errors are common);
-  devtools `type_chat` is more reliable. Verify with `get_chat_history`.
+  devtools `type_chat` is more reliable. **`get_chat_history` under-reports repeated lines**; confirm by screenshot.
 - Long-press = `input swipe x y x y 900`. Plugin MenuEntryAdded entries show in the plugin strip under the game menu,
   not in devtools' `get_npc_menu`.
 - Probe hooks (`debug.osrsrl.set`, `probe`, `say`, `wdump`) run once per distinct value; `setprop` values with spaces
@@ -77,10 +77,9 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Next tasks
 
-1. Decimal Prices Enter bug (gap 1), then re-check the 9 gen 40 plugins' behaviour with chat commands working
+1. Re-check the 9 gen 40 plugins' behaviour with chat commands (watch for gap 1)
    (ground-item-sounds with a spawned `::obj`, unpotted-reminder while attacking, monsterstats' Stats panel).
 2. When the OBJ_ADD timer fix is deployed: Clue Juggling Timers and Ground Items' despawn timer.
 3. More hub plugins from the ranking (`scratchpad/client38/ranking.json` or refetch); netcheck + stubcheck each.
 4. Host gaps 2 and 3 (native menu entry removal; a synthetic World for Current World).
 5. Opportunistic: a capture that includes a GE digest fetch (should go to the sidecar).
-6. Verify `tools/device-restore-check.sh` on the device (written gen 40, syntax-checked only).

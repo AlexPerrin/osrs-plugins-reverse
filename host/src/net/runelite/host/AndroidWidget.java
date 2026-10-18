@@ -42,7 +42,26 @@ public class AndroidWidget extends WidgetBag {
     }
 
     /** Raw geometry {x, y, width, height, parentId} or null. */
-    int[] rawGeo() { return Native.widgetGeometry(id); }
+    int[] rawGeo() { return geometry(id); }
+
+    /**
+     * Static widget geometry, cached while an overlay frame renders (OverlayRenderer brackets it):
+     * WorldMapOverlay asks for 595:7's bounds once per map point (1800+), each walking the parents
+     * over JNI. Geometry writes (field setters, revalidate) drop the cache.
+     */
+    private static volatile java.util.HashMap<Integer, int[]> frameGeometry;
+    private static volatile Thread frameThread;
+    static void beginFrame() { frameThread = Thread.currentThread(); frameGeometry = new java.util.HashMap<>(); }
+    static void endFrame() { frameGeometry = null; frameThread = null; }
+    private static void geometryChanged() { java.util.HashMap<Integer, int[]> c = frameGeometry; if (c != null && Thread.currentThread() == frameThread) c.clear(); }
+    static int[] geometry(int id) {
+        java.util.HashMap<Integer, int[]> cache = frameGeometry;
+        if (cache == null || Thread.currentThread() != frameThread) return Native.widgetGeometry(id);
+        if (cache.containsKey(id)) { int[] g = cache.get(id); return g == null ? null : g.clone(); }
+        int[] g = Native.widgetGeometry(id);
+        cache.put(id, g == null ? null : g.clone());
+        return g;
+    }
 
     private int[] geo() {
         int[] g = rawGeo();
@@ -66,7 +85,7 @@ public class AndroidWidget extends WidgetBag {
     @Override public Widget setTextColor(int rgb) { Native.widgetSetColor(id, childIndex(), rgb); return this; }
     // Field setters written into the game widget (CC_SET* offsets, docs/offsets.md); revalidate()
     // re-runs the game's layout as CC_SETPOSITION/CC_SETSIZE do.
-    private Widget set(int offset, int value) { Native.widgetSetField(id, childIndex(), offset, value); return this; }
+    private Widget set(int offset, int value) { Native.widgetSetField(id, childIndex(), offset, value); geometryChanged(); return this; }
     @Override public Widget setXPositionMode(int v) { return set(0x3c, v); }
     @Override public Widget setYPositionMode(int v) { return set(0x40, v); }
     @Override public Widget setWidthMode(int v) { return set(0x44, v); }
@@ -146,10 +165,10 @@ public class AndroidWidget extends WidgetBag {
     @Override public Widget setTextShadowed(boolean v) { return set(0x194, v ? 1 : 0); }
     @Override public void setNoClickThrough(boolean v) { set(0xb98, v ? 1 : 0); }
     @Override public void setNoScrollThrough(boolean v) { set(0xb99, v ? 1 : 0); }
-    @Override public void revalidate() { Native.widgetRevalidate(id, childIndex()); }
+    @Override public void revalidate() { Native.widgetRevalidate(id, childIndex()); geometryChanged(); }
     // Desktop re-lays out the children and the scroll bounds; here the same layout pass as
     // revalidate() (0x45ebf4 walks a layer's children). // unverified: scroll bounds on the device
-    @Override public void revalidateScroll() { Native.widgetRevalidate(id, childIndex()); }
+    @Override public void revalidateScroll() { Native.widgetRevalidate(id, childIndex()); geometryChanged(); }
     @Override public int getIndex() { return childIndex(); }
     // Script-visible properties read from the game widget (Native.widgetProps).
     private int prop(int i, int dflt) { int[] p = Native.widgetProps(id, childIndex()); return p != null ? p[i] : dflt; }
@@ -293,7 +312,7 @@ public class AndroidWidget extends WidgetBag {
         int cur = start, last = start;
         for (int depth = 0; cur != -1 && depth < 64; depth++) {
             if (Native.widgetHidden(cur)) return true;
-            int[] g = Native.widgetGeometry(cur);
+            int[] g = geometry(cur);
             last = cur;
             cur = g != null ? g[4] : -1;
         }
@@ -359,7 +378,7 @@ public class AndroidWidget extends WidgetBag {
         if (own == null) return new Point(0, 0);
         int x = own[0], y = own[1], cur = own[4];
         for (int depth = 0; cur != -1 && depth < 64; depth++) {
-            int[] g = Native.widgetGeometry(cur);
+            int[] g = geometry(cur);
             if (g == null) break;
             x += g[0];
             y += g[1];
@@ -386,7 +405,7 @@ public class AndroidWidget extends WidgetBag {
         List<Widget> out = new ArrayList<>();
         for (int child = 0; child < n; child++) {
             int cid = group << 16 | child;
-            int[] g = Native.widgetGeometry(cid);
+            int[] g = geometry(cid);
             if (g != null && g[4] == id) out.add(of(cid));
         }
         return out.toArray(new Widget[0]);

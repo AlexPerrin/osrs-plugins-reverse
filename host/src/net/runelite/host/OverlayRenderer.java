@@ -137,6 +137,20 @@ final class OverlayRenderer {
             canvas = new Canvas(bitmap);
         }
         bitmap.eraseColor(0);
+        AndroidWidget.beginFrame();
+        try {
+            renderFrame(size);
+        } finally {
+            AndroidWidget.endFrame();
+        }
+        ByteBuffer buf = Native.overlayBuffer(size.width, size.height);
+        if (buf == null) return;
+        bitmap.copyPixelsToBuffer(buf);
+        Native.overlayPublish(size.width, size.height);
+        published = true;
+    }
+
+    private void renderFrame(Dimension size) {
         widgetItemsAll = overlays.hasWidgetItemOverlays() ? widgetItems() : null;
         List<Rect> under = uiExclusions();
         // The game draws its long-press menu natively on top of everything; no overlay may cover it.
@@ -165,12 +179,6 @@ final class OverlayRenderer {
         } finally {
             net.runelite.client.ui.overlay.outline.ModelOutlineRenderer.target = null;
         }
-
-        ByteBuffer buf = Native.overlayBuffer(size.width, size.height);
-        if (buf == null) return;
-        bitmap.copyPixelsToBuffer(buf);
-        Native.overlayPublish(size.width, size.height);
-        published = true;
     }
 
     /**

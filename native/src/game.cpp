@@ -1370,9 +1370,10 @@ bool world_map_jump(int level, int x, int z) {
 // Map regions and their icons. Static RE gen 32: worldmap_listelement_start (6639, ELF 0x4b8f0c)
 // requires the loaded byte *(wm+0xd8)+0x14 and *(*(wm+0xd0)+8), then has the icon map rebuilt from
 // the region grid of the manager *(wm+0xd0) (0x5caf1c): rows at +0x68 (count +0x60), 0x18-byte
-// {?, count +8, Region** +0x10}; a region holds a std::list of icon entries at +0x38 (node: +0 next,
-// +0x10 icon) and a hash table at +0x58 (buckets) / +0x60 (bucket count; buckets[count] is the end
-// sentinel; node: +8 icon, +0x18 next, a null next continues with the next bucket). Icon: vtable
+// {?, count +8, Region** +0x10}; a region holds a std::list of icon shared_ptrs at +0x38 (node: +0
+// next, +0x10 control block, +0x18 icon) and a hash table at +0x58 (buckets) / +0x60 (bucket count;
+// buckets[count] is the end sentinel; node: +8 control block, +0x10 icon, +0x18 next, a null next
+// continues with the next bucket). Never call into the control block (slot 1 frees it). Icon: vtable
 // slot 1 = element (map element id, -1 = none), +8 level, +0xc x, +0x10 y (the coordinate 6639
 // pushes). Out: per icon {row, col, element, level, x, y}.
 bool world_map_icons(int& rows, int& cols, std::vector<int>& out) {
@@ -1404,7 +1405,7 @@ bool world_map_icons(int& rows, int& cols, std::vector<int>& out) {
             if (!reg) continue;
             int guard = 0;
             for (uintptr_t n = read_at<uintptr_t>(reg + 0x38); n && n != reg + 0x38 && guard < 4096; guard++) {
-                add(static_cast<int>(i), static_cast<int>(j), read_at<uintptr_t>(n + 0x10));
+                add(static_cast<int>(i), static_cast<int>(j), read_at<uintptr_t>(n + 0x18));
                 n = read_at<uintptr_t>(n);
             }
             uintptr_t buckets = read_at<uintptr_t>(reg + 0x58);
@@ -1417,7 +1418,7 @@ bool world_map_icons(int& rows, int& cols, std::vector<int>& out) {
             uintptr_t n = 0;
             while (b < nb && !(n = read_at<uintptr_t>(buckets + b * 8))) b++;
             for (guard = 0; b < nb && n && n != end && guard < 65536; guard++) {
-                add(static_cast<int>(i), static_cast<int>(j), read_at<uintptr_t>(n + 8));
+                add(static_cast<int>(i), static_cast<int>(j), read_at<uintptr_t>(n + 0x10));
                 n = read_at<uintptr_t>(n + 0x18);
                 while (!n && ++b <= nb) n = read_at<uintptr_t>(buckets + b * 8);
             }

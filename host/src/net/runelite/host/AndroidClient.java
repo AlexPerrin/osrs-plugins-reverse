@@ -664,15 +664,24 @@ public class AndroidClient extends ClientStub {
         @Override public net.runelite.api.worldmap.WorldMapRenderer getWorldMapRenderer() { return renderer; }
     };
     @Override public net.runelite.api.worldmap.WorldMap getWorldMap() { return worldMap; }
-    /** Map element (mel) config: category from the game's table (game.cpp map_element); null for an unknown id. */
+    /**
+     * Map element (mel) config: category from the game's table (game.cpp map_element). An id the table
+     * doesn't hold gets category -1 rather than null: World Map dereferences it for every map icon.
+     */
+    private final java.util.Map<Integer, net.runelite.api.worldmap.MapElementConfig> mapElements = new java.util.HashMap<>();
     @Override public net.runelite.api.worldmap.MapElementConfig getMapElementConfig(int id) {
+        synchronized (mapElements) {
+            net.runelite.api.worldmap.MapElementConfig cached = mapElements.get(id);
+            if (cached != null) return cached;
+        }
         int[] m = Native.mapElement(id);
-        if (m == null) return null;
-        final int category = m[0];
-        return new net.runelite.api.worldmap.MapElementConfig() {
+        final int category = m == null ? -1 : m[0];  // unverified: default for unknown ids
+        net.runelite.api.worldmap.MapElementConfig config = new net.runelite.api.worldmap.MapElementConfig() {
             @Override public int getCategory() { return category; }
             @Override public net.runelite.api.SpritePixels getMapIcon(boolean large) { return null; }  // unverified: default (sprite id m[1] not decoded)
         };
+        if (m != null) synchronized (mapElements) { if (mapElements.size() < 65536) mapElements.put(id, config); }
+        return config;
     }
     /** Minimap zoom isn't read from the game; RuneLite's default. */
     @Override public double getMinimapZoom() { return 4.0; }
@@ -1004,7 +1013,8 @@ public class AndroidClient extends ClientStub {
             return new Object[0];
         }
         Object[] r = readDBTableField(rowID, column, tupleIndex);
-        if (r.length > 0 && dbCache.size() < 65536) dbCache.put(key, r.clone());
+        // Empty results are cached too: World Map asks for absent fields of every quest row each client tick.
+        if (dbCache.size() < 65536) dbCache.put(key, r.clone());
         return r;
     }
 
@@ -1030,13 +1040,21 @@ public class AndroidClient extends ClientStub {
 
     private Object[] readDBTableField(int rowID, int column, int tupleIndex) {
         int n = Native.dbFieldCount(rowID, column);
-        // A row without values in the column reads the table's column default (db_getfield on
-        // tuple 0 returns it), as on desktop.
-        if (n == 0) n = 1;
+        // A row without values in the column: db_getfield on tuple 0 pushes the column entry's
+        // value, which is the table's default or else the type's generic one (-1 / ""). The table
+        // default is kept; the generic one reads as no value (empty), as on desktop: World Map skips
+        // quest rows whose column 21 has a value, and quest rows read -1 there (gen 32).
+        // unverified: a table default equal to -1 / "" would read as empty too
+        boolean empty = n == 0;
+        if (empty) n = 1;
         java.util.List<Object> out = new java.util.ArrayList<>();
         for (int t = 0; t < n && t < 4096; t++) {
             Object[] r = Native.dbField(rowID, column, t);
             if (r != null && tupleIndex >= 0 && tupleIndex < r.length) out.add(r[tupleIndex]);
+        }
+        if (empty && out.size() == 1) {
+            Object v = out.get(0);
+            if ((v instanceof Number && ((Number) v).longValue() == -1) || "".equals(v)) return new Object[0];
         }
         return out.toArray();
     }
@@ -1394,8 +1412,19 @@ public class AndroidClient extends ClientStub {
      * Rows of `table` whose `column` holds `value` in field `tupleIndex` of any tuple (desktop
      * uses the cache's DB index; this scans the table's rows). Client thread only.
      */
+    /** getDBRowsByValue results (static cache data; World Map asks for every quest icon each client tick). */
+    private final java.util.Map<String, java.util.List<Integer>> dbRowsByValue = new java.util.HashMap<>();
     @Override public java.util.List<Integer> getDBRowsByValue(int table, int column, int tupleIndex, Object value) {
         if (!isClientThread() || value == null) return java.util.Collections.emptyList();
+        String key = table + ":" + column + ":" + tupleIndex + ":" + value.getClass().getName() + ":" + value;
+        java.util.List<Integer> hit = dbRowsByValue.get(key);
+        if (hit != null) return new java.util.ArrayList<>(hit);
+        java.util.List<Integer> out = lookupDBRowsByValue(table, column, tupleIndex, value);
+        // Not while a script runs: getDBTableField then answers empty for fields it hasn't read yet.
+        if (!liveStacks && dbRowsByValue.size() < 16384) dbRowsByValue.put(key, new java.util.ArrayList<>(out));
+        return out;
+    }
+    private java.util.List<Integer> lookupDBRowsByValue(int table, int column, int tupleIndex, Object value) {
         java.util.List<Integer> out = new java.util.ArrayList<>();
         for (int row : getDBTableRows(table)) {
             Object[] vals = getDBTableField(row, column, tupleIndex);

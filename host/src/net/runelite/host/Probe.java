@@ -347,8 +347,7 @@ final class Probe {
                             if (r == null) continue;
                             for (net.runelite.api.worldmap.WorldMapIcon ic : r.getMapIcons()) {
                                 n++;
-                                net.runelite.api.worldmap.MapElementConfig mc = c.getMapElementConfig(ic.getType());
-                                int cat = mc == null ? -2 : mc.getCategory();
+                                int cat = Native.mapElement(ic.getType()) == null ? -2 : c.getMapElementConfig(ic.getType()).getCategory();
                                 cats.merge(cat, 1, Integer::sum);
                                 if (cat == 1056 && quests++ < 4) q.append(' ').append(ic);
                             }

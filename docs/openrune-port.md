@@ -1878,3 +1878,29 @@ real). It only affects code that goes through `QuestRequirements`; the quest scr
 Quest Helper's stages are unaffected. Effect seen: drop-table `quest_mode = "during"` drops never drop (the Witch's
 Potion rat's tail uses a kill hook instead). Switching to `respect-progress` would make gated content need real
 quests (most quests are not implemented), so it is left as is.
+
+## Goblin Diplomacy (nineteenth server dev)
+
+`content/quest/.../area/goblinvillage/GoblinDiplomacy.kt`. Progress is the client varbit `gobdip_main` (2378, varp 62
+`goblinquest` bits 0-5): 0, 3 started (orange wanted), 4 blue wanted, 5 brown wanted, 6 complete (cache endstate 6,
+checked at startup). QH 4.18's `GoblinDiplomacy` has keys 0 and 3 (one step: crates, dyes, "Talk to one of the
+Goblin Generals"), 4 ("again", blue) and 5 ("once more", brown); starting at 3 rather than 1 is inferred from QH
+having no step for 1-2 (**guess**). The crate varbits `gobdip_crate1..3_searched` (2379-2381, bits 6-8) match QH's
+north / west / upstairs requirements; Grubfoot is the multinpc `catwalk_goblin` on `gobdip_grubfoot_vis`
+(2382 ... bits 9-11: 0 brown, 1 orange, 2 blue, 3 hidden), set after each try-on.
+- Dialogue from the wiki transcript: five random openers (the "fat" one with its own choice), the looping topic menu,
+  "What about a different colour?" -> "Start the Goblin Diplomacy quest?", the armour/dye questions, wrong-colour
+  replies on item use, and the three try-ons with Grubfoot (dialogue only; the cutscenes and the changing curtain are
+  not played). Grubfoot's orange/blue lines follow his look. Rewards (wiki): 5 QP, 200 Crafting XP, a gold bar.
+- The generals' and Grubfoot's old upstream dialogue (`goblin-village` `GoblinGenerals.kt`, `Grubfoot.kt`) is now the
+  after-quest / no-quest talk inside the quest script; the two files are removed.
+- Crates: "You find some goblin mail in the crate." (objbox) once each, then the transcript's "You search the crate,
+  but but find nothing of interest." (sic). Searching before the quest also gives the mail (**guess**).
+- Dyes: orange/blue dye on goblin mail -> orange/blue goblin mail ("You dye the goblin mail orange."); red + yellow,
+  yellow + blue and red + blue dye mix to orange, green and purple ("You mix the two dyes and make orange dye." is a
+  **guess**). Both are one transaction (two deletes and an insert).
+- **Ours / guesses:** journal; "Human! Get us <colour> armour!" when asking for a different colour mid-quest; the
+  hand-in option "I have some <colour> armour here." in the talk menu (QH's dialogue highlights include it); "Nothing
+  interesting happens." for armour used before the quest.
+- Tests: `GoblinDiplomacyInteractionTest` (4). `QuestTalkFixture` gained `interact { }` (any event) and a fixed
+  `randomValue`.

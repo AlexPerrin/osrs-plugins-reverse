@@ -43,6 +43,55 @@ QA is done by the QA agent, not by the agent that wrote the branch.
   line.
 - Stacked branches say so and name the PR they follow.
 
+## Procedure (QA agent)
+
+The helper is `openrune/upstream/qa/qa.sh`. Clones live in the QA agent's scratchpad (`QA_ROOT`), one per
+branch commit, with logs beside them in `<clone>.logs/`.
+
+1. **Clone.** `qa.sh clone <slug> <commit> main` makes two fresh `git clone --shared` trees of
+   `re/upstream-pr/or`: `<slug>-<commit9>` at the branch commit (sections 1 and 2) and `<slug>-<commit9>-run`
+   = upstream `main` + the branch, merged (section 3). A merge conflict there is a FAIL in itself.
+2. **Build and tests.** `qa.sh build <clone>` runs each step as its own Gradle container (`--cpus=4
+   --memory=4g`, `--max-workers=2`, `-Xmx2g`, cache tasks `-Xmx2600m`, `--no-build-cache
+   --no-configuration-cache`, Gradle home volume `upstream-pr-gradle-qa`). It takes the scratchpad
+   `gradle.lock` (shared with the other agents' builds) and waits while any other container runs
+   `gradlew`. Steps: `clean :or-cache:freshCache :or-cache:mergePluginGamevals` (a fresh cache download:
+   a new clone has none, and freshCache ends with a forced BUILD), `:or-cache:buildCache`,
+   `spotlessCheck`, `assemble`, `test`, `integration`, then `generateRsa :server:app:installDist`.
+   `qa.sh runbuild <clone>-run` builds only what a server run needs.
+3. **Branch server.** `qa.sh start <clone>-run` runs the installDist in `eclipse-temurin:21-jre` as
+   `qa-or-server` (game port **43596**, its own embedded PostgreSQL under the clone's `.data/postgres`,
+   so every run starts with no accounts) and the jav_config sidecar `qa-or-http` (**8083**, the
+   `osrs-rsps-test:241` image as for `osrs-openrune-http-desktop`, world host 127.0.0.1). It waits for
+   "Server ready in" and writes `<clone>-run.logs/proxy-targets.yaml`: the "OpenRune Test" target with
+   jav_config `http://127.0.0.1:8083`, `game_server_port: 43596` and the modulus of the clone's own
+   `.data/game.key` (RSProx re-encrypts the login with it; the sidecar's `/rsa` is not used).
+   `osrs-openrune`, `osrs-openrune-http` and `osrs-openrune-http-desktop` are never touched.
+4. **Desktop client** (under the desktop lock: `LOCK_NAME=desktop tools/device-lock.sh take qa`, after
+   the orchestrator grants it):
+   `tools/multiclient/desktop.sh stop` (if it runs), then
+   `DESKTOP_TARGET_YAML=<clone>-run.logs/proxy-targets.yaml tools/multiclient/desktop.sh start`,
+   `desktop.sh login` (desktop/desktop, created on first login) or `desktop.sh login <fresh> <fresh>`.
+   Drive it with the desktop devtools bridge, `tools/multiclient/desktop-devtools-mcp.sh --tool <name>
+   '<json>'` (data tools first: `get_var`, `get_inventory`, `get_chat_history`, `get_dialogue`;
+   screenshots only for layout). **Not** the session's `osrs-devtools` MCP server: `.mcp.json` points it
+   at `tools/devtools-mcp.sh`, which is the Android device (adb), not the desktop client.
+   Before the GUI, `desktop_login.py --host 127.0.0.1 --port 43596 --http <url serving the modulus as /rsa>`
+   checks the desktop login headlessly (no lock needed). Upstream accepts our desktop client as is
+   (checked 2026-10-18: login OK, staff 2, toplevel 161).
+   - **Members:** upstream accounts are non-members (`account_characters.members` defaults false, no
+     command sets it), so members items show "(Members)" and hide their ops. Until there is an agreed
+     way to make the QA account a member, send the hidden op with `invoke_menu_action` and say so in
+     the record. Inventory ops (interface 149) map to `CC_OP` identifiers op1 = 2, op2 = 3, op3 = 4,
+     op4 = 6, op5 = 7; item-on-item is `WIDGET_TARGET_ON_WIDGET` (param0 = target slot, param1 =
+     9764864, itemId = target) after `item_action {"option":"Use"}`.
+   - The devtools chat history never showed examine text in these runs, not even a plain inventory
+     Examine, so examine can't be checked through it.
+5. **Clean up.** `desktop.sh stop` (it also restores the default target,
+   `tools/multiclient/proxy-targets.yaml`, when `C:\osrs-test\target-override` marks an override), then `qa.sh stop` (removes
+   only `qa-or-server` and `qa-or-http`) and free the lock (`LOCK_NAME=desktop tools/device-lock.sh free qa`).
+6. **Record.** `qa/<slug>.md` with the commit, the date, each section, the evidence and the verdict.
+
 ## Record (`qa/<slug>.md`)
 
 The record holds:

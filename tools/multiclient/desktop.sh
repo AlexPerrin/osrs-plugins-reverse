@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Start/stop the isolated desktop A/B client (RuneLite through headless RSProx, to OpenRune) from WSL.
 #   tools/multiclient/desktop.sh start     # headless RSProx -> RuneLite "OpenRune Test"
+#   DESKTOP_TARGET_YAML=<file> desktop.sh start   # same, against another local server (QA branch
+#                                         server: openrune/upstream/qa/qa.sh start writes the file);
+#                                         stop (or the next plain start) restores tools/multiclient/proxy-targets.yaml
 #   tools/multiclient/desktop.sh status    # our processes (executable under C:\osrs-test) + their sockets
 #   tools/multiclient/desktop.sh log [n]   # tail of the RSProx/launcher log
 #   tools/multiclient/desktop.sh login [user pass]  # Existing User login (default desktop/desktop;
@@ -28,6 +31,18 @@ start)
   # Ports our client binds (RSProx HTTP 43600+, proxy 43701+, devtools 7780) must be free.
   busy="$(netstat.exe -ano | tr -d '\r' | awk '$4=="LISTENING"{print $2}' | grep -E ':(7780|4360[0-9]|4370[0-9]|4371[0-9])$' || true)"
   if [ -n "$busy" ]; then echo "ports in use, not starting: $busy" >&2; exit 1; fi
+  # Proxy target: the default (live OpenRune, tools/multiclient/proxy-targets.yaml) unless
+  # DESKTOP_TARGET_YAML names another one. It must still be the single "OpenRune Test" target with a
+  # http://127.0.0.1: jav_config (OsrsTestLauncher refuses anything else).
+  T=/mnt/c/osrs-test/home/.rsprox/proxy-targets.yaml; MARK=/mnt/c/osrs-test/target-override
+  if [ -n "${DESKTOP_TARGET_YAML:-}" ]; then
+    grep -q 'jav_config_url: http://127.0.0.1:' "$DESKTOP_TARGET_YAML" || { echo "not a local target: $DESKTOP_TARGET_YAML" >&2; exit 1; }
+    cp "$DESKTOP_TARGET_YAML" "$T"; printf '%s\n' "$DESKTOP_TARGET_YAML" > "$MARK"
+    echo "proxy target: $DESKTOP_TARGET_YAML"
+  elif [ -e "$MARK" ]; then
+    cp "$(dirname "$(readlink -f "$0")")/proxy-targets.yaml" "$T"; rm -f "$MARK"
+    echo "proxy target: restored the default"
+  fi
   ts=$(date +%Y%m%d-%H%M%S)
   rm -f /mnt/c/osrs-test/rsprox.pid
   # The interop pipe stays open while the Windows child lives, so background the PowerShell.
@@ -109,6 +124,10 @@ stop)
   "$0" logout 2>/dev/null || true
   $PS "$(ours_ps) | ForEach-Object { 'stopping ' + \$_.ProcessId; Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }"
   rm -f /mnt/c/osrs-test/rsprox.pid
+  if [ -e /mnt/c/osrs-test/target-override ]; then  # back to the default target (DESKTOP_TARGET_YAML)
+    cp "$(dirname "$(readlink -f "$0")")/proxy-targets.yaml" /mnt/c/osrs-test/home/.rsprox/proxy-targets.yaml
+    rm -f /mnt/c/osrs-test/target-override; echo "proxy target: restored the default"
+  fi
   ;;
 *) sed -n 2,12p "$0"; exit 1 ;;
 esac

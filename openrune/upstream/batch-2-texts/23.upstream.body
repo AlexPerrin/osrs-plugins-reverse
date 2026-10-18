@@ -1,0 +1,31 @@
+Fork PR (same branch, for browsing): https://github.com/AlexPerrin/OpenRune-Server/pull/2
+
+**Problem.** `DrawersScript` only handles `drawers2` and `PlainChestScript` only `chestclosed`. Other drawers and chests with the same ops (closed: Open; open variant: Search, Shut) have no handler, so Open answers "Nothing interesting happens.":
+
+| Closed | Open variant | Open variant's ops |
+|---|---|---|
+| `drawers1` (348) | `drawers1open` (349) | 2 Search, 3 Shut |
+| `drawers3` (352) | `drawers3open` (353) | 2 Search, 3 Shut |
+| `kr_seers_village_drawers1` (25766) | `kr_seers_village_drawers1open` (25767) | 1 Search, 2 Shut |
+| `kr_camelot_chestclosed` (25592) | `kr_camelot_chestopen` (25593) | 2 Search, 3 Shut |
+
+Treasure Trails steps that search these need the open variant's Search to work.
+
+**Change.** Both scripts bind a list of closed/open pairs instead of one pair. The Seers' Village drawers have Search on op 1 and Shut on op 2, so `DrawersScript` takes the Search slot per entry. Animations, sounds, durations and messages are the existing ones ("You search the drawers but find nothing.", `ChestConstants.DEFAULT`).
+
+**Tests.** None added (simple op handlers). The ops above were read from the rev 241 server cache (`ServerCacheManager.getObject(...).actions`) on this branch. Not checked in game on this branch.
+
+**Caveats.** The Draynor Manor wardrobe (`draynor_wardrobe` 5622 -> `draynor_wardrobe_open` 5623, Search/Close) has the same gap but is left out: a wardrobe would rather follow `RimmingtonLocScript`'s wardrobe (big cupboard animation, wardrobe sounds, "The wardrobe is empty.") than the drawers. Happy to add it here or there.
+
+**Data.** No data files change. Source: the rev 241 cache loc definitions (names and ops). Validation: the ops table above, read from the built server cache.
+
+**Release note.** More drawers (including the Seers' Village drawers) and the Camelot castle chest can be opened, searched and shut.
+
+**Checklist**
+- [x] The change compiles (`./gradlew build`).
+- [x] Tests related to the change pass (`./gradlew assemble test integration`, `spotlessCheck`).
+- [x] No documentation change needed.
+- [x] No unrelated formatting or dependency changes.
+- [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

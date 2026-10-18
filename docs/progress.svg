@@ -281,7 +281,7 @@
 <rect x="943.14" y="31.00" width="55.86" height="150.00" fill="none" stroke="#0d1117" stroke-width="2"/>
 <text x="948.14" y="47.00" font-family="sans-serif" font-size="12" fill="#ffffff" stroke="#0d1117" stroke-width="3" paint-order="stroke">Zone</text>
 </g>
-<text x="4" y="210" font-family="sans-serif" font-size="16" fill="#ffffff">RuneLite API*: 75.98% (658/866)</text>
+<text x="4" y="210" font-family="sans-serif" font-size="16" fill="#ffffff">RuneLite API*: 76.10% (659/866)</text>
 <g><title>Client: 220/325 (68%)</title>
 <rect x="2.00" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="18.20" y="221.00" width="16.20" height="15.20" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -1094,7 +1094,7 @@
 <rect x="922.28" y="220.00" width="76.72" height="93.29" fill="none" stroke="#0d1117" stroke-width="2"/>
 <text x="927.28" y="236.00" font-family="sans-serif" font-size="12" fill="#ffffff" stroke="#0d1117" stroke-width="3" paint-order="stroke">WorldView</text>
 </g>
-<g><title>NPCComposition: 23/26 (88%)</title>
+<g><title>NPCComposition: 24/26 (92%)</title>
 <rect x="835.20" y="314.29" width="16.27" height="13.44" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="851.48" y="314.29" width="16.27" height="13.44" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="867.75" y="314.29" width="16.27" height="13.44" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
@@ -1118,7 +1118,7 @@
 <rect x="835.20" y="368.06" width="16.27" height="13.44" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="851.48" y="368.06" width="16.27" height="13.44" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="867.75" y="368.06" width="16.27" height="13.44" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
-<rect x="884.02" y="368.06" width="16.27" height="13.44" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
+<rect x="884.02" y="368.06" width="16.27" height="13.44" fill="#2ea043" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="900.30" y="368.06" width="16.27" height="13.44" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="835.20" y="381.51" width="16.27" height="13.44" fill="#6e7681" stroke="#0d1117" stroke-width="0.5"/>
 <rect x="834.20" y="313.29" width="83.37" height="82.66" fill="none" stroke="#0d1117" stroke-width="2"/>

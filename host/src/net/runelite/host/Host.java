@@ -231,6 +231,14 @@ public final class Host {
         } catch (Throwable t) {
             Log.e(TAG, "tooltip overlay failed", t);
         }
+        // Desktop's OverlayManager.init also adds WorldMapOverlay: it draws every plugin's
+        // WorldMapPointManager points on the open world map (interface 595). Without it World Map's
+        // points were never drawn (gen 31).
+        try {
+            overlayManager.add(injector.getInstance(net.runelite.client.ui.overlay.worldmap.WorldMapOverlay.class));
+        } catch (Throwable t) {
+            Log.e(TAG, "world map overlay failed", t);
+        }
         pluginManager[0] = new HostPluginManager(injector, bus);
         HostPluginManager plugins = pluginManager[0];
         File[] jars = new File(pluginDir).listFiles((d, n) -> n.endsWith(".jar"));

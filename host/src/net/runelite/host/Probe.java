@@ -321,6 +321,33 @@ final class Probe {
                         + " contains(Lumbridge 3222,3218) " + Native.worldMapContains(0, 0, 3222, 3218)
                         + " contains(tower basement 3104,9571) " + Native.worldMapContains(0, 0, 3104, 9571)
                         + " surface " + wm.getWorldMapData().surfaceContainsPosition(3222, 3218) + "/" + wm.getWorldMapData().surfaceContainsPosition(3104, 9571));
+                    // What WorldMapOverlay sees: its points and the 595 children it reads (map, bottom
+                    // graphic with its onTimer, clip children, tooltip).
+                    try {
+                        Object mgr = net.runelite.client.RuneLite.getInjector()
+                            .getInstance(net.runelite.client.ui.overlay.worldmap.WorldMapPointManager.class);
+                        java.lang.reflect.Method gp = mgr.getClass().getDeclaredMethod("getWorldMapPoints");  // package-private
+                        gp.setAccessible(true);
+                        @SuppressWarnings("unchecked")
+                        java.util.List<net.runelite.client.ui.overlay.worldmap.WorldMapPoint> pts =
+                            (java.util.List<net.runelite.client.ui.overlay.worldmap.WorldMapPoint>) gp.invoke(mgr);
+                        StringBuilder sb = new StringBuilder("wmap points " + pts.size());
+                        for (int i = 0; i < Math.min(3, pts.size()); i++) sb.append(' ').append(pts.get(i).getName()).append('@').append(pts.get(i).getWorldPoint());
+                        for (int child : new int[] {7, 10, 23, 34, 41}) {
+                            net.runelite.api.widgets.Widget w = c.getWidget(595, child);
+                            sb.append(" | 595:").append(child).append(w == null ? " null" : " " + w.getBounds() + " hidden " + w.isHidden() + " type " + w.getType());
+                        }
+                        Log.i(TAG, sb.toString());
+                    } catch (Throwable t) {
+                        Log.e(TAG, "wmap points", t);
+                    }
+                    break;
+                }
+                case "wjump": {  // "wjump <x> <y>": setWorldMapPositionTarget on plane 0, then the position plugins read
+                    net.runelite.api.worldmap.WorldMap wm = c.getWorldMap();
+                    net.runelite.api.Point before = wm.getWorldMapPosition();
+                    wm.setWorldMapPositionTarget(new net.runelite.api.coords.WorldPoint(id, Integer.parseInt(a[2]), 0));
+                    Log.i(TAG, "wjump " + id + "," + a[2] + " from " + before + " now " + wm.getWorldMapPosition());
                     break;
                 }
                 case "examine": {  // "examine <obj> <count>": the server's examine_item clientscript 6003, run client-side

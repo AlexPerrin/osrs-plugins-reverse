@@ -289,6 +289,9 @@ final class Native {
     static native void consumeMenuClick();
     /** During a SOUND_EFFECT event: the game drops the sound. */
     static native void consumeSound();
+    /** The area sound being posted: {id, sceneX, sceneY, range, delay, loops, sourceKind (0 none, 1 NPC,
+     *  2 player), sourceIndex, plane, fromAnimation}. */
+    static native int[] areaSound();
 
     /** During a MenuTap event: run this top-level node (Native.menuEntries index) instead of the default. */
     static native void redirectMenuTap(int index);

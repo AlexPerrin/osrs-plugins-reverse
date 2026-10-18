@@ -31,6 +31,8 @@ enum class EventType {
                        // a = touch state (4 = this cycle releases it)
     SoundEffect,       // a sound effect is about to be queued: a = sound id, b = delay; listeners may
                        // call consume_sound() (game::install_sound_hook)
+    AreaSoundEffect,   // an area sound is about to be queued (details: last_area_sound()); a = sound id,
+                       // b = delay; listeners may call consume_sound() (game::install_area_sound_hook)
 };
 
 struct Event {
@@ -81,6 +83,8 @@ const game::MenuEntry& clicked_menu_entry();
 void consume_menu_click();
 // During SoundEffect: drop the sound.
 void consume_sound();
+// The area sound being posted (AreaSoundEffect).
+const game::AreaSound& last_area_sound();
 // During MenuTap: the menu model being tapped (0 otherwise), and the top-level node to run instead.
 uintptr_t tap_menu();
 void redirect_menu_tap(int index);

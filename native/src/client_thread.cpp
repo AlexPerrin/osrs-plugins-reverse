@@ -73,12 +73,14 @@ const char* name(EventType t) {
         case EventType::MenuTap: return "MenuTap";
         case EventType::WidgetDrag: return "WidgetDrag";
         case EventType::SoundEffect: return "SoundEffect";
+        case EventType::AreaSoundEffect: return "AreaSoundEffect";
     }
     return "?";
 }
 
 void post(const Event& e) {
-    if (e.type != EventType::ClientTick && e.type != EventType::WidgetDrag && e.type != EventType::SoundEffect) {
+    if (e.type != EventType::ClientTick && e.type != EventType::WidgetDrag && e.type != EventType::SoundEffect
+        && e.type != EventType::AreaSoundEffect) {
         char line[96];
         snprintf(line, sizeof line, "%llu %s %d %d", (unsigned long long)g_cycles.load(), name(e.type), e.a, e.b);
         std::lock_guard lock(g_log_mutex);
@@ -304,6 +306,7 @@ using MenuSelectFn = uint64_t (*)(void*, const uint64_t* const*, int, int, bool)
 MenuSelectFn g_orig_select = nullptr;
 game::MenuEntry g_clicked;
 bool g_click_consumed = false;
+game::AreaSound g_area_sound;  // the AreaSoundEffect being posted
 bool g_sound_consumed = false;  // set by consume_sound() while SoundEffect is posted
 uintptr_t g_tap_menu = 0;
 int g_tap_redirect = -1;
@@ -480,6 +483,21 @@ bool install() {
         g_sound_consumed = false;
         return consumed;
     });
+    game::install_area_sound_hook([](const game::AreaSound& s) {
+        if (!on_client_thread()) return false;
+        g_sound_consumed = false;
+        if (s.from_animation && s.range == 0) {
+            // The local player's own animation sound (the game plays range-0 frame sounds only for
+            // it): desktop queues these as plain sound effects (SoundEffectPlayed).
+            post({EventType::SoundEffect, s.id, s.delay});
+        } else {
+            g_area_sound = s;
+            post({EventType::AreaSoundEffect, s.id, s.delay});
+        }
+        bool consumed = g_sound_consumed;
+        g_sound_consumed = false;
+        return consumed;
+    });
     return true;
 }
 
@@ -545,6 +563,7 @@ std::vector<game::PlayerInfo> players() {
 const game::MenuEntry& clicked_menu_entry() { return g_clicked; }
 void consume_menu_click() { g_click_consumed = true; }
 void consume_sound() { g_sound_consumed = true; }
+const game::AreaSound& last_area_sound() { return g_area_sound; }
 uintptr_t tap_menu() { return g_tap_menu; }
 void redirect_menu_tap(int index) { g_tap_redirect = index; }
 

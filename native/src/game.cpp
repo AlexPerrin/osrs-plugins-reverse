@@ -3097,6 +3097,105 @@ void install_sound_hook(bool (*cb)(int id, int loops, int delay)) {
     LOGI("game: sound hook %s", g_sound_orig ? "installed" : "FAILED");
 }
 
+namespace {
+// Area sounds: 0x4ae650(sys, plane, id, x, z, range, dropOff, loops, delay, flag) appends a
+// 0x28-byte entry to the same queue as 0x4ae508 (x/z are scene tiles, packed as bytes). Callers:
+// the SOUND_AREA zone prot (0x46f9c0, in the zone handler 0x46edb0) and the animation frame-sound
+// handler (0x480168 in 0x47ff8c). Its prologue has no PC-relative code, so the hook sits on entry.
+constexpr uintptr_t kAreaSound = 0x4ae650;
+constexpr uint32_t kAreaSoundCode[4] = {0xd10243ff, 0xa9037bfd, 0xa9046ffc, 0xa90567fa};
+// Frame-sound handler: a stack object {vtable 0xa6c5a8, +0x08 plane*, +0x10/+0x14 fine x/z of the
+// animated thing, +0x18 "is the local player", +0x20 sound system} built by the actor update
+// (0x435240: x/z = actor +0x268/+0x26c), loc animations (0x49af40: the loc's x/z) and others, and
+// passed to the sequence advance 0x659534, which calls slot 2 = 0x47ff8c(handler, SeqType*, frame).
+constexpr uintptr_t kFrameSoundSlot = 0xa6c5b8;
+using AreaSoundFn = void (*)(uintptr_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+using FrameSoundFn = void (*)(uintptr_t, uintptr_t, int);
+AreaSoundFn g_area_orig = nullptr;
+FrameSoundFn g_frame_orig = nullptr;
+uintptr_t g_frame_handler = 0;  // the handler while its slot 2 runs (game thread)
+bool (*g_area_cb)(const AreaSound&) = nullptr;
+
+void hook_frame_sound(uintptr_t self, uintptr_t seq, int frame) {
+    uintptr_t prev = g_frame_handler;
+    g_frame_handler = self;
+    g_frame_orig(self, seq, frame);
+    g_frame_handler = prev;
+}
+
+// The NPC or player standing exactly at the fine position (actor +0x268/+0x26c, as the actor
+// update copies into the handler); kind 1 = NPC, 2 = player, 0 = none.
+void actor_at(int fx, int fz, bool local, AreaSound& out) {
+    uintptr_t c = client();
+    if (!c) return;
+    auto wv = read_at<uintptr_t>(c + g_build->f_world_view);
+    if (!wv) return;
+    int me = read_at<int32_t>(c + g_build->f_local_player_index);
+    if (local) {
+        out.source_kind = 2;
+        out.source_index = me;
+        return;
+    }
+    auto at = [&](uintptr_t a) { return a && read_at<int32_t>(a + 0x268) == fx && read_at<int32_t>(a + 0x26c) == fz; };
+    int active_count = read_at<int32_t>(c + g_build->f_gpi);
+    for (int i = 0; active_count > 0 && active_count <= 2048 && i < active_count; i++) {
+        int index = read_at<int32_t>(c + g_build->f_gpi + 4 + i * 4);
+        if (index != me && at(live_player(index))) {
+            out.source_kind = 2;
+            out.source_index = index;
+            return;
+        }
+    }
+    int count = read_at<int32_t>(wv + g_build->wv_npc_count);
+    auto indices = read_at<const int32_t*>(wv + g_build->wv_npc_indices);
+    for (int i = 0; indices && count > 0 && count <= 65535 && i < count; i++) {
+        if (at(npc_lookup(wv, indices[i]))) {
+            out.source_kind = 1;
+            out.source_index = indices[i];
+            return;
+        }
+    }
+}
+
+void hook_area_sound(uintptr_t sys, uint32_t plane, uint32_t id, uint32_t x, uint32_t z, uint32_t range,
+                     uint32_t drop_off, uint32_t loops, uint32_t delay, uint32_t flag) {
+    if (g_area_cb) {
+        AreaSound s;
+        s.id = static_cast<int>(id & 0xffff);
+        s.scene_x = static_cast<int>(x & 0xff);
+        s.scene_y = static_cast<int>(z & 0xff);
+        s.range = static_cast<int>(range & 0xff);
+        s.drop_off = static_cast<int>(drop_off & 0xff);
+        s.loops = static_cast<int>(loops & 0xff);
+        s.delay = static_cast<int>(delay);
+        s.plane = static_cast<int>(plane);
+        if (g_frame_handler) {
+            s.from_animation = true;
+            actor_at(read_at<int32_t>(g_frame_handler + 0x10), read_at<int32_t>(g_frame_handler + 0x14),
+                     read_at<uint8_t>(g_frame_handler + 0x18) != 0, s);
+        }
+        if (g_area_cb(s)) return;
+    }
+    g_area_orig(sys, plane, id, x, z, range, drop_off, loops, delay, flag);
+}
+}  // namespace
+
+void install_area_sound_hook(bool (*cb)(const AreaSound&)) {
+    g_area_cb = cb;
+    g_area_orig = reinterpret_cast<AreaSoundFn>(inline_hook(g_base + kAreaSound, kAreaSoundCode, reinterpret_cast<void*>(hook_area_sound)));
+    auto** slot = reinterpret_cast<void**>(g_base + kFrameSoundSlot);
+    if (g_area_orig && *slot == reinterpret_cast<void*>(g_base + 0x47ff8c)) {
+        long page = sysconf(_SC_PAGESIZE);
+        auto start = reinterpret_cast<void*>((g_base + kFrameSoundSlot) & ~static_cast<uintptr_t>(page - 1));
+        if (mprotect(start, page, PROT_READ | PROT_WRITE) == 0) {
+            g_frame_orig = reinterpret_cast<FrameSoundFn>(*slot);
+            *slot = reinterpret_cast<void*>(hook_frame_sound);
+            mprotect(start, page, PROT_READ);  // .data.rel.ro
+        }
+    }
+    LOGI("game: area sound hook %s, frame-sound slot %s", g_area_orig ? "installed" : "FAILED", g_frame_orig ? "patched" : "not patched");
+}
+
 bool take_message_inventories(int id, std::vector<Inventory>& out) {
     std::lock_guard<std::mutex> lock(g_msg_inv_mutex);
     auto it = g_msg_inv.find(id);

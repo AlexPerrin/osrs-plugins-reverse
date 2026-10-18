@@ -1096,6 +1096,14 @@ jintArray n_ground_items(JNIEnv* env, jclass) {
 }
 void n_consume_menu_click(JNIEnv*, jclass) { client_thread::consume_menu_click(); }
 void n_consume_sound(JNIEnv*, jclass) { client_thread::consume_sound(); }
+// {id, sceneX, sceneY, range, delay, loops, sourceKind (0 none, 1 NPC, 2 player), sourceIndex, plane, fromAnimation}
+jintArray n_area_sound(JNIEnv* env, jclass) {
+    const auto& s = client_thread::last_area_sound();
+    jint v[10] = {s.id, s.scene_x, s.scene_y, s.range, s.delay, s.loops, s.source_kind, s.source_index, s.plane, s.from_animation ? 1 : 0};
+    jintArray out = env->NewIntArray(10);
+    if (out) env->SetIntArrayRegion(out, 0, 10, v);
+    return out;
+}
 namespace {
 std::string to_latin1(JNIEnv* env, jstring text) {
     std::string out;
@@ -1474,6 +1482,7 @@ const JNINativeMethod kNatives[] = {
     {"groundItems", "()[I", reinterpret_cast<void*>(n_ground_items)},
     {"consumeMenuClick", "()V", reinterpret_cast<void*>(n_consume_menu_click)},
     {"consumeSound", "()V", reinterpret_cast<void*>(n_consume_sound)},
+    {"areaSound", "()[I", reinterpret_cast<void*>(n_area_sound)},
     {"redirectMenuTap", "(I)V", reinterpret_cast<void*>(n_redirect_menu_tap)},
     {"menuReorder", "([I)Z", reinterpret_cast<void*>(n_menu_reorder)},
     {"menuBuildAt", "(II)Z", reinterpret_cast<void*>(n_menu_build_at)},

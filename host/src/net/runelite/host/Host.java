@@ -35,7 +35,7 @@ public final class Host {
     private static final int CLIENT_TICK = 0, GAME_TICK = 1, GAME_STATE_CHANGED = 2, VARBIT_CHANGED = 3,
             NPC_SPAWNED = 4, NPC_DESPAWNED = 5, CHAT_MESSAGE = 6, WIDGET_LOADED = 7, WIDGET_CLOSED = 8,
             PLAYER_SPAWNED = 9, PLAYER_DESPAWNED = 10, ITEM_CONTAINER_CHANGED = 11, STAT_CHANGED = 12,
-            MENU_OPENED = 13, MENU_OPTION_CLICKED = 14, MENU_TAP = 15, WIDGET_DRAG = 16, SOUND_EFFECT = 17;
+            MENU_OPENED = 13, MENU_OPTION_CLICKED = 14, MENU_TAP = 15, WIDGET_DRAG = 16, SOUND_EFFECT = 17, AREA_SOUND_EFFECT = 18;
 
     private static final net.runelite.client.callback.ClientThread clientThread = new net.runelite.client.callback.ClientThread();
     private static volatile EventBus eventBus;
@@ -729,6 +729,29 @@ public final class Host {
                 if (e.isConsumed()) Native.consumeSound();
                 if ("1".equals(Native.property("debug.osrsrl.soundlog")))
                     Log.i(TAG, "SoundEffectPlayed " + a + " delay " + b + (e.isConsumed() ? " consumed" : ""));
+                break;
+            }
+            case AREA_SOUND_EFFECT: {
+                // SOUND_AREA zone prots and actor/loc animation frame sounds with a range, before the
+                // game queues them (inline hook on 0x4ae650); consume() drops the sound. Source: the
+                // NPC/player at the animated position (animation sounds), else null as desktop's
+                // packet sounds. // unverified: on the device
+                if (!bus.hasSubscribers(net.runelite.api.events.AreaSoundEffectPlayed.class)) break;
+                int[] s = Native.areaSound();
+                if (s == null || s.length < 10) break;
+                net.runelite.api.Actor src = s[6] == 1 ? npc(s[7]) : s[6] == 2 ? player(s[7]) : null;
+                net.runelite.api.events.AreaSoundEffectPlayed e = new net.runelite.api.events.AreaSoundEffectPlayed(src);
+                e.setSoundId(s[0]);
+                e.setSceneX(s[1]);
+                e.setSceneY(s[2]);
+                e.setRange(s[3]);
+                e.setDelay(s[4]);
+                bus.post(e);
+                if (e.isConsumed()) Native.consumeSound();
+                if ("1".equals(Native.property("debug.osrsrl.soundlog")))
+                    Log.i(TAG, "AreaSoundEffectPlayed " + s[0] + " at " + s[1] + "," + s[2] + " range " + s[3] + " delay " + s[4]
+                        + " source " + (src != null ? src.getName() : "null") + (s[9] != 0 ? " (animation)" : " (packet)")
+                        + (e.isConsumed() ? " consumed" : ""));
                 break;
             }
             case WIDGET_DRAG: {

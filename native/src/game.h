@@ -428,6 +428,15 @@ void install_drag_hook(void (*cb)());
 // all go through the queue function `0x4ae508(sys, id, loops, delay)`. The hook sits after its
 // loops == 0 early-out; `cb` returns true to drop the sound (RuneLite's SoundEffectPlayed.consume).
 void install_sound_hook(bool (*cb)(int id, int loops, int delay));
+// Area sounds (SOUND_AREA zone prot, actor/loc animation frame sounds) go through `0x4ae650`;
+// range 0 means a plain sound effect (animation sounds of the local player). Source: for animation
+// sounds, the NPC/player at the animated thing's fine position (kind 1/2), else none (0).
+struct AreaSound {
+    int id = 0, scene_x = 0, scene_y = 0, plane = 0, range = 0, drop_off = 0, loops = 0, delay = 0;
+    bool from_animation = false;
+    int source_kind = 0, source_index = -1;
+};
+void install_area_sound_hook(bool (*cb)(const AreaSound&));
 // 3D viewport projection: {zoom, x, y, width, height} in UI canvas pixels (Client +0x46d4, +0x46e0..+0x46ec,
 // computed by 0x5561e8 from the CS2 viewport zoom/fov settings; RuneLite's getScale/viewport).
 bool viewport_zoom(int out[5]);

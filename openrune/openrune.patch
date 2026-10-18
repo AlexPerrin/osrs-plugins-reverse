@@ -1443,6 +1443,35 @@ index ae0ba7098..26f0b25e5 100644
          fun useOnFluffs(obj: String) {
              val slot = slotOf(obj)
              val type = checkNotNull(ServerCacheManager.getItem(obj.asRSCM()))
+diff --git a/content/areas/misc/goblin-village/src/main/kotlin/org/rsmod/content/areas/misc/goblinvillage/locs/GoblinCaveLadders.kt b/content/areas/misc/goblin-village/src/main/kotlin/org/rsmod/content/areas/misc/goblinvillage/locs/GoblinCaveLadders.kt
+index 0c70061f7..7c54f34b4 100644
+--- a/content/areas/misc/goblin-village/src/main/kotlin/org/rsmod/content/areas/misc/goblinvillage/locs/GoblinCaveLadders.kt
++++ b/content/areas/misc/goblin-village/src/main/kotlin/org/rsmod/content/areas/misc/goblinvillage/locs/GoblinCaveLadders.kt
+@@ -16,6 +16,16 @@ class GoblinCaveLadders : PluginScript() {
+         for (ladder in UP_LADDERS) {
+             onOpLoc1(ladder) { climb(SURFACE) }
+         }
++        onOpLoc1("loc.goblin_ladder_bottom") { climbInPlace(LOOKOUT_LEVEL) }
++        onOpLoc1("loc.goblin_ladder_top") { climbInPlace(0) }
++    }
++
++    /** The lookout by the south gate: its ladder joins level 0 and level 2 on the same tiles. */
++    private suspend fun ProtectedAccess.climbInPlace(level: Int) {
++        arriveDelay()
++        anim("seq.human_reachforladder")
++        delay(1)
++        telejump(CoordGrid(player.coords.x, player.coords.z, level))
+     }
+ 
+     private suspend fun ProtectedAccess.climb(dest: CoordGrid) {
+@@ -28,6 +38,7 @@ class GoblinCaveLadders : PluginScript() {
+     private companion object {
+         private val SURFACE = CoordGrid(2960, 3506, 0)
+         private val CAVE = CoordGrid(2981, 9875, 0)
++        private const val LOOKOUT_LEVEL = 2
+ 
+         private val UP_LADDERS =
+             listOf("loc.100_goblin_ladder_up", "loc.100_goblin_ladder_up_charred")
 diff --git a/content/areas/misc/goblin-village/src/main/kotlin/org/rsmod/content/areas/misc/goblinvillage/npcs/GoblinGenerals.kt b/content/areas/misc/goblin-village/src/main/kotlin/org/rsmod/content/areas/misc/goblinvillage/npcs/GoblinGenerals.kt
 deleted file mode 100644
 index e5ccc3083..000000000

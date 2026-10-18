@@ -1887,7 +1887,7 @@ checked at startup). QH 4.18's `GoblinDiplomacy` has keys 0 and 3 (one step: cra
 Goblin Generals"), 4 ("again", blue) and 5 ("once more", brown); starting at 3 rather than 1 is inferred from QH
 having no step for 1-2 (**guess**). The crate varbits `gobdip_crate1..3_searched` (2379-2381, bits 6-8) match QH's
 north / west / upstairs requirements; Grubfoot is the multinpc `catwalk_goblin` on `gobdip_grubfoot_vis`
-(2382 ... bits 9-11: 0 brown, 1 orange, 2 blue, 3 hidden), set after each try-on.
+(13594, varp 62 bits 9-11: 0 brown, 1 orange, 2 blue, 3 hidden), set after each try-on.
 - Dialogue from the wiki transcript: five random openers (the "fat" one with its own choice), the looping topic menu,
   "What about a different colour?" -> "Start the Goblin Diplomacy quest?", the armour/dye questions, wrong-colour
   replies on item use, and the three try-ons with Grubfoot (dialogue only; the cutscenes and the changing curtain are
@@ -1904,3 +1904,24 @@ north / west / upstairs requirements; Grubfoot is the multinpc `catwalk_goblin` 
   interesting happens." for armour used before the quest.
 - Tests: `GoblinDiplomacyInteractionTest` (4). `QuestTalkFixture` gained `interact { }` (any event) and a fixed
   `randomValue`.
+
+### Witch's Potion and Goblin Diplomacy: desktop QH runs (03:23 UTC deploy of 00f46b8 + 8205c53 + 57bc566)
+- **Witch's Potion (fresh qhtest7): complete.** QH "Start Quest Helper" -> Hetty ("[1] I am in search of a
+  quest.", "[1] Yes.") -> varp 67 = 1; QH "Kill a rat in the house to the west for a rat tail." Killing an indoor
+  rat (2855) dropped a Rat's tail next to the bones (the kill hook works). With `::item` onion, burnt meat, eye of
+  newt QH showed all four green; Hetty -> 2; the cauldron (Drink-from via `invoke_menu_action`, scene base
+  (2912,3152)) -> "You drink from the cauldron..." -> 3 and the scroll (1 QP, 325 Magic XP).
+- **Goblin Diplomacy (fresh qhtest8): complete.** QH stage 0 showed the crate step ("The first is up the ladder in a
+  crate in the south of the village"). Opener 5 then "Do you want me to pick...", "What about a different colour?",
+  "Yes." -> `gobdip_main` = 3. Upstairs crate (16561 at (2955,3498,2)) -> `gobdip_crate3_searched` = 1 and QH moved to
+  "Go back down the ladder."; the west crate (16560) and the north crate (16559, from the north side at
+  (2959,3516); the south side says "I can't reach that!") gave the other two. Dyeing showed "You dye the goblin mail
+  orange/blue." and QH turned "Orange goblin mail" green. Talk, "[4] I have some orange armour here." (QH
+  highlights it) -> 4 and Grubfoot's look 1; blue mail used on Wartface -> 5, look 2, QH "once more ... Goblin
+  mail"; Grubfoot's blue lines; talk, "[4] I have some brown armour here." -> 6, look 0, scroll (5 QP, 200
+  Crafting XP, gold bar).
+- **Found:** the lookout ladder (`goblin_ladder_bottom` 16450 / `goblin_ladder_top` 16556) had no handler ("Nothing
+  interesting happens."); the run used `::tele` to level 2. Fixed after the run (built, not deployed): both climb
+  in place between level 0 and 2 (`GoblinCaveLadders.kt`; the level comes from QH's tile for the crate).
+- QH's dialogue highlights include "Yes, Wartface looks fat", which the transcript has as "Yes, he looks fat."
+  (we follow the transcript).

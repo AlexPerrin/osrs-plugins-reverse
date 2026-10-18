@@ -674,6 +674,8 @@ final class Sidebar {
                         noteTouch(e.getActionMasked(), e.getX(), e.getY());
                         if (TouchMouse.onTouch(e)) return true;
                     }
+                    if (m.getName().equals("dispatchKeyEvent") && args != null && args[0] instanceof android.view.KeyEvent
+                            && KeyRouter.onKey((android.view.KeyEvent) args[0], orig)) return true;
                     try {
                         return m.invoke(orig, args);
                     } catch (InvocationTargetException ex) {

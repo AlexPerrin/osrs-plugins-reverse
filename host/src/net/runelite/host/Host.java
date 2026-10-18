@@ -220,6 +220,8 @@ public final class Host {
         Sidebar.start(injector.getInstance(net.runelite.client.ui.ClientToolbar.class), new File(pluginDir).getParentFile());
         try {
             TouchMouse.manager = injector.getInstance(net.runelite.client.input.MouseManager.class);
+            KeyRouter.manager = injector.getInstance(net.runelite.client.input.KeyManager.class);
+            KeyRouter.clientThread = injector.getInstance(net.runelite.client.callback.ClientThread.class);
         } catch (Throwable t) {
             Log.e(TAG, "MouseManager failed", t);
         }

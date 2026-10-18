@@ -1322,8 +1322,8 @@ session; its notes are in `docs/android-protocol.md`.
     (only GridBagConstraints so far: insets (0,0,0,0), gridx/gridy -1, anchor 10, gridwidth/height 1). Emote Clue Items no longer throws.
   - Bank XP Value (toggle: long-press the bank wrench -> "Toggle Banked XP"), Instant Inventory (one dimmed frame before a
     dropped item vanishes) and Attack Ranges now `runs`.
-  - Hub: 16 new pins. Device: Damage Counter, Supplies Tracker, Emote Clue Items, Time Tracking Reminder run; Loot Logger
-    (needs the core Loot Tracker to post LootReceived), Line Markers, Coal Bag (OpenRune's coal bag texts differ, sent to
+  - Hub: 16 new pins. Device: Damage Counter, Supplies Tracker, Emote Clue Items, Time Tracking Reminder, Pickpocket Helper and
+    Loot Logger (with the core Loot Tracker, which posts LootReceived) run; Line Markers, Coal Bag (OpenRune's coal bag texts differ, sent to
     the server side), Spirit Tree Map, Fish Barrel, Clue Steps, Pickpocket Helper, Did I Compost, Menu Swapper Extended,
     Weapon Charges, Random Event Hider start. Slayer Assistant is blocked: FlatLaf's `FlatTabbedPaneUI` (host gap).
   - Tools: `host/plugins/hub/stubcheck.sh <jar>` (static API gap check, replaces ad hoc javap); hub build.sh now fails on
@@ -1332,7 +1332,8 @@ session; its notes are in `docs/android-protocol.md`.
     only on the "Try again" screen, else tap Play Now (957,563). Wielding spawned ammo merges it with the tester's own stack
     (tester had 50 bronze arrows; now 148 equipped, fix pending via the bank). The sbdump prop only takes effect at startup.
   - **Next (gen 37)**:
-    1. Tester arrows: unequip, deposit all, withdraw-X 50 and re-equip, withdraw and drop the other 98; reset withdraw qty to 1.
+    1. (Done in slot 2: tester back to 50 bronze arrows equipped, bank unchanged at 35 items, quantity mode 1, last X 10000.
+       The pickpocket test left one extra Coin pouch (2 instead of 1).) Device-check Supplies Tracker's item icons (icon-only labels now sent as kind I).
     2. Loot Logger with the core Loot Tracker loaded; Supplies Tracker item icons (its SuppliesBox grid); Line Markers drawing.
     3. FlatLaf shim for Slayer Assistant (`FlatTabbedPaneUI` etc.), GraphicsObject/Projectile API (Random Event Hider, Supplies Tracker).
     4. More hub plugins from the ranking (next generic ones: time-tracking done; tasks-tracker, door-kicker, gemstone-crab-timer,

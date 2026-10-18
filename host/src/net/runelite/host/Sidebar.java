@@ -482,7 +482,7 @@ final class Sidebar {
         if (c instanceof JLabel) {
             String t = clean(((JLabel) c).getText());
             if (!t.isEmpty()) add(sb, 'L', depth, c, t);
-            else if (c.getMouseListeners().length > 0) addIcon(sb, depth, c, ((JLabel) c).getIcon());  // icon tab (Skill Calculator)
+            else addIcon(sb, depth, c, ((JLabel) c).getIcon());  // icon tab (Skill Calculator), item grids (Supplies Tracker)
             return;
         }
         if (c instanceof JCheckBox) {

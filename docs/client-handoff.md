@@ -1,7 +1,7 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 37 entry (2026-10-18) at the end of "Where things stand".
-> **Start here (gen 38):** see the gen 37 entry's "Next", and docs/app-telemetry.md (privacy patches in every build).
+> Latest state: see the gen 38 entry (2026-10-18) at the end of "Where things stand".
+> **Start here (gen 39):** see the gen 38 entry's "Next", and docs/app-telemetry.md (privacy patches in every build).
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1369,6 +1369,33 @@ session; its notes are in `docs/android-protocol.md`.
     2. `::mapanim` once deployed: GraphicsObject fields/finished flag (projlog dump), Random Event Hider.
     3. Slayer Assistant task tabs on device (58c0525); Menu Swapper Extended stray-dog swap (Varrock dogs absent).
     4. Line of Sight desktop A/B (desktop lock), Path Marker settings; more hub plugins from the ranking.
+- **2026-10-18 (client dev gen 38)**, commits 11e69d2..(this entry).
+  - **Privacy**: build c531d81+ verified with the GIM `x.invalid` rewrite (no `pp-*` lookups, no Jagex sockets). After a
+    fresh sign-out/sign-in, one `secure.runescape.com` lookup and HTTPS socket appeared at the first LOADING (15:51:42).
+    Traced in native code: jav_config `gedigesturl` (GE digest, most likely) and the web URL builder (ELF 0x41102c, bare
+    `runescape.com` at 0xd6812: secure./services. URLs). The orchestrator redirected gedigesturl/advert/terms/privacy in
+    the sidecar; `patch_telemetry.py --native` now rewrites the bare domain to `x.invalid` (85f7d62). Verified with a 0.5 s
+    socket sampler across sign-out, sign-in, Play Now, restart and play: only runelite/braze/onetrust/Google and 10.0.2.2.
+    The 15:51 source is still unconfirmed, because no digest fetch happened in the verification run. Payments param 2
+    is served-config-only: "Upgrade Now" is a server CC_OP that OpenRune ignores, so no shop request was made.
+    Details: docs/app-telemetry.md (gen 38 sections).
+  - Verified on the device: Slayer Assistant tabs (58c0525) and per-paragraph text rows (Sidebar, 11e69d2); Menu Swapper
+    Extended's stray-dog swap (spawn `::npc 500 2902`; the swap shows in tap/long-press sessions only).
+  - `Client.getRenderOverview` (39e11a2) for herbi-afk. 7 new hub pins all start (see plugin-host.md).
+  - Line of Sight desktop A/B: the bending over terrain matches desktop. At 3219,3222 Android draws stray lines that
+    converge on two points (most likely extreme corner heights in Perspective); not traced yet.
+  - Server gap sent: OBJ_ADD has no despawn/public timers or ownership (rsprot 5-argument constructor), so ground item timers read 0.
+  - Gotchas: `adb.exe shell cat` adds CRLF, so take settings backups with `adb exec-out cat`. Don't combine `rm` with a
+    `bash -c` wait loop in one command (the safety check denies it); run the by-name rm alone. The desktop client can
+    be left running by another agent: check `desktop.sh status` before starting it.
+  - **Next (gen 39)**:
+    1. `::mapanim` (when deployed): GraphicsObject fields and the finished flag; Random Event Hider.
+    2. Line of Sight stray lines: dump getTileHeights/settings around 3219,3222 (Probe `h`) and compare the corner
+       heights Perspective uses.
+    3. Path Marker settings; more hub plugins from the ranking (most of the remaining top ones are minigame, raid or
+       network plugins).
+    4. A sign-out/sign-in capture that includes a GE digest fetch, to confirm the gedigesturl redirect (it needs the
+       client's digest refresh to fall due).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

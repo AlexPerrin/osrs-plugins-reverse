@@ -16,10 +16,11 @@ import java.lang.reflect.Method;
  * are opening a link to an external site. If you remain inactive in game for too long, you will be
  * logged out.") and then starts an ACTION_VIEW intent. The ApplicationContext is the game
  * MainActivity's field of that type (obfuscated name, so found by type). If that reflection fails,
- * fall back to a plain ACTION_VIEW from the game's Activity.
+ * fall back to a plain ACTION_VIEW from the game's Activity. Verified 2026-10-18 gen 33 (Wiki search and lookups:
+ * the dialog, then Chrome; Cancel stays in game).
  *
- * Backgrounding the game stops its thread, so after ~15 s away the session drops on OpenRune (the
- * stock client too: its reconnect gets "Unexpected server response"; gen 33, docs/client-handoff.md).
+ * While the browser is in front the game reconnects every ~16 s (OpenRune 6ab7d07 accepts the reconnect
+ * login), so returning within the server's 60 s grace comes back in place (gen 33, docs/client-handoff.md).
  */
 public final class AndroidLinks {
     private AndroidLinks() {}

@@ -477,6 +477,7 @@ public final class Host {
                 if (client instanceof AndroidClient) ((AndroidClient) client).syncModIcons();
                 bus.post(clientTick);
                 WidgetListeners.runCycle(client);
+                WidgetListeners.runTargetMode(client);
                 postActorChanges(bus);
                 if (pendingLoggedIn && localPlayer() != null) postLoggedIn(bus);
                 if (pendingSceneCycles >= 0 && (sceneBaseChanged() || ++pendingSceneCycles > 50)) {

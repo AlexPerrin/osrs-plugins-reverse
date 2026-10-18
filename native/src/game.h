@@ -49,7 +49,9 @@ struct Point { int x, y; };
 // 0x56e448/0x56ee54 (2026-10-16).
 struct FriendEntry { std::string name, prev; int world = 0, rank = -1; };
 int friend_list_state();
-std::vector<uint8_t> target_state_bytes(int len);  // probe: widget target mode state
+std::vector<uint8_t> target_state_bytes(int len);
+bool target_mode(int out[3]);  // {active, selected component, index}
+bool end_target_mode();  // probe: widget target mode state
 // setGameState(LOADING): the game's own settings-changed reload (0x429900(client): when logged in,
 // game state 30 -> 25 and the scene is rebuilt). Client thread only; false when not logged in.
 bool reload_scene();

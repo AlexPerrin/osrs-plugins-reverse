@@ -441,10 +441,11 @@ public class AndroidClient extends ClientStub {
         if (w == null) Native.dragClearTarget();
         else android.util.Log.w(Host.TAG, "setDraggedOnWidget(" + w.getId() + "): not written to the game");
     }
-    private boolean widgetSelected;
-    @Override public boolean isWidgetSelected() { return widgetSelected; }
+    /** The game's widget target mode (+0x9f of the target state, game.cpp target_mode). */
+    @Override public boolean isWidgetSelected() { int[] t = Native.targetMode(); return t != null && t[0] != 0; }
     /** Kept host-side only; the game's spell/item-use target state is not written. */
-    @Override public void setWidgetSelected(boolean selected) { widgetSelected = selected; }
+    /** false leaves the game's target mode (Wiki after a lookup); true is a no-op (desktop needs a selected widget too). */
+    @Override public void setWidgetSelected(boolean selected) { if (!selected) Native.endTargetMode(); }
     @Override public void setAllWidgetsAreOpTargetable(boolean yes) { }
     /**
      * Non-zero = not the live game. The host runs against a private test server, and Loot Tracker

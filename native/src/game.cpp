@@ -1566,6 +1566,30 @@ std::vector<uint8_t> target_state_bytes(int len) {
     return out;
 }
 
+// Layout seen on device 2026-10-18 (Wiki's "Lookup", tmodelog): +0x90 selected component id, +0x94 its
+// CC_CREATE index (-1 for a static component; unverified), +0x9e target flags (clickMask >> 11 & 0x3f: 0x27 for
+// Wiki's 0x13800), +0x9f non-zero while target mode is on (Cancel clears it), +0x20 verb, +0x68 selected name.
+bool target_mode(int out[3]) {
+    uintptr_t c = client();
+    uintptr_t holder = c ? read_at<uintptr_t>(c + 0x4132b0) : 0;
+    if (!holder) return false;
+    uintptr_t st = holder + 2000;
+    out[0] = read_at<uint8_t>(st + 0x9f) != 0;
+    out[1] = read_at<int32_t>(st + 0x90);
+    out[2] = read_at<int32_t>(st + 0x94);
+    return true;
+}
+
+// Client.setWidgetSelected(false): clears the active byte, as the game's Cancel does (unverified: the game may
+// also reset other fields there; the menu builders only test +0x9f).
+bool end_target_mode() {
+    uintptr_t c = client();
+    uintptr_t holder = c ? read_at<uintptr_t>(c + 0x4132b0) : 0;
+    if (!holder) return false;
+    *reinterpret_cast<volatile uint8_t*>(holder + 2000 + 0x9f) = 0;
+    return true;
+}
+
 int friend_list_state() {
     uintptr_t c = client();
     auto fm = c ? read_at<uintptr_t>(c + 0x46c0) : 0;

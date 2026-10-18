@@ -251,6 +251,10 @@ final class Native {
     static native int friendListState();
     /** Probe: the first `len` bytes of the game's widget target-mode state (game.cpp target_state_bytes); null if unreadable. */
     static native byte[] targetState(int len);
+    /** The game's widget target mode: {active 0/1, selected component id, CC_CREATE index}; null if unreadable. Game thread. */
+    static native int[] targetMode();
+    /** Leaves target mode (Client.setWidgetSelected(false)). Game thread. */
+    static native boolean endTargetMode();
     /** The game's settings-changed scene reload (state 30 -> 25); client thread only. */
     static native boolean reloadScene();
     /** Writes an actor's overhead text (null keeps it) and timer (-1 keeps it); client thread only. */

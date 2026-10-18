@@ -250,8 +250,8 @@ public class AndroidWidget extends WidgetBag {
     @Override public void setOnScrollWheelListener(Object... a) { stored(a); }
     @Override public void setOnKeyListener(Object... a) { stored(a); }
     @Override public void setOnDialogAbortListener(Object... a) { stored(a); }
-    @Override public void setOnTargetEnterListener(Object... a) { stored(a); }
-    @Override public void setOnTargetLeaveListener(Object... a) { stored(a); }
+    @Override public void setOnTargetEnterListener(Object... a) { WidgetListeners.setListener(WidgetListeners.TARGET_ENTER, id, childIndex(), a); }
+    @Override public void setOnTargetLeaveListener(Object... a) { WidgetListeners.setListener(WidgetListeners.TARGET_LEAVE, id, childIndex(), a); }
     @Override public Object[] getOnVarTransmitListener() { return Native.widgetListener(id, childIndex(), 0x590); }
     @Override public Object[] getOnInvTransmitListener() { return Native.widgetListener(id, childIndex(), 0x5d8); }
     // Read from the game; an empty array (not null) when unreadable, since plugins stream it

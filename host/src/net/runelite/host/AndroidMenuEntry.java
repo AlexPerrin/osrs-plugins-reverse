@@ -62,6 +62,10 @@ final class AndroidMenuEntry implements MenuEntry {
     // [6] plane, [7]/[8] world x/y, [9] = u16 world view | target type << 16 | ? << 24.
     static final int T_CANCEL = 0, T_WALK = 1, T_NPC = 2, T_LOC = 3, T_OBJ = 4, T_PLAYER = 6, T_WIDGET = 7;
     static final int OP_EXAMINE = 0x7ffffffe;
+    /** Target-mode entries ("<verb> <selected> -> <target>", widget target mode on) carry op -1 (seen 2026-10-18). */
+    static final int OP_TARGET = -1;
+    /** raw[9] bits 24-31: 1 on a widget's target-verb entry ("Lookup Wiki", "Use") and on widget targets, 2 on its ops. */
+    int entryClass() { return raw[9] >>> 24 & 0xff; }
 
     int targetType() { return raw[9] >>> 16 & 0xff; }
     int op() { return raw[5]; }
@@ -107,7 +111,12 @@ final class AndroidMenuEntry implements MenuEntry {
             case T_WIDGET:
                 param0 = raw[3];
                 param1 = raw[2];
-                if ("Use".equals(option)) {
+                if (entryClass() == 1 && op == OP_TARGET) {
+                    // A widget picked while in target mode ("Lookup Wiki -> Logs": raw[5] -1, class 1).
+                    type = MenuAction.WIDGET_TARGET_ON_WIDGET;
+                    identifier = 0;
+                } else if ("Use".equals(option) || entryClass() == 1) {
+                    // The target verb of a targetable widget ("Use", Wiki's "Lookup": raw[5] 4, class 1).
                     type = MenuAction.WIDGET_TARGET;
                     identifier = 0;
                 } else if (op == OP_EXAMINE) {
@@ -162,6 +171,7 @@ final class AndroidMenuEntry implements MenuEntry {
             case 6: return MenuAction.PLAYER_SIXTH_OPTION;
             case 7: return MenuAction.PLAYER_SEVENTH_OPTION;
             case 8: return MenuAction.PLAYER_EIGHTH_OPTION;
+            case OP_TARGET: return MenuAction.WIDGET_TARGET_ON_PLAYER;  // unverified: by analogy with NPC/loc/widget
             default: return MenuAction.UNKNOWN;
         }
     }
@@ -191,6 +201,7 @@ final class AndroidMenuEntry implements MenuEntry {
             case 3: return MenuAction.NPC_THIRD_OPTION;
             case 4: return MenuAction.NPC_FOURTH_OPTION;
             case 5: return MenuAction.NPC_FIFTH_OPTION;
+            case OP_TARGET: return MenuAction.WIDGET_TARGET_ON_NPC;  // unverified: by analogy with loc/widget
             default: return MenuAction.UNKNOWN;
         }
     }
@@ -202,6 +213,7 @@ final class AndroidMenuEntry implements MenuEntry {
             case 3: return MenuAction.GROUND_ITEM_THIRD_OPTION;
             case 4: return MenuAction.GROUND_ITEM_FOURTH_OPTION;
             case 5: return MenuAction.GROUND_ITEM_FIFTH_OPTION;
+            case OP_TARGET: return MenuAction.WIDGET_TARGET_ON_GROUND_ITEM;  // unverified: by analogy with loc/widget
             default: return MenuAction.UNKNOWN;
         }
     }
@@ -213,6 +225,7 @@ final class AndroidMenuEntry implements MenuEntry {
             case 3: return MenuAction.GAME_OBJECT_THIRD_OPTION;
             case 4: return MenuAction.GAME_OBJECT_FOURTH_OPTION;
             case 5: return MenuAction.GAME_OBJECT_FIFTH_OPTION;
+            case OP_TARGET: return MenuAction.WIDGET_TARGET_ON_GAME_OBJECT;  // seen: "Lookup Wiki -> Tree" raw[5] -1
             default: return MenuAction.UNKNOWN;
         }
     }

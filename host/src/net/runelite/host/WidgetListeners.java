@@ -165,9 +165,9 @@ final class WidgetListeners {
     // the release cycle (which runs onDragComplete); VAR_TRANSMIT at the next client cycle after a
     // varp transmit, when the widget's host-side trigger list is null or contains a changed varp.
     // The rest are stored only (a touch client has no hover/mouse-repeat/scroll-wheel/key events for
-    // them, and click/hold/release/target/dialog-abort aren't hooked): set/clear works, nothing fires.
+    // them, and click/hold/release/dialog-abort aren't hooked; TARGET_ENTER/LEAVE follow the game's target mode in runTargetMode): set/clear works, nothing fires.
     // unverified: on the device.
-    static final int TIMER = 0, DRAG = 1, VAR_TRANSMIT = 2, STORED = 3;
+    static final int TIMER = 0, DRAG = 1, VAR_TRANSMIT = 2, STORED = 3, TARGET_ENTER = 4, TARGET_LEAVE = 5;
     private static final Map<Integer, Map<Long, Object[]>> javaListeners = new HashMap<>();  // kind -> key -> {Long ptr, Object[] listener}
     private static final Map<Long, Object[]> varTriggers = new HashMap<>();  // key -> {Long ptr, int[] triggers}
     private static final java.util.Set<Integer> changedVarps = new java.util.HashSet<>();
@@ -245,6 +245,31 @@ final class WidgetListeners {
             for (int i = 0; triggers != null && i < triggers.length && !fire; i++) fire = changed.contains(triggers[i]);
             if (fire) run(client, l, id, index);
         }
+    }
+
+    private static int[] lastTarget;  // {active, component, index} at the previous cycle
+
+    /**
+     * Each client cycle (game thread), while any Java onTargetEnter/onTargetLeave listener is set: follows the
+     * game's target mode (Native.targetMode) and runs the selected widget's onTargetEnter when the mode starts
+     * and its onTargetLeave when it ends or another widget is selected, as desktop runs them (Wiki's orb
+     * "Lookup"). Verified 2026-10-18 gen 33 with Wiki (see docs/plugin-host.md).
+     */
+    static void runTargetMode(net.runelite.api.Client client) {
+        if (!hasListeners(TARGET_ENTER) && !hasListeners(TARGET_LEAVE)) { lastTarget = null; return; }
+        int[] t = Native.targetMode();
+        if (t == null) return;
+        int[] prev = lastTarget;
+        lastTarget = t;
+        boolean wasOn = prev != null && prev[0] != 0, on = t[0] != 0;
+        boolean same = wasOn && on && prev[1] == t[1] && prev[2] == t[2];
+        if (wasOn && !same) runFor(client, TARGET_LEAVE, prev[1], prev[2]);
+        if (on && !same && prev != null) runFor(client, TARGET_ENTER, t[1], t[2]);
+    }
+
+    private static void runFor(net.runelite.api.Client client, int kind, int id, int index) {
+        for (Object[] l : live(kind))
+            if ((Integer) l[0] == id && (Integer) l[1] == index) run(client, l, id, index);
     }
 
     /** A drag cycle of `src` before release (game thread): its Java onDrag listener. */

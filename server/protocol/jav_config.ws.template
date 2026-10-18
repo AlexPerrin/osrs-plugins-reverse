@@ -60,7 +60,7 @@ param=12={{WORLD_ID}}
 param=4=1
 param=17={{HTTP_BASE}}/slr.ws?order=LPWM
 param=19=196515767263-1oo20deqm6edn7ujlihl6rpadk9drhva.apps.googleusercontent.com
-param=3=false
+param=3={{MEMBERS_WORLD}}
 param=16=false
 param=7=0
 param=10=5

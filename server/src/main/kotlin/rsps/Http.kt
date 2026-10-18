@@ -96,8 +96,16 @@ class Http(private val config: Config, private val online: () -> Int) {
             .replace("{{WORLD_HOST}}", config.worldHost)
             .replace("{{WORLD_ID}}", config.worldId.toString())
             .replace("{{WORLD_FLAGS}}", config.worldFlags.toString())
+            .replace("{{MEMBERS_WORLD}}", membersWorld().toString())
             .replace("{{HTTP_BASE}}", config.httpBase)
     }
+
+    /**
+     * jav_config param 3 is the desktop client's members-world flag (its init compares it with
+     * "true"); without it members items show as "X (Members)" with only Use/Destroy/Examine,
+     * whatever param 5 (world flags) says. The Android client goes by the world list instead.
+     */
+    private fun membersWorld(): Boolean = (config.worldFlags and 1) != 0
 
     private fun minimalJavConfig(): String = buildString {
         fun line(s: String) = append(s).append('\n')
@@ -119,7 +127,7 @@ class Http(private val config: Config, private val online: () -> Int) {
         line("applet_maxheight=2160")
         line("msg=lang0=English")
         line("param=2=${config.httpBase}/")
-        line("param=3=false")
+        line("param=3=${membersWorld()}")
         line("param=4=1")
         line("param=5=${config.worldFlags}")
         line("param=7=0")

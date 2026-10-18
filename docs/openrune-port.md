@@ -1815,3 +1815,21 @@ At stage 2 (boys paid, Fluffs not found) Gertrude now uses the transcript's own 
 manage to find Shilop? I can't keep an eye on him for the life of me." ... "Thanks again, adventurer.") instead of
 the stage-1 "What about Shilop?" lines. Once Fluffs is found she gives the sardine advice as before. Test added
 (24 in `GertrudesCatInteractionTest`). Expressions are our choice.
+
+## Doric's Quest (nineteenth server dev)
+
+`content/quest/.../area/falador/DoricsQuest.kt`. Progress is varp 31 (`varp.doricquest`) through the server-only
+varbit `doric_quest_progress` (bits 0-6, gameval 63743): 0, 10 started, 100 complete. QH 4.18's `DoricsQuest` uses
+step keys 0 (talk to Doric: "I wanted to use your anvils.", "Yes.", "Yes, I will get you the materials.") and 10
+(bring 6 clay, 4 copper ore, 2 iron ore); the cache dbrow `quest_dorics` has endstate 100 (checked at startup).
+- Dialogue from the wiki transcript: the five opening topics, the start (bronze pickaxe), "Where can I find
+  those?" (with the under-15-Mining lines), the already-carrying shortcut ("In fact, in the exact quantities too!"
+  only when the counts are exact), the hand-in ("You hand the clay, copper, and iron to Doric."). Rewards (wiki):
+  1 QP, 1,300 Mining XP, 180 coins.
+- **Ours / guesses:** the journal text; the after-quest dialogue (the transcript has none; it reuses the greeting
+  and two non-quest topics); the scroll item display (steel pickaxe); Doric's "Remember, I need ..." answer when the
+  anvil is clicked mid-quest. Smith (op 1) on `loc.dorics_anvil` before completion brings up Doric's "Hey, who said
+  you could use that?" dialogue through `LocOpOverrides`; using a bar or hammer on the anvil is not stopped. The
+  whetstone line ("You should probably ask before using that.") is not wired.
+- Tests: `DoricsQuestInteractionTest` (5): start, decline, too few materials, exact take with extras kept and a
+  single reward, start-with-materials shortcut.

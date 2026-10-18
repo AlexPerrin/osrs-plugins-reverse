@@ -17,4 +17,13 @@ public class DetachedWidget extends WidgetBag {
     @Override public int getId() { return parent.getId(); }
     @Override public int getType() { return type; }
     @Override public void revalidate() {}
+
+    private static final Widget SINK = new WidgetBag();
+
+    /**
+     * A widget that absorbs everything (WidgetBag: setters kept, createChild returns itself, nothing is
+     * drawn). ChatboxPanelManager.getContainerWidget returns it: desktop chatbox inputs that draw into the
+     * chatbox container (Wiki's search predictions) then run without a chatbox; their text is not shown.
+     */
+    public static Widget sink() { return SINK; }
 }

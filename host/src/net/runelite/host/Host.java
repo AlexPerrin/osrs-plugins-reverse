@@ -402,6 +402,10 @@ public final class Host {
         if (s == GameState.LOGGED_IN && !profilePosted) {
             profilePosted = true;
             bus.post(new net.runelite.client.events.RuneScapeProfileChanged(null, "default"));
+            // Desktop posts UsernameChanged when the login name is set; Android token logins have no
+            // name field, so it is posted once per login here, once getUsername/getAccountHash are
+            // valid (Mahogany Homes reloads its saved contract on it). unverified: on the device.
+            bus.post(new net.runelite.api.events.UsernameChanged());
         }
         // Desktop posts WorldViewLoaded for the top-level view when a scene load finishes, before
         // the LOADING -> LOGGED_IN change (Ground Markers/Object Indicators reload their points

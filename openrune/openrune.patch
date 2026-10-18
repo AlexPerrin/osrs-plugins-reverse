@@ -230,6 +230,34 @@ index 8fa952c42..867e8f1f9 100644
 +        val NEW_CHARACTER_COORDS = CoordGrid(3222, 3218, 0)
 +    }
  }
+diff --git a/api/core/src/main/kotlin/org/rsmod/api/core/module/PlayerModule.kt b/api/core/src/main/kotlin/org/rsmod/api/core/module/PlayerModule.kt
+index 4947576e2..9687da30d 100644
+--- a/api/core/src/main/kotlin/org/rsmod/api/core/module/PlayerModule.kt
++++ b/api/core/src/main/kotlin/org/rsmod/api/core/module/PlayerModule.kt
+@@ -5,6 +5,8 @@ import jakarta.inject.Inject
+ import org.rsmod.api.player.music.MusicPlayer
+ import org.rsmod.api.player.hook.GroundItemDropResolver
+ import org.rsmod.api.player.hook.PlayerGroundItemDropHook
++import org.rsmod.api.player.hook.PlayerObjTakeRedirectHook
++import org.rsmod.api.player.hook.PlayerObjTakeRedirector
+ import org.rsmod.api.player.hook.PlayerObjTakeValidateHook
+ import org.rsmod.api.player.hook.PlayerObjTakeValidator
+ import org.rsmod.api.player.hook.PlayerTeleportValidateHook
+@@ -20,12 +22,14 @@ public object PlayerModule : ExtendedModule() {
+         newSetBinding<PlayerTeleportValidateHook>()
+         newSetBinding<PlayerGroundItemDropHook>()
+         newSetBinding<PlayerObjTakeValidateHook>()
++        newSetBinding<PlayerObjTakeRedirectHook>()
+         bindInstance<MusicPlayer>()
+         bindInstance<ProtectedAccessContextFactory>()
+         bindInstance<ProtectedAccessLauncher>()
+         bindInstance<PlayerTeleportValidator>()
+         bindInstance<GroundItemDropResolver>()
+         bindInstance<PlayerObjTakeValidator>()
++        bindInstance<PlayerObjTakeRedirector>()
+         bindProvider(ShuffledPlayerListProvider::class.java)
+     }
+ 
 diff --git a/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt b/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt
 index eddd260e2..5509c7c4a 100644
 --- a/api/db/src/main/kotlin/org/rsmod/api/db/jdbc/GameDatabase.kt
@@ -1107,6 +1135,61 @@ index 000000000..5d823a90b
 +        assertFalse(player.manualLogout)
 +    }
 +}
+diff --git a/api/obj-plugin/src/main/kotlin/org/rsmod/api/obj/plugin/ObjTakePlugin.kt b/api/obj-plugin/src/main/kotlin/org/rsmod/api/obj/plugin/ObjTakePlugin.kt
+index 2ccdd0ee9..8bc79f667 100644
+--- a/api/obj-plugin/src/main/kotlin/org/rsmod/api/obj/plugin/ObjTakePlugin.kt
++++ b/api/obj-plugin/src/main/kotlin/org/rsmod/api/obj/plugin/ObjTakePlugin.kt
+@@ -4,6 +4,7 @@ import dev.openrune.ServerCacheManager
+ import jakarta.inject.Inject
+ import org.rsmod.api.config.Constants
+ import org.rsmod.api.invtx.invAdd
++import org.rsmod.api.player.hook.PlayerObjTakeRedirector
+ import org.rsmod.api.player.hook.PlayerObjTakeValidator
+ import org.rsmod.api.player.output.mes
+ import org.rsmod.api.player.protect.ProtectedAccess
+@@ -11,6 +12,7 @@ import org.rsmod.api.repo.obj.ObjRepository
+ import org.rsmod.api.script.advanced.onDefaultOpObj3
+ import org.rsmod.game.entity.Player
+ import org.rsmod.game.inv.InvObj
++import org.rsmod.game.inv.Inventory
+ import org.rsmod.game.obj.Obj
+ import org.rsmod.objtx.TransactionResultList
+ import org.rsmod.plugin.scripts.PluginScript
+@@ -21,6 +23,7 @@ public class ObjTakePlugin
+ constructor(
+     private val repo: ObjRepository,
+     private val takeValidator: PlayerObjTakeValidator,
++    private val takeRedirector: PlayerObjTakeRedirector,
+ ) : PluginScript() {
+     override fun ScriptContext.startup() {
+         onDefaultOpObj3 { triggerTake(it.obj) }
+@@ -59,7 +62,7 @@ constructor(
+             mes(Constants.dm_take_taken)
+             return
+         }
+-        val take = transaction(obj)
++        val take = transaction(obj, takeTarget(obj))
+         if (take.failure) {
+             mes(Constants.dm_take_invspace)
+         } else {
+@@ -67,8 +70,14 @@ constructor(
+         }
+     }
+ 
+-    private fun Player.hasInvSpace(obj: Obj): Boolean = transaction(obj).success
++    private fun Player.hasInvSpace(obj: Obj): Boolean = transaction(obj, takeTarget(obj)).success
+ 
+-    private fun Player.transaction(obj: Obj): TransactionResultList<InvObj> =
+-        invAdd(inv, obj.type, obj.count, autoCommit = false)
++    private fun Player.takeTarget(obj: Obj): Inventory {
++        val type = ServerCacheManager.getItem(obj.type) ?: return inv
++        val redirect = takeRedirector.redirect(this, obj, type) ?: return inv
++        return if (transaction(obj, redirect).success) redirect else inv
++    }
++
++    private fun Player.transaction(obj: Obj, into: Inventory): TransactionResultList<InvObj> =
++        invAdd(into, obj.type, obj.count, autoCommit = false)
+ }
 diff --git a/api/player-output/src/main/kotlin/org/rsmod/api/player/output/Camera.kt b/api/player-output/src/main/kotlin/org/rsmod/api/player/output/Camera.kt
 index 58c9627f9..4c44bb4e9 100644
 --- a/api/player-output/src/main/kotlin/org/rsmod/api/player/output/Camera.kt
@@ -1186,6 +1269,44 @@ index ef93f420a..493c153e6 100644
  public sealed class NpcContentEvents {
      public sealed class Op(public val npc: Npc, contentGroup: Int) : OpEvent(contentGroup.toLong())
  
+diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/hook/GroundItemHooks.kt b/api/player/src/main/kotlin/org/rsmod/api/player/hook/GroundItemHooks.kt
+index 5f98d35e1..5331cfc7b 100644
+--- a/api/player/src/main/kotlin/org/rsmod/api/player/hook/GroundItemHooks.kt
++++ b/api/player/src/main/kotlin/org/rsmod/api/player/hook/GroundItemHooks.kt
+@@ -3,6 +3,7 @@ package org.rsmod.api.player.hook
+ import dev.openrune.types.ItemServerType
+ import jakarta.inject.Inject
+ import org.rsmod.game.entity.Player
++import org.rsmod.game.inv.Inventory
+ import org.rsmod.game.obj.Obj
+ import org.rsmod.map.CoordGrid
+ 
+@@ -44,6 +45,14 @@ public fun interface PlayerObjTakeValidateHook {
+     public fun validateTake(player: Player, obj: Obj, objType: ItemServerType): String?
+ }
+ 
++public fun interface PlayerObjTakeRedirectHook {
++    /**
++     * @return The inventory a picked-up [obj] goes into instead of the player's own, or `null` to
++     *   leave it alone. The pickup falls back to the player's inventory when it does not fit.
++     */
++    public fun takeInto(player: Player, obj: Obj, objType: ItemServerType): Inventory?
++}
++
+ public class GroundItemDropResolver
+ @Inject
+ constructor(private val hooks: Set<@JvmSuppressWildcards PlayerGroundItemDropHook>) {
+@@ -75,3 +84,10 @@ constructor(private val hooks: Set<@JvmSuppressWildcards PlayerObjTakeValidateHo
+         return null
+     }
+ }
++
++public class PlayerObjTakeRedirector
++@Inject
++constructor(private val hooks: Set<@JvmSuppressWildcards PlayerObjTakeRedirectHook>) {
++    public fun redirect(player: Player, obj: Obj, objType: ItemServerType): Inventory? =
++        hooks.firstNotNullOfOrNull { it.takeInto(player, obj, objType) }
++}
 diff --git a/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt b/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt
 index 56803cfbc..38bd6305c 100644
 --- a/api/player/src/main/kotlin/org/rsmod/api/player/interact/LocInteractions.kt
@@ -5434,6 +5555,82 @@ index 000000000..fde4f5b40
 +achievement_diary_kourend_elite_6 = 61916
 +achievement_diary_kourend_elite_7 = 61917
 +achievement_diary_kourend_elite_8 = 61918
+diff --git a/content/interfaces/bank/src/main/kotlin/org/rsmod/content/interfaces/bank/scripts/BankInvScript.kt b/content/interfaces/bank/src/main/kotlin/org/rsmod/content/interfaces/bank/scripts/BankInvScript.kt
+index 30b2779e5..901ded983 100644
+--- a/content/interfaces/bank/src/main/kotlin/org/rsmod/content/interfaces/bank/scripts/BankInvScript.kt
++++ b/content/interfaces/bank/src/main/kotlin/org/rsmod/content/interfaces/bank/scripts/BankInvScript.kt
+@@ -89,6 +89,8 @@ constructor(
+         onIfModalButton("component.bankside:items") { sideInvOp(it.comsub, it.op) }
+         onIfModalButton("component.bankmain:items") { mainInvOp(it.comsub, it.op) }
+         onIfModalButton("component.bankside:wornops") { wornInvOp(it.comsub, it.op) }
++        onIfModalButton("component.bankside:lootingbag_items") { lootingBagOp(it.comsub, it.op) }
++        onIfModalButton("component.bankside:lootingbag_bankall") { depositLootingBag() }
+         onIfModalButton("component.bankmain:depositinv") { depositInv() }
+         onIfModalButton("component.bankmain:depositworn") { depositWorn() }
+         onIfModalButton("component.bankmain:tabs") { selectTab(it.comsub, it.op) }
+@@ -190,6 +192,10 @@ constructor(
+             objExamine(inv, slot)
+             return
+         }
++        // View/Configure (looting bag, rune pouches): the client switches the side panel itself.
++        if (op == IfButtonOp.Op1) {
++            return
++        }
+         val count =
+             when (op) {
+                 IfButtonOp.Op2 -> resolveLeftClickQty()
+@@ -212,6 +218,39 @@ constructor(
+         invDeposit(slot, count, inv)
+     }
+ 
++    private suspend fun ProtectedAccess.lootingBagOp(slot: Int, op: IfButtonOp) {
++        val bag = inv("inv.looting_bag")
++        if (op == IfButtonOp.Op10) {
++            objExamine(bag, slot)
++            return
++        }
++        val count =
++            when (op) {
++                IfButtonOp.Op1 -> resolveLeftClickQty()
++                IfButtonOp.Op2 -> 1
++                IfButtonOp.Op3 -> 5
++                IfButtonOp.Op4 -> 10
++                IfButtonOp.Op5 -> resolveLastDepositQty()
++                IfButtonOp.Op6 -> {
++                    val input = countDialog()
++                    lastQtyInput = input
++                    input
++                }
++                IfButtonOp.Op7 -> Int.MAX_VALUE
++                else -> return
++            }
++        invDeposit(slot, count, bag)
++    }
++
++    private fun ProtectedAccess.depositLootingBag() {
++        val bag = inv("inv.looting_bag")
++        if (bag.isEmpty()) {
++            mes("You have nothing to deposit.")
++            return
++        }
++        depositInventory(bag)
++    }
++
+     public fun ProtectedAccess.invDeposit(slot: Int, count: Int, inventory: Inventory): Boolean {
+         val obj = inventory[slot]
+         if (obj == null) {
+diff --git a/content/interfaces/bank/src/main/kotlin/org/rsmod/content/interfaces/bank/scripts/BankOpenScript.kt b/content/interfaces/bank/src/main/kotlin/org/rsmod/content/interfaces/bank/scripts/BankOpenScript.kt
+index 3e5130d0e..8909d1437 100644
+--- a/content/interfaces/bank/src/main/kotlin/org/rsmod/content/interfaces/bank/scripts/BankOpenScript.kt
++++ b/content/interfaces/bank/src/main/kotlin/org/rsmod/content/interfaces/bank/scripts/BankOpenScript.kt
+@@ -69,6 +69,7 @@ constructor(
+         }
+ 
+         startInvTransmit(bank)
++        startInvTransmit(invMap.getOrPut("inv.looting_bag"))
+     }
+ 
+     private fun Player.onBankClose() {
 diff --git a/content/interfaces/gameframe/build.gradle.kts b/content/interfaces/gameframe/build.gradle.kts
 index 2c82bf53e..f42c31ce0 100644
 --- a/content/interfaces/gameframe/build.gradle.kts
@@ -14350,10 +14547,10 @@ index 000000000..6c0589979
 +protect = false
 diff --git a/content/other/looting-bag/src/integration/kotlin/org/rsmod/content/other/lootingbag/LootingBagScriptTest.kt b/content/other/looting-bag/src/integration/kotlin/org/rsmod/content/other/lootingbag/LootingBagScriptTest.kt
 new file mode 100644
-index 000000000..7025777ee
+index 000000000..00432f887
 --- /dev/null
 +++ b/content/other/looting-bag/src/integration/kotlin/org/rsmod/content/other/lootingbag/LootingBagScriptTest.kt
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,98 @@
 +package org.rsmod.content.other.lootingbag
 +
 +import dev.openrune.ServerCacheManager
@@ -14361,6 +14558,8 @@ index 000000000..7025777ee
 +import dev.openrune.types.InvScope
 +import org.junit.jupiter.api.Assertions.assertEquals
 +import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertNull
++import org.junit.jupiter.api.Assertions.assertSame
 +import org.junit.jupiter.api.Assertions.assertTrue
 +import org.junit.jupiter.api.Test
 +import org.junit.jupiter.api.parallel.Execution
@@ -14368,7 +14567,9 @@ index 000000000..7025777ee
 +import org.rsmod.api.testing.GameTestState
 +import org.rsmod.content.other.lootingbag.LootingBagScript.Companion.BAG
 +import org.rsmod.content.other.lootingbag.LootingBagScript.Companion.BAG_INV
++import org.rsmod.content.other.lootingbag.LootingBagScript.Companion.BAG_OPEN
 +import org.rsmod.game.inv.InvObj
++import org.rsmod.map.CoordGrid
 +
 +@Execution(ExecutionMode.SAME_THREAD)
 +class LootingBagScriptTest {
@@ -14426,13 +14627,50 @@ index 000000000..7025777ee
 +            assertEquals(1, player.inv.count("obj.bronze_dagger"))
 +            assertEquals(0, bag.count("obj.bronze_dagger"))
 +        }
++
++    @Test
++    fun GameTestState.`an open bag takes tradeable pickups only in the wilderness`() =
++        runGameTest(LootingBagScript::class) {
++            val dagger = ServerCacheManager.getItem("obj.bronze_dagger".asRSCM())!!
++            val coalBag = ServerCacheManager.getItem("obj.coal_bag".asRSCM())!!
++            val bag = player.invMap.getOrPut(BAG_INV)
++            player.teleport(WILDERNESS)
++            player.inv[0] = InvObj(BAG, 1)
++            assertNull(player.openBagFor(dagger))
++            player.inv[0] = InvObj(BAG_OPEN, 1)
++            assertSame(bag, player.openBagFor(dagger))
++            assertNull(player.openBagFor(coalBag))
++            player.teleport(LUMBRIDGE)
++            assertNull(player.openBagFor(dagger))
++        }
++
++    private companion object {
++        val WILDERNESS = CoordGrid(3100, 3600)
++        val LUMBRIDGE = CoordGrid(3222, 3218)
++    }
++}
+diff --git a/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagModule.kt b/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagModule.kt
+new file mode 100644
+index 000000000..787dd5494
+--- /dev/null
++++ b/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagModule.kt
+@@ -0,0 +1,10 @@
++package org.rsmod.content.other.lootingbag
++
++import org.rsmod.api.player.hook.PlayerObjTakeRedirectHook
++import org.rsmod.plugin.module.PluginModule
++
++public class LootingBagModule : PluginModule() {
++    override fun bind() {
++        addSetBinding<PlayerObjTakeRedirectHook>(LootingBagTakeHook::class.java)
++    }
 +}
 diff --git a/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagScript.kt b/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagScript.kt
 new file mode 100644
-index 000000000..a6abf79b5
+index 000000000..08bdf097b
 --- /dev/null
 +++ b/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagScript.kt
-@@ -0,0 +1,163 @@
+@@ -0,0 +1,191 @@
 +package org.rsmod.content.other.lootingbag
 +
 +import dev.openrune.ServerCacheManager
@@ -14451,15 +14689,19 @@ index 000000000..a6abf79b5
 +import org.rsmod.api.script.onOpHeld1
 +import org.rsmod.api.script.onOpHeld2
 +import org.rsmod.api.script.onOpHeld3
++import org.rsmod.api.script.onOpHeld4
 +import org.rsmod.api.script.onOpHeldU
++import org.rsmod.api.player.vars.boolVarBit
++import org.rsmod.game.entity.Player
 +import org.rsmod.plugin.scripts.PluginScript
 +import org.rsmod.plugin.scripts.ScriptContext
 +
 +/**
 + * The looting bag (OSRS Wiki): Open/Close swaps the bag's variant, Check shows the bag's inventory
 + * (`inv.looting_bag`, which RuneLite's looting bag plugins read), Deposit and using an item on
-+ * the bag store tradeable items while in the Wilderness. Not done: auto-looting while open,
-+ * Settings, emptying it into the bank.
++ * the bag store tradeable items while in the Wilderness, Settings picks whether using an item on
++ * the bag asks how many. Picking items up into an open bag is [LootingBagTakeHook]; emptying it
++ * into the bank is the bank's `bankside:lootingbag_items`.
 + */
 +class LootingBagScript : PluginScript() {
 +    override fun ScriptContext.startup() {
@@ -14468,6 +14710,7 @@ index 000000000..a6abf79b5
 +        for (bag in listOf(BAG, BAG_OPEN)) {
 +            onOpHeld2(bag) { check() }
 +            onOpHeld3(bag) { openDeposit() }
++            onOpHeld4(bag) { settings() }
 +            onOpHeldU(bag) { useOnBag(it) }
 +        }
 +        onIfModalButton(ITEMS) { depositOp(it.comsub, it.op) }
@@ -14480,6 +14723,20 @@ index 000000000..a6abf79b5
 +
 +    private fun ProtectedAccess.check() {
 +        openBagInterface(MODE_BAG, "Looting bag")
++        ifSetEvents(ITEMS, bag().indices, IfEvent.Op10)
++    }
++
++    private suspend fun ProtectedAccess.settings() {
++        startDialogue {
++            player.storeAll =
++                choice2(
++                    "... ask how many to store.",
++                    false,
++                    "... always store as many as possible.",
++                    true,
++                    title = "When using items on the bag...",
++                )
++        }
 +    }
 +
 +    private fun ProtectedAccess.openDeposit() {
@@ -14488,7 +14745,7 @@ index 000000000..a6abf79b5
 +            return
 +        }
 +        openBagInterface(MODE_DEPOSIT, "Add to bag")
-+        ifSetEvents(ITEMS, inv.indices, IfEvent.Op1, IfEvent.Op2, IfEvent.Op3, IfEvent.Op10)
++        ifSetEvents(ITEMS, inv.indices, IfEvent.Op1, IfEvent.Op2, IfEvent.Op3, IfEvent.Op4, IfEvent.Op9)
 +    }
 +
 +    private fun ProtectedAccess.openBagInterface(mode: Int, title: String) {
@@ -14507,7 +14764,7 @@ index 000000000..a6abf79b5
 +            mes("You may be surprised to learn that bagception is not permitted.")
 +            return
 +        }
-+        val count = startDialogueChoice() ?: return
++        val count = if (player.storeAll) Int.MAX_VALUE else startDialogueChoice() ?: return
 +        store(other.internalName, count)
 +    }
 +
@@ -14528,17 +14785,26 @@ index 000000000..a6abf79b5
 +        return count
 +    }
 +
-+    private fun ProtectedAccess.depositOp(slot: Int, op: IfButtonOp) {
++    private suspend fun ProtectedAccess.depositOp(slot: Int, op: IfButtonOp) {
++        if (op == IfButtonOp.Op10) {
++            objExamine(bag(), slot)
++            return
++        }
 +        val obj = inv[slot] ?: return
++        if (op == IfButtonOp.Op9) {
++            objExamine(inv, slot)
++            return
++        }
 +        val internal = RSCM.getReverseMapping(RSCMType.OBJ, obj.id)
 +        val count =
 +            when (op) {
 +                IfButtonOp.Op1 -> 1
 +                IfButtonOp.Op2 -> FIVE
 +                IfButtonOp.Op3 -> Int.MAX_VALUE
++                IfButtonOp.Op4 -> countDialog()
 +                else -> return
 +            }
-+        store(internal, count)
++        if (count > 0) store(internal, count)
 +    }
 +
 +    /** Moves up to [requested] of [obj] from the inventory into the bag in one transaction. */
@@ -14548,9 +14814,7 @@ index 000000000..a6abf79b5
 +            return false
 +        }
 +        val type = ServerCacheManager.getItem(obj.asRSCM(RSCMType.OBJ)) ?: return false
-+        // `tradeable` still reads true for items the server config marks untradeable (the codec
-+        // fix alone does not carry it through packing); GE items stand in for tradeable ones.
-+        if (!type.stockmarket) {
++        if (!type.tradeable) {
 +            mes("Only tradeable items can be put in the bag.")
 +            return false
 +        }
@@ -14594,7 +14858,39 @@ index 000000000..a6abf79b5
 +        const val OUTSIDE_WILDERNESS = "You can't put items in the bag unless you're in the Wilderness."
 +
 +        val BAGS = setOf(BAG, BAG_OPEN)
++
++        private var Player.storeAll by boolVarBit("varbit.lootingbag_useallitems")
 +    }
++}
+diff --git a/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagTakeHook.kt b/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagTakeHook.kt
+new file mode 100644
+index 000000000..6d46fdaae
+--- /dev/null
++++ b/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagTakeHook.kt
+@@ -0,0 +1,24 @@
++package org.rsmod.content.other.lootingbag
++
++import dev.openrune.types.ItemServerType
++import org.rsmod.api.area.checker.isInWildernessBasic
++import org.rsmod.api.player.hook.PlayerObjTakeRedirectHook
++import org.rsmod.content.other.lootingbag.LootingBagScript.Companion.BAG_INV
++import org.rsmod.content.other.lootingbag.LootingBagScript.Companion.BAG_OPEN
++import org.rsmod.content.other.lootingbag.LootingBagScript.Companion.BAGS
++import org.rsmod.game.entity.Player
++import org.rsmod.game.inv.Inventory
++import org.rsmod.game.obj.Obj
++
++/** An open bag takes every tradeable item picked up in the Wilderness (OSRS Wiki, "Usage"). */
++public class LootingBagTakeHook : PlayerObjTakeRedirectHook {
++    override fun takeInto(player: Player, obj: Obj, objType: ItemServerType): Inventory? =
++        player.openBagFor(objType)
++}
++
++public fun Player.openBagFor(objType: ItemServerType): Inventory? {
++    if (inv.count(BAG_OPEN) == 0) return null
++    if (!objType.tradeable || objType.internalName in BAGS) return null
++    if (!coords.isInWildernessBasic()) return null
++    return invMap.getOrPut(BAG_INV)
 +}
 diff --git a/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/cats/CatCare.kt b/content/other/pets/src/main/kotlin/org/rsmod/content/other/pets/cats/CatCare.kt
 index 35dd61859..90641375b 100644
@@ -68466,6 +68762,65 @@ index 9387eba2d..81af92826 100644
          private val SYMBOL_LINE = Regex("""^\s*(\S+)\s+(.+?)\s*$""")
  
          /**
+diff --git a/or-cache/src/main/kotlin/dev/openrune/tools/PackServerConfigOSRS.kt b/or-cache/src/main/kotlin/dev/openrune/tools/PackServerConfigOSRS.kt
+index 79d873031..479cb0bc6 100644
+--- a/or-cache/src/main/kotlin/dev/openrune/tools/PackServerConfigOSRS.kt
++++ b/or-cache/src/main/kotlin/dev/openrune/tools/PackServerConfigOSRS.kt
+@@ -44,6 +44,11 @@ data class PackType(
+     val kType: KType,
+     /** Config archive this type writes (and, for merged types, reads its base definitions from). */
+     val archive: Int,
++    /**
++     * Part of the incremental fingerprint: bump it when the codec packs the same inputs
++     * differently, or an existing cache keeps the old output.
++     */
++    val codecVersion: Int,
+     val pack: PackServerConfig.(Cache, Map<String, List<Definition>>, String) -> Unit,
+ )
+ 
+@@ -143,6 +148,7 @@ class PackServerConfig(
+             loadBaseInto = { c, dest -> OsrsCacheProvider.ItemDecoder(dev.openrune.revision.first).load(c, dest) },
+             codec = { base, overlay -> ItemServerCodec(rev,base, overlay) },
+             create = { ItemServerType(it) },
++            codecVersion = 2,
+         )
+ 
+         registerMergedBaseAndTomlPackType<VarpServerType, VarpType>(
+@@ -348,7 +354,10 @@ class PackServerConfig(
+                     ),
+                 ),
+                 extraDeps = sharedInputs,
+-                extraFingerprints = mapOf("base-archive" to "${baseArchive?.crc}:${baseArchive?.revision}"),
++                extraFingerprints = mapOf(
++                    "base-archive" to "${baseArchive?.crc}:${baseArchive?.revision}",
++                    "codec-version" to packType.codecVersion.toString(),
++                ),
+             ) { packCache, _ ->
+                 ensureManagers()
+                 packType.pack(this, packCache, parsed, packType.table)
+@@ -394,8 +403,9 @@ class PackServerConfig(
+             crossinline loadBaseInto: (Cache, MutableMap<Int, B>) -> Unit,
+             crossinline codec: (Map<Int, B>, Map<Int, T>) -> OpcodeDefinitionCodec<T>,
+             noinline create: (Int) -> T,
++            codecVersion: Int = 1,
+         ) {
+-            registerPackType<T>(table, decoder.getArchive(0), tomlMapper) { cache, parsed, _ ->
++            registerPackType<T>(table, decoder.getArchive(0), tomlMapper, codecVersion) { cache, parsed, _ ->
+                 val base = mutableMapOf<Int, B>().apply { loadBaseInto(cache, this) }
+                 val overlay = parsedById<T>(parsed, table)
+                 val ids = (base.keys + overlay.keys).distinct().sorted()
+@@ -431,9 +441,10 @@ class PackServerConfig(
+             table: String,
+             archive: Int,
+             tomlMapper: TomlMapper = tomlMapperDefault,
++            codecVersion: Int = 1,
+             noinline pack: PackServerConfig.(Cache, Map<String, List<Definition>>, String) -> Unit,
+         ) {
+-            packTypes[table] = PackType(table, tomlMapper, typeOf<List<T>>(), archive, pack)
++            packTypes[table] = PackType(table, tomlMapper, typeOf<List<T>>(), archive, codecVersion, pack)
+         }
+     }
+ }
 diff --git a/or-cache/src/test/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodecTest.kt b/or-cache/src/test/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodecTest.kt
 new file mode 100644
 index 000000000..c5e5098b6

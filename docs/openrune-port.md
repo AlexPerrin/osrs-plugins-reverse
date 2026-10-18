@@ -2097,3 +2097,55 @@ second cause somewhere in the TOML decode of `[[item]]` blocks (`decodeRuneScape
 packed round trip of opcode 30 is fine (`ItemServerCodecTest`). Until then the looting bag keeps its `stockmarket`
 check. Next step: an or-cache test that decodes a two-line `[[item]]` block with `tradeable = false` through
 `PackServerConfigOSRS`'s mapper.
+
+## Twenty-first server dev (2026-10-18): `tradeable` second cause, looting bag extras
+
+### Item `tradeable`: the second cause was a stale cache (upstream 71, now complete)
+The TOML decode was fine. Probe tests ran the real `items.toml` through `decodeRuneScapeBlocks`/`decodeRuneScape`
+with the constant provider, and also tried `inherit`, `[item.params]` and multi-block variants. They all gave
+`tradeable=false` for coal bag (12019) and looting bag (11941). Reading the packed `.data/cache/SERVER` showed
+those two items at `tradeable=true`, and coins at `stockmarket=true`. Coins at `stockmarket=true` can only come from
+the *old* codec, so the item archive had never been repacked. `PackServerConfig`'s incremental fingerprint covers
+the toml files' contents (`incremental_server`, table `dep_file`, by hash) and the base archive's CRC, but not the
+codec. Touching `items.toml` changes nothing because the content hash stays the same. Fix: `PackType.codecVersion`
+goes into `extraFingerprints` (items: 2). After one `buildCache`, coal bag and looting bag read `tradeable=false`,
+coins `stockmarket=false` and lobster `stockmarket=true` (the tester's GE offer is unaffected). **Proof:**
+`LootingBagScriptTest` "the bag and untradeables stay out" (now a `tradeable` check) fails on the old SERVER cache
+and passes on the rebuilt one. The test reads the packed cache, so it ran in a copy of `src`, because the
+boot-checked outputs in `src` had to stay untouched. The "chest key" in the earlier notes (432) has no
+`tradeable = false` entry in `items.toml`, so it reads `tradeable=true` either way.
+- **Consumers checked:** death drops (`PlayerDeathDrops.isUntradeable`), the guide-price interface
+  (`ocTradable`), and shop selling (`tradeable || stockmarket`: "You can't sell this item.") all just follow the
+  data. With the stale cache every `items.toml` untradeable counted as tradeable, and config entries put non-GE
+  items on the GE (coins, for example). Both are fixed by the repack.
+- The first `buildCache` after this repacks every server config type once (the new fingerprint key). The client's
+  six long-varp scripts (778, 779, 5156, 5732, 5733, 9911) get new CRCs after `fix_long_varps.py`, with the same
+  content.
+
+### Looting bag extras (twenty-first server dev)
+Sources: OSRS Wiki "Looting bag" (Usage: Open makes tradeable pickups in the Wilderness go into the bag; banking:
+"clicking on the items or the 'deposit all' function will bank the items"); "Update:Buffs, Deadman and Mythical
+Cape Designs" (30 Nov 2017, Settings, plus its screenshot of the dialogue: title "When using items on the bag...",
+options "... ask how many to store." / "... always store as many as possible.", default ask); osrs-dumps scripts
+`[proc,wilderness_lootingbag_draw]` (deposit mode ops Store-1/5/All/X = ops 1-4, Examine op 9; bag mode Examine op 10),
+`[proc,bankside_drawitem]` (op 1 "View" on the bag in the bank) and `[proc,bankside_bag_draw]` (bag panel ops
+Deposit-<qty>/1/5/10/<last>/X/All = 1-7, Examine 10) plus `bankside.if3` (`lootingbag_bankall` "Deposit loot"); RuneLite
+gamevals (varbit 6068 `lootingbag_useallitems`).
+- **Settings** (op 4): that dialogue, stored in `varbit.lootingbag_useallitems`. With it set, using an item on the
+  bag stores all of them without asking.
+- **Store-X** (deposit op 4): count dialog. Examine works in both modes.
+- **Auto-loot:** new API hook `PlayerObjTakeRedirectHook` (api/player `GroundItemHooks.kt`, bound in `PlayerModule`,
+  used by `ObjTakePlugin`). `LootingBagTakeHook` (bound in `LootingBagModule`) sends a pickup into the bag when an
+  open bag is in the inventory, the item is tradeable and not a bag, and the player is in the Wilderness
+  (`isInWildernessBasic`). When the bag cannot take it, the pickup goes to the inventory (**guess**: OSRS behaviour
+  with a full bag is not on the wiki). `LOOTINGBAG_IGNORE_FOOD` (varbit 15310, a newer setting) is not done.
+- **Bank:** the bank transmits `inv.looting_bag` on open, so the client's bankside "View" panel draws it (the view
+  switch itself is client-side, `bank_viewcontainer`). `bankside:lootingbag_items` ops deposit through the bank's
+  own `invDeposit` (same quantities as the inventory), and `lootingbag_bankall` uses `depositInventory`.
+  **Simplified:** unbankable items stay in the bag (the wiki says they move to the inventory; tradeable no-bank
+  items should not exist).
+- **Bug found:** clicking "View" on the looting bag (or "Configure" on a rune pouch) in the bank sends bankside op 1,
+  which `BankInvScript.sideInvOp` did not handle: it threw "Invalid main inv op" and the player was
+  disconnected. Op 1 is now ignored. Upstream candidate.
+- Tests: `LootingBagScriptTest` (5; new: an open bag takes tradeable pickups only in the Wilderness). The bank's
+  integration tests are not wired to a suite upstream, so the bank paths still need a desktop check.

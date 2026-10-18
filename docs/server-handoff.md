@@ -45,10 +45,21 @@ Details in `docs/openrune-port.md`, "Eighteenth server dev" and the sections aft
   shows "Report back to Sergeant Tobyn"; Tobyn -> roof 16 -> 24, scroll 1 QP. The guard tail (stage 6) was skipped
   with `::quest children 10` (real-time line-of-sight stealth; unit-tested).
 - **Daddy's Home and His Faithful Servants: complete** with QH on qhtest4 (details in the port doc).
-- **Next candidates:** Gertrude's Cat leftovers (shared Fluffs hide for 100 ticks in `Fluffs.returnKitten`, Stroke
-  = pick-up). Check whether the cache's Fluffs is a multinpc on the quest varbit before changing the hide (not
-  checked: osrs-mcp was disconnected). Optional: a cap on the Daddy's Home waxwood crate; a real run of the Children
-  of the Sun guard tail; the `::item saw` name mapping.
+- **Next candidates (ranked, eighteenth dev):** all 13 OpenRune quests/miniquests have now had a QH run (Cook's
+  Assistant, Sheep Shearer, Romeo & Juliet on Android in phase 3.3; the other 10 on the desktop).
+  1. Gertrude's Cat leftovers (~1 h): returning the kitten hides the shared Fluffs npc for 100 ticks for everyone
+     (`Fluffs.returnKitten`), and Stroke runs the pick-up handler. First check whether the cache's Fluffs is a
+     multinpc on the quest varbit (osrs-mcp `cache_search`); if so the global hide can go.
+  2. Small follow-ups (<1 h each): opening the fullscreen map overwrites the player's stone-arrangement choice
+     (`changeGameframe` copies the fullscreen frame's flag; after 57 a mismatched login then picks pre-EoC instead of
+     classic); the Daddy's Home waxwood crate gives 3 logs per search with no cap (**unverified** against OSRS; check
+     the wiki/transcript before capping); `::item saw` fails on a missing `obj.saw` mapping (debug only).
+  3. Children of the Sun guard tail: a real run (QH's puzzle wrapper lists its hiding tiles; compare them with the
+     server's line-of-sight lookouts in `CotsRoute`). Unit-tested, never run in game.
+  4. Held content behind plugin rows: Music area sounds; the remaining hunter methods for Hunter Rumours
+     (deadfall, net trap, falconry, pitfalls, tracking); Spawn Predictor; GE Sets and custom +/-X% buttons; real
+     friends chat (~1-1.5 d) instead of `::fakeclan`; FRIENDLIST_DEL (low).
+  5. New quests beyond the 13 (new content, larger).
 
 ## Latest state (2026-10-17, seventeenth server dev, on OpenRune)
 

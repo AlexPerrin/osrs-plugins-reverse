@@ -339,6 +339,42 @@ $M --tool screenshot '{}'                             # PNG (base64) of the canv
   `sbclick 0`.
 - `desktop.sh login` with no arguments logged back into the last account (qhab31a), not `desktop`.
 
+**QH on Android, gen 34 (2026-10-18; Android QH 4.17.1 on the fresh account qhand1 via the LOCAL_AUTH account file;
+OpenRune 406b5b3, then ed9cd76 after a restart mid-run).** Compared with the server dev's desktop QH 4.18 runs in
+docs/openrune-port.md. Helpers started with `sbclick` (or `sbtext <quest>` and a tap on the filtered row; `sbclick` fires
+once per value, so reusing a quest name needs another value in between). Dialogue driven with devtools
+(`get_dialogue`/`select_option`, choosing QH's "[n]" options).
+- **Doric's Quest: complete, matches.** "[1] I wanted to use your anvils.", "[1] Yes." highlighted; Doric outlined; varp 31
+  0 -> 10 -> 100; the requirements (6 clay, 4 copper ore, 2 iron ore) red, then green after `::item`, with world and
+  minimap arrows on Doric; the helper closed at 100.
+- **Witch's Potion: complete, matches.** "[1] I am in search of a quest.", "[1] Yes."; varp 67 0 -> 1 -> 2 -> 3; "Bring
+  the ingredients to Hetty" with all four green; "Drink from the cauldron" with the cauldron outlined. **Not covered:**
+  the rat kill (the rat's tail was spawned).
+- **Goblin Diplomacy: complete, matches.** At stage 0 QH's step is the crates, so the generals' menus have no QH mark
+  (desktop the same: options were chosen by hand there too). Varbit 2378 0 -> 3 -> 4 -> 5 -> 6; "Talk to one of the Goblin
+  Generals" / "again" / "once more" with "Orange goblin mail" / "Blue goblin mail" / "Goblin mail" green; "[4] I have some
+  orange/blue/brown armour here." highlighted (alongside "[3] Do you want me to pick..." while at stage 3). **Not
+  covered:** the crate searches, the lookout ladder and dyeing (the dyed mails were spawned).
+- **Vampyre Slayer: complete, matches.** "[1] Yes." at Morgan; "Get garlic from the cupboard upstairs in Morgan's house"
+  with a highlighted area (the stairs); Dr Harlow ("A beer, or 2 coins to buy one" green); varp 178 0 -> 1 -> 2 -> 3; "Prepare to fight
+  Count Draynor (level 34)" with hammer/stake/garlic green, then at the coffin "Open the coffin and kill Count Draynor"
+  (coffin outlined), "Kill Count Draynor" with his health box; "The vampyre seems to weaken." and "You hammer the stake
+  into the vampyre's chest!" (with `::master`; the account was level 3). Harlow's menus have no QH mark (chosen by hand).
+  **Not covered:** the garlic cupboard (garlic, beer and hammer were spawned).
+- **Pirate's Treasure: complete, matches.** "[1] I'm in search of treasure.", "[1] Yes."; varp 71 0 -> 1; QH then asks to
+  open the quest journal to sync (`RumSmugglingStep`); after opening it: "Talk to one of the Seamen on the docks in Port
+  Sarim to go to Musa Point" (60 coins green). Then (rum spawned) Frank -> 2, "Climb up the stairs in The Blue Moon Inn"
+  (chest key green), "Open the chest by using the key on it" (chest outlined, key highlighted in the inventory), "Read the
+  Pirate message" -> 3, "Dig in the middle of the cross in Falador Park, and kill the Gardener" (spade tile marked), the
+  Gardener spawned on the first dig and died to auto-retaliate (99 stats), the second dig -> 4 and the casket scroll.
+  **Not covered:** the whole Karamja smuggling path (the rum was spawned) and the Blue Moon stairs (`::tele` upstairs).
+- After a relog the active helper was gone (QH's own behaviour: it doesn't restore the selected helper on Android's login;
+  desktop not compared) and had to be started again.
+- Found on the way (server, relayed): Doomsayer Talk-to threw "Error Loading MesAnim" and dropped the session (fixed
+  in ed9cd76, rechecked: full dialogue); `::pos`/`::heal` were missing on OpenRune (added in ed9cd76: "3223 3395 0",
+  "Restored."). Tiles `::tele` puts you on can be unreachable from (Blue Moon chest from 3219,3397,1: "I can't reach
+  that!"; it worked from 3218,3394,1).
+
 ## Steps for the user (Windows)
 
 You need:

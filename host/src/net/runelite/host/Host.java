@@ -373,6 +373,8 @@ public final class Host {
     }
 
     private static final java.util.List<Integer> pendingStats = new java.util.ArrayList<>();
+    /** Inventories changed before the local player exists (login burst), posted once it does. */
+    private static final java.util.Set<Integer> pendingInvs = new java.util.LinkedHashSet<>();
     private static final java.util.Map<Integer, AndroidNPC> pendingNpcs = new java.util.LinkedHashMap<>();
 
     private static boolean pendingLoggedIn;
@@ -509,6 +511,11 @@ public final class Host {
                     pendingStats.clear();
                     for (int skill : held) dispatch(bus, STAT_CHANGED, skill, 0);
                 }
+                if (!pendingInvs.isEmpty() && localPlayer() != null) {
+                    java.util.List<Integer> held = new java.util.ArrayList<>(pendingInvs);
+                    pendingInvs.clear();
+                    for (int inv : held) dispatch(bus, ITEM_CONTAINER_CHANGED, inv, 0);
+                }
                 runQueued();
                 AndroidMenu.onCycle();
                 ((AndroidClient) client).fetchWantedDbFields();
@@ -640,6 +647,14 @@ public final class Host {
                 break;
             }
             case ITEM_CONTAINER_CHANGED: {
+                // The login burst sends inventories before the local player exists; desktop plugins
+                // (Looting Bag's handleInventoryUpdated reads getLocalPlayer().getWorldLocation()) assume
+                // one, so hold them like StatChanged (posted with the containers as of that cycle).
+                // unverified: on the device (seen: Looting Bag's NPE at login, gen 34).
+                if (localPlayer() == null) {
+                    pendingInvs.add(a);
+                    break;
+                }
                 AndroidItemContainer c = AndroidItemContainer.of(a);
                 if (c != null) bus.post(new net.runelite.api.events.ItemContainerChanged(a, c));
                 break;

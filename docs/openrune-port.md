@@ -1925,3 +1925,32 @@ north / west / upstairs requirements; Grubfoot is the multinpc `catwalk_goblin` 
   in place between level 0 and 2 (`GoblinCaveLadders.kt`; the level comes from QH's tile for the crate).
 - QH's dialogue highlights include "Yes, Wartface looks fat", which the transcript has as "Yes, he looks fat."
   (we follow the transcript).
+
+## Vampyre Slayer (nineteenth server dev)
+
+`content/quest/.../area/draynor/VampyreSlayer.kt` (Morgan, Dr Harlow) and `VampyreSlayerManor` in the same file
+(garlic cupboard, coffin, Count Draynor). Progress is varp 178 (`varp.vampire`) through the server-only varbit
+`vampyre_slayer_progress` (bits 0-1, gameval 63745): 0, 1 started, 2 stake received, 3 complete (cache endstate 3,
+checked at startup). QH 4.18's `VampyreSlayer` keys: 0 Morgan ("Yes."), 1 garlic / Harlow / beer, 2 kill Count
+Draynor (coffin `vampcoffin` 46237 at (3078,9776), npc 3481).
+- Dialogue from the wiki transcript (Morgan's start, legends, garlic hint; Dr Harlow's beer, stake, topics, lost
+  stake). Harlow's client varbits `harlow_given_beer` / `harlow_given_stake` are set; whether Harlow has already
+  asked for a beer is our server varbit `vampyre_asked_harlow` (63746, varp 63745). Morgan's after-quest lines (and
+  `morgan_postquest_dialogue`) moved here from `DraynorVillageNpcs`, whose version always showed them because
+  `assume-completed` answers every "completed" check with yes.
+- **Count Draynor:** opening the coffin at stage 1-2 raises a Count for that player (anim `vampireslayer_arise`,
+  500-tick lifespan, removed on logout) who attacks him. Garlic in the inventory: "The vampyre seems to be weakened
+  by the garlic you're carrying.", -10 hitpoints, -10 Attack/Strength, -40 Defence, applied as he rises (the wiki
+  ties it to the first melee attack and a 30 s duration; ours lasts until he respawns: **simplified**). At 0
+  hitpoints (death queue): stake and hammer -> "You hammer the stake into the vampyre's chest!", death with
+  drops, quest complete (3 QP, 4,825 Attack XP); stake only -> "You're unable to push the stake far enough
+  in!" + "The vampyre seems to regenerate!" and full heal; no stake -> "The vampyre seems to regenerate!" and full
+  heal. His fast regeneration (wiki: ~20x) and returning to the coffin are **not** implemented. Attack anim
+  `human_unarmedpunch` (**guess**; quest pack `vampyre_slayer_npcs.toml`). The stake is kept after the kill
+  (**unknown** in OSRS).
+- **Garlic cupboard** (Morgan's house, level 1): Open -> `garliccupboardopen` for 300 ticks; Search -> a garlic
+  ("The cupboard contains garlic. You take a clove." is a **guess**); Close.
+- Coffin outside stages 1-2: "The coffin is sealed shut." (**guess**).
+- **Blue Moon Inn bartender** (new, `varrock/npcs/BlueMoonBartender.kt`, wiki transcript): "A glass of your finest
+  ale please." -> 2 coins -> beer (QH's beer step), plus the fortune / equipment topics.
+- Tests: `VampyreSlayerInteractionTest` (5). The Count fight is only checked in game.

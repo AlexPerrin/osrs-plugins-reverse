@@ -2046,9 +2046,11 @@ Redbeard left `RustyAnchorScript`.
   there too (our choice; upstream's realm default is 150x).
 - **Login message:** realm 255's `login_message` is now "Welcome to Old School RuneScape." in the database
   (orchestrator, `tools/openrune-sql.sh`); our LoginScript mapping is dropped (back to upstream's code).
-- **Android account choice (test tooling):** the LOCAL_AUTH sidecar (`server/.../LocalAuth.kt`) takes
-  `GET http://<host>:8080/local-auth/user?name=qhand1` (or an OAuth `login_hint`); the next sign-ins issue game
-  tokens `lu-<hex name>-<random>`, which `ConnectionHandler.tokenLogin` decodes to that local account (created on
-  first login, password `SPIKE_TOKEN_PASSWORD`/"android-local"). `?name=` (empty) goes back to the default, and plain
-  tokens still map to "tester". Names: `[a-z0-9_]{1,12}`. Token length with a name is up to 60 characters (**not yet
-  checked** that the app passes such a token through unchanged).
+- **Android account choice (test tooling):** the LOCAL_AUTH sidecar (`server/.../LocalAuth.kt`) reads the account
+  for the next sign-ins from a file inside its container: `docker exec osrs-openrune-http sh -c 'echo qhand1 >
+  /tmp/local-auth-user'` (empty the file or delete it for the default). Game tokens are then `lu-<hex name>-<random>`,
+  which `ConnectionHandler.tokenLogin` decodes to that local account (created on first login, password
+  `SPIKE_TOKEN_PASSWORD`/"android-local"); plain tokens still map to "tester". Names: `[a-z0-9_]{1,12}`. A file rather
+  than an HTTP setter (first version, replaced before deploy): port 8080 is published on all interfaces, and inside the
+  container every caller comes from the Docker gateway, so a loopback check could not tell them apart. Token length
+  with a name is up to 60 characters (**not yet checked** that the app passes it through unchanged).

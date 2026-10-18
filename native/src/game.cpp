@@ -2846,21 +2846,32 @@ bool menu_reorder(const std::vector<int>& order) {
     }
     uintptr_t nb = read_at<uintptr_t>(model + kMenuNodes), ne = read_at<uintptr_t>(model + kMenuNodes + 8);
     size_t n = nb && ne > nb ? (ne - nb) / kNodeSize : 0;
-    if (n < 2 || n > 512 || order.size() != n) {
+    if (n < 2 || n > 512 || order.empty() || order.size() > n) {
         LOGE("menu reorder: %zu nodes, %zu in the order", n, order.size());
         return false;
     }
     std::vector<bool> seen(n);
-    for (size_t i = 0; i < n; i++) {
+    for (size_t i = 0; i < order.size(); i++) {
         if (order[i] < 0 || static_cast<size_t>(order[i]) >= n || seen[order[i]]) return false;
         seen[order[i]] = true;
     }
+    // Dropped nodes (a plugin removed the entry): only childless ones, so the shortened node vector
+    // owns nothing that is left behind (+0x10 = the children vector of a submenu node).
+    for (size_t i = 0; i < n; i++)
+        if (!seen[i] && read_at<uintptr_t>(nb + i * kNodeSize + 0x10)) {
+            LOGE("menu reorder: node %zu has children, not dropped", i);
+            return false;
+        }
     // The game sorts a menu by ordering these {EntryList*, entry index, children*} nodes over its
     // unsorted entry list; do the same.
     std::vector<uint8_t> nodes(reinterpret_cast<const uint8_t*>(nb), reinterpret_cast<const uint8_t*>(ne));
     if (rebuild) reinterpret_cast<void (*)(uintptr_t)>(g_base + g_build->menu_clear_display)(display);
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < order.size(); i++)
         memcpy(reinterpret_cast<void*>(nb + i * kNodeSize), nodes.data() + order[i] * kNodeSize, kNodeSize);
+    if (order.size() < n) {
+        memset(reinterpret_cast<void*>(nb + order.size() * kNodeSize), 0, (n - order.size()) * kNodeSize);
+        *reinterpret_cast<uintptr_t*>(model + kMenuNodes + 8) = nb + order.size() * kNodeSize;
+    }
     if (rebuild)
         reinterpret_cast<void (*)(uintptr_t, uintptr_t, uintptr_t)>(g_base + g_build->menu_build_display)(display, model, layout);
     return true;
@@ -3145,6 +3156,34 @@ bool ambient_restore(uintptr_t obj) {
         return true;
     }
     return false;
+}
+
+bool collision_flags(int plane, int size, std::vector<int32_t>& out) {
+    uintptr_t wv = top_world_view();
+    uintptr_t scene = wv ? read_at<uintptr_t>(wv + 0x10) : 0;
+    if (!scene || plane < 0 || plane > 3 || size < 1 || size > 256) return false;
+    int planes = read_at<int32_t>(scene + 0x944);
+    uintptr_t maps = read_at<uintptr_t>(scene + 0x2f8);
+    if (!maps || plane >= planes) return false;
+    uintptr_t cm = maps + static_cast<size_t>(plane) * 0x28;
+    int xoff = read_at<int32_t>(cm), yoff = read_at<int32_t>(cm + 4);
+    int w = read_at<int32_t>(cm + 8), h = read_at<int32_t>(cm + 0xc);
+    uintptr_t cols = read_at<uintptr_t>(cm + 0x20);
+    if (!cols || w < 1 || w > 512 || h < 1 || h > 512 || xoff < -64 || xoff > 64 || yoff < -64 || yoff > 64) return false;
+    static int logged = 0;
+    if (logged++ < 4) LOGI("collision plane %d: offset %d,%d size %dx%d", plane, xoff, yoff, w, h);
+    out.assign(static_cast<size_t>(size) * size, 0);
+    for (int x = 0; x < size; x++) {
+        int cx = x - xoff;
+        if (cx < 0 || cx >= w) continue;
+        uintptr_t data = read_at<uintptr_t>(cols + static_cast<size_t>(cx) * 0x18 + 0x10);
+        if (!data) continue;
+        for (int y = 0; y < size; y++) {
+            int cy = y - yoff;
+            if (cy >= 0 && cy < h) out[static_cast<size_t>(x) * size + y] = read_at<int32_t>(data + static_cast<size_t>(cy) * 4);
+        }
+    }
+    return true;
 }
 
 // Ground items: WorldView +0x140 → planes (0x18 each, +0x10 → x columns (0x18 each, +0x10 → y

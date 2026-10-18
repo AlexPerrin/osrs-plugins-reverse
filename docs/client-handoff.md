@@ -1,7 +1,7 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 33 entry (2026-10-18) at the end of "Where things stand".
-> **Start here (gen 34):** see the gen 33 entry's "Next".
+> Latest state: see the gen 35 entry (2026-10-18) at the end of "Where things stand".
+> **Start here (gen 36):** see the gen 35 entry's "Next".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1274,6 +1274,39 @@ session; its notes are in `docs/android-protocol.md`.
     2. Bank Memory's item list: render JList (and its cell renderer) in the sidebar model.
     3. Annoyance Mute: AmbientSoundEffectCreated / `AmbientSoundEffect` getters.
     4. More hub plugins by install count (ranked list: `api.runelite.net/runelite-1.13.1/pluginhub`, skip GPU/upload ones).
+- **2026-10-18 (client dev gen 35)**, commits 83de8a1..(this entry) (progress at start: core 89/90, hub 44/50, API 655/866).
+  - **Tile.setGroundObject(null)** (83de8a1, verified): the game's ground-decoration remover `0x6dca24(scene, plane, x, y)`
+    (offsets.md, gen 35 table), then GroundObjectDespawned. A posted LOADING forgets SceneObjects' objects, so a
+    setGameState(LOADING) reload spawns everything again (Ground Object Hider re-hides). Non-null throws.
+  - **Sidebar JList** (verified, Bank Memory): rows from the cell renderer, one tappable 'H' line each (up to 400). A tap
+    selects the row, then runs the list's mouse listeners. The headless JList has selection state (default -1;
+    getSelectedValue from the model; setSelectedIndex notifies listeners; locationToIndex = the selected row). No item icons yet.
+  - **Ambient sounds** (4dceb42, verified, Annoyance Mute): `getAmbientSoundEffects` is the live list at WorldView `+0xb78`.
+    clear() is the game's `0x4b065c` (entries go to the pending vector `+0xb90`, and the updater stops them next cycle).
+    addLast takes back an entry cleared in the same cycle. AmbientSoundEffectCreated is posted per new entry (before
+    LOGGED_IN); during that batch, iteration and clear() cover only the entries announced so far (`game::ambient_remove` moves single entries).
+  - **Menu entry removal** (verified, Not Empty): presort writes back a subset when plugins drop entries;
+    `game::menu_reorder` shortens the node vector and drops only childless nodes. **Tap ClientTick** (verified, Custom
+    Left Click Drop): MENU_TAP posts ClientTick with the menu reported closed, before PostMenuSort.
+  - **WorldView.getCollisionMaps** (Attack Ranges): Scene `+0x2f8` maps (offsets.md "Collision maps"). Flags are read
+    but not compared with desktop.
+  - Hub: 8 new pins (corner-tile-indicators, npc-id, high-alc-highlight, bank-xp-value, zom-leftclick-dropper,
+    instant-inventory, not-empty, attack-ranges). Not Empty, Custom Left Click Drop, NPC ID, High Alc Profit, Corner Tile
+    Indicators, Ground Object Hider, Bank Memory and Annoyance Mute run; Attack Ranges, Instant Inventory and Bank XP
+    Value start. Ranking: `curl https://api.runelite.net/runelite-1.13.1/pluginhub` (name -> installs), skip GPU/network/minigame ones.
+    Static stub check: javap the hub jar for `net/runelite/api` calls and check the Android* class or its non-Stub supers
+    (Client default methods like getNpcs are fine).
+  - Looting bag on OpenRune a504b83 (sent to the orchestrator): Settings works; Store-X (use item on bag in the
+    Wilderness) does nothing (server); the bank's bag shows no View option.
+  - Gotchas: the safety check can deny `adb shell "rm -f .../plugins/*.jar"` when it's built with variables (it can't check the
+    script). Remove jars by full name, or ask the orchestrator. Reinstalls log the client out: wait ~60 s before Play Now.
+  - **Next (gen 36)**:
+    1. Attack Ranges with a ranged weapon or autocast (`::item 841` shortbow + arrows): check the range tiles; compare collision
+       flags with desktop (e.g. Shortest Path's or Attack Ranges' line of sight at the same tile).
+    2. Sidebar JList icons (ItemListRenderer sets an ImageIcon: send it as an 'I' row or an icon next to the 'H' text).
+    3. Bank XP Value's UI (find its toggle), Instant Inventory's fade (screenshot right after a drop).
+    4. More hub plugins from the ranking (next generic ones: loot-logger, supplies-tracker, damage-counter, line-markers,
+       random-event-hider, coal-bag, slayer-assistant, spirit-tree-map).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

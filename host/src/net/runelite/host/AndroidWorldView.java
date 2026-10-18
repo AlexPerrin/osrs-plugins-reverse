@@ -186,6 +186,39 @@ public class AndroidWorldView extends WorldViewStub {
 
     private final AndroidScene scene = new AndroidScene(this);
 
+    private net.runelite.api.CollisionData[] collision;
+    private int collisionTick = Integer.MIN_VALUE, collisionBase = Integer.MIN_VALUE;
+
+    /**
+     * The game's collision flags per plane (docs/offsets.md "Collision maps"; same flag bits as
+     * desktop), re-read at most once per server tick or scene change. Off the client thread the last
+     * read is returned; null before the first one (as desktop before a scene loads).
+     */
+    @Override
+    public synchronized net.runelite.api.CollisionData[] getCollisionMaps() {
+        int tick = Native.serverTick(), base = getBaseX() << 16 | getBaseY();
+        if ((collision == null || tick != collisionTick || base != collisionBase)
+                && Host.client() != null && Host.client().isClientThread()) {
+            net.runelite.api.CollisionData[] maps = new net.runelite.api.CollisionData[4];
+            boolean any = false;
+            for (int p = 0; p < 4; p++) {
+                int[] f = Native.collisionFlags(p, 104);
+                final int[][] flags = new int[104][104];
+                if (f != null) {
+                    any = true;
+                    for (int x = 0; x < 104; x++) System.arraycopy(f, x * 104, flags[x], 0, 104);
+                }
+                maps[p] = () -> flags;
+            }
+            if (any) {
+                collision = maps;
+                collisionTick = tick;
+                collisionBase = base;
+            }
+        }
+        return collision;
+    }
+
     /** No world entities (boats) yet. */
     private static <T> IndexedObjectSet<T> emptySet() {
         return new IndexedObjectSet<T>() {

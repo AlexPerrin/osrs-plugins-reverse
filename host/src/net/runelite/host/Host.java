@@ -751,13 +751,23 @@ public final class Host {
                 // MenuEntryAdded per entry (bottom first), then PostMenuSort with the menu closed,
                 // where Menu Entry Swapper reorders; the entry left on top is what the tap runs.
                 if (!bus.hasSubscribers(net.runelite.api.events.PostMenuSort.class)
-                        && !bus.hasSubscribers(net.runelite.api.events.MenuEntryAdded.class)) break;
+                        && !bus.hasSubscribers(net.runelite.api.events.MenuEntryAdded.class)
+                        && !bus.hasSubscribers(net.runelite.api.events.ClientTick.class)) break;
                 AndroidMenu menu = AndroidClient.MENU;
                 menu.clearAdded();
                 net.runelite.api.MenuEntry[] entries = menu.beginSession();
                 try {
                     menu.postAdded(bus, entries);
                     AndroidMenu.postDesktopAliases(bus, entries);
+                    // Desktop's ClientTick also runs with this hover menu (menu closed); plugins that swap
+                    // the left-click entry there (Custom Left Click Drop) decide what the tap runs, as in
+                    // AndroidMenu.presort for long-press menus.
+                    AndroidMenu.presorting = true;
+                    try {
+                        bus.post(new net.runelite.api.events.ClientTick());
+                    } finally {
+                        AndroidMenu.presorting = false;
+                    }
                     bus.post(new net.runelite.api.events.PostMenuSort());
                     net.runelite.api.MenuEntry[] sorted = menu.getMenuEntries();
                     net.runelite.api.MenuEntry top = sorted.length > 0 ? sorted[sorted.length - 1] : null;

@@ -174,10 +174,12 @@ final class AndroidMenu implements Menu {
             for (MenuEntry m : entries) if (m instanceof AndroidMenuEntry && !((AndroidMenuEntry) m).synthetic) n++;
             boolean identity = true;
             for (int i = 0; i < order.size(); i++) identity &= order.get(i) == i;
-            // Only a permutation of all the game's entries (plugins that drop entries aren't written back).
-            if (!identity && order.size() == n && new java.util.HashSet<>(order).size() == n) {
-                int[] o = new int[n];
-                for (int i = 0; i < n; i++) o[i] = order.get(i);
+            // A permutation of the game's entries, or a subset when plugins removed some (Not Empty
+            // drops a potion's "Empty"); the native side drops only childless entries.
+            if ((!identity || order.size() < n) && !order.isEmpty() && order.size() <= n
+                    && new java.util.HashSet<>(order).size() == order.size()) {
+                int[] o = new int[order.size()];
+                for (int i = 0; i < o.length; i++) o[i] = order.get(i);
                 reordered = Native.menuReorder(o);
                 Log.i(Host.TAG, "menu reorder " + java.util.Arrays.toString(o) + ": " + reordered);
             }

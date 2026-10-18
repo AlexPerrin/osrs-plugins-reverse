@@ -267,6 +267,8 @@ final class Native {
     static native boolean ambientRestore(long obj);
     /** Moves one live ambient sound to the pending list (stopped next cycle); client thread. */
     static native boolean ambientRemove(long obj);
+    /** size*size collision flags of a top-level plane (scene x major), or null; client thread. */
+    static native int[] collisionFlags(int plane, int size);
     /** Writes an actor's overhead text (null keeps it) and timer (-1 keeps it); client thread only. */
     static native boolean actorSetOverhead(boolean player, int index, String text, int cycle);
     /** Open sub-interfaces: {component, group, modal mode} triples. */

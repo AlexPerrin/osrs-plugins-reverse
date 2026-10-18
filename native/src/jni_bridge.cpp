@@ -1010,6 +1010,15 @@ jintArray n_ambient_sounds(JNIEnv* env, jclass) {
     if (out && !packed.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(packed.size()), packed.data());
     return out;
 }
+// size*size collision flags of a plane (scene x major), or null.
+jintArray n_collision_flags(JNIEnv* env, jclass, jint plane, jint size) {
+    if (!require_client_thread(env, "collisionFlags")) return nullptr;
+    std::vector<int32_t> f;
+    if (!game::collision_flags(plane, size, f)) return nullptr;
+    jintArray out = env->NewIntArray(static_cast<jsize>(f.size()));
+    if (out) env->SetIntArrayRegion(out, 0, static_cast<jsize>(f.size()), f.data());
+    return out;
+}
 jboolean n_ambient_clear(JNIEnv* env, jclass) { return require_client_thread(env, "ambientClear") && game::ambient_clear(); }
 jboolean n_ambient_remove(JNIEnv* env, jclass, jlong obj) {
     return require_client_thread(env, "ambientRemove") && game::ambient_remove(static_cast<uintptr_t>(obj));
@@ -1556,6 +1565,7 @@ const JNINativeMethod kNatives[] = {
     {"ambientClear", "()Z", reinterpret_cast<void*>(n_ambient_clear)},
     {"ambientRestore", "(J)Z", reinterpret_cast<void*>(n_ambient_restore)},
     {"ambientRemove", "(J)Z", reinterpret_cast<void*>(n_ambient_remove)},
+    {"collisionFlags", "(II)[I", reinterpret_cast<void*>(n_collision_flags)},
     {"subInterfaces", "()[I", reinterpret_cast<void*>(n_sub_interfaces)},
     {"drawMinimap", "(I)[I", reinterpret_cast<void*>(n_draw_minimap)},
     {"closeSubInterface", "(IIZ)Z", reinterpret_cast<void*>(n_close_sub_interface)},

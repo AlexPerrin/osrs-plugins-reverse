@@ -536,6 +536,12 @@ bool ambient_remove(uintptr_t obj);
 // Moves an entry cleared in this cycle (still in the pending vector) back into the live vector.
 bool ambient_restore(uintptr_t obj);
 
+// Collision flags (RuneLite CollisionDataFlag values): Scene (WorldView +0x10) +0x2f8 -> per plane
+// 0x28-byte maps {int x offset, int y offset, ..., +0x20 columns (0x18 each, int* at +0x10)},
+// flags[x - xoff][y - yoff] (0x5ed6dc clears floor-decoration 0x40000; 0x5ecf7c walls 0x80/0x8/..).
+// Writes size*size flags per plane (scene x major) into out; false when unreadable. Game thread.
+bool collision_flags(int plane, int size, std::vector<int32_t>& out);
+
 // Mod icons (font <img=N> table): game_index >= 0 keeps the game's icon, else a palette sprite
 // (index 0 transparent, palette ARGB with alpha 0xff). Applied by mod_icons_cycle on the game thread.
 struct ModIcon {

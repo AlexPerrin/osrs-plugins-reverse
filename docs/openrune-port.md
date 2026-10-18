@@ -2209,3 +2209,15 @@ Dropped or reduced:
   in 10.4 s, 20:23 UTC). Also in this bundle: the coal bag wording and `::mapanim <spotanimId> [height] [delay] [dx dz]`
   (test command, `TestCommands`; a world spotanim through `WorldRepository.spotanimMap`; upstream only has `::spot`,
   a player spotanim).
+
+### Migration to the fork (twenty-second server dev)
+- openrune.patch frozen at fb10fd3. Decomposed into fork branches; see STATE.md on the fork's `docs` branch.
+- Desktop members bug: jav_config param 3 is the desktop client's members-world flag (client.init compares it with
+  "true"; found in the injected client). Our sidecar served "false"; fixed in `server/` (1c9feea), deployed.
+- completeQuest (#339) returns false when declared item rewards don't fit. Doric's Quest and Sheep Shearer took the
+  hand-in items first; on false they now give them back ("You don't have enough room for the reward.", a guess).
+  Only a full coin stack can trigger it. In the live tree; the fin branches get it from the PR agent.
+- fix/76: OBJ_ADD carries timeUntilPublic/timeUntilDespawn (remaining cycles, capped at 65535), ownership (1 self for
+  private objs and the owner's public objs, 2 other player, 0 none) and neverBecomesPublic; ZoneUpdateTransformerObjAddTest.
+- Ids: new allocations for pirates-treasure, fletching and treasure-trails in openrune/upstream/id-allocation.json.
+

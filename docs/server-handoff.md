@@ -37,6 +37,26 @@ upstream merges some of our PRs:
 4. **Orchestrator:** deploys when both devices are free (rollback tag first).
 First done 2026-10-18 (twenty-second server dev): 9a8b338a8 -> fork c2492318d.
 
+## Latest state (2026-10-18, twenty-second server dev): migration to the fork
+
+**Read `STATE.md` on the fork's `docs` branch first** (it replaces these sections). Details in
+`docs/openrune-port.md`, "Twenty-second server dev".
+
+- **Live:** bootcheck23 = fb10fd3 (openrune.patch re-pinned on fork main c2492318d; coal bag wording, ::mapanim,
+  HeldU fix). Sidecars run osrs-rsps-test:sd22-members (jav_config param 3 = members world; it is the desktop
+  client's members flag).
+- **openrune.patch is frozen.** `openrune/src` also holds two unexported changes that now live on branches:
+  fix/76 (OBJ_ADD timers) and the Doric/Sheep completeQuest fix (the PR agent adds it to fin/doric and
+  fin/sheep-shearer).
+- **Migration:** the patch is decomposed into fork branches (local/*, fix/*, content/*, plus the PR agent's fin/*);
+  `local/integration-tools` has integration.txt and scripts/build-integration.sh (git rerere resolutions stored).
+  `build-integration.sh .` in scratchpad/sd22/or gives integration 99d201e3e with no unrecorded conflicts and no
+  duplicate gameval ids. Treasure Trails stays, as local/treasure-trails (ids renumbered, varp names kept).
+- **Saved data is keyed by name** (varps, invs, objs, attrs): the upstream id renumbering needs no migration.
+- **Not done:** the uncached integration build/tests/boot (the first run failed in buildCache on a varp id
+  collision, Pirate's Treasure 64053 vs fin/farming's farming_growth_offset, fixed with 64083), the dry run on a
+  copy of the live DB, the cutover. Next steps in STATE.md.
+
 ## Latest state (2026-10-18, twenty-first server dev, on OpenRune)
 
 Details in `docs/openrune-port.md`, "Twenty-first server dev". Protocol unchanged.

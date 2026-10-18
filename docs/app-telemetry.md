@@ -250,3 +250,37 @@ Sign-in, the login screen and Play Now work.
 no GE digest: the sidecar logged no `digest.csv` request. The digest download is evidently periodic or cached, not
 once per sign-in, so this capture doesn't exercise the gedigesturl redirect. Both candidates are now covered (the
 sidecar's gedigesturl rewrite and the native builder patch), but neither was observed firing.
+
+## Network QA (rule from 2026-10-18, gen 39)
+
+Device slots no longer end with a DNS and socket check. That check is now a QA step, run only when a build can
+change the app's network behaviour:
+
+- changes to `tools/repack.sh`, `tools/patch_telemetry.py` or `tools/patch_server.py`;
+- a new APK or game version;
+- changes to the sidecar or to jav_config (served URLs and params);
+- host networking code: `NetGuard`, the host's OkHttp client, new GET sources;
+- a hub plugin that makes network calls.
+
+Always, even without QA: every build goes through `tools/repack.sh` (with `patch_telemetry.py`, which prints its
+`telemetry:` lines), and anyone who happens to see a new outbound host (logcat, netd, sockets) stops and reports it at once.
+
+**Procedure** (LOCAL_AUTH build, BlueStacks, app uid 10071):
+
+1. Before starting: `adb logcat -c`, then start a socket sampler that runs every 0.5 s and keeps ESTABLISHED (state `01`) rows of the app uid
+   from `adb shell cat /proc/net/tcp /proc/net/tcp6` (remote address = column 3, hex little-endian), timestamped.
+2. Run through: Sign out -> "Sign in with Email / Username" (LOCAL_AUTH; screenshot first, never a real Jagex login) ->
+   Play Now (tap "Try again" at 958,668 only on that screen) -> LOGGED_IN -> play (walk, tabs, a teleport) ->
+   `::drop` relog -> app restart (force-stop + launch) -> Play Now -> play for about a minute.
+3. DNS: `adb logcat -d | grep -i "asked for"` (netd lookups; this doesn't list every lookup, which is why
+   the socket sampler is needed).
+4. Expected hosts, and nothing else:
+   - `10.0.2.2` (43594 game server, 8080 sidecar: jav_config, auth, digest, payments param 2);
+   - `api.runelite.net`, `static.runelite.net` (Cloudflare, e.g. 104.26.8.233 / 104.26.9.233 / 172.67.74.139): the host's read-only GETs;
+   - `sdk.fra-01.braze.eu` (104.18.35.7 / 172.64.152.249): Braze, left on by the user's decision;
+   - `mobile-data.onetrust.io` / `cdn-ukwest.onetrust.com` (172.64.155.231, 104.18.32.25): the consent banner GET;
+   - one Google 443 address (e.g. 172.217.116.4): most likely FCM for Braze's push token.
+5. Must not appear: any `*.jagex.com`, `*.runescape.com`, `*.singular.net`, `app-measurement.com`, `pp-*.x.invalid`,
+   `secure.x.invalid` / `services.x.invalid` lookups; no `ConsentSync` or `Singular` log lines; no socket to Jagex addresses
+   (104.18.40.92, 172.64.147.164, 104.18.35.117, 18.67.39.x).
+6. Record the build, the time window, the DNS list and the distinct socket addresses here, under a dated heading.

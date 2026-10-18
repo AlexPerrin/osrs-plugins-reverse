@@ -8835,7 +8835,7 @@
   "type": "varp",
   "name": "pirates_treasure_state",
   "old": 63747,
-  "new": 64053,
+  "new": 64083,
   "row": "pirates-treasure",
   "file": "content/quest/pack/src/main/resources/gamevals.toml"
  },

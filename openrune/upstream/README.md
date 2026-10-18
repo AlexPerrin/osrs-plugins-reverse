@@ -77,6 +77,9 @@ the `osrs-plugins-reverse:` comments (reworded or dropped).
 | 61 | `61-gameframe-fullscreen-map-keeps-stone-choice` | `content/interfaces/gameframe/.../GameframeScript.kt`, `build.gradle.kts` | Opening the fullscreen map overwrote `resizable_stone_arrangement`; closing to a fixed frame or logging out with the map open kept the map's value | Needs 57 |
 | 62 | `62-item-command-cache-name-fallback` | `content/other/commands/.../AdminCommands.kt` | `::item saw` threw "Missing mapping" (the gameval is `obj.poh_saw`); unknown names fall back to the cache name | Debug command only |
 | 63 | `63-gertrudes-cat-shilop-line` | `content/quest/.../gertrudescat/GertrudesCatQuest.kt`, `GertrudesCatInteractionTest.kt` | After the boys are paid, Gertrude repeated the stage-1 "What about Shilop?" lines; the wiki transcript has its own exchange for that stage | Applies alone on the pin |
+| 64 | `64-dorics-quest` | `content/quest/.../falador/DoricsQuest.kt`, test, `dorics_quest_vars.toml`, quest pack `gamevals.toml`, `QuestDialogue.kt` | New quest (varp 31: 0/10/100, Quest Helper's values); anvils gated until done; "Start Doric's Quest?" prompt title | Needs 12 and 21; journal and after-quest talk are ours |
+| 65 | `65-witchs-potion` | `content/quest/.../rimmington/WitchsPotion.kt`, test, vars, gamevals, `RimmingtonTownsfolkScript.kt`, new drop table `rat.toml` | New quest (varp 67: 0/1/2/3) | Rat's tail through the drop-table quest gate, which never passes under the default assume-completed mode (our server uses a kill hook instead) |
+| 66 | `66-goblin-diplomacy` | `content/quest/.../goblinvillage/GoblinDiplomacy.kt`, test, `QuestTalkFixture.kt`, goblin-village `GoblinCaveLadders.kt`; removes `GoblinGenerals.kt`, `Grubfoot.kt` | New quest on the client varbits (gobdip_main, crate and Grubfoot varbits); lookout ladder handler | Start value 3 inferred from Quest Helper; needs 12 |
 
 New modules need no `settings.gradle.kts` entry (upstream discovers them).
 No patch touches `gradle/libs.versions.toml`.
@@ -203,3 +206,7 @@ plus 57, and `git am` of all 62 on the pin applies. Compiled and tested in our t
 
 Patch 08 (item examine chat type 27) was withdrawn 2026-10-17 (nineteenth server dev) and our tree went back to
 upstream's `examine_item` behaviour; `git am` of the remaining 61 patches on the pin applies.
+
+Patches 64-66 were added 2026-10-17 (nineteenth server dev, after desktop Quest Helper runs of all three): `git am` of all
+64 remaining patches (08 withdrawn) on the pin applies. Compiled and tested in our tree (our tree's Witch's Potion uses a kill
+hook instead of 65's drop table); the patch versions were not compiled on a pin-only clone.

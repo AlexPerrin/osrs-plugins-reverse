@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 32 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 33 entry (2026-10-18) at the end of "Where things stand".
 > **Start here (gen 33):** see the gen 32 entry's "Next". World Map and Key Remapping run; LinkBrowser (Wiki) needs a
 > device check.
 
@@ -1203,6 +1203,28 @@ session; its notes are in `docs/android-protocol.md`.
     game, which drops the session (relaunch with plugin-test.sh, wait ~20 s, Try again, Play Now).
   - **Next (gen 33)**: Wiki's WIKI orb lookup (targeting mode: the onTargetEnter listener on its CC_CREATE icon) and Search; F-key remaps / chat lock in Key Remapping; the AreaSoundEffectPlayed frame-sound path (needs server content);
     remaining Client API gaps (mostly GPU/stretch/camera/login setters no tracked plugin uses).
+- **2026-10-18 (client dev gen 33)**, commits 13cc8cb..f715825 (progress at start: core 88/90, hub 34/37, API 655/866;
+  now core 89/90, hub 34/44 with 7 new untested rows, API 655/866).
+  - **Backgrounding** (static RE + device): the official client opens links through its Java
+    `ApplicationContext.openBrowser(url)` (native caller ELF `0x98a214`: http(s)/market:// only; flag 1 = openOverlaidBrowser,
+    a TWA/Custom Tab), which shows Jagex's "You are opening a link to an external site. If you remain inactive in game for
+    too long, you will be logged out." dialog, then ACTION_VIEW. Before OpenRune 6ab7d07 the stock client (`debug.osrsrl.off 1`)
+    dropped too after 15 s in the background ("Unexpected server response" on its reconnect). Since 6ab7d07 (reconnect login):
+    Home 30 s comes back in place ("tester reconnected (ENHANCED_ANDROID)"); **while in the background the game reconnects
+    every ~16 s** (its thread runs throttled); Home 90 s ends on the login screen, and a relaunch right after still gets
+    "account still logged in" until the 60 s grace ends. After any force-stop: wait ~60 s, Try again, Play Now.
+  - **LinkBrowser** now calls the game's openBrowser by reflection (field of type ApplicationContext on MainActivity),
+    falling back to ACTION_VIEW (5eab9a5, verified: dialog, Chrome, back within ~34 s in place).
+  - **Widget target mode** (f715825; offsets.md "Widget target mode"): state at `*(Client+0x4132b0)+2000`; Java
+    onTargetEnter/onTargetLeave follow it (`WidgetListeners.runTargetMode`), isWidgetSelected reads it,
+    setWidgetSelected(false) clears `+0x9f`. Target-mode entries carry op -1 (WIDGET_TARGET_ON_*), raw[9] byte 3 = 1 marks
+    a widget's target verb (WIDGET_TARGET). **Wiki runs**: orb Lookup on inventory Logs and a Tree, Search. Wiki's
+    skills-tab entry is a content difference (mobile 320:N ops = ["Toggle <skill> XP", "View <skill> guide"]); its search
+    predictions NPE (no chatbox container under the Android text dialog). Probe `debug.osrsrl.tmodelog 1`.
+  - Hub: 7 new pins built, `untested` (Mahogany Homes, Rogues' Den, Target True Tile, Monster Menu HP, Looting Bag, Action
+    Progress, Consumable Cooldowns; recipes in their rows). Arc2D.setFrame(Rectangle2D) added to the shim.
+  - Android token logins all map to one account: OpenRune `SPIKE_TOKEN_USERNAME` (default tester; ConnectionHandler.tokenLogin).
+    A fresh Android account needs that env changed on the container (orchestrator) or a server code change.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

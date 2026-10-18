@@ -16,7 +16,9 @@
      library's sync URLs (account.jagex.com and the dev account.development.jxp.jagex.com) are zeroed,
      so the SDK takes its "sync client is not configured" path (za.f.b: blank or whitespace-only URL;
      NUL is whitespace to String.trim()). The group-ironman score URL (pp-%s.%s.jagex.com:13406, native
-     FUN_0064da14 Ghidra) gets the reserved host suffix x.invalid instead of jagex.com (same length).
+     FUN_0064da14 Ghidra) gets the reserved host suffix x.invalid instead of jagex.com (same length), and
+     the web URL builder's bare "runescape.com" (secure./services. URLs, FUN_0051102c Ghidra) becomes
+     "x.invalid" plus NUL padding.
 
 Idempotent on the decoded APK: a patched method carries a marker comment, and meta-data are set rather
 than duplicated. --native works on a freshly extracted library (it fails if the URLs aren't there).
@@ -125,6 +127,20 @@ def patch_native(src: str, dst: str) -> None:
         print("telemetry: group score host -> pp-%s.%s.x.invalid")
     elif not (n_old == 0 and n_new == 1):
         sys.exit(f"telemetry: expected exactly one group score URL in {src} (found {n_old} original, {n_new} patched)")
+    # Jagex web URL builder (Ghidra FUN_0051102c, ELF 0x41102c): "%s%s%s.%s/l=%s/a=%i%s/" with the bare
+    # domain "runescape.com" (its only reference, a %s argument read up to the NUL). It builds
+    # https://secure.runescape.com/... (startup base URL, account-creation link) and
+    # http://services.runescape.com/m=accountappeal/login.ws (native GET). Same reserved .invalid TLD,
+    # padded with NULs to the original length.
+    dom_old = b"\0runescape.com\0"
+    dom_new = b"\0x.invalid" + bytes(len(dom_old) - len(b"\0x.invalid"))
+    n_old, n_new = data.count(dom_old), data.count(dom_new)
+    if n_old == 1 and n_new == 0:
+        i = data.find(dom_old)
+        data[i:i + len(dom_new)] = dom_new
+        print("telemetry: web URL domain runescape.com -> x.invalid")
+    elif not (n_old == 0 and n_new == 1):
+        sys.exit(f"telemetry: expected exactly one bare runescape.com in {src} (found {n_old} original, {n_new} patched)")
     open(dst, "wb").write(data)
 
 

@@ -9483,7 +9483,7 @@
   "type": "dbrow",
   "name": "trail_emote_seq_14",
   "old": 60334,
-  "new": 60920,
+  "new": 63892,
   "row": "treasure-trails",
   "file": "content/other/treasure-trails/pack/src/main/resources/gamevals.toml"
  },

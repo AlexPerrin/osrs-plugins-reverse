@@ -667,6 +667,18 @@ public class AndroidClient extends ClientStub {
         @Override public net.runelite.api.worldmap.WorldMapRenderer getWorldMapRenderer() { return renderer; }
     };
     @Override public net.runelite.api.worldmap.WorldMap getWorldMap() { return worldMap; }
+
+    /** Deprecated pre-WorldMap API (still used by hub plugins, e.g. herbi-afk): a view of {@link #worldMap}. */
+    private final net.runelite.api.RenderOverview renderOverview = new net.runelite.api.RenderOverview() {
+        private final net.runelite.api.WorldMapData data = (x, y) -> worldMap.getWorldMapData().surfaceContainsPosition(x, y);
+        @Override public net.runelite.api.WorldMapData getWorldMapData() { return data; }
+        @Override public net.runelite.api.Point getWorldMapPosition() { return worldMap.getWorldMapPosition(); }
+        @Override public float getWorldMapZoom() { return worldMap.getWorldMapZoom(); }
+        @Override public void setWorldMapPositionTarget(net.runelite.api.coords.WorldPoint p) { worldMap.setWorldMapPositionTarget(p); }
+        @Override public net.runelite.api.worldmap.WorldMapRenderer getWorldMapRenderer() { return worldMap.getWorldMapRenderer(); }
+        @Override public void initializeWorldMap(net.runelite.api.worldmap.WorldMapData d) { worldMap.initializeWorldMap(d); }
+    };
+    @Override public net.runelite.api.RenderOverview getRenderOverview() { return renderOverview; }
     /**
      * Map element (mel) config: category from the game's table (game.cpp map_element). An id the table
      * doesn't hold gets category -1 rather than null: World Map dereferences it for every map icon.

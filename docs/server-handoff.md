@@ -21,6 +21,34 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-18, twentieth server dev, on OpenRune)
+
+Details in `docs/openrune-port.md`, "Twentieth server dev" and "Pirate's Treasure". Protocol unchanged.
+
+- **Boot-check before every deploy** (the 77b17ed deploy crashed at startup on a wrong `onNpcQueue` overload and the
+  server was down ~40 min; fixed in 20fff49): `cd openrune && docker build -t osrs-openrune:bootcheck .`, run it with
+  `--rm --tmpfs /app/.data/postgres:uid=1000`, wait for "Server ready". Unit tests never run plugin `startup()`. The
+  deploy line `docker compose --env-file switch.env up -d --build --no-deps openrune` is now allowed in settings.
+  Builds are capped at 4 CPUs (`OPENRUNE_CPUS`).
+- **Building a commit while uncommitted work sits in `src/`:** copy the changed files aside, put back the committed
+  versions (a `git clone --shared src` at the pin + the committed `openrune.patch`), build/deploy, then restore (done
+  for 6ab7d07 while Pirate's Treasure was in progress). `compileKotlin`/tests don't touch `server/app/build/install`;
+  `installDist` does, and the image packages that.
+- **Reconnect login** (6ab7d07, live): reconnects within 60 s keep the session (desktop `::drop` and a frozen client
+  checked); state is resent after a reconnect. The >60 s case is to be checked on Android (the client dev backgrounds
+  the app 90 s). Upstream candidate once that passes (without `::drop`).
+- **Vampyre Slayer** complete with QH on fresh desktop qhtest9; lookout ladder checked; upstream 67 (first patch in
+  upstream's CONTRIBUTING format: `feat:`/`fix:`, problem/change/tests/data sources; don't edit
+  `openrune/upstream/PR-BATCH-*.md` or `batch-*-texts/`, an upstream agent owns them).
+- **Pirate's Treasure** (04732e7): built, tested, boot-checked; deploy + desktop QH run pending at the time of writing.
+- **Do not** suspend client processes for tests (the permission check refused a wait loop around it).
+- **Wiki fetches:** `curl "https://oldschool.runescape.wiki/w/<Title>?action=raw"` gives wikitext (full transcripts);
+  osrs-mcp `wiki_page` takes `maxChars` up to 20000. Never put personal data in request headers.
+- **Test accounts:** qhtest9 (Vampyre Slayer done, 99 stats from `::master`).
+- **Next candidates:** Count Draynor polish (regeneration, return to the coffin, garlic timing); reconnect upstream
+  patch; Pirate's Treasure upstream patch after its run; held plugin-row content (friends chat, GE Sets/±X%, hunter
+  methods).
+
 ## Latest state (2026-10-18, nineteenth server dev, on OpenRune)
 
 Details in `docs/openrune-port.md`, "Nineteenth server dev" and the sections after it. Protocol unchanged.

@@ -19278,10 +19278,10 @@ index 8fba8cb4d..a8e9c8029 100644
          private const val OilCan = "obj.oil_can"
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt
 new file mode 100644
-index 000000000..7bbfe063e
+index 000000000..1482eda5e
 --- /dev/null
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/draynor/VampyreSlayer.kt
-@@ -0,0 +1,616 @@
+@@ -0,0 +1,652 @@
 +package org.rsmod.content.quest.area.draynor
 +
 +import dev.openrune.ServerCacheManager
@@ -19303,6 +19303,7 @@ index 000000000..7bbfe063e
 +import org.rsmod.api.repo.loc.LocRepository
 +import org.rsmod.api.repo.npc.NpcRepository
 +import org.rsmod.api.repo.obj.ObjRepository
++import org.rsmod.api.script.onAiTimer
 +import org.rsmod.api.script.onNpcQueue
 +import org.rsmod.api.script.onOpLoc1
 +import org.rsmod.api.script.onOpLoc2
@@ -19783,7 +19784,9 @@ index 000000000..7bbfe063e
 +    private val npcDeath: NpcDeath,
 +    private val aiPlayerInteractions: AiPlayerInteractions,
 +) : PluginScript() {
-+    private class Fight(val player: Player, val count: Npc)
++    private class Fight(val player: Player, val count: Npc) {
++        var ticks = 0
++    }
 +
 +    private val fights = HashMap<Long, Fight>()
 +
@@ -19801,6 +19804,7 @@ index 000000000..7bbfe063e
 +        onOpLoc2(CUPBOARD_OPEN) { closeCupboard(it.loc) }
 +        onOpLoc1(COFFIN) { openCoffin(it.loc) }
 +        onNpcQueue(countType(), "queue.death") { countDeath() }
++        onAiTimer(countType()) { countTick(npc) }
 +        onPlayerLogout {
 +            val fight = player.uuid?.let(fights::remove) ?: return@onPlayerLogout
 +            if (fight.count.isSlotAssigned) npcRepo.del(fight.count, Int.MAX_VALUE)
@@ -19846,14 +19850,42 @@ index 000000000..7bbfe063e
 +        fights[uuid] = Fight(player, count)
 +        count.anim("seq.vampireslayer_arise")
 +        delay(2)
-+        if (VampyreSlayer.GARLIC in inv) {
-+            mes("The vampyre seems to be weakened by the garlic you're carrying.")
-+            count.hitpoints = (count.hitpoints - GARLIC_DAMAGE).coerceAtLeast(1)
-+            count.attackLvl = (count.attackLvl - 10).coerceAtLeast(1)
-+            count.strengthLvl = (count.strengthLvl - 10).coerceAtLeast(1)
-+            count.defenceLvl = (count.defenceLvl - 40).coerceAtLeast(1)
-+        }
 +        count.opPlayer2(player, aiPlayerInteractions)
++        count.aiTimer(1)
++    }
++
++    /**
++     * Each tick of a fight (wiki "Stat restoration", from Mod Ash): the Count restores hitpoints and
++     * drained levels by 1 every 5 ticks, and while the player carries garlic every stat that is
++     * full again is drained (Attack -10 with the message, Strength -10, Defence -40, 10 damage).
++     */
++    private fun countTick(count: Npc) {
++        val fight = fights.values.firstOrNull { it.count === count } ?: return
++        if (count.hitpoints <= 0) return
++        fight.ticks++
++        if (fight.ticks % RESTORE_INTERVAL == 0) {
++            if (count.hitpoints < count.baseHitpointsLvl) count.hitpoints++
++            if (count.attackLvl < count.baseAttackLvl) count.attackLvl++
++            if (count.strengthLvl < count.baseStrengthLvl) count.strengthLvl++
++            if (count.defenceLvl < count.baseDefenceLvl) count.defenceLvl++
++        }
++        val player = fight.player
++        if (player.inv.count(VampyreSlayer.GARLIC) > 0 && player.coords.level == count.coords.level) {
++            if (count.attackLvl >= count.baseAttackLvl) {
++                count.attackLvl = (count.attackLvl - GARLIC_ATTACK_DRAIN).coerceAtLeast(0)
++                player.mes("The vampyre seems to weaken.")
++            }
++            if (count.strengthLvl >= count.baseStrengthLvl) {
++                count.strengthLvl = (count.strengthLvl - GARLIC_STRENGTH_DRAIN).coerceAtLeast(0)
++            }
++            if (count.defenceLvl >= count.baseDefenceLvl) {
++                count.defenceLvl = (count.defenceLvl - GARLIC_DEFENCE_DRAIN).coerceAtLeast(0)
++            }
++            if (count.hitpoints >= count.baseHitpointsLvl) {
++                count.hitpoints = (count.hitpoints - GARLIC_DAMAGE).coerceAtLeast(1)
++            }
++        }
++        count.aiTimer(1)
 +    }
 +
 +    private suspend fun StandardNpcAccess.countDeath() {
@@ -19896,6 +19928,10 @@ index 000000000..7bbfe063e
 +        const val CUPBOARD_OPEN_TICKS = 300
 +        const val COUNT_LIFESPAN = 500
 +        const val GARLIC_DAMAGE = 10
++        const val GARLIC_ATTACK_DRAIN = 10
++        const val GARLIC_STRENGTH_DRAIN = 10
++        const val GARLIC_DEFENCE_DRAIN = 40
++        const val RESTORE_INTERVAL = 5
 +    }
 +}
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/falador/DoricsQuest.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/falador/DoricsQuest.kt

@@ -1988,6 +1988,16 @@ request, the Blue Moon bartender's beer (QH requirement green), stake -> 2 (QH "
 Draynor"), coffin + garlic message, kill with stake and hammer -> 3, scroll (3 QP, 4,825 Attack XP). With `::master`
 the regenerate path was not exercised. Goblin Village lookout ladder: up to (2955,3497,2) and back. Upstream 67.
 
+### Count Draynor polish (twentieth server dev)
+From the wiki's Count Draynor page, "Stat restoration" (Mod Ash, Discord 2025-08-13 and Twitter 2020): an AI timer
+ticks every server tick during a fight. Every 5 ticks the Count restores 1 hitpoint and 1 point of each drained
+Attack/Strength/Defence (his "20x" regeneration; the engine's normal regen still runs too). While the player carries
+garlic, every tick each stat that is back at full is drained again: Attack -10 with "The vampyre seems to weaken."
+(replaces the old "weakened by the garlic you're carrying", which no source has), Strength -10, Defence -40, and 10
+damage when his hitpoints are full. **Simplified:** OSRS checks only while the player has an attack queued on him;
+ours checks whenever the fight is on and the player is on his level. Not done: garlic's +1 damage to the player's
+hits; returning to the coffin (no source found; he still disappears after 500 ticks or on logout).
+
 ## Pirate's Treasure (twentieth server dev)
 
 `content/quest/.../area/portsarim/piratestreasure/`: `PiratesTreasure` (Redbeard Frank, journal, chest, message,

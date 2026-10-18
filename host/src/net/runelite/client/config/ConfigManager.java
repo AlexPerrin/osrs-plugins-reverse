@@ -239,6 +239,13 @@ public class ConfigManager {
         if (c == Duration.class) return Duration.ofMillis(Long.parseLong(s));
         if (c == Instant.class) return Instant.parse(s);
         if (c.isEnum()) return Enum.valueOf((Class<? extends Enum>) c, s);
+        // RuneLite's keybind form "keyCode:modifiers" (Key Remapping, hotkey configs).
+        if (c == net.runelite.client.config.ModifierlessKeybind.class || c == net.runelite.client.config.Keybind.class) {
+            String[] p = s.split(":");
+            int code = Integer.parseInt(p[0]), mods = p.length > 1 ? Integer.parseInt(p[1]) : 0;
+            return c == net.runelite.client.config.ModifierlessKeybind.class
+                ? new net.runelite.client.config.ModifierlessKeybind(code, mods) : new net.runelite.client.config.Keybind(code, mods);
+        }
         Object constant = namedConstant(c, s);  // enum-like classes (FontType: REGULAR, BOLD, SMALL)
         if (constant != null) return constant;
         return s;
@@ -250,6 +257,10 @@ public class ConfigManager {
         // Only on/off is kept (desktop stores the whole object as JSON; sounds/tray don't apply here).
         if (o instanceof Notification) return ((Notification) o).isEnabled() ? "true" : "false";
         if (o instanceof Enum) return ((Enum<?>) o).name();
+        if (o instanceof net.runelite.client.config.Keybind) {
+            net.runelite.client.config.Keybind k = (net.runelite.client.config.Keybind) o;
+            return k.getKeyCode() + ":" + k.getModifiers();
+        }
         String constant = constantName(o);
         if (constant != null) return constant;
         if (o instanceof Duration) return Long.toString(((Duration) o).toMillis());

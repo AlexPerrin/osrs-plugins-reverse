@@ -62,6 +62,8 @@ public abstract class Arc2D implements Shape {
     public void setFrame(double x, double y, double w, double h) {
         setArc(x, y, w, h, getAngleStart(), getAngleExtent(), type);
     }
+    /** RectangularShape.setFrame(Rectangle2D) on desktop (Consumable Cooldowns' overlay). */
+    public void setFrame(Rectangle2D r) { setFrame(r.getX(), r.getY(), r.getWidth(), r.getHeight()); }
     public int getArcType() { return type; }
     public void setArcType(int type) { this.type = type; }
 

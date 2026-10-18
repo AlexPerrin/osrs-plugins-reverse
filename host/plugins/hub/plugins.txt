@@ -7,6 +7,7 @@ barrows-door-highlighter https://github.com/hansjm10/Barrows-Door-Highlighter.gi
 better-npc-highlight https://github.com/riktenx/better-npc-highlight.git 8a2b92b35b34ec71aaad1e4c294033d840924cad
 better-teleport-menu https://github.com/abextm/better-teleport-menu.git f11546c7b0552e3efc4572bef7504ac34c16cfb1
 c-engineer-completed https://github.com/m0bilebtw/c-engineer-completed.git 5aba5151ac409e1aabcfaf44f19fc86f7a6ce8be
+consumable-cooldowns https://github.com/CopyPastaOSRS/consumable-cooldowns.git 452d4b496f7157092834a8faeea3fba94e6a3273
 customizable-xp-drops https://github.com/l2-/template-plugin.git abad441320f001d454ccf67186a0d142c235888a
 easy-empty https://github.com/jpeter17/easy-empty.git 3c8a143b79e797f24ff3ca4d01bee4c7fa33bb18
 equipment-inspector https://github.com/botanicvelious/Equipment-Inspector.git 19f1b077a3c1304754580f071316b908366edc78

@@ -28,3 +28,5 @@ instructions (checked on a fresh `freshCache` of main 1be5dfb5f, 2026-10-17).
 
 Expected: 64/65 for varps whose symbol type is `long`. Found while testing with RuneLite plugins
 (Grand Exchange).
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

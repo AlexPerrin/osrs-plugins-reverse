@@ -20,3 +20,5 @@ knife.
 - [x] No documentation change needed.
 - [x] No unrelated formatting or dependency changes.
 - [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

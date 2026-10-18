@@ -30,3 +30,5 @@ has gone out; we didn't find a flag for that.
 - [x] No documentation change needed.
 - [x] No unrelated formatting or dependency changes (except the spotless-required spacing above).
 - [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

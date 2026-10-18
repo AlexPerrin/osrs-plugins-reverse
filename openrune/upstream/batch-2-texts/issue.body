@@ -49,3 +49,5 @@ All of it is Kotlin in OpenRune's module layout, driven by cache data where the 
    - achievement diary task lists, some quest and hunter guild dialogue transcripts, jewellery teleport messages.
 
    We'd like to know how you handle that before sending any of it. We can keep it out and send only the parts that come from the cache, attribute it in separate data files, or wait for another source if you have one (we have no live captures). `tools/wiki-dumping` suggests you use wiki data already, so maybe there is a policy we missed.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

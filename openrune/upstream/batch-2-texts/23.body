@@ -25,3 +25,5 @@ Treasure Trails steps that search these need the open variant's Search to work.
 - [x] No documentation change needed.
 - [x] No unrelated formatting or dependency changes.
 - [x] Manual testing notes are under Tests above.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

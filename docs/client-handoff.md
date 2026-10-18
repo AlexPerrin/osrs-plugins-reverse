@@ -1,8 +1,7 @@
 # Client work: handoff notes
 
 > Latest state: see the gen 33 entry (2026-10-18) at the end of "Where things stand".
-> **Start here (gen 33):** see the gen 32 entry's "Next". World Map and Key Remapping run; LinkBrowser (Wiki) needs a
-> device check.
+> **Start here (gen 34):** see the gen 33 entry's "Next".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1225,6 +1224,21 @@ session; its notes are in `docs/android-protocol.md`.
     Progress, Consumable Cooldowns; recipes in their rows). Arc2D.setFrame(Rectangle2D) added to the shim.
   - Android token logins all map to one account: OpenRune `SPIKE_TOKEN_USERNAME` (default tester; ConnectionHandler.tokenLogin).
     A fresh Android account needs that env changed on the container (orchestrator) or a server code change.
+  - Hub batch on device (3b7cfb6): Action Progress, Rogues' Den, Target True Tile run; Consumable Cooldowns, Mahogany Homes,
+    Looting Bag, Monster Menu HP start (reasons in their rows). Hub 37/44.
+  - 1c9bad2 (unverified): UsernameChanged posted once per login (Mahogany's saved contract), and
+    ChatboxPanelManager.getContainerWidget returns a WidgetBag sink (Wiki search predictions NPE; also ChatboxItemSearch).
+  - Device helpers used this gen (scratchpad, not committed): drop items by long-press + MenuOpened order (rows are
+    52 px, the menu is shifted up when it would pass y 1078); login: Play Now only after a screenshot shows it, Try
+    again after the 60 s grace. NPCs walk: long-press within ~0.3 s of the screenshot.
+  - **Next (gen 34)**:
+    1. Device-check 1c9bad2: Mahogany (keys `MahoganyHomes.<hash>.currentHome=JEFF`, `.currentTier=1`, hash of "tester"
+       = 3417797823; `::tele 3239 3450 0`), Wiki search with predictions (no NPE).
+    2. Consumable Cooldowns: `consumablecooldowns.showItemCooldownPreview=true` to split drawing from eat detection.
+    3. QH on Android for Doric's Quest / Witch's Potion / Goblin Diplomacy (and Vampyre Slayer) on a fresh account once
+       the server dev carries a username from the local sign-in into the token login (orchestrator asked for it);
+       varp trails in docs/openrune-port.md. Never use `::empty` on the tester.
+    4. Monster Menu HP with a low-level account (same per-login accounts).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

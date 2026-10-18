@@ -330,6 +330,19 @@ index cf805f396..849b4ca7d 100644
          val wanderRange = npc.wanderRange
          if (wanderRange > 0) {
              npc.updateIdleCycles()
+diff --git a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerLogoutProcess.kt b/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerLogoutProcess.kt
+index 2787f8852..2d7e3a260 100644
+--- a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerLogoutProcess.kt
++++ b/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerLogoutProcess.kt
+@@ -175,7 +175,7 @@ constructor(
+          * remain in the world before their logout is queued. This gives them a chance to reconnect
+          * in time, based on this constant.
+          */
+-        private const val RECONNECT_GRACE_PERIOD: Int = 16
++        private const val RECONNECT_GRACE_PERIOD: Int = 100
+ 
+         /**
+          * A hard cap period (in server cycles) after which the logout block no longer applies. This
 diff --git a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerMainProcess.kt b/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerMainProcess.kt
 index 52c2ac1bf..c398d65c3 100644
 --- a/api/game-process/src/main/kotlin/org/rsmod/api/game/process/player/PlayerMainProcess.kt
@@ -562,10 +575,26 @@ index f426d43f6..aa1e21577 100644
      client.write(FriendListLoaded)
      client.write(ChatFilterSettingsPrivateChat(0))
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
-index 5fafd3b35..e4d983716 100644
+index 5fafd3b35..845691f9e 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
 +++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/ConnectionHandler.kt
-@@ -85,7 +85,7 @@ private constructor(
+@@ -16,6 +16,7 @@ import org.rsmod.api.db.jdbc.GameDatabase
+ import org.rsmod.api.game.process.PluginScriptBootGate
+ import org.rsmod.api.net.central.OpenRuneCentralWorldLink
+ import org.rsmod.api.net.rsprot.player.AccountLoadResponseHook
++import org.rsmod.api.net.rsprot.player.PlayerReconnect
+ import org.rsmod.api.realm.Realm
+ import org.rsmod.api.registry.account.AccountRegistry
+ import org.rsmod.api.registry.player.PlayerRegistry
+@@ -43,6 +44,7 @@ private constructor(
+     private val gameDatabase: GameDatabase,
+     private val characterAccountRepository: CharacterAccountRepository,
+     private val scriptBootGate: PluginScriptBootGate,
++    private val playerReconnect: PlayerReconnect,
+ ) : GameConnectionHandler<Player> {
+     private val logger = InlineLogger()
+ 
+@@ -85,7 +87,7 @@ private constructor(
      ) {
          val password = auth.password.asCharArray()
          try {
@@ -574,7 +603,7 @@ index 5fafd3b35..e4d983716 100644
          } finally {
              // `password` char array is already cleared during `computePasswordHash`, but that is
              // an implementation detail in the password hashing interface; we ensure to clear it
-@@ -98,7 +98,8 @@ private constructor(
+@@ -98,7 +100,8 @@ private constructor(
      private fun passLogin(
          responseHandler: GameLoginResponseHandler<Player>,
          block: LoginBlock<AuthenticationType>,
@@ -584,7 +613,7 @@ index 5fafd3b35..e4d983716 100644
          password: CharArray,
      ) {
          // This may be filtered earlier at the protocol layer (e.g., rsprot), but we defensively
-@@ -118,8 +119,7 @@ private constructor(
+@@ -118,8 +121,7 @@ private constructor(
              responseHandler.writeFailedResponse(LoginResponse.LoginServerOffline)
              return
          }
@@ -594,7 +623,7 @@ index 5fafd3b35..e4d983716 100644
  
          val responseHook =
              AccountLoadResponseHook(
-@@ -188,14 +188,21 @@ private constructor(
+@@ -188,14 +190,21 @@ private constructor(
          }
      }
  
@@ -620,6 +649,19 @@ index 5fafd3b35..e4d983716 100644
      }
  
      private fun OtpAuthenticationType.toAccountLoadAuth(): AccountLoadAuth =
+@@ -218,7 +227,10 @@ private constructor(
+         responseHandler: GameLoginResponseHandler<Player>,
+         block: LoginBlock<XteaKey>,
+     ) {
+-        // TODO: Reconnection.
+-        responseHandler.writeFailedResponse(LoginResponse.ConnectFail)
++        if (!scriptBootGate.isReady() || accountManager.isLoaderShuttingDown()) {
++            responseHandler.writeFailedResponse(LoginResponse.ConnectFail)
++            return
++        }
++        accountReg.queueReconnect { playerReconnect.reconnect(responseHandler, block) }
+     }
+ }
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkFactory.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkFactory.kt
 index 0c3cdf4e5..efa4ff754 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/NetworkFactory.kt
@@ -660,6 +702,51 @@ index 98c922c45..76770d5bd 100644
  
          val client = RspClient(session, infos) as Client<Any, Any>
          val cycle = RspCycle(session, infos, regionReg)
+diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/RspClient.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/RspClient.kt
+index 169da7bf6..cb9e44cab 100644
+--- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/RspClient.kt
++++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/RspClient.kt
+@@ -13,7 +13,7 @@ import org.rsmod.game.entity.Player
+ private typealias Service = NetworkService<Player>
+ 
+ @OptIn(ExperimentalUnsignedTypes::class)
+-class RspClient(private val session: Session<Player>, private val infos: Infos) :
++class RspClient(val session: Session<Player>, val infos: Infos) :
+     Client<NetworkService<Player>, OutgoingGameMessage> {
+     override fun close() {
+         session.requestClose()
+diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/RspCycle.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/RspCycle.kt
+index d85917d23..674f91295 100644
+--- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/RspCycle.kt
++++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/RspCycle.kt
+@@ -37,7 +37,7 @@ import org.rsmod.map.CoordGrid
+ import org.rsmod.map.zone.ZoneKey
+ 
+ class RspCycle(
+-    private val session: Session<Player>,
++    private var session: Session<Player>,
+     private val infos: Infos,
+     private val regions: RegionRegistry,
+ ) : ClientCycle {
+@@ -72,6 +72,18 @@ class RspCycle(
+         player.queueRebuildLogin()
+     }
+ 
++    /**
++     * Moves this cycle to the session of a reconnect login (the client keeps its scene). The
++     * build area and npc view distance are re-assigned on the next update, since the info
++     * protocols' `onReconnect` drops them, without sending a rebuild packet.
++     */
++    fun reconnect(newSession: Session<Player>) {
++        session = newSession
++        knownBuildArea = CoordGrid.NULL
++        pendingSceneRebuild = false
++        knownNpcViewDistance = -1
++    }
++
+     override fun forceSceneRebuild() {
+         // A flag, not a cleared `knownBuildArea`: `NULL` there means "login rebuild already sent".
+         pendingSceneRebuild = true
 diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/FriendListAddHandler.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/FriendListAddHandler.kt
 index b6ca51e1b..47005ba48 100644
 --- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/handlers/FriendListAddHandler.kt
@@ -725,6 +812,139 @@ index 000000000..dc9224eca
 +    override fun handle(player: Player, message: Idle) {
 +        if (!player.pendingLogout && !player.loggingOut) {
 +            player.manualLogout = true
++        }
++    }
++}
+diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/player/AccountLoadResponseHook.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/player/AccountLoadResponseHook.kt
+index 50b519566..75d8defb0 100644
+--- a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/player/AccountLoadResponseHook.kt
++++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/player/AccountLoadResponseHook.kt
+@@ -421,8 +421,7 @@ class AccountLoadResponseHook(
+         val session = channelResponses.writeSuccessfulResponse(response, loginBlock)
+         val responseMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - responseStart)
+ 
+-        val disconnectionHook = Runnable { player.clientDisconnected.set(true) }
+-        session.setDisconnectionHook(disconnectionHook)
++        session.setDisconnectionHook(PlayerReconnect.disconnectionHook(player, session))
+ 
+         // `setDisconnectionHook` will invoke the disconnection hook instantly if the session
+         // is not active at this point. Since the channel is no longer connected, we can no-op
+diff --git a/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/player/PlayerReconnect.kt b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/player/PlayerReconnect.kt
+new file mode 100644
+index 000000000..e7eac5478
+--- /dev/null
++++ b/api/net/src/main/kotlin/org/rsmod/api/net/rsprot/player/PlayerReconnect.kt
+@@ -0,0 +1,113 @@
++package org.rsmod.api.net.rsprot.player
++
++import com.github.michaelbull.logging.InlineLogger
++import jakarta.inject.Inject
++import net.rsprot.crypto.xtea.XteaKey
++import net.rsprot.protocol.api.Session
++import net.rsprot.protocol.api.login.GameLoginResponseHandler
++import net.rsprot.protocol.loginprot.incoming.util.LoginBlock
++import net.rsprot.protocol.loginprot.outgoing.LoginResponse
++import org.rsmod.api.net.rsprot.RspClient
++import org.rsmod.api.net.rsprot.RspCycle
++import org.rsmod.api.registry.player.PlayerRegistry
++import org.rsmod.events.EventBus
++import org.rsmod.game.entity.Player
++import org.rsmod.game.entity.player.SessionStateEvent
++
++/**
++ * Reconnect logins (login type 18): the client presents the seed of its previous login instead of
++ * a password or token. A player whose connection dropped stays in the world for the logout grace
++ * period; a matching reconnect moves that player to the new session, so the client carries on
++ * where it was instead of going back to the login screen.
++ */
++class PlayerReconnect
++@Inject
++constructor(private val playerRegistry: PlayerRegistry, private val eventBus: EventBus) {
++    private val logger = InlineLogger()
++
++    /** Game thread only. */
++    fun reconnect(responseHandler: GameLoginResponseHandler<Player>, block: LoginBlock<XteaKey>) {
++        val player = findPlayer(block)
++        if (player == null) {
++            logger.info { "Reconnect for an unknown session rejected (username='${block.username}')" }
++            responseHandler.writeFailedResponse(LoginResponse.ConnectFail)
++            return
++        }
++        if (!player.canReconnect()) {
++            logger.info { "Reconnect for ${player.username} rejected: logout already under way" }
++            responseHandler.writeFailedResponse(LoginResponse.ConnectFail)
++            return
++        }
++        try {
++            rebind(player, responseHandler, block)
++        } catch (e: Exception) {
++            logger.error(e) { "Reconnect failed for ${player.username}" }
++            responseHandler.writeFailedResponse(LoginResponse.ConnectFail)
++        }
++    }
++
++    private fun findPlayer(block: LoginBlock<XteaKey>): Player? {
++        val previousSeed = block.authentication.key
++        var match: Player? = null
++        playerRegistry.forEachOnline { player ->
++            if (match != null) return@forEachOnline
++            val client = player.client as? RspClient ?: return@forEachOnline
++            val previous = client.session.loginBlock
++            if (!previous.seed.contentEquals(previousSeed)) return@forEachOnline
++            if (!sameUsername(previous.username, block.username)) return@forEachOnline
++            match = player
++        }
++        return match
++    }
++
++    private fun sameUsername(previous: String, presented: String): Boolean =
++        previous.isBlank() || presented.isBlank() || previous.equals(presented, ignoreCase = true)
++
++    private fun Player.canReconnect(): Boolean =
++        !loggingOut &&
++            !pendingLogout &&
++            !forceDisconnect &&
++            !manualLogout &&
++            !closeClient &&
++            !pendingCloseClient
++
++    private fun rebind(
++        player: Player,
++        responseHandler: GameLoginResponseHandler<Player>,
++        block: LoginBlock<XteaKey>,
++    ) {
++        val oldClient = player.client as RspClient
++        val cycle = player.clientCycle as RspCycle
++        val infos = oldClient.infos
++        infos.playerInfo.onReconnect()
++        infos.npcInfo.onReconnect()
++        infos.worldEntityInfo.onReconnect()
++
++        val response = LoginResponse.ReconnectOk(infos.playerInfo)
++        val session = responseHandler.writeSuccessfulResponse(response, block, oldClient.session)
++
++        @Suppress("UNCHECKED_CAST")
++        player.client = RspClient(session, infos) as org.rsmod.game.client.Client<Any, Any>
++        cycle.reconnect(session)
++        player.clientDisconnected.set(false)
++        player.clientDisconnectedCycles = 0
++        session.setDisconnectionHook(disconnectionHook(player, session))
++        oldClient.session.requestClose()
++
++        logger.info { "${player.username} reconnected (${block.header.clientType})" }
++        eventBus.publish(SessionStateEvent.Reconnect(player))
++    }
++
++    companion object {
++        /**
++         * Marks [player] disconnected when [session] closes, unless a reconnect already moved the
++         * player to another session (the old one can close after the new one is up).
++         */
++        fun disconnectionHook(player: Player, session: Session<Player>): Runnable = Runnable {
++            val current = player.client as? RspClient
++            if (current == null || current.session === session) {
++                player.clientDisconnected.set(true)
++            }
 +        }
 +    }
 +}
@@ -1219,6 +1439,39 @@ index b3c8a8cad..19b1a0e14 100644
              return
          }
  
+diff --git a/api/registry/src/main/kotlin/org/rsmod/api/registry/account/AccountRegistry.kt b/api/registry/src/main/kotlin/org/rsmod/api/registry/account/AccountRegistry.kt
+index 952ef4a9b..5f2318054 100644
+--- a/api/registry/src/main/kotlin/org/rsmod/api/registry/account/AccountRegistry.kt
++++ b/api/registry/src/main/kotlin/org/rsmod/api/registry/account/AccountRegistry.kt
+@@ -18,6 +18,7 @@ constructor(
+ ) {
+     private val pendingLogins = ConcurrentLinkedQueue<QueuedLogin>()
+     private val pendingLogouts = ConcurrentLinkedQueue<QueuedLogout>()
++    private val pendingReconnects = ConcurrentLinkedQueue<() -> Unit>()
+ 
+     public fun queueLogin(
+         player: Player,
+@@ -28,11 +29,20 @@ constructor(
+         pendingLogins.add(queued)
+     }
+ 
++    /** Runs [handler] on the game thread, before the queued logins of the next login cycle. */
++    public fun queueReconnect(handler: () -> Unit) {
++        pendingReconnects.add(handler)
++    }
++
+     public fun queueLogout(player: Player) {
+         accountManager.save(player, ::queueSaveResponse)
+     }
+ 
+     public fun handleLogins(count: Int = DEFAULT_LOGINS_PER_CYCLE) {
++        while (true) {
++            val reconnect = pendingReconnects.poll() ?: break
++            reconnect()
++        }
+         var left = count
+         while (left-- > 0) {
+             val next = pendingLogins.poll() ?: break
 diff --git a/content/areas/city/al-kharid/pack/src/main/resources/pack/configs/al_kharid_npcs.toml b/content/areas/city/al-kharid/pack/src/main/resources/pack/configs/al_kharid_npcs.toml
 index ef0006d83..cfef1fa6d 100644
 --- a/content/areas/city/al-kharid/pack/src/main/resources/pack/configs/al_kharid_npcs.toml
@@ -12677,10 +12930,10 @@ index 000000000..16e7d2d4f
 +}
 diff --git a/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
 new file mode 100644
-index 000000000..2726d6c1c
+index 000000000..e638c6db8
 --- /dev/null
 +++ b/content/other/commands/src/main/kotlin/org/rsmod/content/other/commands/TestCommands.kt
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,175 @@
 +package org.rsmod.content.other.commands
 +
 +import dev.openrune.ServerCacheManager
@@ -12712,7 +12965,7 @@ index 000000000..2726d6c1c
 +
 +/**
 + * osrs-plugins-reverse: the `::` commands our Android device tests use that OpenRune lacks
-+ * (`::freeze`, `::npcsay`, `::options`, `::url`). The rest map onto OpenRune's own commands: `::give` and
++ * (`::freeze`, `::npcsay`, `::options`, `::url`, `::drop`). The rest map onto OpenRune's own commands: `::give` and
 + * `::empty` are aliases of `::item` and `::invclear`, `::quest` lives in the quest module.
 + */
 +class TestCommands
@@ -12728,6 +12981,7 @@ index 000000000..2726d6c1c
 +        }
 +        onCommand("options", "Open a chatmenu with 2-5 options (::options One Two Three)", ::options)
 +        onCommand("url", "Send URL_OPEN (::url https://example.com)", ::url)
++        onCommand("drop", "Close the connection without logging out (the client reconnects)", ::drop)
 +        onCommand("trace", "Log every incoming game packet (docker logs) on/off", ::trace)
 +        onCommand("traceout", "Log the first n outgoing packets of new Android sessions (docker logs; 0 = off)", ::traceOut)
 +        onCommand("setxp", "Set a stat's xp, up to 200M (::setxp mining 20000000)", ::setXp) {
@@ -12794,6 +13048,11 @@ index 000000000..2726d6c1c
 +        }
 +
 +    /** Logs the first n outgoing packets of the next Android logins (`OUT #..`); 0 turns it off. */
++    private fun drop(cheat: Cheat) =
++        with(cheat) {
++            player.client.close()
++        }
++
 +    private fun traceOut(cheat: Cheat) =
 +        with(cheat) {
 +            val n = args.firstOrNull()?.toIntOrNull() ?: if (OutgoingPacketTrace.loginPackets > 0) 0 else 700
@@ -13517,7 +13776,7 @@ index 000000000..724a884e2
 +mcannon_fire = 440
 +mcannon_decay = 441
 diff --git a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
-index a325cee80..55ca53220 100644
+index a325cee80..576dc5af4 100644
 --- a/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 +++ b/content/other/login/src/main/kotlin/org/rsmod/content/other/login/LoginScript.kt
 @@ -12,6 +12,8 @@ import net.rsprot.protocol.game.outgoing.misc.client.HideObjOps
@@ -13552,10 +13811,11 @@ index a325cee80..55ca53220 100644
  ) : PluginScript() {
      private val statSyncEntries by lazy { statSyncEntries() }
  
-@@ -56,12 +61,58 @@ constructor(
+@@ -56,12 +61,69 @@ constructor(
  
      override fun ScriptContext.startup() {
          onEvent<SessionStateEvent.EngineLogin>(0L) { player.engineLogin() }
++        onEvent<SessionStateEvent.Reconnect> { player.reconnectResync() }
 +        // Friends-list diagnostics (mobile "Loading friends list"): switch the resend off, relog,
 +        // then send the pieces by hand to see which one the client needs.
 +        onCommand("socialresend") {
@@ -13608,10 +13868,20 @@ index a325cee80..55ca53220 100644
 +            delay(SOCIAL_RESEND_DELAY)
 +            player.sendSocial()
 +        }
++    }
++
++    // osrs-plugins-reverse: whether OSRS resends state after a reconnect is unknown; we resend what
++    // may have changed while the connection was gone (its packets were lost).
++    private fun Player.reconnectResync() {
++        sendVars()
++        transmittedInvAddQueue.addAll(transmittedInvs)
++        transmittedInvs.clear()
++        sendStats()
++        sendRun()
      }
  
      private fun Player.sendHighPriority() {
-@@ -107,10 +158,15 @@ constructor(
+@@ -107,10 +169,15 @@ constructor(
          client.write(HideObjOps(false))
      }
  
@@ -13628,7 +13898,7 @@ index a325cee80..55ca53220 100644
          }
  
          val broadcast = realm.config.loginBroadcast
-@@ -186,6 +242,8 @@ constructor(
+@@ -186,6 +253,8 @@ constructor(
          }
  
      private companion object {
@@ -30871,6 +31141,23 @@ index afd1731d5..32a3ad5c4 100644
      public var displayName: String by avatar::name
      public var members: Boolean = false
      public var gamemode: Int = 0
+diff --git a/engine/game/src/main/kotlin/org/rsmod/game/entity/player/SessionStateEvent.kt b/engine/game/src/main/kotlin/org/rsmod/game/entity/player/SessionStateEvent.kt
+index 9f31eadea..37b894605 100644
+--- a/engine/game/src/main/kotlin/org/rsmod/game/entity/player/SessionStateEvent.kt
++++ b/engine/game/src/main/kotlin/org/rsmod/game/entity/player/SessionStateEvent.kt
+@@ -18,6 +18,12 @@ public class SessionStateEvent {
+     public data class EngineLogin(override val player: Player, override val id: Long = 0L) :
+         KeyedEvent, PlayerEvent
+ 
++    /**
++     * Fired on the game thread after a reconnect login moved the player to a new session. Packets
++     * written while the old connection was gone were lost, so state is sent again.
++     */
++    public data class Reconnect(override val player: Player) : UnboundEvent, PlayerEvent
++
+     /** Fired before the player's account data is queued for saving. */
+     public data class Logout(override val player: Player) : UnboundEvent, PlayerEvent
+ 
 diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
 index 0e4a0f17f..5b494bdba 100644
 --- a/gradle/libs.versions.toml

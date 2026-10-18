@@ -6,6 +6,8 @@
 #   tools/fork.sh pr-create <branch> <title-file> <body-file>     (base main; prints the PR URL)
 #   tools/fork.sh pr-edit <number> <body-file> [title-file]
 #   tools/fork.sh pr-comment <number> <body-file>
+#   tools/fork.sh sync                                            (fast-forward the fork's main to
+#                                                                  upstream main; never forces)
 set -euo pipefail
 FORK=AlexPerrin/OpenRune-Server
 CLONE=$(dirname "$0")/../re/upstream-pr/or
@@ -36,6 +38,10 @@ pr-edit)
 pr-comment)
     num_ok "${1:?number}"; file_ok "${2:?body-file}"
     exec gh api -X POST "repos/$FORK/issues/$1/comments" -F "body=@$2" --jq .html_url ;;
+sync)
+    [[ -z ${1:-} ]] || die "sync takes no arguments"
+    gh repo sync "$FORK" --source OpenRune/OpenRune-Server --branch main
+    exec gh api "repos/$FORK/commits/main" --jq '.sha[0:9] + " " + (.commit.message | split("\n")[0])' ;;
 *)
-    die "usage: push|pr-create|pr-edit|pr-comment (see header)" ;;
+    die "usage: push|pr-create|pr-edit|pr-comment|sync (see header)" ;;
 esac

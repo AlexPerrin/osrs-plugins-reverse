@@ -49,8 +49,30 @@ def records():
             yield path, f.read()
 
 
+def release_gate(cmd):
+    """Client release gate: `git tag client-vX.Y [commit]` and `gh release create client-vX.Y` need
+    qa/client-X.Y.md with `## Verdict: **PASS**` for the commit being tagged (the tag's, else HEAD)."""
+    m = re.search(r"\b(?:git\s+tag|gh\s+release\s+create)\b(?:\s+-\S+)*\s+(client-v([0-9][0-9A-Za-z.\-]*))(?:\s+([0-9a-f]{7,40}|HEAD|master))?", cmd)
+    if not m:
+        return
+    tag, version, target = m.group(1), m.group(2), m.group(3)
+    run = lambda *a: (subprocess.run(["git", "-C", ROOT, *a], capture_output=True, text=True).stdout or "").strip()
+    sha = run("rev-parse", "-q", "--verify", f"refs/tags/{tag}^{{commit}}") or run("rev-parse", target or "HEAD")
+    path = os.path.join(ROOT, "qa", f"client-{version}.md")
+    if not os.path.isfile(path):
+        deny(f"no release record qa/client-{version}.md; client-qa runs the release gate on {sha[:9]} first")
+    text = open(path).read()
+    commit = re.search(r"^- Commit: `([0-9a-f]{7,40})`", text, re.M)
+    verdict = re.search(r"^## Verdict: \*\*(PASS|FAIL)\*\*", text, re.M)
+    if not (commit and verdict and verdict.group(1) == "PASS" and sha.startswith(commit.group(1))):
+        deny(f"{tag} would tag {sha[:9]}, but qa/client-{version}.md says "
+             f"{verdict.group(1) if verdict else 'no verdict'} at {commit.group(1)[:9] if commit else 'no commit'}")
+    sys.exit(0)
+
+
 def main():
     cmd = json.load(sys.stdin).get("tool_input", {}).get("command", "")
+    release_gate(cmd)
     if not re.search(r"\bgh\s+pr\s+create\b", cmd):
         return
     head = re.search(r"--head[=\s]+[\"']?(?:AlexPerrin:)?([A-Za-z0-9._/-]+)", cmd)

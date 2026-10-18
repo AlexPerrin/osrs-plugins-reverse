@@ -42,8 +42,24 @@
             "type": "command",
             "if": "Bash(gh pr create*)",
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/publish_gate.py"
+          },
+          {
+            "type": "command",
+            "if": "Bash(gh release create*)",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/publish_gate.py"
+          },
+          {
+            "type": "command",
+            "if": "Bash(git tag*)",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/publish_gate.py"
           }
         ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [{ "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/tools/hooks/session_state.sh" }]
       }
     ],
     "SubagentStop": [

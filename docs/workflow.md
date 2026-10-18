@@ -163,8 +163,8 @@ hands over.
 
 Each is `.claude/skills/<name>/SKILL.md`: inputs, steps, evidence, and the PASS criteria a companion records.
 Heavy ones (`reverse`, `build-test`) use `context: fork`. A skill bundles the scripts it runs, and only its name
-and description are in context until it's used. Until a skill is written, its procedure is in the docs named
-above (docs/app-telemetry.md, docs/offsets.md, docs/multi-client.md, QA.md).
+and description are in context until it's used. The skills point to the procedures in docs/app-telemetry.md,
+docs/multi-client.md, QA.md and STATE.md rather than restating them; change the procedure there.
 
 ### MCP servers
 
@@ -211,10 +211,12 @@ concurrency, and the hooks below.
   first. History goes to the handoff docs, read only when needed.
 - **Gotchas that keep recurring become checks or tools, not prose** (the device restore check, test jars removed
   by name only).
-- **Tasks and blockers in `tasks.json`** (planned): `id`, `track`, `owner`, `description`, `gate`, `blocks`,
-  `passes`. Agents may only set `passes`, after the gate passes; the orchestrator adds and edits tasks.
-- **The orchestrator restarts per milestone** and rebuilds from the STATE docs, the records and `tasks.json`. A
-  `SessionStart` hook with matcher `compact` (planned) prints them after each compaction.
+- **Blockers are written in both STATE docs' "Next tasks"**: the client task says `blocked by server: <slug>`, the
+  server task says `unblocks client: <task>`. The orchestrator clears both when the server change passes the
+  internal gate and is live.
+- **The orchestrator restarts per milestone** and rebuilds from the STATE docs and the QA records. After each
+  compaction a `SessionStart` hook (`tools/hooks/session_state.sh`) prints both STATE docs, the lock and build
+  queue status, and the recent log.
 
 ## Harness
 
@@ -252,6 +254,9 @@ flowchart TB
 | Role files | `.claude/agents/{client,server}-{dev,qa}.md` | Standing brief, hooks, `maxTurns` 400 (dev) / 300 (QA) |
 | Shared rules | `CLAUDE.md` | Loaded by every agent, and again after each compaction |
 | Upstream publish gate | `tools/hooks/publish_gate.py` (settings) | An upstream `gh pr create` needs `## Upstream gate: **PASS**` at the fork branch's commit |
+| Client release gate | `tools/hooks/publish_gate.py` (settings) | `git tag client-vX.Y` and `gh release create client-vX.Y` need `qa/client-X.Y.md` with `## Verdict: **PASS**` for the tagged commit |
+| State after compaction | `tools/hooks/session_state.sh` (settings, `SessionStart` `compact`) | The orchestrator rebuilds from disk, not from the summary |
+| Shared skills | `.claude/skills/<name>/SKILL.md` | One procedure per tool, for dev and QA alike |
 | Orchestrator-only actions | `tools/hooks/deny_publish.py` (role files) | Agents can't push, post, run fork.sh, deploy, grant devices or write progress |
 | QA write scope | `tools/hooks/qa_write_scope.py` (QA role files) | Companions write records, QA.md and scratch files only |
 | Slot stop gate | `tools/hooks/slot_stop.py <holder>` (settings) | No agent finishes holding a lock, or with a device slot that hasn't passed its restore check |
@@ -272,16 +277,9 @@ How it handles the bottlenecks:
   spawn is one task with a turn cap. The orchestrator relays decisions, not reports, and batches pushes and
   grants. Builds are waited on with a background command that notifies, not by polling.
 
-Not built yet, in order:
-0. `osrs-mcp` itself: its jars are missing (`openrune/src/tools/osrs-mcp/build/install/`), so `run.sh` exits
-   with "osrs-mcp not built". Build it through buildq with the `installDist` command in "MCP servers".
-1. Integration gate hook: `scripts/build-integration.sh` refuses a `content/*` or `fix/*` branch without an
-   internal PASS at its commit.
-2. `SessionStart` compact hook.
-3. The shared skills, `reverse` first (both devs use it).
-4. `tasks.json` with blockers, read by `tools/progress.py`.
-5. Client release gate hook on `gh release` and tags.
-6. Server dev stop gate (buildq writes a green-run marker per commit).
+Not built yet: an integration gate (`scripts/build-integration.sh` refusing a `content/*` or `fix/*` branch
+without an internal PASS at its commit). It waits until the cutover's branches have QA records; today almost
+none do, so it would stop the cutover.
 
 Why: up to gen 40, a single orchestrator session ran for about 2.7 days through 4 compactions, spawning 79
 general-purpose agents with briefs of about 3,700 characters, and each dev generation ran 2,500-3,900 turns before

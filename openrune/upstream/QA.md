@@ -53,13 +53,14 @@ branch commit, with logs beside them in `<clone>.logs/`.
    = upstream `main` + the branch, merged (section 3). A merge conflict there is a FAIL in itself.
 2. **Build and tests.** `qa.sh build <clone>` runs each step as its own Gradle container (`--cpus=4
    --memory=4g`, `--max-workers=2`, `-Xmx2g`, cache tasks `-Xmx2600m`, `--no-build-cache
-   --no-configuration-cache`, Gradle home volume `upstream-pr-gradle-qa`, `-Pkotlin.compiler.execution.strategy=in-process` so no separate
+   --no-configuration-cache`, Gradle home volume `upstream-pr-gradle-qa`, or `-qa2` when the first is busy (Gradle's locks don't work across containers sharing a volume), `-Pkotlin.compiler.execution.strategy=in-process` so no separate
    2 GB Kotlin daemon runs in the container). Each run waits its turn in
    the agents' FIFO build queue (`tools/buildq.sh qa -- ...`). Steps: `clean :or-cache:freshCache :or-cache:mergePluginGamevals` (a fresh cache download:
    a new clone has none, and freshCache ends with a forced BUILD), `:or-cache:buildCache`,
-   `generateRsa` (integration tests read `.data/game.key`), `spotlessCheck`, `assemble`, `test`,
+   `generateRsa` (integration tests read `.data/game.key`), `:server:app:installDist` (then
+   `<clone>.logs/runnable`: the branch server can start while the tests wait), `spotlessCheck`, `assemble`, `test`,
    `integration` (both with one worker: each test JVM has `-Xmx2048m`, and two of them plus the
-   Gradle daemon were OOM-killed in the 4 GB container), then `:server:app:installDist`.
+   Gradle daemon were OOM-killed in the 4 GB container).
    `qa.sh runbuild <clone>-run` builds only what a server run needs.
 3. **Branch server.** `qa.sh start <clone>-run` runs the installDist in `eclipse-temurin:21-jre` as
    `qa-or-server` (game port **43596**, its own embedded PostgreSQL under the clone's `.data/postgres`,

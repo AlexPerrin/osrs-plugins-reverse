@@ -6,8 +6,8 @@
 #                                              into $QA_ROOT/<slug>-<commit7>; with merge-base (e.g. main),
 #                                              also <slug>-<commit7>-run = <merge-base> + <commit> (merge)
 #   qa.sh build  <dir>                         section 1: freshCache + mergePluginGamevals, buildCache,
-#                                              generateRsa, spotlessCheck, assemble, test, integration
-#                                              (separate runs), then :server:app:installDist. Logs: <dir>.logs/
+#                                              generateRsa, :server:app:installDist (then <dir>.logs/runnable),
+#                                              spotlessCheck, assemble, test, integration (separate runs)
 #   qa.sh runbuild <dir>                       only what a server run needs (freshCache, mergePluginGamevals,
 #                                              generateRsa, installDist), for the -run merge tree
 #   qa.sh gradle <dir> <log> <args...>         one Gradle run with the QA limits
@@ -20,7 +20,7 @@
 #   qa.sh log [n]                              tail of the branch server log
 #
 # Limits (QA.md): docker --cpus=4 --memory=4g, Gradle --max-workers=2, -Xmx2g (cache tasks -Xmx2600m),
-# clean --no-build-cache --no-configuration-cache, own Gradle home volume upstream-pr-gradle-qa, one
+# clean --no-build-cache --no-configuration-cache, own Gradle home volumes upstream-pr-gradle-qa/-qa2 (one per running container), one
 # build container per call, through tools/buildq.sh (the agents' FIFO build queue).
 set -euo pipefail
 REPO=/home/alex/osrs-plugins-reverse
@@ -33,18 +33,30 @@ VOL=upstream-pr-gradle-qa
 gradle() {  # gradle <dir> <log> <args...>
   local d=$1 log=$2 rc; shift 2
   mkdir -p "$(dirname "$log")"
-  # The agents' FIFO build queue (tools/buildq.sh) decides when the container runs.
-  "$REPO/tools/buildq.sh" qa -- docker run --rm --name "qa-gradle-$$" --cpus=4 --memory=4g -u 1000:1000 \
-    -e GRADLE_USER_HOME=/gradle -e GRADLE_OPTS=-Xmx2g -e JAVA_TOOL_OPTIONS="${JTO:-}" \
-    -v $VOL:/gradle -v "$d":"$d" -v "$SRC/.git":"$SRC/.git":ro -w "$d" \
-    eclipse-temurin:21 ./gradlew --no-daemon --console=plain --no-build-cache --no-configuration-cache \
-      --max-workers=${QA_WORKERS:-2} -Dorg.gradle.jvmargs=-Xmx2g -Pkotlin.compiler.execution.strategy=in-process "$@" > "$log" 2>&1 && rc=0 || rc=$?
+  # The agents' FIFO build queue (tools/buildq.sh) decides when the container runs; `_run` then
+  # picks a free Gradle home volume (two QA containers can run at once, and Gradle's cross-process
+  # locks don't work across containers sharing one volume).
+  "$REPO/tools/buildq.sh" qa -- "$0" _run "$d" ${QA_WORKERS:-2} "$@" > "$log" 2>&1 && rc=0 || rc=$?
   echo "rc=$rc" >> "$log"; echo "$(basename "$log"): rc=$rc"; return $rc
 }
 
-own_vol() { docker run --rm -v $VOL:/v alpine:3.20 chown 1000:1000 /v; }
+own_vol() { :; }  # _run chowns the volume it picks
 
 case "${1:-}" in
+_run)  # _run <dir> <workers> <gradle args...>: one Gradle container on a free QA volume
+  shift; d=$1; w=$2; shift 2
+  for v in $VOL ${VOL}2; do
+    exec 8>"$QA_ROOT/.vol-$v.lock"; flock -n 8 && break; exec 8>&-; v=
+  done
+  [ -n "$v" ] || { echo "qa: no free Gradle volume" >&2; exit 1; }
+  docker run --rm -v $v:/v alpine:3.20 chown 1000:1000 /v
+  echo "qa: Gradle home volume $v"
+  exec docker run --rm --name "qa-gradle-$$" --cpus=4 --memory=4g -u 1000:1000 \
+    -e GRADLE_USER_HOME=/gradle -e GRADLE_OPTS=-Xmx2g -e JAVA_TOOL_OPTIONS="${JTO:-}" \
+    -v $v:/gradle -v "$d":"$d" -v "$SRC/.git":"$SRC/.git":ro -w "$d" \
+    eclipse-temurin:21 ./gradlew --no-daemon --console=plain --no-build-cache --no-configuration-cache \
+      --max-workers=$w -Dorg.gradle.jvmargs=-Xmx2g -Pkotlin.compiler.execution.strategy=in-process "$@"
+  ;;
 clone)
   slug=$2; c=$(git -C "$SRC" rev-parse "$3"); d=$QA_ROOT/$slug-${c:0:9}
   [ -e "$d" ] && { echo "exists: $d" >&2; exit 1; }
@@ -67,13 +79,15 @@ build)
   JTO=-Xmx2600m gradle "$d" "$L/2-buildcache.log" :or-cache:buildCache || rc=1
   # Tests read .data/game.key (integration), so the key comes before them.
   gradle "$d" "$L/2b-rsa.log" generateRsa || rc=1
+  # installDist early, so the branch server can run while the tests wait in the queue.
+  gradle "$d" "$L/7-install.log" :server:app:installDist -x test || rc=1
+  touch "$L/runnable"
   gradle "$d" "$L/3-spotless.log" spotlessCheck || rc=1
   gradle "$d" "$L/4-assemble.log" assemble || rc=1
   # One test JVM at a time: each has -Xmx2048m (test-conventions), and two plus the Gradle daemon
   # overrun the 4 GB container (exit 137).
   QA_WORKERS=1 gradle "$d" "$L/5-test.log" test --continue || rc=1
   QA_WORKERS=1 gradle "$d" "$L/6-integration.log" integration --continue || rc=1
-  gradle "$d" "$L/7-install.log" :server:app:installDist -x test || rc=1
   git -C "$d" status --short > "$L/status-after"
   exit $rc
   ;;

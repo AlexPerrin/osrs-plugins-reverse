@@ -3,7 +3,8 @@
 #   tools/multiclient/desktop.sh start     # headless RSProx -> RuneLite "OpenRune Test"
 #   tools/multiclient/desktop.sh status    # our processes (executable under C:\osrs-test) + their sockets
 #   tools/multiclient/desktop.sh log [n]   # tail of the RSProx/launcher log
-#   tools/multiclient/desktop.sh login [user pass]  # Existing User login (default desktop/desktop)
+#   tools/multiclient/desktop.sh login [user pass]  # Existing User login (default desktop/desktop;
+#                                         if another account is online, it is logged out first)
 #   tools/multiclient/desktop.sh relogin [user pass]  # refill the open classic form after a failure
 #   tools/multiclient/desktop.sh logout    # in-game logout (stop does it first)
 #   tools/multiclient/desktop.sh stop      # kills ONLY processes whose executable is under C:\osrs-test
@@ -73,7 +74,15 @@ login|relogin)
     for _ in $(seq 12); do [ "$(state)" = LOGGED_IN ] && return 0; sleep 1; done; return 1
   }
   user="${2:-desktop}"; pass="${3:-desktop}"
-  s="$(state)"; [ "$s" = LOGGED_IN ] && { echo "already logged in"; exit 0; }
+  # The account this script last logged in (the client does not report it); unknown = "".
+  acct=/mnt/c/osrs-test/desktop-account
+  s="$(state)"
+  if [ "$s" = LOGGED_IN ]; then
+    cur="$(tr -d '\r\n' < "$acct" 2>/dev/null || true)"
+    [ "$cur" = "$user" ] && { echo "already logged in as $user"; exit 0; }
+    echo "logged in as '${cur:-unknown}', not $user: logging out first" >&2
+    "$0" logout >/dev/null; rm -f "$acct"; sleep 5; s="$(state)"
+  fi
   [ "$s" = LOGIN_SCREEN ] || { echo "not on the login screen: $s" >&2; exit 1; }
   [ "$1" = login ] && existing
   for try in 1 2 3 4 5 6; do
@@ -81,6 +90,7 @@ login|relogin)
     sleep 8; existing; fill && break   # back on Welcome after some failures
     echo "login attempt $try refused; retrying" >&2; sleep 10
   done
+  [ "$(state)" = LOGGED_IN ] && printf '%s\n' "$user" > "$acct"
   "$M" --tool get_client_state '{}'
   ;;
 logout)  # fixed mode: Logout tab, then "Click here to logout" (avoids the server's duplicate-login hold)
@@ -89,6 +99,7 @@ logout)  # fixed mode: Logout tab, then "Click here to logout" (avoids the serve
   "$M" --tool press_key '{"key":"ESCAPE"}' >/dev/null
   "$M" --tool click '{"x":642,"y":483}' >/dev/null; sleep 1   # Logout tab
   "$M" --tool click '{"x":641,"y":423}' >/dev/null; sleep 3   # Click here to logout
+  rm -f /mnt/c/osrs-test/desktop-account
   "$M" --tool get_client_state '{}' | grep -o 'gameState[^,]*'
   ;;
 stop)

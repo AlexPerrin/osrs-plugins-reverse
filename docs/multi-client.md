@@ -253,6 +253,9 @@ $M --tool screenshot '{}'                             # PNG (base64) of the canv
 
 - **Fresh accounts:** `desktop.sh login <user> <pass>` (or `relogin`) creates any local account on its first login,
   e.g. `qhtest3`/`qhtest3`. Use a new one to re-test a quest; `::quest <name> reset` leaves internal flags set.
+- **Which account is online:** `login` with no arguments always means desktop/desktop. The client does not report
+  its account, so the script records the one it logged in (`C:\osrs-test\desktop-account`); if another (or an
+  unknown) account is online, `login` logs it out first and then logs in the requested one.
 - **Logout:** `desktop.sh logout` clicks (642,483) then (641,423). That works in the resizable layout at the
   minimum size too, but not while a fullscreen interface (the fullscreen world map) hides the side stones.
 - **Screenshots** are 1.5x the canvas (765x503) on this machine's DPI. Divide screenshot pixels by 1.5 before

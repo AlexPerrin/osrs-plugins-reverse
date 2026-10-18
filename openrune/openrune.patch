@@ -18222,10 +18222,10 @@ index 8fba8cb4d..a8e9c8029 100644
          private const val OilCan = "obj.oil_can"
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/falador/DoricsQuest.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/falador/DoricsQuest.kt
 new file mode 100644
-index 000000000..9446b678a
+index 000000000..fc48c31cb
 --- /dev/null
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/falador/DoricsQuest.kt
-@@ -0,0 +1,392 @@
+@@ -0,0 +1,393 @@
 +package org.rsmod.content.quest.area.falador
 +
 +import dev.openrune.rscm.RSCM.asRSCM
@@ -18387,10 +18387,11 @@ index 000000000..9446b678a
 +        quest.setQuestStage(access, STARTED)
 +        chatNpc(
 +            neutral,
-+            "Clay is what I use more than anything, to make casts. Could you get me 6 clay, 4 " +
-+                "copper ore, and 2 iron ore, please? I could pay a little, and let you use my " +
-+                "anvils. Take this pickaxe with you just in case you need it.",
++            "Clay is what I use more than anything, to make casts. Could you get me 6 clay, " +
++                "4 copper ore, and 2 iron ore, please? I could pay a little, and let you use my " +
++                "anvils.",
 +        )
++        chatNpc(neutral, "Take this pickaxe with you just in case you need it.")
 +        access.invAddOrDrop(objRepo, BRONZE_PICKAXE)
 +        if (hasMaterials(player)) {
 +            alreadyHaveMaterials()
@@ -18580,9 +18581,9 @@ index 000000000..9446b678a
 +                            neutral,
 +                            "Clay is what I use more than anything, to make casts. Could you " +
 +                                "get me 6 clay, 4 copper ore, and 2 iron ore, please? I could " +
-+                                "pay a little, and let you use my anvils. Take this pickaxe with " +
-+                                "you just in case you need it."
++                                "pay a little, and let you use my anvils.",
 +                        )
++                        doric(neutral, "Take this pickaxe with you just in case you need it.")
 +                        access.invAddOrDrop(objRepo, BRONZE_PICKAXE)
 +                    }
 +                    2 -> {
@@ -19849,6 +19850,19 @@ index 009be2ce1..2eca486ce 100644
      fun questState(player: Player): QuestProgressState =
          QuestProgressState.fromStage(getQuestStage(player), maxSteps)
  
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestDialogue.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestDialogue.kt
+index 5d1bc249e..8a847bf91 100644
+--- a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestDialogue.kt
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestDialogue.kt
+@@ -48,4 +48,7 @@ suspend fun <T> Dialogue.menu(
+ }
+ 
+ suspend fun Dialogue.startQuestPrompt(quest: Quest): Boolean =
+-    choice2("Yes.", true, "No.", false, title = "Start the ${quest.displayName} quest?")
++    choice2("Yes.", true, "No.", false, title = startQuestTitle(quest.displayName))
++
++internal fun startQuestTitle(name: String): String =
++    if (name.endsWith(" Quest")) "Start $name?" else "Start the $name quest?"
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestTestCommand.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestTestCommand.kt
 new file mode 100644
 index 000000000..ee5dcb6e5

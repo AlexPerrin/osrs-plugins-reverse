@@ -1833,3 +1833,16 @@ step keys 0 (talk to Doric: "I wanted to use your anvils.", "Yes.", "Yes, I will
   whetstone line ("You should probably ask before using that.") is not wired.
 - Tests: `DoricsQuestInteractionTest` (5): start, decline, too few materials, exact take with extras kept and a
   single reward, start-with-materials shortcut.
+
+### Doric's Quest: desktop QH run (03:50 local / 02:49 UTC deploy 97b4b07, fresh account qhtest6)
+QH 4.18 "Start Quest Helper" from the quest list showed "Bring Doric north of Falador all the required items" with
+the item list red, and the dialogue highlights ("[1] I wanted to use your anvils.", "[1] Yes."). Doric -> varp 31 =
+10 and a bronze pickaxe; after `::item` of the materials QH's requirements turned green; Doric -> 100, quest scroll
+(1 QP, 1300 Mining XP, 180 coins, Use of Doric's Anvils), QH closed the helper. After `::quest doric reset`, Smith on
+the anvil (2031) brought up Doric's "Hey, who said you could use that?" dialogue. Doric is reached from inside the
+hut ((2951,3451)); from (2953,3448) it is "I can't reach that!".
+- Fixed after the run (not yet deployed): the start line was one five-line chatbox; it is now two boxes ("... let
+  you use my anvils." / "Take this pickaxe with you just in case you need it."), split point a **guess**. The
+  start prompt title is "Start Doric's Quest?" (transcript) for names ending in "Quest", "Start the X quest?"
+  otherwise (`startQuestTitle`).
+- The quest list showed Doric's Quest (and The Restless Ghost) grey before starting, the others red; not looked into.

@@ -1,19 +1,19 @@
 title=Old School RuneScape (test server)
-adverturl=http://www.runescape.com/g=oldscape/bare_advert.ws
+adverturl={{HTTP_BASE}}/g=oldscape/bare_advert.ws
 codebase=http://{{WORLD_HOST}}/
 cachedir=oldschool
 storebase=0
 initial_jar=gamepack_1954752.jar
 initial_class=client.class
-termsurl=http://www.jagex.com/g=oldscape/terms/terms.ws
-privacyurl=http://www.jagex.com/g=oldscape/privacy/privacy.ws
+termsurl={{HTTP_BASE}}/g=oldscape/terms/terms.ws
+privacyurl={{HTTP_BASE}}/g=oldscape/privacy/privacy.ws
 viewerversion=124
 win_sub_version=1
 mac_sub_version=2
 other_sub_version=2
 browsercontrol_win_x86_jar=browsercontrol_0_-1928975093.jar
 browsercontrol_win_amd64_jar=browsercontrol_1_1674545273.jar
-gedigesturl=https://secure.runescape.com/m=itemdb_oldschool/g=oldscape/digest.csv
+gedigesturl={{HTTP_BASE}}/m=itemdb_oldschool/g=oldscape/digest.csv
 download=331499
 window_preferredwidth=800
 window_preferredheight=600

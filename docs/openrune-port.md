@@ -1955,27 +1955,68 @@ Draynor (coffin `vampcoffin` 46237 at (3078,9776), npc 3481).
   ale please." -> 2 coins -> beer (QH's beer step), plus the fortune / equipment topics.
 - Tests: `VampyreSlayerInteractionTest` (5). The Count fight is only checked in game.
 
-## Pirate's Treasure: research for the next dev (not started)
+## Twentieth server dev (2026-10-18): deploy fix, reconnect login, Pirate's Treasure
 
-QH 4.18 `PiratesTreasure` (varp `piratequest` 71 in OSRS; check the gameval and the cache endstate first): keys 0 talk
-to Redbeard Frank (Port Sarim; "I'm in search of treasure.", "Yes."), 1 rum smuggling (`RumSmugglingStep`), 2 Blue
-Moon Inn upstairs chest with the chest key / pirate message, 3 dig in the middle of Falador Park's cross, kill the
-Gardener (level 4) who appears, dig again. Rewards in QH: a gold ring, an emerald, coins.
-- **QH reads the quest journal** for the rum sub-state: `RumSmugglingStep` scans the journal text (widgets 7798789 /
-  7798790 = journal 119 lines) for "I have taken employment" / "I have taken a job at", "I have hidden my", "in the
-  crate and filled it with", "the crate has been shipped", "I need to go to", "I should take it to", "I seem to have
-  lost it.", and shows "Please open Pirate Treasure's Quest Journal to sync the current quest state." until it has
-  read it. So the journal for stage 1 must use OSRS's own wording (fetch `Pirate's Treasure/Journal` from the wiki).
-- Messages QH also matches: "You stash the rum in the crate.", "There is also some rum stashed in here too.",
-  "There's already some rum in here...", "There is some rum in here, although with no bananas to cover it. It is a
-  little obvious.", "You fill the crate with bananas.", "You pack all your bananas into the crate.", "The crate is
-  full of bananas.", "The crate is already full.", "Luthas hands you 30 coins.", "There is already some rum in
-  Wydin's store, I should go and get that first."; dialogue options "Could you offer me employment on your
-  plantation?", "Well, can I get a job here?", "Will you pay me for another crate full?", "Have you completed your
-  task yet?", "Ok, I will bring you some rum.", "Search away, I have nothing to hide." (customs officer),
-  "Can I journey on this ship?", "Yes please.".
-- **Missing content** (none of it exists in OpenRune): Redbeard Frank, Luthas and the banana plantation (tree
-  picking, the crate on Karamja), Zembo's bar (Karamjan rum), the customs officer's rum confiscation on the way
-  back, Wydin's back room (white apron gate) and its crate, the Blue Moon Inn upstairs chest, the Falador Park dig
-  and the Gardener. Present: the Karamja ferry (`KaramjaFerryScript`), Wydin's shop, the Fishing Shop.
-- Estimate: about a day with tests, the largest of the five.
+### Startup crash on the 77b17ed deploy (20fff49)
+`VampyreSlayerManor` called `onNpcQueue(String, String)`, whose first argument is a *content* key, with
+`npc.count_draynor`; the server threw at startup ("Invalid RSCM key. Expected prefix 'content'") and the live
+container went down for ~40 min. The npc-type overload is used now. The unit tests never run plugin `startup()`, so
+**boot-check every image** (`docker build -t osrs-openrune:bootcheck .` + run with `--tmpfs
+/app/.data/postgres:uid=1000`, wait for "Server ready") before a deploy. `openrune.sh` build containers are capped at
+`OPENRUNE_CPUS` (default 4).
+
+### Reconnect login (6ab7d07, live 04:49 UTC)
+OpenRune's `ConnectionHandler.onReconnect` was a TODO answering `ConnectFail` ("Unexpected server response" on the
+client). Now (`api/net/.../player/PlayerReconnect.kt`): the request is queued to the game thread through
+`AccountRegistry.queueReconnect`; the online player whose current session's `loginBlock.seed` equals the presented
+key (and the same username when both have one) is moved to the new session: the info protocols' `onReconnect()`,
+`writeSuccessfulResponse(ReconnectOk)`, a new `RspClient` on the same `Infos`, `RspCycle.reconnect` (re-assigns the
+build area and npc view distance on the next update without a rebuild packet), counters cleared, old session closed.
+The disconnection hook only marks the player gone for the player's *current* session. Rejected when a logout is
+under way. `SessionStateEvent.Reconnect` makes `LoginScript` resend varps, stats, run energy and the transmitted
+inventories in full (**our choice**: packets written while the socket was dead are lost; whether Jagex resyncs is
+unknown). The grace period after a disconnect is 100 ticks (60 s) instead of 16: the wiki's Logout button page says
+"a 60 second timer before the game forcibly logs you out after an unexpected disconnection during combat"; using it
+out of combat too is a **guess**. `::drop` closes the connection without logging out.
+- Desktop (qhtest9): `::drop` -> "qhtest9 reconnected (DESKTOP)", still LOGGED_IN; inventory updates, walking and npcs
+  fine afterwards. A frozen client (~24 s, past the 15 s idle close) reconnected on resume. The >60 s case is left to
+  an Android background run.
+
+### Vampyre Slayer desktop run (qhtest9, QH 4.18)
+Complete: Morgan "[1] Yes." -> 178 = 1 (QH "Get garlic from the cupboard upstairs"), cupboard garlic, Harlow's beer
+request, the Blue Moon bartender's beer (QH requirement green), stake -> 2 (QH "Open the coffin and kill Count
+Draynor"), coffin + garlic message, kill with stake and hammer -> 3, scroll (3 QP, 4,825 Attack XP). With `::master`
+the regenerate path was not exercised. Goblin Village lookout ladder: up to (2955,3497,2) and back. Upstream 67.
+
+## Pirate's Treasure (twentieth server dev)
+
+`content/quest/.../area/portsarim/piratestreasure/`: `PiratesTreasure` (Redbeard Frank, journal, chest, message,
+dig, Gardener, casket), `PiratesTreasureSmuggling` (Luthas, banana crate, Zembo's bar, Wydin's grocery crate),
+`PiratesTreasureState` (shared state), `PiratesTreasureWydin` (job dialogue). Port Sarim module: customs officer
+(`KaramjaFerryScript`), Wydin's talk (`PortSarimShopkeepersScript`) and back-room door (`PortSarimLocScript`);
+Redbeard left `RustyAnchorScript`.
+- **Progress:** varp 71 (`varp.hunt`) via server-only varbit `pirates_treasure_progress` (bits 0-2, 63751): 0, 1
+  fetching rum, 2 key received, 3 note read, 4 complete (cache dbrow end state 4, checked at startup); QH 4.18 keys
+  0/1/2/3. Sub-state in server varp 63747: `pirates_treasure_employed` (bit 0 plantation, bit 1 Wydin),
+  `_crate_bananas` (0-10), `_crate_rum` (0 none, 1 in the crate, 2 shipped to Wydin's), `_gardener_met`.
+- **Journal:** QH's `RumSmugglingStep` reads the stage-1 journal text. The wording and branch logic come from the
+  2004Scape/Lost City reconstruction (`LostCityRS/Content` `quest_hunt/hunt_journal.rs2`, MIT; its comments say it
+  matches OSRS via RSProx logs). Lines are hand-broken at the old `|` breaks (journal lines wrap at 64 chars) so
+  each phrase QH matches ("I need to go to", "I have taken employment", "I have hidden my", "in the crate and filled
+  it with", "the crate has been shipped", "I have taken a job at", "I should take it to", "I seem to have lost it.")
+  stays on one line.
+- **Dialogue:** wiki transcripts (Pirate's Treasure, Redbeard Frank, Luthas, Wydin, Customs officer, Zembo).
+  Messages QH matches use its exact text and type (game message vs box).
+- **Guesses / ours:** the customs officer's right-click Pay-Fare also confiscates rum; the Wydin job option only shows
+  at stage 1; using the key on the chest replaces it with the message (2004; the wiki says the key snaps after the
+  message is read); the pirate message opens the clue-text scroll; Frank replaces a lost key only when neither key
+  nor message is in the inventory or bank; the dig spot is QH's tile (2999,3383) with radius 1; the first dig spawns
+  the Gardener (overhead from the transcript) beside the player for 200 ticks, the next dig after he is gone gives
+  the casket; quest-complete reward line "One-Eyed Hector's Treasure Chest"; "You don't have any bananas." on Fill
+  with none; Luthas's line when the payment does not fit; no chest sound.
+- **Not done:** rum breaking on teleport off Karamja, Karamja gloves / Ring of Charos(a), the banana and sliced-banana
+  rum variants, Gerrant's apron pickup message (the apron is the existing `white_apron` ground spawn there). Banana
+  trees are the generic `Pickables` (already in OpenRune).
+- Tests: `PiratesTreasureInteractionTest` (10): start/decline, rum -> key (talk and use), lost key, chest -> message,
+  casket contents and full-inventory refusal, the whole crate path (stash, pack, fill, pay, Wydin's crate), no
+  stash before the job.

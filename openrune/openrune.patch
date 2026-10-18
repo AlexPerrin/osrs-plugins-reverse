@@ -1598,6 +1598,306 @@ index 21e4bd7c4..a292950bf 100644
      }
  
      private suspend fun ProtectedAccess.hansDialogue(npc: Npc) =
+diff --git a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/PortSarimLocScript.kt b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/PortSarimLocScript.kt
+index 3884e35b5..c32daab93 100644
+--- a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/PortSarimLocScript.kt
++++ b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/PortSarimLocScript.kt
+@@ -6,6 +6,9 @@ import org.rsmod.api.player.stat.agilityLvl
+ import org.rsmod.api.repo.loc.LocRepository
+ import org.rsmod.api.script.onOpLoc1
+ import org.rsmod.content.generic.locs.doors.DoorTranslations
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState
++import org.rsmod.content.quest.area.portsarim.piratestreasure.wydin
++import org.rsmod.content.quest.area.portsarim.piratestreasure.wydinJobOffer
+ import org.rsmod.game.loc.BoundLocInfo
+ import org.rsmod.game.loc.LocAngle
+ import org.rsmod.map.CoordGrid
+@@ -18,6 +21,7 @@ class PortSarimLocScript @Inject constructor(private val locRepo: LocRepository)
+         onOpLoc1("loc.vc_manhole_open") { climbDownManhole() }
+         onOpLoc1("loc.vc_ladder") { climbUpFromSewer() }
+         onOpLoc1("loc.jewellersdoor") { walkThroughDoor(it.loc) }
++        onOpLoc1("loc.wydindoor") { wydinBackDoor(it.loc) }
+         onOpLoc1("loc.cavewall_shortcut_wyvern_west") { wyvernTunnel() }
+         onOpLoc1("loc.draynor_diary_under_wall_w") { underwallTunnel(UNDERWALL_EAST_EXIT) }
+         onOpLoc1("loc.draynor_diary_under_wall_e") { underwallTunnel(UNDERWALL_WEST_EXIT) }
+@@ -49,13 +53,53 @@ class PortSarimLocScript @Inject constructor(private val locRepo: LocRepository)
+         arriveDelay()
+         val inside = door.coords.translateX(-1)
+         val dest = if (coords.x >= door.coords.x) inside else door.coords
++        passDoor(door, dest, OPEN_DOOR)
++    }
++
++    private suspend fun ProtectedAccess.passDoor(door: BoundLocInfo, dest: CoordGrid, open: String) {
+         val openCoords = DoorTranslations.translateOpen(door.coords, door.shape, door.angle)
+         locRepo.del(door, DOOR_OPEN_TICKS)
+-        locRepo.add(openCoords, OPEN_DOOR, DOOR_OPEN_TICKS, door.turnAngle(rotations = 1), door.shape)
++        locRepo.add(openCoords, open, DOOR_OPEN_TICKS, door.turnAngle(rotations = 1), door.shape)
+         soundSynth("synth.door_open")
+         playerMove(dest)
+     }
+ 
++    // Pirate's Treasure: only Wydin's employees, wearing a white apron, may go into the back room.
++    private suspend fun ProtectedAccess.wydinBackDoor(door: BoundLocInfo) {
++        arriveDelay()
++        val beyond =
++            when (door.angle) {
++                LocAngle.West -> door.coords.translateX(-1)
++                LocAngle.North -> door.coords.translateZ(1)
++                LocAngle.East -> door.coords.translateX(1)
++                else -> door.coords.translateZ(-1)
++            }
++        val dest = if (coords == door.coords) beyond else door.coords
++        val entering =
++            dest.chebyshevDistance(WYDIN_BACK_ROOM) < coords.chebyshevDistance(WYDIN_BACK_ROOM)
++        if (entering && !PiratesTreasureState.employedAtWydin(player)) {
++            startDialogue {
++                wydin(
++                    neutral,
++                    "Hey, you can't go in there. Only employees of the grocery store can go in.",
++                )
++                if (choice2("Well, can I get a job here?", true, "Sorry, I didn't realise.", false)) {
++                    wydinJobOffer("Well, can I get a job here?")
++                } else {
++                    chatPlayer(neutral, "Sorry, I didn't realise.")
++                }
++            }
++            return
++        }
++        if (entering && !PiratesTreasureState.wearsWhiteApron(player)) {
++            startDialogue {
++                wydin(neutral, "Can you put your white apron on before going in there, please?")
++            }
++            return
++        }
++        passDoor(door, dest, "loc.wydindooropen")
++    }
++
+     private suspend fun ProtectedAccess.wyvernTunnel() {
+         arriveDelay()
+         if (player.agilityLvl < WYVERN_TUNNEL_LEVEL) {
+@@ -121,5 +165,6 @@ class PortSarimLocScript @Inject constructor(private val locRepo: LocRepository)
+         val MANHOLE_EXIT = CoordGrid(3018, 3233, 0)
+         val UNDERWALL_EAST_EXIT = CoordGrid(3070, 3257, 0)
+         val UNDERWALL_WEST_EXIT = CoordGrid(3066, 3257, 0)
++        val WYDIN_BACK_ROOM = CoordGrid(3009, 3207, 0)
+     }
+ }
+diff --git a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimShopkeepersScript.kt b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimShopkeepersScript.kt
+index 171a91646..2f235f647 100644
+--- a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimShopkeepersScript.kt
++++ b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/PortSarimShopkeepersScript.kt
+@@ -5,6 +5,9 @@ import org.rsmod.api.player.dialogue.Dialogue
+ import org.rsmod.api.script.onOpNpc1
+ import org.rsmod.api.script.onOpNpc3
+ import org.rsmod.api.shops.Shops
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState
++import org.rsmod.content.quest.area.portsarim.piratestreasure.wydinEmployeeTalk
++import org.rsmod.content.quest.area.portsarim.piratestreasure.wydinJobOffer
+ import org.rsmod.content.quest.manager.QuestRequirements
+ import org.rsmod.game.entity.Player
+ import org.rsmod.plugin.scripts.PluginScript
+@@ -55,8 +58,28 @@ class PortSarimShopkeepersScript @Inject constructor(private val shops: Shops) :
+     }
+ 
+     private suspend fun Dialogue.wydin() {
++        if (PiratesTreasureState.employedAtWydin(player)) {
++            if (wydinEmployeeTalk()) player.openShop(PortSarimShop.Food)
++            return
++        }
+         chatNpc(happy, "Welcome to my food store! Would you like to buy anything?")
+-        when (choice3("Yes please.", 1, "No, thank you.", 2, "What can you recommend?", 3)) {
++        val choice =
++            if (PiratesTreasureState.stage(player) == PiratesTreasureState.FETCH_RUM) {
++                choice4(
++                    "Yes please.",
++                    1,
++                    "No, thank you.",
++                    2,
++                    "What can you recommend?",
++                    3,
++                    "Can I get a job here?",
++                    4,
++                )
++            } else {
++                choice3("Yes please.", 1, "No, thank you.", 2, "What can you recommend?", 3)
++            }
++        when (choice) {
++            4 -> wydinJobOffer("Can I get a job here?")
+             1 -> {
+                 chatPlayer(happy, "Yes please.")
+                 player.openShop(PortSarimShop.Food)
+diff --git a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/RustyAnchorScript.kt b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/RustyAnchorScript.kt
+index 362276ff2..f03cf03cb 100644
+--- a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/RustyAnchorScript.kt
++++ b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/npcs/RustyAnchorScript.kt
+@@ -9,27 +9,12 @@ import org.rsmod.plugin.scripts.ScriptContext
+ 
+ class RustyAnchorScript : PluginScript() {
+     override fun ScriptContext.startup() {
+-        onOpNpc1("npc.redbeard_frank") { startDialogue(it.npc) { redbeardFrank() } }
+         onOpNpc1("npc.sarim_pub_sitting_patron") { startDialogue(it.npc) { ahab() } }
+         onOpNpc1("npc.rustyanchor_bartender") { startDialogue(it.npc) { bartender() } }
+         onOpNpc1(JACK_SEAGULL) { startDialogue(it.npc) { pirateDrinker(JACK_SEAGULL_NAME) } }
+         onOpNpc1(LONGBOW_BEN) { startDialogue(it.npc) { pirateDrinker(LONGBOW_BEN_NAME) } }
+     }
+ 
+-    private suspend fun Dialogue.redbeardFrank() {
+-        chatNpc(laugh, "Arr, Matey!")
+-        while (true) {
+-            if (choice2("Arr!", true, "Do you have anything for trade?", false)) {
+-                chatPlayer(laugh, "Arr!")
+-                chatNpc(laugh, "Arr!")
+-                continue
+-            }
+-            chatPlayer(quiz, "Do you have anything for trade?")
+-            chatNpc(neutral, CUSTOMS_REPLY)
+-            return
+-        }
+-    }
+-
+     private suspend fun Dialogue.ahab() {
+         chatNpc(drunk, "Arrr, matey!")
+         while (true) {
+diff --git a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/travel/KaramjaFerryScript.kt b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/travel/KaramjaFerryScript.kt
+index 74f466e9a..d54c81680 100644
+--- a/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/travel/KaramjaFerryScript.kt
++++ b/content/areas/city/port-sarim/src/main/kotlin/org/rsmod/content/areas/city/portsarim/travel/KaramjaFerryScript.kt
+@@ -4,6 +4,7 @@ import org.rsmod.api.player.dialogue.Dialogue
+ import org.rsmod.api.player.protect.ProtectedAccess
+ import org.rsmod.api.script.onOpNpc1
+ import org.rsmod.api.script.onOpNpc3
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState
+ import org.rsmod.map.CoordGrid
+ import org.rsmod.plugin.scripts.PluginScript
+ import org.rsmod.plugin.scripts.ScriptContext
+@@ -15,7 +16,13 @@ class KaramjaFerryScript : PluginScript() {
+             onOpNpc3(sailor) { payAndSail(MUSA_POINT, MUSA_POINT_NAME) }
+         }
+         onOpNpc1(CUSTOMS_OFFICER) { startDialogue(it.npc) { customsOfficer() } }
+-        onOpNpc3(CUSTOMS_OFFICER) { payAndSail(PORT_SARIM, PORT_SARIM_NAME) }
++        onOpNpc3(CUSTOMS_OFFICER) {
++            if (PiratesTreasureState.carriesRum(player)) {
++                confiscateRum()
++            } else {
++                payAndSail(PORT_SARIM, PORT_SARIM_NAME)
++            }
++        }
+     }
+ 
+     private suspend fun Dialogue.offerTrip() {
+@@ -33,39 +40,76 @@ class KaramjaFerryScript : PluginScript() {
+         board(MUSA_POINT, MUSA_POINT_NAME)
+     }
+ 
++    // Rum smuggling (Pirate's Treasure) from the wiki transcript. Karamja gloves and the Ring of
++    // Charos(a) are not handled.
+     private suspend fun Dialogue.customsOfficer() {
+         chatNpc(neutral, "Can I help you?")
+-        val topic =
+-            choice3(
++        val journey =
++            choice2(
+                 "Can I journey on this ship?",
+-                CustomsTopic.Journey,
+-                "What unusual customs do they have here?",
+-                CustomsTopic.Customs,
+-                "I'm good, thanks.",
+-                CustomsTopic.Leave,
++                true,
++                "Does Karamja have unusual customs then?",
++                false,
+             )
+-        when (topic) {
+-            CustomsTopic.Journey -> {
+-                chatPlayer(quiz, "Can I journey on this ship?")
+-                chatNpc(
+-                    neutral,
+-                    "You can, but you'll need to pay a boarding charge of $FARE coins.",
++        if (!journey) {
++            chatPlayer(quiz, "Does Karamja have any unusual customs then?")
++            chatNpc(neutral, "I'm not that sort of customs officer.")
++            return
++        }
++        chatPlayer(quiz, "Can I journey on this ship?")
++        chatNpc(neutral, "You need to be searched before you can board.")
++        while (true) {
++            val topic =
++                choice3(
++                    "Why?",
++                    CustomsTopic.Why,
++                    "Search away. I have nothing to hide.",
++                    CustomsTopic.Search,
++                    "You're not putting your hands on my things!",
++                    CustomsTopic.Refuse,
+                 )
+-                if (choice2("Okay.", true, "Oh, I'll not bother then.", false)) {
+-                    chatPlayer(neutral, "Okay.")
+-                    board(PORT_SARIM, PORT_SARIM_NAME)
+-                } else {
+-                    chatPlayer(neutral, "Oh, I'll not bother then.")
++            when (topic) {
++                CustomsTopic.Why -> {
++                    chatPlayer(quiz, "Why?")
++                    chatNpc(neutral, "Because Asgarnia has banned the import of intoxicating spirits.")
++                }
++                CustomsTopic.Search -> return search()
++                CustomsTopic.Refuse -> {
++                    chatPlayer(angry, "You're not putting your hands on my things!")
++                    chatNpc(neutral, "You're not getting on this ship then.")
++                    return
+                 }
+             }
+-            CustomsTopic.Customs -> {
+-                chatPlayer(quiz, "What unusual customs do they have here?")
+-                chatNpc(neutral, "I'm not that sort of customs officer.")
+-            }
+-            CustomsTopic.Leave -> chatPlayer(neutral, "I'm good, thanks.")
+         }
+     }
+ 
++    private suspend fun Dialogue.search() {
++        chatPlayer(neutral, "Search away. I have nothing to hide.")
++        if (PiratesTreasureState.carriesRum(player)) {
++            chatNpc(angry, "Aha, trying to smuggle rum are we?")
++            chatPlayer(shifty, "Umm... it's for personal use?")
++            access.confiscateRum()
++            return
++        }
++        chatNpc(
++            neutral,
++            "Well you've got some odd stuff, but it's all legal. Now you need to pay a boarding " +
++                "charge of $FARE coins.",
++        )
++        if (choice2("Okay.", true, "Oh, I'll not bother then.", false)) {
++            chatPlayer(neutral, "Okay.")
++            board(PORT_SARIM, PORT_SARIM_NAME)
++        } else {
++            chatPlayer(neutral, "Oh, I'll not bother then.")
++        }
++    }
++
++    private fun ProtectedAccess.confiscateRum() {
++        invDel(inv, PiratesTreasureState.KARAMJA_RUM, inv.count(PiratesTreasureState.KARAMJA_RUM))
++        mes("The customs officer confiscates your rum.")
++        mes("You will need to find some way to smuggle it off the island...")
++    }
++
+     private suspend fun Dialogue.board(dest: CoordGrid, destName: String) {
+         if (!access.payFare(FARE)) {
+             chatPlayer(sad, "Oh dear, I don't seem to have enough money.")
+@@ -83,9 +127,9 @@ class KaramjaFerryScript : PluginScript() {
+     }
+ 
+     private enum class CustomsTopic {
+-        Journey,
+-        Customs,
+-        Leave,
++        Why,
++        Search,
++        Refuse,
+     }
+ 
+     private companion object {
 diff --git a/content/areas/city/rimmington/src/main/kotlin/org/rsmod/content/areas/city/rimmington/npcs/RimmingtonTownsfolkScript.kt b/content/areas/city/rimmington/src/main/kotlin/org/rsmod/content/areas/city/rimmington/npcs/RimmingtonTownsfolkScript.kt
 index 975bdbd03..f7c700eb4 100644
 --- a/content/areas/city/rimmington/src/main/kotlin/org/rsmod/content/areas/city/rimmington/npcs/RimmingtonTownsfolkScript.kt
@@ -18754,19 +19054,20 @@ index 56cd1bf0e..5a8ac6198 100644
      implementation(libs.rsprot.api)
  }
 diff --git a/content/quest/pack/src/main/resources/gamevals.toml b/content/quest/pack/src/main/resources/gamevals.toml
-index 0a6cb3169..5ff85d833 100644
+index 0a6cb3169..8e523eb15 100644
 --- a/content/quest/pack/src/main/resources/gamevals.toml
 +++ b/content/quest/pack/src/main/resources/gamevals.toml
-@@ -73,6 +73,8 @@ misthalin_puzzle_state = 63702
+@@ -73,6 +73,9 @@ misthalin_puzzle_state = 63702
  cooks_assistant_ingredients = 63705
  gertrudes_cat_state = 63711
  daddyshome_state = 64064
 +sheep_shearer_state = 63740
 +vampyre_slayer_state = 63745
++pirates_treasure_state = 63747
  
  [gamevals.varbit]
  restless_ghost_progress = 63702
-@@ -88,6 +90,13 @@ gertrudes_cat_kitten_crate = 63712
+@@ -88,6 +91,18 @@ gertrudes_cat_kitten_crate = 63712
  gertrudes_cat_met_fluffs = 63713
  gertrudes_cat_told_sardines = 63714
  daddyshome_crate_opened = 64064
@@ -18777,6 +19078,11 @@ index 0a6cb3169..5ff85d833 100644
 +witchs_potion_progress = 63744
 +vampyre_slayer_progress = 63745
 +vampyre_asked_harlow = 63746
++pirates_treasure_employed = 63747
++pirates_treasure_crate_bananas = 63748
++pirates_treasure_crate_rum = 63749
++pirates_treasure_gardener_met = 63750
++pirates_treasure_progress = 63751
  
  [gamevals.models]
  misthalin_gem_diamond = 32333
@@ -18792,6 +19098,52 @@ index 000000000..0cfdfd870
 +varp = "varp.doricquest"
 +startBit = 0
 +endBit = 6
+diff --git a/content/quest/pack/src/main/resources/pack/configs/pirates_treasure_vars.toml b/content/quest/pack/src/main/resources/pack/configs/pirates_treasure_vars.toml
+new file mode 100644
+index 000000000..7e2719bc9
+--- /dev/null
++++ b/content/quest/pack/src/main/resources/pack/configs/pirates_treasure_vars.toml
+@@ -0,0 +1,40 @@
++[[varp]]
++isServerOnly = true
++id = "varp.pirates_treasure_state"
++scope = "Perm"
++transmit = "Never"
++
++[[varbit]]
++isServerOnly = true
++id = "varbit.pirates_treasure_employed"
++varp = "varp.pirates_treasure_state"
++startBit = 0
++endBit = 1
++
++[[varbit]]
++isServerOnly = true
++id = "varbit.pirates_treasure_crate_bananas"
++varp = "varp.pirates_treasure_state"
++startBit = 2
++endBit = 5
++
++[[varbit]]
++isServerOnly = true
++id = "varbit.pirates_treasure_crate_rum"
++varp = "varp.pirates_treasure_state"
++startBit = 6
++endBit = 7
++
++[[varbit]]
++isServerOnly = true
++id = "varbit.pirates_treasure_gardener_met"
++varp = "varp.pirates_treasure_state"
++startBit = 8
++endBit = 8
++
++[[varbit]]
++isServerOnly = true
++id = "varbit.pirates_treasure_progress"
++varp = "varp.hunt"
++startBit = 0
++endBit = 2
 diff --git a/content/quest/pack/src/main/resources/pack/configs/romeo_juliet_vars.toml b/content/quest/pack/src/main/resources/pack/configs/romeo_juliet_vars.toml
 new file mode 100644
 index 000000000..a00621346
@@ -20996,6 +21348,1077 @@ index 3aa651706..64507bba1 100644
          private const val BoatFadeDelay = 1
          private const val BoatCrossingTicks = 2
          private const val BoatFadeInDelay = 1
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasure.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasure.kt
+new file mode 100644
+index 000000000..7bbe51da7
+--- /dev/null
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasure.kt
+@@ -0,0 +1,587 @@
++package org.rsmod.content.quest.area.portsarim.piratestreasure
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import jakarta.inject.Inject
++import org.rsmod.api.invtx.invTransaction
++import org.rsmod.api.invtx.select
++import org.rsmod.api.npc.interact.AiPlayerInteractions
++import org.rsmod.api.npc.opPlayer2
++import org.rsmod.api.player.dialogue.Dialogue
++import org.rsmod.api.player.hook.SpadeDigHook
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.repo.loc.LocRepository
++import org.rsmod.api.repo.npc.NpcRepository
++import org.rsmod.api.script.onOpHeld1
++import org.rsmod.api.script.onOpLoc1
++import org.rsmod.api.script.onOpLocU
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.api.script.onOpNpcU
++import org.rsmod.api.script.onPlayerLogout
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.COMPLETE
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.EMPLOYED_PLANTATION
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.EMPLOYED_WYDIN
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.FETCH_RUM
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.KARAMJA_RUM
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.NOT_STARTED
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.READ_NOTE
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.RECEIVED_KEY
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.RUM_IN_CRATE
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.RUM_NONE
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.RUM_SHIPPED
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.crateBananas
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.crateRum
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.employment
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.gardenerMet
++import org.rsmod.content.quest.manager.ItemRewardDisplay
++import org.rsmod.content.quest.manager.QuestJournalBuilder
++import org.rsmod.content.quest.manager.QuestScript
++import org.rsmod.content.quest.manager.rewards
++import org.rsmod.content.quest.manager.startQuestPrompt
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.entity.Player
++import org.rsmod.game.entity.player.Appearance
++import org.rsmod.game.loc.BoundLocInfo
++import org.rsmod.map.CoordGrid
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Pirate's Treasure (osrs-plugins-reverse). Progress is varp 71 (`varp.hunt`), as in OSRS and as
++ * Quest Helper reads it: 0 not started, 1 fetching the rum, 2 key received, 3 note read, 4
++ * complete. Quest Helper reads the rum-smuggling sub-state from the journal text, so the stage-1
++ * journal uses OSRS's wording (as reconstructed by the 2004Scape project). Dialogue follows the wiki
++ * transcript. Karamja and Wydin's back room are [PiratesTreasureSmuggling]; the customs officer and
++ * Wydin's own dialogue are in the Port Sarim module.
++ */
++class PiratesTreasure
++@Inject
++constructor(
++    private val npcRepo: NpcRepository,
++    private val locRepo: LocRepository,
++    private val aiPlayerInteractions: AiPlayerInteractions,
++) :
++    QuestScript(
++        PiratesTreasureState.QUEST_KEY,
++        "varp.hunt",
++        rewards { extra("One-Eyed Hector's Treasure Chest") },
++        ItemRewardDisplay(CASKET, zoom = 300),
++        questVarbit = "varbit.pirates_treasure_progress",
++    ),
++    SpadeDigHook {
++    private val gardeners = HashMap<Long, Npc>()
++
++    override fun ScriptContext.init() {
++        check(quest.maxSteps == COMPLETE) {
++            "Pirate's Treasure end state is ${quest.maxSteps} in the cache dbrow, but the dig " +
++                "writes $COMPLETE."
++        }
++        onOpNpc1(REDBEARD) { startDialogue(it.npc) { redbeardDialogue() } }
++        onOpNpcU(npcType(REDBEARD), objType(KARAMJA_RUM)) {
++            startDialogue(it.npc) { rumOnRedbeard() }
++        }
++        onOpNpcU(npcType(REDBEARD), objType(CASKET)) {
++            startDialogue(it.npc) { offerShare() }
++        }
++        onOpLoc1(CHEST) { mes("The chest is locked.") }
++        onOpLocU(CHEST, CHEST_KEY) { unlockChest(it.loc) }
++        onOpHeld1(PIRATE_MESSAGE) { readMessage() }
++        onOpHeld1(CASKET) { openCasket() }
++        onPlayerLogout {
++            val gardener = player.uuid?.let(gardeners::remove) ?: return@onPlayerLogout
++            if (gardener.isSlotAssigned) npcRepo.del(gardener, Int.MAX_VALUE)
++        }
++    }
++
++    override fun subTitle(): String =
++        "speaking to <col=800000>Redbeard Frank</col> who is at <col=800000>Port Sarim</col>."
++
++    override fun questLog(player: ProtectedAccess) =
++        questJournal(player) {
++            when (stage(player.player)) {
++                FETCH_RUM -> fetchRumLog(player.player)
++                RECEIVED_KEY -> receivedKeyLog(player.player)
++                else -> readNoteLog()
++            }
++        }
++
++    override fun completedLog(player: ProtectedAccess): String =
++        completionJournal(player) {
++            JOURNAL_DONE_FRANK.forEach { line(it) }
++            line("")
++            JOURNAL_DONE_SMUGGLED.forEach { line(it) }
++            line("")
++            JOURNAL_DONE_INN.forEach { line(it) }
++            line("")
++            JOURNAL_DONE_NOTE.forEach { line(it) }
++            line("")
++            JOURNAL_DONE_READ.forEach { line(it) }
++        }
++
++    private fun QuestJournalBuilder.fetchRumLog(player: Player) {
++        line("I have spoken to <red>Redbeard Frank</red>. He has agreed to tell me")
++        line("the location of some <red>treasure</red> for some <red>Karamja Rum</red>.")
++        line("")
++        val employed = player.employment
++        val rum = player.crateRum
++        val carries = PiratesTreasureState.carriesRum(player)
++        when {
++            employed and EMPLOYED_WYDIN != 0 -> wydinLog(rum, carries)
++            rum == RUM_SHIPPED -> {
++                struckSmugglingLines()
++                line("I have spoken to <red>Luthas</red>, and the crate has been shipped to")
++                line("<red>Wydin's store</red> in <red>Port Sarim</red>. Now all I have to do is get to it.")
++            }
++            employed and EMPLOYED_PLANTATION != 0 -> plantationLog(player, rum, carries)
++            carries -> {
++                line("I have the <red>rum</red>, and now I need to find a way to get the rum")
++                line("off <red>Karamja</red>. This might be tricky, as the <red>Customs Officers</red>")
++                line("are searching people for it.")
++            }
++            else -> {
++                line("I need to go to <red>Karamja</red> and buy some <red>rum</red>. I hope it is")
++                line("not too expensive.")
++            }
++        }
++    }
++
++    private fun QuestJournalBuilder.plantationLog(player: Player, rum: Int, carries: Boolean) {
++        line("I have taken employment on the <red>banana plantation</red>, as the")
++        line("<red>Customs Officers</red> might not notice the <red>rum</red> if it is covered in")
++        line("<red>bananas</red>.")
++        line("")
++        when {
++            rum == RUM_NONE && carries -> {
++                line("I'm sure I will be able to hide my <red>rum</red> in the next crate")
++                line("destined for <red>Wydin's store</red>.")
++            }
++            rum == RUM_IN_CRATE && player.crateBananas < PiratesTreasureState.CRATE_CAPACITY -> {
++                line("I have hidden my <red>rum</red> in the crate. I should fill it with")
++                line("<red>bananas</red> and speak to <red>Luthas</red> and have it shipped over.")
++            }
++            rum == RUM_IN_CRATE -> {
++                line("I have hidden my rum in the crate and filled it with bananas.")
++                line("I should speak to <red>Luthas</red> and have it shipped over.")
++            }
++            else -> {
++                line("Now all I need is some <red>rum</red> to hide in the next crate destined")
++                line("for <red>Wydin's store</red>.")
++            }
++        }
++    }
++
++    private fun QuestJournalBuilder.wydinLog(rum: Int, carries: Boolean) {
++        when {
++            rum == RUM_SHIPPED -> {
++                struckSmugglingLines()
++                strike("I have spoken to Luthas, and the crate has been shipped to")
++                strike("Wydin's store in Port Sarim. Now all I have to do is")
++                strike("get to it.")
++                line("")
++                line("I have taken a job at <red>Wydin's store</red>. I now have access to the")
++                line("back room of his shop where the <red>rum</red> is hidden.")
++            }
++            rum == RUM_NONE && carries -> {
++                line("I have the Karamja Rum. I should take it to <red>Redbeard Frank</red>.")
++            }
++            rum == RUM_NONE -> {
++                line("I had some rum, but I seem to have lost it. I will need to")
++                line("smuggle some more off <red>Karamja</red>.")
++            }
++            else -> {
++                line("I have taken a job at <red>Wydin's store</red>. I now have access to the")
++                line("back room of his shop where the <red>rum</red> is hidden.")
++            }
++        }
++    }
++
++    private fun QuestJournalBuilder.struckSmugglingLines() {
++        strike("I have taken employment on the banana plantation, as the")
++        strike("Customs Officers might not notice the rum if it is covered in")
++        strike("bananas.")
++        line("")
++        strike("I have hidden my rum in the crate. I should fill it with")
++        strike("bananas and speak to Luthas to have it shipped over.")
++        line("")
++    }
++
++    private fun QuestJournalBuilder.receivedKeyLog(player: Player) {
++        JOURNAL_DONE_FRANK.forEach { strike(it) }
++        line("")
++        JOURNAL_DONE_SMUGGLED.forEach { strike(it) }
++        line("")
++        line("I have given the rum to <red>Redbeard Frank</red>. He has told me that the")
++        line("<red>treasure</red> is hidden in the chest in the upstairs room of the")
++        line("<red>Blue Moon Inn</red> in <red>Varrock</red>.")
++        line("")
++        when {
++            player.inv.count(PIRATE_MESSAGE) > 0 -> {
++                line("I have opened the chest in the <red>Blue Moon</red>, and found a <red>note</red>")
++                line("inside. I think it will tell me where to dig.")
++            }
++            player.inv.count(CHEST_KEY) > 0 -> {
++                line("I have a <red>key</red> that can be used to unlock the chest that hold the")
++                line("treasure.")
++            }
++            else -> {
++                line("I have lost the <red>key</red> that <red>Redbeard Frank</red> gave me. I should")
++                line("see if he has another.")
++            }
++        }
++    }
++
++    private fun QuestJournalBuilder.readNoteLog() {
++        JOURNAL_DONE_FRANK.forEach { strike(it) }
++        line("")
++        JOURNAL_DONE_SMUGGLED.forEach { strike(it) }
++        line("")
++        JOURNAL_DONE_INN.forEach { strike(it) }
++        line("")
++        JOURNAL_DONE_NOTE.forEach { strike(it) }
++        line("")
++        line("The note reads <red>'Visit the city of the White Knights. In the park,</red>")
++        line("<red>Saradomin points to the X which marks the spot.'</red>")
++    }
++
++    fun stage(player: Player): Int = quest.getQuestStage(player)
++
++    private suspend fun Dialogue.redbeardDialogue() {
++        chatNpc(laugh, "Arr, Matey!")
++        when (stage(player)) {
++            NOT_STARTED -> redbeardStart()
++            FETCH_RUM -> redbeardAsksForRum()
++            RECEIVED_KEY -> {
++                if (!ownsKeyOrMessage()) replaceKey()
++                redbeardOptions()
++            }
++            else -> redbeardOptions()
++        }
++    }
++
++    private suspend fun Dialogue.redbeardStart() {
++        val topic =
++            choice3(
++                "I'm in search of treasure.",
++                RedbeardTopic.Treasure,
++                "Arr!",
++                RedbeardTopic.Arr,
++                "Do you have anything for trade?",
++                RedbeardTopic.Trade,
++            )
++        when (topic) {
++            RedbeardTopic.Treasure -> searchForTreasure()
++            RedbeardTopic.Arr -> {
++                arr()
++                redbeardStart()
++            }
++            RedbeardTopic.Trade -> trade()
++        }
++    }
++
++    private suspend fun Dialogue.redbeardOptions() {
++        while (choice2("Arr!", true, "Do you have anything for trade?", false)) {
++            arr()
++        }
++        trade()
++    }
++
++    private suspend fun Dialogue.arr() {
++        chatPlayer(laugh, "Arr!")
++        chatNpc(laugh, "Arr!")
++    }
++
++    private suspend fun Dialogue.trade() {
++        chatPlayer(quiz, "Do you have anything for trade?")
++        chatNpc(
++            neutral,
++            "Nothin' at the moment, but then again the Customs Agents are on the warpath right now.",
++        )
++    }
++
++    private suspend fun Dialogue.searchForTreasure() {
++        chatPlayer(shifty, "I'm in search of treasure.")
++        chatNpc(
++            shifty,
++            "Arr, treasure you be after eh? Well I might be able to tell you where to find some... " +
++                "For a price...",
++        )
++        chatPlayer(quiz, "What sort of price?")
++        chatNpc(
++            neutral,
++            "Well for example if you can get me a bottle of rum... Not just any rum mind...",
++        )
++        chatNpc(
++            happy,
++            "I'd like some rum made on Karamja Island. There's no rum like Karamja Rum!",
++        )
++        if (!startQuestPrompt(quest)) {
++            chatPlayer(neutral, "Not right now.")
++            chatNpc(
++                neutral,
++                "Fair enough. I'll still be here and thirsty whenever you feel like helpin' out.",
++            )
++            return
++        }
++        chatPlayer(happy, "Ok, I will bring you some rum.")
++        quest.setQuestStage(access, FETCH_RUM)
++        chatNpc(happy, "Yer a saint, although it'll take a miracle to get it off Karamja.")
++        chatPlayer(quiz, "What do you mean?")
++        customsWarning()
++        chatPlayer(neutral, "Well I'll give it a shot.")
++        chatNpc(laugh, "Arr, that's the spirit!")
++    }
++
++    private suspend fun Dialogue.customsWarning() {
++        chatNpc(
++            neutral,
++            "The Customs office has been clampin' down on the export of spirits. You seem like a " +
++                "resourceful young ${ladOrLass()}, I'm sure ye'll " +
++                "be able to find a way to slip the stuff past them.",
++        )
++    }
++
++    private suspend fun Dialogue.redbeardAsksForRum() {
++        chatNpc(quiz, "Have ye brought some rum for yer ol' mate Frank?")
++        if (PiratesTreasureState.carriesRum(player)) {
++            chatPlayer(happy, "Yes, I've got some.")
++            handOverRum()
++            return
++        }
++        chatPlayer(sad, "No, not yet.")
++        chatNpc(neutral, "Not surprising, tis no easy task to get it off Karamja.")
++        chatPlayer(quiz, "What do you mean?")
++        customsWarning()
++        chatPlayer(neutral, "Well I'll give it another shot.")
++    }
++
++    private suspend fun Dialogue.rumOnRedbeard() {
++        if (stage(player) != FETCH_RUM) {
++            chatNpc(happy, "Thanks fer the thought, but I still have to finish this bottle.")
++            return
++        }
++        chatPlayer(happy, "Frank, I have some Karamja Rum.")
++        handOverRum()
++    }
++
++    private suspend fun Dialogue.handOverRum() {
++        chatNpc(
++            shifty,
++            "Now a deal's a deal, I'll tell ye about the treasure. I used to serve under a pirate " +
++                "captain called One-Eyed Hector.",
++        )
++        chatNpc(
++            shifty,
++            "Hector were very successful and became very rich. But about a year ago we were " +
++                "boarded by the Customs and Excise Agents.",
++        )
++        chatNpc(
++            sad,
++            "Hector were killed along with many of the crew, I were one of the few to escape and " +
++                "I escaped with this.",
++        )
++        if (access.invReplace(access.inv, KARAMJA_RUM, 1, CHEST_KEY).failure) {
++            return
++        }
++        quest.setQuestStage(access, RECEIVED_KEY)
++        objbox(CHEST_KEY, "Frank happily takes the rum... and hands you a key.")
++        chatNpc(
++            shifty,
++            "This be Hector's key. I believe it opens his chest in his old room in the Blue Moon " +
++                "Inn in Varrock.",
++        )
++        chatNpc(neutral, "With any luck his treasure will be in there.")
++        val why =
++            choice2(
++                "Ok thanks, I'll go and get it.",
++                false,
++                "So why didn't you ever get it?",
++                true,
++            )
++        if (!why) {
++            chatPlayer(happy, "Ok thanks, I'll go and get it.")
++            return
++        }
++        chatPlayer(quiz, "So why didn't you ever get it?")
++        chatNpc(sad, "I'm not allowed in the Blue Moon Inn. Apparently I'm a drunken trouble maker.")
++    }
++
++    private suspend fun Dialogue.replaceKey() {
++        chatPlayer(sad, "I seem to have lost my chest key...")
++        chatNpc(
++            neutral,
++            "Arr, silly you. Fortunately I took the precaution to have another one made.",
++        )
++        if (access.invAdd(access.inv, CHEST_KEY).failure) {
++            mesbox("You don't have enough inventory space.")
++            return
++        }
++        objbox(CHEST_KEY, "Frank hands you a chest key.")
++    }
++
++    private suspend fun Dialogue.offerShare() {
++        if (stage(player) < COMPLETE) {
++            chatNpc(happy, "Thanks fer the thought, but I still have to finish this bottle.")
++            return
++        }
++        chatPlayer(happy, "I have the treasure, would you like a share?")
++        chatNpc(
++            happy,
++            "No ${ladOrLass()}, you got it fair and square.",
++        )
++        chatNpc(happy, "You enjoy it. It's what Hector would have wanted.")
++    }
++
++    private fun Dialogue.ladOrLass(): String =
++        if (player.appearance.bodyType == Appearance.BODY_TYPE_A) "lad" else "lass"
++
++    private fun Dialogue.ownsKeyOrMessage(): Boolean =
++        listOf(CHEST_KEY, PIRATE_MESSAGE).any { access.inv.count(it) > 0 || access.bank.count(it) > 0 }
++
++    private suspend fun ProtectedAccess.unlockChest(chest: BoundLocInfo) {
++        arriveDelay()
++        if (stage(player) < RECEIVED_KEY) {
++            mes("Nothing interesting happens.")
++            return
++        }
++        mes("You unlock the chest.")
++        locRepo.change(chest, CHEST_OPEN, CHEST_OPEN_TICKS)
++        mes("All that's in the chest is a message...")
++        delay(2)
++        if (invReplace(inv, CHEST_KEY, 1, PIRATE_MESSAGE).failure) {
++            return
++        }
++        mes("You take the message from the chest.")
++    }
++
++    private fun ProtectedAccess.readMessage() {
++        if (stage(player) == RECEIVED_KEY) {
++            quest.setQuestStage(this, READ_NOTE)
++        }
++        ifOpenMainModal("interface.trail_cluetext")
++        ifSetText("component.trail_cluetext:text", PIRATE_MESSAGE_TEXT)
++    }
++
++    private suspend fun ProtectedAccess.openCasket() {
++        val opened =
++            player.invTransaction(inv) {
++                val from = select(inv)
++                delete {
++                    this.from = from
++                    this.obj = CASKET.asRSCM(RSCMType.OBJ)
++                    this.strictCount = 1
++                }
++                for ((obj, count) in CASKET_CONTENTS) {
++                    insert {
++                        this.into = from
++                        this.obj = obj.asRSCM(RSCMType.OBJ)
++                        this.strictCount = count
++                    }
++                }
++            }
++        if (opened.failure) {
++            mes("You don't have enough inventory space.")
++            return
++        }
++        mesbox("You open the casket, and find One-Eyed Hector's treasure.")
++    }
++
++    override fun claims(player: Player): Boolean =
++        stage(player) == READ_NOTE &&
++            player.coords.level == DIG_SPOT.level &&
++            player.coords.chebyshevDistance(DIG_SPOT) <= DIG_RADIUS
++
++    override suspend fun ProtectedAccess.beforeDig(): Boolean {
++        val gardener = player.uuid?.let(gardeners::get)
++        if (gardener != null && gardener.isSlotAssigned) {
++            mes("I can't dig up anything with him attacking me!")
++            return false
++        }
++        return true
++    }
++
++    override suspend fun ProtectedAccess.dig() {
++        if (player.gardenerMet == 0) {
++            summonGardener()
++            return
++        }
++        if (invAdd(inv, CASKET).failure) {
++            mes("You don't have enough inventory space.")
++            return
++        }
++        mes("You dig a hole in the ground...")
++        mes("and find a little chest of treasure.")
++        quest.completeQuest(this)
++    }
++
++    private fun ProtectedAccess.summonGardener() {
++        val uuid = player.uuid ?: return
++        val gardener = Npc(GARDENER, gardenerSpawnTile())
++        npcRepo.add(gardener, GARDENER_LIFESPAN)
++        gardeners[uuid] = gardener
++        player.gardenerMet = 1
++        gardener.say("First moles, now this! Take this, vandal!")
++        gardener.opPlayer2(player, aiPlayerInteractions)
++    }
++
++    private fun ProtectedAccess.gardenerSpawnTile(): CoordGrid = player.coords.translateX(1)
++
++    private fun npcType(npc: String) =
++        checkNotNull(ServerCacheManager.getNpc(npc.asRSCM(RSCMType.NPC))) { "Missing npc: $npc" }
++
++    private fun objType(obj: String) =
++        checkNotNull(ServerCacheManager.getItem(obj.asRSCM(RSCMType.OBJ))) { "Missing obj: $obj" }
++
++    private enum class RedbeardTopic {
++        Treasure,
++        Arr,
++        Trade,
++    }
++
++    companion object {
++        const val REDBEARD = "npc.redbeard_frank"
++        const val GARDENER = "npc.pirate_irate_gardener"
++        const val CHEST = "loc.piratechest"
++        const val CHEST_OPEN = "loc.piratechestopen"
++        const val CHEST_KEY = "obj.chest_key"
++        const val PIRATE_MESSAGE = "obj.piratemessage"
++        const val CASKET = "obj.pirate_casket"
++        const val CHEST_OPEN_TICKS = 10
++        const val GARDENER_LIFESPAN = 200
++        const val DIG_RADIUS = 1
++
++        val DIG_SPOT = CoordGrid(2999, 3383, 0)
++
++        val CASKET_CONTENTS = listOf("obj.coins" to 450, "obj.gold_ring" to 1, "obj.emerald" to 1)
++
++        const val PIRATE_MESSAGE_TEXT =
++            "Visit the city of the White Knights. In the park, Saradomin points to the X which " +
++                "marks the spot."
++
++        val JOURNAL_DONE_FRANK =
++            listOf(
++                "I have spoken to Redbeard Frank. He has agreed to tell me",
++                "the location of some treasure for some Karamja Rum.",
++            )
++        val JOURNAL_DONE_SMUGGLED =
++            listOf(
++                "I have smuggled some rum off Karamja, and retrieved it",
++                "from the back room of Wydin's shop.",
++            )
++        val JOURNAL_DONE_INN =
++            listOf(
++                "I have given the rum to Redbeard Frank. He has told me",
++                "that the treasure is hidden in the chest in the upstairs",
++                "room of the Blue Moon Inn in Varrock.",
++            )
++        val JOURNAL_DONE_NOTE =
++            listOf(
++                "I have opened the chest in the Blue Moon, and found a",
++                "note inside. I think it will tell me where to dig.",
++            )
++        val JOURNAL_DONE_READ =
++            listOf(
++                "The note reads 'Visit the city of the White Knights. In the",
++                "park, Saradomin points to the X which marks the spot.'",
++            )
++    }
++}
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasureSmuggling.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasureSmuggling.kt
+new file mode 100644
+index 000000000..99198355e
+--- /dev/null
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasureSmuggling.kt
+@@ -0,0 +1,321 @@
++package org.rsmod.content.quest.area.portsarim.piratestreasure
++
++import jakarta.inject.Inject
++import org.rsmod.api.player.dialogue.Dialogue
++import org.rsmod.api.player.protect.ProtectedAccess
++import org.rsmod.api.script.onOpLoc1
++import org.rsmod.api.script.onOpLoc2
++import org.rsmod.api.script.onOpLocU
++import org.rsmod.api.script.onOpNpc1
++import org.rsmod.api.script.onOpNpc3
++import org.rsmod.api.shops.Shops
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.CRATE_CAPACITY
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.EMPLOYED_PLANTATION
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.FETCH_RUM
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.KARAMJA_RUM
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.RUM_IN_CRATE
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.RUM_NONE
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.RUM_SHIPPED
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.crateBananas
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.crateRum
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureState.employment
++import org.rsmod.game.entity.Player
++import org.rsmod.plugin.scripts.PluginScript
++import org.rsmod.plugin.scripts.ScriptContext
++
++/**
++ * Pirate's Treasure on Karamja and in Wydin's back room (osrs-plugins-reverse): Luthas and his
++ * banana crate, Zembo's bar and Wydin's grocery crate (the banana trees are generic Pickables). Wording from
++ * the wiki transcripts; where they have none, from the 2004Scape reconstruction (marked in
++ * `docs/openrune-port.md`).
++ */
++class PiratesTreasureSmuggling
++@Inject
++constructor(private val shops: Shops) : PluginScript() {
++    override fun ScriptContext.startup() {
++        onOpNpc1(LUTHAS) { startDialogue(it.npc) { luthasDialogue() } }
++        onOpNpc1(ZEMBO) { startDialogue(it.npc) { zemboDialogue() } }
++        onOpNpc3(ZEMBO) { openBar(player) }
++        onOpLoc1(BANANA_CRATE) { searchBananaCrate() }
++        onOpLoc2(BANANA_CRATE) { fillBananaCrate() }
++        onOpLocU(BANANA_CRATE, BANANA) { packBanana() }
++        onOpLocU(BANANA_CRATE, KARAMJA_RUM) { stashRum() }
++        onOpLoc1(GROCERY_CRATE) { searchGroceryCrate() }
++    }
++
++    private suspend fun Dialogue.luthasDialogue() {
++        if (!PiratesTreasureState.employedAtPlantation(player)) {
++            chatNpc(happy, "Hello I'm Luthas, I run the banana plantation here.")
++            val employ =
++                choice2(
++                    "Could you offer me employment on your plantation?",
++                    true,
++                    "That customs officer is annoying isn't she?",
++                    false,
++                )
++            if (employ) offerEmployment() else annoyingCustoms()
++            return
++        }
++        if (player.crateBananas >= CRATE_CAPACITY) {
++            payForCrate()
++            return
++        }
++        chatNpc(quiz, "Have you completed your task yet?")
++        val topic =
++            choice4(
++                "What did I have to do again?",
++                LuthasTopic.Task,
++                "No, the crate isn't full yet.",
++                LuthasTopic.NotFull,
++                "So where are these bananas going to be delivered to?",
++                LuthasTopic.Delivery,
++                "That customs officer is annoying isn't she?",
++                LuthasTopic.Customs,
++            )
++        when (topic) {
++            LuthasTopic.Task -> {
++                chatPlayer(quiz, "What did I have to do again?")
++                chatNpc(
++                    happy,
++                    "There's a crate ready to be loaded onto the ship. If you could fill it up " +
++                        "with bananas, I'll pay you 30 gold.",
++                )
++            }
++            LuthasTopic.NotFull -> {
++                chatPlayer(sad, "No, the crate isn't full yet...")
++                chatNpc(angry, "Well come back when it is.")
++            }
++            LuthasTopic.Delivery -> whereDelivered()
++            else -> annoyingCustoms()
++        }
++    }
++
++    private suspend fun Dialogue.offerEmployment() {
++        chatPlayer(quiz, "Could you offer me employment on your plantation?")
++        chatNpc(
++            happy,
++            "Yes, I can sort something out. There's a crate ready to be loaded onto the ship.",
++        )
++        chatNpc(
++            happy,
++            "You wouldn't believe the demand for bananas from Wydin's shop over in Port Sarim. I " +
++                "think this is the third crate I've shipped him this month..",
++        )
++        chatNpc(happy, "If you could fill it up with bananas, I'll pay you 30 gold.")
++        player.employment = player.employment or EMPLOYED_PLANTATION
++    }
++
++    private suspend fun Dialogue.payForCrate() {
++        chatPlayer(happy, "I've filled a crate with bananas.")
++        chatNpc(happy, "Well done, here's your payment.")
++        if (access.invAdd(access.inv, COINS, CRATE_PAYMENT).failure) {
++            chatNpc(neutral, "You'll need to make some room for your payment first.")
++            return
++        }
++        access.mes("Luthas hands you 30 coins.")
++        player.employment = player.employment and EMPLOYED_PLANTATION.inv()
++        player.crateBananas = 0
++        if (player.crateRum == RUM_IN_CRATE) {
++            player.crateRum = RUM_SHIPPED
++        }
++        val topic =
++            choice4(
++                "Will you pay me for another crate full?",
++                LuthasTopic.Another,
++                "Thank you, I'll be on my way",
++                LuthasTopic.Leave,
++                "So where are these bananas going to be delivered to?",
++                LuthasTopic.Delivery,
++                "That customs officer is annoying isn't she?",
++                LuthasTopic.Customs,
++            )
++        when (topic) {
++            LuthasTopic.Another -> {
++                chatPlayer(quiz, "Will you pay me for another crate full?")
++                chatNpc(happy, "Yes certainly.")
++                chatNpc(
++                    neutral,
++                    "If you go outside you should see the old crate has been loaded on to the " +
++                        "ship, and there is another empty crate in its place.",
++                )
++                player.employment = player.employment or EMPLOYED_PLANTATION
++            }
++            LuthasTopic.Leave -> chatPlayer(happy, "Thank you, I'll be on my way.")
++            LuthasTopic.Delivery -> whereDelivered()
++            else -> annoyingCustoms()
++        }
++    }
++
++    private suspend fun Dialogue.whereDelivered() {
++        chatPlayer(quiz, "So where are these bananas going to be delivered to?")
++        chatNpc(neutral, "I sell them to Wydin who runs a grocery store in Port Sarim.")
++    }
++
++    private suspend fun Dialogue.annoyingCustoms() {
++        chatPlayer(shifty, "That customs officer is annoying isn't she?")
++        chatNpc(neutral, "Well I know her pretty well. She doesn't cause me any trouble any more.")
++        chatNpc(
++            neutral,
++            "She doesn't even search my export crates any more. She knows they only contain " +
++                "bananas.",
++        )
++        chatPlayer(quiz, "Really? How interesting. Whereabouts do you send those to?")
++        chatNpc(
++            neutral,
++            "There is a little shop over in Port Sarim that buys them up by the crate. I believe " +
++                "it is run by a man called Wydin.",
++        )
++    }
++
++    private suspend fun Dialogue.zemboDialogue() {
++        chatNpc(
++            happy,
++            "Hey, are you wanting to try some of my fine wines and spirits? All brewed locally on " +
++                "Karamja island.",
++        )
++        if (choice2("Yes please.", true, "No, thank you.", false)) {
++            chatPlayer(happy, "Yes please.")
++            openBar(player)
++        } else {
++            chatPlayer(neutral, "No, thank you.")
++        }
++    }
++
++    private fun openBar(player: Player) {
++        shops.open(
++            player = player,
++            title = "Karamja Wines, Spirits, and Beers.",
++            shopInv = "inv.boozeshop",
++            buyPercentage = BAR_BUY,
++            sellPercentage = BAR_SELL,
++            changePercentage = BAR_CHANGE,
++        )
++    }
++
++    private suspend fun ProtectedAccess.searchBananaCrate() {
++        arriveDelay()
++        val bananas = player.crateBananas
++        val rum = player.crateRum == RUM_IN_CRATE
++        when {
++            bananas == 0 && !rum -> mes("The crate is completely empty.")
++            bananas == 0 ->
++                mes(
++                    "There is some rum in here, although with no bananas to cover it. It is a " +
++                        "little obvious."
++                )
++            else -> {
++                if (bananas >= CRATE_CAPACITY) {
++                    mes("The crate is full of bananas.")
++                } else {
++                    mes("The crate has $bananas banana${if (bananas == 1) "" else "s"} inside.")
++                }
++                if (rum) mes("There is also some rum stashed in here too.")
++            }
++        }
++    }
++
++    private suspend fun ProtectedAccess.fillBananaCrate() {
++        arriveDelay()
++        if (!PiratesTreasureState.employedAtPlantation(player)) {
++            mes("Why would I want to do that?")
++            return
++        }
++        val space = CRATE_CAPACITY - player.crateBananas
++        if (space <= 0) {
++            mes("The crate is already full.")
++            return
++        }
++        val held = inv.count(BANANA)
++        if (held == 0) {
++            mes("You don't have any bananas.")
++            return
++        }
++        val packed = minOf(space, held)
++        if (invDel(inv, BANANA, packed).failure) return
++        player.crateBananas += packed
++        anim("seq.human_pickuptable")
++        mesbox("You pack all your bananas into the crate.")
++    }
++
++    private suspend fun ProtectedAccess.packBanana() {
++        arriveDelay()
++        if (!PiratesTreasureState.employedAtPlantation(player)) {
++            mes("Why would I want to do that?")
++            return
++        }
++        if (player.crateBananas >= CRATE_CAPACITY) {
++            mes("The crate is already full.")
++            return
++        }
++        if (invDel(inv, BANANA, 1).failure) return
++        player.crateBananas += 1
++        anim("seq.human_pickuptable")
++        mesbox("You pack a banana into the crate.")
++    }
++
++    private suspend fun ProtectedAccess.stashRum() {
++        arriveDelay()
++        if (!PiratesTreasureState.employedAtPlantation(player)) {
++            mes("Why would I want to do that?")
++            return
++        }
++        when {
++            PiratesTreasureState.stage(player) != FETCH_RUM -> mes("I see no reason to do that.")
++            player.crateRum == RUM_SHIPPED ->
++                mes("There is already some rum in Wydin's store, I should go and get that first.")
++            player.crateRum == RUM_IN_CRATE -> mes("There's already some rum in here...")
++            else -> {
++                if (invDel(inv, KARAMJA_RUM, 1).failure) return
++                player.crateRum = RUM_IN_CRATE
++                anim("seq.human_pickuptable")
++                mesbox("You stash the rum in the crate.")
++            }
++        }
++    }
++
++    private suspend fun ProtectedAccess.searchGroceryCrate() {
++        arriveDelay()
++        mes("There are a lot of bananas in the crate.")
++        delay(SEARCH_DELAY)
++        if (player.crateRum == RUM_SHIPPED) {
++            if (invAdd(inv, KARAMJA_RUM).failure) {
++                mes("You don't have enough inventory space.")
++                return
++            }
++            player.crateRum = RUM_NONE
++            anim("seq.human_pickuptable")
++            mes("You find your bottle of rum in amongst the bananas.")
++            delay(1)
++        }
++        if (!choice2("Yes.", true, "No.", false, title = "Do you want to take a banana?")) return
++        if (invAdd(inv, BANANA).failure) {
++            mes("You don't have enough inventory space.")
++            return
++        }
++        anim("seq.human_pickuptable")
++        mes("You take a banana.")
++    }
++
++    private enum class LuthasTopic {
++        Task,
++        NotFull,
++        Delivery,
++        Customs,
++        Another,
++        Leave,
++    }
++
++    private companion object {
++        const val LUTHAS = "npc.luthas"
++        const val ZEMBO = "npc.zembo"
++        const val BANANA = "obj.banana"
++        const val COINS = "obj.coins"
++        const val BANANA_CRATE = "loc.bananacrate"
++        const val GROCERY_CRATE = "loc.grocerycrate"
++        const val CRATE_PAYMENT = 30
++        const val SEARCH_DELAY = 3
++        const val BAR_BUY = 70.0
++        const val BAR_SELL = 100.0
++        const val BAR_CHANGE = 2.0
++    }
++}
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasureState.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasureState.kt
+new file mode 100644
+index 000000000..339b8a5d0
+--- /dev/null
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasureState.kt
+@@ -0,0 +1,56 @@
++package org.rsmod.content.quest.area.portsarim.piratestreasure
++
++import org.rsmod.api.player.vars.intVarBit
++import org.rsmod.content.quest.manager.Quest
++import org.rsmod.game.entity.Player
++
++/**
++ * Pirate's Treasure state shared with the Port Sarim scripts (customs officer, Wydin). The quest
++ * stage is varp 71 (`varp.hunt`); the rum smuggling sub-state lives in server-only varbits.
++ */
++object PiratesTreasureState {
++    const val QUEST_KEY = "quest_piratestreasure"
++    const val NOT_STARTED = 0
++    const val FETCH_RUM = 1
++    const val RECEIVED_KEY = 2
++    const val READ_NOTE = 3
++    const val COMPLETE = 4
++
++    const val EMPLOYED_PLANTATION = 1
++    const val EMPLOYED_WYDIN = 2
++
++    const val RUM_NONE = 0
++    const val RUM_IN_CRATE = 1
++    const val RUM_SHIPPED = 2
++
++    const val CRATE_CAPACITY = 10
++
++    const val KARAMJA_RUM = "obj.karamja_rum"
++    const val WHITE_APRON = "obj.white_apron"
++
++    private val quest: Quest
++        get() = checkNotNull(Quest.get(QUEST_KEY)) { "Pirate's Treasure is not registered." }
++
++    fun stage(player: Player): Int = quest.getQuestStage(player)
++
++    var Player.employment by intVarBit("varbit.pirates_treasure_employed")
++    var Player.crateBananas by intVarBit("varbit.pirates_treasure_crate_bananas")
++    var Player.crateRum by intVarBit("varbit.pirates_treasure_crate_rum")
++    var Player.gardenerMet by intVarBit("varbit.pirates_treasure_gardener_met")
++
++    fun employedAtPlantation(player: Player): Boolean =
++        player.employment and EMPLOYED_PLANTATION != 0
++
++    fun employedAtWydin(player: Player): Boolean = player.employment and EMPLOYED_WYDIN != 0
++
++    fun hireAtWydin(player: Player) {
++        player.employment = player.employment or EMPLOYED_WYDIN
++    }
++
++    fun carriesRum(player: Player): Boolean = player.inv.count(KARAMJA_RUM) > 0
++
++    fun wearsWhiteApron(player: Player): Boolean = player.worn.count(WHITE_APRON) > 0
++
++    fun hasWhiteApron(player: Player): Boolean =
++        player.inv.count(WHITE_APRON) > 0 || wearsWhiteApron(player)
++}
+diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasureWydin.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasureWydin.kt
+new file mode 100644
+index 000000000..ba8fc3dbf
+--- /dev/null
++++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/portsarim/piratestreasure/PiratesTreasureWydin.kt
+@@ -0,0 +1,83 @@
++package org.rsmod.content.quest.area.portsarim.piratestreasure
++
++import dev.openrune.types.MesAnimType
++import org.rsmod.api.player.dialogue.Dialogue
++
++/** Wydin's job offer (Pirate's Treasure), from his talk options and from his back-room door. */
++suspend fun Dialogue.wydinJobOffer(question: String) {
++    chatPlayer(quiz, question)
++    wydin(
++        neutral,
++        "Well, you're keen, I'll give you that. Okay, I'll give you a go. Have you got your own " +
++            "white apron?",
++    )
++    if (PiratesTreasureState.hasWhiteApron(player)) {
++        chatPlayer(happy, "Yes, I have one right here.")
++        wydin(
++            happy,
++            "Wow - you are well prepared! You're hired. Go through to the back and tidy up for me, " +
++                "please.",
++        )
++        PiratesTreasureState.hireAtWydin(player)
++        if (!PiratesTreasureState.wearsWhiteApron(player)) {
++            wydin(neutral, "You need to put your white apron on first though.")
++        }
++        return
++    }
++    chatPlayer(sad, "No, I haven't.")
++    wydin(
++        neutral,
++        "Well, you can't work here unless you have a white apron. Health and safety regulations, " +
++            "you understand.",
++    )
++    chatPlayer(quiz, "Where can I get one of those?")
++    wydin(
++        neutral,
++        "Well, I get all of mine over at the clothing shop in Varrock. They sell them cheap there.",
++    )
++    wydin(
++        neutral,
++        "Oh, and I'm sure that I've seen a spare one over in Gerrant's fish store somewhere. It's " +
++            "the little place just north of here.",
++    )
++}
++
++/** Wydin's talk once he has hired the player; returns `true` when the player wants to buy. */
++suspend fun Dialogue.wydinEmployeeTalk(): Boolean {
++    wydin(quiz, "Is it nice and tidy round the back now?")
++    val topic =
++        choice4(
++            "Yes, can I work out front now?",
++            1,
++            "Yes, are you going to pay me yet?",
++            2,
++            "No, it's a complete mess",
++            3,
++            "Can I buy something please?",
++            4,
++        )
++    when (topic) {
++        1 -> {
++            chatPlayer(quiz, "Yes, can I work out front now?")
++            wydin(neutral, "No, I'm the one who works here.")
++        }
++        2 -> {
++            chatPlayer(quiz, "Yes, are you going to pay me yet?")
++            wydin(neutral, "Umm... No, not yet.")
++        }
++        3 -> {
++            chatPlayer(sad, "No, it's a complete mess.")
++            wydin(neutral, "Ah well, it'll give you something to do, won't it.")
++        }
++        else -> {
++            chatPlayer(quiz, "Can I buy something please?")
++            wydin(happy, "Yes, of course.")
++            return true
++        }
++    }
++    return false
++}
++
++suspend fun Dialogue.wydin(mesanim: MesAnimType, text: String) {
++    chatNpcSpecific("Wydin", "npc.wydin", mesanim, text)
++}
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotion.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/area/rimmington/WitchsPotion.kt
 new file mode 100644
 index 000000000..fa85abf5f
@@ -22170,10 +23593,10 @@ index 5d1bc249e..8a847bf91 100644
 +internal fun startQuestTitle(name: String): String =
 +    if (name.endsWith(" Quest")) "Start $name?" else "Start the $name quest?"
 diff --git a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestModule.kt b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestModule.kt
-index d79502cef..c14eb0f7e 100644
+index d79502cef..b73833b04 100644
 --- a/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestModule.kt
 +++ b/content/quest/src/main/kotlin/org/rsmod/content/quest/manager/QuestModule.kt
-@@ -1,9 +1,11 @@
+@@ -1,9 +1,12 @@
  package org.rsmod.content.quest.manager
  
  import org.rsmod.api.combat.commons.magic.SpellQuestRequirement
@@ -22181,14 +23604,19 @@ index d79502cef..c14eb0f7e 100644
  import org.rsmod.api.player.hook.SpadeDigHook
  import org.rsmod.content.quest.area.lumbridge.RuneMysteriesQuest
  import org.rsmod.content.quest.area.lumbridge.xmarksthespot.XMarksTheSpotQuest
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasure
 +import org.rsmod.content.quest.area.rimmington.WitchsPotionRatTail
  import org.rsmod.content.quest.area.varrock.daddyshome.DaddysHomeQuest
  import org.rsmod.content.quest.area.varrock.gertrudescat.GertrudesCatQuest
  import org.rsmod.plugin.module.PluginModule
-@@ -17,5 +19,6 @@ public class QuestModule : PluginModule() {
+@@ -15,7 +18,10 @@ public class QuestModule : PluginModule() {
+         bindInstance<GertrudesCatQuest>()
+         bindInstance<DaddysHomeQuest>()
          bindInstance<XMarksTheSpotQuest>()
++        bindInstance<PiratesTreasure>()
          addSetBinding<SpellQuestRequirement>(PolicySpellQuestRequirement::class.java)
          addSetBinding<SpadeDigHook>(XMarksTheSpotQuest::class.java)
++        addSetBinding<SpadeDigHook>(PiratesTreasure::class.java)
 +        addSetBinding<NpcDeathKillHook>(WitchsPotionRatTail::class.java)
      }
  }
@@ -22855,6 +24283,272 @@ index 000000000..972f10283
 +
 +    companion object {
 +        @JvmStatic @BeforeAll fun cache() = QuestTalkFixture.setUpCache()
++        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
++    }
++}
+diff --git a/content/quest/src/test/kotlin/org/rsmod/content/quest/area/portsarim/PiratesTreasureInteractionTest.kt b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/portsarim/PiratesTreasureInteractionTest.kt
+new file mode 100644
+index 000000000..9d6051cf0
+--- /dev/null
++++ b/content/quest/src/test/kotlin/org/rsmod/content/quest/area/portsarim/PiratesTreasureInteractionTest.kt
+@@ -0,0 +1,260 @@
++package org.rsmod.content.quest.area.portsarim
++
++import dev.openrune.ServerCacheManager
++import dev.openrune.rscm.RSCM.asRSCM
++import dev.openrune.rscm.RSCMType
++import org.junit.jupiter.api.AfterAll
++import org.junit.jupiter.api.Assertions.assertEquals
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.BeforeAll
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.parallel.Execution
++import org.junit.jupiter.api.parallel.ExecutionMode
++import org.junit.jupiter.api.parallel.ResourceLock
++import org.rsmod.api.npc.interact.AiPlayerInteractions
++import org.rsmod.api.player.events.interact.HeldObjEvents
++import org.rsmod.api.player.events.interact.LocEvents
++import org.rsmod.api.player.events.interact.LocUEvents
++import org.rsmod.api.player.events.interact.NpcUEvents
++import org.rsmod.api.player.vars.VarPlayerIntMapSetter
++import org.rsmod.api.registry.controller.ControllerRegistry
++import org.rsmod.api.registry.loc.LocRegistry
++import org.rsmod.api.registry.loc.LocRegistryNormal
++import org.rsmod.api.registry.loc.LocRegistryRegion
++import org.rsmod.api.registry.npc.NpcRegistry
++import org.rsmod.api.registry.region.RegionRegistry
++import org.rsmod.api.registry.zone.ZonePlayerActivityBitSet
++import org.rsmod.api.registry.zone.ZoneUpdateMap
++import org.rsmod.api.repo.loc.LocRepository
++import org.rsmod.api.repo.npc.NpcRepository
++import org.rsmod.api.shops.Shops
++import org.rsmod.content.quest.area.QuestTalkFixture
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasure
++import org.rsmod.content.quest.area.portsarim.piratestreasure.PiratesTreasureSmuggling
++import org.rsmod.events.EventBus
++import org.rsmod.game.MapClock
++import org.rsmod.game.entity.ControllerList
++import org.rsmod.game.entity.Npc
++import org.rsmod.game.entity.NpcList
++import org.rsmod.game.entity.PlayerList
++import org.rsmod.game.loc.BoundLocInfo
++import org.rsmod.game.loc.LocEntity
++import org.rsmod.game.loc.LocInfo
++import org.rsmod.game.map.LocZoneStorage
++import org.rsmod.game.region.RegionListLarge
++import org.rsmod.game.region.RegionListSmall
++import org.rsmod.game.region.RegionListWorldEntity
++import org.rsmod.map.CoordGrid
++import org.rsmod.routefinder.collision.CollisionFlagMap
++
++@Execution(ExecutionMode.SAME_THREAD)
++@ResourceLock("ServerCacheManager")
++class PiratesTreasureInteractionTest {
++    private fun quest() =
++        QuestTalkFixture(CoordGrid(3053, 3250, 0)) {
++            val (npcs, locs) = repositories()
++            PiratesTreasure(npcs, locs, AiPlayerInteractions(EventBus(), PlayerList()))
++        }
++
++    private fun smuggling() =
++        QuestTalkFixture(CoordGrid(2938, 3150, 0)) {
++            val (npcs, locs) = repositories()
++            PiratesTreasure(npcs, locs, AiPlayerInteractions(EventBus(), PlayerList()))
++            PiratesTreasureSmuggling(Shops(EventBus()))
++        }
++
++    private val QuestTalkFixture.stage get() = player.vars["varbit.pirates_treasure_progress"]
++
++    private fun QuestTalkFixture.slot(obj: String): Int =
++        (0 until 28).first { player.inv[it]?.id == obj.asRSCM(RSCMType.OBJ) }
++
++    private fun locType(loc: String) =
++        checkNotNull(ServerCacheManager.getObject(loc.asRSCM(RSCMType.LOC)))
++
++    private fun bound(loc: String, coords: CoordGrid): BoundLocInfo {
++        val type = locType(loc)
++        return BoundLocInfo(LocInfo(0, coords, LocEntity(type.id, 10, 0)), type)
++    }
++
++    private fun QuestTalkFixture.opLoc(loc: String, vararg options: Int) {
++        val target = bound(loc, player.coords.translateX(1))
++        interact(*options) { assertTrue(events.publish(it, LocEvents.Op1(target, target, locType(loc)))) }
++    }
++
++    private fun QuestTalkFixture.opLoc2(loc: String) {
++        val target = bound(loc, player.coords.translateX(1))
++        interact { assertTrue(events.publish(it, LocEvents.Op2(target, target, locType(loc)))) }
++    }
++
++    private fun QuestTalkFixture.useOnLoc(obj: String, loc: String) {
++        val target = bound(loc, player.coords.translateX(1))
++        val objType = checkNotNull(ServerCacheManager.getItem(obj.asRSCM(RSCMType.OBJ)))
++        interact {
++            assertTrue(events.publish(it, LocUEvents.Op(target, target, locType(loc), objType, slot(obj))))
++        }
++    }
++
++    private fun QuestTalkFixture.rumOnFrank(vararg options: Int) {
++        val obj = checkNotNull(ServerCacheManager.getItem(RUM.asRSCM(RSCMType.OBJ)))
++        val npcType = checkNotNull(ServerCacheManager.getNpc(FRANK.asRSCM(RSCMType.NPC)))
++        val npc = Npc(FRANK, player.coords.translateZ(1))
++        interact(*options) { assertTrue(events.publish(it, NpcUEvents.Op(npc, slot(RUM), obj, npcType))) }
++    }
++
++    private fun QuestTalkFixture.openCasket() {
++        val slot = slot(CASKET)
++        val obj = checkNotNull(player.inv[slot])
++        val type = checkNotNull(ServerCacheManager.getItem(obj.id))
++        interact { assertTrue(events.publish(it, HeldObjEvents.Op1(slot, obj, type, player.inv))) }
++    }
++
++    private fun QuestTalkFixture.setStage(stage: Int) {
++        VarPlayerIntMapSetter.set(player, "varbit.pirates_treasure_progress", stage)
++    }
++
++    @Test fun `accepting Frank's offer sets varp 71 to 1`() {
++        val f = quest()
++        f.talk(FRANK, 1, 1)
++        assertEquals(1, f.stage)
++    }
++
++    @Test fun `declining leaves the quest unstarted`() {
++        val f = quest()
++        f.talk(FRANK, 1, 2)
++        assertEquals(0, f.stage)
++    }
++
++    @Test fun `Frank swaps exactly one rum for one key`() {
++        val f = quest()
++        f.setStage(1)
++        f.give(RUM, 2)
++        f.talk(FRANK, 1)
++        assertEquals(2, f.stage)
++        assertEquals(1, f.count(RUM))
++        assertEquals(1, f.count(KEY))
++    }
++
++    @Test fun `using the rum on Frank works the same way`() {
++        val f = quest()
++        f.setStage(1)
++        f.give(RUM)
++        f.rumOnFrank(1)
++        assertEquals(2, f.stage)
++        assertEquals(0, f.count(RUM))
++        assertEquals(1, f.count(KEY))
++    }
++
++    @Test fun `Frank replaces a lost key once`() {
++        val f = quest()
++        f.setStage(2)
++        f.talk(FRANK, 2)
++        assertEquals(1, f.count(KEY))
++        f.talk(FRANK, 2)
++        assertEquals(1, f.count(KEY))
++    }
++
++    @Test fun `the key opens the chest and turns into the message`() {
++        val f = quest()
++        f.setStage(2)
++        f.give(KEY)
++        f.useOnLoc(KEY, "loc.piratechest")
++        assertEquals(0, f.count(KEY))
++        assertEquals(1, f.count(MESSAGE))
++    }
++
++    @Test fun `the casket opens into its three rewards and is gone`() {
++        val f = quest()
++        f.give(CASKET)
++        f.openCasket()
++        assertEquals(0, f.count(CASKET))
++        assertEquals(450, f.count("obj.coins"))
++        assertEquals(1, f.count("obj.gold_ring"))
++        assertEquals(1, f.count("obj.emerald"))
++    }
++
++    @Test fun `a full inventory keeps the casket closed`() {
++        val f = quest()
++        f.give(CASKET)
++        repeat(27) { f.give("obj.bronze_dagger") }
++        f.openCasket()
++        assertEquals(1, f.count(CASKET))
++        assertEquals(0, f.count("obj.coins"))
++        assertTrue(f.output().contains("You don't have enough inventory space."), f.output())
++    }
++
++    @Test fun `the rum is stashed, shipped with ten bananas and found at Wydin's`() {
++        val f = smuggling()
++        f.setStage(1)
++        f.talk(LUTHAS, 1)
++        f.give(RUM)
++        repeat(12) { f.give(BANANA) }
++        f.useOnLoc(RUM, CRATE)
++        assertEquals(0, f.count(RUM))
++        f.useOnLoc(BANANA, CRATE)
++        f.opLoc2(CRATE)
++        assertEquals(2, f.count(BANANA), f.output())
++        assertTrue(f.output().contains("You pack all your bananas into the crate."), f.output())
++        f.opLoc2(CRATE)
++        assertEquals(2, f.count(BANANA))
++        f.talk(LUTHAS, 2)
++        assertEquals(30, f.count("obj.coins"))
++        f.opLoc(GROCERY_CRATE, 2)
++        assertEquals(1, f.count(RUM))
++        f.opLoc(GROCERY_CRATE, 2)
++        assertEquals(1, f.count(RUM))
++    }
++
++    @Test fun `the rum stays out of the crate before the job`() {
++        val f = smuggling()
++        f.setStage(1)
++        f.give(RUM)
++        f.useOnLoc(RUM, CRATE)
++        assertEquals(1, f.count(RUM))
++    }
++
++    private fun repositories(): Pair<NpcRepository, LocRepository> {
++        val events = EventBus()
++        val clock = MapClock(100)
++        val collision = CollisionFlagMap()
++        val npcs = NpcList()
++        val updates = ZoneUpdateMap()
++        val storage = LocZoneStorage()
++        val normal = LocRegistryNormal(updates, collision, storage)
++        val npcRegistry = NpcRegistry(npcs, collision, events)
++        val regions =
++            RegionRegistry(
++                RegionListSmall(),
++                RegionListLarge(),
++                RegionListWorldEntity(),
++                normal,
++                collision,
++                storage,
++                npcRegistry,
++                ControllerRegistry(clock, ControllerList()),
++                ZonePlayerActivityBitSet(),
++            )
++        val locs =
++            LocRepository(
++                clock,
++                LocRegistry(storage, normal, LocRegistryRegion(updates, collision, storage, regions)),
++                regions,
++            )
++        return NpcRepository(clock, npcRegistry, npcs) to locs
++    }
++
++    companion object {
++        const val FRANK = "npc.redbeard_frank"
++        const val LUTHAS = "npc.luthas"
++        const val RUM = "obj.karamja_rum"
++        const val KEY = "obj.chest_key"
++        const val MESSAGE = "obj.piratemessage"
++        const val CASKET = "obj.pirate_casket"
++        const val BANANA = "obj.banana"
++        const val CRATE = "loc.bananacrate"
++        const val GROCERY_CRATE = "loc.grocerycrate"
++
++        @JvmStatic @BeforeAll fun cache() = QuestTalkFixture.setUpCache()
++
 +        @JvmStatic @AfterAll fun restore() = QuestTalkFixture.restore()
 +    }
 +}

@@ -2087,3 +2087,13 @@ herblore's, which already works). Tests: `KnifeFletchingScriptTest` (3).
   dialogue logs the player out; cancelling the failed script (close the dialogue, keep the session) would be a design
   change for upstream to discuss; (3) `ItemServerType.tradeable` ignoring items.toml's `tradeable = false` (death drops
   use it too).
+
+### Item config `tradeable` (upstream 71, applied in our tree, twentieth server dev)
+`ItemServerCodec.createData` assigned a config entry's `tradeable` to `stockmarket`. Fixed in our tree (orchestrator's
+OK): `stockmarket` now follows the cache for every item (the tester's GE offer item, lobster, is still `stockmarket`).
+But after the fix and a forced full repack (touch `items.toml`; the incremental `buildCache` does not repack when
+only the codec changes), `tradeable` still reads **true** for `tradeable = false` entries (coal bag, chest key): a
+second cause somewhere in the TOML decode of `[[item]]` blocks (`decodeRuneScape`, `inherit`), not found yet. The
+packed round trip of opcode 30 is fine (`ItemServerCodecTest`). Until then the looting bag keeps its `stockmarket`
+check. Next step: an or-cache test that decodes a two-line `[[item]]` block with `tradeable = false` through
+`PackServerConfigOSRS`'s mapper.

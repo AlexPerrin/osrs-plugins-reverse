@@ -14429,7 +14429,7 @@ index 000000000..7025777ee
 +}
 diff --git a/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagScript.kt b/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagScript.kt
 new file mode 100644
-index 000000000..8a403f9f7
+index 000000000..a6abf79b5
 --- /dev/null
 +++ b/content/other/looting-bag/src/main/kotlin/org/rsmod/content/other/lootingbag/LootingBagScript.kt
 @@ -0,0 +1,163 @@
@@ -14548,8 +14548,8 @@ index 000000000..8a403f9f7
 +            return false
 +        }
 +        val type = ServerCacheManager.getItem(obj.asRSCM(RSCMType.OBJ)) ?: return false
-+        // `tradeable` reads true for items the server config marks untradeable; Grand Exchange
-+        // items stand in for tradeable ones (tradeable items that are not on the GE are refused).
++        // `tradeable` still reads true for items the server config marks untradeable (the codec
++        // fix alone does not carry it through packing); GE items stand in for tradeable ones.
 +        if (!type.stockmarket) {
 +            mes("Only tradeable items can be put in the bag.")
 +            return false
@@ -68379,6 +68379,19 @@ index 000000000..c865611a5
 +34645|null|obj.placeholder_pvptut_reward_voucher|0|14401|false|true|-1|null
 +63477|Shooting Star teleport|obj.poh_tablet_shootingstar|0|0|false|true|-1|null
 +65534|null|obj.template_for_transform|0|0|true|true|1|null
+diff --git a/or-cache/src/main/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodec.kt b/or-cache/src/main/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodec.kt
+index 5069f4e16..2ef30e792 100644
+--- a/or-cache/src/main/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodec.kt
++++ b/or-cache/src/main/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodec.kt
+@@ -144,7 +144,7 @@ class ItemServerCodec(
+             playerCostDerivedConst = customData.playerCostDerivedConst
+             stockMarketBuyLimit = customData.stockMarketBuyLimit
+             stockMarketRecalcUsers = customData.stockMarketRecalcUsers
+-            stockmarket = customData.tradeable
++            tradeable = customData.tradeable
+             respawnRate = customData.respawnRate
+             dummyitem = customData.dummyitem
+             contentGroup = customData.contentGroup
 diff --git a/or-cache/src/main/kotlin/dev/openrune/impl/Music.kt b/or-cache/src/main/kotlin/dev/openrune/impl/Music.kt
 index b5ba8df06..199441c8a 100644
 --- a/or-cache/src/main/kotlin/dev/openrune/impl/Music.kt
@@ -68453,6 +68466,71 @@ index 9387eba2d..81af92826 100644
          private val SYMBOL_LINE = Regex("""^\s*(\S+)\s+(.+?)\s*$""")
  
          /**
+diff --git a/or-cache/src/test/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodecTest.kt b/or-cache/src/test/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodecTest.kt
+new file mode 100644
+index 000000000..c5e5098b6
+--- /dev/null
++++ b/or-cache/src/test/kotlin/dev/openrune/codec/osrs/impl/ItemServerCodecTest.kt
+@@ -0,0 +1,59 @@
++package dev.openrune.codec.osrs.impl
++
++import dev.openrune.definition.type.ItemType
++import dev.openrune.types.ItemServerType
++import org.junit.jupiter.api.Assertions.assertFalse
++import org.junit.jupiter.api.Assertions.assertTrue
++import org.junit.jupiter.api.Test
++
++class ItemServerCodecTest {
++    @Test
++    fun `a server config entry with tradeable false makes the item untradeable`() {
++        val base = ItemType(id = ID, stockMarket = false)
++        val overlay = ItemServerType(ID).apply { tradeable = false }
++        val item = ItemServerType(ID)
++
++        with(ItemServerCodec(REV, mapOf(ID to base), mapOf(ID to overlay))) { item.createData() }
++
++        assertFalse(item.tradeable)
++        assertFalse(item.stockmarket)
++    }
++
++    @Test
++    fun `the overlay keeps the cache's grand exchange flag`() {
++        val base = ItemType(id = ID, stockMarket = true)
++        val overlay = ItemServerType(ID)
++        val item = ItemServerType(ID)
++
++        with(ItemServerCodec(REV, mapOf(ID to base), mapOf(ID to overlay))) { item.createData() }
++
++        assertTrue(item.tradeable)
++        assertTrue(item.stockmarket)
++    }
++
++    @Test
++    fun `an overlay does not put a non grand exchange item on the exchange`() {
++        val base = ItemType(id = ID, stockMarket = false)
++        val overlay = ItemServerType(ID)
++        val item = ItemServerType(ID)
++
++        with(ItemServerCodec(REV, mapOf(ID to base), mapOf(ID to overlay))) { item.createData() }
++
++        assertFalse(item.stockmarket)
++    }
++
++    @Test
++    fun `tradeable false survives the packed round trip`() {
++        val codec = ItemServerCodec(REV)
++        val item = ItemServerType(ID).apply { tradeable = false }
++
++        val decoded = codec.loadData(ID, codec.encodeToBuffer(item))
++
++        assertFalse(decoded.tradeable)
++    }
++
++    private companion object {
++        const val ID = 1
++        const val REV = 241
++    }
++}
 diff --git a/settings.gradle.kts b/settings.gradle.kts
 index 95a72708a..a88f2216f 100644
 --- a/settings.gradle.kts

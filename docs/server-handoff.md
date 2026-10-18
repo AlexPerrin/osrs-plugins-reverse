@@ -47,8 +47,9 @@ Details in `docs/openrune-port.md`, "Twentieth server dev" and the sections afte
 - **Upstream:** 67-71 written (CONTRIBUTING format + Claude Code line; README rows); 72+ candidates: reconnect login
   (after Android confirms >60 s, without `::drop`). Discussion text `batch-2-texts/discussion-script-exception.md`
   (dialogue exceptions disconnect the player by design). Don't edit `PR-BATCH-*.md` or other batch texts.
-- **Open decision:** apply upstream 71 (item config `tradeable` copied into `stockmarket`) in our tree? Needs a cache
-  rebuild; the looting bag would then check `tradeable` instead of `stockmarket`.
+- **Committed, not deployed (needs "OK restart"):** upstream 71's codec fix in our tree (`stockmarket` follows the
+  cache). `tradeable` is still wrong for `tradeable = false` items (second cause in the TOML decode, see the port
+  doc); the looting bag keeps checking `stockmarket`. Next step: an or-cache test through the TOML mapper.
 - **Do not** suspend client processes for tests (the permission check refused it); DB writes go through the
   orchestrator.
 - **Wiki fetches:** `curl "https://oldschool.runescape.wiki/w/<Title>?action=raw"` (no personal data in headers);

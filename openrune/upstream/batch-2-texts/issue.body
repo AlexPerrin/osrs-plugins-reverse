@@ -2,6 +2,11 @@ We've been running RuneLite and Plugin Hub plugins against an OpenRune server, a
 
 All of it is Kotlin in OpenRune's module layout, driven by cache data where the cache has it (e.g. the `cluehelper_*` and `fairyring` dbtables), and uses the client's own varps/varbits so RuneLite plugins (Quest Helper, Time Tracking, Clue Scroll, Herbiboar, Ess Pouch...) read the state. Most of it has integration tests. Sizes are from our patches against `9a8b338a8`, so they would change a bit on current main.
 
+**Where the code is**
+
+- Our fork: https://github.com/AlexPerrin/OpenRune-Server. Each content area below will be up as a PR inside the fork (base = the fork's `main`, which is upstream `main`), built from our local per-feature patches, so you can browse or try any of it before deciding. I'll link them here as they go up.
+- The project that drove all this: https://github.com/AlexPerrin/osrs-plugins-reverse (RuneLite plugins on the official OSRS Android client, tested against an OpenRune server). The per-feature patches live in its `openrune/upstream/`.
+
 **Quests**
 
 | Content | Size | Notes |

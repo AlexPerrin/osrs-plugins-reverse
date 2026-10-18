@@ -15,7 +15,8 @@
      AsyncTask holding "Consent sync failed with HTTP ") returns at once, and, with --native, the game
      library's sync URLs (account.jagex.com and the dev account.development.jxp.jagex.com) are zeroed,
      so the SDK takes its "sync client is not configured" path (za.f.b: blank or whitespace-only URL;
-     NUL is whitespace to String.trim()).
+     NUL is whitespace to String.trim()). The group-ironman score URL (pp-%s.%s.jagex.com:13406, native
+     FUN_0064da14 Ghidra) gets the reserved host suffix x.invalid instead of jagex.com (same length).
 
 Idempotent on the decoded APK: a patched method carries a marker comment, and meta-data are set rather
 than duplicated. --native works on a freshly extracted library (it fails if the URLs aren't there).
@@ -111,6 +112,19 @@ def patch_native(src: str, dst: str) -> None:
         if n == 0:
             sys.exit(f"telemetry: {url.decode()} not found in {src}")
         print(f"telemetry: zeroed {url.decode()} ({n}x)")
+    # Group-ironman score lookups: keep the format string (and its %s count) intact but move the host
+    # to the reserved .invalid TLD (RFC 2606), so the request fails like any offline lookup.
+    gim_old = b"https://pp-%s.%s.jagex.com:13406/v1/groupScoreDetails/byGroupName/%s\0"
+    gim_new = b"https://pp-%s.%s.x.invalid:13406/v1/groupScoreDetails/byGroupName/%s\0"
+    assert len(gim_old) == len(gim_new)
+    full_old, full_new = b"\0" + gim_old, b"\0" + gim_new
+    n_old, n_new = data.count(full_old), data.count(full_new)
+    if n_old == 1 and n_new == 0:
+        i = data.find(full_old)
+        data[i:i + len(full_new)] = full_new
+        print("telemetry: group score host -> pp-%s.%s.x.invalid")
+    elif not (n_old == 0 and n_new == 1):
+        sys.exit(f"telemetry: expected exactly one group score URL in {src} (found {n_old} original, {n_new} patched)")
     open(dst, "wb").write(data)
 
 

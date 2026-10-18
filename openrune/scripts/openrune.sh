@@ -8,7 +8,8 @@
 #   scripts/openrune.sh rsprot    publish our RSProt (pinned upstream + server/rsprot.patch) to
 #                                 src/.m2-rsprot, the Maven repo src/settings.gradle.kts points at
 #   scripts/openrune.sh gradle <args...>
-#                                 run OpenRune's Gradle wrapper in Docker (uid 1000)
+#                                 run OpenRune's Gradle wrapper in Docker (uid 1000; at most
+#                                 OPENRUNE_CPUS CPUs, default 4: the live server shares the machine)
 #   scripts/openrune.sh build     rsprot (if missing) + cache (first time: download + build; later:
 #                                 incremental rebuild) + RSA keys + installDist
 #   scripts/openrune.sh deploy    (re)start the containers on the default ports (switch.env: 43594/8080);
@@ -36,7 +37,7 @@ own() { docker run --rm -v "$1":/v alpine:3.20 chown 1000:1000 /v; }
 
 gradle() {
     own openrune-gradle
-    docker run --rm --name openrune-gradle-$$ -u 1000:1000 -e HOME=/gradle/home \
+    docker run --rm --name openrune-gradle-$$ --cpus "${OPENRUNE_CPUS:-4}" -u 1000:1000 -e HOME=/gradle/home \
         ${OPENRUNE_SKIP_CS2_PACKS+-e OPENRUNE_SKIP_CS2_PACKS="$OPENRUNE_SKIP_CS2_PACKS"} \
         -e GRADLE_USER_HOME=/gradle -v openrune-gradle:/gradle -v "$OR/src":/w -w /w \
         eclipse-temurin:21 ./gradlew --no-daemon --console=plain "$@"
@@ -74,7 +75,7 @@ rsprot)
         T="$T :protocol:osrs-241:osrs-241-$m:publishToMavenLocal"
     done
     own openrune-gradle8
-    docker run --rm --name openrune-rsprot-$$ -u 1000:1000 -e HOME=/cache/home -e GRADLE_USER_HOME=/cache \
+    docker run --rm --name openrune-rsprot-$$ --cpus "${OPENRUNE_CPUS:-4}" -u 1000:1000 -e HOME=/cache/home -e GRADLE_USER_HOME=/cache \
         -v openrune-gradle8:/cache -v "$OR/rsprot":/src -v "$OR/src/.m2-rsprot":/m2 -w /src \
         gradle:8.14.3-jdk21 gradle --no-daemon --console=plain -Dmaven.repo.local=/m2 -x test $T
     echo "published RSProt $RSPROT_VERSION to src/.m2-rsprot"

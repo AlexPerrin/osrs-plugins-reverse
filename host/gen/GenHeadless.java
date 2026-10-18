@@ -399,6 +399,10 @@ public class GenHeadless {
                 if (v != null) sb.append("final ");
                 sb.append(typeName(f.getType())).append(" ").append(f.getName());
                 if (v != null) sb.append(" = ").append(literal(v, f.getType()));
+                else if (!Modifier.isStatic(fm)) {
+                    String init = instanceDefault(c, f);  // GridBagConstraints: gridx RELATIVE, insets (0,0,0,0)
+                    if (init != null) sb.append(" = ").append(init);
+                }
                 sb.append(";\n");
             }
         }
@@ -802,6 +806,35 @@ public class GenHeadless {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < ps.length; i++) sb.append(i > 0 ? ", " : "").append(typeName(ps[i])).append(" a").append(i);
         return sb.toString();
+    }
+
+    /**
+     * The JDK's initial value of a public instance field, for plain value classes (not components)
+     * with a public no-arg constructor: desktop code relies on them (Emote Clue Items writes
+     * {@code new GridBagConstraints().insets.right}). Null when unknown or the default (0/null).
+     */
+    static String instanceDefault(Class<?> c, Field f) {
+        if (java.awt.Component.class.isAssignableFrom(c) || c.isInterface() || Modifier.isAbstract(c.getModifiers())) return null;
+        Object v;
+        try {
+            Object o = c.getConstructor().newInstance();
+            f.setAccessible(true);
+            v = f.get(o);
+        } catch (Throwable e) {
+            return null;
+        }
+        if (v == null) return null;
+        Class<?> t = f.getType();
+        if (t.isPrimitive() || t == String.class) {
+            if (v instanceof Number && ((Number) v).doubleValue() == 0) return null;
+            if (Boolean.FALSE.equals(v)) return null;
+            return literal(v, t);
+        }
+        if (v instanceof java.awt.Insets) {
+            java.awt.Insets i = (java.awt.Insets) v;
+            return "new java.awt.Insets(" + i.top + ", " + i.left + ", " + i.bottom + ", " + i.right + ")";
+        }
+        return null;
     }
 
     static String literal(Object v, Class<?> t) {

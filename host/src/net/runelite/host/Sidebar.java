@@ -559,12 +559,16 @@ final class Sidebar {
             Object v = m.getElementAt(i);
             String t = "";
             java.awt.Color fg = null;
+            int icon = -1;
             if (r != null) {
                 try {
                     Component rc = r.getListCellRendererComponent(list, v, i, i == sel, false);
                     if (rc != null) {
                         t = labelText(rc, new StringBuilder(), 0).toString().trim();
-                        if (rc instanceof JLabel) fg = rc.getForeground();
+                        if (rc instanceof JLabel) {
+                            fg = rc.getForeground();
+                            icon = iconId(((JLabel) rc).getIcon());  // Bank Memory's item images
+                        }
                     }
                 } catch (Throwable e) {
                     Log.w(TAG, "list cell renderer threw: " + e);
@@ -573,7 +577,10 @@ final class Sidebar {
             if (t.isEmpty()) t = clean(String.valueOf(v));
             ListRow row = new ListRow(list, i);
             if (fg != null) row.setForeground(fg);
-            add(sb, 'H', depth, row, (i == sel ? "> " : "") + t);
+            String label = (i == sel ? "> " : "") + t;
+            // R: a row with an icon before its text, "<icon id>:<text>"
+            if (icon >= 0) add(sb, 'R', depth, row, icon + ":" + label);
+            else add(sb, 'H', depth, row, label);
         }
         if (n > MAX_LIST_ROWS) add(sb, 'L', depth, list, "(" + (n - MAX_LIST_ROWS) + " more)");
     }
@@ -599,12 +606,26 @@ final class Sidebar {
      * the first time an image is seen. Returns false when the icon has no image.
      */
     private static boolean addIcon(StringBuilder sb, int depth, Component c, javax.swing.Icon icon) {
-        if (!(icon instanceof javax.swing.ImageIcon)) return false;
+        int id = iconId(icon);
+        if (id < 0) return false;
+        boolean sel = false;
+        try {
+            Method m = c.getClass().getMethod("isSelected");  // MaterialTab, toggle buttons
+            sel = Boolean.TRUE.equals(m.invoke(c));
+        } catch (Throwable ignored) {
+        }
+        add(sb, 'I', depth, c, id + ":" + (sel ? 1 : 0) + ":" + Integer.toHexString(iconBackground(c)));
+        return true;
+    }
+
+    /** The overlay's id for an ImageIcon's image (pushing its pixels when new or changed), or -1. */
+    private static int iconId(javax.swing.Icon icon) {
+        if (!(icon instanceof javax.swing.ImageIcon)) return -1;
         java.awt.Image img = ((javax.swing.ImageIcon) icon).getImage();
-        if (!(img instanceof java.awt.image.BufferedImage)) return false;
+        if (!(img instanceof java.awt.image.BufferedImage)) return -1;
         java.awt.image.BufferedImage b = (java.awt.image.BufferedImage) img;
         int w = b.getWidth(), h = b.getHeight();
-        if (w <= 0 || h <= 0 || w > 256 || h > 256) return false;
+        if (w <= 0 || h <= 0 || w > 256 || h > 256) return -1;
         // Pixels are re-sent when they change: item images (AsyncBufferedImage) are blank until
         // the game renders them, and the first push used to stick (Inventory Setups' empty slots).
         int[] px = b.getRGB(0, 0, w, h, null, 0, w);
@@ -619,14 +640,7 @@ final class Sidebar {
             iconHashes.put(id, hash);
             Native.sidebarIcon(id, w, h, px);
         }
-        boolean sel = false;
-        try {
-            Method m = c.getClass().getMethod("isSelected");  // MaterialTab, toggle buttons
-            sel = Boolean.TRUE.equals(m.invoke(c));
-        } catch (Throwable ignored) {
-        }
-        add(sb, 'I', depth, c, id + ":" + (sel ? 1 : 0) + ":" + Integer.toHexString(iconBackground(c)));
-        return true;
+        return id;
     }
 
     /**

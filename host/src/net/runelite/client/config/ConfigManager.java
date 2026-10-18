@@ -235,7 +235,7 @@ public class ConfigManager {
             boolean on = s.equals("true") || s.equals("ON") || s.replace(" ", "").contains("\"enabled\":true");
             return on ? Notification.ON : Notification.OFF;
         }
-        if (c == Color.class) return new Color((int) Long.parseLong(s.startsWith("#") ? s.substring(1) : s, 16), true);
+        if (c == Color.class) return parseColor(s);
         if (c == Duration.class) return Duration.ofMillis(Long.parseLong(s));
         if (c == Instant.class) return Instant.parse(s);
         if (c.isEnum()) return Enum.valueOf((Class<? extends Enum>) c, s);
@@ -251,9 +251,25 @@ public class ConfigManager {
         return s;
     }
 
+    /**
+     * Desktop stores colours as decimal ARGB (String.valueOf(getRGB())) and reads them with
+     * ColorUtil.fromString (Integer.decode: decimal, "#rrggbb", "0x..."). Hosts before gen 36 wrote
+     * 8 bare hex digits ("66eaff67"); those still read as hex (an 8-digit decimal would be an ARGB
+     * with alpha <= 5, which nothing writes).
+     */
+    static Color parseColor(String s) {
+        s = s.trim();
+        if (s.length() == 8 && s.matches("[0-9a-fA-F]{8}")) return new Color((int) Long.parseLong(s, 16), true);
+        try {
+            return new Color(Integer.decode(s), true);
+        } catch (NumberFormatException e) {
+            return new Color((int) Long.parseLong(s.startsWith("#") ? s.substring(1) : s, 16), true);
+        }
+    }
+
     static String objectToString(Object o) {
         if (o == null) return null;
-        if (o instanceof Color) return String.format("%08x", ((Color) o).getRGB());
+        if (o instanceof Color) return String.valueOf(((Color) o).getRGB());  // desktop's form (decimal ARGB)
         // Only on/off is kept (desktop stores the whole object as JSON; sounds/tray don't apply here).
         if (o instanceof Notification) return ((Notification) o).isEnabled() ? "true" : "false";
         if (o instanceof Enum) return ((Enum<?>) o).name();

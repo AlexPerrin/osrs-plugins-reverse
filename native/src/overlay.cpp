@@ -239,6 +239,26 @@ void sidebar_frame(int w, int h) {
             case 'H':
                 clicked = ImGui::Selectable((n.text + id).c_str());
                 break;
+            case 'R': {  // list row with an icon before its text: "<icon id>:<text>" (Bank Memory items)
+                size_t c1 = n.text.find(':');
+                const char* label = c1 == std::string::npos ? n.text.c_str() : n.text.c_str() + c1 + 1;
+                float side = ImGui::GetTextLineHeight() * 1.6f;
+                ImVec2 p = ImGui::GetCursorScreenPos();
+                clicked = ImGui::Selectable(id.c_str(), false, 0, ImVec2(0, side));
+                if (!ImGui::IsItemVisible()) break;  // textures only for rows on screen (lists have up to 400)
+                int iw = 0, ih = 0;
+                GLuint tex = sidebar_icon_texture(atoi(n.text.c_str()), &iw, &ih);
+                ImDrawList* dl = ImGui::GetWindowDrawList();
+                if (tex && iw > 0 && ih > 0) {
+                    float sc = side / std::max(iw, ih);
+                    ImVec2 o(p.x + (side - iw * sc) / 2, p.y + (side - ih * sc) / 2);
+                    dl->AddImage(static_cast<ImTextureID>(tex), o, ImVec2(o.x + iw * sc, o.y + ih * sc));
+                }
+                ImU32 col = n.color ? ImGui::ColorConvertFloat4ToU32(argb(n.color)) : ImGui::GetColorU32(ImGuiCol_Text);
+                dl->AddText(ImVec2(p.x + side + ImGui::GetStyle().ItemSpacing.x, p.y + (side - ImGui::GetTextLineHeight()) / 2),
+                            col, label);
+                break;
+            }
             case 'B':
                 clicked = ImGui::Button((n.text + id).c_str());
                 break;

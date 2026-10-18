@@ -1,7 +1,7 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 35 entry (2026-10-18) at the end of "Where things stand".
-> **Start here (gen 36):** see the gen 35 entry's "Next".
+> Latest state: see the gen 36 entry (2026-10-18) at the end of "Where things stand".
+> **Start here (gen 37):** see the gen 36 entry's "Next".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1307,6 +1307,36 @@ session; its notes are in `docs/android-protocol.md`.
     3. Bank XP Value's UI (find its toggle), Instant Inventory's fade (screenshot right after a drop).
     4. More hub plugins from the ranking (next generic ones: loot-logger, supplies-tracker, damage-counter, line-markers,
        random-event-hider, coal-bag, slayer-assistant, spirit-tree-map).
+- **2026-10-18 (client dev gen 36)** (progress at start: hub 52/58, API 657/866; dry run now hub 59/73, API 657/866).
+  - **Attack Ranges A/B with desktop** (shortbow + bronze arrows, 3224,3218, `attackRanges.displayMode=TILES`): both clients
+    draw the same cross-shaped range cut by bushes/fountain/castle wall, including an isolated tile NW of the stairs, so
+    `WorldView.getCollisionMaps` flags match desktop (offsets.md). Desktop camera is low and north-facing; Android top-down
+    (tap compass, swipe down). Desktop hub plugins go in via `runelite.externalPlugins` in the isolated profile (back it up first and restore it).
+  - **Sidebar JList icons** (verified, Bank Memory): rows whose renderer is a JLabel with an ImageIcon are sent as kind
+    `R` ("<icon id>:<text>"; `Sidebar.iconId` pushes pixels once per change); overlay.cpp draws icon + text in a Selectable,
+    textures only for visible rows.
+  - **Colour config format = desktop**: the host wrote colours as bare hex ("66eaff67") and parsed everything as hex, so
+    desktop-style values (decimal `String.valueOf(getRGB())`, read with `Integer.decode`) were misread (Attack Ranges' fill
+    came out green). ConfigManager now writes decimal and reads decimal/#hex/0x; 8 bare hex digits still read as hex.
+  - **Headless GridBagConstraints defaults**: GenHeadless emits JDK instance-field defaults for plain value classes
+    (only GridBagConstraints so far: insets (0,0,0,0), gridx/gridy -1, anchor 10, gridwidth/height 1). Emote Clue Items no longer throws.
+  - Bank XP Value (toggle: long-press the bank wrench -> "Toggle Banked XP"), Instant Inventory (one dimmed frame before a
+    dropped item vanishes) and Attack Ranges now `runs`.
+  - Hub: 16 new pins. Device: Damage Counter, Supplies Tracker, Emote Clue Items, Time Tracking Reminder run; Loot Logger
+    (needs the core Loot Tracker to post LootReceived), Line Markers, Coal Bag (OpenRune's coal bag texts differ, sent to
+    the server side), Spirit Tree Map, Fish Barrel, Clue Steps, Pickpocket Helper, Did I Compost, Menu Swapper Extended,
+    Weapon Charges, Random Event Hider start. Slayer Assistant is blocked: FlatLaf's `FlatTabbedPaneUI` (host gap).
+  - Tools: `host/plugins/hub/stubcheck.sh <jar>` (static API gap check, replaces ad hoc javap); hub build.sh now fails on
+    javac errors instead of packing a partial jar.
+  - Gotchas: `server/tools/device.sh login` taps (958,668) first, which on the Play Now screen is near "Sign out"; use it
+    only on the "Try again" screen, else tap Play Now (957,563). Wielding spawned ammo merges it with the tester's own stack
+    (tester had 50 bronze arrows; now 148 equipped, fix pending via the bank). The sbdump prop only takes effect at startup.
+  - **Next (gen 37)**:
+    1. Tester arrows: unequip, deposit all, withdraw-X 50 and re-equip, withdraw and drop the other 98; reset withdraw qty to 1.
+    2. Loot Logger with the core Loot Tracker loaded; Supplies Tracker item icons (its SuppliesBox grid); Line Markers drawing.
+    3. FlatLaf shim for Slayer Assistant (`FlatTabbedPaneUI` etc.), GraphicsObject/Projectile API (Random Event Hider, Supplies Tracker).
+    4. More hub plugins from the ranking (next generic ones: time-tracking done; tasks-tracker, door-kicker, gemstone-crab-timer,
+       startierindicator, barrows-potential, pyramid-plunder-counter); device-check the 11 that only start.
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

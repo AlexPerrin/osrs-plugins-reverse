@@ -59,9 +59,14 @@ for name in "$@"; do
     lic=$(ls "$src" | grep -iE '^(license|licence|copying)' | head -1 || true)
     [[ -n $lic ]] || echo "$name: WARNING no LICENSE file in the repository"
     w=$OUT/$name; rm -rf "$w" && mkdir -p "$w/classes" "$w/jar"
+    jlog=$w/javac.log
     javac --release 11 -nowarn -proc:full -encoding UTF-8 -cp "$CP$depjars" -processorpath "$LOMBOK" -d "$w/classes" \
-        $(find "$src/src/main/java" -name '*.java') 2>&1 | grep -vE "^Note:" || true
-    [[ -n $(find "$w/classes" -name '*.class' | head -1) ]] || { echo "$name: compile failed"; exit 1; }
+        $(find "$src/src/main/java" -name '*.java') > "$jlog" 2>&1 || true
+    grep -vE "^Note:" "$jlog" || true
+    # javac can leave some classes behind on an error; never pack a partial plugin.
+    if grep -qE "^[0-9]+ errors?$" "$jlog" || [[ -z $(find "$w/classes" -name '*.class' | head -1) ]]; then
+        echo "$name: compile failed"; exit 1
+    fi
     cp -r "$w/classes/." "$w/jar/"
     for dj in ${depjars//:/ }; do (cd "$w/jar" && unzip -qo "$dj" -x 'META-INF/MANIFEST.MF' 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.DSA' 'module-info.class'); done
     [[ -d $src/src/main/resources ]] && cp -r "$src/src/main/resources/." "$w/jar/"

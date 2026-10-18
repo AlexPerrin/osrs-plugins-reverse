@@ -325,11 +325,11 @@ $M --tool screenshot '{}'                             # PNG (base64) of the canv
 - QH quirks shared by both clients: stage 3 stays "Talk to Sedridor ... accept the Research Package" with the
   package in the inventory; stage 5 stays "Talk to Aubury again"; Ernest stages 1-2 say "Enter Draynor Manor's
   ground floor" even upstairs next to Oddenstein.
-- Android drew QH's far minimap arrow from Varrock to Sedridor (basement, y 9571), and desktop did not. Desktop's
-  `WorldMapData.surfaceContainsPosition` differs between surface and underground, so QH skips that arrow. The host
-  returned false for everything, which drew it. It now approximates the surface band (unverified). Desktop
-  screenshots showed no QH minimap arrows at all this session, not even for near NPCs. QH draws them on the
-  ALWAYS_ON_TOP layer, so check whether the devtools screenshot includes that layer before comparing minimap arrows.
+- Minimap arrows: Android drew QH's minimap arrows (near NPCs, and a far arrow from Varrock pointing SW toward
+  the Wizards' Tower), and the desktop screenshots showed none at all, not even for near NPCs. QH draws them on the
+  ALWAYS_ON_TOP layer, so the devtools screenshot probably misses that layer. Check that before comparing minimap
+  arrows. (The host's `WorldMapData.surfaceContainsPosition`, which QH's far arrow tests, was always false and is
+  now a surface-band approximation. The Varrock arrow still shows with it, so this was not the cause.)
 - Two NPCs on one tile (Sedridor with the tester's cat or a genie) show only one model on both clients.
 - Driving: desktop quest list = quest stone (canvas 612,187), then the quest list sub-tab (620,219); the list
   scrolls (down arrow 720,411). Right-click the entry's row, then `click_menu_option "Start Quest Helper"`.

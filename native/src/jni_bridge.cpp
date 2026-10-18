@@ -1127,7 +1127,9 @@ jboolean n_menu_set_text(JNIEnv* env, jclass, jint index, jstring option, jstrin
 // {name, sender, text}, or null if the message is no longer kept.
 jobjectArray n_message(JNIEnv* env, jclass, jint id) {
     game::ChatLine line;
-    if (!client_thread::message(id, line)) return nullptr;
+    // Not captured yet (a message made earlier in this cycle): read the game's on the client thread.
+    if (!client_thread::message(id, line) && !(client_thread::on_client_thread() && game::read_message(id, line)))
+        return nullptr;
     jobjectArray out = env->NewObjectArray(3, env->FindClass("java/lang/String"), nullptr);
     const std::string* parts[] = {&line.name, &line.sender, &line.text};
     for (int i = 0; i < 3; i++) {

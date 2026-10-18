@@ -583,8 +583,8 @@ public class AndroidClient extends ClientStub {
              * Desktop tests the main surface map area's sections. The game's world map data isn't
              * read, so approximate it with the surface coordinate band: underground and separate
              * map areas (dungeons, Zanaris, instances' template areas) sit at y >= 4160 or x < 1024.
-             * Quest Helper's far minimap arrow needs start and target to agree (no arrow from
-             * Varrock to the Wizards' Tower basement, as desktop; a constant false drew one).
+             * Quest Helper's far minimap arrow needs start and target to agree; World Map's
+             * overlay skips points outside the surface.
              * // unverified: coordinate band, not the game's map area sections
              */
             @Override public boolean surfaceContainsPosition(int x, int y) {

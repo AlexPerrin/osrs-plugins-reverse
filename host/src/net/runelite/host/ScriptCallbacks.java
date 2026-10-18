@@ -51,7 +51,8 @@ import net.runelite.client.eventbus.EventBus;
  *    with `iconst 27; sconst "mes"; runelite_callback`, so desktop adds it as ITEM_EXAMINE (27).
  *    Here the text is taken before the game's `mes`, and after it the type-0 line is removed from
  *    the chat and re-added as type 27 (its ChatMessage is not posted). RuneLite's copy also jumps
- *    over `invoke 6005` (the examine price lines); that is not emulated, the game's 6005 still runs.
+ *    over `invoke 6005` (the examine price lines); here 6005 still runs, but the lines its `mes` adds in
+ *    the same cycle as a 6004 examine are removed (events dropped).
  *    // unverified: on the device (OpenRune's patched server sends type 27 itself; test with the
  *    probe `set 'examine <obj> <count>'`, which runs 6003 client-side).
  * // unverified: that the mobile skills tab runs scripts 395/396 (the desktop ids).
@@ -63,7 +64,7 @@ final class ScriptCallbacks {
     static final int FAIRY_RINGS_SORT = 8080, ENUM = 3408, DB_GETFIELD = 7502, STRING_INDEXOF_STRING = 4121;
     static final int STAT_BASE = 3306, IF_SETTEXT = 2112, CC_SETTEXT = 1112, CC_SETPOSITION = 1000;
     static final int MUSIC_TRACK_SHOWN = 9291;
-    static final int EXAMINE_ITEM = 6004, MES = 3100, ITEM_EXAMINE = 27;
+    static final int EXAMINE_ITEM = 6004, EXAMINE_PRICE = 6005, MES = 3100, ITEM_EXAMINE = 27;
 
     static final int ANY = 0xffff;  // reported script id of a wildcard watch
     static final String TOTAL_LEVEL = "Total level: ";
@@ -83,8 +84,8 @@ final class ScriptCallbacks {
     };
     private static final String[] PREFIXES = {null, null, null, null, TOTAL_LEVEL, TOTAL_LEVEL, null, null, null};
     /** Watched with or without ScriptCallbackEvent subscribers. */
-    private static final int[] BASE_WATCHES = {EXAMINE_ITEM, MES};
-    private static final String[] BASE_PREFIXES = {null};
+    private static final int[] BASE_WATCHES = {EXAMINE_ITEM, MES, EXAMINE_PRICE, MES};
+    private static final String[] BASE_PREFIXES = {null, null};
 
     private static boolean installed;
     private static boolean baseInstalled;
@@ -119,7 +120,27 @@ final class ScriptCallbacks {
     /** True (once) for a message that was replaced, whose event is dropped. */
     static boolean takeReplaced(int id) { return replaced.remove(id); }
 
-    private static void examineItem(int phase) {
+    private static int examineCycle = Integer.MIN_VALUE;  // game cycle of the last 6004 examine
+    private static int priceId = -1;
+
+    /**
+     * RuneLite's 6004 jumps over `invoke 6005` (the "Price of X: GE ..." lines). Here 6005 still
+     * runs; each line its `mes` adds right after a 6004 examine is removed and its event dropped.
+     */
+    private static void examinePrice(AndroidClient ac, int phase) {
+        if (examineCycle != ac.getGameCycle()) return;
+        if (phase == 3) { priceId = Native.nextMessageId(); return; }
+        int id = priceId;
+        priceId = -1;
+        if (id < 0 || Native.nextMessageId() != id + 1) return;
+        if (Native.chatRemove(0, id)) {
+            replaced.add(id);
+            Native.chatChanged();
+            Log.i(TAG, "ExamineItem: dropped 6005 line " + id);
+        }
+    }
+
+    private static void examineItem(AndroidClient ac, int phase) {
         if (phase == 3) {
             examineText = Native.scriptStringTop();
             examineId = Native.nextMessageId();
@@ -143,6 +164,7 @@ final class ScriptCallbacks {
             return;
         }
         replaced.add(id);
+        examineCycle = ac.getGameCycle();
         boolean added = Native.addChatMessage(ITEM_EXAMINE, "", text);
         Native.chatChanged();
         Log.i(TAG, "ExamineItem: message " + id + " re-added as ITEM_EXAMINE (" + added + ")");
@@ -150,7 +172,8 @@ final class ScriptCallbacks {
 
     /** From Host.onScript: phase 3 = before the instruction, 4 = after it. */
     static void onOp(EventBus bus, AndroidClient ac, int phase, int script, int opcode) {
-        if (script == EXAMINE_ITEM && opcode == MES) { examineItem(phase); return; }
+        if (script == EXAMINE_ITEM && opcode == MES) { examineItem(ac, phase); return; }
+        if (script == EXAMINE_PRICE && opcode == MES) { examinePrice(ac, phase); return; }
         if (!installed) return;
         if (script == SKILL_TAB_BUILDER && opcode == STAT_BASE) skillTabBaseLevel(bus, ac, phase);
         else if (script == FAIRY_RINGS_SORT) fairyRings(bus, ac, phase, opcode);

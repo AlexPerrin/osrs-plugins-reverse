@@ -1,7 +1,7 @@
 # Client state
 
 Short current-state doc for the client track (docs/workflow.md "State docs"). Rewrite it; don't append.
-History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-18, client dev gen 40.
+History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-18, client dev gen 41.
 
 ## What this is
 
@@ -13,36 +13,39 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 - API coverage and each plugin's status: docs/plugin-host.md. Addresses: docs/offsets.md (ELF; Ghidra = ELF + 0x100000).
 - Privacy patches and Network QA: docs/app-telemetry.md (read it before any build that touches networking).
 
-## Installed on the device (end of gen 40)
+## Installed on the device (end of gen 41)
 
-- Build: master at 40c9ed2+ (R1 gate), `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1 tools/repack.sh --install`,
-  host.jar rebuilt after the gen 40 hub batch (the headless swing shim now has `StyleConstants.setAlignment`).
+- Build: client/gen41-recheck (master + the BufferedImage live-Bitmap fix), `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594
+  LOCAL_AUTH=1 tools/repack.sh --install` (7 `telemetry:` lines). If the branch isn't merged, the next install from master
+  drops the fix (harmless: Quick Prayer Preview's tooltip goes blank again).
 - Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3219,3222.
 - Pre-existing plugin data under `files/.runelite/` (bossing-info, c-engineer-sounds, cache, pyramid-plunder-counter,
   resource-packs-repository) predates gen 40; leave it.
 
 ## Recent state
 
+- **Gen 41 re-check of the 9 gen 40 hub plugins** (rows in plugin-host.md, evidence in the gen 41 session scratchpad `g41/`):
+  runs: Monster Stats (panel opens from "Stats Man"), Multicolor Highlights, Pickpocket Guardian, Unpotted Reminder,
+  Ground Item Sounds (MediaPlayer clip on a high-value drop), Quick Prayer Preview (after the fix below). Decimal Prices:
+  starts, conversion not confirmed. No Examine: no effect (gap 2). Current World: NPE (gap 3).
+- **BufferedImage drawing without dispose() (client/gen41-recheck)**: `CanvasGraphics.forImage` used to copy drawing back
+  into the image only on `dispose()`; plugins that never dispose (Quick Prayer Preview's `getGraphics().drawImage`) got blank
+  images. Now the image keeps a live mutable Bitmap: each draw marks it dirty, pixel reads/draws of the image sync it back.
 - **R1 network gate (40c9ed2, device-verified)**: `Host.loadJar` runs `NetScan.refusal` on the cache copy before the
   DexClassLoader. NET-RAW jars are refused with `W osrsrl-host: netscan: refused <jar>: ...`. Vetted:
   `hub-loot-lookup` (raw refs only in bundled jsoup; approved), `devtools` (adb-only local server).
   Test override: `setprop debug.osrsrl.netallow <jar-name>`. Off-device check: `host/plugins/hub/netscan-check.sh <jars>`.
 - **Build-time netcheck**: `host/plugins/hub/netcheck.sh` (run by hub build.sh): NET-RAW stops the build unless `ALLOW_NET=1`
-  (orchestrator's OK). NET-OKHTTP plugins need Network QA, and new outbound hosts need the orchestrator's OK
-  (pet-info was dropped for raw.githubusercontent.com).
-- **Network QA (gen 40, 17:20-17:31)**: only the expected hosts. `dns.google` is an expected system lookup (Pie's
-  Private DNS validation, no uid, no app socket). No GE digest fetch has been captured yet.
-- **NPCComposition.getStats** (dc9a9c6) verified: Man [1,1,1,7,1,1], Aberrant spectre [1,90,1,90,1,105].
-- **Hub**: 9 pinned in gen 40 (monsterstats, current-world, no-examine, decimal-prices, quick-prayer-preview,
-  multicolor-highlights, pickpocket-guardian, unpotted-reminder, ground-item-sounds); 4 dropped (dude-wheres-my-stuff,
-  companion-pet, camera-smoothing, pet-info). See plugin-host.md for each row.
+  (orchestrator's OK). NET-OKHTTP plugins need Network QA, and new outbound hosts need the orchestrator's OK.
+- **Network QA (gen 40)**: only the expected hosts (`dns.google` is an expected system lookup). No GE digest fetch captured yet.
 
 ## Open gaps (client)
 
-1. **Chat Enter stopped once (open item)**: in one run with all 9 gen 40 hub plugins loaded, Enter didn't submit (typed
-   `::cmd` piled up in the input). A bisect blamed Decimal Prices, but it relied on devtools `get_chat_history`, which
-   under-reports. A retest with Decimal Prices and keylog on submitted 4/4. Cause unknown; if it recurs, use
-   `setprop debug.osrsrl.keylog 1` and verify by screenshot.
+1. **Chat Enter stall: resolved, not a plugin bug.** It reproduces with no hub plugins loaded and no KeyListeners (keylog
+   silent): once the soft keyboard has been opened in a session (chat keyboard button 90,215, or a Withdraw-X prompt),
+   Enter only submits chat while the soft keyboard is shown (`dumpsys input_method | grep mInputShown`). Right after login,
+   before the keyboard was ever shown, hidden-keyboard Enter works. Check the chat input with devtools
+   `get_var varcstr 335` (non-empty after a send = stalled); recover by showing the keyboard and pressing Enter.
 2. **Removing native menu entries**: plugins that call `setMenuEntries(shorter)` in MenuOpened (No Examine) can't remove
    entries from the open long-press menu; the host only reorders and rewrites them.
 3. **Current World**: NPE because world 255 isn't in WorldService's live list (desktop would do the same); a host-side
@@ -50,6 +53,7 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 4. **OBJ_ADD timers** (server side, reported): ground item despawn timers read 0, so Clue Juggling Timers and Ground
    Items' despawn timer can't be verified until the server fix is deployed.
 5. Random Event Hider can't be staged on OpenRune; Line of Sight's stray lines at 3219,3222 are terrain, not a bug.
+6. Decimal Prices' conversion is unconfirmed: devtools can't type `.` into the mobile quantity prompt.
 
 ## Gotchas
 
@@ -62,8 +66,9 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 - Login: screenshot first. Signed out: only "Sign in with Email / Username". After a force-stop the server often still
   holds the session: Play Now shows "Either your account is still logged in" -> wait ~30-60 s, "Try again" (958,668),
   Play Now (957,563). **Don't tap 958,668 blind**: on the Play Now screen it's "Sign out" (answer "No" at 1130,625).
-- Chat commands: `server/tools/device.sh cmd` loses text when the soft keyboard is hidden (WSL vsock errors are common);
-  devtools `type_chat` is more reliable. **`get_chat_history` under-reports repeated lines**; confirm by screenshot.
+- Chat commands: devtools `type_chat` (or `server/tools/device.sh cmd`) submits only while the soft keyboard is shown once
+  it has been opened in the session (gap 1); verify with `get_var varcstr 335` or a screenshot. Item spawn is `::item <id> <n>`
+  (into the inventory; there is no `::obj` on the current server), `::openbank`, `::mypos`. **`get_chat_history` under-reports repeated lines**; confirm by screenshot.
 - Long-press = `input swipe x y x y 900`. Plugin MenuEntryAdded entries show in the plugin strip under the game menu,
   not in devtools' `get_npc_menu`.
 - Probe hooks (`debug.osrsrl.set`, `probe`, `say`, `wdump`) run once per distinct value; `setprop` values with spaces
@@ -77,9 +82,9 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Next tasks
 
-1. Re-check the 9 gen 40 plugins' behaviour with chat commands (watch for gap 1)
-   (ground-item-sounds with a spawned `::obj`, unpotted-reminder while attacking, monsterstats' Stats panel).
+1. Merge gate for client/gen41-recheck (BufferedImage live Bitmap) with client-qa; regression on plugins that draw into
+   images (Poison infobox, Instance Map, Bank Tags icons, Quick Prayer Preview).
 2. When the OBJ_ADD timer fix is deployed: Clue Juggling Timers and Ground Items' despawn timer.
 3. More hub plugins from the ranking (`scratchpad/client38/ranking.json` or refetch); netcheck + stubcheck each.
 4. Host gaps 2 and 3 (native menu entry removal; a synthetic World for Current World).
-5. Opportunistic: a capture that includes a GE digest fetch (should go to the sidecar).
+5. Opportunistic: a capture that includes a GE digest fetch (should go to the sidecar); Decimal Prices with a real `.` key.

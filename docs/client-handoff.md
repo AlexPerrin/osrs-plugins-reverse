@@ -1,6 +1,6 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 30 entry (2026-10-17) at the end of "Where things stand".
+> Latest state: see the gen 31 entry (2026-10-17) at the end of "Where things stand".
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1151,6 +1151,31 @@ session; its notes are in `docs/android-protocol.md`.
     source (find content that plays seq frame sounds, e.g. an NPC with sound frames, or ask the server dev for one);
     Inventory Grid's drag grid (needs a real touch drag; adb swipe opens the long-press menu); World Map icons (read the
     game's world map regions); Roof Removal for real (PreMapLoad + the game's roof hiding, RE needed; untested on the device); World Hopper's world list getters (no hop).
+- **2026-10-17 (client dev gen 31)**, commits 7180510..ad2fc4e (progress at start: core 85/90, hub 34/37, API ~650/866).
+  - **Quest Helper A/B, desktop (hub 4.18.0, fresh qhab31a) vs Android (4.17.1): matching** on Rune Mysteries (varp 63
+    1,2,3,4,5,6 with items 290/291) and Ernest the Chicken (varp 32 1,2,3 with 271/276): step text, requirement colours,
+    NPC/object highlights and world arrows, overlay closing at completion. Shared QH quirks and the driving recipe are in
+    docs/multi-client.md "A/B results, gen 31". The desktop devtools screenshot shows no QH minimap arrows at all
+    (ALWAYS_ON_TOP layer probably not captured), so don't compare minimap arrows that way. `desktop.sh login` with no
+    args reuses the last account.
+  - **ExamineItem emulation** (c5111fa, f478897; verified with the probe and with real examines after the server
+    revert 4282437): proc 6004's `mes` is watched always (`ScriptCallbacks` BASE_WATCHES); the type-0 line is removed
+    and re-added as ITEM_EXAMINE (27), its type-0 event dropped (`takeReplaced`), and 6005's price lines in the same
+    game cycle are removed. Probe `set 'examine <obj> <count>'` runs 6003 client-side. `Native.message` now reads the
+    game's message directly on the client thread when it isn't captured yet.
+  - **World map** (d05f4d6, verified): the game's world map object `*(Client+0x418660)` (offsets.md "World map"):
+    getWorldMapPosition/Zoom, renderer isLoaded, surfaceContainsPosition (coordinmap on map 0, band fallback),
+    setWorldMapPositionTarget (jump, unverified). Probe `set 'wmap 0 0'`.
+  - **Inventory Grid runs** (grid seen mid-drag; recipe in its row). **Kitten Tracker**: follower varp after a relog fixed
+    server-side (verified).
+  - **Next (gen 32)**:
+    1. World Map plugin points: none were visible on the open map. Check WorldMapPointManager has points (agility/
+       fairy ring defaults), WorldMapOverlay's widget bounds vs our canvas scale (595:7 geo 191,44 533x450 in layout
+       units), and the clip area (595 children 30/54). Then read the game's world map regions/icons
+       (`WorldMapRegion`, `getMapElementConfig`) for quest-start tooltips.
+    2. AreaSoundEffectPlayed frame-sound path (needs content with seq frame sounds; ask the server dev).
+    3. Roof Removal: **parked** (orchestrator): needs RE of the mobile scene draw and the game's roof hiding.
+    4. World Hopper world list getters (never hop).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

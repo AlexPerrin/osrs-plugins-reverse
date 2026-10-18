@@ -21,6 +21,40 @@ this repo's `rsprot.patch`) all run there.
   Protocol work stays in `server/rsprot.patch`, which both servers build from
   (`openrune/scripts/openrune.sh rsprot`).
 
+## Latest state (2026-10-18, nineteenth server dev, on OpenRune)
+
+Details in `docs/openrune-port.md`, "Nineteenth server dev" and the sections after it. Protocol unchanged.
+
+- **osrs-mcp** did not connect to this session; driving `tools/osrs-mcp/run.sh` by hand over stdio works (JSON-RPC
+  `initialize`, then `tools/call` for `wiki_page`, `gameval_search`, `cache_search`; a small wrapper script in the
+  scratchpad piped the calls and slept ~25 s for the replies).
+- **Gertrude's Cat leftovers:** Fluffs has no multinpc in the cache, so the post-kitten hide stays global; now 10
+  ticks (guess). Stroke has its own transcript line. Gertrude's stage-2 Shilop exchange (upstream 59, 63).
+- **Small follow-ups:** waxwood crates top up to three logs (wiki), the fullscreen map restores the
+  stone-arrangement bit on close/logout, `::item` falls back to cache names (`::item saw`) (upstream 60-62).
+  Desktop-checked.
+- **Item examine** back to upstream's `examine_item` script (type 0); upstream patch 08 withdrawn (orchestrator).
+- **Children of the Sun guard tail:** a real desktop run with QH's five hiding tiles was never spotted (vmq1 -> 10);
+  standing in the open was. QH's tiles and the server's line-of-sight lookouts agree.
+- **New quests (QH coverage):** Doric's Quest, Witch's Potion, Goblin Diplomacy (all three completed with QH on
+  fresh desktop accounts qhtest6/7/8), Vampyre Slayer (built and tested, desktop run pending at the time of
+  writing; see below). Stage values are QH's step keys; each script checks the cache dbrow endstate at startup.
+  Upstream 64-66 (65 uses the drop-table quest gate for the rat's tail; our tree uses a kill hook because
+  `assume-completed` makes "during quest" drop gates always false; see the port doc note on that mode).
+- **Found on the way:** the Goblin Village lookout ladder had no handler (fixed); the Blue Moon Inn bartender was
+  missing (added, sells beer); Morgan's old after-quest lines showed for everyone under assume-completed (moved
+  into Vampyre Slayer).
+- **Tooling:** `desktop.sh login` with no arguments always logs in desktop/desktop and logs out another account
+  first (checks the local player's name). `QuestTalkFixture` has `randomValue` and `interact { }`.
+- **Next candidates (ranked):**
+  1. Pirate's Treasure (~1 d; research and QH's journal-text dependency in the port doc).
+  2. Count Draynor polish: his fast regeneration and return to the coffin; garlic on the first melee hit with a
+     30 s duration (wiki).
+  3. Upstream patch for Vampyre Slayer + Blue Moon bartender once it has had a desktop run.
+  4. Held plugin-row content from the eighteenth dev's list (friends chat, GE Sets/±X%, hunter methods).
+- **Test accounts:** qhtest5 (checks), qhtest6 (Doric done, then reset to 0), qhtest7 (Witch's Potion done),
+  qhtest8 (Goblin Diplomacy done).
+
 ## Latest state (2026-10-17, eighteenth server dev, on OpenRune)
 
 Details in `docs/openrune-port.md`, "Eighteenth server dev" and the sections after it. Protocol unchanged.

@@ -372,6 +372,11 @@ final class Sidebar {
         if (kind != 2 || index < 0 || index >= nodes.size()) return;
         Component c = nodes.get(index);
         Log.i(TAG, "sidebar tap on " + c.getClass().getName() + " '" + text(c) + "'");
+        if (c instanceof TabHead) {
+            TabHead h = (TabHead) c;
+            h.pane.setSelectedIndex(h.index);
+            return;
+        }
         if (c instanceof ListRow) {  // select the row, then the list's own mouse listeners (locationToIndex = it)
             ListRow row = (ListRow) c;
             row.list.setSelectedIndex(row.index);
@@ -523,6 +528,10 @@ final class Sidebar {
             walkTable((javax.swing.JTable) c, depth, sb);
             return;
         }
+        if (c instanceof javax.swing.JTabbedPane) {
+            walkTabs((javax.swing.JTabbedPane) c, depth, sb);
+            return;
+        }
         if (c.getMouseListeners().length > 0) {
             String t = labelText(c, new StringBuilder(), 0).toString().trim();
             if (!t.isEmpty()) add(sb, 'H', depth, c, t);
@@ -587,6 +596,35 @@ final class Sidebar {
             else add(sb, 'H', depth, row, label);
         }
         if (n > MAX_LIST_ROWS) add(sb, 'L', depth, list, "(" + (n - MAX_LIST_ROWS) + " more)");
+    }
+
+    /** A JTabbedPane tab header in the model: a tap selects the tab. */
+    public static final class TabHead extends JLabel {
+        final javax.swing.JTabbedPane pane;
+        final int index;
+
+        TabHead(javax.swing.JTabbedPane pane, int index) {
+            this.pane = pane;
+            this.index = index;
+        }
+
+        public boolean isSelected() { return pane.getSelectedIndex() == index; }
+    }
+
+    /** JTabbedPane: one header per tab (icon, else title; tooltip as a fallback), then the selected tab's content. */
+    private static void walkTabs(javax.swing.JTabbedPane pane, int depth, StringBuilder sb) {
+        int n = pane.getTabCount(), sel = pane.getSelectedIndex();
+        for (int i = 0; i < n; i++) {
+            TabHead h = new TabHead(pane, i);
+            javax.swing.Icon icon = (javax.swing.Icon) pane.__tabIcons.get(i);  // headless JTabbedPane's tab lists
+            if (icon != null && addIcon(sb, depth, h, icon)) continue;
+            String t = clean((String) pane.__tabTitles.get(i));
+            if (t.isEmpty()) t = clean((String) pane.__tabTips.get(i));
+            if (t.isEmpty()) t = "Tab " + (i + 1);
+            h.setText(t);
+            add(sb, 'B', depth, h, (i == sel ? "> " : "") + t);
+        }
+        if (sel >= 0 && sel < n) walk((Component) pane.__tabComps.get(sel), depth + 1, sb);
     }
 
     /** JTable: a header line of column names, then one text line per model row (cells joined). */

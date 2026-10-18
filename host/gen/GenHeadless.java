@@ -464,6 +464,9 @@ public class GenHeadless {
                   .append(in).append("public static volatile Thread __edt;\n")
                   .append(in).append("/** Host: runs invokeAndWait's runnable (null: queued without waiting). */\n")
                   .append(in).append("public static volatile java.util.function.Consumer<Runnable> __invokeAndWait;\n");
+            // JTabbedPane: tab titles/icons/tips/components by index (the sidebar shows the headers and the selected tab).
+            if (c == javax.swing.JTabbedPane.class)
+                sb.append(in).append("public final java.util.List __tabTitles = new java.util.ArrayList(), __tabIcons = new java.util.ArrayList(), __tabTips = new java.util.ArrayList(), __tabComps = new java.util.ArrayList();\n");
             if (c == java.awt.Component.class) sb.append(in).append("java.awt.Container __parent;\n");
             // GroupLayout adds the components its groups name to the host container (Equipment Inspector).
             if (c == javax.swing.GroupLayout.class) sb.append(in).append("public java.awt.Container __host;\n");
@@ -653,6 +656,42 @@ public class GenHeadless {
             if (n.equals("show") && ps.length == 2) return "__current.put(a0, a1);";
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[0] == String.class) return "__cards.put(a0, a1);";
             if (n.equals("addLayoutComponent") && ps.length == 2 && ps[1] == Object.class) return "if (a1 instanceof String) __cards.put(a1, a0);";
+        }
+        if (c == javax.swing.JTabbedPane.class) {
+            String fire = props.containsKey("SelectedIndex") ? "" : "";
+            String changed = listenerKinds.contains("ChangeListener")
+                    ? " javax.swing.event.ChangeEvent e = new javax.swing.event.ChangeEvent(); for (Object l : __ChangeListeners.toArray()) ((javax.swing.event.ChangeListener) l).stateChanged(e);" : "";
+            String insert = "if (a2 == null) return; int i = Math.max(0, Math.min(a4, __tabComps.size())); __tabTitles.add(i, a0); __tabIcons.add(i, a1); __tabTips.add(i, a3); __tabComps.add(i, a2); add(a2);"
+                    + (props.containsKey("SelectedIndex") ? " if (!__SelectedIndexSet) { __SelectedIndex = 0; __SelectedIndexSet = true; }" : "");
+            if (n.equals("insertTab") && ps.length == 5) return insert;
+            if (n.equals("addTab") && ps.length == 4) return "insertTab(a0, a1, a2, a3, __tabComps.size());";
+            if (n.equals("addTab") && ps.length == 3) return "insertTab(a0, a1, a2, null, __tabComps.size());";
+            if (n.equals("addTab") && ps.length == 2) return "insertTab(a0, null, a1, null, __tabComps.size());";
+            if (n.equals("getTabCount") && ps.length == 0) return "return __tabComps.size();";
+            if (n.equals("getTitleAt") && ps.length == 1) return "return a0 >= 0 && a0 < __tabTitles.size() ? (String) __tabTitles.get(a0) : null;";
+            if (n.equals("getIconAt") && ps.length == 1) return "return a0 >= 0 && a0 < __tabIcons.size() ? (javax.swing.Icon) __tabIcons.get(a0) : null;";
+            if (n.equals("getToolTipTextAt") && ps.length == 1) return "return a0 >= 0 && a0 < __tabTips.size() ? (String) __tabTips.get(a0) : null;";
+            if (n.equals("getComponentAt") && ps.length == 1) return "return a0 >= 0 && a0 < __tabComps.size() ? (java.awt.Component) __tabComps.get(a0) : null;";
+            if (n.equals("indexOfComponent") && ps.length == 1) return "return __tabComps.indexOf(a0);";
+            if (n.equals("isEnabledAt") && ps.length == 1) return "return true;";
+            if (n.equals("setTitleAt") && ps.length == 2) return "if (a0 >= 0 && a0 < __tabTitles.size()) __tabTitles.set(a0, a1);";
+            if (n.equals("setIconAt") && ps.length == 2) return "if (a0 >= 0 && a0 < __tabIcons.size()) __tabIcons.set(a0, a1);";
+            if (props.containsKey("SelectedIndex")) {
+                if (n.equals("getSelectedIndex") && ps.length == 0)
+                    return "return __tabComps.isEmpty() ? -1 : Math.max(0, Math.min(__SelectedIndexSet ? __SelectedIndex : 0, __tabComps.size() - 1));";
+                if (n.equals("setSelectedIndex") && ps.length == 1)
+                    return "boolean c = !__SelectedIndexSet || __SelectedIndex != a0; __SelectedIndex = a0; __SelectedIndexSet = true;" + (changed.isEmpty() ? "" : " if (c) {" + changed + " }");
+                if (n.equals("getSelectedComponent") && ps.length == 0)
+                    return "int i = getSelectedIndex(); return i >= 0 ? (java.awt.Component) __tabComps.get(i) : null;";
+                if (n.equals("setSelectedComponent") && ps.length == 1)
+                    return "int i = __tabComps.indexOf(a0); if (i >= 0) setSelectedIndex(i);";
+            }
+            if (n.equals("removeTabAt") && ps.length == 1)
+                return "if (a0 < 0 || a0 >= __tabComps.size()) return; java.awt.Component k = (java.awt.Component) __tabComps.remove(a0); __tabTitles.remove(a0); __tabIcons.remove(a0); __tabTips.remove(a0); super.remove(k);";
+            if (n.equals("remove") && ps.length == 1 && ps[0] == java.awt.Component.class)
+                return "int i = __tabComps.indexOf(a0); if (i >= 0) { __tabComps.remove(i); __tabTitles.remove(i); __tabIcons.remove(i); __tabTips.remove(i); } super.remove(a0);";
+            if (n.equals("removeAll") && ps.length == 0)
+                return "__tabComps.clear(); __tabTitles.clear(); __tabIcons.clear(); __tabTips.clear(); super.removeAll();";
         }
         // JTable: a new table has an empty DefaultTableModel; the column model is built from the
         // model (createDefaultColumnsFromModel) and rebuilt after setModel (Slayer Assistant's TableTab).

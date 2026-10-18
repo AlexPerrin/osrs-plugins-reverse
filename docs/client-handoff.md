@@ -1178,7 +1178,7 @@ session; its notes are in `docs/android-protocol.md`.
     2. AreaSoundEffectPlayed frame-sound path (needs content with seq frame sounds; ask the server dev).
     3. Roof Removal: **parked** (orchestrator): needs RE of the mobile scene draw and the game's roof hiding.
     4. World Hopper world list getters (never hop).
-- **2026-10-17 (client dev gen 32)**, commits cda40a1..(see git log) (progress at start: core 86/90, hub 34/37, API 652/866;
+- **2026-10-17 (client dev gen 32)**, commits cda40a1..1bedb66 (progress at start: core 86/90, hub 34/37, API 652/866;
   now core 88/90, hub 34/37, API 655/866).
   - **World Map runs.** Points never drew because the host never added `WorldMapOverlay` (desktop's OverlayManager.init does);
     Host now adds it. Region icons (`getMapRegions`, game.cpp `world_map_icons`) and mel categories (`getMapElementConfig`,

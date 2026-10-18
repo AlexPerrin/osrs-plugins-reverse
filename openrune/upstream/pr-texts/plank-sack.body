@@ -1,27 +1,33 @@
 Content area from OpenRune/OpenRune-Server#353 (answers there: all of it, one PR per row, ids renumbered against main, wiki data is fine).
 
-From our per-feature patch `30-plank-sack` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`1be5dfb5f`).
+From our per-feature patch `30-plank-sack` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`c2492318d`).
 
 **Problem.** The plank sack had no Fill, Check or Empty.
 
 **Change.** New module `content/other/plank-sack`:
 - Up to 28 planks of the seven types in the `plank_sack_*` varbits RuneLite's Plank Sack plugin reads.
-- Fill (or a plank used on the sack), Check ('Oak planks: 3' per type, 'Your sack is currently empty.'), Empty into the inventory.
+- Fill (or a plank used on the sack), Check ('Basic planks: 3', 'Oak planks: 2', one line per stored type; 'Your sack is currently empty.'), Empty into the inventory.
 - A `PlayerItemStorageHook` lets content use planks straight from the sack while it is in the inventory (inventory first).
 
-**Tests.** `PlankSackScriptTest` (3, integration).
+**Tests.** `PlankSackScriptTest` (4, integration): ops, fill to 28 and empty, planks used from the sack, the Check lines.
+
+How to check in game:
+1. Fill with mixed planks in the inventory: the sack takes them up to 28 in total; with more, the rest stay in the inventory.
+2. Check: one chat line per stored type, plain planks as "Basic planks: N"; an empty sack says "Your sack is currently empty.".
+3. Empty: the planks go back to the inventory as far as there is room.
+4. Using planks from the sack goes through `PlayerItemStorage`; no content on main consumes planks yet, so this is covered by the test only.
 
 On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): buildCache pass, `spotlessCheck` pass, `assemble` pass, `test` pass, `integration` pass, boot pass (Server ready in 8.151531140s). `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch, nor with all of our open content PRs merged together.
 
-Nothing was checked in game from this exact branch; the in-game checks above were on our own server build (an older main plus these and our other patches).
+Nothing was checked in game from this exact branch by us; the steps above are for the in-game check.
 
-**Data sources.** Varbits from the cache; Check wording as RuneLite's Plank Sack plugin parses it (BSD).
+**Data sources.** Varbits from the cache. OSRS Wiki (by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/): "Plank sack" (capacity, plank types, ops). The "Basic planks" label is the one the Plank Sack plugin on the RuneLite Plugin Hub uses for plain planks (that plugin reads the varbits, not chat).
 
 **Caveats.**
-- Fill/full/no-space messages are best guesses.
-- The sawmill does not fill the sack yet.
+- Guesses (not on the wiki, no capture): all messages ("You don't have any planks to put in the sack.", "Your sack is full.", "You don't have enough inventory space to empty the sack.", "Your sack is currently empty.") and the Check format (one game message per type; whether OSRS prints one line or a dialogue is unconfirmed). Use-plank-on-sack filling only that type, and taking planks from the inventory before the sack, are also ours.
+- Not implemented: the sawmill filling the sack; Fill/Empty from the bank interface; death handling.
 
-**Release note.** The plank sack can be filled, checked and emptied, and building can use planks from it.
+**Release note.** The plank sack can be filled, checked and emptied, and content that uses planks can take them from it.
 
 **Checklist**
 - [x] The change compiles (`./gradlew build`).

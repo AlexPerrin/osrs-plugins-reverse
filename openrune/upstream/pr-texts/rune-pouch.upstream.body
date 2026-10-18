@@ -2,7 +2,7 @@ Fork PR (same branch, for browsing): https://github.com/AlexPerrin/OpenRune-Serv
 
 Content area from OpenRune/OpenRune-Server#353 (answers there: all of it, one PR per row, ids renumbered against main, wiki data is fine).
 
-From our per-feature patch `29-rune-pouch` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`1be5dfb5f`).
+From our per-feature patch `29-rune-pouch` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`c2492318d`).
 
 **Problem.** Rune pouches had no Open, Empty or store.
 
@@ -10,18 +10,26 @@ From our per-feature patch `29-rune-pouch` (in [`openrune/upstream/`](https://gi
 - The rune pouch and divine rune pouch (and locked variants) store runes in the client-visible `rune_pouch_type_n` / `rune_pouch_quantity_n` varbits (compact ids from enum 55, up to 16,000 per type, 3 or 4 types), which spells already cast from and RuneLite's Rune Pouch plugin reads.
 - Open shows interface 190 (varp `if1` = slot count): Store/Withdraw 1/5/X/All/custom following the client's left-click quantity buttons, drag to reorder, Examine.
 - Empty and use-rune-on-pouch from the inventory.
+- Storing the pouch itself in the open interface says "Don't be silly." (OSRS Wiki, Rune pouch, Trivia).
 
-**Tests.** `RunePouchScriptTest` (5, integration).
+**Tests.** `RunePouchScriptTest` (6, integration): ops, compact ids, store/withdraw/empty, the 3-type and 16,000 limits, a full inventory on withdraw, the "Don't be silly." refusal.
+
+How to check in game:
+1. Open a rune pouch: interface 190 with 3 slots (divine: 4). Click runes in the inventory side to store them with the selected quantity; click a slot to withdraw. Drag a slot onto another to swap them.
+2. Store 16,000 of a rune, then try to store more: refused. Fill all 3 slots, then try a fourth rune type: refused.
+3. Click the pouch itself in the interface's inventory side: "Don't be silly."
+4. Use a rune on the pouch: stored. Empty: everything goes back to the inventory.
+5. Cast a spell with the runes only in the pouch: it casts and the pouch counts go down.
 
 On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): buildCache pass, `spotlessCheck` pass, `assemble` pass, `test` pass, `integration` pass, boot pass (Server ready in 9.189984047s). `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch, nor with all of our open content PRs merged together.
 
-Nothing was checked in game from this exact branch; the in-game checks above were on our own server build (an older main plus these and our other patches).
+Nothing was checked in game from this exact branch by us; the steps above are for the in-game check.
 
-**Data sources.** Interface, varbits and enum from the cache.
+**Data sources.** Interface, varbits and enum from the cache. OSRS Wiki (by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/): "Rune pouch" and "Divine rune pouch" (capacity, slots, allowed runes, Trivia).
 
 **Caveats.**
-- No loadouts (Configure).
-- Messages for a full pouch or a non-rune are best guesses.
+- Guesses (not on the wiki, no capture): every message except "Don't be silly.": "You can only store runes in the rune pouch.", "Your rune pouch has no room for another type of rune.", "Your rune pouch cannot hold any more of those runes.", "You don't have enough inventory space.", "Your rune pouch is empty.". The mapping of the interface ops to quantities (op 1 selected, 2 one, 3 five, 4 custom, 5 X, 6 all), and use-rune-on-pouch storing the whole stack. Store-X/Withdraw-X ask for the amount each time and do not change the remembered custom amount. Empty with too little inventory space empties slot by slot and stops at the first rune that does not fit.
+- Not implemented: the one-pouch rule (wiki: players cannot own more than one rune pouch); the Glarial's Tomb and Koschei rule (a pouch may be taken in only when empty, wiki Changes); loadouts (Configure, and runes withdrawn from the bank going into the pouch); death handling (wiki: a PvP death in the Wilderness or on a PvP world loses an unlocked pouch; a PvM death sends it to the gravestone with its runes still inside, since June 2023); Empty into the bank while banking; auto-storing picked-up runes; the divine pouch's Revert; Destroy (what happens to the contents is not on the wiki, and this module does not handle it).
 
 **Release note.** Rune pouches work: store, withdraw, reorder, empty.
 

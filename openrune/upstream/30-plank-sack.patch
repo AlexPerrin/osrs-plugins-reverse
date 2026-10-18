@@ -1,4 +1,4 @@
-From 081f7af6cbffebfc7bb3663694743bdd6969d721 Mon Sep 17 00:00:00 2001
+From 0bca2214d99d99e3013f2693c19e0faa0cda2362 Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 04:01:35 -0400
 Subject: [PATCH] feat: plank sack (fill, check, empty and planks used from the
@@ -9,14 +9,16 @@ Fill (or a plank used on the sack), Check ('Oak planks: 3' per type, 'Your sack 
 empty.'), Empty into the inventory. A PlayerItemStorageHook lets content use planks straight from
 the sack while it is in the inventory (inventory first). Fill/full/no-space messages are best
 guesses; the sawmill does not fill the sack yet. Integration tests.
+
+Check labels plain planks "Basic planks".
 ---
  content/other/plank-sack/build.gradle.kts     | 16 ++++
- .../other/planksack/PlankSackScriptTest.kt    | 73 +++++++++++++++++++
- .../content/other/planksack/PlankSack.kt      | 50 +++++++++++++
+ .../other/planksack/PlankSackScriptTest.kt    | 86 +++++++++++++++++++
+ .../content/other/planksack/PlankSack.kt      | 50 +++++++++++
  .../other/planksack/PlankSackModule.kt        | 10 +++
- .../other/planksack/PlankSackScript.kt        | 71 ++++++++++++++++++
- .../other/planksack/PlankSackStorageHook.kt   | 29 ++++++++
- 6 files changed, 249 insertions(+)
+ .../other/planksack/PlankSackScript.kt        | 71 +++++++++++++++
+ .../other/planksack/PlankSackStorageHook.kt   | 29 +++++++
+ 6 files changed, 262 insertions(+)
  create mode 100644 content/other/plank-sack/build.gradle.kts
  create mode 100644 content/other/plank-sack/src/integration/kotlin/org/rsmod/content/other/planksack/PlankSackScriptTest.kt
  create mode 100644 content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSack.kt
@@ -48,10 +50,10 @@ index 000000000..fc1089168
 +}
 diff --git a/content/other/plank-sack/src/integration/kotlin/org/rsmod/content/other/planksack/PlankSackScriptTest.kt b/content/other/plank-sack/src/integration/kotlin/org/rsmod/content/other/planksack/PlankSackScriptTest.kt
 new file mode 100644
-index 000000000..c8f40739f
+index 000000000..16de2aadb
 --- /dev/null
 +++ b/content/other/plank-sack/src/integration/kotlin/org/rsmod/content/other/planksack/PlankSackScriptTest.kt
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,86 @@
 +package org.rsmod.content.other.planksack
 +
 +import dev.openrune.ServerCacheManager
@@ -108,6 +110,19 @@ index 000000000..c8f40739f
 +        }
 +
 +    @Test
++    fun GameTestState.`check lists each stored type, plain planks as basic planks`() =
++        runInjectedGameTest(PlankSackScript::class, null, PlankSackScript::class) { script ->
++            player.clearInv()
++            player.give(0, PlankSack.SACK)
++            for (slot in 1 until 4) player.give(slot, "obj.woodplank")
++            for (slot in 4 until 6) player.give(slot, "obj.plank_oak")
++            with(script) { player.withProtectedAccess { fill(PlankSack.planks) } }
++            with(script) { player.withProtectedAccess { check() } }
++            assertMessageSent("Basic planks: 3")
++            assertMessageSent("Oak planks: 2")
++        }
++
++    @Test
 +    fun GameTestState.`stored planks count as held while the sack is in the inventory`() =
 +        runInjectedGameTest(PlankSackScript::class, null, PlankSackScript::class) { script ->
 +            player.clearInv()
@@ -127,7 +142,7 @@ index 000000000..c8f40739f
 +}
 diff --git a/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSack.kt b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSack.kt
 new file mode 100644
-index 000000000..43aa2a4e7
+index 000000000..623f9d56c
 --- /dev/null
 +++ b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSack.kt
 @@ -0,0 +1,50 @@
@@ -144,7 +159,7 @@ index 000000000..43aa2a4e7
 +
 +    val planks =
 +        listOf(
-+            Plank("obj.woodplank", "varbit.plank_sack_plain", "Regular planks"),
++            Plank("obj.woodplank", "varbit.plank_sack_plain", "Basic planks"),
 +            Plank("obj.plank_oak", "varbit.plank_sack_oak", "Oak planks"),
 +            Plank("obj.plank_teak", "varbit.plank_sack_teak", "Teak planks"),
 +            Plank("obj.plank_mahogany", "varbit.plank_sack_mahogany", "Mahogany planks"),
@@ -199,7 +214,7 @@ index 000000000..7ee9e2f3d
 +}
 diff --git a/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackScript.kt b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackScript.kt
 new file mode 100644
-index 000000000..66c570a00
+index 000000000..bfd7ec820
 --- /dev/null
 +++ b/content/other/plank-sack/src/main/kotlin/org/rsmod/content/other/planksack/PlankSackScript.kt
 @@ -0,0 +1,71 @@
@@ -256,7 +271,7 @@ index 000000000..66c570a00
 +        return emptied
 +    }
 +
-+    private fun ProtectedAccess.check() {
++    fun ProtectedAccess.check() {
 +        if (PlankSack.total(player) == 0) {
 +            mes(EMPTY)
 +            return
@@ -309,3 +324,6 @@ index 000000000..30e59bacc
 +
 +    override fun add(ctx: PlayerItemStorageContext, amount: Int): Int = 0
 +}
+-- 
+2.43.0
+

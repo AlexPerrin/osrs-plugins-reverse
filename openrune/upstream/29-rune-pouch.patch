@@ -1,4 +1,4 @@
-From af57c4ad80496255b90b69b9212b065963407cc8 Mon Sep 17 00:00:00 2001
+From ebc653612a3d5efc8abbc197a5aff930a6f8eeff Mon Sep 17 00:00:00 2001
 From: Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>
 Date: Sat, 17 Oct 2026 04:01:35 -0400
 Subject: [PATCH] feat: rune pouch (store, withdraw, empty and the pouch
@@ -11,12 +11,15 @@ reads. Open shows interface 190 (varp if1 = slot count): Store/Withdraw 1/5/X/Al
 following the client's left-click quantity buttons, drag to reorder, Examine. Empty and
 use-rune-on-pouch work from the inventory. Loadouts (Configure) are not done; messages for a
 full pouch or a non-rune are best guesses. Integration tests.
+
+Storing the pouch itself is refused with "Don't be silly." (OSRS Wiki, Rune
+pouch, Trivia).
 ---
  .../skills/magic/rune-pouch/build.gradle.kts  |  14 ++
- .../magic/runepouch/RunePouchScriptTest.kt    | 102 +++++++++
+ .../magic/runepouch/RunePouchScriptTest.kt    | 111 +++++++++
  .../skills/magic/runepouch/RunePouch.kt       |  93 ++++++++
- .../skills/magic/runepouch/RunePouchScript.kt | 199 ++++++++++++++++++
- 4 files changed, 408 insertions(+)
+ .../skills/magic/runepouch/RunePouchScript.kt | 211 ++++++++++++++++++
+ 4 files changed, 429 insertions(+)
  create mode 100644 content/skills/magic/rune-pouch/build.gradle.kts
  create mode 100644 content/skills/magic/rune-pouch/src/integration/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScriptTest.kt
  create mode 100644 content/skills/magic/rune-pouch/src/main/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouch.kt
@@ -44,10 +47,10 @@ index 000000000..6eb9d5aea
 +}
 diff --git a/content/skills/magic/rune-pouch/src/integration/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScriptTest.kt b/content/skills/magic/rune-pouch/src/integration/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScriptTest.kt
 new file mode 100644
-index 000000000..494c9f7f5
+index 000000000..1931aa91d
 --- /dev/null
 +++ b/content/skills/magic/rune-pouch/src/integration/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScriptTest.kt
-@@ -0,0 +1,102 @@
+@@ -0,0 +1,111 @@
 +package org.rsmod.content.skills.magic.runepouch
 +
 +import dev.openrune.ServerCacheManager
@@ -78,6 +81,15 @@ index 000000000..494c9f7f5
 +    fun `the rune varbits use the client's compact ids`() {
 +        assertEquals(1, RunePouch.compactId("obj.airrune"))
 +        assertEquals(4, RunePouch.compactId("obj.firerune"))
++    }
++
++    @Test
++    fun `storing the pouch itself is refused with the official line`() {
++        for (pouch in RunePouch.pouches) {
++            assertEquals("Don't be silly.", RunePouchScript.storeRejection(pouch), pouch)
++        }
++        assertEquals(RunePouchScript.NOT_A_RUNE, RunePouchScript.storeRejection("obj.coins"))
++        assertNull(RunePouchScript.storeRejection("obj.airrune"))
 +    }
 +
 +    @Test
@@ -251,10 +263,10 @@ index 000000000..131d25e67
 +}
 diff --git a/content/skills/magic/rune-pouch/src/main/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScript.kt b/content/skills/magic/rune-pouch/src/main/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScript.kt
 new file mode 100644
-index 000000000..1d26ceb52
+index 000000000..6cb877607
 --- /dev/null
 +++ b/content/skills/magic/rune-pouch/src/main/kotlin/org/rsmod/content/skills/magic/runepouch/RunePouchScript.kt
-@@ -0,0 +1,199 @@
+@@ -0,0 +1,211 @@
 +package org.rsmod.content.skills.magic.runepouch
 +
 +import dev.openrune.ServerCacheManager
@@ -338,8 +350,8 @@ index 000000000..1d26ceb52
 +            objExamine(inv, slot)
 +            return
 +        }
-+        if (!RunePouch.isRune(internal)) {
-+            mes(NOT_A_RUNE)
++        storeRejection(internal)?.let {
++            mes(it)
 +            return
 +        }
 +        val amount = requestedAmount(op) ?: return
@@ -428,17 +440,29 @@ index 000000000..1d26ceb52
 +        X(-1),
 +    }
 +
-+    private companion object {
++    companion object {
 +        const val POUCH = "component.rune_pouch:pouch"
 +        const val INVENTORY = "component.rune_pouch:inventory"
 +        const val SELECTED_QUANTITY = "varbit.rune_pouch_selectedquantity"
 +        const val CUSTOM_QUANTITY = "varbit.rune_pouch_customquantity"
 +
 +        const val NOT_A_RUNE = "You can only store runes in the rune pouch."
++
++        /** Storing the pouch itself (OSRS Wiki: Rune pouch, Trivia). */
++        const val DONT_BE_SILLY = "Don't be silly."
++
 +        const val NO_FREE_SLOT = "Your rune pouch has no room for another type of rune."
 +        const val FULL = "Your rune pouch cannot hold any more of those runes."
 +        const val NO_SPACE = "You don't have enough inventory space."
 +        const val EMPTY = "Your rune pouch is empty."
++
++        /** Why [obj] can't go into the pouch from the inventory side, or `null` if it can. */
++        fun storeRejection(obj: String): String? =
++            when {
++                obj in RunePouch.pouches -> DONT_BE_SILLY
++                !RunePouch.isRune(obj) -> NOT_A_RUNE
++                else -> null
++            }
 +
 +        val SLOT_EVENTS =
 +            arrayOf(
@@ -454,3 +478,6 @@ index 000000000..1d26ceb52
 +            )
 +    }
 +}
+-- 
+2.43.0
+

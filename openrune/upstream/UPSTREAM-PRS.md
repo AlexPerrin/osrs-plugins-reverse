@@ -209,3 +209,33 @@ Next free after this allocation: timer 438, varp 64053 (to 64059), varbit 63722,
 
 Our own server tree (`../openrune.patch`, the live server) keeps the old ids, because saved player data uses them;
 see the README.
+
+## Accuracy fixes (OSRS-accuracy agent, 2026-10-18)
+
+Branches in `re/upstream-pr/or` as `acc/<slug>`, each one commit on `c2492318d` (main), amended from the
+original patch commit (authorship kept); the `NN-*.patch` files here are regenerated from them. The audits
+behind them are in `accuracy/<slug>.md`. None has passed the QA gate yet; none has been pushed.
+
+| Branch | Patch | Commit | Gate status | Left to do |
+|---|---|---|---|---|
+| `acc/genie` | 16 | `7f7badcf2` | freshCache, buildCache, spotlessApply/spotlessCheck, assemble pass; `test` passed on the previous tree state and was rerunning at wrap-up; `integration` not yet passed (the earlier failures were a broken `.data` from a restored tarball, in upstream modules, not this module); boot not run | `integration` (expect `GenieRandomEventTest` 10), boot, QA; fill `RESULTS_PENDING` in `pr-texts/genie*.body` |
+| `acc/cannon` | 13 | `490129985` | spotlessApply/spotlessCheck pass on an older tree; the last assemble failed on a `mapClock` name clash inside `ProtectedAccess` (fixed in this commit, not recompiled) | full build from `clean freshCache` (needs `game.yml` copied from `game.example.yml`), `DwarfMulticannonTest` (15) + `NulodionCannonSaleTest`, boot, QA; fill `RESULTS_PENDING` in `pr-texts/cannon*.body` |
+| `acc/rune-pouch` | 29 | `ebc653612` | freshCache, buildCache, spotlessApply pass; spotlessCheck, assemble, test, integration not run | the rest of the build, QA (QA's items from `qa/rune-pouch.md` are folded into `pr-texts/rune-pouch*.body`); update the body's results line |
+| `acc/plank-sack` | 30 | `0bca2214d` | not built | full build (spotlessApply first), QA; update the body's results line |
+
+Changes per branch (details in the PR texts):
+- genie: the wiki's spawn mechanics: real-time 1-2 h schedule in the persistent attribute
+  `random_event_next_at`, 5-minute checks, the 10-70 min offline extension, misses in banks / GE / listed
+  dungeons / instances and while transformed, delay while an interface or Make-X runs, one event NPC at a
+  time, the genie leaving on transform, the lamp dropped for 3 h with a full inventory, the owner's pronoun
+  in the other-player line. Timers unchanged (433, 434).
+- cannon: break at 25 min (loc 14916, Repair), decay 10 min later, Nulodion's replacement, the cannon
+  surviving logout/death (loc-duration timers), `mcannon_world`, the full accuracy roll vs heavy ranged
+  defence, single-way attacker targeting, line of sight, target regions with the double-hit overlap, the
+  Dwarf Cannon quest gate, Load X with the remembered amount, the captured Empty wording, captured set-up
+  timing and auto-load. Timer `mcannon_decay` (432) dropped; `mcannon_fire` 431 kept.
+- rune pouch: "Don't be silly." for the pouch itself; caveats per QA.
+- plank sack: "Basic planks" in Check; caveats; corrected data-source line.
+
+Build scripts and logs: the accuracy agent's scratchpad `acc/` (`pipeline2.sh`, `boot.sh`, `logs/`), via
+`tools/buildq.sh`, one Gradle home volume per clone (`upstream-pr-gradle-acc-<slug>-or`).

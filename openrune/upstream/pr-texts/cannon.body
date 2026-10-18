@@ -1,24 +1,60 @@
 Content area from OpenRune/OpenRune-Server#353 (answers there: all of it, one PR per row, ids renumbered against main, wiki data is fine).
 
-From our per-feature patch `13-dwarf-multicannon` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`1be5dfb5f`).
+From our per-feature patch `13-dwarf-multicannon` (in [`openrune/upstream/`](https://github.com/AlexPerrin/osrs-plugins-reverse/tree/main/openrune/upstream) of osrs-plugins-reverse), on `main` (`c2492318d`).
 
 **Problem.** The dwarf multicannon could not be set up.
 
-**Change.** New module `content/other/dwarf-multicannon`:
-- Set-up in four stages, loading, firing, pick-up and decay, with the OSRS varps client plugins read (`dropcannon` stage, `rockthrower` ammo, `ownedmcannon` coord, `mcannon_decayed`).
-- A cannon left behind by a logout, or one that decays, goes back to the owner's bank.
+**Change.** New module `content/other/dwarf-multicannon`, and Nulodion's "I've lost my cannon." in `dwarven-mine`:
+- **Set-up** of the base, stand, barrels and furnace, 2, 2, 3 and 3 ticks apart from the click (packet capture of the official game), on a free 3x3 with the player at the centre. It needs the Dwarf Cannon quest (wiki, Assembly; through `QuestRequirements`, so the default assume-completed mode allows it). The tick after the furnace, it loads up to 30 balls from the inventory ("You load the cannon with 30 cannonballs.", capture). The OSRS varps that client plugins read are set: `dropcannon` stage, `rockthrower` ammo, `ownedmcannon` coord, `mcannon_world` (the server's world id, which RuneLite's Cannon overlay compares with the client's world), `mcannon_decayed`, and `mcannonmulti` = `1 << 20` while firing (capture).
+- **Fire** loads and starts the barrel turning one direction a tick (8 per revolution). Left-click on a firing cannon tops it up (wiki, 20 February 2014). **Load X** asks once "Set load-x cannonballs (1 - 30):", stores the amount in `option_cannonballs_load_x` with "You will now load N cannonballs when using Load-x.", then loads that many each time (wiki, 24 September 2025; capture). **Empty**: "You unload your cannon and receive Steel cannonball x N." (capture).
+- **Targets** (wiki, Targets and Revolutions): each direction has a target region. Straight directions cover the 3-wide column beyond the cannon, diagonals the quadrant beyond its corner. They overlap on the rows and columns one tile off the centre lines, so a monster there is shot twice a revolution: the double-hit tiles RuneLite's Cannon plugin draws. Tiles under the cannon are never shot. A target needs line of sight from the cannon's 3x3. Large monsters are targeted by their south-west tile. In single-way combat, while the owner is under attack, it fires only at the attacker.
+- **Hits**: up to 30 damage, 2 Ranged XP per damage. Accuracy is the owner's own roll for the current weapon and style against the target's heavy ranged defence (wiki, Accuracy): ranged weapons use ranged accuracy; melee and unarmed use melee accuracy for the selected stab/slash/crush; powered staves use the higher of the two. Equipment and prayers count; target-dependent effects (slayer helmet on task and the like) do not.
+- **Breaking and decay** (wiki, Breaking/Decay/Death; messages as RuneLite's Timers & Buffs and the Supplies Tracker match them). After 25 minutes set up, the cannon breaks: loc 14916, "<col=ef1020>Your cannon has broken!", and it stops firing. **Repair** gives "You repair your cannon, restoring it to working order." and starts the 25 minutes again. Unrepaired, it disappears 10 minutes later ("Your cannon has decayed. Speak to Nulodion to get a new one!", `mcannon_decayed` = 1). A part-built cannon disappears 35 minutes after set-up.
+- **Logout and death**: the cannon stays where it is, and its timers keep running (they are the loc's own despawn timers). On login the owner gets it back. A cannon recorded on the player but missing from the world, after a restart, counts as lost.
+- **Nulodion**, "I've lost my cannon." (Transcript:Nulodion):
+  - still set up: "Hmmm. I think you'll find it's still happily parked on the spot where you put it." and the rest of that branch;
+  - lost, with fewer than 4 free slots: the "free up some inventory space" line;
+  - lost: the four parts ("The dwarf gives you a new cannon."). The balls that were in it come back loaded when it is next set up (wiki);
+  - otherwise: his "stolen in action" refusal.
+- Pick-up (cannon, broken cannon or part-built) returns the parts and balls: "You pick up the cannon. It's really heavy.". The Grand Exchange refuses a cannon with the wiki's message.
 
-Server-only ids, numbered after the ids already on main and not shared with any of our other PRs, so they merge in any order: timers `mcannon_fire` 431, `mcannon_decay` 432.
+Server-only ids, numbered after the ids already on main and not shared with any of our other PRs, so they merge in any order: timer `mcannon_fire` 431. (`mcannon_decay` 432 from the first version is gone; the break and decay timers are loc durations now.)
 
-**Tests.** `DwarfMulticannonTest` (7, integration).
+**Tests.** `DwarfMulticannonTest` (15, integration):
+- set-up stages and varps; the auto-load after the furnace; a second cannon refused; the quest requirement;
+- firing and running dry; Load X; Empty wording; pick-up and pick-up without room;
+- breaking at 25 min and Repair; disappearing 10 min after breaking;
+- surviving a logout; lost after a restart;
+- single-way attacker targeting; the target regions and their double-hit overlap.
 
-On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): buildCache pass, `spotlessCheck` pass, `assemble` pass, `test` pass, `integration` pass, boot pass (Server ready in 7.310347166s). `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch, nor with all of our open content PRs merged together.
+`NulodionCannonSaleTest` (+1): a lost cannon is replaced with four parts and keeps its ball count.
 
-Nothing was checked in game from this exact branch; the in-game checks above were on our own server build (an older main plus these and our other patches).
+How to check in game:
+1. Set up with the four parts and some balls: four stage messages at 2, 2, 3 and 3 ticks, then "You load the cannon with 30 cannonballs." The RuneLite Cannon plugin shows the ball count over the cannon, and Timers & Buffs starts its cannon timer.
+2. Fire next to monsters: the barrel turns one step a tick, shots hit, Ranged XP is 2 per damage. In a single-way area, get attacked by one monster with others around: only the attacker is shot.
+3. Load X: the prompt the first time, then the chosen amount each time. Empty: "You unload your cannon and receive Steel cannonball x N."
+4. Log out and back in: the cannon is still there and still yours.
+5. After 25 minutes: "Your cannon has broken!" in red, the broken cannon model, firing stops. Repair: the message, and it works again. Leave it broken 10 more minutes: the decay message. Talk to Nulodion, "I've lost my cannon.": four parts back.
+6. Talk to Nulodion with the cannon still set up: "...still happily parked on the spot where you put it."
 
-**Data sources.** Varps and locs from the cache; varp meanings as RuneLite's Cannon plugin reads them (BSD).
+On this branch (Docker `eclipse-temurin:21`, upstream's `./gradlew`, 4 GB container; a clean `freshCache` of main restored first, then `:or-cache:buildCache :or-cache:mergePluginGamevals`, then each task as a separate run, then `run` to "Server ready"): RESULTS_PENDING. `tools/scripts/fix_gameval_conflicts.py --check` finds no conflicts on this branch.
 
-**Release note.** The dwarf multicannon can be set up, loaded, fired and picked up.
+Nothing was checked in game from this exact branch.
+
+**Data sources.**
+- The cache: locs, varps and varbits.
+- OSRS Wiki (by the wiki's contributors, CC BY-NC-SA 3.0, https://creativecommons.org/licenses/by-nc-sa/3.0/): "Dwarf multicannon" (Assembly; Mechanics: Damage and experience, Accuracy, Revolutions, Targets, Breaking/Decay/Death; Prohibited areas; Changes) and "Transcript:Nulodion".
+- A packet capture (rsprox) of the official game: set-up timing, auto-load, Load X and Empty wording, `mcannonmulti`.
+- RuneLite (BSD): the Cannon, Timers & Buffs and Supplies Tracker plugins, for the message strings they match and the double-hit tiles.
+
+**Caveats.**
+- Approximated: the target regions. The wiki only shows them as a picture, so these are the simplest regions that give the wiki's and RuneLite's double-hit tiles. The range of 8 tiles is ours. Line of sight is checked from the cannon's 3x3 to the target's south-west tile.
+- Approximated: the single-way rule uses the owner's current attacker (`aggressive_npc` while in combat) and the cannon's own tile for single/multi. In single-way it can still shoot a monster another player is fighting.
+- Approximated: powered staves compare ranged accuracy with crush accuracy.
+- Guesses: "You need to complete the Dwarf Cannon quest before you can set up a cannon." (the real refusal is not on the wiki); "You cannot construct more than one cannon at a time.", "There isn't enough space to set up here.", "This isn't your cannon!", "Your cannon is already full.", "You don't have any ammo to load into the cannon.", "Your cannon is empty.", and the inventory-space lines. Firing stops when the owner logs out. Nulodion gives all four parts even when only part of the cannon was set up.
+- Not implemented: granite cannonballs (35 max hit, loaded first); the Combat Achievement capacities (35/45/60); prohibited areas other than the Grand Exchange; bosses destroying cannons, and monsters the cannon can't hit (sand and ammonite crabs, demonic gorillas, kurasks); the 2019 chance of 1 damage instead of 0 at very low accuracy; the ornament kit; the "push" from the south-west tile after loading and walking away; `mcannon_setuptime`.
+
+**Release note.** The dwarf multicannon: set-up, Fire, Load X, Empty, breaking and repair, decay and Nulodion's replacement, on OSRS's accuracy and targeting rules.
 
 **Checklist**
 - [x] The change compiles (`./gradlew build`).

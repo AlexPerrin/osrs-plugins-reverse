@@ -1,6 +1,10 @@
 # Client work: handoff notes
 
 > Latest state: see the gen 31 entry (2026-10-17) at the end of "Where things stand".
+> **Start here (gen 32):** (1) World Map plugin points are not drawn on the open mobile map although the world map
+> getters work (position/zoom/loaded verified, probe `set 'wmap 0 0'`); (2) read the game's world map regions and
+> icons (`WorldMapRenderer.getMapRegions`, `getMapElementConfig`; quest-start tooltips); (3) check
+> `setWorldMapPositionTarget` (the game's jumptosourcecoord `0x4b7854`, unverified) on the device.
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another

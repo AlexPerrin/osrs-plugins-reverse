@@ -53,15 +53,17 @@ branch commit, with logs beside them in `<clone>.logs/`.
    = upstream `main` + the branch, merged (section 3). A merge conflict there is a FAIL in itself.
 2. **Build and tests.** `qa.sh build <clone>` runs each step as its own Gradle container (`--cpus=4
    --memory=4g`, `--max-workers=2`, `-Xmx2g`, cache tasks `-Xmx2600m`, `--no-build-cache
-   --no-configuration-cache`, Gradle home volume `upstream-pr-gradle-qa`). It takes the scratchpad
-   `gradle.lock` (shared with the other agents' builds) and waits while any other container runs
-   `gradlew`. Steps: `clean :or-cache:freshCache :or-cache:mergePluginGamevals` (a fresh cache download:
+   --no-configuration-cache`, Gradle home volume `upstream-pr-gradle-qa`, `-Pkotlin.compiler.execution.strategy=in-process` so no separate
+   2 GB Kotlin daemon runs in the container). Each run waits its turn in
+   the agents' FIFO build queue (`tools/buildq.sh qa -- ...`). Steps: `clean :or-cache:freshCache :or-cache:mergePluginGamevals` (a fresh cache download:
    a new clone has none, and freshCache ends with a forced BUILD), `:or-cache:buildCache`,
-   `spotlessCheck`, `assemble`, `test`, `integration`, then `generateRsa :server:app:installDist`.
+   `generateRsa` (integration tests read `.data/game.key`), `spotlessCheck`, `assemble`, `test`,
+   `integration` (both with one worker: each test JVM has `-Xmx2048m`, and two of them plus the
+   Gradle daemon were OOM-killed in the 4 GB container), then `:server:app:installDist`.
    `qa.sh runbuild <clone>-run` builds only what a server run needs.
 3. **Branch server.** `qa.sh start <clone>-run` runs the installDist in `eclipse-temurin:21-jre` as
    `qa-or-server` (game port **43596**, its own embedded PostgreSQL under the clone's `.data/postgres`,
-   so every run starts with no accounts) and the jav_config sidecar `qa-or-http` (**8083**, the
+   so each clone starts with no accounts; restarts keep them) and the jav_config sidecar `qa-or-http` (**8083**, the
    `osrs-rsps-test:241` image as for `osrs-openrune-http-desktop`, world host 127.0.0.1). It waits for
    "Server ready in" and writes `<clone>-run.logs/proxy-targets.yaml`: the "OpenRune Test" target with
    jav_config `http://127.0.0.1:8083`, `game_server_port: 43596` and the modulus of the clone's own
@@ -80,9 +82,11 @@ branch commit, with logs beside them in `<clone>.logs/`.
    checks the desktop login headlessly (no lock needed). Upstream accepts our desktop client as is
    (checked 2026-10-18: login OK, staff 2, toplevel 161).
    - **Members:** upstream accounts are non-members (`account_characters.members` defaults false, no
-     command sets it), so members items show "(Members)" and hide their ops. Until there is an agreed
-     way to make the QA account a member, send the hidden op with `invoke_menu_action` and say so in
-     the record. Inventory ops (interface 149) map to `CC_OP` identifiers op1 = 2, op2 = 3, op3 = 4,
+     command sets it), so members items show "(Members)" and hide their ops. After the account's first
+     login on the branch server, run `openrune/upstream/qa/qa-members.sh <account>` (user-approved; it
+     only updates that account's characters on `qa-or-server`), then log out and in again. Members
+     features are checked as a members player; ops sent with `invoke_menu_action` count only as extra
+     evidence. Inventory ops (interface 149) map to `CC_OP` identifiers op1 = 2, op2 = 3, op3 = 4,
      op4 = 6, op5 = 7; item-on-item is `WIDGET_TARGET_ON_WIDGET` (param0 = target slot, param1 =
      9764864, itemId = target) after `item_action {"option":"Use"}`.
    - The devtools chat history never showed examine text in these runs, not even a plain inventory

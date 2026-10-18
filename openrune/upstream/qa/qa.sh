@@ -21,13 +21,11 @@
 #
 # Limits (QA.md): docker --cpus=4 --memory=4g, Gradle --max-workers=2, -Xmx2g (cache tasks -Xmx2600m),
 # clean --no-build-cache --no-configuration-cache, own Gradle home volume upstream-pr-gradle-qa, one
-# build container at a time (the scratchpad gradle.lock, shared with the other agents' g.sh, plus a
-# wait while any other container runs gradlew).
+# build container per call, through tools/buildq.sh (the agents' FIFO build queue).
 set -euo pipefail
 REPO=/home/alex/osrs-plugins-reverse
 SRC=$REPO/re/upstream-pr/or
 QA_ROOT=${QA_ROOT:-/tmp/claude-1000/-home-alex-osrs-plugins-reverse/a0087aa1-b8d3-439d-add9-f4cbee8fc5e6/scratchpad/qa}
-LOCK=${QA_LOCK:-/tmp/claude-1000/-home-alex-osrs-plugins-reverse/a0087aa1-b8d3-439d-add9-f4cbee8fc5e6/scratchpad/gradle.lock}
 GAME_PORT=${QA_GAME_PORT:-43596}
 HTTP_PORT=${QA_HTTP_PORT:-8083}
 VOL=upstream-pr-gradle-qa
@@ -35,14 +33,12 @@ VOL=upstream-pr-gradle-qa
 gradle() {  # gradle <dir> <log> <args...>
   local d=$1 log=$2 rc; shift 2
   mkdir -p "$(dirname "$log")"
-  exec 9>"$LOCK"; flock 9
-  while docker ps --format '{{.Command}}' | grep -q gradlew; do sleep 30; done
-  docker run --rm --name "qa-gradle-$$" --cpus=4 --memory=4g -u 1000:1000 \
+  # The agents' FIFO build queue (tools/buildq.sh) decides when the container runs.
+  "$REPO/tools/buildq.sh" qa -- docker run --rm --name "qa-gradle-$$" --cpus=4 --memory=4g -u 1000:1000 \
     -e GRADLE_USER_HOME=/gradle -e GRADLE_OPTS=-Xmx2g -e JAVA_TOOL_OPTIONS="${JTO:-}" \
     -v $VOL:/gradle -v "$d":"$d" -v "$SRC/.git":"$SRC/.git":ro -w "$d" \
     eclipse-temurin:21 ./gradlew --no-daemon --console=plain --no-build-cache --no-configuration-cache \
-      --max-workers=${QA_WORKERS:-2} -Dorg.gradle.jvmargs=-Xmx2g "$@" > "$log" 2>&1 && rc=0 || rc=$?
-  exec 9>&-
+      --max-workers=${QA_WORKERS:-2} -Dorg.gradle.jvmargs=-Xmx2g -Pkotlin.compiler.execution.strategy=in-process "$@" > "$log" 2>&1 && rc=0 || rc=$?
   echo "rc=$rc" >> "$log"; echo "$(basename "$log"): rc=$rc"; return $rc
 }
 

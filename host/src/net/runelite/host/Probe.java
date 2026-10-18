@@ -123,6 +123,10 @@ final class Probe {
                 }
                 return;
             }
+            if (a[0].equals("tiles")) {  // "tiles <range> 0|1": corner heights and canvas points around the player (1 = every tile, 0 = odd ones)
+                tilesDump(c, Integer.parseInt(a[1]), "1".equals(a[2]));
+                return;
+            }
             if (a[0].equals("reload")) {  // "reload 0 0": setGameState(LOADING)
                 c.setGameState(net.runelite.api.GameState.LOADING);
                 Log.i(TAG, "reload requested, state now " + c.getGameState());
@@ -610,6 +614,59 @@ final class Probe {
             s = v.getClass().getName() + "<toString threw>";
         }
         return s.length() > 160 ? s.substring(0, 160) + "..." : s;
+    }
+
+    /**
+     * Probe "tiles": for each tile within range of the player, the settings and bridge flag, the four
+     * corner heights Perspective uses, the canvas tile polygon and Line of Sight's corner points
+     * (localToCanvas at +-64). Logs every tile, or only odd ones (a null or far-off point, a corner
+     * height far from the player's, a bridge flag).
+     */
+    private static void tilesDump(net.runelite.api.Client c, int range, boolean all) {
+        net.runelite.api.WorldView wv = c.getTopLevelWorldView();
+        net.runelite.api.Player me = c.getLocalPlayer();
+        if (wv == null || me == null) return;
+        net.runelite.api.coords.LocalPoint pl = me.getLocalLocation();
+        int plane = wv.getPlane(), px = pl.getSceneX(), py = pl.getSceneY();
+        int[][][] h = wv.getTileHeights();
+        byte[][][] st = wv.getTileSettings();
+        int ph = net.runelite.api.Perspective.getTileHeight(c, pl, plane);
+        Log.i(TAG, "tiles player " + me.getWorldLocation() + " scene " + px + "," + py + " plane " + plane + " h " + ph
+                + " cam " + c.getCameraFpX() + "," + c.getCameraFpY() + "," + c.getCameraFpZ() + " pitch " + c.getCameraPitch()
+                + " yaw " + c.getCameraYaw() + " scale " + c.getScale() + " vp " + c.getViewportWidth() + "x" + c.getViewportHeight()
+                + "+" + c.getViewportXOffset() + "," + c.getViewportYOffset() + " gpu " + c.isGpu() + " dims " + h.length + "x" + h[0].length + "x" + h[0][0].length);
+        int odd = 0, n = 0;
+        for (int dy = range; dy >= -range; dy--)
+            for (int dx = -range; dx <= range; dx++) {
+                int sx = px + dx, sy = py + dy;
+                if (sx < 0 || sy < 0 || sx >= 104 || sy >= 104) continue;
+                n++;
+                int bridge = st[1][sx][sy] & 2, z = plane < 3 && bridge != 0 ? plane + 1 : plane;
+                int[] corners = {h[z][sx][sy], h[z][sx + 1][sy], h[z][sx][sy + 1], h[z][sx + 1][sy + 1]};
+                net.runelite.api.coords.LocalPoint lp = new net.runelite.api.coords.LocalPoint((sx << 7) + 64, (sy << 7) + 64, wv);
+                java.awt.Polygon poly = net.runelite.api.Perspective.getCanvasTilePoly(c, lp);
+                StringBuilder pts = new StringBuilder();
+                boolean bad = poly == null || bridge != 0;
+                for (int k = 0; k < 4; k++) {
+                    int cx = lp.getX() + ((k & 1) == 0 ? -64 : 64), cy = lp.getY() + ((k & 2) == 0 ? -64 : 64);
+                    net.runelite.api.Point p = net.runelite.api.Perspective.localToCanvas(c, new net.runelite.api.coords.LocalPoint(cx, cy, wv), plane);
+                    pts.append(p == null ? " null" : " " + p.getX() + "," + p.getY());
+                    if (p == null || Math.abs(p.getX()) > 5000 || Math.abs(p.getY()) > 5000) bad = true;
+                    if (Math.abs(corners[k] - ph) > 1000) bad = true;
+                }
+                if (poly != null)
+                    for (int k = 0; k < poly.npoints; k++)
+                        if (Math.abs(poly.xpoints[k]) > 5000 || Math.abs(poly.ypoints[k]) > 5000) bad = true;
+                if (bad) odd++;
+                if (!all && !bad) continue;
+                StringBuilder pp = new StringBuilder();
+                if (poly == null) pp.append("null");
+                else for (int k = 0; k < poly.npoints; k++) pp.append(k > 0 ? " " : "").append(poly.xpoints[k]).append(',').append(poly.ypoints[k]);
+                Log.i(TAG, "tile " + (wv.getBaseX() + sx) + "," + (wv.getBaseY() + sy) + " d " + dx + "," + dy + " set " + st[plane][sx][sy]
+                        + " s1 " + st[1][sx][sy] + " z " + z + " h sw/se/nw/ne " + java.util.Arrays.toString(corners)
+                        + " los" + pts + " poly " + pp + (bad ? " ODD" : ""));
+            }
+        Log.i(TAG, "tiles done: " + n + " tiles, " + odd + " odd");
     }
 
     /** `setprop debug.osrsrl.camlog 1`: camera vs player frames, for projection offsets. */

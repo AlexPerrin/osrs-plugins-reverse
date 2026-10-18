@@ -1,7 +1,7 @@
 # Client work: handoff notes
 
-> Latest state: see the gen 38 entry (2026-10-18) at the end of "Where things stand".
-> **Start here (gen 39):** see the gen 38 entry's "Next", and docs/app-telemetry.md (privacy patches in every build).
+> Latest state: see the gen 39 entry (2026-10-18) at the end of "Where things stand".
+> **Start here (gen 40):** see the gen 39 entry's "Next", and docs/app-telemetry.md (privacy patches in every build).
 
 Status and workflow for whoever continues the client side (the injected library plus the
 RuneLite plugin host). The test server in `server/` is developed in parallel by another
@@ -1396,6 +1396,35 @@ session; its notes are in `docs/android-protocol.md`.
        network plugins).
     4. A sign-out/sign-in capture that includes a GE digest fetch, to confirm the gedigesturl redirect (it needs the
        client's digest refresh to fall due).
+- **2026-10-18 (client dev gen 39)**, commits 0236375..(this entry).
+  - **Line of Sight stray lines at 3219,3222: not a host bug.** Probe `tiles <range> 0|1` (16ef5e8) dumps every tile's corner
+    heights, settings, `getCanvasTilePoly` and LoS's localToCanvas corners. The heights are sane (castle-side lawn -464, path -240,
+    sloped tiles between). The logged polygons, re-rendered offline with Java2D, match the device picture line for line,
+    so the fans are the terrain (raised lawn, uneven corners at the castle wall). Near-camera corners project to x/y around 21000; clipping
+    them before Skia changed nothing (reverted). Path Marker verified (active path tiles after a tap-walk).
+  - **GraphicsObject** (b0e9ea8, verified with `::mapanim`, which is deployed): AnimationState at obj +0x280 (+0x288 SeqType*, +0x290 seq id,
+    +0x294 u16 frame cycle, +0x296 u16 frame). The walk at ELF 0x455f24 drops objects whose +0x288 is 0. setFinished(true) calls
+    setSequence `0x659274(obj+0x280, -1)` (new kBuilds field `seq_set`). Probe `gfin <id> <n>` (change n to re-run the same id).
+    A delayed `::mapanim 86 0 400 2 0` plus `gfin` left the list one cycle later. Random Event Hider still can't be staged on OpenRune.
+  - **Hub**: 9 new pins start (max-hit-calculator shows "Max Hit: 11", ticktracker "100.00%"; fishing-notifier,
+    slayer-task-sorter, cannon-highlighter, set-timer, death-charge-reminder, arceuus-timers, herblorerecipes not exercised).
+    multi-lines dropped: it uses java.net.http.HttpClient to raw.githubusercontent.com. It failed on Android and sent nothing, but it wrote one
+    config key (settings restored from the backup).
+  - **Network**: Network QA rule (docs/app-telemetry.md): no per-slot DNS/socket check; QA only for network-relevant builds.
+    `host/plugins/hub/netcheck.sh` (a60f352) gives NET-RAW / NET-OKHTTP / LINKS / clean verdicts. build.sh refuses NET-RAW unless
+    `ALLOW_NET=1` (loot-lookup was rebuilt with it: its raw references are only in the bundled jsoup). The runtime gate R1
+    (`host/src/net/runelite/host/NetScan.java`, written, **not wired or committed** until the orchestrator approves) refuses
+    NET-RAW plugin jars at load time, except vetted ones (hub-loot-lookup, devtools) or those in `debug.osrsrl.netallow`.
+  - NPCComposition.getStats (dc9a9c6): NpcType +0x1a0..+0x1b4 (ops 74-79, static RE). The `npcdef` probe prints the stats. Device check pending.
+  - Gotchas: the `debug.osrsrl.set` probe runs once per distinct value (clearing to '' doesn't reset it), so change an argument
+    to re-run it. `server/tools/device.sh cmd` can fail to press Enter (a WSL vsock error); check `mInputShown` and send keyevent 66 again.
+    The hub build's old network grep missed `java.net.http`; use netcheck.sh.
+  - **Next (gen 40)**:
+    1. Device-check getStats (`npcdef 3108 0`: Man hitpoints 7) and Max Hit against an NPC. R1 if approved (wire `NetScan.refusal`
+       into `Host.loadJar` before the DexClassLoader).
+    2. When the OBJ_ADD timer fix is deployed: Clue Juggling Timers and Ground Items' despawn timer.
+    3. More hub plugins from the ranking (scratchpad ranking.json from gen 38, or refetch). Run netcheck on every one.
+    4. Opportunistic: a capture that includes a GE digest fetch (it should hit the sidecar).
 - Device protocol (2026-10-15, replaces the status file): see "Working with the server session".
 
 ## Layout

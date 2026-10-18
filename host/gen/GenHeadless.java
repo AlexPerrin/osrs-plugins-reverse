@@ -412,6 +412,10 @@ public class GenHeadless {
                 sb.append(superCall(c));
                 sb.append(ctorProperties(c, k.getParameterTypes()));
                 if (c == javax.swing.GroupLayout.class && k.getParameterCount() == 1) sb.append(" __host = a0;");
+                // Swing's JList(ListModel) stores the model directly (no setModel call, which subclasses
+                // override with checks: Bank Memory's ItemList casts getModel() to its own model).
+                if (c == javax.swing.JList.class && k.getParameterCount() == 1 && k.getParameterTypes()[0] == javax.swing.ListModel.class)
+                    sb.append(" __Model = a0; __ModelSet = true;");
                 if (c == javax.swing.border.CompoundBorder.class && k.getParameterCount() == 2) sb.append(" __outside = a0; __inside = a1;");
                 if (c == javax.swing.border.MatteBorder.class && k.getParameterCount() == 5 && k.getParameterTypes()[4] == java.awt.Color.class) sb.append(" __matte = a4;");
                 sb.append(" }\n");

@@ -203,6 +203,11 @@ public final class Host {
                 bind(com.google.gson.Gson.class).toInstance(net.runelite.http.api.RuneLiteAPI.GSON);
                 bind(net.runelite.client.callback.Hooks.class).toInstance(hooks);
                 bind(net.runelite.client.ui.ClientToolbar.class).toInstance(new net.runelite.client.ui.ClientToolbar());
+                // RuneLite's ClientUI constructor casts the Client to an AWT Component (the applet). Plugins
+                // that inject it without using it (Ground Object Hider) get an unconstructed instance;
+                // its methods are not usable. Verified gen 34: Ground Object Hider starts.
+                Object ui = unconstructed(net.runelite.client.ui.ClientUI.class);
+                if (ui != null) bind(net.runelite.client.ui.ClientUI.class).toInstance((net.runelite.client.ui.ClientUI) ui);
                 bind(net.runelite.client.game.SpriteManager.class).toInstance(new net.runelite.client.game.SpriteManager());
                 bind(net.runelite.client.chat.ChatMessageManager.class).toInstance(new net.runelite.client.chat.ChatMessageManager());
                 bind(net.runelite.client.game.chatbox.ChatboxPanelManager.class)
@@ -393,6 +398,25 @@ public final class Host {
     private static void postLoggedIn(EventBus bus) {
         pendingLoggedIn = false;
         postGameState(bus, GameState.LOGGED_IN);
+    }
+
+    /** An instance of `c` without running a constructor (sun.misc.Unsafe.allocateInstance), or null. */
+    private static Object unconstructed(Class<?> c) {
+        try {
+            Class<?> u = Class.forName("sun.misc.Unsafe");
+            java.lang.reflect.Field f;
+            try { f = u.getDeclaredField("theUnsafe"); } catch (NoSuchFieldException e) { f = u.getDeclaredField("THE_ONE"); }
+            f.setAccessible(true);
+            return u.getMethod("allocateInstance", Class.class).invoke(f.get(null), c);
+        } catch (Throwable t) {
+            Log.w(TAG, "no unconstructed " + c.getName() + ": " + t);
+            return null;
+        }
+    }
+
+    /** HostPluginManager: startUp as on desktop's EDT (Edt.runAsEdtAtStartup). */
+    public static void runAsEdtAtStartup(java.util.concurrent.Callable<Void> r) throws Exception {
+        Edt.runAsEdtAtStartup(r);
     }
 
     private static void postGameState(EventBus bus, GameState s) {
@@ -650,7 +674,7 @@ public final class Host {
                 // The login burst sends inventories before the local player exists; desktop plugins
                 // (Looting Bag's handleInventoryUpdated reads getLocalPlayer().getWorldLocation()) assume
                 // one, so hold them like StatChanged (posted with the containers as of that cycle).
-                // unverified: on the device (seen: Looting Bag's NPE at login, gen 34).
+                // Verified on the device gen 34 (Looting Bag's NPE at login is gone).
                 if (localPlayer() == null) {
                     pendingInvs.add(a);
                     break;

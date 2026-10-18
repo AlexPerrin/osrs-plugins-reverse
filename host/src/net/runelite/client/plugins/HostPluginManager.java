@@ -68,7 +68,7 @@ public final class HostPluginManager {
                     Log.w(Host.TAG, name + ": config defaults failed: " + t);
                 }
             }
-            plugin.startUp();
+            net.runelite.host.Host.runAsEdtAtStartup(() -> { plugin.startUp(); return null; });  // desktop: SwingUtil.syncExec
             eventBus.register(plugin);
             running.add(plugin);
             Log.i(Host.TAG, "started plugin " + name);

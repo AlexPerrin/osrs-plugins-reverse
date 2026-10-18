@@ -49,6 +49,25 @@ final class Edt {
 
     static boolean isEdt() { return Thread.currentThread() == thread; }
 
+    /**
+     * Desktop's PluginManager runs startUp on the EDT (SwingUtil.syncExec), and plugins that build
+     * their Swing panels there assert it (Bank Memory: checkState(isEventDispatchThread())). Before
+     * cycles reach the host, the start thread is the only thread running Swing code (see
+     * invokeAndWait), so it counts as the EDT while `r` runs. Later starts run `r` as before.
+     */
+    static void runAsEdtAtStartup(java.util.concurrent.Callable<Void> r) throws Exception {
+        if (cycling || thread == null || isEdt()) {
+            r.call();
+            return;
+        }
+        javax.swing.SwingUtilities.__edt = Thread.currentThread();
+        try {
+            r.call();
+        } finally {
+            javax.swing.SwingUtilities.__edt = thread;
+        }
+    }
+
     private static void loop() {
         while (true) {
             Runnable r;

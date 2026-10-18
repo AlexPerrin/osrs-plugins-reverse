@@ -633,6 +633,10 @@ public class GenHeadless {
         return null;
     }
 
+    /** Container.add moves a component that already has a parent (desktop's add(errorPanel) twice keeps one child). */
+    static final String REPARENT0 = "if (a0.__parent != null) a0.__parent.remove(a0); ";
+    static final String REPARENT1 = "if (a1.__parent != null) a1.__parent.remove(a1); ";
+
     /** Stateful bodies for properties, listeners and Container children; null = default. */
     static String specialBody(Class<?> c, Method x, Map<String, Class<?>> props, Set<String> listenerKinds) {
         String n = x.getName();
@@ -715,11 +719,11 @@ public class GenHeadless {
                 String idx = ps.length == 2 && ps[1] == int.class ? "a1" : ps.length == 3 ? "a2" : "-1";
                 String card = ps.length == 2 && ps[1] == Object.class && generate.contains(java.awt.CardLayout.class)
                         ? " if (getLayout() instanceof java.awt.CardLayout && a1 instanceof String) ((java.awt.CardLayout) getLayout()).__cards.put(a1, a0);" : "";
-                return "if (a0 != null) { if (" + idx + " >= 0 && " + idx + " <= __children.size()) __children.add(" + idx + ", a0); else __children.add(a0); a0.__parent = this; }"
+                return "if (a0 != null) { " + REPARENT0 + "if (" + idx + " >= 0 && " + idx + " <= __children.size()) __children.add(" + idx + ", a0); else __children.add(a0); a0.__parent = this; }"
                         + card + (x.getReturnType() == void.class ? "" : " return a0;");
             }
             if (n.equals("add") && ps.length == 2 && ps[0] == String.class && ps[1] == java.awt.Component.class)
-                return "if (a1 != null) { __children.add(a1); a1.__parent = this; }"
+                return "if (a1 != null) { " + REPARENT1 + "__children.add(a1); a1.__parent = this; }"
                         + (generate.contains(java.awt.CardLayout.class) ? " if (getLayout() instanceof java.awt.CardLayout) ((java.awt.CardLayout) getLayout()).__cards.put(a0, a1);" : "")
                         + " return a1;";
             if (n.equals("remove") && ps.length == 1 && ps[0] == java.awt.Component.class) return "__children.remove(a0); if (a0 != null) a0.__parent = null;";

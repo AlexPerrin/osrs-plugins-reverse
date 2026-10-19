@@ -246,8 +246,9 @@ namespace { std::string read_string(uintptr_t addr); }
 // +0x10 host and +0x28 activity strings, +0x40 location. setWorld (0x432748) copies the picked
 // entry's id/flags/host to Client +0x3174/+0x2f64/+0x3098; the arg parser (0x43d39c) fills the
 // same fields when the game starts on a world from its arguments (the host is --gameaddress).
-// The parser runs only from the login screen handler 0x41615c (called by doCycle 0x411640), so the
-// list is replaced on the game thread; reading it there can't race the reload.
+// The parser (callers 0x412e78 and the login handler 0x41615c, each only from doCycle 0x411640, and the
+// CS2 world list ops 0x4c2544) frees the old entries and fills the new array in place, so the list is
+// read only on the game thread, like the game's own doCycle readers (offsets.md "World list").
 std::pair<uintptr_t, uint64_t> world_list_key() {
     if (!g_build) return {0, 0};
     return {read_at<uintptr_t>(g_base + 0xace6d0), read_at<uint64_t>(g_base + 0xace6c8)};

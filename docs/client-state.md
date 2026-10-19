@@ -26,7 +26,8 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 - **World entry thread safety (client/world-entry-thread-safety, gen 43)**: `Native.worldEntry` no longer walks the game's
   world list off the game thread. The game frees and rebuilds that list (new address each time) whenever the login-screen
-  world switcher opens, on the game thread (parser `0x4320dc`, called only from the login handler `0x41615c` under doCycle).
+  world switcher opens, on the game thread (parser `0x4320dc`: callers `0x412e78` and the login handler `0x41615c`, both only under doCycle, and
+  the CS2 world list ops 6500-6531 `0x4c2544`; offsets.md "World list").
   `client_thread::world_entry` serves other threads a copy of the current world's entry made in after_cycle (re-read on a
   world id or list change, else every 25 cycles); on the client thread it reads live. Logcat `osrsrl: world list: N entries
   at 0x...` marks each reload (a new address every time). Device (2026-10-18, World Hopper + Current World + Quick Prayer

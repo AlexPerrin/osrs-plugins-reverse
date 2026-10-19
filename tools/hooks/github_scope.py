@@ -62,7 +62,10 @@ def classify(seg, cwd):
     try:
         w = shlex.split(seg)
     except ValueError:
-        return "unknown", "unparsable command"
+        # A fragment of a quoted string or script split at a | or ;: no opinion unless it names upstream.
+        if re.search(r"OpenRune/OpenRune", seg) and re.search(r"\bgh\b|\bpush\b", seg):
+            return "unknown", "unparsable command naming upstream"
+        return None, ""
     while w and re.match(r"^[A-Z_][A-Z0-9_]*=", w[0]):
         w = w[1:]
     if not w:
@@ -162,6 +165,8 @@ def main():
     if not re.search(r"\bgh\b|\bgit\b[^|;&]*\bpush\b|fork\.sh|release-dev\.sh|open-batch-", command):
         return
     cwd = data.get("cwd") or ROOT
+    # Heredoc bodies are data (scripts, file contents), not commands: drop them before splitting.
+    command = re.sub(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?\n\s*\2\s*(?=\n|$)", r"\3", command, flags=re.S)
     kinds, asks = [], []
     for seg in re.split(r"&&|\|\||;|\||\n", command):
         seg = seg.strip()

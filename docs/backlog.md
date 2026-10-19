@@ -26,6 +26,7 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 |---|---|---|---|---|
 | P2 | `hub-exercise-after-cutover`: Clue Juggling Timers, Ground Items despawn (fix/76), Coal Bag (fix/75), Herbi AFK, Did I Compost, Cannon Highlighter, Fish Barrel, Clue Steps, Decimal Prices with a real "." | client-dev | merge | cutover deploy |
 | P2 | `world-entry-thread-safety`: game::world_entry memcpys the world list from World Hopper's thread (~1/s); a list reload could free it mid-read. Read on the client thread or cache the entry | client-dev | merge | – |
+| P2 | resume `world-entry-thread-safety` from the WIP on client/world-entry-thread-safety (45ae26a, d8858d5; stopped, untested) |  client-dev | merge | – |
 | P2 | reinstall a build from master (the device runs host-synthetic-world without the gen41 BufferedImage fix) | next client-dev | – | – |
 | P2 | `release-client-v1.0` (first release) | client-qa → orch | release | – |
 | P3 | `host-menu-entry-removal` (No Examine, gap 2) | client-dev | merge | – |
@@ -33,12 +34,20 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 | P3 | `poison-sprite-override` (26x26 override refused vs 15x14; plugin-host row overstates it) | client-dev | merge | – |
 | P3 | `netqa-ge-digest`, `client-docs-trim` | client-qa, client-dev | – | – |
 
+## Upstream queue
+
+Fork PRs whose upstream gate passed. Each goes upstream only after the user approves it (user, 2026-10-18).
+
+| fork PR | branch @ commit | upstream PR | gates | note |
+|---|---|---|---|---|
+| #16 | content/sheep-shearer @ 19aefd90a | #366 (draft) | internal + upstream PASS (fork docs qa/sheep-shearer.md) | already force-pushed onto #366's branch before the queue rule; #366 still has its old title/body and stays draft (user: leave as is) |
+
 ## Waiting on the user
 Decided 2026-10-18: updated versions go onto the existing upstream PRs (#354-#357, #366-#368) after their gates,
 each force-push still confirmed at the time; overlapping content (Doric #334, farming #231, specials #313, fletching
 #262) goes upstream as draft PRs only, referencing the other PR. Old fork branches deleted, fork PRs #3/#6/#7/#8 closed.
 
-1. #366: reply comment (asked with the force-push).
+1. #366: title/body update, reply comment and ready — part of the upstream discussion.
 2. Move #354/#355 out of draft after their gates?
 3. Goblin's lookout ladder as its own fix/<slug>?
 5. rsprot bump to 1.0.0-ALPHA-20261014: our PR/issue, or leave to maintainers?

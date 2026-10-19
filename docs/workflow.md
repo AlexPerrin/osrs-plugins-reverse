@@ -99,8 +99,9 @@ Follow upstream's procedure (`tools/scripts/fix_gameval_conflicts.py`, and its C
    change only (nothing unrelated, no overlap with an upstream PR), based on current `main`,
    `fix_gameval_conflicts.py --check` clean, upstream's CONTRIBUTING (commit style, PR text with problem,
    change, tests, data sources, caveats, release note and checklist), every claim in the PR text true of the
-   commit, and caveats covering every gap the accuracy check found. On PASS the orchestrator opens the upstream PR (asks
-   the user).
+   commit, and caveats covering every gap the accuracy check found. On PASS the fork PR joins the **upstream queue**
+   (docs/backlog.md "Upstream queue"). Nothing goes upstream (PR, push to a PR's branch, edit, comment, ready) until
+   the user approves that item in discussion.
 7. **Upstream merge.** `fork.sh sync`, drop the branch from `integration.txt`, rebuild `integration`, deploy.
 
 A new commit voids both gates. The branch stays in `integration` at the commit that passed the internal gate
@@ -186,7 +187,7 @@ Every gate is defined before its work starts, and recorded against an exact comm
 | Merge | client | `client-qa` | Device regression for what changed, A/B where it draws, Network QA if network-relevant, native claims | merge to `master` |
 | Release | client | `client-qa` | Full client QA on `master`, Network QA, privacy patches in the build | tag; GitHub release on the user's OK |
 | Internal | server | `server-qa` | `build-test`, `accuracy-check` against the spec, in-game where it renders | into `integration`, deploy |
-| Upstream | server | `server-qa` | Internal at the same commit + one change only, no upstream overlap, on current `main` + `fix_gameval_conflicts.py --check` + CONTRIBUTING + `pr-text-review` + caveats complete | upstream PR on the user's OK |
+| Upstream | server | `server-qa` | Internal at the same commit + one change only, no upstream overlap, on current `main` + `fix_gameval_conflicts.py --check` + CONTRIBUTING + `pr-text-review` + caveats complete | upstream queue (fork PR); upstream only on the user's approval per item |
 
 Records start with these lines exactly, because the hooks parse them:
 ```

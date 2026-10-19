@@ -31,6 +31,25 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 | P3 | `docs-branch-migrate`: accuracy/*.md, qa/*.md, QA.md from openrune/upstream/ to the fork's docs | server-dev | – | – | – |
 | P2 | rewrite fork STATE.md after the cutover | orch | – | cutover | – |
 
+## Server roadmap (content; from docs/rsps-coverage.md, 2026-10-19)
+
+Missing upstream, defined in a reference implementation, no open upstream PR by anyone else. Each: check upstream
+again first, spec with accuracy-check (OSRS Wiki and cache are the baseline; the reference is evidence for guesses
+only, never copied), one PR per change, no stacking. Reference paths are under re/ref/.
+
+| # | task | reference | size | notes |
+|---|---|---|---|---|
+| 1 | `content/demon-slayer` (F2P) | LostCity quests/quest_demon | M | Delrith fight, Silverlight |
+| 2 | `content/shield-of-arrav` (F2P) | LostCity quests/quest_blackarmgang (+ Phoenix gang) | M | two-player quest in OSRS (one gang each) |
+| 3 | `content/black-knights-fortress` (F2P) | LostCity quests/quest_blackknight | S-M | fortress area module exists upstream |
+| 4 | `content/dragon-slayer` (F2P) | LostCity quests/quest_dragon | L | Elvarg, Melzar's Maze, Crandor; largest |
+| 5 | `content/druidic-ritual` (members) | LostCity quests/quest_druid | S | gates Herblore |
+| 6 | `content/player-trading` (core) | LostCity interface_trade | M | trade request, two-screen confirm, both inventories |
+| 7 | `content/tutorial-island` (Learning the Ropes) | Project Gielinor world/src/tutorial_*.rs (OSRS-era); LostCity tutorial/ is the 2004 version | L | OSRS 2021 rework is the target |
+| 8 | `content/random-events-<name>` (Drunken Dwarf, Mysterious Old Man, Mime, Maze, Strange Plant; one PR each) | LostCity macro events/scripts/general | S each | reuse the Genie's spawner once it's merged |
+| 9 | `content/kalphite-queen` (boss) | LostCity areas/area_kalphite/scripts/kalphite_queen.rs2 | M | drop table already upstream; two phases |
+| 10 | `content/fishing-trawler` (minigame) | LostCity minigames/game_trawler | M-L | OSRS rewards and timings changed since 2004 |
+
 ## Client
 | prio | task | role | gate | depends on |
 |---|---|---|---|---|

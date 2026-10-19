@@ -53,6 +53,13 @@ std::vector<game::PlayerInfo> g_players;  // guarded by g_players_mutex
 std::mutex g_npcs_mutex;
 std::vector<game::Npc> g_npcs;  // guarded by g_npcs_mutex; written only on the game thread
 
+std::mutex g_world_mutex;
+game::WorldEntry g_world;  // guarded by g_world_mutex; id 0 = none
+bool g_world_ok = false;   // guarded by g_world_mutex
+int g_world_id = -1;       // game thread only: the id and list the cache was read for
+std::pair<uintptr_t, uint64_t> g_world_list{0, 0};
+uint64_t g_world_read_at = 0;
+
 const char* name(EventType t) {
     switch (t) {
         case EventType::ClientTick: return "ClientTick";
@@ -395,6 +402,26 @@ void clear_actors() {
     for (const auto& o : players) post({EventType::PlayerDespawned, o.index});
 }
 
+// World Hopper and WorldService ask for the current world's entry from their own threads; the
+// game frees and rebuilds the list on this thread, so it is copied here.
+void cache_world() {
+    int id = game::world();
+    auto list = game::world_list_key();
+    uint64_t now = g_cycles.load(std::memory_order_relaxed);
+    if (id == g_world_id && list == g_world_list && now - g_world_read_at < 25) return;
+    if (list != g_world_list)
+        LOGI("world list: %llu entries at %p", static_cast<unsigned long long>(list.second),
+             reinterpret_cast<void*>(list.first));
+    game::WorldEntry w;
+    bool ok = game::world_entry(id, w);
+    g_world_id = id;
+    g_world_list = list;
+    g_world_read_at = now;
+    std::lock_guard lock(g_world_mutex);
+    g_world = std::move(w);
+    g_world_ok = ok;
+}
+
 void after_cycle() {
     g_cycles++;
 
@@ -419,6 +446,7 @@ void after_cycle() {
     }
     diff_skills();
     game::sync_members_world();
+    cache_world();
     poll_messages(world_up);
     if (world_up) diff_inventories();  // after the messages: changes made after the last one
     diff_interfaces();
@@ -553,6 +581,14 @@ int inventory_view(int id, game::Inventory& out) {
 std::vector<game::Inventory> inventories() {
     std::lock_guard lock(g_inv_mutex);
     return g_inventories;
+}
+
+bool world_entry(int id, game::WorldEntry& out) {
+    if (on_client_thread()) return game::world_entry(id, out);
+    std::lock_guard lock(g_world_mutex);
+    if (!g_world_ok || g_world.id != id) return false;
+    out = g_world;
+    return true;
 }
 
 std::vector<game::PlayerInfo> players() {

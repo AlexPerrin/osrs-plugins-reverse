@@ -127,7 +127,7 @@ jint n_world(JNIEnv*, jclass) { return game::world(); }
 // {String host, String activity, int[] {id, flags, players, location, listed}}, or null.
 jobjectArray n_world_entry(JNIEnv* env, jclass, jint id) {
     game::WorldEntry w;
-    if (!game::world_entry(id, w)) return nullptr;
+    if (!client_thread::world_entry(id, w)) return nullptr;
     jintArray info = env->NewIntArray(5);
     jint iv[5] = {w.id, w.flags, w.players, w.location, w.listed ? 1 : 0};
     env->SetIntArrayRegion(info, 0, 5, iv);

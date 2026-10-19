@@ -24,8 +24,9 @@ The spec is `accuracy/<slug>.md` on the fork's `docs` branch (QA.md section 2). 
    provenance differ). In the spec, say "per LostCity <file>" next to a guess so QA can check it; the PR's Data
    sources may name LostCity as a reference only when a rule followed it.
 3. **RSProx recordings of the official game** (user-approved 2026-10-19): community captures from rsprox.net's
-   database, downloaded and transcribed locally under `re/ref/rsprox/` (see its README for the index, coverage and
-   the transcribe command). They show what the official server sent: animations, spot anims, projectiles, sounds,
+   database. The index, coverage table and transcribe command are on the OpenRune fork's `docs` branch,
+   `references/rsprox.md` (`git -C re/upstream-pr/or show fork/docs:references/rsprox.md`); the recordings and
+   transcripts themselves stay local under `re/ref/rsprox/` (git-ignored). They show what the official server sent: animations, spot anims, projectiles, sounds,
    varps, dialogue and their tick timings. Use them to check those details and to tick the PR template's "checked
    against rsprox dumps" item honestly (cite the recording id and revision). They may contain other players' names
    and chat: never commit, quote or upload a recording or transcript; cite only ids and the packets you checked.

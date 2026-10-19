@@ -239,6 +239,40 @@ bool viewport_zoom(int out[5]) {
 }
 int world_flags() { uintptr_t c = client(); return c ? read_at<int32_t>(c + 0x2f64) : 0; }
 
+namespace { std::string read_string(uintptr_t addr); }
+
+// World list loaded from slr.ws (parser 0x4320dc): a global container at 0xace6c0 with u64 count
+// +0x08 and World** +0x10; each World (0x68 bytes) is +0x00 id, +0x04 flags, +0x08 players,
+// +0x10 host and +0x28 activity strings, +0x40 location. setWorld (0x432748) copies the picked
+// entry's id/flags/host to Client +0x3174/+0x2f64/+0x3098; the arg parser (0x43d39c) fills the
+// same fields when the game starts on a world from its arguments (the host is --gameaddress).
+bool world_entry(int id, WorldEntry& out) {
+    if (!g_build || id <= 0) return false;
+    auto count = read_at<uint64_t>(g_base + 0xace6c8);
+    auto list = read_at<uintptr_t>(g_base + 0xace6d0);
+    if (list && count <= 4096) {
+        for (uint64_t i = 0; i < count; i++) {
+            auto w = read_at<uintptr_t>(list + i * 8);
+            if (!w || read_at<int32_t>(w) != id) continue;
+            out.id = id;
+            out.flags = read_at<int32_t>(w + 0x04);
+            out.players = read_at<int32_t>(w + 0x08);
+            out.host = read_string(w + 0x10);
+            out.activity = read_string(w + 0x28);
+            out.location = read_at<int32_t>(w + 0x40);
+            out.listed = true;
+            return true;
+        }
+    }
+    uintptr_t c = client();
+    if (!c || read_at<int32_t>(c + 0x3174) != id) return false;
+    out.id = id;
+    out.flags = read_at<int32_t>(c + 0x2f64);
+    out.host = read_string(c + 0x3098);
+    out.listed = false;
+    return true;
+}
+
 // Grand Exchange offers: slot i is the object *(Client + 0x4185c0 + i*8), read by the CS2
 // stockmarket_* ops (handler 0x4ed838, ops 3903-3913): +0x00 u8 state (0 empty, 1 adding, 2 stable,
 // 5 finished: isofferempty/adding/stable/finished), +0x01 u8 type (0 buy, 1 sell; getoffertype),

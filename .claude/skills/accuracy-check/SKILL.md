@@ -37,13 +37,22 @@ The spec is `accuracy/<slug>.md` on the fork's `docs` branch (QA.md section 2). 
 1. What upstream already has: `gh pr list -R OpenRune/OpenRune-Server --search <topic>`, issues, recent `main`.
 2. Each mechanic: its source (wiki page and section, cache entry, Mod post), the planned behaviour.
 3. Caveats and guesses, each marked.
-4. The tests, one per rule.
-5. The PR split and `Depends:` (docs/workflow.md "Changes for upstream").
+4. **RSProx comparison** (required for new content, user 2026-10-19): search rsprox.net for recordings of the
+   mechanic (`references/rsprox.md` on the fork's docs: search by NPC/LOC/INTERFACE id and by TEXT/MESSAGE_GAME;
+   quest varps alone match only recordings that change them), transcribe them locally, and note per rule what the
+   recording shows (anims, spot anims, sounds, messages, dialogue order, varps per stage, interfaces, tick timings).
+   If none exists, say so in the spec; it stays a guess.
+5. The tests, one per rule (only where AGENTS.md wants them).
+6. The PR split and `Depends:` (docs/workflow.md "Changes for upstream").
 
 ## Checking (server-qa)
 1. Re-read each source yourself; don't rely on the spec's quotes.
-2. Check the branch's behaviour (tests, in-game) against each rule.
-3. Every gameplay-visible divergence is either fixed or listed in the PR's Caveats.
+2. **Compare against the RSProx recordings** listed in the spec or `references/rsprox.md` (transcripts under
+   `re/ref/rsprox/txt/`, notes under `re/ref/rsprox/notes/`): each recorded detail that the branch implements must
+   match, or be fixed, or be a caveat. Record the comparison in the QA record (recording ids, revision, which rules
+   matched or diverged; no player names or chat). Tick the PR template's rsprox item only when this was done.
+3. Check the branch's behaviour (tests, in-game) against each rule.
+4. Every gameplay-visible divergence is either fixed or listed in the PR's Caveats.
 
 ## Report
 Per rule: matches, diverges (with the evidence), or a guess. Then the caveats the PR must list.

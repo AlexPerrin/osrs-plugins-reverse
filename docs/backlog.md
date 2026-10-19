@@ -36,8 +36,8 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 |---|---|---|---|---|
 | P2 | `release-client-v1.0` (first release) | client-qa → orch | release | – |
 | P3 | offsets.md: Client vtable slot 6 0x421a20 is the draw on doCycle's thread (frame fn 0x86bdc8), per qa/client-world-entry-thread-safety.md | client-dev | – | – |
-| P2 | `host-prompt-enter` (gap 6): the Enter that submits a chatbox prompt while the soft keyboard is shown never reaches KeyListeners, so Decimal Prices can't rewrite varcstr 359 before the game reads it; likely the IME editor action (same cause as gap 1) | client-dev | merge | – |
-| P2 | `herbiboar-after-teleport` (gap 7): core Herbiboar draws nothing after ::tele into Fossil Island from elsewhere (works after a relog there); Herbi AFK never draws its path line | client-dev | merge | – |
+| P2 | `scene-item-despawn`: SceneObjects posts no ItemDespawned for ground items that leave the scene, so Ground Items double-counts after a teleport round trip (pre-existing; qa/client-hostfixes-gen45.md) | client-dev | merge | – |
+| P3 | `rebuild-double-logged-in`: a native 30 arriving after the rebuild release tick could post LOGGED_IN twice (unguarded, never seen) | client-dev | merge | – |
 | P3 | `host-menu-entry-removal` (No Examine, gap 2) | client-dev | merge | – |
 | P3 | `hub-batch-next` (scratchpad/client38/ranking.json; keep it) | client-dev | merge | – |
 | P3 | `poison-sprite-override` (26x26 override refused vs 15x14; plugin-host row overstates it) | client-dev | merge | – |

@@ -26,6 +26,7 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 | P2 | `overlap-{doric #334, farming #231, specials #313, fletching #262}`: upstream as draft PRs only, each referencing the other PR (user, 2026-10-18); fix/06, 07, 69 local until #299 | server-dev, server-qa | upstream | gates | gh pr list |
 | P3 | `gate-{fairy-rings,jewellery,diaries,grand-exchange}` + texts; GE needs #352 and an rsprot bump (caveat) | server-qa, server-dev | internal + upstream | – | UPSTREAM-PRS.md |
 | P3 | plank sack gaps vs OSRS (merged #357), one fix each: Use in the bank fills from the inventory / empties into the bank (wiki, 27 Aug 2025), sawmill auto-fill (1 Nov 2023), death keeps contents. No tests-only PR (maintainer on #348) | server-dev | internal + upstream | – | sd23 |
+| P3 | `fix/new-account-stone-arrangement`: upstream's account default sets varbit 4607 to 1 after the login frame is picked, so a new account starts on toplevel 161 with 4607 = 1 (sq25, qa/gameframe-fullscreen-map.md); check against OSRS's new-account frame | server-dev | internal + upstream | – | sq25 |
 | P3 | `upstream-fixes-batch-4`: 10, 11, 22, 25, 31, 36, 37, 54, 56, 59/63 (held), 69, 70, 71, 76 | server-dev, server-qa | upstream | internal PASS each | fork fix/* |
 | P3 | `cleanup-pirates-treasure` (squash the fixup, base on the fixture) | server-dev | internal | fixture | fork content/pirates-treasure |
 | P3 | `docs-branch-migrate`: accuracy/*.md, qa/*.md, QA.md from openrune/upstream/ to the fork's docs | server-dev | – | – | – |

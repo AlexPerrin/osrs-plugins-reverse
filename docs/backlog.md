@@ -25,7 +25,8 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 | prio | task | role | gate | depends on |
 |---|---|---|---|---|
 | P2 | `hub-exercise-after-cutover`: Clue Juggling Timers, Ground Items despawn (fix/76), Coal Bag (fix/75), Herbi AFK, Did I Compost, Cannon Highlighter, Fish Barrel, Clue Steps, Decimal Prices with a real "." | client-dev | merge | cutover deploy |
-| P2 | `host-synthetic-world` (Current World NPE, gap 3) | client-dev | merge | – |
+| P2 | `world-entry-thread-safety`: game::world_entry memcpys the world list from World Hopper's thread (~1/s); a list reload could free it mid-read. Read on the client thread or cache the entry | client-dev | merge | – |
+| P2 | reinstall a build from master (the device runs host-synthetic-world without the gen41 BufferedImage fix) | next client-dev | – | – |
 | P2 | `release-client-v1.0` (first release) | client-qa → orch | release | – |
 | P3 | `host-menu-entry-removal` (No Examine, gap 2) | client-dev | merge | – |
 | P3 | `hub-batch-next` (scratchpad/client38/ranking.json; keep it) | client-dev | merge | – |

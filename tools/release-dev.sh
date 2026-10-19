@@ -68,8 +68,8 @@ echo "release-dev: secrets check on $scanned added or changed files"
 assets=("$work/osrs-plugins-$tag-base.apk" "$work/osrs-plugins-$tag-split.apk")
 cp re/out/base.apk "${assets[0]}"; cp re/out/split.apk "${assets[1]}"
 sums=$(cd "$work" && sha256sum "$(basename "${assets[0]}")" "$(basename "${assets[1]}")")
-prev=$(git tag -l 'v*' --sort=-creatordate | head -1)
-changes=$(git log --no-merges --format='- %s (%h)' ${prev:+"$prev"..}HEAD | head -40)
+prev=$(git tag -l 'v*' --sort=-creatordate | sed -n 1p)
+changes=$(git log -n 40 --no-merges --format='- %s (%h)' ${prev:+"$prev"..}HEAD)
 cat > "$work/notes.md" <<EOF
 Automated dev build of \`master\` at \`${sha:0:9}\`. Not a gated release: the official releases (\`vX.Y.Z\`)
 are checked by client QA on a device; dev builds pass only the build's machine checks (telemetry patches

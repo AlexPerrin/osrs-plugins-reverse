@@ -34,8 +34,9 @@ spawned from the orchestrator's session here.
 5. **Merge gate.** `client-qa` runs the regression and checks at the branch's commit; on PASS the orchestrator
    merges to `master`.
 6. **Release gate.** When a set of features is ready, `client-qa` runs the release QA on `master`; on PASS the
-   orchestrator tags `vX.Y.Z` (https://semver.org; a pre-release such as `v0.1.0-dev` is a GitHub pre-release). The record is `qa/client-X.Y.Z[-pre].md`. A GitHub release is published only with the user's confirmation, and never
-   with the Jagex APK or anything its licence forbids.
+   orchestrator tags `vX.Y.Z` (https://semver.org; a pre-release such as `v0.1.0-dev` is a GitHub pre-release). The record is `qa/client-X.Y.Z[-pre].md`. A GitHub release is published only with the user's confirmation. The full
+   repacked APK is attached (user's decision, 2026-10-19, knowing it contains Jagex's app); the gate checks it
+   carries no secrets or personal data.
 
 Client QA covers: a device regression (core plugins and pinned hub plugins, scripted through the devtools bridge
 where possible, with the plugin-host table updated); Network QA (docs/app-telemetry.md) for every release and

@@ -1188,6 +1188,15 @@ jintArray n_sprite(JNIEnv* env, jclass, jint id) {
     return r;
 }
 
+jintArray n_sprite_info(JNIEnv* env, jclass, jint id) {
+    if (!require_client_thread(env, "spriteInfo")) return nullptr;
+    int v[6];
+    if (!game::sprite_info(id, v)) return nullptr;
+    jintArray r = env->NewIntArray(6);
+    env->SetIntArrayRegion(r, 0, 6, reinterpret_cast<const jint*>(v));
+    return r;
+}
+
 jboolean n_sprite_write(JNIEnv* env, jclass, jint id, jintArray pixels, jint w, jint h) {
     if (!client_thread::on_client_thread() || !pixels || w <= 0 || h <= 0 || env->GetArrayLength(pixels) < w * h) return false;
     std::vector<uint32_t> px(static_cast<size_t>(w) * h);
@@ -1646,6 +1655,7 @@ const JNINativeMethod kNatives[] = {
     {"itemSprite", "(IIIIIZ)[I", reinterpret_cast<void*>(n_item_sprite)},
     {"sprite", "(I)[I", reinterpret_cast<void*>(n_sprite)},
     {"spriteWrite", "(I[III)Z", reinterpret_cast<void*>(n_sprite_write)},
+    {"spriteInfo", "(I)[I", reinterpret_cast<void*>(n_sprite_info)},
     {"menuPoint", "()[I", reinterpret_cast<void*>(n_menu_point)},
     {"sceneObjects", "()[I", reinterpret_cast<void*>(n_scene_objects)},
     {"groundItems", "()[I", reinterpret_cast<void*>(n_ground_items)},

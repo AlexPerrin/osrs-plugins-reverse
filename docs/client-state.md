@@ -1,7 +1,7 @@
 # Client state
 
 Short current-state doc for the client track (docs/workflow.md "State docs"). Rewrite it; don't append.
-History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 45.
+History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 46.
 
 ## What this is
 
@@ -27,6 +27,11 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **Sprite overrides of the canvas size (client/poison-sprite-override, gen 46, device 2026-10-19)**: the game keeps sprites trimmed
+  (15x14 heart at 6,6 in a 26x26 canvas, Sprite +0x20..+0x2c, new `Native.spriteInfo`); an override of the canvas size is now cropped to
+  the trimmed block at its offset, as desktop draws the whole canvas. Poison's heart override is applied (logcat `26x26 canvas cropped to
+  the game's 15x14 at 6,6`), green while poisoned, red after the cure. Evidence: gen 46 scratchpad `g46/poison-on.png`, `poison-off.png`,
+  `poison-logcat.txt`. No network change (native read of game memory + host Java).
 - **Rebuild LOADING waits for the new scene base (client/herbiboar-after-teleport, gen 45, stacked on client/host-prompt-enter;
   device 2026-10-19)**: OpenRune's teleports are 30 -> 25 -> 30 and the host posted LOADING at 25 with the old scene base, so
   getMapRegions (from the base) gave the old regions and Herbiboar's area check on LOADING failed. `Host` now holds a 25 seen

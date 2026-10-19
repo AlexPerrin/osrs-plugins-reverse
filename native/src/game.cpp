@@ -2238,6 +2238,22 @@ bool sprite(int id, std::vector<uint32_t>& pixels, int& width, int& height) {
     return true;
 }
 
+// Sprite +0x18/+0x1c trimmed width/height, +0x20/+0x24 x/y offset, +0x28/+0x2c full (canvas) width/height:
+// the flips 0x6b1730 / 0x6b18bc recompute the offset as full - (size + offset) (static RE gen 46).
+bool sprite_info(int id, int out[6]) {
+    uintptr_t c = client();
+    if (!g_build || !c || id < 0 || id > 0xfffff) return false;
+    auto cache = read_at<uintptr_t>(c + 0x413a98);
+    if (!cache || game_state() < 10 || !read_at<uintptr_t>(cache + 0x10)) return false;
+    bool ok = false;
+    using Fn = const uintptr_t* (*)(uintptr_t, int, int, bool, bool, int, bool*);
+    const uintptr_t* slot = reinterpret_cast<Fn>(g_base + 0x5d4074)(cache, id, 0, false, false, 0, &ok);
+    if (!ok || !slot || !slot[1]) return false;
+    uintptr_t spr = slot[1];
+    for (int i = 0; i < 6; i++) out[i] = read_at<int32_t>(spr + 0x18 + 4 * i);
+    return out[0] > 0 && out[1] > 0;
+}
+
 // Overwrites the cached sprite's pixels in place (sprite overrides); same size only. The cache
 // reloads the original after an LRU eviction, so callers re-apply periodically.
 bool sprite_write(int id, const uint32_t* pixels, int width, int height) {

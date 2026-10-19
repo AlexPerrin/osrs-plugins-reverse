@@ -70,6 +70,10 @@ number order). That made changes stack and grow; once they became PRs, maintaine
   `main`, builds and tests on its own, and contains no commit of another open PR. Shared code goes in its own small
   change; a change that needs it stays in the fork queue and goes upstream only after the shared change has merged
   and the branch is rebased on the new `main`.
+- **Upstream's AGENTS.md conventions** (on upstream `main`; maintainers apply them in review): tests only for real
+  logic that moves items or state, not for a simple op handler or a wiki string ("No Test is needed" on #348); no
+  new KDoc or explanatory comments ("Comments — less is more"); nothing made public just for a test. Server toggles
+  go in the server config with a default.
 - **Check upstream first.** Before the spec: open PRs, issues and recent `main` commits for the same content
   (`gh pr list -R OpenRune/OpenRune-Server --search <topic>`). If upstream has it, build on theirs or drop ours.
 

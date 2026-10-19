@@ -34,6 +34,7 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 |---|---|---|---|---|
 | P2 | `hub-exercise-after-cutover`: Clue Juggling Timers, Ground Items despawn (fix/76), Coal Bag (fix/75), Herbi AFK, Did I Compost, Cannon Highlighter, Fish Barrel, Clue Steps, Decimal Prices with a real "." | client-dev | merge | cutover deploy |
 | P2 | `release-client-v1.0` (first release) | client-qa → orch | release | – |
+| P2 | `ghidra-reanalyse`: the shared re/ghidra project lacks analysis near ELF 0x4147d8 and 0x4c2ad4, so Xrefs.java misses 2 of 3 callers of 0x4320dc (found by the REA trial, 2026-10-19; a 6th call site at 0x4193d8 is a cold block of 0x41615c). Re-run auto-analysis on a copy, compare, swap in (one Ghidra writer); add a function-level Callers.java to the reverse skill | client-dev | – | – |
 | P3 | offsets.md: Client vtable slot 6 0x421a20 is the draw on doCycle's thread (frame fn 0x86bdc8), per qa/client-world-entry-thread-safety.md | client-dev | – | – |
 | P3 | `host-menu-entry-removal` (No Examine, gap 2) | client-dev | merge | – |
 | P3 | `hub-batch-next` (scratchpad/client38/ranking.json; keep it) | client-dev | merge | – |

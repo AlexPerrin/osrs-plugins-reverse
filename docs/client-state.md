@@ -1,7 +1,7 @@
 # Client state
 
 Short current-state doc for the client track (docs/workflow.md "State docs"). Rewrite it; don't append.
-History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 45.
+History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 46.
 
 ## What this is
 
@@ -27,6 +27,13 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **Ground items that leave the scene despawn (client/scene-item-despawn, gen 46, device 2026-10-19)**: `SceneObjects.refresh`
+  posted no ItemDespawned for an item whose tile is outside the new base after a rebuild, so Ground Items counted a dropped
+  item twice after a teleport round trip (qa/client-hostfixes-gen45.md obs. 1). Those items now despawn on a tile with their
+  old world location and item layer (local location null). Device: Bronze dagger dropped at 3219,3222, two round trips
+  Lumbridge -> Fossil Island (3686,3870) -> Lumbridge: label "Bronze dagger (GE: 101 gp) (HA: 6 gp)" with no count, one
+  LOADING/WorldViewLoaded/LOGGED_IN per teleport, no exceptions. Evidence: gen 46 session scratchpad `g46/`
+  (`despawn-after-roundtrip.png`, `despawn-after-roundtrip2.png`, `scene-item-despawn-logcat.txt`). No network change.
 - **Rebuild LOADING waits for the new scene base (client/herbiboar-after-teleport, gen 45, stacked on client/host-prompt-enter;
   device 2026-10-19)**: OpenRune's teleports are 30 -> 25 -> 30 and the host posted LOADING at 25 with the old scene base, so
   getMapRegions (from the base) gave the old regions and Herbiboar's area check on LOADING failed. `Host` now holds a 25 seen

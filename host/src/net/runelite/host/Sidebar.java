@@ -823,6 +823,11 @@ final class Sidebar {
                 };
                 w.setCallback((Window.Callback) Proxy.newProxyInstance(Sidebar.class.getClassLoader(), new Class<?>[] {Window.Callback.class}, h));
                 Log.i(TAG, "sidebar touch router installed on " + a.getClass().getName());
+                try {
+                    PromptEnter.install(a);
+                } catch (Throwable t) {
+                    Log.e(TAG, "prompt enter hook failed", t);
+                }
             } catch (Throwable t) {
                 Log.e(TAG, "sidebar touch router failed", t);
             }

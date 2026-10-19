@@ -483,15 +483,25 @@ public final class Host {
         long base = ((long) wv.getBaseX() << 32) | (wv.getBaseY() & 0xffffffffL);
         if (base == loadedBase || base == 0) return;
         if (loadedBase == Long.MIN_VALUE) { postWorldViewLoaded(bus); return; }  // first scene: LOGGED_IN was just posted
+        postLoading(bus);
+        postGameState(bus, GameState.LOGGED_IN);  // posts WorldViewLoaded first
+    }
+
+    /** -1, or the cycles a rebuild's LOADING (native 25 while logged in) has been held for its new scene base. */
+    private static int heldRebuildCycles = -1;
+
+    /** GameStateChanged(LOADING) for a rebuild while logged in; getGameState reads LOADING meanwhile. */
+    private static void postLoading(EventBus bus) {
+        if (worldView != null) worldView.androidScene().objects.forgetObjects();
         GameStateChanged loading = new GameStateChanged();
         loading.setGameState(GameState.LOADING);
+        Log.i(TAG, "GameStateChanged LOADING (scene rebuild)");
         sceneReloading = true;
         try {
             bus.post(loading);
         } finally {
             sceneReloading = false;
         }
-        postGameState(bus, GameState.LOGGED_IN);  // posts WorldViewLoaded first
     }
 
     /** The world view shows a scene base other than the last WorldViewLoaded's (and not 0,0 mid-rebuild). */
@@ -544,7 +554,17 @@ public final class Host {
                     pendingSceneCycles = -1;
                     postGameState(bus, GameState.LOGGED_IN);  // WorldViewLoaded, then LOGGED_IN
                 }
-                if (!pendingLoggedIn && client.getGameState() == GameState.LOGGED_IN && localPlayer() != null) {
+                if (heldRebuildCycles >= 0 && client.getGameState() == GameState.LOGGED_IN) {
+                    // A held rebuild: the new base replays below; the same scene (a reload, a teleport
+                    // within it) gets its LOADING/LOGGED_IN pair after 50 cycles, as before.
+                    if (sceneBaseChanged()) heldRebuildCycles = -1;
+                    else if (++heldRebuildCycles > 50) {
+                        heldRebuildCycles = -1;
+                        postLoading(bus);
+                        postGameState(bus, GameState.LOGGED_IN);
+                    }
+                }
+                if (!pendingLoggedIn && heldRebuildCycles < 0 && client.getGameState() == GameState.LOGGED_IN && localPlayer() != null) {
                     postSceneReload(bus);
                     try {
                         GeOffers.poll(bus);
@@ -638,6 +658,17 @@ public final class Host {
                     pendingSceneCycles = 0;
                     break;
                 }
+                // A rebuild while logged in (OpenRune's teleports: 30 -> 25 -> 30) reaches 25 before the
+                // world view has the new scene base, so getMapRegions would still answer the old scene's
+                // regions (Herbiboar checks its area on LOADING). Desktop has the new regions from the
+                // rebuild packet by then. The LOADING is held until the new base shows; then the
+                // scene-base replay (postSceneReload) posts LOADING, WorldViewLoaded and LOGGED_IN.
+                if (s == GameState.LOADING && lastPostedState == GameState.LOGGED_IN && loggedInPosted) {
+                    heldRebuildCycles = 0;
+                    break;
+                }
+                if (heldRebuildCycles >= 0 && s == GameState.LOGGED_IN) break;  // still held: the tick posts it
+                heldRebuildCycles = -1;
                 postGameState(bus, s);
                 break;
             }

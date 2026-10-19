@@ -1,7 +1,7 @@
 # Client state
 
 Short current-state doc for the client track (docs/workflow.md "State docs"). Rewrite it; don't append.
-History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-18, client dev gen 44 (and release-notices).
+History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 45.
 
 ## What this is
 
@@ -13,11 +13,12 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 - API coverage and each plugin's status: docs/plugin-host.md. Addresses: docs/offsets.md (ELF; Ghidra = ELF + 0x100000).
 - Privacy patches and Network QA: docs/app-telemetry.md (read it before any build that touches networking).
 
-## Installed on the device (end of gen 44)
+## Installed on the device (end of gen 45)
 
-- Build: 09c05c9's gated build (v0.1.0 release gate), `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1 tools/repack.sh --install`
-  (7 `telemetry:` lines; under WSL pass `ADB=.../adb.exe ANDROID_SERIAL=127.0.0.1:5555`, or the install silently doesn't happen).
-  Gen 44 built nothing.
+- Build: client/herbiboar-after-teleport's head (gen 45; includes client/host-prompt-enter), built in the gen 45 worktree with
+  `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1 MODULUS=<openrune.sh modulus> tools/repack.sh` (7 `telemetry:`
+  lines) and installed with `adb install-multiple -r` (Windows adb.exe, `wslpath -w` paths). Reinstall master's build after the
+  merge gates if they fail.
 - Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3219,3222.
 - **Expected drift: a Fish barrel in the tester's inventory slot 15** (spawned gen 44; OpenRune's barrel Destroy does nothing,
   filed as a server task). Leave it (orchestrator, gen 44); destroy it once that fix is live. The restore check's MANUAL line says so.
@@ -26,6 +27,23 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **Rebuild LOADING waits for the new scene base (client/herbiboar-after-teleport, gen 45, stacked on client/host-prompt-enter;
+  device 2026-10-19)**: OpenRune's teleports are 30 -> 25 -> 30 and the host posted LOADING at 25 with the old scene base, so
+  getMapRegions (from the base) gave the old regions and Herbiboar's area check on LOADING failed. `Host` now holds a 25 seen
+  while logged in until the base changes, then posts LOADING (scene objects forgotten first), WorldViewLoaded and LOGGED_IN in
+  one cycle (`GameStateChanged LOADING (scene rebuild)` in logcat); same-base rebuilds get the pair after 50 cycles. Device:
+  after `::tele 3686 3870 0` from Lumbridge, core Herbiboar draws the start and trail tiles and Herbi AFK its path line (scene and
+  minimap). A `setGameState(LOADING)` reload (probe `reload 0 0`) shows no native 25 to the host at all, so it posts no LOADING
+  (unchanged by this fix; desktop would). Evidence: `g45/herbiboar-after-tele.png`, `g45/herbiafk-trail-line-after-tele.png`,
+  `g45/herbiboar-tele-logcat.txt`. No network change.
+- **Soft keyboard Enter for KeyListeners (client/host-prompt-enter, gen 45, device 2026-10-19)**: the game submits a chatbox
+  input or prompt from its hidden EditText's editor action (IME_ACTION_DONE -> `com.jagex.android.t.a` -> key 66 through JNI
+  `ru.hx`/`ru.wv`), which never passes the Window.Callback; on BlueStacks a hardware Enter's down also becomes that action (only
+  its up reached KeyRouter). New `host/.../PromptEnter.java` wraps the listener when the EditText takes focus: VK_ENTER for
+  KeyListeners first (KeyRouter.editorEnter, client thread, in order with held keys), then the game's submit once. Device:
+  Decimal Prices' Withdraw-X "1.5k" withdrew 1500 (deposited back); chat "Gen45 once" with the keyboard shown sent once.
+  Evidence: gen 45 session scratchpad `g45/` (`decimal-withdraw-1500.png`, `chat-enter-once.png`, `prompt-enter-logcat.txt`).
+  No network change (host Java only).
 - **v0.1.0 release gate PASS at 09c05c9** (qa/client-0.1.0.md; notes draft qa/client-0.1.0-notes.md).
   `THIRD_PARTY_NOTICES.md` (repo root) gives the notices and licence texts for everything third-party in libosrsrl.so and
   its host.jar (Dear ImGui + stb + ProggyClean, the RuneLite client subset/API/http-api, the host's Maven jars from
@@ -90,6 +108,8 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
    Enter only submits chat while the soft keyboard is shown (`dumpsys input_method | grep mInputShown`). Right after login,
    before the keyboard was ever shown, hidden-keyboard Enter works. Check the chat input with devtools
    `get_var varcstr 335` (non-empty after a send = stalled); recover by showing the keyboard and pressing Enter.
+   Gen 45: in that state the hidden-keyboard Enter does reach KeyListeners and is re-dispatched to the Activity (KeyManager
+   logs press/typed/release), but the game doesn't submit; the cause is on the game side of the dispatch (not investigated).
 2. **Removing native menu entries**: plugins that call `setMenuEntries(shorter)` in MenuOpened (No Examine) can't remove
    entries from the open long-press menu; the host only reorders and rewrites them.
 3. **Current World**: runs (gen 42 + the gen 43 thread-safety fix). Not checked: its world switcher title (69:2); the in-game
@@ -98,13 +118,11 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 4. **OBJ_ADD timers: done** (fix/76 live; host reads them). The durations are the server's (200 ticks for every player
    drop), filed as a server task.
 5. Random Event Hider can't be staged on OpenRune; Line of Sight's stray lines at 3219,3222 are terrain, not a bug.
-6. **Prompt Enter never reaches KeyListeners** (Decimal Prices): hardware keys from `adb shell input keyevent` reach KeyRouter
-   (the plugin appends the "."), but the Enter that submits a chatbox prompt while the soft keyboard is shown doesn't come
-   through the Window.Callback, so the plugin can't rewrite varcstr 359 first (the game reads 359 at submit: verified by
-   setting it with the probe). Likely the IME's editor action (same cause as gap 1). A fix would hand the host a VK_ENTER for
-   KeyListeners from the game's input-connection submit path.
-7. **Herbiboar after a teleport into Fossil Island** draws nothing (gen 22's fix regressed or a different path: teleport from
-   Falador, LOADING posted); after a relog in the area it works. Herbi AFK draws no path line in either case.
+6. **Prompt Enter for KeyListeners: fixed (client/host-prompt-enter, gen 45).** The soft keyboard's Enter is an editor action
+   on the game's hidden EditText, not a key event; `PromptEnter` wraps that EditText's listener (docs/plugin-host.md row "Soft keyboard
+   Enter"). Decimal Prices converts "1.5k" to 1500.
+7. **Herbiboar after a teleport: fixed (client/herbiboar-after-teleport, gen 45).** A rebuild's LOADING now waits for the new
+   scene base, so getMapRegions answers the new regions; Herbi AFK draws its path line too.
 8. Host API gaps found by the v0.1.0 gate (backlog): no `javax.sound.sampled` (Drop Sounds throws at start) and no
    `ConfigManager.getRSProfiles()` (Time Tracking's farming completion check throws NoSuchMethodError).
 
@@ -144,8 +162,7 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 1. Merge gate for client/world-entry-thread-safety with client-qa. Regression on plugins that draw into images (Poison
    infobox, Instance Map, Bank Tags icons) with the merged BufferedImage fix; Quick Prayer Preview checked gen 43.
-2. Host gaps 6 (prompt Enter for KeyListeners) and 7 (Herbiboar after ::tele; then Herbi AFK's missing line). When the
-   server tasks from gen 44 are live: Fish Barrel (Check), Clue Steps, Did I Compost's treated path, destroy the slot-15 Fish barrel.
+2. When the server tasks from gen 44 are live: Fish Barrel (Check), Clue Steps, Did I Compost's treated path, destroy the slot-15 Fish barrel.
 3. More hub plugins from the ranking (`scratchpad/client38/ranking.json` or refetch); netcheck + stubcheck each.
 4. Host gap 2 (native menu entry removal).
 5. Opportunistic: a capture that includes a GE digest fetch (should go to the sidecar).

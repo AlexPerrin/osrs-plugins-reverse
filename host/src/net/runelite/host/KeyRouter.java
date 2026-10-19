@@ -42,6 +42,57 @@ final class KeyRouter {
         }
     }
 
+    static boolean listenersActive() {
+        return hasListeners();
+    }
+
+    /**
+     * Main thread, from PromptEnter: the soft keyboard's Done (the game's chatbox/prompt submit) as a
+     * VK_ENTER press, typed '\n' and release for the listeners on the client thread, queued behind any
+     * held key events; then {@code submit} (the game's editor action) on the main thread, unless a
+     * listener consumed the press.
+     */
+    static void editorEnter(final Runnable submit) {
+        clientThread.invokeLater(() -> {
+            boolean consumed = false;
+            try {
+                consumed = sendEnter();
+            } catch (Throwable t) {
+                Log.e(Host.TAG, "enter key listeners threw", t);
+            }
+            if ("1".equals(Native.property("debug.osrsrl.keylog"))) Log.i(Host.TAG, "key 10 (editor action)" + (consumed ? " consumed" : " submitted"));
+            if (consumed) return;
+            MAIN.post(() -> {
+                try {
+                    submit.run();
+                } catch (Throwable t) {
+                    Log.e(Host.TAG, "editor action failed", t);
+                }
+            });
+        });
+    }
+
+    /** Client thread: true when a listener consumed the press (or its typed '\n'). */
+    private static boolean sendEnter() {
+        KeyManager m = manager;
+        int vk = java.awt.event.KeyEvent.VK_ENTER;
+        long now = System.currentTimeMillis();
+        java.awt.event.KeyEvent press = new java.awt.event.KeyEvent(SOURCE, java.awt.event.KeyEvent.KEY_PRESSED, now, 0, vk, '\n');
+        m.processKeyPressed(press);
+        boolean consumed = press.isConsumed();
+        if (!consumed) {
+            java.awt.event.KeyEvent typed = new java.awt.event.KeyEvent(SOURCE, java.awt.event.KeyEvent.KEY_TYPED, now, 0,
+                java.awt.event.KeyEvent.VK_UNDEFINED, '\n');
+            m.processKeyTyped(typed);
+            consumed = typed.isConsumed();
+        }
+        m.processKeyReleased(new java.awt.event.KeyEvent(SOURCE, java.awt.event.KeyEvent.KEY_RELEASED, now, 0, vk, '\n'));
+        return consumed;
+    }
+
+    /** Client thread: an Enter key down went through the listeners and its up is still to come. */
+    private static boolean enterDown;
+
     /** Main thread, from the Window.Callback proxy: true when the event was taken (it is re-dispatched later). */
     static boolean onKey(final KeyEvent e, final Window.Callback game) {
         if (e.isSystem() || e.getAction() == KeyEvent.ACTION_MULTIPLE || !hasListeners()) return false;
@@ -99,6 +150,13 @@ final class KeyRouter {
         char ch = uc > 0 && (uc & KeyCharacterMapCombining) == 0 ? (char) uc : java.awt.event.KeyEvent.CHAR_UNDEFINED;
         if (vk == 0 && ch == java.awt.event.KeyEvent.CHAR_UNDEFINED) return e;  // nothing a listener could match
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
+        if (PromptEnter.isEnter(e)) {
+            // With the soft keyboard shown the IME turns an Enter's down into the editor action
+            // (PromptEnter, which sends the listeners their own press and release); its up still
+            // comes here. Listeners get no release without a press.
+            if (!down && !enterDown) return e;
+            enterDown = down;
+        }
         java.awt.event.KeyEvent ke = new java.awt.event.KeyEvent(SOURCE,
             down ? java.awt.event.KeyEvent.KEY_PRESSED : java.awt.event.KeyEvent.KEY_RELEASED,
             System.currentTimeMillis(), mods, vk, ch);

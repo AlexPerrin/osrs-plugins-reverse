@@ -46,7 +46,7 @@ each force-push still confirmed at the time; overlapping content (Doric #334, fa
 9. Switch the fork's default branch to `integration` after the cutover.
 
 ## Orchestrator cleanup
-- Delete the merged fix/02, 03, 04, 27, 58, 60, 62 branches (fork and local).
+- Local copies of the merged fix/02, 03, 04, 27, 58, 60, 62 (deleted on the fork 2026-10-18).
 - Local refs in re/upstream-pr/or: new/*, pre-rebase/*, refs/qa/fix/73-75.
-- Scratchpad (13 GB): sd22/, qa/, acc/ (after the acc gates), ctx/, b2/, e2e/, forkpr/, up/, up71/, amall/, amchk/, chk/, clean/, g29-g31/.
+- Scratchpad: qa/, acc/ (after the acc gates). sd22's unique refs are archived in re/upstream-pr/or as refs/archive/sd22/* (fin-hunter-rumours dcf92ca13 is the older linear rumours, useful for hunter-split-ship).
 - Docker: the exited osrs-rsps-test container; old bootcheck/rollback/cs2test/sidecar tags; sd22-gradle, upstream-pr-gradle-acc* and anonymous volumes.

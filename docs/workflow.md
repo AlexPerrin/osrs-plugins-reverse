@@ -96,7 +96,8 @@ Follow upstream's procedure (`tools/scripts/fix_gameval_conflicts.py`, and its C
    spec; in-game on desktop RuneLite where a plugin renders something. On PASS the orchestrator adds the branch to
    `integration` and deploys. A client blocker is unblocked here.
 6. **Upstream gate** (`server-qa`): is it ready for upstream? The internal gate at the same commit, plus one
-   change only (nothing unrelated, no overlap with an upstream PR), based on current `main`,
+   change only (nothing unrelated, no overlap with an upstream PR, none of our own docs: STATE.md, specs, QA
+   records and PR texts live only on the fork's `docs` branch and never go upstream), based on current `main`,
    `fix_gameval_conflicts.py --check` clean, upstream's CONTRIBUTING (commit style, PR text with problem,
    change, tests, data sources, caveats, release note and checklist), every claim in the PR text true of the
    commit, and caveats covering every gap the accuracy check found. On PASS the fork PR joins the **upstream queue**

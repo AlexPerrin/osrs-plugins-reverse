@@ -74,10 +74,6 @@ number order). That made changes stack and grow; once they became PRs, maintaine
   logic that moves items or state, not for a simple op handler or a wiki string ("No Test is needed" on #348); no
   new KDoc or explanatory comments ("Comments — less is more"); nothing made public just for a test. Server toggles
   go in the server config with a default.
-- **Small changes stay small** (maintainers on #348; user, 2026-10-19, on #370): no test for a small change, and a
-  short text: Summary of the change and its source, "How it was tested" in one or two lines (the in-game check, or
-  "builds, tests pass, server boots"), no full gate log, and no list of unrelated gaps (those go in our backlog,
-  not the PR).
 - **Upstream's PR template** (`.github/pull_request_template.md`, #369): every PR text uses its sections (Summary,
   Type of change, How it was tested, Checklist, notes). Its checklist asks for in-game verification end to end without
   cheats where possible, state in varbits/varps not attrs, gamevals symbols not raw ids, wiki deviations noted in

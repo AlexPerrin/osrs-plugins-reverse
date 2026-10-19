@@ -14,7 +14,7 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 | P2 | `gate-{heldu-dispatch-order,bankside-view-op,coal-bag-messages}` (QA stopped at wrap-up; heldu text needs a named herblore pair) | server-qa | internal + upstream | cutover | openrune/upstream/qa/ |
 | P2 | `gate-{witchs-potion,goblin-diplomacy,vampyre-slayer}` + PR texts; #367/#368 still stack on #366's old f69c8ed4c | server-qa, server-dev | upstream | fixture | fin/* heads |
 | P2 | `hunter-split-ship`: 7 fin/hunter-* branches (local only), linearise rumours, gate each, texts; integration still uses fin/hunter | server-dev, server-qa | internal + upstream | cutover | re/upstream-pr/dev-hunter |
-| P2 | `overlap-doric` (#334), `overlap-review-{farming #231, specials #313, fletching #262}`; fix/06, 07, 69 vs #299 | server-dev | – | user decision | gh pr list |
+| P2 | `overlap-{doric #334, farming #231, specials #313, fletching #262}`: upstream as draft PRs only, each referencing the other PR (user, 2026-10-18); fix/06, 07, 69 local until #299 | server-dev, server-qa | upstream | gates | gh pr list |
 | P3 | `gate-{fairy-rings,jewellery,diaries,grand-exchange}` + texts; GE needs #352 and an rsprot bump (caveat) | server-qa, server-dev | internal + upstream | – | UPSTREAM-PRS.md |
 | P3 | `upstream-fixes-batch-4`: 10, 11, 22, 25, 31, 36, 37, 54, 56, 59/63 (held), 69, 70, 71, 76 | server-dev, server-qa | upstream | internal PASS each | fork fix/* |
 | P3 | `cleanup-pirates-treasure` (squash the fixup, base on the fixture) | server-dev | internal | fixture | fork content/pirates-treasure |
@@ -33,18 +33,20 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 | P3 | `netqa-ge-digest`, `client-docs-trim` | client-qa, client-dev | – | – |
 
 ## Waiting on the user
-1. #366: force-push content/sheep-shearer onto content/quests-sheep-romeo, retitle and new body (after its upstream gate); reply comment.
-2. #354, #355, #356, #357: force-push the acc/* rewrites after their gates; move #354/#355 out of draft?
-3. #367, #368: force-push fin/* after gates; Goblin's lookout ladder as its own fix/<slug>?
-4. Doric (#334), farming (#231), specials (#313), fletching (#262): contribute to theirs, or keep ours local?
+Decided 2026-10-18: updated versions go onto the existing upstream PRs (#354-#357, #366-#368) after their gates,
+each force-push still confirmed at the time; overlapping content (Doric #334, farming #231, specials #313, fletching
+#262) goes upstream as draft PRs only, referencing the other PR. Old fork branches deleted, fork PRs #3/#6/#7/#8 closed.
+
+1. #366: reply comment (asked with the force-push).
+2. Move #354/#355 out of draft after their gates?
+3. Goblin's lookout ladder as its own fix/<slug>?
 5. rsprot bump to 1.0.0-ALPHA-20261014: our PR/issue, or leave to maintainers?
 6. Order of new upstream PRs (fixture and op-overrides first).
 7. Client repo PR #1 (agentic-autofix): merge or close?
-8. Old fork branches 241, content-drop-staging, memory, newcache, old-base, pets, production, toolbelt, worldtypes: delete?
 9. Switch the fork's default branch to `integration` after the cutover.
 
 ## Orchestrator cleanup
-- Close fork PRs #3, #6, #7, #8 and delete the merged fix/02, 03, 04, 27, 58, 60, 62 branches.
+- Local copies of the merged fix/02, 03, 04, 27, 58, 60, 62 (deleted on the fork 2026-10-18).
 - Local refs in re/upstream-pr/or: new/*, pre-rebase/*, refs/qa/fix/73-75.
-- Scratchpad (13 GB): sd22/, qa/, acc/ (after the acc gates), ctx/, b2/, e2e/, forkpr/, up/, up71/, amall/, amchk/, chk/, clean/, g29-g31/.
+- Scratchpad: qa/, acc/ (after the acc gates). sd22's unique refs are archived in re/upstream-pr/or as refs/archive/sd22/* (fin-hunter-rumours dcf92ca13 is the older linear rumours, useful for hunter-split-ship).
 - Docker: the exited osrs-rsps-test container; old bootcheck/rollback/cs2test/sidecar tags; sd22-gradle, upstream-pr-gradle-acc* and anonymous volumes.

@@ -51,6 +51,8 @@ final class Native {
     /** Friends chat (-2) or clan channel (-1 listened, 0.. affined): {name, owner, int[] {myRank, kickRank, talkRank}, String[] names, int[] worlds, int[] ranks}, or null (client thread). */
     static native Object[] chatChannel(int which);
     static native int worldFlags();
+    /** The world list (slr.ws) entry for a world: {String host, String activity, int[] {id, flags, players, location, listed}}, or null. */
+    static native Object[] worldEntry(int id);
     /** {zoom, x, y, width, height} of the 3D viewport in UI canvas pixels, or null. */
     static native int[] viewportZoom();
     /** GPU ViewTransforms block (camera pos @0, view @4, inverse view @20, projection @36, view-projection @52), or null. */

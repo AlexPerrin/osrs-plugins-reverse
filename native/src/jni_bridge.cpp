@@ -124,6 +124,19 @@ jbyteArray n_ge_slot_raw(JNIEnv* env, jclass, jint slot) {
 jint n_varp(JNIEnv*, jclass, jint id) { return game::varp(id); }
 jint n_weight(JNIEnv*, jclass) { return game::weight(); }
 jint n_world(JNIEnv*, jclass) { return game::world(); }
+// {String host, String activity, int[] {id, flags, players, location, listed}}, or null.
+jobjectArray n_world_entry(JNIEnv* env, jclass, jint id) {
+    game::WorldEntry w;
+    if (!game::world_entry(id, w)) return nullptr;
+    jintArray info = env->NewIntArray(5);
+    jint iv[5] = {w.id, w.flags, w.players, w.location, w.listed ? 1 : 0};
+    env->SetIntArrayRegion(info, 0, 5, iv);
+    jobjectArray out = env->NewObjectArray(3, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(out, 0, env->NewStringUTF(w.host.c_str()));
+    env->SetObjectArrayElement(out, 1, env->NewStringUTF(w.activity.c_str()));
+    env->SetObjectArrayElement(out, 2, info);
+    return out;
+}
 jlongArray n_ge_offers(JNIEnv* env, jclass) {
     int64_t o[8 * 7];
     if (!game::ge_offers(o)) return nullptr;
@@ -1657,6 +1670,7 @@ const JNINativeMethod kNatives[] = {
     {"serverVarps", "()[I", reinterpret_cast<void*>(n_server_varps)},
     {"weight", "()I", reinterpret_cast<void*>(n_weight)},
     {"world", "()I", reinterpret_cast<void*>(n_world)},
+    {"worldEntry", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_world_entry)},
     {"instanceTemplates", "()[I", reinterpret_cast<void*>(n_instance_templates)},
     {"geOffers", "()[J", reinterpret_cast<void*>(n_ge_offers)},
     {"geSlotRaw", "(I)[B", reinterpret_cast<void*>(n_ge_slot_raw)},

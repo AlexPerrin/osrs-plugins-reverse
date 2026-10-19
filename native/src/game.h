@@ -404,6 +404,10 @@ std::vector<int32_t> server_varps();
 int weight();      // kg (UPDATE_RUNWEIGHT)
 int world();       // Client +0x3174 (CS2 map_world 3318; jav_config param 12)
 int world_flags(); // Client +0x2f64 (CS2 worldflags 3324)
+// A world as the client's world list (slr.ws) has it; listed = false when only the client fields
+// (id +0x3174, flags +0x2f64, host +0x3098) describe it (a world the list lacks).
+struct WorldEntry { int id = 0, flags = 0, players = 0, location = 0; bool listed = false; std::string host, activity; };
+bool world_entry(int id, WorldEntry& out);
 // REBUILD_REGION state: whether the scene is an instance, and the [level][x][z] template chunks
 // packed as desktop (level << 24 | zoneX << 14 | zoneZ << 3 | rotation << 1; -1 = none).
 bool instance_templates(bool& instanced, int32_t out[4 * 13 * 13]);

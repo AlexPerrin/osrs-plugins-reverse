@@ -73,7 +73,7 @@ fi
 # Keep this list in sync with host/src/net/runelite/client.
 for f in config/ConfigManager config/ConfigInvocationHandler callback/ClientThread eventbus/EventBus \
          ui/overlay/OverlayManager ui/FontManager callback/Hooks plugins/PluginManager ui/ClientToolbar \
-         game/ItemManager game/SpriteManager chat/ChatMessageManager game/chatbox/ChatboxPanelManager game/chatbox/ChatboxTextInput game/chatbox/ChatboxTextMenuInput \
+         game/ItemManager game/SpriteManager game/WorldService chat/ChatMessageManager game/chatbox/ChatboxPanelManager game/chatbox/ChatboxTextInput game/chatbox/ChatboxTextMenuInput \
          ui/overlay/outline/ModelOutlineRenderer Notifier util/WildcardMatcher util/Text \
          ui/components/colorpicker/RuneliteColorPicker ui/components/colorpicker/ColorPickerManager \
          account/SessionManager audio/AudioPlayer util/LinkBrowser; do

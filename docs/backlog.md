@@ -7,6 +7,7 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 | prio | task | role | gate | depends on | evidence |
 |---|---|---|---|---|---|
 | P0 | `integration-cutover`: spotless fixes on fix/71, content/looting-bag, fix/74, fix/76, fix/75, local/android; re-gate integration; deploy | sd23 → sq23 → orch | internal | – | fork docs qa/integration-cutover.md |
+| P1 | `edgeville-general-store-stock` (sd24): rebuild upstream's truncated generalshop2.toml (size 0 → crash on Trade). #351 (fix/55) moved to draft 2026-10-18 and depends on it: it waits in the queue until this merges upstream; fix/55 is out of integration until then | sd24 → server-qa | internal + upstream | – | sq23 |
 | P1 | `integration-sheep-swap` (after the cutover deploy): fin/sheep-shearer → content/sheep-shearer 19aefd90a (internal PASS, fork docs qa/sheep-shearer.md), fin/romeo-juliet → local/romeo-juliet; rr-cache entry from sd23 (scratchpad/rr-new/666570cd…) on local/integration-tools | orch | – | cutover | sd23 report |
 | P1 | `sheep-shearer-caveat`: upstream gate FAIL, PR text needs The Thing caveat (no run-away, generic shearing); then re-run the upstream gate and force-push onto #366 (confirm) | sd23 → server-qa | upstream | – | qa/sheep-shearer.md |
 | P2 | `unstack-367-368`: #367 Goblin Diplomacy (draft since 2026-10-18, user) and #368 Witch's Potion are stacked on #366's old f69c8ed4c (old Sheep Shearer + R&J). Rebuild each off upstream main alone; any shared base (QuestTalkFixture) merges upstream first | server-dev | upstream | fixture merged | sq24 |

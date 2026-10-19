@@ -1,7 +1,7 @@
 # Client state
 
 Short current-state doc for the client track (docs/workflow.md "State docs"). Rewrite it; don't append.
-History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 45.
+History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 46.
 
 ## What this is
 
@@ -27,6 +27,13 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **No second LOGGED_IN after a released rebuild hold (client/rebuild-double-logged-in, gen 46, device 2026-10-19)**: `Host`
+  drops a native 30 when the last posted state is already LOGGED_IN (the hold's release replay posted it), logging
+  `GameStateChanged LOGGED_IN again: already posted (rebuild released)`. Never seen before or now (qa/client-hostfixes-gen45.md
+  review note). Device: login, 6 teleports (Lumbridge <-> Fossil Island) and a `::drop` relog each post exactly one
+  LOADING/WorldViewLoaded/LOGGED_IN (CONNECTION_LOST -> LOGGED_IN unchanged); the guard line didn't fire. Evidence: gen 46
+  scratchpad `g46/rebuild-guard-logcat.txt`. offsets.md: Client vtable slot 6 `0x421a20` is the draw on doCycle's thread. No
+  network change.
 - **Rebuild LOADING waits for the new scene base (client/herbiboar-after-teleport, gen 45, stacked on client/host-prompt-enter;
   device 2026-10-19)**: OpenRune's teleports are 30 -> 25 -> 30 and the host posted LOADING at 25 with the old scene base, so
   getMapRegions (from the base) gave the old regions and Herbiboar's area check on LOADING failed. `Host` now holds a 25 seen

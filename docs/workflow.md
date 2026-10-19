@@ -228,10 +228,10 @@ concurrency, and the hooks below.
 - **Blockers are written in both STATE docs' "Next tasks"**: the client task says `blocked by server: <slug>`, the
   server task says `unblocks client: <task>`. The orchestrator clears both when the server change passes the
   internal gate and is live.
-- **The orchestrator keeps its context small and restarts per milestone.** It delegates anything beyond a couple of
-  quick commands to a subagent and relays verdicts, not logs. At each milestone it rewrites docs/orchestrator.md
-  (in-flight agents, pending decisions, locks), and a fresh session takes over from that, the STATE docs, the QA
-  records and docs/backlog.md. After each
+- **The orchestrator keeps its context small** by delegating anything beyond a couple of quick commands to a subagent
+  and relaying verdicts, not logs. It keeps docs/orchestrator.md (in-flight agents, pending decisions, locks) current
+  at milestones. It restarts only to avoid repeated compaction (not on a schedule): then a fresh session takes over
+  from that doc, the STATE docs, the QA records and docs/backlog.md. After each
   compaction a `SessionStart` hook (`tools/hooks/session_state.sh`) prints both STATE docs, the lock and build
   queue status, and the recent log.
 

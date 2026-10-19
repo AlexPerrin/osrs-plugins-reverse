@@ -7,7 +7,7 @@ docs/backlog.md (upstream queue, roadmap, client and server tasks). Last rewrite
 ## How the orchestrator works
 - Delegate: anything beyond a couple of quick commands goes to a subagent (typed roles from .claude/agents/, or a
   one-off general agent for tooling/research). Relay verdicts and decisions; don't pull logs into the main context.
-- Restart per milestone: rewrite this file, then a fresh session takes over. Subagents don't survive a session;
+- Restart only to avoid repeated compaction (not on a schedule): rewrite this file first, then a fresh session takes over. Subagents don't survive a session;
   their work is on disk (clones under re/agents/<name>/, docs worktrees, records on the fork's docs branch), so a
   new orchestrator re-dispatches from the "In flight" list below.
 - Upstream: nothing reaches OpenRune/* without the user's OK; print the exact action first; append comments, never

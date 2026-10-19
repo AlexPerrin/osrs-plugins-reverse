@@ -53,6 +53,8 @@ only, never copied), one PR per change, no stacking. Reference paths are under r
 | 9 | `content/kalphite-queen` (boss) | LostCity areas/area_kalphite/scripts/kalphite_queen.rs2 | M | drop table already upstream; two phases |
 | 10 | `content/fishing-trawler` (minigame) | LostCity minigames/game_trawler | M-L | OSRS rewards and timings changed since 2004 |
 
+| P3 | `deny-publish-stash`: tools/hooks/deny_publish.py denies `git stash push` because it contains "push"; match `git push` as a command, not the word (sd24, 2026-10-19) | orch | – | – | sd24 |
+
 ## Client
 | prio | task | role | gate | depends on |
 |---|---|---|---|---|

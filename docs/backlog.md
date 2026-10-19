@@ -39,6 +39,8 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 | P3 | `hub-batch-next` (scratchpad/client38/ranking.json; keep it) | client-dev | merge | – |
 | P3 | `poison-sprite-override` (26x26 override refused vs 15x14; plugin-host row overstates it) | client-dev | merge | – |
 | P3 | `netqa-ge-digest`, `client-docs-trim` | client-qa, client-dev | – | – |
+| P3 | `host-javax-sound-shim`: Drop Sounds throws `NoClassDefFoundError: javax/sound/sampled/Clip` at start (v0.1.0 gate); shim javax.sound.sampled onto the host audio path (as AudioPlayer), or drop the pin | client-dev | merge | – |
+| P3 | `host-config-rsprofiles`: `ConfigManager.getRSProfiles()` missing; Time Tracking's farming completion check throws NoSuchMethodError (v0.1.0 gate) | client-dev | merge | – |
 
 ## Upstream queue
 

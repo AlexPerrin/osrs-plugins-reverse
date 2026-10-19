@@ -9,7 +9,8 @@
 #   - the repack log has all 7 `telemetry:` lines (patch_telemetry.py asserts exactly one match each);
 #   - the APKs carry no secrets or personal data (private keys, the server's RSA private exponent, the
 #     user's name or email, home paths, keystores).
-# The release attaches the full repacked APKs (user's decision, 2026-10-19).
+# The release attaches the full repacked APKs (user's decision, 2026-10-19) and THIRD_PARTY_NOTICES.md (the
+# licence notices for the third-party code in libosrsrl.so and its host.jar).
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
@@ -65,8 +66,9 @@ done < <(find "$work/x" -type f -print0)
 echo "release-dev: secrets check on $scanned added or changed files"
 [[ $hits -eq 0 && $keys -eq 0 ]] || die "secrets check failed ($hits pattern hits, $keys key files)"
 
-assets=("$work/osrs-plugins-$tag-base.apk" "$work/osrs-plugins-$tag-split.apk")
-cp re/out/base.apk "${assets[0]}"; cp re/out/split.apk "${assets[1]}"
+[[ -s THIRD_PARTY_NOTICES.md ]] || die "THIRD_PARTY_NOTICES.md is missing"
+assets=("$work/osrs-plugins-$tag-base.apk" "$work/osrs-plugins-$tag-split.apk" "$work/THIRD_PARTY_NOTICES.md")
+cp re/out/base.apk "${assets[0]}"; cp re/out/split.apk "${assets[1]}"; cp THIRD_PARTY_NOTICES.md "${assets[2]}"
 sums=$(cd "$work" && sha256sum "$(basename "${assets[0]}")" "$(basename "${assets[1]}")")
 prev=$(git tag -l 'v*' --sort=-creatordate | sed -n 1p)
 changes=$(git log -n 40 --no-merges --format='- %s (%h)' ${prev:+"$prev"..}HEAD)
@@ -80,6 +82,11 @@ present, no secrets in the APKs).
 (\`10.0.2.2:43594\`, the host as seen from an emulator such as BlueStacks) and signs in with the server's local
 sign-in (LOCAL_AUTH); it cannot sign in to Jagex. The app's analytics (Singular, Firebase, Crashlytics) and the
 consent sync are patched out (docs/app-telemetry.md). Signed with the repo's debug key.
+
+**Licences.** \`THIRD_PARTY_NOTICES.md\` (attached) lists the third-party code inside \`libosrsrl.so\` and its
+embedded plugin host (Dear ImGui, the RuneLite client subset and API, Guice, Guava, OkHttp, protobuf-javalite, ...)
+with their copyright notices and licence texts. The rest of the APK is Jagex's Old School RuneScape app, which
+those licences don't cover.
 
 **Install** (both files, as one app):
 \`\`\`

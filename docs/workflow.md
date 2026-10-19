@@ -77,8 +77,8 @@ number order). That made changes stack and grow; once they became PRs, maintaine
 - **Upstream's PR template** (`.github/pull_request_template.md`, #369): every PR text uses its sections (Summary,
   Type of change, How it was tested, Checklist, notes). Its checklist asks for in-game verification end to end without
   cheats where possible, state in varbits/varps not attrs, gamevals symbols not raw ids, wiki deviations noted in
-  upstream's `docs/quirks.md` (their file, part of the change), and rsprox-dump checks "where possible" (we have none
-  of the official game: say so).
+  upstream's `docs/quirks.md` (their file, part of the change), and rsprox-dump checks "where possible" (done by the accuracy check's RSProx comparison; tick it only when that
+  found a recording and was done).
 - **Check upstream first.** Before the spec: open PRs, issues and recent `main` commits for the same content
   (`gh pr list -R OpenRune/OpenRune-Server --search <topic>`). If upstream has it, build on theirs or drop ours.
 
@@ -199,7 +199,7 @@ Every gate is defined before its work starts, and recorded against an exact comm
 |---|---|---|---|---|
 | Merge | client | `client-qa` | Device regression for what changed, A/B where it draws, Network QA if network-relevant, native claims | merge to `master` |
 | Release | client | `client-qa` | Full client QA on `master`, Network QA, privacy patches in the build | tag; GitHub release on the user's OK |
-| Internal | server | `server-qa` | `build-test`, `accuracy-check` against the spec, in-game where it renders | into `integration`, deploy |
+| Internal | server | `server-qa` | `build-test`, `accuracy-check` against the spec (including its RSProx comparison), in-game where it renders | into `integration`, deploy |
 | Upstream | server | `server-qa` | Internal at the same commit + one change only, no upstream overlap, on current `main` + `fix_gameval_conflicts.py --check` + CONTRIBUTING + `pr-text-review` + caveats complete | upstream queue (fork PR); upstream only on the user's approval per item |
 
 Records start with these lines exactly, because the hooks parse them:

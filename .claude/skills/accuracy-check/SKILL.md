@@ -23,14 +23,12 @@ The spec is `accuracy/<slug>.md` on the fork's `docs` branch (QA.md section 2). 
    Read for behaviour, never copy code or text into our branches (different languages anyway; licences and
    provenance differ). In the spec, say "per LostCity <file>" next to a guess so QA can check it; the PR's Data
    sources may name LostCity as a reference only when a rule followed it.
-3. **RSProx recordings of the official game** (user-approved 2026-10-19): community captures from rsprox.net's
-   database. The index, coverage table and transcribe command are on the OpenRune fork's `docs` branch,
-   `references/rsprox.md` (`git -C re/upstream-pr/or show fork/docs:references/rsprox.md`); the recordings and
-   transcripts themselves stay local under `re/ref/rsprox/` (git-ignored). They show what the official server sent: animations, spot anims, projectiles, sounds,
-   varps, dialogue and their tick timings. Use them to check those details and to tick the PR template's "checked
-   against rsprox dumps" item honestly (cite the recording id and revision). They may contain other players' names
-   and chat: never commit, quote or upload a recording or transcript; cite only ids and the packets you checked.
-   We never record the official game ourselves.
+3. **RSProx recordings of the official game** (user-approved 2026-10-19): community captures from rsprox.net. They
+   are part of this accuracy check, not a separate gate step: see "RSProx comparison" in both procedures below. The
+   index, search, transcribe method and coverage are in `references/rsprox.md` on the fork's `docs` branch; the
+   recordings and transcripts stay local under `re/ref/rsprox/` (git-ignored). They may contain other players'
+   names and chat: never commit, quote or upload them; cite only recording ids and the packets you checked. We never
+   record the official game ourselves.
 4. The RuneLite plugins that read the mechanic (what they parse is what the client expects).
 
 ## Writing the spec (server-dev)

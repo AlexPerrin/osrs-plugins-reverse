@@ -138,7 +138,7 @@ The same applies the other way (a server task that needs a client change or a de
   standing brief: its track's slots, its gate, its limits. Hooks and `maxTurns` in the frontmatter enforce the
   limits. A spawn's brief is only the task, its definition of done, and (server) the agent's name and branches.
   Spawn by `subagent_type`, never `general-purpose`.
-- **Where they work.** The client roles work in this repo (two client devs at once use `isolation: worktree`).
+- **Where they work.** The client roles work in this repo, always in their own worktree (`isolation: worktree`): the orchestrator commits on `master` in the main tree, and an agent that checks out its branch there sends those commits to its branch.
   The server roles each work in their own fork clone, `re/agents/<name>/or`, with `docs` checked out beside it
   as a worktree; a shared working tree leaks build outputs between branches. During the move, server QA records
   and QA.md may still be in `openrune/upstream/` here; the hooks read both places.

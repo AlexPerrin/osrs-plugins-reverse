@@ -65,8 +65,10 @@ number order). That made changes stack and grow; once they became PRs, maintaine
 - **No numbers.** A change is named by its slug, used for the branch, `accuracy/<slug>.md`, `qa/<slug>.md` and the
   PR text. Order and dependencies are written down (`Depends:` in the spec and the PR text), not encoded in a
   number. The `NN-*.patch` files and `id-allocation.json` are history; no new ones.
-- **Off current `main`, independent.** Each branch is based on upstream `main` and builds and tests on its own.
-  Shared code goes in its own small change that the others depend on; a dependent PR says so and waits for it.
+- **Off current `main`, independent, never stacked** (user, 2026-10-18). Each upstream PR is based on upstream
+  `main`, builds and tests on its own, and contains no commit of another open PR. Shared code goes in its own small
+  change; a change that needs it stays in the fork queue and goes upstream only after the shared change has merged
+  and the branch is rebased on the new `main`.
 - **Check upstream first.** Before the spec: open PRs, issues and recent `main` commits for the same content
   (`gh pr list -R OpenRune/OpenRune-Server --search <topic>`). If upstream has it, build on theirs or drop ours.
 

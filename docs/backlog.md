@@ -7,6 +7,10 @@ deletes them here when done. Slugs are task names (docs/workflow.md "Changes for
 | prio | task | role | gate | depends on | evidence |
 |---|---|---|---|---|---|
 | P0 | `integration-cutover`: spotless fixes on fix/71, content/looting-bag, fix/74, fix/76, fix/75, local/android; re-gate integration; deploy | sd23 → sq23 → orch | internal | – | fork docs qa/integration-cutover.md |
+| P1 | `integration-sheep-swap` (after the cutover deploy): fin/sheep-shearer → content/sheep-shearer 19aefd90a (internal PASS, fork docs qa/sheep-shearer.md), fin/romeo-juliet → local/romeo-juliet; rr-cache entry from sd23 (scratchpad/rr-new/666570cd…) on local/integration-tools | orch | – | cutover | sd23 report |
+| P1 | `sheep-shearer-caveat`: upstream gate FAIL, PR text needs The Thing caveat (no run-away, generic shearing); then re-run the upstream gate and force-push onto #366 (confirm) | sd23 → server-qa | upstream | – | qa/sheep-shearer.md |
+| P2 | `rebase-367-368`: Goblin Diplomacy and Witch's Potion off content/sheep-shearer (not #366's old f69c8ed4c with R&J); fix their Stacked lines | server-dev | upstream | #366 head moved | sq24 |
+| P3 | `sheep-shearer-thing-runaway`: implement the penguin running away on shear (wiki) | server-dev | internal + upstream | – | – |
 | P1 | `gate-acc-{cannon,genie,plank-sack,rune-pouch}`: the audited rewrites (acc/* in re/upstream-pr/or, not on the fork) replace fin/* in integration | orch pushes, server-qa | internal + upstream | cutover | qa/rune-pouch.md FAIL; scratchpad/acc/logs |
 | P1 | `gate-quest-test-fixture`, `gate-op-overrides` + their PR texts (shared bases for every quest PR) | server-qa, server-dev | internal + upstream | – | UPSTREAM-PRS.md |
 | P2 | `spec-genie` (no accuracy spec exists) | server-dev | – | – | openrune/upstream/accuracy/ |

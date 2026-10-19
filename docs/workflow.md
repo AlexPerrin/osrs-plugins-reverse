@@ -74,6 +74,11 @@ number order). That made changes stack and grow; once they became PRs, maintaine
   logic that moves items or state, not for a simple op handler or a wiki string ("No Test is needed" on #348); no
   new KDoc or explanatory comments ("Comments — less is more"); nothing made public just for a test. Server toggles
   go in the server config with a default.
+- **Upstream's PR template** (`.github/pull_request_template.md`, #369): every PR text uses its sections (Summary,
+  Type of change, How it was tested, Checklist, notes). Its checklist asks for in-game verification end to end without
+  cheats where possible, state in varbits/varps not attrs, gamevals symbols not raw ids, wiki deviations noted in
+  upstream's `docs/quirks.md` (their file, part of the change), and rsprox-dump checks "where possible" (we have none
+  of the official game: say so).
 - **Check upstream first.** Before the spec: open PRs, issues and recent `main` commits for the same content
   (`gh pr list -R OpenRune/OpenRune-Server --search <topic>`). If upstream has it, build on theirs or drop ours.
 

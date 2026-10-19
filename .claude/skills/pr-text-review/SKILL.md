@@ -4,7 +4,7 @@ description: "Check a PR or release text against its commit: every claim true, u
 ---
 # PR text review
 
-Upstream's rules: `.github/CONTRIBUTING.md` on upstream `main`; our checklist: QA.md section 4.
+Upstream's rules: `.github/CONTRIBUTING.md` and the PR template `.github/pull_request_template.md` (since #369, 2026-10-19: Summary, Type of change, How it was tested, Checklist, Screenshots / notes) on upstream `main`, plus AGENTS.md; our checklist: QA.md section 4.
 
 1. **Scope.** The diff is one quest, feature or fix, with nothing unrelated in it. Dependencies are stated as
    `Depends:`. There is no open upstream PR for the same content.

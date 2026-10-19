@@ -1,7 +1,7 @@
 # Client state
 
 Short current-state doc for the client track (docs/workflow.md "State docs"). Rewrite it; don't append.
-History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-18, client dev (release-notices).
+History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-18, client dev gen 44 (and release-notices).
 
 ## What this is
 
@@ -13,12 +13,14 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 - API coverage and each plugin's status: docs/plugin-host.md. Addresses: docs/offsets.md (ELF; Ghidra = ELF + 0x100000).
 - Privacy patches and Network QA: docs/app-telemetry.md (read it before any build that touches networking).
 
-## Installed on the device (end of gen 43)
+## Installed on the device (end of gen 44)
 
-- Build: client/world-entry-thread-safety (master 7799586, which has the gen 41 BufferedImage fix and gen 42's WorldService,
-  + the world entry cache), `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1 tools/repack.sh --install`
+- Build: 09c05c9's gated build (v0.1.0 release gate), `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1 tools/repack.sh --install`
   (7 `telemetry:` lines; under WSL pass `ADB=.../adb.exe ANDROID_SERIAL=127.0.0.1:5555`, or the install silently doesn't happen).
+  Gen 44 built nothing.
 - Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3219,3222.
+- **Expected drift: a Fish barrel in the tester's inventory slot 15** (spawned gen 44; OpenRune's barrel Destroy does nothing,
+  filed as a server task). Leave it (orchestrator, gen 44); destroy it once that fix is live. The restore check's MANUAL line says so.
 - Pre-existing plugin data under `files/.runelite/` (bossing-info, c-engineer-sounds, cache, pyramid-plunder-counter,
   resource-packs-repository) predates gen 40; leave it.
 
@@ -29,6 +31,15 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
   its host.jar (Dear ImGui + stb + ProggyClean, the RuneLite client subset/API/http-api, the host's Maven jars from
   host/build.sh, the client jar's shaders and CC-licensed fonts) and says the rest of the APK is Jagex's app. Releases
   attach it (`tools/release-dev.sh`). When host/build.sh's jar list or `native/third_party` changes, update the file.
+- **Hub plugins after the cutover (client/hub-after-cutover, gen 44, device 2026-10-18 against integration with fix/75 + fix/76;
+  rows in plugin-host.md, evidence in the gen 44 session scratchpad `g44/`)**: runs: Clue Juggling Timers (InfoBox countdown,
+  warning, removed on despawn), Ground Items' despawn timer (`groundItemTimers=TICKS`), Coal Bag ("5" after Fill, "0" after
+  Empty), Cannon Highlighter (hit grid + Single/Double/Unhittable labels; 1 of 3 set-ups drew nothing), Did I Compost
+  (needs-compost icon after Inspect). Server-blocked (reported to main, filed as server tasks): dropped items all despawn after
+  200 ticks (OSRS: 300, clues 61 min); Fish Barrel's Check text/interface and Destroy; Clue Steps' "Check steps" text lacks the
+  tier; no compost on OpenRune. Host: Decimal Prices (the "." works, the submitting Enter never reaches KeyListeners, gap 6);
+  core Herbiboar draws nothing after a `::tele` into Fossil Island from elsewhere but works after a relog there (gap 7);
+  Herbi AFK draws no path line even then (cause not isolated). No build, no network change.
 - **Ghidra project rebuilt (client/ghidra-reanalyse, 2026-10-18)**: `re/ghidra` is now the re-analysed copy (auto-analysis,
   `tools/ghidra_scripts/FixSwitches.java` to complete jump tables auto-analysis left unresolved or partial, auto-analysis
   again). Functions 24957 → 24961, instructions 1954259 → 2057546, instructions outside any function 8944 → 36; all 217
@@ -84,11 +95,17 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 3. **Current World**: runs (gen 42 + the gen 43 thread-safety fix). Not checked: its world switcher title (69:2); the in-game
    world switcher and the logout button weren't found on mobile (the bottom-left popout's door is "Minimise Popout"; the
    settings tab's three sub-tabs are display/audio/controls). Relog = force-stop, wait ~50 s, Play Now.
-4. **OBJ_ADD timers** (server side, reported): ground item despawn timers read 0, so Clue Juggling Timers and Ground
-   Items' despawn timer can't be verified until the server fix is deployed.
+4. **OBJ_ADD timers: done** (fix/76 live; host reads them). The durations are the server's (200 ticks for every player
+   drop), filed as a server task.
 5. Random Event Hider can't be staged on OpenRune; Line of Sight's stray lines at 3219,3222 are terrain, not a bug.
-6. Decimal Prices' conversion is unconfirmed: devtools can't type `.` into the mobile quantity prompt.
-7. Host API gaps found by the v0.1.0 gate (backlog): no `javax.sound.sampled` (Drop Sounds throws at start) and no
+6. **Prompt Enter never reaches KeyListeners** (Decimal Prices): hardware keys from `adb shell input keyevent` reach KeyRouter
+   (the plugin appends the "."), but the Enter that submits a chatbox prompt while the soft keyboard is shown doesn't come
+   through the Window.Callback, so the plugin can't rewrite varcstr 359 first (the game reads 359 at submit: verified by
+   setting it with the probe). Likely the IME's editor action (same cause as gap 1). A fix would hand the host a VK_ENTER for
+   KeyListeners from the game's input-connection submit path.
+7. **Herbiboar after a teleport into Fossil Island** draws nothing (gen 22's fix regressed or a different path: teleport from
+   Falador, LOADING posted); after a relog in the area it works. Herbi AFK draws no path line in either case.
+8. Host API gaps found by the v0.1.0 gate (backlog): no `javax.sound.sampled` (Drop Sounds throws at start) and no
    `ConfigManager.getRSProfiles()` (Time Tracking's farming completion check throws NoSuchMethodError).
 
 ## Gotchas
@@ -111,6 +128,11 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 - Probe hooks (`debug.osrsrl.set`, `probe`, `say`, `wdump`) run once per distinct value; `setprop` values with spaces
   or parentheses need `shell "setprop key 'value'"`. Probe output tag: `osrsrl-probe`. Plugin config is set with `debug.osrsrl.set 'config <group> <key>=<value>'`
   (`config <group> <key>` unsets it), not with `probe`.
+- Typing into a prompt: `adb shell input keyevent KEYCODE_1 ...` works (digits, `KEYCODE_PERIOD` for plugins); read the input
+  with `get_var varcstr 359`. The bank's long-press menu gains a "Withdraw-<last X>" entry after a valid X and loses it after
+  an invalid one, so menu rows shift: screenshot the menu before tapping (gen 44 withdrew all bank coins by tapping a shifted
+  row; deposited back). Valuable drops (cannon parts) ask "Really put it down?" before dropping. Untradeables have Destroy
+  (coal bag works, fish barrel doesn't). `::tele` within the same zone posts no LOADING.
 - Ground Item Sounds writes 3.6 MB of wavs to `.runelite/plugin-data/ground-item-sounds` on first start.
 - Builds: client builds are host/build.sh + `ninja -C re/build` + repack (no docker). Any build container goes through
   `tools/buildq.sh client<gen> -- docker run ...` (2 slots), not gradle.lock. Every APK goes through `tools/repack.sh`
@@ -122,7 +144,8 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 1. Merge gate for client/world-entry-thread-safety with client-qa. Regression on plugins that draw into images (Poison
    infobox, Instance Map, Bank Tags icons) with the merged BufferedImage fix; Quick Prayer Preview checked gen 43.
-2. When the OBJ_ADD timer fix is deployed: Clue Juggling Timers and Ground Items' despawn timer.
+2. Host gaps 6 (prompt Enter for KeyListeners) and 7 (Herbiboar after ::tele; then Herbi AFK's missing line). When the
+   server tasks from gen 44 are live: Fish Barrel (Check), Clue Steps, Did I Compost's treated path, destroy the slot-15 Fish barrel.
 3. More hub plugins from the ranking (`scratchpad/client38/ranking.json` or refetch); netcheck + stubcheck each.
 4. Host gap 2 (native menu entry removal).
-5. Opportunistic: a capture that includes a GE digest fetch (should go to the sidecar); Decimal Prices with a real `.` key.
+5. Opportunistic: a capture that includes a GE digest fetch (should go to the sidecar).

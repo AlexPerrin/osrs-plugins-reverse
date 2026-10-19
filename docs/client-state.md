@@ -1,7 +1,7 @@
 # Client state
 
 Short current-state doc for the client track (docs/workflow.md "State docs"). Rewrite it; don't append.
-History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-18, client dev gen 42.
+History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-18, client dev gen 43.
 
 ## What this is
 
@@ -13,18 +13,27 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 - API coverage and each plugin's status: docs/plugin-host.md. Addresses: docs/offsets.md (ELF; Ghidra = ELF + 0x100000).
 - Privacy patches and Network QA: docs/app-telemetry.md (read it before any build that touches networking).
 
-## Installed on the device (end of gen 42)
+## Installed on the device (end of gen 43)
 
-- Build: client/host-synthetic-world (master b9749a6 + the WorldService current-world entry), `OPENRUNE=1 SERVER=10.0.2.2:8080
-  GAME_PORT=43594 LOCAL_AUTH=1 tools/repack.sh --install` (7 `telemetry:` lines; under WSL pass `ADB=.../adb.exe`, or the
-  install silently doesn't happen). It doesn't include client/gen41-recheck's BufferedImage fix unless that was merged first.
+- Build: client/world-entry-thread-safety (master 7799586, which has the gen 41 BufferedImage fix and gen 42's WorldService,
+  + the world entry cache), `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1 tools/repack.sh --install`
+  (7 `telemetry:` lines; under WSL pass `ADB=.../adb.exe ANDROID_SERIAL=127.0.0.1:5555`, or the install silently doesn't happen).
 - Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3219,3222.
 - Pre-existing plugin data under `files/.runelite/` (bossing-info, c-engineer-sounds, cache, pyramid-plunder-counter,
   resource-packs-repository) predates gen 40; leave it.
 
 ## Recent state
 
-- **Current World runs (client/host-synthetic-world, gen 42)**: the host replaces RuneLite's WorldService
+- **World entry thread safety (client/world-entry-thread-safety, gen 43)**: `Native.worldEntry` no longer walks the game's
+  world list off the game thread. The game frees and rebuilds that list (new address each time) whenever the login-screen
+  world switcher opens, on the game thread (parser `0x4320dc`, called only from the login handler `0x41615c` under doCycle).
+  `client_thread::world_entry` serves other threads a copy of the current world's entry made in after_cycle (re-read on a
+  world id or list change, else every 25 cycles); on the client thread it reads live. Logcat `osrsrl: world list: N entries
+  at 0x...` marks each reload. Device: 50 open/close cycles of the switcher (31 reloads logged in one run) plus relogs, no
+  crash; Current World overlay and World Hopper's "255 Test server" row unchanged; Quick Prayer Preview icons show. No
+  network change.
+
+- **Current World runs (merged in master, gen 42)**: the host replaces RuneLite's WorldService
   (`host/src/net/runelite/client/game/WorldService.java`, same api.runelite.net fetch and schedule as 1.13.1) and, when the
   fetched list lacks `client.getWorld()`, adds that world built from the game's own slr.ws world list (global `0xace6c0`,
   `game::world_entry`, offsets.md "World list"), falling back to Client id/flags/host. If the api fetch failed the result
@@ -33,7 +42,7 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
   runs: Monster Stats (panel opens from "Stats Man"), Multicolor Highlights, Pickpocket Guardian, Unpotted Reminder,
   Ground Item Sounds (MediaPlayer clip on a high-value drop), Quick Prayer Preview (after the fix below). Decimal Prices:
   starts, conversion not confirmed. No Examine: no effect (gap 2). Current World: NPE (gap 3).
-- **BufferedImage drawing without dispose() (client/gen41-recheck)**: `CanvasGraphics.forImage` used to copy drawing back
+- **BufferedImage drawing without dispose() (gen 41, merged in master)**: `CanvasGraphics.forImage` used to copy drawing back
   into the image only on `dispose()`; plugins that never dispose (Quick Prayer Preview's `getGraphics().drawImage`) got blank
   images. Now the image keeps a live mutable Bitmap: each draw marks it dirty, pixel reads/draws of the image sync it back.
 - **R1 network gate (40c9ed2, device-verified)**: `Host.loadJar` runs `NetScan.refusal` on the cache copy before the
@@ -53,8 +62,9 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
    `get_var varcstr 335` (non-empty after a send = stalled); recover by showing the keyboard and pressing Enter.
 2. **Removing native menu entries**: plugins that call `setMenuEntries(shorter)` in MenuOpened (No Examine) can't remove
    entries from the open long-press menu; the host only reorders and rewrites them.
-3. **Current World**: fixed on client/host-synthetic-world (above). Not checked: its world switcher title (69:2); the in-game
-   world switcher wasn't reached on mobile (the bottom-left popout's door is "Minimise Popout", not logout).
+3. **Current World**: runs (gen 42 + the gen 43 thread-safety fix). Not checked: its world switcher title (69:2); the in-game
+   world switcher and the logout button weren't found on mobile (the bottom-left popout's door is "Minimise Popout"; the
+   settings tab's three sub-tabs are display/audio/controls). Relog = force-stop, wait ~50 s, Play Now.
 4. **OBJ_ADD timers** (server side, reported): ground item despawn timers read 0, so Clue Juggling Timers and Ground
    Items' despawn timer can't be verified until the server fix is deployed.
 5. Random Event Hider can't be staged on OpenRune; Line of Sight's stray lines at 3219,3222 are terrain, not a bug.
@@ -89,9 +99,9 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Next tasks
 
-1. Merge gate for client/gen41-recheck (BufferedImage live Bitmap) with client-qa; regression on plugins that draw into
-   images (Poison infobox, Instance Map, Bank Tags icons, Quick Prayer Preview).
+1. Merge gate for client/world-entry-thread-safety with client-qa. Regression on plugins that draw into images (Poison
+   infobox, Instance Map, Bank Tags icons) with the merged BufferedImage fix; Quick Prayer Preview checked gen 43.
 2. When the OBJ_ADD timer fix is deployed: Clue Juggling Timers and Ground Items' despawn timer.
 3. More hub plugins from the ranking (`scratchpad/client38/ranking.json` or refetch); netcheck + stubcheck each.
-4. Host gap 2 (native menu entry removal). Merge gate for client/host-synthetic-world.
+4. Host gap 2 (native menu entry removal).
 5. Opportunistic: a capture that includes a GE digest fetch (should go to the sidecar); Decimal Prices with a real `.` key.

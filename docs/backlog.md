@@ -40,14 +40,14 @@ Fork PRs whose upstream gate passed. Each goes upstream only after the user appr
 
 | fork PR | branch @ commit | upstream PR | gates | note |
 |---|---|---|---|---|
-| #16 | content/sheep-shearer @ 19aefd90a | #366 (draft) | internal + upstream PASS (fork docs qa/sheep-shearer.md) | already force-pushed onto #366's branch before the queue rule; #366 still has its old title/body and stays draft (user: leave as is) |
+| #16 | content/sheep-shearer @ 19aefd90a | #366 (draft) | internal + upstream PASS (fork docs qa/sheep-shearer.md) | on #366's branch; title/body updated 2026-10-18 (user approved), stays draft; no reply posted |
 
 ## Waiting on the user
 Decided 2026-10-18: updated versions go onto the existing upstream PRs (#354-#357, #366-#368) after their gates,
 each force-push still confirmed at the time; overlapping content (Doric #334, farming #231, specials #313, fletching
 #262) goes upstream as draft PRs only, referencing the other PR. Old fork branches deleted, fork PRs #3/#6/#7/#8 closed.
 
-1. #366: title/body update, reply comment and ready — part of the upstream discussion.
+1. #366: reply comment and ready — part of the upstream discussion.
 2. Move #354/#355 out of draft after their gates?
 3. Goblin's lookout ladder as its own fix/<slug>?
 5. rsprot bump to 1.0.0-ALPHA-20261014: our PR/issue, or leave to maintainers?

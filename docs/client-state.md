@@ -29,9 +29,13 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
   world switcher opens, on the game thread (parser `0x4320dc`, called only from the login handler `0x41615c` under doCycle).
   `client_thread::world_entry` serves other threads a copy of the current world's entry made in after_cycle (re-read on a
   world id or list change, else every 25 cycles); on the client thread it reads live. Logcat `osrsrl: world list: N entries
-  at 0x...` marks each reload. Device: 50 open/close cycles of the switcher (31 reloads logged in one run) plus relogs, no
-  crash; Current World overlay and World Hopper's "255 Test server" row unchanged; Quick Prayer Preview icons show. No
-  network change.
+  at 0x...` marks each reload (a new address every time). Device (2026-10-18, World Hopper + Current World + Quick Prayer
+  Preview loaded): 50 open/close cycles of the switcher (53 reloads in one process), then a relog (force-stop, 27 more
+  cycles while the server released the session, Play Now): no crash; the off-thread "current world 255 from the world
+  list" line came from a WorldService thread; Current World overlay "World 255 / Test server" and World Hopper's "255 0
+  Test server" row unchanged; Quick Prayer Preview's held-orb tooltip shows both icons. No network change. Evidence: the
+  gen 43 session scratchpad (`stress-logcat.txt`, `relog-logcat.txt`, `current-world-overlay.png`, `worldhopper-list.png`,
+  `qpp-hold.png`, `relog-overlay.png`).
 
 - **Current World runs (merged in master, gen 42)**: the host replaces RuneLite's WorldService
   (`host/src/net/runelite/client/game/WorldService.java`, same api.runelite.net fetch and schedule as 1.13.1) and, when the

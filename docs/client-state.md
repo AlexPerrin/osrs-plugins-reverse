@@ -1,7 +1,7 @@
 # Client state
 
 Short current-state doc for the client track (docs/workflow.md "State docs"). Rewrite it; don't append.
-History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 45.
+History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 46.
 
 ## What this is
 
@@ -27,6 +27,12 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **javax.sound.sampled shim (client/host-javax-sound-shim, gen 46, device 2026-10-19)**: `host/awt/javax/sound/sampled` (AudioSystem,
+  Clip, FloatControl, Control, Line, DataLine, AudioInputStream, the two exceptions; `HostClip` plays the file's bytes through
+  AudioPlayer/MediaPlayer). Drop Sounds now starts and plays a valuable-drop clip from a real wav, but its pinned download URL is dead
+  upstream (404, repo renamed; desktop is affected too), so it saves 404 text as its wavs: **recommend dropping the pin** (plugin-host.md row).
+  Network QA PASS (only the approved raw.githubusercontent.com GETs are new; docs/app-telemetry.md). Evidence: gen 46 scratchpad
+  `g46/dropsounds-logcat.txt`, `netqa-logcat.txt`, `sockets-b4.txt`.
 - **Rebuild LOADING waits for the new scene base (client/herbiboar-after-teleport, gen 45, stacked on client/host-prompt-enter;
   device 2026-10-19)**: OpenRune's teleports are 30 -> 25 -> 30 and the host posted LOADING at 25 with the old scene base, so
   getMapRegions (from the base) gave the old regions and Herbiboar's area check on LOADING failed. `Host` now holds a 25 seen
@@ -123,8 +129,8 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
    Enter"). Decimal Prices converts "1.5k" to 1500.
 7. **Herbiboar after a teleport: fixed (client/herbiboar-after-teleport, gen 45).** A rebuild's LOADING now waits for the new
    scene base, so getMapRegions answers the new regions; Herbi AFK draws its path line too.
-8. Host API gaps found by the v0.1.0 gate (backlog): no `javax.sound.sampled` (Drop Sounds throws at start) and no
-   `ConfigManager.getRSProfiles()` (Time Tracking's farming completion check throws NoSuchMethodError).
+8. Host API gaps found by the v0.1.0 gate: `javax.sound.sampled` shimmed (client/host-javax-sound-shim, gen 46; Drop Sounds' own
+   download URL is dead upstream). `ConfigManager.getRSProfiles()`: client/host-config-rsprofiles (gen 46).
 
 ## Gotchas
 

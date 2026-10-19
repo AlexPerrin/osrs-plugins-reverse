@@ -55,7 +55,7 @@ only, never copied), one PR per change, no stacking. Reference paths are under r
 ## Client
 | prio | task | role | gate | depends on |
 |---|---|---|---|---|
-| P2 | `release-client-v1.0` (first release) | client-qa → orch | release | – |
+| – | first release: done, v0.1.0 (2026-10-19); dev builds automated via tools/release-dev.sh | – | – | – |
 | P3 | offsets.md: Client vtable slot 6 0x421a20 is the draw on doCycle's thread (frame fn 0x86bdc8), per qa/client-world-entry-thread-safety.md | client-dev | – | – |
 | P2 | `scene-item-despawn`: SceneObjects posts no ItemDespawned for ground items that leave the scene, so Ground Items double-counts after a teleport round trip (pre-existing; qa/client-hostfixes-gen45.md) | client-dev | merge | – |
 | P3 | `rebuild-double-logged-in`: a native 30 arriving after the rebuild release tick could post LOGGED_IN twice (unguarded, never seen) | client-dev | merge | – |

@@ -157,7 +157,7 @@ hands over.
 
 | Skill | What it does | Resource | Typical callers |
 |---|---|---|---|
-| `reverse` | Headless Ghidra on `re/ghidra` (`tools/ghidra_scripts/`: Decompile, Xrefs, StringXrefs, FindScalar), jadx, the in-app agent (`tools/agent.py`): offsets, struct layouts, xrefs, the client's side of the protocol, patched bytes and their callers | one Ghidra writer at a time (`-readOnly` otherwise) | client-dev, server-dev, client-qa (native claims), server-qa (protocol claims) |
+| `reverse` | Headless Ghidra on `re/ghidra` (`tools/ghidra_scripts/`: Decompile, Callers, Xrefs, StringXrefs, FindScalar), jadx, the in-app agent (`tools/agent.py`): offsets, struct layouts, xrefs, the client's side of the protocol, patched bytes and their callers | one Ghidra writer at a time (`-readOnly` otherwise) | client-dev, server-dev, client-qa (native claims), server-qa (protocol claims) |
 | `device-test` | BlueStacks against the test server, in a device slot, driven through `osrs-devtools`: restore-check `pre`, the test, `check` until all OK, free | device lock | client-dev, client-qa |
 | `ab-test` | The same plugin or feature on desktop RuneLite (`osrs-devtools-desktop`) and Android (`osrs-devtools`), or on the branch server and `main` | desktop lock (+ device lock) | all four |
 | `server-probe` | What the server does: logs, protocol captures, `tools/openrune-sql.sh` reads; ids and decoded cache data through `osrs-mcp` | none | client-dev, server-dev |

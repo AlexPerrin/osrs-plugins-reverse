@@ -30,7 +30,7 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 - **javax.sound.sampled shim (client/host-javax-sound-shim, gen 46, device 2026-10-19)**: `host/awt/javax/sound/sampled` (AudioSystem,
   Clip, FloatControl, Control, Line, DataLine, AudioInputStream, the two exceptions; `HostClip` plays the file's bytes through
   AudioPlayer/MediaPlayer). Drop Sounds now starts and plays a valuable-drop clip from a real wav, but its pinned download URL is dead
-  upstream (404, repo renamed; desktop is affected too), so it saves 404 text as its wavs: **recommend dropping the pin** (plugin-host.md row).
+  upstream (404, repo renamed; desktop is affected too), so it saves 404 text as its wavs: **pin dropped** (orchestrator's decision; removed from host/plugins/hub/plugins.txt).
   Network QA PASS (only the approved raw.githubusercontent.com GETs are new; docs/app-telemetry.md). Evidence: gen 46 scratchpad
   `g46/dropsounds-logcat.txt`, `netqa-logcat.txt`, `sockets-b4.txt`.
 - **Rebuild LOADING waits for the new scene base (client/herbiboar-after-teleport, gen 45, stacked on client/host-prompt-enter;

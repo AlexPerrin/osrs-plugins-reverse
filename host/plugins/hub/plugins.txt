@@ -27,7 +27,6 @@ death-charge-reminder https://github.com/InfernoStats/death-charge-reminder.git 
 decimal-prices https://github.com/rmaes4/decimal-prices.git 67e87f51e81dbfe8d9f183e57286b0356c859a3d
 did-i-compost https://github.com/AbusiveTuna/DidICompost.git d88c635e42951be266253079a4ba6df51757a390
 door-kicker https://github.com/Enriath/external-plugins.git 9d078ca73f670d14b23bbb776ffd75075bec69f3
-dropsounds https://github.com/MitzDK/DropSounds.git b65023428b63bf9dd52666479de16c5a8a3cd2f5
 easy-empty https://github.com/jpeter17/easy-empty.git 3c8a143b79e797f24ff3ca4d01bee4c7fa33bb18
 effective-level https://github.com/XrioBtw/effectivelevel-plugin.git 2e9968260b96a2f183ce763b2577dd2da8db94ed
 emote-clue-items https://github.com/larsvansoest/emote-clue-items.git 2ab1220cbccba512c2f6744b217c266524e70be9

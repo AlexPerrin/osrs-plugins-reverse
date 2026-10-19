@@ -23,7 +23,14 @@ The spec is `accuracy/<slug>.md` on the fork's `docs` branch (QA.md section 2). 
    Read for behaviour, never copy code or text into our branches (different languages anyway; licences and
    provenance differ). In the spec, say "per LostCity <file>" next to a guess so QA can check it; the PR's Data
    sources may name LostCity as a reference only when a rule followed it.
-3. The RuneLite plugins that read the mechanic (what they parse is what the client expects).
+3. **RSProx recordings of the official game** (user-approved 2026-10-19): community captures from rsprox.net's
+   database, downloaded and transcribed locally under `re/ref/rsprox/` (see its README for the index, coverage and
+   the transcribe command). They show what the official server sent: animations, spot anims, projectiles, sounds,
+   varps, dialogue and their tick timings. Use them to check those details and to tick the PR template's "checked
+   against rsprox dumps" item honestly (cite the recording id and revision). They may contain other players' names
+   and chat: never commit, quote or upload a recording or transcript; cite only ids and the packets you checked.
+   We never record the official game ourselves.
+4. The RuneLite plugins that read the mechanic (what they parse is what the client expects).
 
 ## Writing the spec (server-dev)
 1. What upstream already has: `gh pr list -R OpenRune/OpenRune-Server --search <topic>`, issues, recent `main`.

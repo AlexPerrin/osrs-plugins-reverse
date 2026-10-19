@@ -27,9 +27,8 @@ docs/workflow.md "Gates".
 
 ## The gates (docs/workflow.md "Server track")
 - **Internal gate**, run first; it unblocks the client and the live server:
-  - `build-test`: uncached (`--no-build-cache --no-configuration-cache`), `spotlessCheck`, `test`, `integration` (1
-    worker), boot to "Server ready in", on upstream `main` + the branch. `tools/buildq.sh <name> -- docker run
-    ...`, your own Gradle home volume.
+  - `build-test`: `qa.sh gate` on upstream `main` + the branch (one container, shared remote build cache, tests
+    never cached), boot to "Server ready in".
   - `accuracy-check`: behaviour against the spec and its sources, re-read through the `osrs-mcp` MCP tools
     (`wiki_page`, `wiki_npc_spawns`, `cache_search`, `gameval_search`; load with ToolSearch), not from the
     spec's quotes alone.

@@ -41,8 +41,9 @@ Read first: `docs` STATE.md, then docs/workflow.md "Server track", "Blockers bet
    test-only pieces. Anything unrelated you fix on the way goes on its own `fix/<slug>`. New gamevals: write
    `name = -1` (names prefixed with the feature), run `python3 tools/scripts/fix_gameval_conflicts.py`, commit what
    it assigns (docs/workflow.md "Gameval ids"). Commit subjects feat:/fix:. Tests for each rule.
-4. **Verify** with `build-test` (`tools/buildq.sh <name> -- docker run ...`, your own Gradle home volume; the full
-   branch gate in STATE.md) and `ab-test` on desktop RuneLite against your branch server where it renders,
+4. **Verify** with `build-test`: dev evidence with `qa.sh dev <name> <clone>` (your warm container; `qa.sh dev-stop
+   <name>` when done), a full gate with `GATE_VOL=<name>-gate-gradle GATE_OWNER=<name> qa.sh gate <clone>`; and
+   `ab-test` on desktop RuneLite against your branch server where it renders,
    driven with the `osrs-devtools-desktop` MCP under the desktop lock.
 5. **PR text** on `docs` per upstream's CONTRIBUTING (problem, change, tests, data sources, caveats, release note,
    checklist, and `Depends:` if any), ending with the Claude Code line; check it with `pr-text-review`.

@@ -24,8 +24,8 @@ History (docs/client-handoff.md, docs/server-handoff.md) is read only when neede
   and `osrs-devtools-desktop` (the isolated desktop RuneLite, under the desktop lock).
 
 ## Shared rules
-- **Builds** go through `tools/buildq.sh <owner> -- docker run ...` (2 slots, 4 GB per container,
-  `-Pkotlin.compiler.execution.strategy=in-process`). Client host builds are host/build.sh + `ninja -C re/build` +
+- **Builds** go through `tools/buildq.sh` (classes gate/dev/measure with a memory guard; gates via `qa.sh gate` in
+  one 5 GB container, dev builds via `qa.sh dev`). Client host builds are host/build.sh + `ninja -C re/build` +
   repack (no docker).
 - **Devices**: `tools/device-lock.sh` (`LOCK_NAME=desktop` for desktop RuneLite), granted by the orchestrator.
   Server restarts reserve both devices.

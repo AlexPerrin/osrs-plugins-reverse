@@ -66,11 +66,47 @@ public final class CanvasGraphics extends Graphics2D {
         setAntialias(false);
     }
 
-    /** Graphics for a BufferedImage: draws into a Bitmap and copies it back on dispose(). */
+    /**
+     * Graphics for a BufferedImage: draws into the image's shared mutable Bitmap (BufferedImage.liveBitmap).
+     * As on desktop, what is drawn is in the image at once, disposed or not: each draw marks the image
+     * dirty and its pixel reads copy the Bitmap back first (Quick Prayer Preview never disposes).
+     */
     public static CanvasGraphics forImage(BufferedImage img) {
-        Bitmap bmp = img.toBitmap().copy(Bitmap.Config.ARGB_8888, true);
-        return new CanvasGraphics(new Canvas(bmp), () ->
-                bmp.getPixels(img.getPixels(), 0, img.getWidth(), 0, 0, img.getWidth(), img.getHeight()));
+        return new CanvasGraphics(new ImageCanvas(img), img::syncLive);
+    }
+
+    /** A Canvas over an image's live Bitmap that reloads it before each draw and marks the image dirty after. */
+    private static final class ImageCanvas extends Canvas {
+        private final BufferedImage img;
+
+        ImageCanvas(BufferedImage img) {
+            super(img.liveBitmap());
+            this.img = img;
+        }
+
+        private void before() { img.beforeLiveDraw(); }
+        private void after() { img.afterLiveDraw(); }
+
+        @Override public void drawPath(Path p, Paint paint) { before(); super.drawPath(p, paint); after(); }
+        @Override public void drawLine(float x1, float y1, float x2, float y2, Paint paint) {
+            before(); super.drawLine(x1, y1, x2, y2, paint); after();
+        }
+        @Override public void drawRect(float l, float t, float r, float b, Paint paint) {
+            before(); super.drawRect(l, t, r, b, paint); after();
+        }
+        @Override public void drawRoundRect(RectF r, float rx, float ry, Paint paint) {
+            before(); super.drawRoundRect(r, rx, ry, paint); after();
+        }
+        @Override public void drawOval(RectF r, Paint paint) { before(); super.drawOval(r, paint); after(); }
+        @Override public void drawArc(RectF r, float start, float sweep, boolean center, Paint paint) {
+            before(); super.drawArc(r, start, sweep, center, paint); after();
+        }
+        @Override public void drawText(String s, float x, float y, Paint paint) { before(); super.drawText(s, x, y, paint); after(); }
+        @Override public void drawBitmap(Bitmap b, float x, float y, Paint paint) { before(); super.drawBitmap(b, x, y, paint); after(); }
+        @Override public void drawBitmap(Bitmap b, android.graphics.Rect src, RectF dst, Paint paint) {
+            before(); super.drawBitmap(b, src, dst, paint); after();
+        }
+        @Override public void drawBitmap(Bitmap b, Matrix m, Paint paint) { before(); super.drawBitmap(b, m, paint); after(); }
     }
 
     private CanvasGraphics copyStateTo(CanvasGraphics g) {

@@ -13,7 +13,7 @@ one QA companion. The orchestrator (the main session) sits above both: it routes
 | Analyse | The client (Ghidra), the server when needed, ids and data (`osrs-mcp`) | The accuracy baseline (`osrs-mcp`: wiki, cache, gamevals; Mod posts); the client's side of the protocol (Ghidra) |
 | Verify | BlueStacks against the test server; A/B against desktop RuneLite | Unit and integration tests, boot; desktop RuneLite against the branch's own server |
 | Gates | Merge gate, release gate | Internal gate, upstream gate |
-| Ships to | `master`, then a tagged release (`client-vX.Y`) | `integration` and the live test server, then an upstream PR |
+| Ships to | `master`, then a tagged release (semver `vX.Y.Z`, pre-releases `vX.Y.Z-dev`) | `integration` and the live test server, then an upstream PR |
 | Agents | `client-dev` + `client-qa` | `server-dev` + `server-qa` |
 | State | `docs/client-state.md`, records in `qa/` | `STATE.md`, `accuracy/`, `qa/` on the fork's `docs` branch |
 
@@ -34,7 +34,7 @@ spawned from the orchestrator's session here.
 5. **Merge gate.** `client-qa` runs the regression and checks at the branch's commit; on PASS the orchestrator
    merges to `master`.
 6. **Release gate.** When a set of features is ready, `client-qa` runs the release QA on `master`; on PASS the
-   orchestrator tags `client-vX.Y`. A GitHub release is published only with the user's confirmation, and never
+   orchestrator tags `vX.Y.Z` (https://semver.org; a pre-release such as `v0.1.0-dev` is a GitHub pre-release). The record is `qa/client-X.Y.Z[-pre].md`. A GitHub release is published only with the user's confirmation, and never
    with the Jagex APK or anything its licence forbids.
 
 Client QA covers: a device regression (core plugins and pinned hub plugins, scripted through the devtools bridge
@@ -243,7 +243,7 @@ flowchart TB
   cqa & sqa -- "PASS/FAIL" --> orch
   cdev -. "blocker" .-> orch -. "server task" .-> sdev
 
-  orch -- "merge gate" --> master[(master)] -- "release gate" --> release[(client-vX.Y)]
+  orch -- "merge gate" --> master[(master)] -- "release gate" --> release[(vX.Y.Z)]
   orch -- "internal gate" --> integ[(integration → live server)]
   orch -- "upstream gate" --> upstream[(upstream PR)]
 
@@ -258,7 +258,7 @@ flowchart TB
 | Role files | `.claude/agents/{client,server}-{dev,qa}.md` | Standing brief, hooks, `maxTurns` 400 (dev) / 300 (QA) |
 | Shared rules | `CLAUDE.md` | Loaded by every agent, and again after each compaction |
 | Upstream publish gate | `tools/hooks/publish_gate.py` (settings) | An upstream `gh pr create` needs `## Upstream gate: **PASS**` at the fork branch's commit |
-| Client release gate | `tools/hooks/publish_gate.py` (settings) | `git tag client-vX.Y` and `gh release create client-vX.Y` need `qa/client-X.Y.md` with `## Verdict: **PASS**` for the tagged commit |
+| Client release gate | `tools/hooks/publish_gate.py` (settings) | `git tag vX.Y.Z[-pre]` and `gh release create vX.Y.Z[-pre]` need `qa/client-X.Y.Z[-pre].md` with `## Verdict: **PASS**` for the tagged commit |
 | State after compaction | `tools/hooks/session_state.sh` (settings, `SessionStart` `compact`) | The orchestrator rebuilds from disk, not from the summary |
 | Shared skills | `.claude/skills/<name>/SKILL.md` | One procedure per tool, for dev and QA alike |
 | Orchestrator-only actions | `tools/hooks/deny_publish.py` (role files) | Agents can't push, post, run fork.sh, deploy, grant devices or write progress |

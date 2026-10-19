@@ -50,9 +50,10 @@ def records():
 
 
 def release_gate(cmd):
-    """Client release gate: `git tag client-vX.Y [commit]` and `gh release create client-vX.Y` need
-    qa/client-X.Y.md with `## Verdict: **PASS**` for the commit being tagged (the tag's, else HEAD)."""
-    m = re.search(r"\b(?:git\s+tag|gh\s+release\s+create)\b(?:\s+-\S+)*\s+(client-v([0-9][0-9A-Za-z.\-]*))(?:\s+([0-9a-f]{7,40}|HEAD|master))?", cmd)
+    """Client release gate: tagging or `gh release create` with a semver tag vX.Y.Z[-pre] (https://semver.org;
+    the older client-v prefix too) needs qa/client-X.Y.Z[-pre].md with `## Verdict: **PASS**` for the commit
+    being tagged (the tag's, else HEAD)."""
+    m = re.search(r"\b(?:git\s+tag|gh\s+release\s+create)\b(?:\s+-\S+)*\s+((?:client-)?v([0-9][0-9A-Za-z.\-+]*))(?:\s+([0-9a-f]{7,40}|HEAD|master))?", cmd)
     if not m:
         return
     tag, version, target = m.group(1), m.group(2), m.group(3)

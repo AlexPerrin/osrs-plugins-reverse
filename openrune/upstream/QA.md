@@ -10,8 +10,10 @@ QA is done by the QA agent, not by the agent that wrote the branch.
 
 - Use a fresh `git clone --shared` of `re/upstream-pr/or` at the branch commit, with its own Gradle
   home volume.
-- Run `clean`, `--no-build-cache --no-configuration-cache`, then `:or-cache:buildCache`,
-  `spotlessCheck`, `assemble`, `test`, `integration` (as separate runs).
+- Run `clean`, then `:or-cache:freshCache`, `:or-cache:buildCache`, `spotlessCheck`, `assemble`,
+  `test`, `integration` (as separate Gradle runs, in one container: `qa.sh gate`), with the shared
+  remote build cache and `--no-configuration-cache`. Test tasks are never taken from the cache:
+  every test runs.
 - The server boots to "Server ready" with no exceptions in the log.
 - New behaviour has tests. Each test fails without the change, or the record says why it can't.
 
@@ -51,17 +53,26 @@ branch commit, with logs beside them in `<clone>.logs/`.
 1. **Clone.** `qa.sh clone <slug> <commit> main` makes two fresh `git clone --shared` trees of
    `re/upstream-pr/or`: `<slug>-<commit9>` at the branch commit (sections 1 and 2) and `<slug>-<commit9>-run`
    = upstream `main` + the branch, merged (section 3). A merge conflict there is a FAIL in itself.
-2. **Build and tests.** `qa.sh build <clone>` runs each step as its own Gradle container (`--cpus=4
-   --memory=4g`, `--max-workers=2`, `-Xmx2g`, cache tasks `-Xmx2600m`, `--no-build-cache
-   --no-configuration-cache`, Gradle home volume `upstream-pr-gradle-qa`, or `-qa2` when the first is busy (Gradle's locks don't work across containers sharing a volume), `-Pkotlin.compiler.execution.strategy=in-process` so no separate
-   2 GB Kotlin daemon runs in the container). Each run waits its turn in
-   the agents' FIFO build queue (`tools/buildq.sh qa -- ...`). Steps: `clean :or-cache:freshCache :or-cache:mergePluginGamevals` (a fresh cache download:
-   a new clone has none, and freshCache ends with a forced BUILD), `:or-cache:buildCache`,
-   `generateRsa` (integration tests read `.data/game.key`), `:server:app:installDist` (then
-   `<clone>.logs/runnable`: the branch server can start while the tests wait), `spotlessCheck`, `assemble`, `test`,
-   `integration` (both with one worker: each test JVM has `-Xmx2048m`, and two of them plus the
-   Gradle daemon were OOM-killed in the 4 GB container).
-   `qa.sh runbuild <clone>-run` builds only what a server run needs.
+2. **Build and tests.** `qa.sh gate <clone>` (`qa.sh build` is the same) takes one priority ticket in
+   the agents' build queue (`tools/buildq.sh`, class gate: 2 slots, starts at 5.5 GB MemAvailable) and
+   runs every step in one container (`--cpus=4 --memory=5g`, Gradle home volume `upstream-pr-gradle-qa`,
+   or `-qa2` when the first is busy: Gradle's locks don't work across containers sharing a volume), each
+   step its own `./gradlew --no-daemon` run (`--max-workers=4`, Gradle `-Xmx1536m`, the Kotlin daemon at
+   `-Xmx2g`, cache tools `-Xmx2600m`, `--no-configuration-cache`: it misses newly added modules).
+   Build cache: on, remote only, the shared build cache node (`tools/gradle-cache.sh`; init script
+   `tools/gradle/remote-cache.init.gradle.kts`), so modules the branch doesn't change come from the
+   cache; test tasks are never cached. Steps: `clean :or-cache:qaCacheToolsClasspath` (compiles the
+   cache tools; one run that also ran them was OOM-killed), `:or-cache:freshCache
+   :or-cache:mergePluginGamevals` (a new clone has no cache; the OpenRS2 download is reused by cache id
+   from the volume `openrune-dl-cache`, everything after it is built from the branch; freshCache ends
+   with a forced BUILD), `:or-cache:buildCache`, `generateRsa` (integration tests read
+   `.data/game.key`), `:server:app:installDist` (then `<clone>.logs/runnable`: the branch server can
+   start while the tests run), `spotlessCheck`, `assemble testClasses integrationClasses`, `test`,
+   `integration` (one worker each: each test JVM has `-Xmx2048m`). A failed cache step skips the rest.
+   `<clone>.logs/` holds one log per step, `summary` (rc, seconds, peak container memory, tasks
+   executed / from cache) and `tests` (counts per suite). Typical: about 17 min cold, 9-12 min warm.
+   `qa.sh gate-run <clone>-run` (= `runbuild`) builds only what a server run needs. `qa.sh split-build`
+   (the old uncached run, one container per step) is the fallback when the cache node is broken.
 3. **Branch server.** `qa.sh start <clone>-run` runs the installDist in `eclipse-temurin:21-jre` as
    `qa-or-server` (game port **43596**, its own embedded PostgreSQL under the clone's `.data/postgres`,
    so each clone starts with no accounts; restarts keep them) and the jav_config sidecar `qa-or-http` (**8083**, the

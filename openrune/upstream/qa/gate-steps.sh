@@ -12,7 +12,9 @@
 #   dev   exec'd into a dev's warm container (4 GB): one persistent Gradle daemon (-Xmx1536m, the
 #         Kotlin compiler in-process, so it stays warm in that daemon), 2 workers, test JVMs capped
 #         at 1536m; for cache steps the daemon is stopped and the step runs --no-daemon.
-# Overrides: QA_WORKERS, QA_GRADLE_XMX, QA_KOTLIN (daemon|in-process), QA_KOTLIN_XMX.
+# Overrides: QA_WORKERS, QA_TEST_WORKERS (1), QA_TEST_HEAP (test JVM -Xmx), QA_GRADLE_XMX,
+# QA_KOTLIN (daemon|in-process), QA_KOTLIN_XMX. The summary has each step's peak container memory
+# (anon / anon + page cache).
 # After 1-cache the downloaded OpenRS2 cache zips (~/.openrune/caches/<game>/<id>) are published to
 # the shared store /dl.
 set -uo pipefail
@@ -76,7 +78,7 @@ for step in "$@"; do
   if [ -n "${cache_failed:-}" ]; then echo "$name: skipped (cache step failed)" >> "$L/summary"; continue; fi
   jto=; w=$WORKERS; daemon=--no-daemon; gx=$GXMX
   case $name in 1-cache*|2-buildcache*) jto=-Xmx2600m ;; esac
-  case $name in *test*|*integration*) w=1 ;; esac
+  case $name in *test*|*integration*) w=${QA_TEST_WORKERS:-1} ;; esac
   if [ "$MODE" = dev ]; then
     case $name in
       1-cache*|2-buildcache*)   # the cache tool needs 2.6 GB: no warm daemon beside it
@@ -86,6 +88,13 @@ for step in "$@"; do
   fi
   log=$L/$name.log
   t0=$(date +%s)
+  # Peak container memory during the step, sampled every 2 s from cgroup v2: anon (the JVMs; what
+  # an OOM kill is about) and current (anon + page cache, which the kernel reclaims at the limit).
+  ( pa=0; pc=0; while :; do
+      a=$(awk '$1=="anon"{print $2}' /sys/fs/cgroup/memory.stat 2>/dev/null); c=$(cat /sys/fs/cgroup/memory.current 2>/dev/null)
+      [ "${a:-0}" -gt $pa ] && pa=$a; [ "${c:-0}" -gt $pc ] && pc=$c
+      echo "$((pa / 1048576))/$((pc / 1048576))" > "/tmp/qa-peak-$$"; sleep 2; done ) &
+  PS=$!
   # shellcheck disable=SC2086
   JAVA_TOOL_OPTIONS=$jto ./gradlew $daemon --console=plain --build-cache --no-configuration-cache \
     -I "$INIT" --max-workers=$w -Dorg.gradle.jvmargs="-Xmx$gx -Dfile.encoding=UTF-8" \
@@ -93,10 +102,11 @@ for step in "$@"; do
     ${QA_TEST_HEAP:+-Pqa.testMaxHeap=$QA_TEST_HEAP} $args > "$log" 2>&1
   rc=$?
   t1=$(date +%s)
+  kill $PS 2>/dev/null; wait $PS 2>/dev/null; peak=$(cat "/tmp/qa-peak-$$" 2>/dev/null || echo ?)
   echo "rc=$rc" >> "$log"
   [ $rc -eq 0 ] || rc_all=1
   tasks=$(grep -E '^[0-9]+ actionable tasks?:' "$log" | tail -1)
-  printf '%-14s rc=%d %4ds  %s\n' "$name" $rc $((t1 - t0)) "${tasks:-}" >> "$L/summary"
+  printf '%-14s rc=%d %4ds  peak anon/all %9s MB  %s\n' "$name" $rc $((t1 - t0)) "$peak" "${tasks:-}" >> "$L/summary"
   echo "$name: rc=$rc ($((t1 - t0))s)"
   case $name in 1-cache*) publish_downloads ;; esac
   case $name in 1a-compile*|1-cache*|2-buildcache*) [ $rc -eq 0 ] || cache_failed=1 ;; esac

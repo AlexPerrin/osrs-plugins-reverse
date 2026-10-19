@@ -165,7 +165,7 @@ hands over.
 | `device-test` | BlueStacks against the test server, in a device slot, driven through `osrs-devtools`: restore-check `pre`, the test, `check` until all OK, free | device lock | client-dev, client-qa |
 | `ab-test` | The same plugin or feature on desktop RuneLite (`osrs-devtools-desktop`) and Android (`osrs-devtools`), or on the branch server and `main` | desktop lock (+ device lock) | all four |
 | `server-probe` | What the server does: logs, protocol captures, `tools/openrune-sql.sh` reads; ids and decoded cache data through `osrs-mcp` | none | client-dev, server-dev |
-| `build-test` | Clean, uncached build; `spotlessCheck`, `test`, `integration`; boot to "Server ready in" (server), host builds (client) | `buildq` slot | all four |
+| `build-test` | The gate: clean build in one container from the shared build cache (tests always run); `spotlessCheck`, `test`, `integration`; boot to "Server ready in" (server); warm dev builds of changed modules; host builds (client) | `buildq` slot | all four |
 | `network-qa` | The Network QA procedure: DNS, sockets, expected hosts, the telemetry patch log | device lock | client-dev, client-qa |
 | `accuracy-check` | The spec before code; behaviour against the spec and its sources after (`osrs-mcp`: wiki pages, NPC spawns, cache); the caveats the PR must declare | none | server-dev (writes the spec), server-qa |
 | `pr-text-review` | Every claim in a PR or release text is true of the commit; CONTRIBUTING's sections present | none | server-dev, server-qa, client-qa |
@@ -297,18 +297,31 @@ it was replaced. Sources: the Claude Code docs on hooks, subagents, skills, and 
 
 ## Capacity
 
-The machine has 16 threads. Windows (the host) and WSL each have about 16 GB.
+The machine has 16 threads. WSL has 20 GB (`.wslconfig`); Windows (the host) the rest.
 - **Windows:** several BlueStacks instances (about 2-3 GB each) and desktop RuneLite clients (about 1 GB each).
   Each dev/QA pair gets its own BlueStacks instance and desktop client (own profile and port), so pairs never
   wait for each other; the device lock becomes one lock per instance (`LOCK_NAME=<instance>`). Only a server
   restart reserves all of them.
-- **WSL:** the live server (about 3 GB), the sidecars, up to 2-3 build containers at 4 GB (`BUILDQ_SLOTS`), each
-  with its own Gradle home volume (a shared one deadlocks on Gradle's journal lock), and QA branch servers on
-  spare ports.
+- **WSL (20 GB):** the live server, the sidecars and the Gradle build cache node (about 3.5 GB together), QA
+  branch servers on spare ports, and the build queue (`tools/buildq.sh`) in classes with their own slots, so
+  one class never starves another (FIFO within a class, `BUILDQ_PRIO=1` first):
+  - **gate** (2 slots, 5 GB containers): QA gates (`qa.sh gate`, priority) and any other full build.
+  - **dev** (2 slots): the dev lane. Each server dev has one warm container `qa-dev-<owner>` (4 GB limit,
+    about 2.2 GB idle, a persistent Gradle daemon, its own Gradle home), made on first use and stopped by
+    `qa.sh dev-stop <owner>` or after 45 idle minutes; builds exec into it (seconds for an incremental
+    compile), so dev evidence never waits behind gates.
+  - **measure** (1 slot): timing runs.
+  A ticket starts only while MemAvailable, less a ramp reserve for containers started in the last 2 minutes,
+  covers its need (gate 5.5 GB, a new dev container 4.5 GB, a warm one 1 GB), so the queue never pushes WSL
+  into OOM.
+- **Builds:** each container has its own Gradle home volume (a shared one deadlocks on Gradle's journal
+  lock) and shares compiled outputs through the remote build cache node (`tools/gradle-cache.sh`: HTTP, safe
+  for concurrent builds, 20 GiB LRU). Tests are never cached. The OpenRS2 cache download is shared by cache
+  id (`openrune-dl-cache`).
 
 ## Shared rules
-- **Builds** go through `tools/buildq.sh <owner> -- docker run ...` (2 slots, 4 GB per container,
-  `-Pkotlin.compiler.execution.strategy=in-process`).
+- **Builds** go through `tools/buildq.sh` (classes gate/dev/measure with a memory guard; gates in one 5 GB
+  container via `qa.sh gate`, dev builds in the dev's warm container via `qa.sh dev`).
 - **Devices**: `tools/device-lock.sh`, granted by the orchestrator. Server restarts reserve both devices.
 - **Accuracy**: server behaviour must match the official server; divergences are caveats or fixes.
 - **Privacy**: no client ever contacts Jagex or RuneScape servers. Every APK goes through the telemetry patch.

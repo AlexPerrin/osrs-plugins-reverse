@@ -11,11 +11,11 @@
 #                                              <dir>.logs/runnable), spotlessCheck, assemble, test,
 #                                              integration; one log per step, <dir>.logs/summary (rc,
 #                                              time, tasks from cache), <dir>.logs/tests (counts)
-#   qa.sh build  <dir>                         = split-build for now: the old one container per step,
-#                                              uncached (becomes = gate once the gate is verified)
+#   qa.sh build  <dir>                         = gate (split-build: the old uncached run, one container
+#                                              per step, the fallback when the cache node is broken)
 #   qa.sh gate-run <dir>                       only what a server run needs (freshCache, mergePluginGamevals,
 #                                              generateRsa, installDist), one container, for the -run tree
-#   qa.sh runbuild <dir>                       = split-runbuild for now (the same, one container per step)
+#   qa.sh runbuild <dir>                       = gate-run (split-runbuild: the old one)
 #   qa.sh dev <owner> <clone> [tasks...]       dev lane (evidence, never a gate): the build runs in the
 #                                              owner's warm container qa-dev-<owner> (persistent Gradle
 #                                              daemon, own Gradle home <owner>-dev-gradle, remote build
@@ -95,16 +95,18 @@ prep_clone() {
 # the owner's clone changes.
 dev_container_clone() { docker inspect -f '{{index .Config.Labels "qa.clone"}}' "qa-dev-$1" 2>/dev/null || true; }
 dev_container_up() {
-  local owner=$1 d=$2 name=qa-dev-$1 v=${DEV_VOL:-$1-dev-gradle} cur
-  cur=$(docker inspect -f '{{.State.Running}} {{index .Config.Labels "qa.clone"}}' "$name" 2>/dev/null || true)
-  [ "$cur" = "true $d" ] && return 0
+  local owner=$1 d=$2 name=qa-dev-$1 v=${DEV_VOL:-$1-dev-gradle} cur gm
+  gm=$(git_mounts "$d" | tr '\n' ' ')
+  # Remade when the clone or its git mounts (alternates) changed.
+  cur=$(docker inspect -f '{{.State.Running}} {{index .Config.Labels "qa.clone"}}|{{index .Config.Labels "qa.gitmounts"}}' "$name" 2>/dev/null || true)
+  [ "$cur" = "true $d|$gm" ] && return 0
   [ -n "$cur" ] && { echo "qa: remaking $name for $d (was: $cur)" >&2; docker rm -f "$name" >/dev/null 2>&1 || true; }
   "$REPO/tools/gradle-cache.sh" start >/dev/null || echo "qa: build cache node not reachable" >&2
   docker volume inspect $DLVOL >/dev/null 2>&1 || docker volume create $DLVOL >/dev/null
   docker run --rm -v $v:/v -v $DLVOL:/dl alpine:3.20 chown 1000:1000 /v /dl
   mkdir -p "$d.logs/dev"
   # shellcheck disable=SC2046
-  docker run -d --rm --name "$name" --label qa.dev=1 --label qa.owner="$owner" --label qa.clone="$d" \
+  docker run -d --rm --name "$name" --label qa.dev=1 --label qa.owner="$owner" --label qa.clone="$d" --label qa.gitmounts="$gm" \
     --cpus=4 --memory=${QA_DEV_MEM:-4g} -u 1000:1000 $("$REPO/tools/gradle-cache.sh" args) \
     -e GRADLE_USER_HOME=/gradle -e GRADLE_OPTS=-Xmx256m -e QA_CLONE="$d" -e DEV_IDLE_MIN="${DEV_IDLE_MIN:-45}" \
     -v $v:/gradle -v $DLVOL:/dl -v "$d":"$d" -v "$d.logs":"$d.logs" $(git_mounts "$d") \
@@ -123,20 +125,32 @@ dev_container_up() {
 
 # git dirs a clone needs read-only in the container: its common git dir and its alternates.
 git_mounts() {
-  local d=$1 g a
+  local d=$1 g
   g=$(git -C "$d" rev-parse --path-format=absolute --git-common-dir)
   case $g in "$d"/*) ;; *) echo "-v $g:$g:ro" ;; esac
-  if [ -f "$g/objects/info/alternates" ]; then
-    while read -r a; do [ -n "$a" ] && echo "-v $a:$a:ro"; done < "$g/objects/info/alternates"
-  fi
+  alt_mounts "$g/objects" 0
+}
+# The alternates chain (git clone --shared, also of a --shared clone), absolute or relative to the
+# objects dir, each mounted read-only: jgit (spotless's ratchet) reads objects through them.
+alt_mounts() {
+  local o=$1 depth=$2 a
+  [ "$depth" -lt 5 ] && [ -f "$o/info/alternates" ] || return 0
+  while read -r a; do
+    [ -n "$a" ] || continue
+    case $a in /*) ;; *) a=$(cd "$o/$a" 2>/dev/null && pwd) || continue ;; esac
+    echo "-v $a:$a:ro"
+    alt_mounts "$a" $((depth + 1))
+  done < "$o/info/alternates"
 }
 
 # Test counts per suite from test-results XML (tests, failures, errors, skipped).
-test_counts() {
-  python3 - "$1" <<'PY'
+test_counts() {  # test_counts <dir> [only results newer than this file]
+  python3 - "$1" "${2:-}" <<'PY'
 import glob, os, sys, xml.etree.ElementTree as ET
 root = sys.argv[1]; tot = {}
+since = os.path.getmtime(sys.argv[2]) if sys.argv[2] and os.path.exists(sys.argv[2]) else 0
 for f in glob.glob(os.path.join(root, "**/build/test-results/*/TEST-*.xml"), recursive=True):
+    if os.path.getmtime(f) < since: continue
     suite = f.split(os.sep)[-2]
     try: e = ET.parse(f).getroot()
     except ET.ParseError: tot.setdefault(suite, [0]*5)[4] += 1; continue
@@ -222,6 +236,7 @@ _gate)  # _gate <qa|dev:<volume>> <dir> <steps...>: one container running gate-s
     -e GRADLE_USER_HOME=/gradle -e GRADLE_OPTS=-Xmx256m -e QA_MODE=gate \
     ${QA_WORKERS:+-e QA_WORKERS=$QA_WORKERS} ${QA_KOTLIN:+-e QA_KOTLIN=$QA_KOTLIN} \
     ${QA_GRADLE_XMX:+-e QA_GRADLE_XMX=$QA_GRADLE_XMX} ${QA_KOTLIN_XMX:+-e QA_KOTLIN_XMX=$QA_KOTLIN_XMX} \
+    ${QA_TEST_WORKERS:+-e QA_TEST_WORKERS=$QA_TEST_WORKERS} ${QA_TEST_HEAP:+-e QA_TEST_HEAP=$QA_TEST_HEAP} \
     ${GRADLE_REMOTE_CACHE_URL:+-e GRADLE_REMOTE_CACHE_URL=$GRADLE_REMOTE_CACHE_URL} \
     -v $v:/gradle -v $DLVOL:/dl -v "$d":"$d" -v "$L":"$L" $(git_mounts "$d") \
     -v "$REPO/tools/gradle":/qa-init:ro -v "$REPO/openrune/upstream/qa/gate-steps.sh":/qa-steps.sh:ro \
@@ -229,7 +244,7 @@ _gate)  # _gate <qa|dev:<volume>> <dir> <steps...>: one container running gate-s
   wait $! && rc=0 || rc=$?
   exit $rc
   ;;
-gate)
+gate|build)
   d=$(cd "$2" && pwd); L=$d.logs; mkdir -p "$L"
   git -C "$d" rev-parse HEAD > "$L/commit"
   prep_clone "$d"
@@ -245,7 +260,7 @@ gate)
   cat "$L/summary" "$L/tests"
   exit $rc
   ;;
-split-build|build)
+split-build)
   own_vol; d=$2; L=$d.logs; mkdir -p "$L"; rc=0
   git -C "$d" rev-parse HEAD > "$L/commit"
   JTO=-Xmx2600m gradle "$d" "$L/1-cache.log" clean :or-cache:freshCache :or-cache:mergePluginGamevals || rc=1
@@ -264,7 +279,7 @@ split-build|build)
   git -C "$d" status --short > "$L/status-after"
   exit $rc
   ;;
-gate-run)
+gate-run|runbuild)
   d=$(cd "$2" && pwd); L=$d.logs; mkdir -p "$L"
   git -C "$d" rev-parse HEAD > "$L/commit"
   prep_clone "$d"
@@ -272,7 +287,7 @@ gate-run)
     > "$L/runbuild.log" 2>&1 && rc=0 || rc=$?
   cat "$L/summary"; exit $rc
   ;;
-split-runbuild|runbuild)
+split-runbuild)
   own_vol; d=$2; L=$d.logs; mkdir -p "$L"
   JTO=-Xmx2600m gradle "$d" "$L/1-cache.log" clean :or-cache:freshCache :or-cache:mergePluginGamevals
   gradle "$d" "$L/7-install.log" generateRsa :server:app:installDist -x test
@@ -318,11 +333,12 @@ dev)
     fi
   fi
   printf 'dev steps:\n'; printf '  %s\n' "${steps[@]}"
+  touch "$L/.started"
   # A warm container needs little more memory; a new one needs its full limit.
-  need=4608; [ "$(dev_container_clone "$owner")" = "$d" ] && need=1024
+  need=4608; [ "$(dev_container_clone "$owner")" = "$d" ] && need=1024   # (remade on a mount change: rare)
   BUILDQ_CLASS=dev BUILDQ_MEM_MB=$need "$REPO/tools/buildq.sh" "$owner" -- "$0" _dev "$owner" "$d" "${steps[@]}" \
     > "$L/dev.log" 2>&1 && rc=0 || rc=$?
-  cat "$L/summary"; test_counts "$d"; exit $rc
+  cat "$L/summary"; test_counts "$d" "$L/.started"; exit $rc
   ;;
 _dev)  # _dev <owner> <clone> <steps...>: run the steps in the owner's warm container (made if needed)
   owner=$2; d=$3; shift 3; L=$d.logs/dev; mkdir -p "$L"; name=qa-dev-$owner

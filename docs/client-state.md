@@ -1,7 +1,7 @@
 # Client state
 
 Short current-state doc for the client track (docs/workflow.md "State docs"). Rewrite it; don't append.
-History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-18, client dev gen 43.
+History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-18, client dev (release-notices).
 
 ## What this is
 
@@ -24,6 +24,11 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **v0.1.0 release gate PASS at 09c05c9** (qa/client-0.1.0.md; notes draft qa/client-0.1.0-notes.md).
+  `THIRD_PARTY_NOTICES.md` (repo root) gives the notices and licence texts for everything third-party in libosrsrl.so and
+  its host.jar (Dear ImGui + stb + ProggyClean, the RuneLite client subset/API/http-api, the host's Maven jars from
+  host/build.sh, the client jar's shaders and CC-licensed fonts) and says the rest of the APK is Jagex's app. Releases
+  attach it (`tools/release-dev.sh`). When host/build.sh's jar list or `native/third_party` changes, update the file.
 - **Ghidra project rebuilt (client/ghidra-reanalyse, 2026-10-18)**: `re/ghidra` is now the re-analysed copy (auto-analysis,
   `tools/ghidra_scripts/FixSwitches.java` to complete jump tables auto-analysis left unresolved or partial, auto-analysis
   again). Functions 24957 → 24961, instructions 1954259 → 2057546, instructions outside any function 8944 → 36; all 217
@@ -63,7 +68,9 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
   Test override: `setprop debug.osrsrl.netallow <jar-name>`. Off-device check: `host/plugins/hub/netscan-check.sh <jars>`.
 - **Build-time netcheck**: `host/plugins/hub/netcheck.sh` (run by hub build.sh): NET-RAW stops the build unless `ALLOW_NET=1`
   (orchestrator's OK). NET-OKHTTP plugins need Network QA, and new outbound hosts need the orchestrator's OK.
-- **Network QA (gen 40)**: only the expected hosts (`dns.google` is an expected system lookup). No GE digest fetch captured yet.
+- **Network QA (v0.1.0 gate, 22:22-22:27)**: only the expected hosts (`dns.google` is an expected system lookup). With all hub
+  plugins loaded, one GitHub socket (185.199.111.133:443), most likely C Engineer: Completed's approved sound GETs
+  (docs/app-telemetry.md). No GE digest fetch captured yet.
 
 ## Open gaps (client)
 
@@ -81,6 +88,8 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
    Items' despawn timer can't be verified until the server fix is deployed.
 5. Random Event Hider can't be staged on OpenRune; Line of Sight's stray lines at 3219,3222 are terrain, not a bug.
 6. Decimal Prices' conversion is unconfirmed: devtools can't type `.` into the mobile quantity prompt.
+7. Host API gaps found by the v0.1.0 gate (backlog): no `javax.sound.sampled` (Drop Sounds throws at start) and no
+   `ConfigManager.getRSProfiles()` (Time Tracking's farming completion check throws NoSuchMethodError).
 
 ## Gotchas
 

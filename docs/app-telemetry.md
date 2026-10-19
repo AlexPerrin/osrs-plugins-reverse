@@ -354,3 +354,24 @@ Max Hit) -> "Try again" -> Play Now -> another restart (devtools bridge) -> Play
 - App-uid sockets: 10.0.2.2:43594; 104.26.8.233, 104.26.9.233, 172.67.74.139 (runelite); 172.64.152.249 (braze); 104.18.32.25 (onetrust);
   172.217.119.4 (Google), all :443. No Jagex address. 0 `ConsentSync`/`Singular` lines.
 - No GE digest fetch happened in this run (still unconfirmed, as in gen 38).
+
+### Network QA, v0.1.0 release gate (2026-10-18 22:22:02-22:27:38)
+
+Run by client-qa for the v0.1.0 release gate; full record in qa/client-0.1.0.md section 6 (evidence `netqa-logcat.txt`,
+`sockets.txt`, `sockets-plugins.txt` in that session's scratchpad). Build: master 09c05c9, `OPENRUNE=1 SERVER=10.0.2.2:8080
+GAME_PORT=43594 LOCAL_AUTH=1 tools/repack.sh` (7 `telemetry:` lines), default plugins + devtools (and briefly an R1 test jar,
+refused). Sampler: ESTABLISHED uid-10071 rows every ~0.6 s, 469 samples. Run: app start, Sign out -> "Sign in with Email /
+Username" -> Play Now -> LOGGED_IN, walk, `::tele` Varrock, tabs, `::drop` relog, force-stop + launch, "Try again" after ~45 s,
+Play Now, `::tele` home, attacked a Man, about a minute of walking.
+- netd DNS: `api.runelite.net` x2, `static.runelite.net` x2, `sdk.fra-01.braze.eu` x2, `dns.google` x1 at 22:23:11 right
+  after sign-in (system Private DNS validation, expected).
+- App-uid sockets: 10.0.2.2:43594 (game), 10.0.2.2:8080 (sidecar); 104.26.8.233, 172.67.74.139 (runelite); 172.64.152.249
+  (Braze); 104.18.32.25 (OneTrust); 172.217.114.4 (Google), all :443.
+- Must-not-appear: no `*.jagex.com`, `*.runescape.com`, `*.singular.net`, `app-measurement.com` or `*.x.invalid` lookup;
+  0 `ConsentSync`/`Singular` lines; no socket to a Jagex address. **PASS.**
+- Extra run, not the release's own traffic (22:28:44-22:34:34, 594 samples, all 87 core and 106 hub plugins loaded): the same
+  expected hosts (plus 104.18.35.7 Braze and 172.64.155.231 OneTrust) and **185.199.111.133:443**, a GitHub address
+  (raw.githubusercontent.com range), from 22:32:46, the moment the host started the hub batch. No log line names the
+  requester. Of the documented hub plugins that GET from raw.githubusercontent.com, Resource packs fetches only with a pack
+  selected (none was), so it is most likely C Engineer: Completed's approved sound-list/sound-file GETs (approved gen 26,
+  NET-OKHTTP through NetGuard). Not a Jagex host, and hub plugins are not in the APK.

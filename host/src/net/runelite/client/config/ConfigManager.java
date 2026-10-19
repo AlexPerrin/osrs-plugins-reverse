@@ -129,6 +129,38 @@ public class ConfigManager {
     }
 
     public String getRSProfileKey() { return rsKey(); }
+
+    private static final String RSPROFILE_ACCOUNT_HASH = "accountHash";
+
+    /**
+     * The RuneScape profiles with saved data, as desktop: one per "rsprofile.rsprofile.<id>.*" key set, with
+     * its display name, type and account hash (Time Tracking's farming completion check walks them). The host
+     * has one, "rsprofile.default", recorded by updateRSProfile at each login.
+     */
+    public List<RuneScapeProfile> getRSProfiles() {
+        java.util.TreeSet<String> keys = new java.util.TreeSet<>();
+        String prefix = RSPROFILE_GROUP + "." + RSPROFILE_GROUP + ".";
+        for (String k : properties.stringPropertyNames()) {
+            if (!k.startsWith(prefix)) continue;
+            int dot = k.indexOf('.', prefix.length());
+            if (dot > prefix.length()) keys.add(k.substring(RSPROFILE_GROUP.length() + 1, dot));
+        }
+        List<RuneScapeProfile> out = new ArrayList<>();
+        for (String key : keys) {
+            Long hash = getConfiguration(RSPROFILE_GROUP, key, RSPROFILE_ACCOUNT_HASH, long.class);
+            RuneScapeProfileType type = getConfiguration(RSPROFILE_GROUP, key, RSPROFILE_TYPE, RuneScapeProfileType.class);
+            out.add(new RuneScapeProfile(getConfiguration(RSPROFILE_GROUP, key, RSPROFILE_DISPLAY_NAME), type,
+                    hash == null ? RuneScapeProfile.ACCOUNT_HASH_INVALID : hash, key));
+        }
+        return out;
+    }
+
+    /** Host, at login: records the logged-in account's name, world type and hash on the one RS profile (desktop's profile keys). */
+    public void updateRSProfile(String displayName, RuneScapeProfileType type, long accountHash) {
+        setConfiguration(RSPROFILE_GROUP, rsKey(), RSPROFILE_ACCOUNT_HASH, accountHash);
+        setConfiguration(RSPROFILE_GROUP, rsKey(), RSPROFILE_TYPE, type);
+        if (displayName != null) setConfiguration(RSPROFILE_GROUP, rsKey(), RSPROFILE_DISPLAY_NAME, displayName);
+    }
     private static String rsKey() { return RSPROFILE_GROUP + "." + RS_PROFILE; }
 
     /**

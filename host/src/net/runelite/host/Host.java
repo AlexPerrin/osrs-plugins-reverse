@@ -443,6 +443,13 @@ public final class Host {
         if (s == GameState.LOGGED_IN) ((AndroidClient) client).applyIdleTimeout();
         if (s == GameState.LOGGED_IN && !profilePosted) {
             profilePosted = true;
+            try {
+                net.runelite.api.Player me = localPlayer();
+                configManager.updateRSProfile(me != null ? me.getName() : null,
+                        net.runelite.client.config.RuneScapeProfileType.getCurrent(client), client.getAccountHash());
+            } catch (RuntimeException ex) {
+                Log.e(TAG, "rs profile update failed", ex);
+            }
             bus.post(new net.runelite.client.events.RuneScapeProfileChanged(null, "default"));
             // Desktop posts UsernameChanged when the login name is set; Android token logins have no
             // name field, so it is posted once per login here, once getUsername/getAccountHash are

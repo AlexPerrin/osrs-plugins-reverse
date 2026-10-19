@@ -1,7 +1,7 @@
 # Client state
 
 Short current-state doc for the client track (docs/workflow.md "State docs"). Rewrite it; don't append.
-History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 45.
+History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 46.
 
 ## What this is
 
@@ -27,6 +27,11 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **ConfigManager.getRSProfiles (client/host-config-rsprofiles, gen 46, device 2026-10-19)**: Time Tracking's farming completion
+  check no longer throws NoSuchMethodError. The host's one RS profile (`rsprofile.default`) gets desktop's profile keys
+  (displayName, type, accountHash) at each login (`Host.postGameState`, before RuneScapeProfileChanged), and `getRSProfiles()`
+  scans them as desktop. Device: keys written (`displayName=tester`, `type=STANDARD`); ~90 s of checks, no error. Evidence:
+  gen 46 scratchpad `g46/full-b3.txt` (full logcat). No network change.
 - **Rebuild LOADING waits for the new scene base (client/herbiboar-after-teleport, gen 45, stacked on client/host-prompt-enter;
   device 2026-10-19)**: OpenRune's teleports are 30 -> 25 -> 30 and the host posted LOADING at 25 with the old scene base, so
   getMapRegions (from the base) gave the old regions and Herbiboar's area check on LOADING failed. `Host` now holds a 25 seen
@@ -123,8 +128,8 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
    Enter"). Decimal Prices converts "1.5k" to 1500.
 7. **Herbiboar after a teleport: fixed (client/herbiboar-after-teleport, gen 45).** A rebuild's LOADING now waits for the new
    scene base, so getMapRegions answers the new regions; Herbi AFK draws its path line too.
-8. Host API gaps found by the v0.1.0 gate (backlog): no `javax.sound.sampled` (Drop Sounds throws at start) and no
-   `ConfigManager.getRSProfiles()` (Time Tracking's farming completion check throws NoSuchMethodError).
+8. Host API gaps found by the v0.1.0 gate (backlog): no `javax.sound.sampled` (Drop Sounds throws at start).
+   `ConfigManager.getRSProfiles()`: fixed (client/host-config-rsprofiles, gen 46).
 
 ## Gotchas
 

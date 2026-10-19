@@ -73,8 +73,8 @@ Fork PRs whose upstream gate passed. Each goes upstream only after the user appr
 | fork PR | branch @ commit | upstream PR | gates | note |
 |---|---|---|---|---|
 | #16 | content/sheep-shearer @ 19aefd90a | #366 (draft) | internal + upstream PASS (fork docs qa/sheep-shearer.md) | on #366's branch; title/body updated 2026-10-18 (user approved), stays draft; no reply posted |
-| #17 | fix/rune-pouch-accuracy @ bee197ba9 | none yet (follow-up to merged #356) | internal + upstream PASS (fork docs qa/rune-pouch-accuracy.md) | "Don't be silly." for storing a pouch in itself; one commit on upstream main 731fd392a |
-| #19 | fix/edgeville-general-store-stock @ ca527418a | none yet; #351 (fix/55, draft) depends on it | internal + upstream PASS (fork docs qa/edgeville-general-store-stock.md) | rebuilds upstream's truncated generalshop2.toml; data only |
+| #17 | fix/rune-pouch-accuracy @ bee197ba9 | **#370** (opened 2026-10-19) | internal + upstream PASS (fork docs qa/rune-pouch-accuracy.md) | "Don't be silly." for storing a pouch in itself; one commit on upstream main 731fd392a |
+| #19 | fix/edgeville-general-store-stock @ ca527418a | **#371** (opened 2026-10-19); #351 (fix/55, draft) leaves draft after it merges | internal + upstream PASS (fork docs qa/edgeville-general-store-stock.md) | rebuilds upstream's truncated generalshop2.toml; data only |
 
 ## Waiting on the user
 Decided 2026-10-18: updated versions go onto the existing upstream PRs (#354-#357, #366-#368) after their gates,

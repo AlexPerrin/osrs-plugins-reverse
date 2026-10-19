@@ -8,7 +8,9 @@ import net.runelite.api.WorldType;
  * The current world as the client knows it, for WorldService's world list (the api list has Jagex's
  * worlds only, so a private world such as the test server's 255 is missing from it). Read from the
  * game's own world list (slr.ws, which the game loaded from its configured server), else from the
- * client's world fields (id, flags, host). Nothing is fetched.
+ * client's world fields (id, flags, host). Nothing is fetched. Safe from any thread: off the client
+ * thread (World Hopper's and WorldService's executors) it gets the entry the game thread copied at
+ * most 25 cycles ago, since the game frees and reloads its list on its own thread.
  */
 public final class CurrentWorld {
     private CurrentWorld() {}

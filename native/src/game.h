@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 // Read-only views of game state, resolved per game build (see game.cpp).
@@ -407,7 +408,11 @@ int world_flags(); // Client +0x2f64 (CS2 worldflags 3324)
 // A world as the client's world list (slr.ws) has it; listed = false when only the client fields
 // (id +0x3174, flags +0x2f64, host +0x3098) describe it (a world the list lacks).
 struct WorldEntry { int id = 0, flags = 0, players = 0, location = 0; bool listed = false; std::string host, activity; };
+// Reads the game's world list: game thread only (the login screen's switcher reloads and frees
+// it from doCycle). Other threads use client_thread::world_entry, the per-cycle cached copy.
 bool world_entry(int id, WorldEntry& out);
+// The world list's {entries pointer, count}, to notice a reload. Game thread only.
+std::pair<uintptr_t, uint64_t> world_list_key();
 // REBUILD_REGION state: whether the scene is an instance, and the [level][x][z] template chunks
 // packed as desktop (level << 24 | zoneX << 14 | zoneZ << 3 | rotation << 1; -1 = none).
 bool instance_templates(bool& instanced, int32_t out[4 * 13 * 13]);

@@ -71,6 +71,11 @@ std::vector<game::Inventory> inventories();
 // 0 = it didn't exist then, -1 = no event view (read the live map).
 int inventory_view(int id, game::Inventory& out);
 
+// The current world's world list entry (game::world_entry) as of a recent cycle: re-read when the
+// world id or the list changes, else every 25 cycles. Safe from any thread; false if `id` isn't
+// the cached world.
+bool world_entry(int id, game::WorldEntry& out);
+
 // Players as of the end of the last cycle; safe from any thread.
 std::vector<game::PlayerInfo> players();
 

@@ -13,11 +13,12 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 - API coverage and each plugin's status: docs/plugin-host.md. Addresses: docs/offsets.md (ELF; Ghidra = ELF + 0x100000).
 - Privacy patches and Network QA: docs/app-telemetry.md (read it before any build that touches networking).
 
-## Installed on the device (end of gen 44)
+## Installed on the device (end of gen 45)
 
-- Build: 09c05c9's gated build (v0.1.0 release gate), `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1 tools/repack.sh --install`
-  (7 `telemetry:` lines; under WSL pass `ADB=.../adb.exe ANDROID_SERIAL=127.0.0.1:5555`, or the install silently doesn't happen).
-  Gen 44 built nothing.
+- Build: client/herbiboar-after-teleport's head (gen 45; includes client/host-prompt-enter), built in the gen 45 worktree with
+  `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1 MODULUS=<openrune.sh modulus> tools/repack.sh` (7 `telemetry:`
+  lines) and installed with `adb install-multiple -r` (Windows adb.exe, `wslpath -w` paths). Reinstall master's build after the
+  merge gates if they fail.
 - Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3219,3222.
 - **Expected drift: a Fish barrel in the tester's inventory slot 15** (spawned gen 44; OpenRune's barrel Destroy does nothing,
   filed as a server task). Leave it (orchestrator, gen 44); destroy it once that fix is live. The restore check's MANUAL line says so.
@@ -26,6 +27,15 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **Rebuild LOADING waits for the new scene base (client/herbiboar-after-teleport, gen 45, stacked on client/host-prompt-enter;
+  device 2026-10-19)**: OpenRune's teleports are 30 -> 25 -> 30 and the host posted LOADING at 25 with the old scene base, so
+  getMapRegions (from the base) gave the old regions and Herbiboar's area check on LOADING failed. `Host` now holds a 25 seen
+  while logged in until the base changes, then posts LOADING (scene objects forgotten first), WorldViewLoaded and LOGGED_IN in
+  one cycle (`GameStateChanged LOADING (scene rebuild)` in logcat); same-base rebuilds get the pair after 50 cycles. Device:
+  after `::tele 3686 3870 0` from Lumbridge, core Herbiboar draws the start and trail tiles and Herbi AFK its path line (scene and
+  minimap). A `setGameState(LOADING)` reload (probe `reload 0 0`) shows no native 25 to the host at all, so it posts no LOADING
+  (unchanged by this fix; desktop would). Evidence: `g45/herbiboar-after-tele.png`, `g45/herbiafk-trail-line-after-tele.png`,
+  `g45/herbiboar-tele-logcat.txt`. No network change.
 - **Soft keyboard Enter for KeyListeners (client/host-prompt-enter, gen 45, device 2026-10-19)**: the game submits a chatbox
   input or prompt from its hidden EditText's editor action (IME_ACTION_DONE -> `com.jagex.android.t.a` -> key 66 through JNI
   `ru.hx`/`ru.wv`), which never passes the Window.Callback; on BlueStacks a hardware Enter's down also becomes that action (only
@@ -111,8 +121,8 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 6. **Prompt Enter for KeyListeners: fixed (client/host-prompt-enter, gen 45).** The soft keyboard's Enter is an editor action
    on the game's hidden EditText, not a key event; `PromptEnter` wraps that EditText's listener (docs/plugin-host.md row "Soft keyboard
    Enter"). Decimal Prices converts "1.5k" to 1500.
-7. **Herbiboar after a teleport into Fossil Island** draws nothing (gen 22's fix regressed or a different path: teleport from
-   Falador, LOADING posted); after a relog in the area it works. Herbi AFK draws no path line in either case.
+7. **Herbiboar after a teleport: fixed (client/herbiboar-after-teleport, gen 45).** A rebuild's LOADING now waits for the new
+   scene base, so getMapRegions answers the new regions; Herbi AFK draws its path line too.
 8. Host API gaps found by the v0.1.0 gate (backlog): no `javax.sound.sampled` (Drop Sounds throws at start) and no
    `ConfigManager.getRSProfiles()` (Time Tracking's farming completion check throws NoSuchMethodError).
 
@@ -152,8 +162,7 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 1. Merge gate for client/world-entry-thread-safety with client-qa. Regression on plugins that draw into images (Poison
    infobox, Instance Map, Bank Tags icons) with the merged BufferedImage fix; Quick Prayer Preview checked gen 43.
-2. Host gap 7 (Herbiboar after ::tele; then Herbi AFK's missing line). When the
-   server tasks from gen 44 are live: Fish Barrel (Check), Clue Steps, Did I Compost's treated path, destroy the slot-15 Fish barrel.
+2. When the server tasks from gen 44 are live: Fish Barrel (Check), Clue Steps, Did I Compost's treated path, destroy the slot-15 Fish barrel.
 3. More hub plugins from the ranking (`scratchpad/client38/ranking.json` or refetch); netcheck + stubcheck each.
 4. Host gap 2 (native menu entry removal).
 5. Opportunistic: a capture that includes a GE digest fetch (should go to the sidecar).

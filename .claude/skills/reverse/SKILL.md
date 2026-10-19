@@ -16,21 +16,29 @@ Use `-readOnly` unless the task is to update the project; only one writer at a t
 | Script | Args | Output |
 |---|---|---|
 | `Decompile.java` | Ghidra addresses (`0x76100c ...`) | `re/decomp/<entry>.c` per containing function |
-| `Xrefs.java` | Ghidra addresses | functions referencing each |
+| `Callers.java` | Ghidra addresses | per target: callers count, then one line per calling function with its call sites (`<no function>` = a site outside any function) and a count of non-call refs |
+| `Xrefs.java` | Ghidra addresses | functions referencing each (every reference type) |
 | `StringXrefs.java` | strings (`"Walk here"`) | functions referencing literals containing them |
 | `FindScalar.java` | scalars (`0x89494`) | functions with an instruction using that operand (struct fields) |
+| `FixSwitches.java` | none (`dry` to only report) | **writer**: completes switch tables auto-analysis missed; for re-building the project only |
 
-### The project is not complete
-`re/ghidra` was never fully auto-analysed: some code isn't attached to functions (e.g. around ELF 0x4147d8 and
-0x4c2ad4), so `Xrefs.java` can miss callers without any error (it found 1 of the 3 callers of the slr.ws parser
-0x4320dc; 2026-10-19). A "who calls X" or "X is only reached from Y" claim needs a whole-binary check:
+### Cross-check caller claims against the whole binary
+Ghidra only sees code it has disassembled. The first project missed switch arms whose jump tables auto-analysis
+left unresolved or partial, so `Xrefs.java` found 1 of the 3 callers of the slr.ws parser ELF 0x4320dc without
+any error. `re/ghidra` was rebuilt on 2026-10-18 (auto-analysis, `FixSwitches.java`, auto-analysis again):
+instructions outside any function went from 8944 to 36 and `Callers.java 0x5320dc` now lists all 3 callers and
+5 sites. A "who calls X" or "X is only reached from Y" claim still needs the whole-binary check:
 ```
 aarch64-linux-gnu-objdump -d --no-show-raw-insn re/osclient.so | grep -E '\sbl?\s+4320dc\b'   # ELF addresses, ~2 s
 ```
-Each hit is a call site; map it to its function with `Decompile.java` (ELF + 0x100000). A site Ghidra doesn't
-place in a function is usually a cold block of a nearby one (0x4193d8 belongs to 0x41615c): say so. Indirect
-calls (vtables, function pointers) don't show up this way; list them as not established, or find the table with
-`FindScalar.java`.
+Each hit is a call site; it must match `Callers.java` (ELF + 0x100000). A site Ghidra doesn't place in a
+function is a gap in the project: map it with `Decompile.java` of the nearby function and say so. Indirect
+calls (vtables, function pointers) don't show up either way; list them as not established, or find the table
+with `FindScalar.java`.
+
+Rebuilding the project (a new client build): import into a new dir, auto-analyse, `-postScript FixSwitches.java`
+without `-readOnly`, auto-analyse again (`-process osclient.so` without `-noanalysis`), then swap dirs by
+renaming while no Ghidra job runs (`GHIDRA_HEADLESS_MAXMEM=6G`; each pass ~4 min).
 
 ### Address conventions
 ELF addresses in docs/offsets.md and in objdump; Ghidra = ELF + 0x100000. Passing an ELF address to a Ghidra

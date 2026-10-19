@@ -24,6 +24,13 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **Ghidra project rebuilt (client/ghidra-reanalyse, 2026-10-18)**: `re/ghidra` is now the re-analysed copy (auto-analysis,
+  `tools/ghidra_scripts/FixSwitches.java` to complete jump tables auto-analysis left unresolved or partial, auto-analysis
+  again). Functions 24957 → 24961, instructions 1954259 → 2057546, instructions outside any function 8944 → 36; all 217
+  function entries offsets.md names are unchanged and 18 of its addresses that were undisassembled are now inside functions.
+  The old project had no user-made symbols, comments, signatures or data types, so nothing was carried over; it is kept
+  at `re/ghidra-old` until main deletes it. New `Callers.java` (reverse skill table); the objdump whole-binary check stays.
+
 - **World entry thread safety (client/world-entry-thread-safety, gen 43)**: `Native.worldEntry` no longer walks the game's
   world list off the game thread. The game frees and rebuilds that list (new address each time) whenever the login-screen
   world switcher opens, on the game thread (parser `0x4320dc`: callers `0x412e78` and the login handler `0x41615c`, both only under doCycle, and

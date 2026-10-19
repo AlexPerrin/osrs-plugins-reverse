@@ -157,6 +157,36 @@ def classify(seg, cwd):
     return None, ""
 
 
+def segments(command):
+    """Split at the shell's command separators (; & && || | newline) outside quotes."""
+    segs, cur, i, quote = [], [], 0, None
+    while i < len(command):
+        c = command[i]
+        if quote:
+            cur.append(c)
+            if c == "\\" and quote == '"' and i + 1 < len(command):
+                cur.append(command[i + 1])
+                i += 1
+            elif c == quote:
+                quote = None
+        elif c in "'\"":
+            quote = c
+            cur.append(c)
+        elif c == "\\" and i + 1 < len(command):
+            cur.append(command[i:i + 2])
+            i += 1
+        elif c in ";&|\n":
+            segs.append("".join(cur))
+            cur = []
+            if command[i:i + 2] in ("&&", "||"):
+                i += 1
+        else:
+            cur.append(c)
+        i += 1
+    segs.append("".join(cur))
+    return segs
+
+
 def main():
     data = json.load(sys.stdin)
     if data.get("tool_name") != "Bash":
@@ -168,7 +198,7 @@ def main():
     # Heredoc bodies are data (scripts, file contents), not commands: drop them before splitting.
     command = re.sub(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?\n\s*\2\s*(?=\n|$)", r"\3", command, flags=re.S)
     kinds, asks = [], []
-    for seg in re.split(r"&&|\|\||;|\||\n", command):
+    for seg in segments(command):
         seg = seg.strip()
         if not seg:
             continue

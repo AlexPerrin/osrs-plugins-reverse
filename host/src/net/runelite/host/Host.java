@@ -668,6 +668,12 @@ public final class Host {
                     break;
                 }
                 if (heldRebuildCycles >= 0 && s == GameState.LOGGED_IN) break;  // still held: the tick posts it
+                // The game's 30 can come after the tick that released the hold (the replay already
+                // posted LOADING, WorldViewLoaded, LOGGED_IN); desktop never posts LOGGED_IN twice in a row.
+                if (s == GameState.LOGGED_IN && lastPostedState == GameState.LOGGED_IN && loggedInPosted) {
+                    Log.i(TAG, "GameStateChanged LOGGED_IN again: already posted (rebuild released)");
+                    break;
+                }
                 heldRebuildCycles = -1;
                 postGameState(bus, s);
                 break;

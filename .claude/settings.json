@@ -1,35 +1,6 @@
 {
   "permissions": {
     "ask": [
-      "Bash(gh repo fork*)",
-      "Bash(gh pr create*)",
-      "Bash(gh pr edit*)",
-      "Bash(gh pr comment*)",
-      "Bash(gh pr review*)",
-      "Bash(gh pr close*)",
-      "Bash(gh pr reopen*)",
-      "Bash(gh pr merge*)",
-      "Bash(gh pr ready*)",
-      "Bash(gh issue create*)",
-      "Bash(gh issue comment*)",
-      "Bash(gh issue edit*)",
-      "Bash(gh issue close*)",
-      "Bash(gh issue reopen*)",
-      "Bash(gh release*)",
-      "Bash(gh gist*)",
-      "Bash(gh api -X PATCH*)",
-      "Bash(gh api -X POST*)",
-      "Bash(gh api -X PUT*)",
-      "Bash(gh api -X DELETE*)",
-      "Bash(gh api --method*)",
-      "Bash(gh api * -f *)",
-      "Bash(gh api * -F *)",
-      "Bash(gh api * --field*)",
-      "Bash(gh api * --raw-field*)",
-      "Bash(gh api * --input*)",
-      "Bash(gh api graphql*)",
-      "Bash(git -C re/upstream-pr/or push*)",
-      "Bash(git push fork*)",
       "Bash(openrune/upstream/open-batch-*)"
     ]
   },
@@ -52,6 +23,11 @@
             "type": "command",
             "if": "Bash(git tag*)",
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/publish_gate.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/github_scope.py",
+            "timeout": 30
           }
         ]
       }
@@ -59,25 +35,50 @@
     "SessionStart": [
       {
         "matcher": "compact",
-        "hooks": [{ "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/tools/hooks/session_state.sh" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/tools/hooks/session_state.sh"
+          }
+        ]
       }
     ],
     "SubagentStop": [
       {
         "matcher": "client-dev",
-        "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/slot_stop.py client" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/slot_stop.py client"
+          }
+        ]
       },
       {
         "matcher": "client-qa",
-        "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/slot_stop.py client-qa" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/slot_stop.py client-qa"
+          }
+        ]
       },
       {
         "matcher": "server-dev",
-        "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/slot_stop.py server" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/slot_stop.py server"
+          }
+        ]
       },
       {
         "matcher": "server-qa",
-        "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/slot_stop.py server-qa" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/hooks/slot_stop.py server-qa"
+          }
+        ]
       }
     ]
   }

@@ -67,8 +67,8 @@ branch commit, with logs beside them in `<clone>.logs/`.
    from the volume `openrune-dl-cache`, everything after it is built from the branch; freshCache ends
    with a forced BUILD), `:or-cache:buildCache`, `generateRsa` (integration tests read
    `.data/game.key`), `:server:app:installDist` (then `<clone>.logs/runnable`: the branch server can
-   start while the tests run), `spotlessCheck`, `assemble testClasses integrationClasses`, `test`,
-   `integration` (one worker each: each test JVM has `-Xmx2048m`). A failed cache step skips the rest.
+   start while the tests run), `spotlessCheck`, `assemble testClasses integrationClasses`, `test` (2 test
+   JVMs at `-Xmx1536m`), `integration` (1 test JVM at `-Xmx2048m`: 2 peaked at 4.7-4.9 GB of the 5 GB). A failed cache step skips the rest.
    `<clone>.logs/` holds one log per step, `summary` (rc, seconds, peak container memory, tasks
    executed / from cache) and `tests` (counts per suite). Typical: about 17 min cold, 9-12 min warm.
    `qa.sh gate-run <clone>-run` (= `runbuild`) builds only what a server run needs. `qa.sh split-build`

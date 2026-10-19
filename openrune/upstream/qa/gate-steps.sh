@@ -7,12 +7,12 @@
 #   gate-steps.sh <logs dir> <step>...    step = name=<gradle args, space-separated>
 # Modes (QA_MODE):
 #   gate  (default) the one gate container (5 GB): --no-daemon per step, --max-workers=4, Gradle
-#         -Xmx1536m, Kotlin daemon -Xmx2g (it exits 1 s after each step's Gradle run); test and
-#         integration with 1 worker (each test JVM -Xmx2048m); cache tools -Xmx2600m.
+#         -Xmx1536m, Kotlin daemon -Xmx2g (it exits 1 s after each step's Gradle run); unit tests
+#         2 workers at -Xmx1536m, integration 1 worker at the build's -Xmx2048m; cache tools -Xmx2600m.
 #   dev   exec'd into a dev's warm container (4 GB): one persistent Gradle daemon (-Xmx1536m, the
 #         Kotlin compiler in-process, so it stays warm in that daemon), 2 workers, test JVMs capped
 #         at 1536m; for cache steps the daemon is stopped and the step runs --no-daemon.
-# Overrides: QA_WORKERS, QA_TEST_WORKERS (1), QA_TEST_HEAP (test JVM -Xmx), QA_GRADLE_XMX,
+# Overrides: QA_WORKERS, QA_TEST_WORKERS, QA_INT_WORKERS, QA_TEST_HEAP (test JVM -Xmx), QA_GRADLE_XMX,
 # QA_KOTLIN (daemon|in-process), QA_KOTLIN_XMX. The summary has each step's peak container memory
 # (anon / anon + page cache).
 # After 1-cache the downloaded OpenRS2 cache zips (~/.openrune/caches/<game>/<id>) are published to
@@ -78,7 +78,13 @@ for step in "$@"; do
   if [ -n "${cache_failed:-}" ]; then echo "$name: skipped (cache step failed)" >> "$L/summary"; continue; fi
   jto=; w=$WORKERS; daemon=--no-daemon; gx=$GXMX
   case $name in 1-cache*|2-buildcache*) jto=-Xmx2600m ;; esac
-  case $name in *test*|*integration*) w=${QA_TEST_WORKERS:-1} ;; esac
+  # Test JVMs: unit tests 2 at a time at -Xmx1536m in the gate (peak anon 3.7 GB of 5), integration
+  # one at a time at the build's -Xmx2048m (2 workers peaked at 4.7-4.9 GB anon: too close to 5).
+  theap=${QA_TEST_HEAP:-}
+  case $name in
+    *integration*) w=${QA_INT_WORKERS:-1} ;;
+    *test*) if [ "$MODE" = gate ]; then w=${QA_TEST_WORKERS:-2}; theap=${QA_TEST_HEAP:-1536m}; else w=${QA_TEST_WORKERS:-1}; fi ;;
+  esac
   if [ "$MODE" = dev ]; then
     case $name in
       1-cache*|2-buildcache*)   # the cache tool needs 2.6 GB: no warm daemon beside it
@@ -99,7 +105,7 @@ for step in "$@"; do
   JAVA_TOOL_OPTIONS=$jto ./gradlew $daemon --console=plain --build-cache --no-configuration-cache \
     -I "$INIT" --max-workers=$w -Dorg.gradle.jvmargs="-Xmx$gx -Dfile.encoding=UTF-8" \
     -Pkotlin.compiler.execution.strategy=$KSTRAT -Pkotlin.daemon.jvmargs="-Xmx$KXMX" \
-    ${QA_TEST_HEAP:+-Pqa.testMaxHeap=$QA_TEST_HEAP} $args > "$log" 2>&1
+    ${theap:+-Pqa.testMaxHeap=$theap} $args > "$log" 2>&1
   rc=$?
   t1=$(date +%s)
   kill $PS 2>/dev/null; wait $PS 2>/dev/null; peak=$(cat "/tmp/qa-peak-$$" 2>/dev/null || echo ?)

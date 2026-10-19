@@ -237,6 +237,7 @@ _gate)  # _gate <qa|dev:<volume>> <dir> <steps...>: one container running gate-s
     ${QA_WORKERS:+-e QA_WORKERS=$QA_WORKERS} ${QA_KOTLIN:+-e QA_KOTLIN=$QA_KOTLIN} \
     ${QA_GRADLE_XMX:+-e QA_GRADLE_XMX=$QA_GRADLE_XMX} ${QA_KOTLIN_XMX:+-e QA_KOTLIN_XMX=$QA_KOTLIN_XMX} \
     ${QA_TEST_WORKERS:+-e QA_TEST_WORKERS=$QA_TEST_WORKERS} ${QA_TEST_HEAP:+-e QA_TEST_HEAP=$QA_TEST_HEAP} \
+    ${QA_INT_WORKERS:+-e QA_INT_WORKERS=$QA_INT_WORKERS} \
     ${GRADLE_REMOTE_CACHE_URL:+-e GRADLE_REMOTE_CACHE_URL=$GRADLE_REMOTE_CACHE_URL} \
     -v $v:/gradle -v $DLVOL:/dl -v "$d":"$d" -v "$L":"$L" $(git_mounts "$d") \
     -v "$REPO/tools/gradle":/qa-init:ro -v "$REPO/openrune/upstream/qa/gate-steps.sh":/qa-steps.sh:ro \

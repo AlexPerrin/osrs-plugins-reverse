@@ -17,7 +17,8 @@ The branch gate (STATE.md on the fork's `docs` branch, "Build, test, deploy"; QA
   `clean :or-cache:qaCacheToolsClasspath`, `:or-cache:freshCache :or-cache:mergePluginGamevals`,
   `:or-cache:buildCache`, `generateRsa`, `:server:app:installDist` (then `<clone>.logs/runnable`),
   `spotlessCheck`, `assemble testClasses integrationClasses`, `test`, `integration`. `--max-workers=4`
-  (test and integration: 1; each test JVM has `-Xmx2048m`), Gradle `-Xmx1536m`, the Kotlin daemon at
+  (unit tests: 2 JVMs at `-Xmx1536m`; integration: 1 at the build's `-Xmx2048m`, since 2 peaked at 4.7-4.9 GB
+  of the 5), Gradle `-Xmx1536m`, the Kotlin daemon at
   `-Xmx2g` (it exits after each run, so it is gone when the cache tools, `-Xmx2600m`, or the tests run),
   `--no-configuration-cache` (it misses new modules).
 - Build cache ON, remote only: the shared node `tools/gradle-cache.sh` (gradle/build-cache-node, docker network

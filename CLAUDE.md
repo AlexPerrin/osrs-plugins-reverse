@@ -15,7 +15,8 @@ History (docs/client-handoff.md, docs/server-handoff.md) is read only when neede
 - The orchestrator (the main session) routes tasks and blockers, and owns every ship step: pushes, PRs, merges,
   tags, deploys, device grants, progress files and decisions.
 - One dev/QA pair per track, spawned from .claude/agents/ with one task each and its definition of done:
-  `client-dev` + `client-qa` in this repo (merge and release gates); `server-dev` + `server-qa` on the fork, each
+  `client-dev` + `client-qa` in this repo (dev's own check: built + the changed path tried on the device → master;
+  client-qa runs only the release gate, full regression + Network QA → vX.Y.Z); `server-dev` + `server-qa` on the fork, each
   in its own clone `re/agents/<name>/or` (dev's own check: accuracy spec + green CI → integration and live server;
   server-qa runs only the upstream gate → upstream PR).
 - Tools are shared skills any role calls (docs/workflow.md "Shared skills"); only a companion's run at a fixed

@@ -12,7 +12,7 @@ one QA companion. The orchestrator (the main session) sits above both: it routes
 | Trigger | The plugin backlog | A client blocker, or the feature backlog |
 | Analyse | The client (Ghidra), the server when needed, ids and data (`osrs-mcp`) | The accuracy baseline (`osrs-mcp`: wiki, cache, gamevals; Mod posts); the client's side of the protocol (Ghidra) |
 | Verify | BlueStacks against the test server; A/B against desktop RuneLite | Unit and integration tests, boot; desktop RuneLite against the branch's own server |
-| Gates | Merge gate, release gate | Dev's own check (no QA) for the fork, upstream gate |
+| Gates | Dev's own check (no QA) for `master`, release gate | Dev's own check (no QA) for the fork, upstream gate |
 | Ships to | `master`, then a tagged release (semver `vX.Y.Z`, pre-releases `vX.Y.Z-dev`) | `integration` and the live test server, then an upstream PR |
 | Agents | `client-dev` + `client-qa` | `server-dev` + `server-qa` |
 | State | `docs/client-state.md`, records in `qa/` | `STATE.md`, `accuracy/`, `qa/` on the fork's `docs` branch |
@@ -28,20 +28,29 @@ spawned from the orchestrator's session here.
 2. **Analyse.** The client with the `reverse` skill (Ghidra), and the server with `server-probe` when the
    feature depends on what the server sends.
 3. **Build** on a short branch `client/<topic>` in this repo. Small fixes may go straight to `master`.
-4. **Verify** with `device-test` (BlueStacks against the test server, in a device slot) and `ab-test` (desktop
-   RuneLite) for plugins that draw things. When the server is missing something, the dev raises a **blocker**
-   (below) instead of working around it.
-5. **Merge gate.** `client-qa` runs the regression and checks at the branch's commit; on PASS the orchestrator
-   merges to `master`.
+4. **Verify** by trying the changed plugin or host path on the device (`device-test`, BlueStacks against the
+   test server), as the dev does anyway while developing. When the server is missing something, the dev raises
+   a **blocker** (below) instead of working around it.
+5. **Dev's check.** The hand-over is the branch at a commit, built, with the device evidence of the changed path
+   (a screenshot or log). The orchestrator merges it to `master`; no QA run. Dev builds (`tools/release-dev.sh`,
+   `vX.Y.Z-dev.N`) stay automated.
+   - **Automatic checks live in tooling**, not in the dev's steps: `repack.sh`'s telemetry assertions (the build
+     fails without its 7 `telemetry:` lines), the hub netcheck at build and R1 NetScan at load (no raw-socket
+     plugins), the release hook. The dev doesn't re-verify them by hand.
+   - **Only when relevant, never a fixed step:** `network-qa` when a change adds or alters outbound traffic (a new
+     host, a new fetch); `ab-test` when it claims parity with desktop drawing. `reverse` cross-checks are the
+     dev's tool, not a gate. The restore check runs once at the end of a device slot (it's about sharing the
+     device, not about the change).
 6. **Release gate.** When a set of features is ready, `client-qa` runs the release QA on `master`; on PASS the
    orchestrator tags `vX.Y.Z` (https://semver.org; a pre-release such as `v0.1.0-dev` is a GitHub pre-release). The record is `qa/client-X.Y.Z[-pre].md`. A GitHub release is published only with the user's confirmation. The full
    repacked APK is attached (user's decision, 2026-10-19, knowing it contains Jagex's app); the gate checks it
    carries no secrets or personal data.
 
-Client QA covers: a device regression (core plugins and pinned hub plugins, scripted through the devtools bridge
-where possible, with the plugin-host table updated); Network QA (docs/app-telemetry.md) for every release and
-every network-relevant change; desktop A/B for plugins that draw things; sign-in (LOCAL_AUTH) and the privacy
-patches present in the build (the `repack.sh` + `patch_telemetry.py` log); native claims checked with `reverse`.
+Client QA (the release gate) covers: a device regression (core plugins and pinned hub plugins, scripted through
+the devtools bridge where possible, with the plugin-host table updated); Network QA (docs/app-telemetry.md) for
+every release (the dev runs it for a change that adds or alters outbound traffic); desktop A/B for plugins that
+draw things; sign-in (LOCAL_AUTH) and the privacy patches present in the build (the `repack.sh` +
+`patch_telemetry.py` log); native claims checked with `reverse`. This is where cross-change regressions are caught.
 
 ## Server track
 
@@ -155,8 +164,10 @@ The same applies the other way (a server task that needs a client change or a de
   The server roles each work in their own fork clone, `re/agents/<name>/or`, with `docs` checked out beside it
   as a worktree; a shared working tree leaks build outputs between branches. During the move, server QA records
   and QA.md may still be in `openrune/upstream/` here; the hooks read both places.
-- **QA is a companion.** The dev hands over a branch at a commit and moves on to its next task; the companion
-  runs the gate, records the result, sends fixes back to its dev, and reports PASS or FAIL to the orchestrator.
+- **QA is a companion.** It gates only what goes out to others: the orchestrator hands it `master` at a commit
+  for a client release, or a server dev's fork branch at a commit for upstream, and the dev moves on to its next
+  task; the companion runs the gate, records the result, sends fixes back to its dev, and reports PASS or FAIL
+  to the orchestrator.
   A companion never writes the code it checks (a hook limits it to records, QA.md and scratch files).
 - **One owner per branch or area at a time.** Another agent that needs a change sends it to the owner, through
   the orchestrator.
@@ -165,7 +176,7 @@ The same applies the other way (a server task that needs a client change or a de
 
 Tools belong to no role. Each is a skill any agent calls when it needs it: a dev while building, a companion
 against a fixed commit for its gate. Only the companion's run counts for a QA gate; a dev's run is evidence it
-hands over (on the server track, the dev's check that puts a branch into `integration`).
+hands over (the dev's check that puts a branch into `master` or `integration`).
 
 | Skill | What it does | Resource | Typical callers |
 |---|---|---|---|
@@ -200,7 +211,7 @@ Every gate is defined before its work starts, and recorded against an exact comm
 
 | Gate | Track | Run by | Checks | On PASS |
 |---|---|---|---|---|
-| Merge | client | `client-qa` | Device regression for what changed, A/B where it draws, Network QA if network-relevant, native claims | merge to `master` |
+| Dev's check | client | `client-dev` (no QA) | Built, and the changed plugin or host path tried on the device (screenshot or log); `network-qa` only for new or changed outbound traffic, `ab-test` only for a desktop-parity claim. Telemetry assertions, netcheck/NetScan and the release hook are automatic | merge to `master` |
 | Release | client | `client-qa` | Full client QA on `master`, Network QA, privacy patches in the build | tag; GitHub release on the user's OK |
 | Dev's check | server | `server-dev` (no QA) | Spec with `accuracy-check` (including its RSProx comparison), behaviour against it, in-game where it renders, `build-test` evidence (the fork's GitHub Actions CI at the commit; `qa.sh dev`/`qa.sh gate` where CI doesn't apply; local `qa.sh gate` for `integration`) | into `integration`, deploy |
 | Upstream | server | `server-qa` | Independent `accuracy-check` (including RSProx) and in-game re-check, CI at the exact commit, one change only, no upstream overlap, on current `main`, `fix_gameval_conflicts.py --check`, CONTRIBUTING, AGENTS.md, PR template, `pr-text-review`, caveats complete | upstream queue (fork PR); upstream only on the user's approval per item |
@@ -211,11 +222,12 @@ Records start with these lines exactly, because the hooks parse them:
 - Branch: `<branch>`
 - Commit: `<full sha>`
 ## Upstream gate: **PASS**     (server; or **FAIL**, or **PENDING** until it runs)
-## Verdict: **PASS**           (client merge or release; or **FAIL**)
+## Verdict: **PASS**           (client release; or **FAIL**)
 ```
 A FAIL says precisely what must change. A server record may also carry `## Internal gate: N/A (dev-checked)`, or
 omit that line; older records with an internal gate line keep it, and the hook reads only the upstream line. Older
-server records with only `## Verdict:` were full QA runs and count as the upstream gate.
+server records with only `## Verdict:` were full QA runs and count as the upstream gate. Client merges have no
+record (older `qa/client-<topic>.md` merge records stay as history); only `qa/client-X.Y.Z[-pre].md` gates a tag.
 
 Each user rule gets an observable check where possible, not only an instruction: Network QA for "never contact
 Jagex", netcheck/R1 for plugin networking, the telemetry patch's one-match assertions, buildq for build
@@ -246,8 +258,8 @@ flowchart TB
   orch["Orchestrator<br/>routes tasks · owns every ship step"]
 
   subgraph client["Client track · osrs-plugins-reverse"]
-    cdev["client-dev<br/>analyse · build · BlueStacks · A/B"] -- "branch @ commit" --> cqa["client-qa<br/>merge / release gate"]
-    cqa -- "FAIL" --> cdev
+    cdev["client-dev<br/>analyse · build · BlueStacks · A/B · own check"]
+    cqa["client-qa<br/>release gate"] -- "FAIL" --> cdev
   end
 
   subgraph server["Server track · fork clones re/agents/NAME/or"]
@@ -256,10 +268,11 @@ flowchart TB
   end
 
   orch -- "tasks" --> cdev & sdev
+  orch -- "master @ commit" --> cqa
   cqa & sqa -- "PASS/FAIL" --> orch
   cdev -. "blocker" .-> orch -. "server task" .-> sdev
 
-  orch -- "merge gate" --> master[(master)] -- "release gate" --> release[(vX.Y.Z)]
+  orch -- "dev's check" --> master[(master)] -- "release gate" --> release[(vX.Y.Z)]
   orch -- "dev's check" --> integ[(integration → live server)]
   orch -- "upstream gate" --> upstream[(upstream PR)]
 
@@ -283,10 +296,12 @@ flowchart TB
 | Permissions | `.claude/settings.json` | Every GitHub write and push asks the user |
 
 How it handles the bottlenecks:
+- **Waiting for a merge.** Both tracks ship to their own trunk (`master`, `integration`) on the dev's checked
+  hand-over; QA runs only on what goes out to others (a client release, an upstream PR).
 - **The client waiting on the server.** Blockers ship on the dev's checked hand-over to the live server; the
   upstream gate happens afterwards and never holds the client.
-- **Waiting for review.** The companion takes over shipping, so a dev starts its next task on hand-over: feature
-  N is in QA while N+1 is being built.
+- **Waiting for review.** The companion takes over shipping to others (a release, an upstream PR), so a dev
+  starts its next task on hand-over: feature N is in QA while N+1 is being built.
 - **Rework.** The spec and the gate are fixed before coding. A FAIL goes back to the same dev with exactly what
   must change.
 - **Devices and builds.** Expiring grants and the buildq FIFO; devices always come back restored; one clone per
@@ -314,7 +329,8 @@ The machine has 16 threads. WSL has 20 GB (`.wslconfig`); Windows (the host) the
 - **Windows:** several BlueStacks instances (about 2-3 GB each) and desktop RuneLite clients (about 1 GB each).
   Each dev/QA pair gets its own BlueStacks instance and desktop client (own profile and port), so pairs never
   wait for each other; the device lock becomes one lock per instance (`LOCK_NAME=<instance>`). Only a server
-  restart reserves all of them.
+  restart reserves all of them. The device is the client's real bottleneck: a second BlueStacks instance with
+  its own lock (`LOCK_NAME`) lets the release gate or a second dev run without blocking the first.
 - **WSL (20 GB):** the live server, the sidecars and the Gradle build cache node (about 3.5 GB together), QA
   branch servers on spare ports, and the build queue (`tools/buildq.sh`) in classes with their own slots, so
   one class never starves another (FIFO within a class, `BUILDQ_PRIO=1` first):

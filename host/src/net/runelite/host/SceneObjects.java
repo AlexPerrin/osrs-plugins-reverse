@@ -73,6 +73,8 @@ final class SceneObjects {
             return;
         }
         if (packed == null || packedItems == null) return;
+        int oldBase = refreshedBase;
+        Contents[][][] oldTiles = tiles;
         refreshedTick = tick;
         refreshedBase = base;
         int baseX = base >> 16, baseY = base & 0xffff;
@@ -151,6 +153,7 @@ final class SceneObjects {
                 long k = e.getKey();
                 int plane = (int) (k >>> 62), wx = (int) (k >>> 44 & 0x3fff), wy = (int) (k >>> 28 & 0xffff);
                 Tile tile = tile(plane, wx - baseX, wy - baseY);
+                if (tile == null) tile = departed(oldTiles, oldBase, plane, wx, wy);
                 if (tile != null) bus.post(new ItemDespawned(tile, e.getValue()));
             }
         for (AndroidTileObject o : spawned) postSpawn(bus, o, baseX, baseY);
@@ -190,6 +193,44 @@ final class SceneObjects {
         EventBus bus = this.bus;
         AndroidWorldView wv = Host.worldView();
         if (bus != null) postDespawn(bus, g, wv.getBaseX(), wv.getBaseY());
+    }
+
+    /**
+     * The tile of an item that left the scene on a rebuild (outside the new base): desktop posts
+     * ItemDespawned for those, and Ground Items keeps counting them otherwise (a dropped item showed
+     * "(2)" after a teleport round trip). World location and item layer are the old ones; the
+     * local location is null (not in the current scene).
+     */
+    private Tile departed(Contents[][][] oldTiles, int oldBase, int plane, int wx, int wy) {
+        if (oldBase == Integer.MIN_VALUE) return null;
+        int sx = wx - (oldBase >> 16), sy = wy - (oldBase & 0xffff);
+        if (plane < 0 || plane >= 4 || sx < 0 || sx >= SIZE || sy < 0 || sy >= SIZE) return null;
+        Contents c = oldTiles[plane][sx][sy];
+        return new Departed(new net.runelite.api.coords.WorldPoint(wx, wy, plane), sx, sy, c != null ? c.itemLayer : null);
+    }
+
+    private static final class Departed extends TileStub {
+        private final net.runelite.api.coords.WorldPoint wp;
+        private final int sx, sy;
+        private final net.runelite.api.ItemLayer layer;
+
+        Departed(net.runelite.api.coords.WorldPoint wp, int sx, int sy, net.runelite.api.ItemLayer layer) {
+            this.wp = wp;
+            this.sx = sx;
+            this.sy = sy;
+            this.layer = layer;
+        }
+
+        @Override public net.runelite.api.coords.WorldPoint getWorldLocation() { return wp; }
+        @Override public net.runelite.api.Point getSceneLocation() { return new net.runelite.api.Point(sx, sy); }
+        @Override public net.runelite.api.coords.LocalPoint getLocalLocation() {
+            return net.runelite.api.coords.LocalPoint.fromWorld(Host.worldView(), wp);
+        }
+        @Override public int getPlane() { return wp.getPlane(); }
+        @Override public int getRenderLevel() { return wp.getPlane(); }
+        @Override public java.util.List<net.runelite.api.TileItem> getGroundItems() { return null; }
+        @Override public net.runelite.api.ItemLayer getItemLayer() { return layer; }
+        @Override public net.runelite.api.Tile getBridge() { return null; }
     }
 
     private static Contents contents(Contents[][][] t, int plane, int x, int y) {

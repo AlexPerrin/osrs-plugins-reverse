@@ -91,7 +91,8 @@ def load(tid):
     p = path(tid)
     if not os.path.isfile(p):
         sys.exit(f"task.py: no task {tid} ({p})")
-    text = open(p).read()
+    with open(p) as f:
+        text = f.read()
     m = re.match(r"---\n(.*?)\n---\n(.*)", text, re.S)
     if not m:
         sys.exit(f"task.py: {p} has no frontmatter")

@@ -13,6 +13,9 @@
                                               --once does one pass
   orchestrate.py qa <id>                      create the QA follow-up task for a shipped server task
   orchestrate.py approvals                    actions waiting for the user (harness/approvals/)
+  orchestrate.py integrate status|enqueue <task>|build [--now]
+                                              integration trains (integrate.py): the queue, one rebuild and one
+                                              lease push of `integration` per train, pins (orchestrator only)
 
 Slots: HARNESS_MAX_CLIENT (1: one Android instance), HARNESS_MAX_SERVER (2), one QA companion per track. Headless
 runs use HARNESS_PERMISSION_MODE (auto: the classifier decides, prompts are denied; bypassPermissions is refused by the
@@ -32,6 +35,8 @@ import sys
 import time
 
 import yaml
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HARNESS = os.environ.get("HARNESS_DIR") or os.path.join(ROOT, "harness")
@@ -143,6 +148,14 @@ def cmd_status(a):
     print(sh("bash", os.path.join(ROOT, "tools/device-lock.sh"), "status-all").stdout.rstrip())
     print("## build queue")
     print(sh("bash", os.path.join(ROOT, "tools/buildq.sh"), "status").stdout.rstrip())
+    print("## integration")
+    try:
+        import integrate
+        integrate.status(short=True)
+    except SystemExit as e:
+        print(f"  {e}")
+    except Exception as e:   # the dashboard never fails on the integration state
+        print(f"  integrate status failed: {e}")
     ap = sorted(glob.glob(os.path.join(APPROVALS, "*.md")))
     if ap:
         print(f"## approvals waiting for the user ({len(ap)}): " + ", ".join(os.path.basename(p) for p in ap))
@@ -410,6 +423,11 @@ def cmd_approvals(a):
         print(open(p).read().rstrip())
 
 
+def cmd_integrate(a):
+    import integrate
+    sys.exit(integrate.main(a.args))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = p.add_subparsers(dest="cmd", required=True)
@@ -421,6 +439,8 @@ def main():
     s = sp.add_parser("run"); s.add_argument("--once", action="store_true"); s.add_argument("--interval", type=int, default=60); s.set_defaults(f=cmd_run)
     s = sp.add_parser("qa"); s.add_argument("id"); s.set_defaults(f=cmd_qa)
     sp.add_parser("approvals").set_defaults(f=cmd_approvals)
+    s = sp.add_parser("integrate", help="status | enqueue <task> | build [--now]", add_help=False)
+    s.add_argument("args", nargs=argparse.REMAINDER); s.set_defaults(f=cmd_integrate)
     a = p.parse_args()
     a.f(a)
 

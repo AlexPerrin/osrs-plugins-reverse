@@ -4,8 +4,8 @@ does (docs/workflow.md "Agents"): pushes, GitHub writes, tools/fork.sh, deploys,
 writes. The orchestrator's own session doesn't load this hook.
 
 Integration images and deploys (docs/integration-pipeline.md, phase 0) are the orchestrator's too, whatever the
-flags: tools/harness/deploy.sh, image.sh and ship.sh, `orchestrate.py deploy|integrate|image`, `docker [image|container]
-tag|rm|rmi|stop|restart|kill` naming an osrs-openrune image or container, and `docker compose` / `docker-compose`
+flags: tools/harness/deploy.sh, image.sh, ship.sh and integrate.py (phase 1), `orchestrate.py
+deploy|integrate|image`, `docker [image|container] tag|rm|rmi|stop|restart|kill` naming an osrs-openrune image or container, and `docker compose` / `docker-compose`
 naming osrs-openrune or the live stack's compose service `openrune` (or openrune/docker-compose.yml, or run from
 inside openrune/), except the read-only compose subcommands (ps, logs, config, ls, images, top, version).
 
@@ -47,7 +47,7 @@ PUSH = re.compile(RULES[0][0])
 
 # Orchestrator-only integration steps (checked per simple command; a `bash -c "..."` segment is checked as text).
 INTEGRATION = "integration images, deploys and live server containers"
-HARNESS_SCRIPT = re.compile(r"\bharness/(deploy|image|ship)\.sh\b")
+HARNESS_SCRIPT = re.compile(r"\bharness/(?:(?:deploy|image|ship)\.sh|integrate\.py)\b")
 ORCH_SUB = re.compile(r"\borchestrate\.py\b[^|;&\n]*?\s(deploy|integrate|image)(\s|$|['\"])")
 DOCKER_LIVE = re.compile(r"\bdocker\s+(?:(?:image|container)\s+)?(?:tag|rm|rmi|stop|restart|kill)\b[^;&|\n]*"
                          r"osrs-openrune")
@@ -83,7 +83,7 @@ def integration_only(cmd, cwd):
     for seg, w, c in walk(cmd, cwd):
         if HARNESS_SCRIPT.search(seg) or ORCH_SUB.search(seg) or DOCKER_LIVE.search(seg):
             return True
-        if w and w[0] in ("./deploy.sh", "./image.sh", "./ship.sh", "deploy.sh", "image.sh", "ship.sh") and \
+        if w and w[0] in ("./deploy.sh", "./image.sh", "./ship.sh", "./integrate.py", "deploy.sh", "image.sh", "ship.sh") and \
                 os.path.normpath(c).endswith(os.path.join("tools", "harness")):
             return True
         if COMPOSE.search(seg):

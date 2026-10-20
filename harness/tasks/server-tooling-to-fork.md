@@ -10,9 +10,10 @@ instance: []
 branch: null
 commit: null
 blocked_by: []
-unblocks: []
+unblocks:
+- integration-phase-5
 created: '2026-10-20T05:00:39Z'
-updated: '2026-10-20T05:00:40Z'
+updated: '2026-10-20T05:21:51Z'
 ---
 ## Task
 Move the server build/deploy tooling to the fork (part 2 of the server split)
@@ -26,3 +27,4 @@ Move the server build/deploy tooling to the fork (part 2 of the server split)
 ## Log
 - 2026-10-20T05:00:39Z created (ready)
 - 2026-10-20T05:00:40Z User 2026-10-20: 'do part 1 now, part 2 as a task'. Part 1 done the same day: server history archived to fork docs (8510e763d, archive/ + server-handoff.md), 209 files removed from the client repo. openrune.patch and QA.md stayed for this part (openrune.sh init builds openrune/src from the patch; qa.sh copies .m2-rsprot from openrune/src).
+- 2026-10-20T05:21:51Z unblocks integration-phase-5

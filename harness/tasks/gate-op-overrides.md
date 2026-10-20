@@ -2,7 +2,7 @@
 id: gate-op-overrides
 track: server
 title: 'Upstream gate: op overrides'
-status: failed
+status: done
 prio: P1
 role: server-qa
 owner: sq26
@@ -13,7 +13,7 @@ commit: null
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:41Z'
-updated: '2026-10-20T03:29:14Z'
+updated: '2026-10-20T04:40:56Z'
 ---
 ## Task
 Gate the op-overrides branch (shared base for every quest PR) and its PR text (UPSTREAM-PRS.md). Goes upstream with the fixture first.
@@ -31,3 +31,5 @@ Gate the op-overrides branch (shared base for every quest PR) and its PR text (U
 - 2026-10-20T03:18:49Z set status=failed
 - 2026-10-20T03:28:23Z QA record 8c4a29bfa pushed to fork docs by the orchestrator at the user's request (sq26's push was blocked by the push hook).
 - 2026-10-20T03:29:14Z User 2026-10-20: drop fin/op-overrides from upstream (no caller after upstream #334). Not deleted: integration.txt line 33 still merges it, and local/treasure-trails (TreasureTrailScript: LocOpOverrides/NpcOpOverrides) plus fin/doric build on it. Fork docs had no UPSTREAM-PRS.md row or Doric dependency line left to remove.
+- 2026-10-20T04:40:56Z Closed: the user dropped fin/op-overrides from upstream (2026-10-20); kept local-only as local/op-overrides.
+- 2026-10-20T04:40:56Z set status=done

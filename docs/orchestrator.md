@@ -27,6 +27,14 @@ In the task store since 2026-10-19 (docs/harness.md): `tools/harness/orchestrate
 `approvals` (what the user must decide; also `task.py list --track orch --status waiting-user`). Decisions that are
 not tasks go below.
 
+## Restart to the new harness (2026-10-19)
+The session running the old harness (osrs-plugins-reverse-73) finishes its in-flight agents; nothing new is spawned
+the old way. Their work is mirrored in the task store as `in-progress` with owners sd23, sd24, sd25, sq24, sq25
+(`task.py list --owner <name>`). When each finishes, record its result with `task.py handover|set|log` (branch,
+commit, evidence path, PR URL) so the new driver takes it from there. Then start a fresh session here:
+`tools/harness/orchestrate.py status`, `reap` (hand-over checks and ship steps), `next`, `dispatch <id>`. The only
+hand-written state left is this file (decisions) and the STATE docs (what is live, gotchas).
+
 ## Standing decisions
 - Updated versions go onto the existing upstream PRs (#354-#357, #366-#368) after their gates, each push confirmed at
   the time; overlapping content (Doric #334, farming #231, specials #313, fletching #262) goes upstream as draft PRs

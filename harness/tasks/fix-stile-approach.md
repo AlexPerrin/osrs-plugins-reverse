@@ -2,17 +2,18 @@
 id: fix-stile-approach
 track: server
 title: 'Stile: approach from the outside tile'
-status: ready
+status: in-progress
 prio: P1
 role: server-dev
-owner: null
-instance: []
+owner: sd23
+instance:
+- desktop
 branch: null
 commit: null
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T01:42:40Z'
+updated: '2026-10-20T02:11:42Z'
 ---
 ## Task
 fix/stile-approach 8a8c0ca7a failed the internal gate: the player walks onto the stile's own blocking tile, so it never climbs. Fix: start the climb from the tile outside the stile on the player's side, in line with it; check in game; update the PR text. Covers the #366 review item 'stile jump from too far away (player not always in the pen)'.
@@ -27,3 +28,5 @@ fix/stile-approach 8a8c0ca7a failed the internal gate: the player walks onto the
 
 ## Log
 - 2026-10-20T01:42:40Z created (ready)
+- 2026-10-20T02:11:42Z set status=in-progress owner=sd23 instance=desktop
+- 2026-10-20T02:11:42Z old harness (session 73): sd23 on fix/stile-approach 513144d3d, in-game on branch server 43598; sq24 recorded upstream gate FAIL at 8646e5ff0 (climb 2 ticks)

@@ -2,18 +2,19 @@
 id: gate-acc-genie
 track: server
 title: 'Upstream gate: acc/genie e9c7bcac3 (fork #18)'
-status: ready
+status: in-progress
 prio: P1
 role: server-qa
-owner: null
-instance: []
+owner: sq24
+instance:
+- desktop
 branch: null
 commit: null
 blocked_by: []
 unblocks:
 - cleanup-scratchpad-qa-acc
 created: '2026-10-20T01:42:41Z'
-updated: '2026-10-20T01:42:59Z'
+updated: '2026-10-20T02:11:43Z'
 ---
 ## Task
 acc/genie e9c7bcac3 (fork PR #18): full re-gate; zones moved into dbtable.random_event_zones. Search RSProx by the Genie NPC for the comparison. Replaces the pre-audit draft (#354/#355) with a non-force-push merge commit after the user's OK. Note: no accuracy spec exists yet (task spec-genie). Evidence: scratchpad/acc/logs.
@@ -29,3 +30,5 @@ acc/genie e9c7bcac3 (fork PR #18): full re-gate; zones moved into dbtable.random
 ## Log
 - 2026-10-20T01:42:41Z created (ready)
 - 2026-10-20T01:42:59Z unblocks cleanup-scratchpad-qa-acc
+- 2026-10-20T02:11:42Z set status=in-progress owner=sq24 instance=desktop
+- 2026-10-20T02:11:43Z old harness (session 73): sq24 clone at e9c7bcac3; desktop grant pending

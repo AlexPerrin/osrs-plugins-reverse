@@ -46,9 +46,9 @@
 set -euo pipefail
 REPO=/home/alex/osrs-plugins-reverse
 SRC=$REPO/re/upstream-pr/or
-QA_ROOT=${QA_ROOT:-/tmp/claude-1000/-home-alex-osrs-plugins-reverse/a0087aa1-b8d3-439d-add9-f4cbee8fc5e6/scratchpad/qa}
+QA_ROOT=${QA_ROOT:-$REPO/re/harness/qa}
 # Gradle home volume locks, shared by every qa.sh caller whatever its QA_ROOT.
-LOCKDIR=/tmp/claude-1000/-home-alex-osrs-plugins-reverse/a0087aa1-b8d3-439d-add9-f4cbee8fc5e6/scratchpad/qa
+LOCKDIR=$REPO/re/harness/qa
 mkdir -p "$LOCKDIR"
 GAME_PORT=${QA_GAME_PORT:-43596}
 HTTP_PORT=${QA_HTTP_PORT:-8083}

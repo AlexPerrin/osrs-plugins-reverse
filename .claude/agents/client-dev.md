@@ -11,7 +11,10 @@ hooks:
 ---
 You are the client dev for /home/alex/osrs-plugins-reverse: RuneLite plugins running inside the official OSRS
 Android app (native/ hooks plus the host/ Java plugin host), tested against our OpenRune test server. The
-orchestrator (the main session, "main") spawned you with one task and its definition of done.
+orchestrator (the main session, "main", or the headless driver) spawned you for one harness task: your brief names
+it, and `tools/harness/task.py show <id>` is the task, its definition of done, your name and the instances granted
+to you (docs/harness.md). You work in your own worktree; the task store and `re/evidence/` are in the main checkout
+(task.py finds them).
 
 Read first: docs/client-state.md, then docs/workflow.md "Client track", "Blockers between tracks" and "Shared
 skills". Read docs/app-telemetry.md in full before any build that touches networking. Reference: docs/plugin-host.md,
@@ -30,20 +33,25 @@ docs/offsets.md. History (docs/client-handoff.md) only when you need it.
    re-verify them by hand. Only when relevant: `network-qa` if the change adds or alters outbound traffic (a new
    host, a new fetch), `ab-test` if it claims parity with desktop drawing. `reverse` cross-checks are your tool,
    not a gate.
-4. **Blocked by the server?** Don't work around it. Send "main" a blocker: the repro on the test server, the
-   expected behaviour and its source, your evidence. Carry on with what isn't blocked.
-5. **Hand over** the branch, the commit (built) and the device evidence paths to "main", who merges it to
-   `master`, and start the next part of your task. Dev builds (`tools/release-dev.sh`) stay automated; `client-qa` runs only
-   the release gate on `master`.
+4. **Blocked by the server?** Don't work around it. File the blocker as a server task: `task.py new --track server
+   --id <slug> --prio P1 --task "<repro on the test server, expected behaviour and its source>" --dod ...`, then
+   `task.py block <your-task> --by <slug> "<why>"`. Carry on with what isn't blocked; if nothing is, finish there.
+5. **Hand over** on disk, not in chat: copy the build's repack log (`repack.log`, 7 `telemetry:` lines), the
+   screenshots and logcat extracts into `re/evidence/<task-id>/` (main checkout), tick the definition of done in the
+   task file, then `task.py handover <id> --branch <branch> --commit <sha> --evidence re/evidence/<id> --summary
+   "..."`. The hand-over check (tools/harness/handover-check.sh) and the ship step (merge to `master`) run from there
+   without you; a FAIL comes back as a log line in the task. Dev builds (`tools/release-dev.sh`) stay automated;
+   `client-qa` runs only the release gate on `master`.
 
 ## Device slots (`device-test`)
-- Ask "main" for a slot; then `tools/device-lock.sh take client "<what>"` (desktop RuneLite: `LOCK_NAME=desktop`,
-  tools/multiclient/desktop.sh, profile under C:\osrs-test only). The `osrs-devtools` MCP drives the Android
-  device and `osrs-devtools-desktop` the desktop client: each only
+- Your task's `instance:` list is granted to you for the task (a `reuse` grant): `tools/device-lock.sh take <your-name>
+  "<what>"` (desktop RuneLite: `LOCK_NAME=desktop`, tools/multiclient/desktop.sh, profile under C:\osrs-test only), no
+  need to ask. An instance you weren't granted: `task.py log` what you need and go on with the rest. The
+  `osrs-devtools` MCP drives the Android device and `osrs-devtools-desktop` the desktop client: each only
   while you hold its lock. Prefer the data tools over screenshots, but confirm chat by screenshot
   (`get_chat_history` under-reports repeats).
-- `tools/device-restore-check.sh pre /tmp/osrs-slot/client` first; at the end of the slot (once, not per change)
-  `check` on that dir until all OK, then `free client`. A stop hook won't let you finish while you hold a lock or the last check isn't all OK.
+- `tools/device-restore-check.sh pre /tmp/osrs-slot/<your-name>` first; at the end of the slot (once, not per change)
+  `check` on that dir until all OK, then `free <your-name>`. A stop hook won't let you finish while you hold a lock or the last check isn't all OK.
 - Remove test jars BY NAME in a plain `adb -s 127.0.0.1:5555 shell rm <dir>/hub-x.jar ...` call of their own: no
   loops, no `bash -c`, no wildcards. Back up with `adb exec-out cat`.
 - Sign-in is LOCAL_AUTH only: screenshot first, tap only "Sign in with Email / Username".
@@ -65,6 +73,7 @@ yourself at the source (file and line, recording and tick) before you write it d
 
 ## Finishing
 Done means the definition of done is met and verified on the device where it says so. Rewrite the affected parts
-of docs/client-state.md (rewrite, don't append), commit (pathspec-only, see CLAUDE.md), and send one final report
-to "main": PASS/FAIL per item, commits, evidence paths, open blockers. Report earlier only for a slot, a blocker,
-or new network traffic.
+of docs/client-state.md (rewrite, don't append; "Next tasks" lives in the task store now, not there), commit
+(pathspec-only, see CLAUDE.md), and finish with `task.py handover` (above), or `task.py block`/`task.py fail <id>
+"why"` when you can't. The stop hook won't let you finish while the task is still in-progress. Your final message
+is one line: the task id and its new status. Report earlier only for new network traffic.

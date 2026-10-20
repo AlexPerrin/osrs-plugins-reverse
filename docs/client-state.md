@@ -190,7 +190,4 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Next tasks
 
-1. When the server tasks from gen 44 are live: Fish Barrel (Check), Clue Steps, Did I Compost's treated path, destroy the slot-15 Fish barrel.
-2. More hub plugins from the ranking (`scratchpad/client38/ranking.json` or refetch); netcheck + stubcheck each.
-3. Host gap 2 (native menu entry removal).
-4. Opportunistic: a capture that includes a GE digest fetch (should go to the sidecar).
+In the task store: `tools/harness/task.py list --track client` (docs/harness.md).

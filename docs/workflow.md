@@ -19,10 +19,10 @@ orchestrator. Agents never deploy, grant devices or write progress.
 | Agents | `client-dev` + `client-qa` | `server-dev` + `server-qa` |
 | State | `docs/client-state.md`, records in `qa/` | `STATE.md`, `accuracy/`, `qa/` on the fork's `docs` branch |
 
-Shared workspace tooling stays in this repo: `tools/buildq.sh` (build queue), `tools/device-lock.sh`,
-`tools/device-restore-check.sh`, `tools/fork.sh`, `tools/multiclient/`, `tools/progress.py`, and the test
-environment (the compose stack that runs the live server and sidecars, pinned to a fork commit). Every agent is
-spawned from the orchestrator's session here.
+Shared workspace tooling stays in this repo: `tools/harness/` (the task store and the driver, docs/harness.md),
+`tools/buildq.sh` (build queue), `tools/device-lock.sh`, `tools/device-restore-check.sh`, `tools/fork.sh`,
+`tools/multiclient/`, `tools/progress.py`, and the test environment (the compose stack that runs the live server and
+sidecars, pinned to a fork commit). Every agent is spawned from the orchestrator's session here, or by the driver.
 
 ## Client track
 
@@ -108,8 +108,9 @@ Follow upstream's procedure (`tools/scripts/fix_gameval_conflicts.py`, and its C
 ### Flow for a feature or fix
 1. **Trigger.** A client blocker, or a feature from the backlog.
 2. **Spec first.** `accuracy/<slug>.md` on `docs`: what upstream already has, each mechanic with its source
-   (wiki section, cache, Mod post), the planned behaviour, caveats, guesses, the tests, and the PR split. The
-   orchestrator reviews it before coding.
+   (wiki section, cache, Mod post), the planned behaviour, caveats, guesses, the tests, and the PR split. It is
+   committed and the task set to `specced`; coding continues (the orchestrator reads it from the task log and can
+   veto; the dev stops only for a decision it can't take: docs/harness.md).
 3. **Build** on `content/<slug>` or `fix/<slug>` off `main`, in the server dev's own clone, with tests for each
    rule and ids assigned as above.
 4. **Fork PR.** The server dev pushes the branch and opens the PR on the fork (`tools/fork.sh`, `git push fork`
@@ -143,25 +144,26 @@ the user.
 ## Blockers between tracks
 
 A blocker is a task, not a message chain. When the client needs something from the server:
-1. The client dev reports it to the orchestrator: a repro on the test server, the expected behaviour and its
-   source, and evidence (a Ghidra finding, an A/B run, a `server-probe` capture).
-2. The orchestrator files it as a server task that blocks the client task, and pauses or re-scopes the client
-   task.
-3. The server task ships on the dev's checked hand-over (spec, accuracy check, green CI) to the live server.
-   The orchestrator then unblocks the client task. The upstream gate follows on its own schedule; the client never waits for it.
+1. The client dev files the server task itself (`tools/harness/task.py new --track server ...`: a repro on the test
+   server, the expected behaviour and its source, and evidence: a Ghidra finding, an A/B run, a `server-probe`
+   capture) and links it: `task.py block <client-task> --by <server-task>`.
+2. The client task is `blocked` until the server task ships on the dev's checked hand-over (spec, accuracy check,
+   green CI) to the live server; `task.py done <server-task>` sets it back to `ready` and the next dispatch continues
+   it. The upstream gate follows on its own schedule; the client never waits for it.
 
 The same applies the other way (a server task that needs a client change or a device check).
 
 ## Agents
 
-- **Task-scoped agents, not open-ended generations.** Each spawn gets one deliverable and its definition of
-  done, finishes, rewrites its STATE lines and reports. Long work is split into tasks.
+- **Task-scoped agents, not open-ended generations.** Each spawn gets one task from the store (`harness/tasks/`,
+  docs/harness.md) with its definition of done, finishes, rewrites its STATE lines and hands over on disk
+  (`task.py handover`). Long work is split into tasks.
 - **Roster:** the orchestrator; per track one dev (two server devs at most, each owning its own branches) and
   one QA companion per dev.
 - **Role files** in `.claude/agents/` (`client-dev`, `client-qa`, `server-dev`, `server-qa`) hold each role's
   standing brief: its track's slots, its gate, its limits. Hooks and `maxTurns` in the frontmatter enforce the
-  limits. A spawn's brief is only the task, its definition of done, and (server) the agent's name and branches.
-  Spawn by `subagent_type`, never `general-purpose`. Inside a task, devs and QA hand read-heavy lookups
+  limits. A spawn's brief is `task.py brief <id>` (printed by `orchestrate.py dispatch`): the task id, the agent's
+  name, its granted instances, the evidence dir. Spawn by `subagent_type`, never `general-purpose`. Inside a task, devs and QA hand read-heavy lookups
   (RSProx transcripts, logs, wiki and cache sweeps) to their own read-only subtasks and keep only the
   conclusion (each role file's "Subtasks" section).
 - **Where they work.** The client roles work in this repo, always in their own worktree (`isolation: worktree`): the orchestrator commits on `master` in the main tree, and an agent that checks out its branch there sends those commits to its branch.
@@ -244,15 +246,14 @@ concurrency, and the hooks below.
   first. History goes to the handoff docs, read only when needed.
 - **Gotchas that keep recurring become checks or tools, not prose** (the device restore check, test jars removed
   by name only).
-- **Blockers are written in both STATE docs' "Next tasks"**: the client task says `blocked by server: <slug>`, the
-  server task says `unblocks client: <task>`. The orchestrator clears both when the server change is handed over
-  with the dev's check and is live.
+- **Tasks and blockers live in the task store** (`harness/tasks/`, one file each; docs/harness.md), not in the
+  STATE docs: `blocked_by`/`unblocks` edges, checked by `task.py lint`, flipped by `task.py done`. The STATE docs
+  keep what is live and the gotchas; their "Next tasks" sections are gone.
 - **The orchestrator keeps its context small** by delegating anything beyond a couple of quick commands to a subagent
-  and relaying verdicts, not logs. It keeps docs/orchestrator.md (in-flight agents, pending decisions, locks) current
-  at milestones. It restarts only to avoid repeated compaction (not on a schedule): then a fresh session takes over
-  from that doc, the STATE docs, the QA records and docs/backlog.md. After each
-  compaction a `SessionStart` hook (`tools/hooks/session_state.sh`) prints both STATE docs, the lock and build
-  queue status, and the recent log.
+  and reading verdicts from the task store, not logs (`orchestrate.py status`, `reap`). docs/orchestrator.md holds
+  decisions and standing approvals only. It restarts only to avoid repeated compaction (not on a schedule): a fresh
+  session runs `orchestrate.py status` and continues. After each compaction a `SessionStart` hook
+  (`tools/hooks/session_state.sh`) prints that dashboard and pointers, not the documents.
 
 ## Harness
 
@@ -286,8 +287,14 @@ flowchart TB
   skills -.- mcp
 ```
 
+The driver, the task store, the hand-over check and the ship step are described in docs/harness.md.
+
 | Piece | Where | What it enforces |
 |---|---|---|
+| Task store | `harness/tasks/*.md`, `tools/harness/task.py` | One task, one file: definition of done before dispatch, blocker edges, dated log; `lint` |
+| Driver | `tools/harness/orchestrate.py` | Dispatch with grants and briefs; `reap` runs the hand-over check and the ship step; headless `run` |
+| Hand-over check | `tools/harness/handover-check.sh` | A dev's claims are verified (evidence, commit, CI, spec) before `ship.sh` runs |
+| Task stop gate | `tools/hooks/task_stop.py` (settings) | No agent finishes with its task still in-progress: the result is on disk |
 | Role files | `.claude/agents/{client,server}-{dev,qa}.md` | Standing brief, hooks, `maxTurns` 400 (dev) / 300 (QA) |
 | Shared rules | `CLAUDE.md` | Loaded by every agent, and again after each compaction |
 | Upstream publish gate | `tools/hooks/publish_gate.py` (settings) | An upstream `gh pr create` needs `## Upstream gate: **PASS**` at the fork branch's commit |
@@ -317,7 +324,7 @@ How it handles the bottlenecks:
   grants. Builds are waited on with a background command that notifies, not by polling.
 
 Not built yet: an integration check (`scripts/build-integration.sh` refusing a `content/*` or `fix/*` branch
-without green CI at its commit).
+without green CI at its commit); `handover-check.sh` is the guard before `ship.sh` today.
 
 Why: up to gen 40, a single orchestrator session ran for about 2.7 days through 4 compactions, spawning 79
 general-purpose agents with briefs of about 3,700 characters, and each dev generation ran 2,500-3,900 turns before

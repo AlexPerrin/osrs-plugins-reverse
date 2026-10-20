@@ -18,7 +18,7 @@ import re
 import sys
 
 RULES = [
-    (r"\bgit\b[^|;&]*\bpush\b", "pushes"),
+    (r"\bgit\b(\s+-\S+(\s+[^-\s]\S*)?)*\s+push\b", "pushes"),   # git [opts] push, not `git stash push`
     (r"\bgh\s+(pr|issue|release|gist|repo)\s+(create|edit|comment|close|reopen|merge|ready|review|delete|fork|upload)\b",
      "GitHub writes"),
     (r"\bgh\s+api\b[^|;&]*(-X\s*(POST|PATCH|PUT|DELETE)|--method|\s-[fF]\s|--field|--raw-field|--input|\bgraphql\b)",

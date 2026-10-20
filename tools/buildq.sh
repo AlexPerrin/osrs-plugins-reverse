@@ -19,7 +19,7 @@
 # dropped. Replace this file with mv, never edit it in place: waiting bash processes read it as
 # they run.
 set -euo pipefail
-Q=${BUILDQ_DIR:-/tmp/claude-1000/-home-alex-osrs-plugins-reverse/a0087aa1-b8d3-439d-add9-f4cbee8fc5e6/scratchpad/buildq}
+Q=${BUILDQ_DIR:-/home/alex/osrs-plugins-reverse/re/harness/buildq}
 mkdir -p "$Q"
 RAMP_S=${BUILDQ_RAMP_S:-120}
 

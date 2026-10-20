@@ -8,12 +8,18 @@
 # Nothing here reads or writes C:\Users\Alex\.runelite or the installed RuneLite. Stop the test client
 # (desktop.sh stop) before restaging; a running client holds its jars open.
 # The JDK (C:\osrs-test\jdk) is a Temurin 11 zip from Adoptium; see docs/multi-client.md.
+# DESKTOP_INSTANCE=desktop2 stages the second instance into C:\osrs-test2 instead (tools/multiclient/instance.sh):
+# it copies C:\osrs-test\jdk there on first use and seeds its devtools port.
 set -euo pipefail
+. "$(dirname "$(readlink -f "$0")")/instance.sh"
 REPO="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
-WIN=/mnt/c/osrs-test
 HOME_W="$WIN/home"
 # RSProx's launcher patches the client's .runelite to .rlcustom; the launcher itself keeps .runelite.
 RL="$HOME_W/.rlcustom"
+if [ "$DESKTOP_INSTANCE" != desktop ] && [ ! -x "$WIN/jdk/bin/java.exe" ]; then
+  # Own copy of the JDK: `desktop.sh stop` matches processes by executable path under the instance dir.
+  mkdir -p "$WIN"; cp -r /mnt/c/osrs-test/jdk "$WIN/jdk"
+fi
 [ -x "$WIN/jdk/bin/java.exe" ] || { echo "missing $WIN/jdk (unzip a Temurin 11 Windows JDK there; a JRE lacks jdk.jartool, which the RSProx launcher needs)" >&2; exit 1; }
 
 if [ "${SKIP_RSPROX_BUILD:-0}" != 1 ]; then
@@ -34,7 +40,7 @@ cp "$REPO/tools/multiclient/proxy-targets.yaml" "$HOME_W/.rsprox/proxy-targets.y
 # RuneLite imports <runelite dir>/settings.properties into its first profile (ConfigManager.migrate), so
 # this only takes effect before the first start. Later changes go through the profile itself.
 if [ ! -d "$RL/profiles2" ]; then
-  cat > "$RL/settings.properties" <<'EOF'
+  cat > "$RL/settings.properties" <<EOF
 # Isolated desktop A/B profile (tools/multiclient/desktop-build.sh). No NetGuard on desktop, so
 # plugins that upload data or could move the client to a real Jagex world are off.
 runelite.discordplugin=false
@@ -51,6 +57,7 @@ runelite.twitchplugin=false
 runelite.partyplugin2=false
 runelite.openrunedevtoolsplugin=true
 openrunedevtools.autoUpdate=false
+openrunedevtools.port=$DT_PORT
 EOF
 fi
-echo "staged $(ls "$WIN/rsprox/lib" | wc -l) RSProx jars, launcher, devtools, target into C:\\osrs-test"
+echo "staged $(ls "$WIN/rsprox/lib" | wc -l) RSProx jars, launcher, devtools, target into $WIN_DIR"

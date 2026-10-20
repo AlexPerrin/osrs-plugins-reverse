@@ -5,7 +5,9 @@
 // must only ever reach our local OpenRune server, never Jagex. Exits when the client exits.
 //
 // Built by tools/multiclient/desktop-build.sh against the RSProx runtime classpath; run on Windows
-// by tools/multiclient/desktop.sh with -Duser.home=C:\osrs-test\home (JAVA_TOOL_OPTIONS).
+// by tools/multiclient/desktop.sh with -Duser.home=C:\osrs-test\home (JAVA_TOOL_OPTIONS), or another
+// instance's C:\osrs-test<N>\home. -Dosrstest.portskip=<n> (default 0) moves this instance's ports up by n:
+// RSProx serves jav_config on 43600+n and proxies on proxy.port.min (43701)+n, so two instances can run.
 
 import io.netty.buffer.ByteBufAllocator;
 import java.util.List;
@@ -40,9 +42,9 @@ public final class OsrsTestLauncher
 	{
 		String home = System.getProperty("user.home");
 		log("user.home=" + home);
-		if (!home.replace('\\', '/').toLowerCase().startsWith("c:/osrs-test/"))
+		if (!home.replace('\\', '/').toLowerCase().matches("c:/osrs-test[0-9]*/.*"))
 		{
-			die("user.home is not under C:\\osrs-test (isolation not active)");
+			die("user.home is not under C:\\osrs-test or C:\\osrs-test<N> (isolation not active)");
 		}
 		if (System.getenv("RSPS_JAVCONFIG_URL") != null || System.getenv("RSPS_RSA") != null)
 		{
@@ -102,6 +104,16 @@ public final class OsrsTestLauncher
 			die("could not select " + TARGET);
 		}
 
+		// RSProx's HTTP port is 43600 + (proxy port - first proxy port); burning ports moves both.
+		int skip = Integer.getInteger("osrstest.portskip", 0);
+		if (skip < 0 || skip > 50)
+		{
+			die("osrstest.portskip out of range: " + skip);
+		}
+		for (int i = 0; i < skip; i++)
+		{
+			service.allocatePort();
+		}
 		int port = service.allocatePort();
 		ProxyTarget target = service.initializeHttpServer(port);
 		if (target.getConfig() != cfg)

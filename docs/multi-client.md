@@ -249,6 +249,27 @@ $M --tool type_chat '{"text":"::tele 3222 3218 0"}'
 $M --tool screenshot '{}'                             # PNG (base64) of the canvas
 ```
 
+### Second instance (desktop2)
+
+`DESKTOP_INSTANCE=desktop2` (tools/multiclient/instance.sh) runs a second isolated client next to
+`desktop`, for two QA agents in parallel. Lock: `LOCK_NAME=desktop2 tools/device-lock.sh`.
+
+| | desktop | desktop2 |
+|---|---|---|
+| Windows dir, user.home | `C:\osrs-test`, `\home` | `C:\osrs-test2`, `\home` (own JDK copy) |
+| RSProx jav_config / proxy | 43600 / 43701 | 43620 / 43721 (`-Dosrstest.portskip=20`) |
+| devtools MCP | 7780 | 7781 (`openrunedevtools.port`, seeded by desktop-build.sh) |
+
+- Stage: `SKIP_RSPROX_BUILD=1 DESKTOP_INSTANCE=desktop2 tools/multiclient/desktop-build.sh` (copies
+  `C:\osrs-test\jdk` on first use). First start shows the terms screen: Accept at (302,311).
+- Every `desktop.sh` command takes the env: `DESKTOP_INSTANCE=desktop2 tools/multiclient/desktop.sh start|login|stop`
+  (and `DESKTOP_TARGET_YAML=...` as usual). `stop` matches executables under `C:\osrs-test2` only; the
+  two instances never match each other's processes.
+- No MCP server is registered for it. Drive it with the bridge as a CLI:
+  `env $(LOCK_NAME=desktop2 tools/device-lock.sh env) tools/multiclient/desktop-devtools-mcp.sh --tool <name> '<json>'`,
+  or POST JSON-RPC to `http://127.0.0.1:7781/mcp` with Windows' `/mnt/c/Windows/System32/curl.exe`.
+- The new java.exe path can raise a Windows Firewall prompt on its first start; answer Cancel.
+
 ### Driving tips: camera, scene coordinates, accounts
 
 - **Fresh accounts:** `desktop.sh login <user> <pass>` (or `relogin`) creates any local account on its first login,

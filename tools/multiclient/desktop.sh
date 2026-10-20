@@ -5,6 +5,8 @@
 #                                         server: openrune/upstream/qa/qa.sh start writes the file);
 #                                         stop (or the next plain start) restores tools/multiclient/proxy-targets.yaml
 #   tools/multiclient/desktop.sh status    # our processes (executable under C:\osrs-test) + their sockets
+#   DESKTOP_INSTANCE=desktop2 desktop.sh <cmd>    # the second instance (C:\osrs-test2, devtools 7781;
+#                                         tools/multiclient/instance.sh); every command works on it
 #   tools/multiclient/desktop.sh log [n]   # tail of the RSProx/launcher log
 #   tools/multiclient/desktop.sh login [user pass]  # Existing User login (default desktop/desktop;
 #                                         if another account is online, it is logged out first)
@@ -15,9 +17,10 @@
 # PowerShell that starts RSProx (never user- or machine-wide); RSProx, the RuneLite launcher and the
 # client inherit it. Stage first with tools/multiclient/desktop-build.sh. See docs/multi-client.md.
 set -euo pipefail
+. "$(dirname "$(readlink -f "$0")")/instance.sh"
 PS="powershell.exe -NoProfile -NonInteractive -Command"
-JAVA='C:\osrs-test\jdk\bin\java.exe'
-OURS="\$_.ExecutablePath -like 'C:\\osrs-test\\*'"
+JAVA="$WIN_DIR\\jdk\\bin\\java.exe"
+OURS="\$_.ExecutablePath -like '$WIN_DIR\\*'"
 
 ours_ps() {  # PowerShell expression listing our processes
   echo "Get-CimInstance Win32_Process | Where-Object { $OURS }"
@@ -28,13 +31,13 @@ start)
   if [ -n "$($PS "$(ours_ps) | Select-Object -ExpandProperty ProcessId" | tr -d '\r')" ]; then
     echo "already running:"; exec "$0" status
   fi
-  # Ports our client binds (RSProx HTTP 43600+, proxy 43701+, devtools 7780) must be free.
-  busy="$(netstat.exe -ano | tr -d '\r' | awk '$4=="LISTENING"{print $2}' | grep -E ':(7780|4360[0-9]|4370[0-9]|4371[0-9])$' || true)"
+  # Ports our client binds (RSProx HTTP 43600+, proxy 43701+, devtools 7780; instance.sh) must be free.
+  busy="$(netstat.exe -ano | tr -d '\r' | awk '$4=="LISTENING"{print $2}' | grep -E ":($PORTS_RE)\$" || true)"
   if [ -n "$busy" ]; then echo "ports in use, not starting: $busy" >&2; exit 1; fi
   # Proxy target: the default (live OpenRune, tools/multiclient/proxy-targets.yaml) unless
   # DESKTOP_TARGET_YAML names another one. It must still be the single "OpenRune Test" target with a
   # http://127.0.0.1: jav_config (OsrsTestLauncher refuses anything else).
-  T=/mnt/c/osrs-test/home/.rsprox/proxy-targets.yaml; MARK=/mnt/c/osrs-test/target-override
+  T=$WIN/home/.rsprox/proxy-targets.yaml; MARK=$WIN/target-override
   if [ -n "${DESKTOP_TARGET_YAML:-}" ]; then
     grep -q 'jav_config_url: http://127.0.0.1:' "$DESKTOP_TARGET_YAML" || { echo "not a local target: $DESKTOP_TARGET_YAML" >&2; exit 1; }
     cp "$DESKTOP_TARGET_YAML" "$T"; printf '%s\n' "$DESKTOP_TARGET_YAML" > "$MARK"
@@ -44,18 +47,18 @@ start)
     echo "proxy target: restored the default"
   fi
   ts=$(date +%Y%m%d-%H%M%S)
-  rm -f /mnt/c/osrs-test/rsprox.pid
+  rm -f $WIN/rsprox.pid
   # The interop pipe stays open while the Windows child lives, so background the PowerShell.
-  nohup $PS "\$env:JAVA_TOOL_OPTIONS='-Duser.home=C:\\osrs-test\\home -Dosrstest.marker=osrs-test-desktop';
+  nohup $PS "\$env:JAVA_TOOL_OPTIONS='-Duser.home=$WIN_DIR\\home -Dosrstest.marker=osrs-test-$DESKTOP_INSTANCE';
     Remove-Item Env:JX_* -ErrorAction SilentlyContinue;
-    \$p = Start-Process -FilePath '$JAVA' -WorkingDirectory 'C:\\osrs-test' -WindowStyle Hidden -PassThru \`
-      -ArgumentList '-Dosrstest.marker=osrs-test-desktop','-cp','C:\\osrs-test\\rsprox\\launcher;C:\\osrs-test\\rsprox\\lib\\*','OsrsTestLauncher' \`
-      -RedirectStandardOutput 'C:\\osrs-test\\logs\\rsprox-$ts.out' -RedirectStandardError 'C:\\osrs-test\\logs\\rsprox-$ts.err';
-    \$p.Id | Out-File -Encoding ascii C:\\osrs-test\\rsprox.pid; 'started RSProx pid ' + \$p.Id" >/dev/null 2>&1 </dev/null &
+    \$p = Start-Process -FilePath '$JAVA' -WorkingDirectory '$WIN_DIR' -WindowStyle Hidden -PassThru \`
+      -ArgumentList '-Dosrstest.marker=osrs-test-$DESKTOP_INSTANCE','-Dosrstest.portskip=$PORT_SKIP','-cp','$WIN_DIR\\rsprox\\launcher;$WIN_DIR\\rsprox\\lib\\*','OsrsTestLauncher' \`
+      -RedirectStandardOutput '$WIN_DIR\\logs\\rsprox-$ts.out' -RedirectStandardError '$WIN_DIR\\logs\\rsprox-$ts.err';
+    \$p.Id | Out-File -Encoding ascii '$WIN_DIR\\rsprox.pid'; 'started RSProx pid ' + \$p.Id" >/dev/null 2>&1 </dev/null &
   disown
-  for _ in $(seq 30); do [ -s /mnt/c/osrs-test/rsprox.pid ] && break; sleep 1; done
-  echo "started RSProx pid $(tr -d '\r\n' < /mnt/c/osrs-test/rsprox.pid 2>/dev/null || echo '?')"
-  echo "log: /mnt/c/osrs-test/logs/rsprox-$ts.{out,err}"
+  for _ in $(seq 30); do [ -s $WIN/rsprox.pid ] && break; sleep 1; done
+  echo "started RSProx pid $(tr -d '\r\n' < $WIN/rsprox.pid 2>/dev/null || echo '?')"
+  echo "log: $WIN/logs/rsprox-$ts.{out,err}"
   ;;
 status)
   $PS "\$ids = @($(ours_ps) | ForEach-Object { \$_.ProcessId });
@@ -63,7 +66,7 @@ status)
     if (\$ids.Count) { Get-NetTCPConnection -OwningProcess \$ids -ErrorAction SilentlyContinue | Where-Object { \$_.State -ne 'Bound' -and -not (\$_.RemoteAddress -eq '127.0.0.1' -and \$_.LocalPort -ge 49152 -and \$_.RemotePort -ge 49152) } | Select-Object OwningProcess,State,LocalAddress,LocalPort,RemoteAddress,RemotePort | Sort-Object OwningProcess,State | Format-Table -AutoSize | Out-String -Width 200 } else { 'not running' }"
   ;;
 log)
-  f=$(ls -t /mnt/c/osrs-test/logs/rsprox-*.out 2>/dev/null | head -1); [ -n "$f" ] || { echo "no log"; exit 1; }
+  f=$(ls -t $WIN/logs/rsprox-*.out 2>/dev/null | head -1); [ -n "$f" ] || { echo "no log"; exit 1; }
   tail -n "${2:-40}" "$f"; e="${f%.out}.err"; [ -s "$e" ] && { echo "--- stderr"; tail -n "${2:-40}" "$e"; } || true
   ;;
 login|relogin)
@@ -78,7 +81,7 @@ login|relogin)
     "$M" --tool click '{"x":460,"y":290}' >/dev/null; sleep 1   # "Existing User"
     # The Jagex-account upsell follows the first "Existing User" of each client run only. Its "Login"
     # (never "Download Launcher") sits where the form's "Cancel" is, so click it once per run.
-    local flag="/mnt/c/osrs-test/upsell-seen-$(tr -d '\r\n' < /mnt/c/osrs-test/rsprox.pid 2>/dev/null)"
+    local flag="$WIN/upsell-seen-$(tr -d '\r\n' < $WIN/rsprox.pid 2>/dev/null)"
     if [ ! -e "$flag" ]; then "$M" --tool click '{"x":462,"y":321}' >/dev/null; sleep 1; touch "$flag"; fi
   }
   fill() {
@@ -90,7 +93,7 @@ login|relogin)
   }
   user="${2:-desktop}"; pass="${3:-desktop}"
   # The account last logged in by this script, kept for reference; the check uses the local player.
-  acct=/mnt/c/osrs-test/desktop-account
+  acct=$WIN/desktop-account
   me() { "$M" --tool list_players '{}' | python3 -c 'import sys,json
 t=json.loads(json.load(sys.stdin)["result"]["content"][0]["text"])
 print(next((p["name"] for p in t["players"] if p.get("isLocal")), ""))' 2>/dev/null || true; }
@@ -117,17 +120,17 @@ logout)  # fixed mode: Logout tab, then "Click here to logout" (avoids the serve
   "$M" --tool press_key '{"key":"ESCAPE"}' >/dev/null
   "$M" --tool click '{"x":642,"y":483}' >/dev/null; sleep 1   # Logout tab
   "$M" --tool click '{"x":641,"y":423}' >/dev/null; sleep 3   # Click here to logout
-  rm -f /mnt/c/osrs-test/desktop-account
+  rm -f $WIN/desktop-account
   "$M" --tool get_client_state '{}' | grep -o 'gameState[^,]*'
   ;;
 stop)
   "$0" logout 2>/dev/null || true
   $PS "$(ours_ps) | ForEach-Object { 'stopping ' + \$_.ProcessId; Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }"
-  rm -f /mnt/c/osrs-test/rsprox.pid
-  if [ -e /mnt/c/osrs-test/target-override ]; then  # back to the default target (DESKTOP_TARGET_YAML)
-    cp "$(dirname "$(readlink -f "$0")")/proxy-targets.yaml" /mnt/c/osrs-test/home/.rsprox/proxy-targets.yaml
-    rm -f /mnt/c/osrs-test/target-override; echo "proxy target: restored the default"
+  rm -f $WIN/rsprox.pid
+  if [ -e $WIN/target-override ]; then  # back to the default target (DESKTOP_TARGET_YAML)
+    cp "$(dirname "$(readlink -f "$0")")/proxy-targets.yaml" $WIN/home/.rsprox/proxy-targets.yaml
+    rm -f $WIN/target-override; echo "proxy target: restored the default"
   fi
   ;;
-*) sed -n 2,12p "$0"; exit 1 ;;
+*) sed -n 2,14p "$0"; exit 1 ;;
 esac

@@ -2,17 +2,18 @@
 id: gate-op-overrides
 track: server
 title: 'Upstream gate: op overrides'
-status: ready
+status: in-progress
 prio: P1
 role: server-qa
-owner: null
-instance: []
+owner: sq26
+instance:
+- desktop
 branch: null
 commit: null
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:41Z'
-updated: '2026-10-20T01:42:41Z'
+updated: '2026-10-20T03:16:26Z'
 ---
 ## Task
 Gate the op-overrides branch (shared base for every quest PR) and its PR text (UPSTREAM-PRS.md). Goes upstream with the fixture first.
@@ -25,3 +26,4 @@ Gate the op-overrides branch (shared base for every quest PR) and its PR text (U
 
 ## Log
 - 2026-10-20T01:42:41Z created (ready)
+- 2026-10-20T03:16:26Z claimed by sq26 (instances desktop)

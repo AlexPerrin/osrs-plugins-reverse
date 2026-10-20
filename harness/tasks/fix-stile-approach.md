@@ -2,10 +2,10 @@
 id: fix-stile-approach
 track: server
 title: 'Stile: approach from the outside tile'
-status: ready
+status: in-progress
 prio: P1
 role: server-dev
-owner: null
+owner: sd27
 instance:
 - desktop
 branch: fix/stile-approach
@@ -13,7 +13,7 @@ commit: 513144d3d
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T02:47:55Z'
+updated: '2026-10-20T03:16:26Z'
 ---
 ## Task
 fix/stile-approach 8a8c0ca7a failed the internal gate: the player walks onto the stile's own blocking tile, so it never climbs. Fix: start the climb from the tile outside the stile on the player's side, in line with it; check in game; update the PR text. Covers the #366 review item 'stile jump from too far away (player not always in the pen)'.
@@ -37,3 +37,4 @@ fix/stile-approach 8a8c0ca7a failed the internal gate: the player walks onto the
 - 2026-10-20T02:47:39Z handover-check FAIL (7 items; see the check output)
 - 2026-10-20T02:47:55Z set status=ready owner=
 - 2026-10-20T02:47:55Z back to ready after the hand-over check: 513144d3d is only in re/agents/sd23/or; next dev pushes it to the fork (fix/stile-approach), opens/updates the fork PR, waits for CI at the sha, copies the evidence (tests, in-game) to re/evidence/fix-stile-approach/, ticks the DoD, then task.py handover --repo <clone> --pr --ci
+- 2026-10-20T03:16:26Z claimed by sd27 (instances desktop)

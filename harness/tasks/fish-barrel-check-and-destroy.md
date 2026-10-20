@@ -2,18 +2,19 @@
 id: fish-barrel-check-and-destroy
 track: server
 title: 'Fish barrel: Check message box and Destroy'
-status: ready
+status: in-progress
 prio: P1
 role: server-dev
-owner: null
-instance: []
+owner: sd26
+instance:
+- desktop
 branch: null
 commit: null
 blocked_by: []
 unblocks:
 - hub-fish-barrel-check
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T01:42:58Z'
+updated: '2026-10-20T03:16:26Z'
 ---
 ## Task
 Fish barrel Check sends GAMEMESSAGE lines instead of the chatbox message box (interface 193 comp 2: 'The barrel is empty.' / 'The barrel contains: 3 x Raw shrimps' / 'The barrel is full. It may be emptied at a bank.'); Destroy (op 5) does nothing (FishBarrelScript dispatch `else -> {}`). A spawned barrel sits in the tester's slot 15 until Destroy works. Unblocks client: Fish Barrel hub plugin (gen 44).
@@ -29,3 +30,4 @@ Fish barrel Check sends GAMEMESSAGE lines instead of the chatbox message box (in
 ## Log
 - 2026-10-20T01:42:40Z created (ready)
 - 2026-10-20T01:42:58Z unblocks hub-fish-barrel-check
+- 2026-10-20T03:16:26Z claimed by sd26 (instances desktop)

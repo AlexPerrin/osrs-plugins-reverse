@@ -27,6 +27,11 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **ConfigManager.getRSProfiles (client/host-config-rsprofiles, gen 46, device 2026-10-19)**: Time Tracking's farming completion
+  check no longer throws NoSuchMethodError. The host's one RS profile (`rsprofile.default`) gets desktop's profile keys
+  (displayName, type, accountHash) at each login (`Host.postGameState`, before RuneScapeProfileChanged), and `getRSProfiles()`
+  scans them as desktop. Device: keys written (`displayName=tester`, `type=STANDARD`); ~90 s of checks, no error. Evidence:
+  gen 46 scratchpad `g46/full-b3.txt` (full logcat). No network change.
 - **No second LOGGED_IN after a released rebuild hold (client/rebuild-double-logged-in, gen 46, device 2026-10-19)**: `Host`
   drops a native 30 when the last posted state is already LOGGED_IN (the hold's release replay posted it), logging
   `GameStateChanged LOGGED_IN again: already posted (rebuild released)`. Never seen before or now (qa/client-hostfixes-gen45.md
@@ -137,8 +142,8 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
    Enter"). Decimal Prices converts "1.5k" to 1500.
 7. **Herbiboar after a teleport: fixed (client/herbiboar-after-teleport, gen 45).** A rebuild's LOADING now waits for the new
    scene base, so getMapRegions answers the new regions; Herbi AFK draws its path line too.
-8. Host API gaps found by the v0.1.0 gate (backlog): no `javax.sound.sampled` (Drop Sounds throws at start) and no
-   `ConfigManager.getRSProfiles()` (Time Tracking's farming completion check throws NoSuchMethodError).
+8. Host API gaps found by the v0.1.0 gate (backlog): no `javax.sound.sampled` (Drop Sounds throws at start).
+   `ConfigManager.getRSProfiles()`: fixed (client/host-config-rsprofiles, gen 46).
 
 ## Gotchas
 

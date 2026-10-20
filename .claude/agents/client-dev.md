@@ -48,6 +48,14 @@ docs/offsets.md. History (docs/client-handoff.md) only when you need it.
   loops, no `bash -c`, no wildcards. Back up with `adb exec-out cat`.
 - Sign-in is LOCAL_AUTH only: screenshot first, tap only "Sign in with Email / Username".
 
+## Subtasks (keeping your context small)
+Hand read-heavy lookups to a subtask (the Agent tool; `Explore` for searches, `general-purpose` for multi-step
+digging) and keep only its conclusion: RSProx transcript searches (re/ref/rsprox/), server or client logs, wiki and
+cache sweeps, decompiled code, CI logs. Give it the question, where to look and the answer format (e.g. "ticks,
+packets and quoted lines for NPC 731's dialogue in recordings 1718 and 1619-1622"). Subtasks only read and
+summarise. They don't take locks, build, edit, commit or push. Anything a gate or record cites, you check
+yourself at the source (file and line, recording and tick) before you write it down.
+
 ## Limits
 - Never connect anything to Jagex or RuneScape servers, ping Jagex worlds or enable netwrite. Any new outbound
   host: stop and report at once. NET-RAW hub jars are dropped unless "main" approves them.

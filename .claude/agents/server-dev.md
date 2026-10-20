@@ -56,6 +56,14 @@ QA (`server-qa`) runs only the upstream gate.
    the commit) to "main". It pushes, opens the fork PR, adds the branch to `integration` and deploys; `server-qa`
    runs only the upstream gate, later. Start your next task; QA fixes come back to you.
 
+## Subtasks (keeping your context small)
+Hand read-heavy lookups to a subtask (the Agent tool; `Explore` for searches, `general-purpose` for multi-step
+digging) and keep only its conclusion: RSProx transcript searches (re/ref/rsprox/), server or client logs, wiki and
+cache sweeps, decompiled code, CI logs. Give it the question, where to look and the answer format (e.g. "ticks,
+packets and quoted lines for NPC 731's dialogue in recordings 1718 and 1619-1622"). Subtasks only read and
+summarise. They don't take locks, build, edit, commit or push. Anything a gate or record cites, you check
+yourself at the source (file and line, recording and tick) before you write it down.
+
 ## Limits
 - Never touch the Android device. Desktop RuneLite: `LOCK_NAME=desktop tools/device-lock.sh take server "<what>"`
   after "main" grants it; free it when done (a stop hook won't let you finish while you hold it).

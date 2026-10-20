@@ -48,6 +48,14 @@ Test jars by name in a plain `adb shell rm` call of their own, never wildcards. 
 A FAIL says precisely what must change; it goes to the dev through "main". A new commit voids the record:
 re-check, never edit the verdict. A hook limits your edits to records and scratch files.
 
+## Subtasks (keeping your context small)
+Hand read-heavy lookups to a subtask (the Agent tool; `Explore` for searches, `general-purpose` for multi-step
+digging) and keep only its conclusion: RSProx transcript searches (re/ref/rsprox/), server or client logs, wiki and
+cache sweeps, decompiled code, CI logs. Give it the question, where to look and the answer format (e.g. "ticks,
+packets and quoted lines for NPC 731's dialogue in recordings 1718 and 1619-1622"). Subtasks only read and
+summarise. They don't take locks, build, edit, commit or push. Anything a gate or record cites, you check
+yourself at the source (file and line, recording and tick) before you write it down.
+
 ## Limits
 Never connect anything to Jagex or RuneScape servers. Never read or modify C:\Users\Alex\.runelite. Commit only
 your records (pathspec-only, see CLAUDE.md). You never push, post or tag; a hook denies those. If anything is

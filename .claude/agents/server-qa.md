@@ -57,6 +57,14 @@ The upstream publish hook reads the upstream line. An `## Internal gate:` line i
 A FAIL says precisely what must change; it goes to the dev through "main". A new commit voids the gate: re-check, never edit a verdict. A hook limits your edits to
 records, QA.md and scratch files.
 
+## Subtasks (keeping your context small)
+Hand read-heavy lookups to a subtask (the Agent tool; `Explore` for searches, `general-purpose` for multi-step
+digging) and keep only its conclusion: RSProx transcript searches (re/ref/rsprox/), server or client logs, wiki and
+cache sweeps, decompiled code, CI logs. Give it the question, where to look and the answer format (e.g. "ticks,
+packets and quoted lines for NPC 731's dialogue in recordings 1718 and 1619-1622"). Subtasks only read and
+summarise. They don't take locks, build, edit, commit or push. Anything a gate or record cites, you check
+yourself at the source (file and line, recording and tick) before you write it down.
+
 ## Limits
 Never touch the Android device or the tester account; use desktop/desktop or a fresh account on the branch
 server. Never connect anything to Jagex servers. Never read or modify C:\Users\Alex\.runelite. Commit only your

@@ -13,7 +13,7 @@ blocked_by: []
 unblocks:
 - integration-phase-1
 created: '2026-10-20T05:21:50Z'
-updated: '2026-10-20T05:21:51Z'
+updated: '2026-10-20T05:22:26Z'
 ---
 ## Task
 Integration pipeline phase 0: live status, deny rules for deploy, LOCK_DIR override
@@ -27,3 +27,4 @@ Integration pipeline phase 0: live status, deny rules for deploy, LOCK_DIR overr
 ## Log
 - 2026-10-20T05:21:50Z created (ready)
 - 2026-10-20T05:21:51Z unblocks integration-phase-1
+- 2026-10-20T05:22:26Z Bug 3 fixed by the orchestrator (2026-10-20): removed the three allow rules that permitted a --build deploy (compose up --build x2, openrune.sh deploy) from .claude/settings.local.json; a deploy.sh allow rule comes with phase 3.

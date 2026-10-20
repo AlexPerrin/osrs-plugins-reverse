@@ -183,6 +183,34 @@ reconciliation and leases.
 12. **Session continuity.** No more compaction-driven restarts: the orchestrator's state lives on disk (task store,
     events, policy), so a fresh session picks up in one command, and long sessions hand over automatically.
 
+### 6a-kpi. The KPIs that matter (ranked; all from events.jsonl, UTC)
+
+Headline (one per user priority):
+1. **Unattended hours**: wall time the loop kept making progress with no user message. Target: a full night.
+2. **Throughput**: tasks reaching `live` (server) or master (client) per hour, and **lead time** claim -> live
+   (median, p90). Upstream: PRs updated or marked ready per day.
+3. **Stall time**: total minutes any ready task or any agent waited on something the harness owns (a lock, a slot,
+   a check, a ship, a deploy, an approval it could have skipped). Self-healing drives this to zero.
+
+Deadlocks and stalls (the issue the user named):
+4. **Deadlock incidents**: cycles or idle holds where a waiter can't proceed because a holder isn't using the
+   resource (lock held with no attached process, a train waiting on a deploy waiting on a lock). Count per day.
+5. **Time to detect** and **time to recover** each incident (target: detected within one tick, recovered without
+   the user).
+6. **Idle-under-lock minutes** per instance, and **lock wait** per waiter.
+7. **Lingering agents**: agents alive after their task left in-progress, and minutes lingered.
+
+Quality and cost:
+8. **First-pass hand-over check rate** (v2: 11 of 18), and gate first-pass rate.
+9. **Interventions**: user messages per day that fix the harness rather than direct work (v2: 1.75/h), split into
+   approvals that weren't needed, blocked agents, stale state.
+10. **Denials per hour** by source (hook rule, classifier category); false-positive rate after review.
+11. **Tokens and minutes per task** by role and agent type (fresh vs fork), and per train/deploy.
+12. **Build**: gate time cold/warm, queue wait, cache-hit %; client build time. Kept for regression only (v2 showed
+    the harness doesn't move it; the cache did).
+
+Dashboard: 1-3 as tiles with trends, 4-7 as an incident list, 8-12 as tables; each links to its events.
+
 ### 6b. Product goals the harness should carry
 
 - **GPU plugin** and **117 HD** on the Android app, separately (client-gpu-plugin-feasibility,

@@ -52,7 +52,8 @@ flowchart LR
 | Brief | `task.py brief <id>` | The whole spawn prompt: the id, the agent's name, the granted instances, the evidence dir, how to hand over. Role text stays in `.claude/agents/*.md` |
 | Driver | `tools/harness/orchestrate.py` | `status` (dashboard), `next` (what fits the free slots), `dispatch` (name the agent, grant instances with `reuse`, claim, print the brief, or `--run` a headless `claude -p --agent <role>`), `reap` (finished runs → check → ship → QA task → approval), `run` (the loop) |
 | Hand-over check | `tools/harness/handover-check.sh <id>` | The evaluator between the dev's claim and the ship step, deterministic; rules below |
-| Ship | `tools/harness/ship.sh <id>` | Client: `--no-ff` merge into `master` with the standard message, push to origin main, task `live`. Server: append to `integration.txt`, rebuild `integration` with `build-integration.sh`, push; prints the gate and deploy commands (they reserve instances, so they stay separate). A QA-role task is marked `done` (nothing to merge) |
+| Ship | `tools/harness/ship.sh <id>` | Client: `--no-ff` merge into `master` with the standard message, push to origin main, task `live`. Server: checks `fork/<branch>` is the handed-over commit and queues the task for the next integration train (`integrate.py enqueue`), task `shipped`; no rebuild at ship time. A QA-role task is marked `done` (nothing to merge) |
+| Integration trains | `tools/harness/integrate.py` (`orchestrate.py integrate ...`) | The queue, the integration lock, one rebuild and one lease push of `integration` per batch of shipped server tasks, and the pins (below) |
 | Evidence | `re/evidence/<id>/` | Durable, in the main checkout, git-ignored. Screenshots, logcat extracts, the repack log, accuracy results. Replaces per-session scratchpads |
 | Instances | `tools/device-lock.sh` + `tools/instances.tsv` | One lock per test instance (`device`, `desktop`; add rows for more BlueStacks instances). `grant <who> <min> reuse` at dispatch: the agent takes and frees it for the whole task without asking |
 | Build queue | `tools/buildq.sh`, `openrune/upstream/qa/qa.sh` | Unchanged classes and memory guard; queue and lock dirs moved from a session scratchpad to `re/harness/{buildq,qa}` |
@@ -105,6 +106,36 @@ Agents can't push, write to GitHub, run `fork.sh`, deploy, grant devices or writ
   stay allowed). The agents' own containers (`qa-or-*`, branch images) are not affected.
 - The word "upstream" alone (file names, commit messages, `re/upstream-pr/`) means nothing to the hook.
 
+### Integration trains (docs/integration-pipeline.md, phase 1)
+
+```
+orchestrate.py integrate status          queue, the last trains and each one's next step, pin warnings
+orchestrate.py integrate enqueue <task>  what ship.sh runs for a server task (by hand only to re-queue)
+orchestrate.py integrate build [--now]   run a train once the oldest entry is INTEGRATION_DEBOUNCE_MIN (10) min old
+```
+- **Queue**: `re/harness/integration/queue.json` (task, branch, handed-over commit, time). A newer hand-over of the
+  same branch replaces its entry.
+- **Lock**: `re/harness/integration/.lock`, one file with two record locks: byte 0 guards the queue for a moment
+  (enqueue, drain), byte 1 is the integration lock that `build` holds for the whole train. A second `build` exits 75
+  "busy"; an enqueue during a train never waits and goes in the next train.
+- **Train**: a task `int-<yyyymmdd>-<n>` (track orch, role integration, so dispatch skips it) with `includes`,
+  `integration`, `tools`, `stage` and `evidence` (`re/evidence/<train>/rebuild.log`). It drains the queue into one
+  commit on `local/integration-tools` (each new branch at the end of its section of integration.txt, every queued
+  branch pinned to its commit in integration.lock), pushes that branch (plain), runs that commit's
+  `build-integration.sh` once in `re/harness/integration/build/`, pushes `integration` with a lease, sets stage
+  `built` and each included task's `integration:`, and prints the gate command. Gate, image and deploy are still the
+  orchestrator's (phases 2-3).
+- **Failures leave the queue as it was**: `needs-agent` (the rebuild stopped, e.g. an unrecorded conflict; the stop
+  output is in the train's log and the stopped merge in `build/`; phase 4 adds the integrator agent) or `failed` (a
+  push refused, e.g. the lease). The next `build` re-uses the open train.
+- **Pins**: `integration.lock` beside integration.txt on `local/integration-tools`, `<branch> <sha>` lines (seeded
+  2026-10-20 from the fork tips, equal to what integration f9cc1618c merged). `build-integration.sh` merges a pinned
+  branch at its pin and says when the tip was not taken; a branch without a pin merges its tip with a warning;
+  `local/integration-tools` itself is never pinned. `status` warns when a tip moved past its pin without a hand-over.
+- One-time switch: `re/harness/integration` was ship.sh's rebuild worktree; integrate.py refuses to run until it is
+  removed (it prints the `worktree remove` command).
+- `integrate.py` is orchestrator-only, like `orchestrate.py integrate` (deny_publish.py).
+
 ### Tests
 
 `tools/harness/tests/run.sh` (or `python3 -m unittest discover -s tools/harness/tests`): the hook table (temp repos
@@ -112,7 +143,10 @@ whose remotes point at the fork or OpenRune), the hand-over check per track and 
 "fork", a gh stub), the QA ship path, reap approvals with gh stubbed, `task.py lint` on the live store
 (read-only), and test_live.py (the `live` status and unblocking, `migrate-live`, the client ship to `live` in a temp
 checkout, the integration deny rules, `LOCK_DIR` in device-lock.sh, which sets where the lock, grant and status
-files live; default `/tmp`). No network or devices. Run them after any change to `tools/hooks/` or `tools/harness/`.
+files live; default `/tmp`), and test_integrate.py (trains against temp bare upstream and fork repos with the fork's
+`build-integration.sh` copied to `tests/fixtures/`: one train per batch, sections and pins, debounce, busy, an
+enqueue during a train, a moved tip not taken, an unrecorded conflict, a lease failure, ship.sh's enqueue). No
+network or devices. Run them after any change to `tools/hooks/` or `tools/harness/`.
 
 ### Task lifecycle
 
@@ -168,8 +202,9 @@ tools/harness/orchestrate.py reap                   # after agents finish: check
 tools/harness/orchestrate.py approvals              # what the user must decide
 ```
 `reap` also picks up hand-overs from in-session agents (no run record): any task in `handover` without a check gets
-one. Server ships print the integration gate and deploy commands; the orchestrator runs them when both instances
-are free (standing approval for deploys with a rollback tag).
+one. Server ships queue the task for the next integration train; the orchestrator runs `orchestrate.py integrate
+build`, then the gate and the deploy it prints, when both instances are free (standing approval for deploys with a
+rollback tag).
 
 **Headless (autonomous loop).**
 ```
@@ -226,6 +261,8 @@ ran from `reap`. What it taught, now fixed:
   hook held the agent until it was fixed; that is the gate working as designed.
 
 ## Not built yet
+- Integration phases 2-5 (docs/integration-pipeline.md): image.sh and the names check, deploy.sh with the driver's
+  tick and drain, repin-check and the integrator agent, server tooling on the fork.
 - `build-integration.sh` refusing a branch without green CI at its commit (today `handover-check.sh` is the only
   guard before `ship.sh`).
 - A headless server task: only a client task has run headless so far (above). Watch the first server-dev and

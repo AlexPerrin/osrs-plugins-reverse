@@ -2,11 +2,12 @@
 id: hub-fish-barrel-check
 track: client
 title: 'Fish Barrel hub plugin: Check path'
-status: ready
+status: in-progress
 prio: P1
 role: client-dev
-owner: null
-instance: []
+owner: cd50
+instance:
+- device
 branch: null
 commit: null
 blocked_by:
@@ -14,7 +15,7 @@ blocked_by:
 - repin-2
 unblocks: []
 created: '2026-10-20T01:42:43Z'
-updated: '2026-10-20T04:44:46Z'
+updated: '2026-10-20T05:14:04Z'
 ---
 ## Task
 Fish Barrel hub plugin's Check path on the device once the server sends the message box; then destroy the tester's slot-15 Fish barrel (docs/client-state.md Next tasks 1).
@@ -30,3 +31,4 @@ Fish Barrel hub plugin's Check path on the device once the server sends the mess
 - 2026-10-20T04:40:56Z blocked by repin-2: waits for the deploy of integration e5b18a87b (fish barrel shipped there)
 - 2026-10-20T04:44:46Z set status=ready
 - 2026-10-20T04:44:46Z Unblocked: fish barrel Check/Destroy live 2026-10-20 04:44 UTC. The tester's slot-15 barrel can now be destroyed.
+- 2026-10-20T05:14:04Z claimed by cd50 (instances device)

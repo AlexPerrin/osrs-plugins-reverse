@@ -2,7 +2,7 @@
 
 Rewritten at each milestone so a fresh orchestrator session can take over without the old conversation. Read with
 CLAUDE.md, docs/client-state.md, the fork's STATE.md (`git -C re/upstream-pr/or show fork/docs:STATE.md`) and
-docs/backlog.md (upstream queue, roadmap, client and server tasks). Last rewrite: 2026-10-19 ~20:30 (handoff for restart).
+docs/backlog.md (upstream queue, roadmap, client and server tasks). Last rewrite: 2026-10-19 ~21:00 (handoff for restart).
 
 ## How the orchestrator works
 - Delegate: anything beyond a couple of quick commands goes to a subagent (typed roles from .claude/agents/, or a
@@ -10,6 +10,9 @@ docs/backlog.md (upstream queue, roadmap, client and server tasks). Last rewrite
 - Restart only to avoid repeated compaction (not on a schedule): rewrite this file first, then a fresh session takes over. Subagents don't survive a session;
   their work is on disk (clones under re/agents/<name>/, docs worktrees, records on the fork's docs branch), so a
   new orchestrator re-dispatches from the "In flight" list below.
+- Gates (2026-10-19): server and client devs ship on their own check (server: accuracy spec incl. RSProx + green
+  fork CI → integration/live; client: built + changed path tried on the device → master). QA runs only the server
+  upstream gate and the client release gate. Older notes below that say "internal PASS" mean the dev's check.
 - Upstream: nothing reaches OpenRune/* without the user's OK; print the exact action first; append comments, never
   edit an original PR description; merge main into PR branches rather than force-push.
 
@@ -47,7 +50,7 @@ Server QA (companions sq24 for sd23's branches, sq25 for sd24's):
 Client:
 8. Done: gen 46's five branches (scene-item-despawn 359aa21, rebuild-double-logged-in f01f851, host-config-rsprofiles
    77baa50, host-javax-sound-shim e8a3836, poison-sprite-override e2ee7b7) merged to master on the dev's check (new client
-   model, no merge gate); master builds (host/build.sh + ninja). Push pending. Device restore checks: restore
+   model, no merge gate); master builds (host/build.sh + ninja). Pushed. Device restore checks: restore
    settings.properties first (the login now writes rsprofile keys).
 
 Other: the re-pin (docs/backlog.md `repin-2`: drop fix/17, fix/18, fin/doric; add the gated branches); the

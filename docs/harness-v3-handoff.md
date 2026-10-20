@@ -185,7 +185,15 @@ reconciliation and leases.
 
 ### 6a-kpi. The KPIs that matter (ranked; all from events.jsonl, UTC)
 
-Headline (one per user priority):
+Product progress (what the harness exists to move; user definitions, 2026-10-20):
+- **Client: RuneLite compatibility on mobile.** RuneLite API implemented (661/866, 76%), core plugins running on
+  Android (89/90), Plugin Hub plugins running (84/109), from tools/progress.py.
+- **Server: parity with the official OSRS server** (100% = identical copy). Not measured yet: task
+  server-parity-metric builds tools/harness/server_parity.py (OSRS content from cache and wiki vs the integration
+  tree, upstream main vs integration side by side).
+- docs/progress.md (tools/harness/progress_report.py) reports both; task counts there are workflow throughput only.
+
+Harness headline (one per user priority):
 1. **Unattended hours**: wall time the loop kept making progress with no user message. Target: a full night.
 2. **Throughput**: tasks reaching `live` (server) or master (client) per hour, and **lead time** claim -> live
    (median, p90). Upstream: PRs updated or marked ready per day.

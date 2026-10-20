@@ -2,7 +2,7 @@
 id: client-gpu-117hd-feasibility
 track: client
 title: 'Stretch goal: GPU plugin and 117 HD on the Android app (feasibility spike)'
-status: ready
+status: done
 prio: P2
 role: client-dev
 owner: null
@@ -12,7 +12,7 @@ commit: null
 blocked_by: []
 unblocks: []
 created: '2026-10-20T04:37:39Z'
-updated: '2026-10-20T04:37:39Z'
+updated: '2026-10-20T04:39:08Z'
 ---
 ## Task
 Stretch goal: GPU plugin and 117 HD on the Android app (feasibility spike)
@@ -26,3 +26,5 @@ Stretch goal: GPU plugin and 117 HD on the Android app (feasibility spike)
 ## Log
 - 2026-10-20T04:37:39Z created (ready)
 - 2026-10-20T04:37:39Z User 2026-10-20: 'Our stretch goals as defined initially in this project was GPU and HD117.' Docs had drifted to 'GPU plugins excluded' (README; plugin-host.md ranking skips GPU) and isGpu=false (client-handoff gen ~28). The user runs 117hd and HD in their own RuneLite (project-user-plugins). Prior notes: client-handoff.md 'GLES 3.2' (libnb), the camera/zoom matrix notes around line 210.
+- 2026-10-20T04:39:08Z Replaced by client-gpu-plugin-feasibility and client-117hd-feasibility (user 2026-10-20: consider them individually).
+- 2026-10-20T04:39:08Z set status=done

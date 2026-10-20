@@ -72,7 +72,8 @@ Milestones:
 - [x] **All 53 core RuneLite plugins tracked run on Android** (the last were Emojis, Player Indicators and
   Clue Scroll; Loot Tracker records clue caskets via packet-ordered events), 2026-10-17
 - [ ] More plugins (region-dependent ones excluded): Status Bars, Chat History, InfoBox-based plugins
-- [ ] Stretch goals: the GPU plugin and 117 HD on the Android app (feasibility first: task client-gpu-117hd-feasibility)
+- [ ] Stretch goal: RuneLite's GPU plugin on the Android app (feasibility: task client-gpu-plugin-feasibility)
+- [ ] Stretch goal: 117 HD on the Android app (feasibility: task client-117hd-feasibility)
 
 ## Layout
 

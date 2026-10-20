@@ -3,7 +3,7 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `tools/harness/task.py list --track client`. Last rewrite: 2026-10-20, client dev
-cd49 (task hub-batch-next).
+cd50 (task hub-fish-barrel-check).
 
 ## What this is
 
@@ -28,21 +28,20 @@ cd49 (task hub-batch-next).
   unchanged). No user symbols/comments in it. The old project stays at `re/ghidra-old` until main deletes it.
   `Callers.java` is in the reverse skill's table; the objdump whole-binary check stays.
 
-## Installed on the device (last recorded: end of task hub-batch-next, 2026-10-20)
+## Installed on the device (last recorded: end of task hub-fish-barrel-check, 2026-10-20)
 
-- Build: client/hub-batch-next's head (master + camera target setters), `OPENRUNE=1 LOCAL_AUTH=1
+- Build: master a4f3740 (hub-batch-next merged; rebuilt by hub-fish-barrel-check, no code change), `OPENRUNE=1 LOCAL_AUTH=1
   MODULUS=<openrune.sh modulus> tools/repack.sh` (7 `telemetry:` lines), installed with `adb install-multiple -r`
   (Windows adb.exe, `\\wsl.localhost\...` paths). Building in a worktree: symlink each entry of the main checkout's `re/`
   except `build` and `out` (the shared `re/build` compiles the main checkout's native/, so configure your own:
   `cmake -S native -B re/build -G Ninja` with the NDK toolchain, arm64-v8a, android-26, Release), symlink `base.apk`
   and `split_config.arm64_v8a.apk`, and pass MODULUS explicitly (openrune/ isn't checked out there).
 - Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3219,3222.
-- **Expected drift: a Fish barrel in the tester's inventory slot 15** (spawned gen 44; OpenRune's barrel Destroy does
-  nothing, server task). Leave it (orchestrator, gen 44); destroy it once that fix is live. The restore check's MANUAL
-  line says so.
+- Tester inventory: 9 items (slots 0-8), slot 15 empty. The gen 44 Fish barrel (it held 3 raw shrimps) was destroyed
+  through OpenRune's destroy confirmation (interface 584) in hub-fish-barrel-check.
 - settings.properties: every login writes `rsprofile.rsprofile.default.{type,displayName,accountHash}`, which the slot
-  backup of 2026-10-20 lacks, so the restore check reports OFF after a login; hub-batch-next pushed the backup back while
-  logged in (the next login re-adds the 3 keys).
+  backup of 2026-10-20 lacks, so the restore check reports OFF after a login; push the backup back while logged in to
+  `files/settings.properties` (not `files/.runelite/`; the next login re-adds the 3 keys).
 - Pre-existing plugin data under `files/.runelite/` (bossing-info, c-engineer-sounds, cache, pyramid-plunder-counter,
   resource-packs-repository) predates gen 40; leave it.
 
@@ -81,6 +80,8 @@ cd49 (task hub-batch-next).
   `host/plugins/hub/netscan-check.sh <jars>`. At build, `host/plugins/hub/netcheck.sh` (run by hub build.sh) stops on
   NET-RAW unless `ALLOW_NET=1` (orchestrator's OK); NET-OKHTTP plugins need Network QA, new outbound hosts the
   orchestrator's OK.
+- **Destroy confirmations** (interface 584): devtools `widget_action` can't hit its Yes on mobile (the hover lands on the
+  scene); tap the Yes component's canvas centre scaled by 1920/894 (`dump_interface 584`, Yes = 584:1).
 - **Network QA** (v0.1.0 gate, and gen 46 for Drop Sounds): only expected hosts (`dns.google` is an expected system
   lookup); the one GitHub socket is an approved raw.githubusercontent.com sound GET. No GE digest fetch captured yet
   (task netqa-ge-digest).
@@ -104,7 +105,10 @@ cd49 (task hub-batch-next).
 
 - Device: your task's `instance:` list is granted at dispatch; `tools/device-lock.sh take <your-name> "<what>"`, free when
   done (status shows OVERDUE past the granted time). The osrs-devtools MCP drives the Android device, only under the
-  lock. It needs `devtools.jar` in plugins/ and `setprop debug.osrsrl.devtools 1` plus an app restart.
+  lock. It needs `devtools.jar` in plugins/ and `setprop debug.osrsrl.devtools 1` plus an app restart. If the MCP server
+  failed to connect at session start, `python3 -I tools/devtools_mcp.py --call tools/call '{"name":...,"arguments":{}}'`
+  reaches the same tools. adb.exe from WSL fails now and then (`UtilAcceptVsock accept4 failed 110`): retry in an
+  `until` loop, or batch taps and `screencap -p /sdcard/...` in one `adb shell "..."` call.
 - Slot start/end: `tools/device-restore-check.sh pre <dir>` before touching anything, `check <dir>` at the end (OK/OFF per
   item). Remove test jars and files by name, in a plain `adb shell rm` call of their own, never with wildcards. Hub plugins
   go on the device as the dexed `re/host/plugins-extra/hub-<name>.jar`, not `re/hub-build/<name>.jar` ("no
@@ -125,8 +129,7 @@ cd49 (task hub-batch-next).
 - Typing into a prompt: `adb shell input keyevent KEYCODE_1 ...` one key at a time (digits, `KEYCODE_PERIOD`); read the
   input with `get_var varcstr 359`. The bank's long-press menu gains a "Withdraw-<last X>" entry after a valid X and loses
   it after an invalid one, so rows shift: screenshot the menu before tapping (gen 44 withdrew all bank coins by tapping a
-  shifted row). Valuable drops ask "Really put it down?". Untradeables have Destroy (coal bag works, fish barrel
-  doesn't). `::tele` within the same zone posts no LOADING.
+  shifted row). Valuable drops ask "Really put it down?". Untradeables have Destroy (coal bag and fish barrel work). `::tele` within the same zone posts no LOADING.
 - Ground Item Sounds writes 3.6 MB of wavs to `.runelite/plugin-data/ground-item-sounds` on first start.
 - Builds: host/build.sh + `ninja -C re/build` + repack (no docker). Any build container goes through
   `tools/buildq.sh` (not gradle.lock). Every APK goes through `tools/repack.sh` (7 `telemetry:` lines).

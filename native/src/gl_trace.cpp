@@ -205,15 +205,25 @@ void gl_trace_frame() {
     {
         char buf[512];
         int o = snprintf(buf, sizeof buf, "gltrace: unmap sizes:");
-        for (auto& [k, c] : g_unmap_sizes)
-            if (o < (int)sizeof buf - 40) o += snprintf(buf + o, sizeof buf - o, " %zu@%#zx x%llu", k / 0x10000, k % 0x10000, (unsigned long long)c);
+        for (auto& [k, c] : g_unmap_sizes) {
+            if (o < 0 || o >= (int)sizeof buf - 40) break;
+            int written = snprintf(buf + o, sizeof buf - static_cast<size_t>(o), " %zu@%#zx x%llu", k / 0x10000,
+                                   k % 0x10000, (unsigned long long)c);
+            if (written < 0 || written >= (int)sizeof buf - o) break;
+            o += written;
+        }
         LOGI("%s", buf);
     }
     if (g_ubo.valid) {
         for (int row = 0; row < 7; row++) {
             char buf[512];
             int o = snprintf(buf, sizeof buf, "gltrace: ubo[%d..]:", row * 16);
-            for (int i = row * 16; i < row * 16 + 16 && i < 100; i++) o += snprintf(buf + o, sizeof buf - o, " %.6g", g_ubo.block[i]);
+            for (int i = row * 16; i < row * 16 + 16 && i < 100; i++) {
+                if (o < 0 || o >= (int)sizeof buf) break;
+                int written = snprintf(buf + o, sizeof buf - static_cast<size_t>(o), " %.6g", g_ubo.block[i]);
+                if (written < 0 || written >= (int)sizeof buf - o) break;
+                o += written;
+            }
             LOGI("%s", buf);
         }
     }
@@ -221,7 +231,12 @@ void gl_trace_frame() {
         char buf[512];
         int o = snprintf(buf, sizeof buf, "gltrace: prog %d loc %d n %d t %d calls %llu:", key.first, key.second, e.count,
                          e.transpose, (unsigned long long)e.calls);
-        for (int i = 0; i < 16 && o < (int)sizeof buf - 16; i++) o += snprintf(buf + o, sizeof buf - o, " %.5g", e.m[i]);
+        for (int i = 0; i < 16; i++) {
+            if (o < 0 || o >= (int)sizeof buf - 16) break;
+            int written = snprintf(buf + o, sizeof buf - static_cast<size_t>(o), " %.5g", e.m[i]);
+            if (written < 0 || written >= (int)sizeof buf - o) break;
+            o += written;
+        }
         LOGI("%s", buf);
     }
 }

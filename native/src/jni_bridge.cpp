@@ -1338,11 +1338,16 @@ void n_overlay_publish(JNIEnv*, jclass, jint w, jint h) { overlay_publish(w, h);
 
 jintArray n_camera(JNIEnv* env, jclass) {
     game::Camera c = game::camera();
-    jint v[11] = {c.x, c.y, c.z, c.pitch, c.yaw, c.focal_x, c.focal_y, c.focal_z,
-                  c.render_base_x, c.render_base_y, c.render_wv_same};
-    jintArray arr = env->NewIntArray(11);
-    env->SetIntArrayRegion(arr, 0, 11, v);
+    jint v[13] = {c.x, c.y, c.z, c.pitch, c.yaw, c.focal_x, c.focal_y, c.focal_z,
+                  c.render_base_x, c.render_base_y, c.render_wv_same, c.pitch_target, c.yaw_target};
+    jintArray arr = env->NewIntArray(13);
+    env->SetIntArrayRegion(arr, 0, 13, v);
     return arr;
+}
+
+jboolean n_set_camera_target(JNIEnv*, jclass, jint which, jint value) {
+    if (!client_thread::on_client_thread()) return false;
+    return game::set_camera_target(which, value);
 }
 
 // {valid, zoom, centreX, centreY, clip x0, y0, x1, y1, far, scene camera x/h/y, sin/cos pitch, sin/cos yaw x65536} (game thread only; valid 0 otherwise).
@@ -1620,6 +1625,7 @@ const JNINativeMethod kNatives[] = {
     {"widgetDynamicGeometry", "(II)[I", reinterpret_cast<void*>(n_widget_dynamic_geometry)},
     {"property", "(Ljava/lang/String;)Ljava/lang/String;", reinterpret_cast<void*>(n_property)},
     {"camera", "()[I", reinterpret_cast<void*>(n_camera)},
+    {"setCameraTarget", "(II)Z", reinterpret_cast<void*>(n_set_camera_target)},
     {"viewport", "()[I", reinterpret_cast<void*>(n_viewport)},
     {"playSound", "(III)Z", reinterpret_cast<void*>(n_play_sound)},
     {"screenSize", "()[I", reinterpret_cast<void*>(n_screen_size)},

@@ -769,6 +769,13 @@ Viewport viewport() {
     return v;
 }
 
+bool set_camera_target(int which, int value) {
+    uintptr_t c = client();
+    if (!c || which < 0 || which > 1) return false;
+    *reinterpret_cast<int32_t*>(c + g_build->f_camera + 20 + 4 * which) = which ? (value & 0x3fff) : value;
+    return true;
+}
+
 Camera camera() {
     Camera cam;
     uintptr_t c = client();
@@ -780,6 +787,8 @@ Camera camera() {
     cam.y = read_at<int32_t>(b + 8);
     cam.pitch = read_at<int32_t>(b + 12) & 0x3fff;
     cam.yaw = read_at<int32_t>(b + 16) & 0x3fff;
+    cam.pitch_target = read_at<int32_t>(b + 20);
+    cam.yaw_target = read_at<int32_t>(b + 24) & 0x3fff;
     cam.focal_x = read_at<int32_t>(b + 0x78);  // camera block +0x89488, focal point +0x89500
     cam.focal_z = read_at<int32_t>(b + 0x7c);
     cam.focal_y = read_at<int32_t>(b + 0x80);

@@ -2,8 +2,8 @@
 
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
-from this file). Tasks and blockers: `tools/harness/task.py list --track client`. Last rewrite: 2026-10-19, client dev
-cd48 (task client-docs-trim).
+from this file). Tasks and blockers: `tools/harness/task.py list --track client`. Last rewrite: 2026-10-20, client dev
+cd49 (task hub-batch-next).
 
 ## What this is
 
@@ -28,16 +28,21 @@ cd48 (task client-docs-trim).
   unchanged). No user symbols/comments in it. The old project stays at `re/ghidra-old` until main deletes it.
   `Callers.java` is in the reverse skill's table; the objdump whole-binary check stays.
 
-## Installed on the device (last recorded: end of task host-menu-entry-removal, 2026-10-19)
+## Installed on the device (last recorded: end of task hub-batch-next, 2026-10-20)
 
-- Build: client/host-menu-entry-removal's head (master 72d55d2 + the MenuOpened session), `OPENRUNE=1 LOCAL_AUTH=1
+- Build: client/hub-batch-next's head (master + camera target setters), `OPENRUNE=1 LOCAL_AUTH=1
   MODULUS=<openrune.sh modulus> tools/repack.sh` (7 `telemetry:` lines), installed with `adb install-multiple -r`
-  (Windows adb.exe, `wslpath -w` paths). Building in a worktree: symlink `re`, `base.apk` and
-  `split_config.arm64_v8a.apk` from the main checkout, and pass MODULUS explicitly (openrune/ isn't checked out there).
+  (Windows adb.exe, `\\wsl.localhost\...` paths). Building in a worktree: symlink each entry of the main checkout's `re/`
+  except `build` and `out` (the shared `re/build` compiles the main checkout's native/, so configure your own:
+  `cmake -S native -B re/build -G Ninja` with the NDK toolchain, arm64-v8a, android-26, Release), symlink `base.apk`
+  and `split_config.arm64_v8a.apk`, and pass MODULUS explicitly (openrune/ isn't checked out there).
 - Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3219,3222.
 - **Expected drift: a Fish barrel in the tester's inventory slot 15** (spawned gen 44; OpenRune's barrel Destroy does
   nothing, server task). Leave it (orchestrator, gen 44); destroy it once that fix is live. The restore check's MANUAL
   line says so.
+- settings.properties: every login writes `rsprofile.rsprofile.default.{type,displayName,accountHash}`, which the slot
+  backup of 2026-10-20 lacks, so the restore check reports OFF after a login; hub-batch-next pushed the backup back while
+  logged in (the next login re-adds the 3 keys).
 - Pre-existing plugin data under `files/.runelite/` (bossing-info, c-engineer-sounds, cache, pyramid-plunder-counter,
   resource-packs-repository) predates gen 40; leave it.
 
@@ -56,6 +61,8 @@ cd48 (task client-docs-trim).
   location and item layer. Ground item despawn/visible timers and ownership come from OBJ_ADD (fix/76 live).
 - **Soft keyboard Enter** (`PromptEnter`): the IME's Done is an editor action on the game's hidden EditText, not a key
   event; with KeyListeners registered the host sends VK_ENTER through KeyManager first, then the game's submit once.
+- **Camera targets**: `setCameraPitchTarget/YawTarget` write the game's targets (Client `+0x8949c/+0x894a0`); the game
+  eases pitch/yaw towards them (Camera Smoothing runs). `debug.osrsrl.camlog 1` also logs every 30th target write.
 - **Sprite overrides** of the sprite's canvas size are cropped to the game's trimmed block at its offset
   (`Native.spriteInfo`, Sprite +0x20..+0x2c); other sizes are still refused. Row "Poison".
 - **Audio**: `javax.sound.sampled` shim (`host/awt/javax/sound/sampled`, HostClip plays through AudioPlayer/MediaPlayer).

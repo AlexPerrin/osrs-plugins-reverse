@@ -838,9 +838,22 @@ public class AndroidClient extends ClientStub {
     }
     @Override public int getCameraPitch() { return cam()[3]; }
     @Override public int getCameraYaw() { return cam()[4]; }
-    // Targets (+0x8949c/+0x894a0) aren't read separately; the camera settles on them within frames.
-    @Override public int getCameraYawTarget() { return getCameraYaw(); }
-    @Override public int getCameraPitchTarget() { return getCameraPitch(); }
+    // Targets (+0x8949c/+0x894a0): the game eases pitch/yaw towards them (a swipe moves the targets).
+    @Override public int getCameraYawTarget() { return cam()[12]; }
+    @Override public int getCameraPitchTarget() { return cam()[11]; }
+    @Override public void setCameraYawTarget(int yaw) { setCameraTarget(1, yaw); }
+    @Override public void setCameraPitchTarget(int pitch) { setCameraTarget(0, pitch); }
+    private int cameraTargetWrites;
+    private void setCameraTarget(int which, int value) {
+        if (!isClientThread()) return;
+        int before = cam()[11 + which];
+        boolean ok = Native.setCameraTarget(which, value);
+        if (ok) cameraCache = null;
+        // camlog: every 30th write, for checking plugins that steer the camera (Camera Smoothing)
+        if ((cameraTargetWrites++ % 30) == 0 && "1".equals(Native.property("debug.osrsrl.camlog")))
+            android.util.Log.i(Host.TAG, "camera target " + (which == 0 ? "pitch" : "yaw") + " " + before + " -> " + value + ": " + ok
+                + " (now " + java.util.Arrays.toString(cam()) + ")");
+    }
     @Override public net.runelite.api.CameraFocusableEntity getCameraFocusEntity() { return getLocalPlayer(); }
     @Override public float getCameraFpX() { return cam()[0] + eyeOffset(0); }
     @Override public float getCameraFpY() { return cam()[1] + eyeOffset(1); }

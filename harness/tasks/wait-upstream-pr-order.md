@@ -12,7 +12,7 @@ commit: null
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:43Z'
-updated: '2026-10-20T01:42:43Z'
+updated: '2026-10-20T03:29:14Z'
 ---
 ## Task
 Waiting item 6: order of the new upstream PRs (quest test fixture and op-overrides first).
@@ -22,3 +22,4 @@ Waiting item 6: order of the new upstream PRs (quest test fixture and op-overrid
 
 ## Log
 - 2026-10-20T01:42:43Z created (waiting-user)
+- 2026-10-20T03:29:14Z op-overrides dropped from upstream by the user (2026-10-20); only the quest test fixture remains from this item's 'first' pair.

@@ -2,7 +2,8 @@ name: CodeQL
 
 # Advanced setup. Scope: all first-party code; vendored dependencies (server/rsprot,
 # native/third_party) are left to their upstreams.
-#   java (no build)  host/, tools/: host/build.sh needs the Android SDK and re/ jars, not in CI
+#   java (no build)  host/, tools/: host/build.sh needs the Android SDK and re/ jars, not in CI;
+#                    server/ is removed first so autodetection does not try its Gradle build
 #   server (manual)  server/src Kotlin: rsprot is compiled before CodeQL starts tracing, so only
 #                    the server is extracted
 on:
@@ -40,6 +41,11 @@ jobs:
             build-mode: manual
     steps:
       - uses: actions/checkout@v4
+
+      # server/ holds no Java (server-kotlin covers it); left in, buildless autodetection runs
+      # Gradle on it without a wrapper or rsprot and fails the classpath and dependency-graph steps.
+      - if: matrix.name == 'java'
+        run: rm -rf server
 
       - if: matrix.build-mode == 'manual'
         uses: actions/setup-java@v4

@@ -304,4 +304,8 @@ Keep: the task store, the hand-over check, the train scripts, role agents, the t
 
 ## 8. State at hand-off
 
-(Updated at session end.)
+What v2 shipped: docs/v2-shipped.md (server features live and in the last train, client features on master,
+upstream PR activity, harness changes). Live progress: docs/progress.md (regenerate with
+tools/harness/progress_report.py).
+
+(Running work at hand-off is listed here at session end.)

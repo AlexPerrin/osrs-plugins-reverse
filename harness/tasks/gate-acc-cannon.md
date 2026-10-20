@@ -2,7 +2,7 @@
 id: gate-acc-cannon
 track: server
 title: 'Upstream gate: acc/cannon (replaces draft #354/#355)'
-status: ready
+status: failed
 prio: P1
 role: server-qa
 owner: null
@@ -13,7 +13,7 @@ blocked_by: []
 unblocks:
 - cleanup-scratchpad-qa-acc
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T01:42:59Z'
+updated: '2026-10-20T02:39:48Z'
 ---
 ## Task
 acc/cannon bc243d141: dev run first (sd23's report: worktree wt/acc-cannon to bc243d141, delete .data/cache/SERVER, qa.sh dev; fill RESULTS_PENDING), then internal + upstream gates. Replaces the pre-audit draft (#354/#355); upstream merged the pre-audit #356/#357 on 2026-10-19 so the audit delta becomes follow-up fixes off main. Then the gated rewrite replaces the draft's content with a non-force-push merge commit after the user's OK. Evidence: scratchpad/acc/logs.
@@ -29,3 +29,5 @@ acc/cannon bc243d141: dev run first (sd23's report: worktree wt/acc-cannon to bc
 ## Log
 - 2026-10-20T01:42:40Z created (ready)
 - 2026-10-20T01:42:59Z unblocks cleanup-scratchpad-qa-acc
+- 2026-10-20T02:39:48Z sq24 upstream gate FAIL at bc243d141, PR text only: 'we have no dumps of the official game' -> 'none of the RSProx recordings we have (rsprox.net database) shows a player cannon'; same in spec header. Code/CI (39350604565) pass; in-game checks pass except the 25-min break/repair/decay path (integration-covered). Record 60f5e23ea in re/agents/sq24/docs, NOT pushed. Next: sd text fix, re-check text + the 35-min path in game.
+- 2026-10-20T02:39:48Z set status=failed

@@ -2,18 +2,18 @@
 id: fix-stile-approach
 track: server
 title: 'Stile: approach from the outside tile'
-status: in-progress
+status: ready
 prio: P1
 role: server-dev
-owner: sd23
+owner: null
 instance:
 - desktop
-branch: null
-commit: null
+branch: fix/stile-approach
+commit: 513144d3d
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T02:11:42Z'
+updated: '2026-10-20T02:47:55Z'
 ---
 ## Task
 fix/stile-approach 8a8c0ca7a failed the internal gate: the player walks onto the stile's own blocking tile, so it never climbs. Fix: start the climb from the tile outside the stile on the player's side, in line with it; check in game; update the PR text. Covers the #366 review item 'stile jump from too far away (player not always in the pen)'.
@@ -30,3 +30,10 @@ fix/stile-approach 8a8c0ca7a failed the internal gate: the player walks onto the
 - 2026-10-20T01:42:40Z created (ready)
 - 2026-10-20T02:11:42Z set status=in-progress owner=sd23 instance=desktop
 - 2026-10-20T02:11:42Z old harness (session 73): sd23 on fix/stile-approach 513144d3d, in-game on branch server 43598; sq24 recorded upstream gate FAIL at 8646e5ff0 (climb 2 ticks)
+- 2026-10-20T02:12:35Z 8646e5ff0 pushed (CI 39353940765 green); sq24 upstream gate FAIL (climb 2 ticks after step-on, 1718 says 1; record commit 2a5305fb9 in re/agents/sq24/docs, NOT pushed). sd23 fix 513144d3d (STEP_ON_TICKS=1 + timing test) in re/agents/sd23/or, NOT pushed; in-game cross pending (desktop grant). sd23 docs commit 65cc94f05 (detached, re/agents/sd23/docs) NOT pushed.
+- 2026-10-20T02:12:44Z sd23 done: 513144d3d (STEP_ON_TICKS=1, StileScriptTest 6/6, generic-locs integration 10/0, crossed in game from S, N and along fence). Docs de3dac3fa on top of 65cc94f05 (detached in re/agents/sd23/docs). Both NOT pushed (stale hook in old session). Next: push 513144d3d + docs to fork, CI, then sq24 re-gate. Also pending push: acc/genie a44a3daa0. Sheep Shearer 01da94f17 and acc/cannon bc243d141 are with sq24 for the upstream gate.
+- 2026-10-20T02:12:44Z set status=handover branch=fix/stile-approach commit=513144d3d
+- 2026-10-20T02:39:48Z sq24 FAIL record for 8646e5ff0 = 2a5305fb9 (re/agents/sq24/docs docs-publish, NOT pushed); 513144d3d not re-gated yet.
+- 2026-10-20T02:47:39Z handover-check FAIL (7 items; see the check output)
+- 2026-10-20T02:47:55Z set status=ready owner=
+- 2026-10-20T02:47:55Z back to ready after the hand-over check: 513144d3d is only in re/agents/sd23/or; next dev pushes it to the fork (fix/stile-approach), opens/updates the fork PR, waits for CI at the sha, copies the evidence (tests, in-game) to re/evidence/fix-stile-approach/, ticks the DoD, then task.py handover --repo <clone> --pr --ci

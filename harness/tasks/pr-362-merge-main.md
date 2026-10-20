@@ -2,17 +2,17 @@
 id: pr-362-merge-main
 track: server
 title: '#362 fix/57: merge upstream main, unstack'
-status: in-progress
+status: gated
 prio: P1
 role: server-dev
 owner: sd24
 instance: []
-branch: null
-commit: null
+branch: fix/57-gameframe-fullscreen-map
+commit: 113b4bbac
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T02:11:42Z'
+updated: '2026-10-20T02:47:55Z'
 ---
 ## Task
 #362 (fix/57) conflicts with main since #315 added Gameframe.isGameplay (same fallback exclusion as our a01ebb28b); moved to draft 2026-10-19. Merge main into fix/57 (no force-push), keep isGameplay, keep the stone-arrangement varbit restore. The merge exists as e551ba7ce in re/agents/sd24/or (worktree w57, clone g57), NOT on the fork yet. Push it to the fork, update the PR text and the appended comment (pr-texts/gameframe-fullscreen-map.comment); sq25 re-gates both gates in game; then the user's OK for the fast-forward push onto #362, the comment, and ready.
@@ -27,3 +27,6 @@ updated: '2026-10-20T02:11:42Z'
 - 2026-10-20T01:42:40Z created (ready)
 - 2026-10-20T02:11:42Z set status=in-progress owner=sd24
 - 2026-10-20T02:11:42Z old harness (session 73): sd24 clone re/agents/sd24 (w57 fix/57 113b4bbac, g362)
+- 2026-10-20T02:12:35Z User chose option (a). sd24 113b4bbac on e551ba7ce (4607 only between isGameplay frames; varbit dropped; net diff one condition). sq25 upstream gate PASS at 113b4bbac (local gate, RSProx 3204, in game); record 238fb7bff in re/agents/sq25/docs NOT pushed. Texts: re/agents/sd24/docs aac2488f1 pr-texts/gameframe-fullscreen-map.{title,upstream.body,comment}. Waiting on user: push 113b4bbac to #362 branch, comment (drop 'Title and description updated'), title change yes/no.
+- 2026-10-20T02:12:35Z set status=gated
+- 2026-10-20T02:47:55Z set branch=fix/57-gameframe-fullscreen-map commit=113b4bbac

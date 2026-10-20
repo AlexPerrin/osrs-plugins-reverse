@@ -3,7 +3,7 @@
 From the harness-v2 orchestrator session (2026-10-20, session a450a085, "osrs-plugins-reverse-52") to the Fable session
 that builds harness v3. Draft written mid-session; the "State at hand-off" section is updated when the session ends.
 
-Read first: **docs/harness-v3-problem.md** (the problem definition, first principles and the process model as a state
+Read first: **docs/harness-v3-prd.md** (the PRD v3 is built against), then **docs/harness-v3-problem.md** (the problem definition, first principles and the process model as a state
 machine: the goal, the lifecycle of a change per track, transitions with their tools and dependencies, the driver
 tick, the invariants v3 must guarantee). Then read with: docs/harness.md (v2 as built), docs/integration-pipeline.md (the approved integration design, phases 0-1
 done), and the three reviews in `re/evidence/harness-v2-review/`: `kpi.md` (measurements), `session-a450a085.md`

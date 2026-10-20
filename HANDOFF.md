@@ -29,15 +29,17 @@ git -C re/upstream-pr/or fetch -q fork origin && git -C re/upstream-pr/or log --
 If upstream main moved past 829b9477d, a re-pin is due (the user's rule: keep the test server on current upstream).
 
 ## 3. Read, in this order
-1. `docs/harness-v3-problem.md`: the problem definition for v3 (the goal per track, first principles, the
+1. `docs/harness-v3-prd.md`: **the PRD** (the model in its simplest terms, every business rule, the dashboard:
+   progress, status, approvals; the daemon pivot; acceptance criteria). v3 is built and accepted against it.
+2. `docs/harness-v3-problem.md`: the problem definition for v3 (the goal per track, first principles, the
    lifecycle of a change as a state machine with tools and dependencies, the driver tick, the invariants to test).
-2. `docs/harness-v3-handoff.md`: the full handoff (v2 KPIs and verdict, takeaways, findings, stretch goals and
+3. `docs/harness-v3-handoff.md`: the full handoff (v2 KPIs and verdict, takeaways, findings, stretch goals and
    KPIs, the change model, breaking changes, state at hand-off). Section 8 is the state.
-3. `docs/integration-pipeline.md`: the approved train design; phases 0-1 done, 2-5 to build.
-4. `docs/harness.md` and `docs/workflow.md`: v2 as built.
-5. `re/evidence/harness-v2-review/` (`kpi.md`, `session-a450a085.md`, `sessions-earlier.md`): evidence behind the
+4. `docs/integration-pipeline.md`: the approved train design; phases 0-1 done, 2-5 to build.
+5. `docs/harness.md` and `docs/workflow.md`: v2 as built.
+6. `re/evidence/harness-v2-review/` (`kpi.md`, `session-a450a085.md`, `sessions-earlier.md`): evidence behind the
    handoff.
-6. `docs/v2-shipped.md`: what v2 delivered. `CLAUDE.md`: project rules. Memory is auto-loaded.
+7. `docs/v2-shipped.md`: what v2 delivered. `CLAUDE.md`: project rules. Memory is auto-loaded.
 
 ## 4. State right now
 - **Live test server**: integration `e27ff4d08` on upstream main `829b9477d`, image `osrs-openrune:integration-e27ff4d`

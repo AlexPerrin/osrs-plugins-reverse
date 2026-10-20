@@ -1,7 +1,7 @@
 # Client state
 
 Short current-state doc for the client track (docs/workflow.md "State docs"). Rewrite it; don't append.
-History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev gen 46.
+History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-10-19, client dev cd47 (task host-menu-entry-removal).
 
 ## What this is
 
@@ -13,12 +13,12 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 - API coverage and each plugin's status: docs/plugin-host.md. Addresses: docs/offsets.md (ELF; Ghidra = ELF + 0x100000).
 - Privacy patches and Network QA: docs/app-telemetry.md (read it before any build that touches networking).
 
-## Installed on the device (end of gen 45)
+## Installed on the device (end of task host-menu-entry-removal, 2026-10-19)
 
-- Build: client/herbiboar-after-teleport's head (gen 45; includes client/host-prompt-enter), built in the gen 45 worktree with
-  `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1 MODULUS=<openrune.sh modulus> tools/repack.sh` (7 `telemetry:`
-  lines) and installed with `adb install-multiple -r` (Windows adb.exe, `wslpath -w` paths). Gen 46's five branches are merged
-  in master (dev's check each); reinstall master's build when a device check needs it.
+- Build: client/host-menu-entry-removal's head (master 72d55d2 + the MenuOpened session), built in the cd47 worktree with
+  `OPENRUNE=1 LOCAL_AUTH=1 MODULUS=<openrune.sh modulus> tools/repack.sh` (7 `telemetry:` lines; the worktree needs `re`,
+  `base.apk` and `split_config.arm64_v8a.apk` symlinked from the main checkout, and the modulus passed explicitly because
+  openrune/ isn't checked out there) and installed with `adb install-multiple -r` (Windows adb.exe, `wslpath -w` paths).
 - Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3219,3222.
 - **Expected drift: a Fish barrel in the tester's inventory slot 15** (spawned gen 44; OpenRune's barrel Destroy does nothing,
   filed as a server task). Leave it (orchestrator, gen 44); destroy it once that fix is live. The restore check's MANUAL line says so.
@@ -27,6 +27,13 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **Native menu entry removal from MenuOpened (client/host-menu-entry-removal, device 2026-10-19)**: `Host` posts `MenuOpened`
+  inside a menu session (`AndroidMenu.beginSession`), and the order/removal logic presort used is now `AndroidMenu.applyOrder`,
+  run after both PostMenuSort (presort) and MenuOpened: text edits are written back, then a permutation or subset of the game's
+  entries goes to `Native.menuReorder` (logcat `menu reorder (MenuOpened) [...] of N: true`). Device with hub-no-examine: Genie +
+  Overgrown cat menu 10 -> 8 entries (no Examine), Logs = Use/Drop/Cancel, fountain = Walk here/Cancel, "Talk-to Genie" in the
+  shortened menu ran Talk-to. Evidence: `re/evidence/host-menu-entry-removal/` (`01-npc-menu.png`, `02-talk-to-after-removal.png`,
+  `03-inventory-menu.png`, `04-object-menu.png`, `menu-logcat.txt`, `repack.log`). No network change (host Java only).
 - **Sprite overrides of the canvas size (client/poison-sprite-override, gen 46, device 2026-10-19)**: the game keeps sprites trimmed
   (15x14 heart at 6,6 in a 26x26 canvas, Sprite +0x20..+0x2c, new `Native.spriteInfo`); an override of the canvas size is now cropped to
   the trimmed block at its offset, as desktop draws the whole canvas. Poison's heart override is applied (logcat `26x26 canvas cropped to
@@ -140,8 +147,10 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
    `get_var varcstr 335` (non-empty after a send = stalled); recover by showing the keyboard and pressing Enter.
    Gen 45: in that state the hidden-keyboard Enter does reach KeyListeners and is re-dispatched to the Activity (KeyManager
    logs press/typed/release), but the game doesn't submit; the cause is on the game side of the dispatch (not investigated).
-2. **Removing native menu entries**: plugins that call `setMenuEntries(shorter)` in MenuOpened (No Examine) can't remove
-   entries from the open long-press menu; the host only reorders and rewrites them.
+2. **Removing native menu entries: fixed (client/host-menu-entry-removal, 2026-10-19).** `MenuOpened` now runs in a menu
+   session, so a plugin's `setMenuEntries(shorter)` there persists and `AndroidMenu.applyOrder` shortens or reorders the
+   game's open menu as presort already did for PostMenuSort (No Examine hides Examine on NPCs, inventory items and objects;
+   docs/plugin-host.md row "No Examine"). Entries with submenus still can't be dropped (`game::menu_reorder`).
 3. **Current World**: runs (gen 42 + the gen 43 thread-safety fix). Not checked: its world switcher title (69:2); the in-game
    world switcher and the logout button weren't found on mobile (the bottom-left popout's door is "Minimise Popout"; the
    settings tab's three sub-tabs are display/audio/controls). Relog = force-stop, wait ~50 s, Play Now.

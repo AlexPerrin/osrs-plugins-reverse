@@ -796,13 +796,18 @@ public final class Host {
                 for (net.runelite.api.MenuEntry m : AndroidClient.MENU.addPlayerOptions(
                         client.getPlayerOptions(), client.getPlayerMenuTypes()))
                     bus.post(new net.runelite.api.events.MenuEntryAdded(m));
-                net.runelite.api.MenuEntry[] entries = AndroidClient.MENU.getMenuEntries();
-                net.runelite.api.events.MenuOpened e = new net.runelite.api.events.MenuOpened();
-                e.setMenuEntries(entries);
-                for (net.runelite.api.MenuEntry m : e.getMenuEntries()) Log.i(TAG, "MenuOpened " + m);
-                bus.post(e);
-                for (net.runelite.api.MenuEntry m : entries)
-                    if (m instanceof AndroidMenuEntry && ((AndroidMenuEntry) m).writeBack()) Log.i(TAG, "menu entry rewritten: " + m);
+                // MenuOpened runs in a session so a plugin's setMenuEntries (No Examine's shorter array)
+                // persists until the game's menu is ordered or shortened to match (AndroidMenu.applyOrder).
+                net.runelite.api.MenuEntry[] entries = AndroidClient.MENU.beginSession();
+                try {
+                    net.runelite.api.events.MenuOpened e = new net.runelite.api.events.MenuOpened();
+                    e.setMenuEntries(entries);
+                    for (net.runelite.api.MenuEntry m : e.getMenuEntries()) Log.i(TAG, "MenuOpened " + m);
+                    bus.post(e);
+                    AndroidClient.MENU.applyOrder(entries, "MenuOpened");
+                } finally {
+                    AndroidClient.MENU.endSession();
+                }
                 AndroidClient.MENU.publishPluginEntries();
                 break;
             }

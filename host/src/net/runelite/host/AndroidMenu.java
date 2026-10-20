@@ -161,32 +161,41 @@ final class AndroidMenu implements Menu {
             } finally {
                 presorting = false;
             }
-            for (MenuEntry m : entries)
-                if (m instanceof AndroidMenuEntry && ((AndroidMenuEntry) m).writeBack()) Log.i(Host.TAG, "menu entry rewritten: " + m);
-            MenuEntry[] sorted = getMenuEntries();
-            List<Integer> order = new ArrayList<>();
-            for (int i = sorted.length - 1; i >= 0; i--) {  // top first
-                MenuEntry m = sorted[i];
-                if (m instanceof AndroidMenuEntry && !((AndroidMenuEntry) m).synthetic && ((AndroidMenuEntry) m).nativeIndex >= 0)
-                    order.add(((AndroidMenuEntry) m).nativeIndex);
-            }
-            int n = 0;
-            for (MenuEntry m : entries) if (m instanceof AndroidMenuEntry && !((AndroidMenuEntry) m).synthetic) n++;
-            boolean identity = true;
-            for (int i = 0; i < order.size(); i++) identity &= order.get(i) == i;
-            // A permutation of the game's entries, or a subset when plugins removed some (Not Empty
-            // drops a potion's "Empty"); the native side drops only childless entries.
-            if ((!identity || order.size() < n) && !order.isEmpty() && order.size() <= n
-                    && new java.util.HashSet<>(order).size() == order.size()) {
-                int[] o = new int[order.size()];
-                for (int i = 0; i < o.length; i++) o[i] = order.get(i);
-                reordered = Native.menuReorder(o);
-                Log.i(Host.TAG, "menu reorder " + java.util.Arrays.toString(o) + ": " + reordered);
-            }
+            reordered = applyOrder(entries, "presort");
         } finally {
             endSession();
         }
         return reordered;
+    }
+
+    /**
+     * Within a session, after plugins ran on `entries` (the session's, from beginSession): writes
+     * option/target edits back into the game's menu, then, if the plugins' array (setMenuEntries)
+     * is a permutation of the game's entries or a subset of them, orders or shortens the game's
+     * menu to match: a permutation for Menu Entry Swapper's order, a subset when a plugin removed
+     * entries (Not Empty drops a potion's "Empty" in PostMenuSort, No Examine drops Examine in
+     * MenuOpened). The native side drops only childless entries. Returns whether the game's menu changed.
+     */
+    boolean applyOrder(MenuEntry[] entries, String when) {
+        for (MenuEntry m : entries)
+            if (m instanceof AndroidMenuEntry && ((AndroidMenuEntry) m).writeBack()) Log.i(Host.TAG, "menu entry rewritten: " + m);
+        MenuEntry[] sorted = getMenuEntries();
+        List<Integer> order = new ArrayList<>();
+        for (int i = sorted.length - 1; i >= 0; i--) {  // top first
+            MenuEntry m = sorted[i];
+            if (m instanceof AndroidMenuEntry && !((AndroidMenuEntry) m).synthetic && ((AndroidMenuEntry) m).nativeIndex >= 0)
+                order.add(((AndroidMenuEntry) m).nativeIndex);
+        }
+        int n = 0;
+        for (MenuEntry m : entries) if (m instanceof AndroidMenuEntry && !((AndroidMenuEntry) m).synthetic) n++;
+        boolean identity = order.size() == n;
+        for (int i = 0; i < order.size(); i++) identity &= order.get(i) == i;
+        if (identity || order.isEmpty() || order.size() > n || new java.util.HashSet<>(order).size() != order.size()) return false;
+        int[] o = new int[order.size()];
+        for (int i = 0; i < o.length; i++) o[i] = order.get(i);
+        boolean changed = Native.menuReorder(o);
+        Log.i(Host.TAG, "menu reorder (" + when + ") " + java.util.Arrays.toString(o) + " of " + n + ": " + changed);
+        return changed;
     }
 
     @Override public MenuEntry[] getMenuEntries() {

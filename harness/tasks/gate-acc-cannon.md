@@ -14,7 +14,7 @@ blocked_by: []
 unblocks:
 - cleanup-scratchpad-qa-acc
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T05:19:18Z'
+updated: '2026-10-20T05:36:58Z'
 ---
 ## Task
 acc/cannon bc243d141: dev run first (sd23's report: worktree wt/acc-cannon to bc243d141, delete .data/cache/SERVER, qa.sh dev; fill RESULTS_PENDING), then internal + upstream gates. Replaces the pre-audit draft (#354/#355); upstream merged the pre-audit #356/#357 on 2026-10-19 so the audit delta becomes follow-up fixes off main. Then the gated rewrite replaces the draft's content with a non-force-push merge commit after the user's OK. Evidence: scratchpad/acc/logs.
@@ -37,3 +37,4 @@ acc/cannon bc243d141: dev run first (sd23's report: worktree wt/acc-cannon to bc
 - 2026-10-20T05:16:27Z User 2026-10-20: prioritize #354. Re-gate at bc243d141 once fix-acc-cannon-text lands. On PASS: merge commit onto content/cannon (#354), description, ready (user's OK given; announce each upstream step).
 - 2026-10-20T05:19:18Z set blocked_by= status=ready
 - 2026-10-20T05:19:18Z claimed by sq29 (instances desktop)
+- 2026-10-20T05:36:58Z Orchestrator: desktop2 granted to sq29 (desktop held by sd28 past its time).

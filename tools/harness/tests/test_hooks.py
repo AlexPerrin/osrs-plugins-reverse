@@ -209,6 +209,22 @@ class GithubScopeTest(unittest.TestCase):
                          "ask")
         self.assertEqual(self.run_scope("echo $(git -C " + upr + " push origin x)", t), "ask")
 
+    def test_help_is_read_only(self):
+        t = tempdir(self)
+        self.assertNotEqual(self.run_scope("gh pr edit 367 -R OpenRune/OpenRune-Server --help", t), "ask")
+        self.assertEqual(self.run_scope("gh pr edit 367 -R OpenRune/OpenRune-Server --title x", t), "ask")
+
+
+class PublishGateHeredocTest(unittest.TestCase):
+    def test_note_mentioning_pr_create_is_not_gated(self):
+        import subprocess
+        cmd = "cat > /tmp/x.md <<'EOF'\nuse gh pr create -R OpenRune/OpenRune-Server and git tag v1.2.3\nEOF"
+        data = json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd}})
+        r = subprocess.run([sys.executable, os.path.join(HOOKS, "publish_gate.py")], input=data, capture_output=True,
+                           text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip(), "")
+
 
 class PublishGateTest(unittest.TestCase):
     def run_gate(self, cmd):

@@ -73,6 +73,11 @@ def release_gate(cmd):
 
 def main():
     cmd = json.load(sys.stdin).get("tool_input", {}).get("command", "")
+    # Heredoc bodies are file contents (notes, scripts), not commands: a note that mentions `gh pr create` or a
+    # release tag must not trip the gates.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import shellparse
+    cmd = shellparse.strip_heredocs(cmd)
     release_gate(cmd)
     if not re.search(r"\bgh\s+pr\s+create\b", cmd):
         return

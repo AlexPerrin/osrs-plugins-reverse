@@ -72,6 +72,8 @@ def classify(seg, cwd):
     cmd = os.path.basename(w[0])
     if cmd in READ_ONLY:
         return "read", ""
+    if cmd in ("gh", "git") and any(t in ("--help", "-h") for t in w[1:]) or w[:2] == ["gh", "help"]:
+        return "read", ""   # help text only, nothing is sent
     if cmd == "release-dev.sh" or w[0].endswith("tools/release-dev.sh"):
         return "ours", "dev release of osrs-plugins-reverse"
     if re.search(r"open-batch-[^/]*\.sh$", w[0]):

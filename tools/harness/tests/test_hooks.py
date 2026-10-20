@@ -196,6 +196,19 @@ class GithubScopeTest(unittest.TestCase):
                          "allow")
         self.assertEqual(self.run_scope('d="' + upr + '"; git -C "${d}" push origin fix/x', t), "ask")
 
+    def test_command_substitution_in_an_option(self):
+        # The second fork push that prompted (2026-10-20): the lease value comes from $(git -C <dir> rev-parse ...).
+        t = tempdir(self)
+        os.makedirs(os.path.join(t, "re", "harness"))
+        init_repo(os.path.join(t, "re", "harness", "integration"), remotes={"fork": FORK_SSH})
+        upr = init_repo(os.path.join(t, "or"), remotes={"origin": UPSTREAM_URL, "fork": FORK_SSH})
+        cmd = ("git -C re/harness/integration push -q --force-with-lease=integration:$(git -C re/harness/integration "
+               "rev-parse fork/integration) fork HEAD:refs/heads/integration")
+        self.assertEqual(self.run_scope(cmd, t), "allow")
+        self.assertEqual(self.run_scope("git -C " + upr + " push --force-with-lease=x:$(git rev-parse y) origin x", t),
+                         "ask")
+        self.assertEqual(self.run_scope("echo $(git -C " + upr + " push origin x)", t), "ask")
+
 
 class PublishGateTest(unittest.TestCase):
     def run_gate(self, cmd):

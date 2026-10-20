@@ -52,8 +52,27 @@ def segments(command):
     return [s.strip().lstrip("({ ").rstrip(")} ").strip() for s in segs if s.strip()]
 
 
+def opaque_substitutions(seg):
+    """`$(...)` and backticks as one opaque word (__SUBST__), so `--force-with-lease=x:$(git -C d rev-parse y)` stays
+    one option instead of leaking `-C d` into the outer command. A push *inside* a substitution is then not seen
+    as a push of this segment, so the callers treat it as unparsable (deny / ask)."""
+    prev = None
+    while prev != seg:
+        prev = seg
+        seg = re.sub(r"\$\([^()]*\)", "__SUBST__", seg)
+    return re.sub(r"`[^`]*`", "__SUBST__", seg)
+
+
+def hidden_writes(command):
+    """True when a `$(...)` or backtick substitution contains a git push or a gh call: the hooks can't tell its
+    target, so they ask (github_scope) or deny (deny_publish)."""
+    subs = re.findall(r"\$\(([^()]*)\)", command) + re.findall(r"`([^`]*)`", command)
+    return any(re.search(r"\bgit\b.*\bpush\b|\bgh\b|fork\.sh", x) for x in subs)
+
+
 def words(seg):
     """shlex words of one simple command without leading VAR=x assignments and redirections; None if unparsable."""
+    seg = opaque_substitutions(seg)
     try:
         w = shlex.split(seg)
     except ValueError:

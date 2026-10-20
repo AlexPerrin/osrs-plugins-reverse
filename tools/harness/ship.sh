@@ -108,7 +108,10 @@ PY
     rm -f "$bi"
     if [[ -z $DRY ]]; then
         isha=$(git -C "$iwt" rev-parse HEAD)
-        [[ -n $PUSH ]] && git -C "$iwt" push -q fork "HEAD:refs/heads/integration"
+        # integration is rebuilt from main each time, so it never fast-forwards: replace it, but only over the tip
+        # this run fetched (a lease), never over someone else's newer rebuild.
+        lease=$(git -C "$iwt" rev-parse -q --verify refs/remotes/fork/integration || true)
+        [[ -n $PUSH ]] && git -C "$iwt" push -q --force-with-lease="integration:$lease" fork "HEAD:refs/heads/integration"
         "$T" set "$TASK" status=shipped integration="$isha"
         "$T" log "$TASK" "shipped: in integration ${isha:0:9}${PUSH:+ (pushed)}; gate + deploy pending"
         echo "shipped $TASK into integration ${isha:0:9}"

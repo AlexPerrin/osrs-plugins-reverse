@@ -158,6 +158,8 @@ def main():
     # Heredoc bodies are data (scripts, file contents), not commands: drop them before splitting.
     command = sp.strip_heredocs(command)
     kinds, asks = [], []
+    if sp.hidden_writes(command):
+        asks.append("a push or GitHub call inside a command substitution")
     for seg in sp.resolved_segments(command):
         nd = sp.cd_target(sp.words(seg), cwd)
         if nd:

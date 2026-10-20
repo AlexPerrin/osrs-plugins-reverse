@@ -2,17 +2,18 @@
 id: gate-goblin-village-lookout-ladder
 track: server
 title: 'Gates: fix/goblin-village-lookout-ladder 475eefb76'
-status: gated
+status: done
 prio: P2
 role: server-qa
-owner: sd24
+owner: null
 instance: []
 branch: fix/goblin-village-lookout-ladder
 commit: b87819158
+pr: https://github.com/OpenRune/OpenRune-Server/pull/373
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:43Z'
-updated: '2026-10-20T03:13:49Z'
+updated: '2026-10-20T03:34:09Z'
 ---
 ## Task
 fix/goblin-village-lookout-ladder 475eefb76: both gates (internal + upstream), in game. Whether it goes upstream as its own fix/<slug> is a user question (wait-goblin-ladder-own-fix).
@@ -31,3 +32,6 @@ fix/goblin-village-lookout-ladder 475eefb76: both gates (internal + upstream), i
 - 2026-10-20T02:12:35Z set status=gated
 - 2026-10-20T02:47:55Z set branch=fix/goblin-village-lookout-ladder commit=b87819158
 - 2026-10-20T03:13:49Z approval requested: harness/approvals/gate-goblin-village-lookout-ladder.md
+- 2026-10-20T03:34:09Z set pr=https://github.com/OpenRune/OpenRune-Server/pull/373
+- 2026-10-20T03:34:09Z User OK 2026-10-20 ('goblin village now'): opened upstream #373 at b87819158, ready for review, text sd24 docs aac2488f1 (gated by sq25). Draft #367 still carries the same GoblinCaveLadders change; the quest-only update (unstack-367-368, d77ac2b76 doesn't touch the file) removes the overlap.
+- 2026-10-20T03:34:09Z done

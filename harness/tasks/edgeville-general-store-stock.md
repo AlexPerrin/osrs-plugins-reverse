@@ -2,10 +2,10 @@
 id: edgeville-general-store-stock
 track: orch
 title: 'Upstream #371: Edgeville general store stock'
-status: gated
+status: done
 prio: P1
 role: orchestrator
-owner: sq25
+owner: null
 instance: []
 branch: fix/edgeville-general-store-stock
 commit: a695b985f
@@ -13,7 +13,7 @@ pr: https://github.com/OpenRune/OpenRune-Server/pull/372
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:43Z'
-updated: '2026-10-20T03:13:49Z'
+updated: '2026-10-20T03:33:17Z'
 ---
 ## Task
 Rebuild upstream's truncated generalshop2.toml (size 0 -> crash on Trade), data only (sd24, sq23). Fork PR #19 fix/edgeville-general-store-stock @ ca527418a -> upstream #371 (opened 2026-10-19); internal + upstream PASS (fork docs qa/edgeville-general-store-stock.md). #351 (fix/55, draft since 2026-10-18) depends on it and leaves draft after #371 merges; fix/55 is out of integration until then.
@@ -35,3 +35,5 @@ Rebuild upstream's truncated generalshop2.toml (size 0 -> crash on Trade), data 
 - 2026-10-20T03:05:31Z set pr=https://github.com/OpenRune/OpenRune-Server/pull/372
 - 2026-10-20T03:06:44Z User OK: #372 marked ready for review.
 - 2026-10-20T03:13:49Z approval requested: harness/approvals/edgeville-general-store-stock.md
+- 2026-10-20T03:33:17Z User 2026-10-20: stale approval cleared; the upstream action was already done with the user's OK.
+- 2026-10-20T03:33:17Z done

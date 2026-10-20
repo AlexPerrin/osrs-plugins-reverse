@@ -72,6 +72,75 @@ done), and the three reviews in `re/evidence/harness-v2-review/`: `kpi.md` (meas
 7. **Settings as code**: the permission and autoMode rules the harness needs, reviewed once, so harness work does
    not stall on Self-Modification blocks.
 
-## 5. State at hand-off
+## 5. Findings
+
+### 5a. Hang-ups (work stopped or waited on something a harness should handle)
+
+| When (UTC unless noted) | Hang-up | Duration | Cause | Resolved by |
+|---|---|---|---|---|
+| 10-19 10:13-18:51 (local) | Agents idle "holding, waiting for your direction", 4 approvals queued | 8.5 h | approvals only surface in chat; nothing pings the user or continues other work | user returning |
+| 10-18 23:52-10-19 01:31 (local) | "Everything is waiting": build queue stalled | ~1.5 h | gates 35-50 min, too few slots, WSL memory | build speed-up agent, WSL 15.5->20 GB |
+| 10-17, 10-18 | Orchestrator auto-compactions at ~967k and 576k tokens; "three days through several compactions" | each a context reset | one long-lived orchestrator relaying every agent round | hand-written docs/orchestrator.md + manual restart |
+| 10-20 03:13 | Restart: reap filed 3 stale approvals for actions already done | user turn | approvals not checked against GitHub state | user ("fix stale"), phase-0-era reap fix |
+| 10-20 ~03:20-04:40 | QA/dev fork actions blocked ("Only the orchestrator does pushes", the bare word "upstream") | ~1 h, 4 agents | hook matched words, not targets | hook rewrite + tests; user approved one-off pushes |
+| 10-20 ~03:40 | Client docs-only change and a QA capture bounced by the hand-over check | 2 user turns | check assumed every client task builds and merges | manual merge, then check fix |
+| 10-20 03:50-05:40 | sd26 kept running after its task shipped ("Reading the CI conclusion report") | 1 h 46 min | agent waited on CI after hand-over; no exit rule | TaskStop; Ending rule added |
+| 10-20 04:10-04:20 | Auto mode exited after a settings edit; every command (even a git clone for the gate) prompted | until the user re-enabled auto | settings edits drop auto mode | user switched back |
+| 10-20 04:20-04:40 | Deploy image blocked: copying the live login key denied (credential handling) | ~20 min + user turn | no sanctioned path for the key | user-added autoMode rule; `COPY --from` |
+| 10-20 05:30-05:40 | Desktop lock "deadlock": sd28 held the desktop while others waited | ~10 min | only the holder could free; idle-hold allowed | `device-lock.sh reclaim/revoke` (added under pressure) |
+| 10-20 05:40 | sd28 stopped sq29's desktop client without the lock | sq29's run lost | client scripts don't check the lock | reported by sd28; guard attempt reverted |
+| 10-20 05:26-? | Clue-tier image ready but undeployable while any instance is held | 30+ min | deploy needs all three instances; no drain/priority | waiting (phase 3 adds drain) |
+| all day | devtools MCP servers not connected; agents used bridge scripts with WSL interop timeouts | constant | MCP lifecycle tied to session start | agents' workarounds |
+
+### 5b. Changes made on the fly (during live work, often under a blocked agent)
+
+- Publish hook rewritten five times in one day: word match -> URL resolution -> in-command variables -> `$(...)` ->
+  `--help`/heredoc -> worktrees created in the same command; tests grew alongside (0 -> 60).
+- Hand-over check: docs-only client exemption, QA tasks, spec name variants, `local/*` branches, gated vs done for
+  QA PASS (a regression the first fix introduced and review caught).
+- ship.sh: four bugs found on first real use (sh process substitution, section placement, rerere into the worktree
+  git dir, plain push instead of a lease); build-integration.sh's rerere path fixed on the fork.
+- Status model: `live` added; `shipped` stopped counting as closed.
+- Locks: `reclaim`/`revoke` added mid-incident; a reclaim was then judged on a wrong signal (container name) and
+  lock times were misread (EDT vs UTC).
+- Rules added to every brief and role file mid-run: Ending, lock-only-while-in-use, no screenshots. Running agents
+  had to be messaged individually because role files load at spawn.
+- Settings: Edit/autoMode allow rules for harness edits and for the deploy key; `--build` deploy rules removed.
+- Integration: re-pin and two image builds done by full-context fork agents; then the pipeline was designed and
+  phases 0-1 built and merged the same afternoon.
+- Memory: consolidated by another process mid-session (several notes merged or dropped, including the screenshot
+  rule), then re-added.
+
+### 5c. Core issues a major revision must identify and solve
+
+1. **The orchestrator is the scheduler.** Every hand-back, ship, unblock, dispatch, grant and relay needs its chat
+   turn, so its context fills (compactions), its attention gates throughput, and idle periods stall everything.
+   v3 needs a driver that runs the loop itself and an orchestrator that only decides.
+2. **Rules don't persist.** "No approval for fork actions" was given on 10-18 12:14, 10-18 22:23, 10-19 20:42 and again
+   twice on 10-20; "explain before approval" three times. Rules live in chat, memory and prose that agents load at
+   spawn. v3 needs rules as data (policy file) that hooks, briefs and the driver read, versioned and tested.
+3. **Policy is enforced by text matching.** Hooks guessed intent from command strings and failed both ways (false
+   denials on fork work, near-misses on real risks). v3 needs targets resolved (repo, remote, branch, instance) and a
+   single policy decision point with a test for every past incident.
+4. **No model of shared resources.** Devices, desktops, build slots, the live server and integration are each locked
+   differently (mkdir locks, flock, buildq tickets, nothing). v3 needs one lease service: holder, purpose, attached
+   process/container, heartbeat, expiry, reclaim with evidence, UTC, history.
+5. **State drifts from reality.** Stale approvals, stale tasks, leftover grants, "shipped" vs deployed, fork vs local
+   docs, memory vs disk. v3 needs reconciliation: the driver checks GitHub, git and docker state before acting and
+   repairs or flags drift.
+6. **Agent lifecycle is unmanaged.** Agents linger, can't receive rule changes, and their cost isn't tied to tasks.
+   v3 needs spawn-to-exit tracking (task id, tokens, duration, exit reason), enforced exit, and rule updates that
+   reach running agents.
+7. **Expensive general agents do scripted work.** Integration, image and deploy ran as 400-560k-token forks. v3
+   should script every repeatable step and keep agents for judgement (conflicts, accuracy, failures).
+8. **The harness can't change itself safely.** The classifier blocks self-edits unless settings allow them, and
+   settings edits exit auto mode. v3 needs a planned path for harness changes (allow-listed paths, worktree +
+   tests + orchestrator merge) decided up front with the user.
+9. **No measurement.** v2's effect on speed could not be proven: no event log, no queue/lock history, no agent cost per
+   task. v3 must instrument first (events.jsonl) so v4 can be judged.
+10. **Approvals wait silently.** An approval in chat blocks until the user reads it (8.5 h once). v3 needs approvals as
+    a queue the user can act on asynchronously (and notification), with all other work continuing.
+
+## 6. State at hand-off
 
 (Updated at session end.)

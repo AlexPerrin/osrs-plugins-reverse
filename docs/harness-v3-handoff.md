@@ -334,7 +334,7 @@ user's "We will have to wait for v3".
 | Agent | Task | Holds | Next for the orchestrator |
 |---|---|---|---|
 | sq29 | gate-acc-cannon: upstream gate of acc/cannon bc243d141 for #354 | desktop until ~06:55 UTC | on PASS: fold acc/cannon into content/cannon (merge commit), update #354's description, ready (user's OK given; announce each upstream step) |
-| sq30 | gate-acc-genie: upstream gate of acc/genie 3ccb86bd8 for #355 | desktop2 | on PASS: same for content/genie / #355 |
+| sq30 | gate-acc-genie: **FAIL** at 3ccb86bd8 (2:45 AM EDT; record fork docs 970ba88ec) | (freed) | two code fixes filed as fix-genie-gate-findings (P1): leave on the next call tick after Talk-to (RSProx 1718), lamp XP equal to the message; then re-gate; #355 stays draft |
 
 Note for both: they gate acc/* commits the live server doesn't run (integration carries fin/cannon, fin/genie):
 section 7a. v3 should converge them (7c item 1) when folding into the PR branches.

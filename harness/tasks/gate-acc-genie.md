@@ -2,29 +2,36 @@
 id: gate-acc-genie
 track: server
 title: 'Upstream gate: acc/genie e9c7bcac3 (fork #18)'
-status: in-progress
+status: blocked
 prio: P1
 role: server-qa
-owner: sq30
+owner: null
 instance:
 - desktop2
 branch: acc/genie
-commit: 3ccb86bd8
+commit: 3ccb86bd85c6d96e1e067761d0bb72d64a7d47fd
+evidence: /home/alex/osrs-plugins-reverse/re/evidence/gate-acc-genie
 blocked_by:
 - spec-genie
+- fix-genie-gate-findings
 unblocks:
 - cleanup-scratchpad-qa-acc
 created: '2026-10-20T01:42:41Z'
-updated: '2026-10-20T05:42:30Z'
+updated: '2026-10-20T06:33:13Z'
+summary: 'FAIL at 3ccb86bd8 (qa/genie.md, fork docs 970ba88ec). Must change: (1) after Talk-to he must leave on his next call tick (add''s 10-tick grid; 1718 G1 del add+10, G3 add+20 after face clear t1062/t7156;
+  3056 t4040), not HAND_OVER_TICKS=10 after Talk-to (in game: Talk-to t808, del t818, recordings say t814); fix code+test+spec rule 15+PR text. (2) Rub mesbox says 10 Attack XP but 1500 given (world rate
+  x150): give unscaled XP or print what''s added; update PR lamp bullet/C7. (3) PR ''How it was tested'': replace ''still need an in-game run'' with the gate''s run. Passing: call interval, wave, smoke/sounds,
+  reward message, Rub mesbox form, sd30''s Maybe later +100/leave +103, CI 39375088118 + Formatting 39375089748, gamevals check, scope, template. Left: zones item (not reachable in a session; next gate),
+  PR update (orchestrator, after a PASS).'
 ---
 ## Task
 acc/genie e9c7bcac3 (fork PR #18): full re-gate; zones moved into dbtable.random_event_zones. Search RSProx by the Genie NPC for the comparison. Replaces the pre-audit draft (#354/#355) with a non-force-push merge commit after the user's OK. Note: no accuracy spec exists yet (task spec-genie). Evidence: scratchpad/acc/logs.
 
 ## Definition of done
-- [ ] qa/gate-acc-genie.md on the fork's docs branch with the verdict (PASS/FAIL) at the exact commit
-- [ ] independent accuracy re-check against the spec and an in-game run at that commit
-- [ ] fork CI green at the exact commit (build-test 'CI first')
-- [ ] PR text reviewed against CONTRIBUTING (pr-text-review); scope one change
+- [x] qa/gate-acc-genie.md on the fork's docs branch with the verdict (PASS/FAIL) at the exact commit
+- [x] independent accuracy re-check against the spec and an in-game run at that commit
+- [x] fork CI green at the exact commit (build-test 'CI first')
+- [x] PR text reviewed against CONTRIBUTING (pr-text-review); scope one change
 - [ ] dbtable.random_event_zones checked against the spec's zone list in game
 - [ ] draft PR updated with a merge commit only after the user's OK
 
@@ -41,3 +48,9 @@ acc/genie e9c7bcac3 (fork PR #18): full re-gate; zones moved into dbtable.random
 - 2026-10-20T05:42:30Z unblocked by spec-genie (done)
 - 2026-10-20T05:42:30Z set commit=3ccb86bd8
 - 2026-10-20T05:42:30Z claimed by sq30 (instances desktop2)
+- 2026-10-20T06:32:17Z sq30: record is qa/genie.md on fork docs 970ba88ec (the slug the hooks read), not qa/gate-acc-genie.md. Zones DoD item not ticked: the dbtable zones are read only by the 5-min schedule check, not reachable in a session; e9c7bcac3 zone rows checked by sq24 by code + build.
+- 2026-10-20T06:32:38Z handover acc/genie@3ccb86bd8: FAIL at 3ccb86bd8 (qa/genie.md, fork docs 970ba88ec). Must change: (1) after Talk-to he must leave on his next call tick (add's 10-tick grid; 1718 G1 del add+10, G3 add+20 after face clear t1062/t7156; 3056 t4040), not HAND_OVER_TICKS=10 after Talk-to (in game: Talk-to t808, del t818, recordings say t814); fix code+test+spec rule 15+PR text. (2) Rub mesbox says 10 Attack XP but 1500 given (world rate x150): give unscaled XP or print what's added; update PR lamp bullet/C7. (3) PR 'How it was tested': replace 'still need an in-game run' with the gate's run. Passing: call interval, wave, smoke/sounds, reward message, Rub mesbox form, sd30's Maybe later +100/leave +103, CI 39375088118 + Formatting 39375089748, gamevals check, scope, template. Left: zones item (not reachable in a session; next gate), PR update (orchestrator, after a PASS).
+- 2026-10-20T06:32:42Z FAIL: (1) leave on the next call tick after Talk-to, not HAND_OVER_TICKS=10 (1718 G1/G3, 3056); (2) Rub message must state the XP actually given (10 shown vs 1500 given at x150) or give unscaled XP; (3) PR 'How it was tested' in-game paragraph. Record qa/genie.md fork docs 970ba88ec.
+- 2026-10-20T06:32:42Z set status=failed
+- 2026-10-20T06:33:13Z set status=ready owner=
+- 2026-10-20T06:33:13Z blocked by fix-genie-gate-findings: re-gate after the two fixes

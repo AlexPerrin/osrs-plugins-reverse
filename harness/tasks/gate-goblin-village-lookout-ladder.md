@@ -12,7 +12,7 @@ commit: b87819158
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:43Z'
-updated: '2026-10-20T02:47:55Z'
+updated: '2026-10-20T03:13:49Z'
 ---
 ## Task
 fix/goblin-village-lookout-ladder 475eefb76: both gates (internal + upstream), in game. Whether it goes upstream as its own fix/<slug> is a user question (wait-goblin-ladder-own-fix).
@@ -30,3 +30,4 @@ fix/goblin-village-lookout-ladder 475eefb76: both gates (internal + upstream), i
 - 2026-10-20T02:12:35Z sd24 fix b87819158 (fixed landing tile 2955,3497), pushed to fork (CI 39353952217 + Formatting 39353954027 green). sq25 upstream gate PASS (record 238fb7bff, not pushed). Condition: open together with the quest-only #367 update (draft #367 still contains the ladder). Needs user OK to open.
 - 2026-10-20T02:12:35Z set status=gated
 - 2026-10-20T02:47:55Z set branch=fix/goblin-village-lookout-ladder commit=b87819158
+- 2026-10-20T03:13:49Z approval requested: harness/approvals/gate-goblin-village-lookout-ladder.md

@@ -1,5 +1,7 @@
 # osrs-plugins-reverse
 
+**New session: read HANDOFF.md first** (state at hand-off, first commands, priorities, rules for the v3 orchestrator).
+
 RuneLite plugins running inside the official OSRS Android app (native/ hooks plus the host/ Java plugin host),
 tested against an OpenRune test server (openrune/; upstream branches in re/upstream-pr/or, the fork
 AlexPerrin/OpenRune-Server).

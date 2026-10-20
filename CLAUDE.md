@@ -36,6 +36,9 @@ History (docs/client-handoff.md, docs/server-handoff.md) is read only when neede
 - **Devices**: `tools/device-lock.sh` (`LOCK_NAME=<instance>` from tools/instances.tsv), granted per task at dispatch
   (`reuse`); an agent takes the instances its task lists without asking. Server restarts reserve every instance.
 - **Evidence** goes in `re/evidence/<task-id>/` in the main checkout, never a session scratchpad.
+- **Testing tools over screenshots**: client, desktop and server state is read through the MCP data tools
+  (`osrs-devtools` for the Android app, `osrs-devtools-desktop` for desktop RuneLite, `osrs-mcp` for wiki, gamevals and
+  cache; `server-probe` for logs and packets). A screenshot is evidence only for how something is drawn.
 - **Accuracy**: server behaviour must match the official server; divergences are caveats or fixes.
 - **Privacy**: no client ever contacts Jagex or RuneScape servers. Every APK goes through the telemetry patch
   (tools/repack.sh). Never put the user's email or personal identifiers in HTTP requests; use a generic User-Agent.

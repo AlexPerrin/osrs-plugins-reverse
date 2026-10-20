@@ -47,7 +47,7 @@ Waiting on the user (each upstream item needs an OK):
 - Lookout ladder: gated at b87819158. It opens together with the quest-only #367 update, after the #367/#368
   upstream gate.
 - Members' general stores: approved as a separate follow-up PR, task members-general-stores (ready). #371 closed; its work continues in #372 (same branch, a695b985f), opened with the user's OK and marked ready.
-User decisions this session: no stacked PRs; fork changes need no approval, only upstream ones; devs and QA do
+User decisions this session: keep the live test server on current upstream main (re-pin whenever main moves, 2026-10-20); no stacked PRs; fork changes need no approval, only upstream ones; devs and QA do
 their own fork GitHub work; the orchestrator only coordinates; #362 option (a); #371 = all general store
 data and handlers, draft until ready; read-heavy lookups go to subtasks.
 

@@ -10,7 +10,7 @@ hand-over check, ship step): docs/harness.md. Current state, read first:
 - client: docs/client-state.md
 - server: STATE.md on the fork's `docs` branch (`git -C re/upstream-pr/or show docs:STATE.md`)
 
-History (docs/client-handoff.md, docs/server-handoff.md) is read only when needed.
+History (docs/client-handoff.md; server: server-handoff.md and archive/ on the fork's `docs` branch) is read only when needed.
 
 ## Roles
 - Both tracks run one loop: trigger → analyse → build → verify → ship (docs/workflow.md).

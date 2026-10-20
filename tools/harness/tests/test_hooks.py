@@ -209,6 +209,21 @@ class GithubScopeTest(unittest.TestCase):
                          "ask")
         self.assertEqual(self.run_scope("echo $(git -C " + upr + " push origin x)", t), "ask")
 
+    def test_push_from_a_worktree_created_in_the_same_command(self):
+        # The archive push that prompted (2026-10-20): `git -C clone worktree add $W fork/docs && ... cd $W && git push`.
+        t = tempdir(self)
+        upr = init_repo(os.path.join(t, "or"), remotes={"origin": UPSTREAM_URL, "fork": FORK_SSH})
+        cmd = ("S=" + t + "/scratch; W=$S/docs-archive; rm -rf $W; git -C " + upr + " worktree add -q --detach $W fork/docs"
+               " && cp a $W/b && cd $W && git add -A && git commit -q -m archive && git push fork HEAD:docs 2>&1 | tail -1")
+        self.assertNotEqual(self.run_scope(cmd, t), "ask")
+        self.assertNotEqual(self.run_scope("git -C " + upr + " worktree add " + t + "/w2 main && git -C " + t +
+                                           "/w2 push fork HEAD:refs/heads/x", t), "ask")
+        self.assertEqual(self.run_scope("git -C " + upr + " worktree add " + t + "/w3 main && cd " + t +
+                                        "/w3 && git push origin HEAD:refs/heads/x", t), "ask")
+        d = deny_publish.decide({"tool_input": {"command": "git -C " + upr + " worktree add -b y " + t + "/w4 && cd " + t +
+                                                "/w4 && git push fork y"}, "cwd": t}, ["--fork-writes"])
+        self.assertIsNone(d)
+
     def test_help_is_read_only(self):
         t = tempdir(self)
         self.assertNotEqual(self.run_scope("gh pr edit 367 -R OpenRune/OpenRune-Server --help", t), "ask")

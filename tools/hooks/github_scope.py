@@ -6,7 +6,7 @@
 - A push or branch deletion on the fork whose branch has an open upstream PR changes that PR: asked.
 
 Writes recognised: `gh pr|issue|release|repo fork|gist` write subcommands, `gh api` with a write method or
-fields, `git push`, `tools/fork.sh`, `tools/release-dev.sh`, `openrune/upstream/open-batch-*.sh`.
+fields, `git push`, `tools/fork.sh`, `tools/release-dev.sh`, `open-batch-*.sh` (archived).
 "allow" is returned only when every segment of the command is a recognised write to our repos or a plain
 read-only helper (cd, echo, git fetch/log/...), so approval never extends to an unrelated command.
 Deny rules and the other gate hooks (publish_gate.py, deny_publish.py) still apply; deny wins.
@@ -163,6 +163,7 @@ def main():
     if sp.hidden_writes(command):
         asks.append("a push or GitHub call inside a command substitution")
     for seg in sp.resolved_segments(command):
+        sp.note_worktree(sp.words(seg), cwd)
         nd = sp.cd_target(sp.words(seg), cwd)
         if nd:
             cwd = nd

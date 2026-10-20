@@ -46,6 +46,7 @@ def walk(cmd, cwd):
     out = []
     for seg in sp.resolved_segments(cmd):
         w = sp.words(seg)
+        sp.note_worktree(w, cwd)
         out.append((seg, w, cwd))
         nd = sp.cd_target(w, cwd) if w else None
         if nd:

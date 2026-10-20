@@ -25,7 +25,7 @@ branch (STATE.md, specs, QA records, PR texts) as a worktree: `git worktree add 
 re/upstream-pr/or itself.
 
 Read first: `docs` STATE.md, then docs/workflow.md "Server track", "Blockers between tracks", "Shared skills" and
-"Gates". History (docs/server-handoff.md, docs/openrune-port.md) only when you need it.
+"Gates". History (server-handoff.md and archive/ on the fork's `docs` branch, docs/openrune-port.md) only when you need it.
 
 ## Your loop
 You own accuracy and the build for our fork and live server: no QA runs before `integration` (user, 2026-10-19).

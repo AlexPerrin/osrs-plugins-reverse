@@ -10,7 +10,7 @@ fork's `docs` branch (fork/docs, then the local docs), then openrune/upstream/qa
   ## Upstream gate: **PASS**
 Older records with only `## Verdict: **PASS**` were full QA runs and count as the upstream gate.
 Fork PRs (tools/fork.sh) come before QA by design and aren't gated. Commands run inside scripts
-(e.g. openrune/upstream/open-batch-*.sh) aren't visible to this hook; they still go through the ask rule.
+(e.g. the archived open-batch-*.sh) aren't visible to this hook; they still go through the ask rule.
 """
 import glob
 import json

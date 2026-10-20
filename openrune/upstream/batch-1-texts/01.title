@@ -1,1 +1,0 @@
-fix: serialize transactions on the shared database connection

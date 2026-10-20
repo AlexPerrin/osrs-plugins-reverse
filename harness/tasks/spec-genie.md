@@ -12,7 +12,7 @@ commit: null
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:41Z'
-updated: '2026-10-20T01:42:41Z'
+updated: '2026-10-20T04:59:23Z'
 ---
 ## Task
 No accuracy spec exists for the Genie (acc/genie). Write accuracy/genie.md with accuracy-check (wiki + cache baseline, RSProx NPC search) so the gate-acc-genie companion has a spec to check against. Existing material: openrune/upstream/accuracy/.
@@ -22,3 +22,4 @@ No accuracy spec exists for the Genie (acc/genie). Write accuracy/genie.md with 
 
 ## Log
 - 2026-10-20T01:42:41Z created (ready)
+- 2026-10-20T04:59:23Z Paths: the old openrune/upstream/ material named above is archived on the fork's docs branch under archive/openrune-upstream/ (2026-10-20).

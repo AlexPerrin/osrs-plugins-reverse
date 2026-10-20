@@ -81,7 +81,7 @@ Milestones:
 |---|---|---|---|
 | `native/` | `libosrsrl.so`: hooks, game accessors, JNI bridge, overlay | client dev | `docs/client-handoff.md`, `docs/offsets.md` |
 | `host/` | Java plugin host (RuneLite API on the Android game) | client dev | `docs/plugin-host.md` |
-| `server/` | Kotlin RSPS + Android codecs (`server/rsprot.patch` over RSProt) | server dev | `docs/server-handoff.md`, `docs/android-protocol.md` |
+| `server/` | Kotlin RSPS + Android codecs (`server/rsprot.patch` over RSProt) | server dev | `server-handoff.md` on the fork's `docs` branch, `docs/android-protocol.md` |
 | `tools/` | repack/patch scripts, Ghidra helpers, memory agent, `progress.py` | shared | |
 | `re/` | git-ignored inputs/outputs (APK libs, Ghidra project, jars, builds) | | |
 

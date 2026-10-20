@@ -187,13 +187,54 @@ def parse_push(w, cwd):
     return {"dir": path, "remote": remote, "refspecs": pos, "opts": opts}
 
 
+# Worktrees created earlier in the same command: {new worktree path: the repo it was added from}. When the hook runs,
+# such a folder doesn't exist yet, so its remotes are read from the source repo (a worktree shares them).
+WORKTREES = {}
+
+
+def note_worktree(w, cwd):
+    """Record `git [-C repo] worktree add [opts] <path> [<commit-ish>]` so a later push from <path> resolves."""
+    if not w or os.path.basename(w[0]) != "git" or "worktree" not in w:
+        return
+    i = w.index("worktree")
+    if i + 1 >= len(w) or w[i + 1] != "add":
+        return
+    repo = cwd
+    if "-C" in w[:i]:
+        repo = expand(w[w.index("-C") + 1], cwd)
+    args, skip = [], False
+    for t in w[i + 2:]:
+        if skip:
+            skip = False
+            continue
+        if t in ("-b", "-B", "--reason"):
+            skip = True
+            continue
+        if t.startswith("-"):
+            continue
+        args.append(t)
+    if args:
+        WORKTREES[expand(args[0], cwd)] = repo
+
+
+def source_dir(d):
+    """d, or the repo a not-yet-existing worktree d (or a folder inside it) was added from."""
+    if d is None or os.path.isdir(d):
+        return d
+    for wt, repo in WORKTREES.items():
+        if d == wt or d.startswith(wt.rstrip("/") + "/"):
+            return repo
+    return d
+
+
 def push_url(p, run=subprocess.run):
     """The push URL of a parsed push ('' when it can't be told: no remote, unknown dir, unknown remote)."""
     if not p or not p["remote"] or p["dir"] is None:
         return ""
     if "/" in p["remote"] or ":" in p["remote"]:
         return p["remote"]
-    r = run(["git", "-C", p["dir"], "remote", "get-url", "--push", p["remote"]], capture_output=True, text=True)
+    r = run(["git", "-C", source_dir(p["dir"]), "remote", "get-url", "--push", p["remote"]], capture_output=True,
+            text=True)
     return r.stdout.strip() if r.returncode == 0 else ""
 
 

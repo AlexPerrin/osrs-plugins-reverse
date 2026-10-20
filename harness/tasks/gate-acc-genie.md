@@ -2,19 +2,20 @@
 id: gate-acc-genie
 track: server
 title: 'Upstream gate: acc/genie e9c7bcac3 (fork #18)'
-status: failed
+status: blocked
 prio: P1
 role: server-qa
-owner: sq24
+owner: null
 instance:
 - desktop
-branch: null
-commit: null
-blocked_by: []
+branch: acc/genie
+commit: a44a3daa0
+blocked_by:
+- spec-genie
 unblocks:
 - cleanup-scratchpad-qa-acc
 created: '2026-10-20T01:42:41Z'
-updated: '2026-10-20T02:12:35Z'
+updated: '2026-10-20T05:16:27Z'
 ---
 ## Task
 acc/genie e9c7bcac3 (fork PR #18): full re-gate; zones moved into dbtable.random_event_zones. Search RSProx by the Genie NPC for the comparison. Replaces the pre-audit draft (#354/#355) with a non-force-push merge commit after the user's OK. Note: no accuracy spec exists yet (task spec-genie). Evidence: scratchpad/acc/logs.
@@ -34,3 +35,6 @@ acc/genie e9c7bcac3 (fork PR #18): full re-gate; zones moved into dbtable.random
 - 2026-10-20T02:11:43Z old harness (session 73): sq24 clone at e9c7bcac3; desktop grant pending
 - 2026-10-20T02:12:35Z sq24 upstream gate FAIL at e9c7bcac3 (RSProx 3056/1718: call interval, wave, smokepuff+sounds, reward msg, Rub mesbox, leave timing). Record qa/genie.md on fork docs 9a451125c. sd23 fixed: acc/genie 9a222bd53 (pushed, CI 39353948424 + Formatting 39353950406 green) + a44a3daa0 (skill name capitalised; NOT pushed, stale hook). Needs re-gate at a44a3daa0 after push+CI.
 - 2026-10-20T02:12:35Z set status=failed
+- 2026-10-20T05:16:27Z set status=ready prio=P1 owner= branch=acc/genie commit=a44a3daa0
+- 2026-10-20T05:16:27Z blocked by spec-genie: re-gate at a44a3daa0 against the new spec
+- 2026-10-20T05:16:27Z User 2026-10-20: prioritize #355. sd23's fixes for the 6 RSProx divergences are 9a222bd53 + a44a3daa0 (pushed 2026-10-20). Re-gate after spec-genie. On PASS: merge commit onto content/genie (#355), description, ready (user's OK given; announce each upstream step).

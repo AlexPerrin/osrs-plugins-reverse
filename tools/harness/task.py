@@ -16,12 +16,17 @@ orchestrator, the driver (orchestrate.py), the agents and the hooks all read and
   task.py block <id> --by <other-id> ["why"]                   blocked_by edge both ways (unblocks on the other)
   task.py fail <id> "why" | done <id> | status                 verdicts; status = the per-track dashboard
   task.py lint                                                 schema, dangling refs, cycles, dod boxes
+  task.py migrate-live [id ...] [--dry-run]                    one-off: shipped tasks already live -> live
   task.py brief <id>                                           the spawn brief for the Agent tool / claude -p
   task.py metrics                                              cycle times and rework counts from the logs
 
 Statuses: backlog (not yet dispatchable), ready, in-progress, specced (server: spec committed, coding), blocked,
-handover (dev finished; handover-check + ship next), shipped (on master / integration), qa (companion running a
-gate), gated (gate PASS; waiting for the user's OK), waiting-user, done, failed.
+handover (dev finished; handover-check + ship next), shipped (server: in `integration`, not deployed yet), live
+(deployed: on the live server, or for the client track merged into master), qa (companion running a gate), gated
+(gate PASS; waiting for the user's OK), waiting-user, done, failed.
+A blocker is closed (its dependents can run) once it is done, live, qa or gated; `shipped` is not closed, since a
+server change in `integration` isn't on the live server until the deploy. Every path that sets live or done
+(`done`, `set status=...`, `migrate-live`) re-readies the blocked tasks it unblocks.
 HARNESS_DIR overrides harness/ (tests).
 """
 import argparse
@@ -49,9 +54,12 @@ HARNESS = os.environ.get("HARNESS_DIR") or os.path.join(main_repo(ROOT), "harnes
 EVIDENCE = os.path.join(os.path.dirname(HARNESS), "re", "evidence")
 TASKS = os.path.join(HARNESS, "tasks")
 TRACKS = ("client", "server", "orch")
-STATUSES = ("backlog", "ready", "in-progress", "specced", "blocked", "handover", "shipped", "qa", "gated",
+STATUSES = ("backlog", "ready", "in-progress", "specced", "blocked", "handover", "shipped", "live", "qa", "gated",
             "waiting-user", "done", "failed")
-CLOSED = ("done", "shipped", "gated", "qa")   # a blocker in these states no longer blocks (it is live or past dev)
+# A blocker in these states no longer blocks: it is deployed (live), past dev, or closed. Not `shipped`: a server task
+# in `integration` isn't on the live server until the deploy (docs/integration-pipeline.md, phase 0).
+CLOSED = ("done", "live", "gated", "qa")
+UNBLOCKING = ("live", "done")   # entering one of these re-readies the blocked tasks this one unblocks
 ROLES = {"client": "client-dev", "server": "server-dev", "orch": "orchestrator"}
 KEYS = ("id", "track", "title", "status", "prio", "role", "owner", "instance", "branch", "commit", "pr", "ci",
         "evidence", "blocked_by", "unblocks", "created", "updated", "summary", "gate", "network", "spec")
@@ -124,6 +132,26 @@ def add_log(body, msg):
 
 def blockers_open(meta, index):
     return [b for b in meta.get("blocked_by") or [] if b not in index or index[b][0].get("status") not in CLOSED]
+
+
+def unblock_dependents(tid):
+    """Tasks `tid` unblocks that are `blocked` and have no open blocker left go back to `ready`. Called whenever a
+    task becomes live or done (cmd_done, cmd_set, cmd_migrate_live)."""
+    meta, _ = load(tid)
+    out = []
+    for other in meta.get("unblocks") or []:
+        if not os.path.exists(path(other)):
+            continue
+        om, ob = load(other)
+        if om["status"] != "blocked":
+            continue
+        index = {m["id"]: (m, b) for m, b in all_tasks()}
+        if not blockers_open(om, index):
+            om["status"] = "ready"
+            save(om, add_log(ob, f"unblocked by {tid} ({meta['status']})"))
+            print(f"{other}: ready")
+            out.append(other)
+    return out
 
 
 def cmd_new(a):
@@ -211,6 +239,7 @@ def cmd_show(a):
 
 def cmd_set(a):
     meta, body = load(a.id)
+    before = meta.get("status")
     changes = []
     for kv in a.pairs:
         k, _, v = kv.partition("=")
@@ -227,6 +256,8 @@ def cmd_set(a):
         meta[k] = v
         changes.append(kv)
     save(meta, add_log(body, "set " + " ".join(changes)))
+    if meta.get("status") in UNBLOCKING and meta.get("status") != before:
+        unblock_dependents(a.id)
 
 
 def cmd_log(a):
@@ -291,16 +322,48 @@ def cmd_done(a):
     meta, body = load(a.id)
     meta.update(status="done", owner=None)
     save(meta, add_log(body, "done"))
-    # Tasks this one blocked become dispatchable again.
-    for other in meta.get("unblocks") or []:
-        if os.path.exists(path(other)):
-            om, ob = load(other)
-            if om["status"] == "blocked":
-                index = {m["id"]: (m, b) for m, b in all_tasks()}
-                if not blockers_open(om, index):
-                    om["status"] = "ready"
-                    save(om, add_log(ob, f"unblocked by {a.id}"))
-                    print(f"{other}: ready")
+    unblock_dependents(a.id)   # tasks this one blocked become dispatchable again
+
+
+LIVE_LINE = re.compile(r"^- \S+ Live (\d{4}-\d\d-\d\d[^\n]*)$", re.M)
+
+
+def live_reason(meta, body):
+    """Why a `shipped` task is already live, or None: a client task's ship merged it into master (the client's live
+    target); a server task's log has the orchestrator's `Live <date> ...` deploy line."""
+    if meta.get("status") != "shipped":
+        return None
+    if meta.get("track") == "client":
+        return "client ship = merged into master"
+    hits = LIVE_LINE.findall(body.split("## Log")[-1])
+    return f"deployed: Live {hits[-1].strip().rstrip('.')}" if hits else None
+
+
+def cmd_migrate_live(a):
+    """One-off for the `live` status (2026-10-20): shipped tasks that are already live become `live`, and the
+    tasks they block are re-checked. Named ids must qualify too; a shipped server task without a Live log line (not
+    deployed) stays shipped."""
+    tasks = {m["id"]: (m, b) for m, b in all_tasks()}
+    for tid in a.ids:
+        if tid not in tasks:
+            sys.exit(f"task.py: no task {tid}")
+    moved = 0
+    for tid, (m, b) in tasks.items():
+        if a.ids and tid not in a.ids:
+            continue
+        why = live_reason(m, b)
+        if not why:
+            if a.ids:
+                print(f"{tid}: stays {m['status']} (not live: no Live log line)")
+            continue
+        moved += 1
+        print(f"{tid}: shipped -> live ({why})" + (" [dry run]" if a.dry_run else ""))
+        if a.dry_run:
+            continue
+        m["status"] = "live"
+        save(m, add_log(b, f"migrate-live: shipped -> live ({why})"))
+        unblock_dependents(tid)
+    print(f"migrate-live: {moved} task(s) {'would move' if a.dry_run else 'moved'} to live")
 
 
 def cmd_status(a):
@@ -361,7 +424,7 @@ def cmd_lint(a):
             err(f"{tid}: {m['status']} without a definition of done")
         if m.get("status") in ("in-progress", "specced", "qa") and not m.get("owner"):
             err(f"{tid}: {m['status']} without an owner")
-        if m.get("status") in ("handover", "shipped", "qa", "gated") and not (m.get("branch") and m.get("commit")):
+        if m.get("status") in ("handover", "shipped", "live", "qa", "gated") and not (m.get("branch") and m.get("commit")):
             err(f"{tid}: {m['status']} without branch and commit")
 
     # cycles in blocked_by
@@ -469,6 +532,8 @@ def main():
     s = sp.add_parser("lint"); s.set_defaults(f=cmd_lint)
     s = sp.add_parser("brief"); s.add_argument("id"); s.set_defaults(f=cmd_brief)
     s = sp.add_parser("metrics"); s.set_defaults(f=cmd_metrics)
+    s = sp.add_parser("migrate-live"); s.add_argument("ids", nargs="*"); s.add_argument("--dry-run", action="store_true")
+    s.set_defaults(f=cmd_migrate_live)
     a = p.parse_args()
     a.f(a)
 

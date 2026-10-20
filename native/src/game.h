@@ -298,6 +298,9 @@ bool item_def(int id, ItemDef& out);
 // False while the model isn't loaded yet (retry later) or for an unknown id.
 // Sprite by id (frame 0) from the game's sprite cache; false while not loaded. Game thread only.
 bool sprite(int id, std::vector<uint32_t>& pixels, int& width, int& height);
+// Frame 0's placement: {width, height, x offset, y offset, full width, full height} (Sprite +0x18..+0x2c;
+// the pixels are the trimmed width x height block at the offsets in the full canvas). Game thread only.
+bool sprite_info(int id, int out[6]);
 // Writes a same-size sprite's pixels into the game's cached copy (overrides). Game thread only.
 bool sprite_write(int id, const uint32_t* pixels, int width, int height);
 bool item_sprite(int id, int quantity, int border, int shadow, int text_mode, bool noted,

@@ -218,6 +218,8 @@ final class Native {
     static native int[] mapElement(int id);
     /** Sprite by id, frame 0: {width, height, ARGB pixels...}, null while not loaded; client thread only. */
     static native int[] sprite(int id);
+    /** Sprite frame 0's {width, height, x offset, y offset, full width, full height}, null while not loaded; client thread only. */
+    static native int[] spriteInfo(int id);
     /** Writes same-size ARGB pixels into the game's cached sprite; client thread only. */
     static native boolean spriteWrite(int id, int[] pixels, int w, int h);
     /** The game's idle logout timeout (AFKTimeout setting) in minutes, -1 if unknown. */

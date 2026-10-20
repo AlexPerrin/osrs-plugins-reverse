@@ -69,7 +69,8 @@ flowchart LR
   merge-base(master, commit) and the commit is `*.md`) needs no repack log, device evidence or Network QA.
 - QA roles (`*-qa`): a QA task verifies and ships nothing, so the branch and merge items are skipped (`--branch
   master` with a commit already on master is fine); client QA needs the repack log, and `netqa*.md` when
-  `network: true`. `ship.sh` then marks it `done`, and `reap` creates no follow-up task.
+  `network: true`. `ship.sh` then sets an upstream gate (`server-qa`) or a release gate (`release-*`) to `gated`, so
+  `reap` files its approval; any other QA task (a capture, a check) becomes `done`. `reap` creates no follow-up task.
 - Server dev: commit on `fork/<branch>`, off upstream main, an accuracy spec on the fork's `docs` branch named by any
   of the task's `spec:` key, the branch slug or the task id (`task.py new --server-dod [--spec name]` writes a DoD
   whose spec item names the same file), the fork PR recorded, fork CI `success` at exactly that sha (or `gate:` a

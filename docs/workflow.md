@@ -301,7 +301,7 @@ The driver, the task store, the hand-over check and the ship step are described 
 | Client release gate | `tools/hooks/publish_gate.py` (settings) | `git tag vX.Y.Z[-pre]` and `gh release create vX.Y.Z[-pre]` need `qa/client-X.Y.Z[-pre].md` with `## Verdict: **PASS**` for the tagged commit |
 | State after compaction | `tools/hooks/session_state.sh` (settings, `SessionStart` `compact`) | The orchestrator rebuilds from disk, not from the summary |
 | Shared skills | `.claude/skills/<name>/SKILL.md` | One procedure per tool, for dev and QA alike |
-| Orchestrator-only actions | `tools/hooks/deny_publish.py` (role files) | Agents can't push, post, run fork.sh, deploy, grant devices or write progress; with `--fork-writes` (server-dev) fork pushes, fork PRs and fork.sh pass, anything naming upstream stays denied; with `--docs-writes` (server-qa) only a non-forced push onto the fork's `docs` branch passes |
+| Orchestrator-only actions | `tools/hooks/deny_publish.py` (role files) | Agents can't push, post, run fork.sh, deploy, grant devices or write progress; with `--fork-writes` (server-dev) fork pushes, fork PRs and fork.sh pass, a push whose remote resolves to OpenRune's repo, or a gh write naming OpenRune/*, stays denied (the word "upstream" alone is not a contribution); with `--docs-writes` (server-qa) only a non-forced push onto the fork's `docs` branch passes |
 | QA write scope | `tools/hooks/qa_write_scope.py` (QA role files) | Companions write records, QA.md and scratch files only |
 | Slot stop gate | `tools/hooks/slot_stop.py <holder>` (settings) | No agent finishes holding a lock, or with a device slot that hasn't passed its restore check |
 | Permissions | `.claude/settings.json` | Every GitHub write and push asks the user |

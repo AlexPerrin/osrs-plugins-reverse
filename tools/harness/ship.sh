@@ -36,11 +36,19 @@ role=$(meta role)
 last=$(grep -E 'handover-check (PASS|FAIL)' "$TF" | tail -1)
 [[ $last == *PASS* ]] || { echo "ship: the last hand-over check of $TASK is not PASS (run tools/harness/handover-check.sh $TASK)"; exit 1; }
 
-# A QA task (client-qa, server-qa) verifies a commit that is already on its trunk; there is nothing to merge.
+# A QA task (client-qa, server-qa) verifies a commit; there is nothing to merge. A gate whose PASS leads to an
+# action only the user approves (server-qa: the upstream PR; client-qa release-*: the release) goes to `gated`, so
+# reap files the approval; any other QA task (a Network QA capture, a check) is done.
 if [[ $role == *-qa ]]; then
-    run "$T" log "$TASK" "QA task verified ($branch@${commit:0:9}); nothing to ship"
-    run "$T" done "$TASK"
-    echo "closed QA task $TASK (done; nothing to ship)"
+    if [[ $role == server-qa || $TASK == release-* ]]; then
+        run "$T" log "$TASK" "QA gate PASS ($branch@${commit:0:9}); waiting for the user's approval"
+        run "$T" set "$TASK" status=gated
+        echo "QA gate $TASK -> gated (reap files the approval)"
+    else
+        run "$T" log "$TASK" "QA task verified ($branch@${commit:0:9}); nothing to ship"
+        run "$T" done "$TASK"
+        echo "closed QA task $TASK (done; nothing to ship)"
+    fi
     exit 0
 fi
 

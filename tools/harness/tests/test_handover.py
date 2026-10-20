@@ -104,6 +104,19 @@ class HandoverCheckTest(unittest.TestCase):
         self.assertEqual(meta["status"], "done")
         self.assertIn("nothing to ship", body)
 
+    def test_client_release_gate_goes_to_gated(self):
+        repo = self.client_repo()
+        sha = git(repo, "rev-parse", "master")
+        write_task(self.harness, "release-v9.9.9", role="client-qa", branch="master", commit=sha,
+                   evidence=self.evidence("release-v9.9.9", {"repack.log": TELEMETRY, "notes.txt": "PASS"}))
+        rc, out = self.check("release-v9.9.9")
+        self.assertEqual(rc, 0, out)
+        r = subprocess.run(["bash", os.path.join(HARNESS_TOOLS, "ship.sh"), "release-v9.9.9"], capture_output=True,
+                           text=True, env=self.env)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        meta, _ = read_task(self.harness, "release-v9.9.9")
+        self.assertEqual(meta["status"], "gated")
+
     def test_client_qa_network_needs_netqa_report(self):
         repo = self.client_repo()
         sha = git(repo, "rev-parse", "master")
@@ -173,6 +186,19 @@ class HandoverCheckTest(unittest.TestCase):
                    evidence=self.evidence("qa-x", {"record.md": "PASS"}))
         rc, out = self.check("qa-x")
         self.assertEqual(rc, 0, out)
+
+    def test_server_qa_gate_pass_goes_to_gated_not_done(self):
+        sha = self.server_clone([])
+        write_task(self.harness, "qa-g", track="server", role="server-qa", branch="fix/d-branch", commit=sha,
+                   evidence=self.evidence("qa-g", {"record.md": "PASS"}))
+        rc, out = self.check("qa-g")
+        self.assertEqual(rc, 0, out)
+        r = subprocess.run(["bash", os.path.join(HARNESS_TOOLS, "ship.sh"), "qa-g"], capture_output=True,
+                           text=True, env=self.env)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        meta, body = read_task(self.harness, "qa-g")
+        self.assertEqual(meta["status"], "gated")
+        self.assertIn("waiting for the user's approval", body)
 
 
 if __name__ == "__main__":

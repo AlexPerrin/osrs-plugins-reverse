@@ -380,7 +380,7 @@ def cmd_reap(a):
         print(f"reaped {owner} ({tid}): {summary}")
     # tasks handed over by in-session agents (no run record)
     for m, body in tasks():
-        if m["status"] == "handover" and "handover-check" not in body.split("## Log")[-1].split(m["commit"][:9])[-1]:
+        if m["status"] == "handover" and "handover-check" not in body.split("## Log")[-1].split(str(m.get("commit") or "")[:9] or "\0")[-1]:
             print(f"hand-over without a check: {m['id']}")
             after_handover(m["id"])
         elif (m["status"] == "gated" and not os.path.exists(os.path.join(APPROVALS, f"{m['id']}.md"))

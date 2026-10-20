@@ -44,7 +44,7 @@ FORK_NAME = re.compile(r"AlexPerrin/OpenRune-Server", re.I)
 def walk(cmd, cwd):
     """(segment text, words, cwd at that segment) for each simple command, tracking `cd`."""
     out = []
-    for seg in sp.segments(sp.strip_heredocs(cmd)):
+    for seg in sp.resolved_segments(cmd):
         w = sp.words(seg)
         out.append((seg, w, cwd))
         nd = sp.cd_target(w, cwd) if w else None

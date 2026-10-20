@@ -158,7 +158,7 @@ def main():
     # Heredoc bodies are data (scripts, file contents), not commands: drop them before splitting.
     command = sp.strip_heredocs(command)
     kinds, asks = [], []
-    for seg in sp.segments(command):
+    for seg in sp.resolved_segments(command):
         nd = sp.cd_target(sp.words(seg), cwd)
         if nd:
             cwd = nd

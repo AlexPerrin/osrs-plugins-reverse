@@ -73,6 +73,37 @@ def words(seg):
     return out
 
 
+ASSIGN = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", re.S)
+
+
+def assignments(seg):
+    """{name: value} when this simple command only assigns shell variables (`wt=re/x` or `a=1 b=2`), else {}."""
+    try:
+        w = shlex.split(seg)
+    except ValueError:
+        return {}
+    pairs = [ASSIGN.match(t) for t in w]
+    return {m.group(1): m.group(2) for m in pairs} if w and all(pairs) else {}
+
+
+def substitute(seg, env):
+    """Replace $NAME / ${NAME} with values assigned earlier in the same command (quoted); others stay as they are."""
+    def rep(m):
+        n = m.group(1) or m.group(2)
+        return shlex.quote(env[n]) if n in env else m.group(0)
+    return re.sub(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)", rep, seg)
+
+
+def resolved_segments(command):
+    """The command's simple commands with variables assigned earlier in it substituted (`wt=x && git -C $wt ...`)."""
+    env, out = {}, []
+    for seg in segments(strip_heredocs(command)):
+        seg = substitute(seg, env)
+        env.update(assignments(seg))
+        out.append(seg)
+    return out
+
+
 def expand(path, cwd):
     return os.path.normpath(os.path.join(cwd, os.path.expandvars(os.path.expanduser(path))))
 

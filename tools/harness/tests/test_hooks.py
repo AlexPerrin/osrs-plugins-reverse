@@ -175,6 +175,27 @@ class GithubScopeTest(unittest.TestCase):
         self.assertEqual(github_scope.classify("git push", upr)[0], "unknown")
         self.assertEqual(github_scope.classify("git status", upr)[0], "read")
 
+    def run_scope(self, cmd, cwd):
+        import subprocess
+        data = json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": cwd})
+        r = subprocess.run([sys.executable, os.path.join(HOOKS, "github_scope.py")], input=data, capture_output=True,
+                           text=True)
+        return json.loads(r.stdout)["hookSpecificOutput"]["permissionDecision"] if r.stdout.strip() else None
+
+    def test_variables_assigned_in_the_command(self):
+        # The command that made the user approve a fork push (2026-10-20): `wt=...` then `git -C $wt push fork ...`.
+        t = tempdir(self)
+        os.makedirs(os.path.join(t, "re", "harness"))
+        init_repo(os.path.join(t, "re", "harness", "integration-tools"), remotes={"fork": FORK_SSH})
+        upr = init_repo(os.path.join(t, "or"), remotes={"origin": UPSTREAM_URL, "fork": FORK_SSH})
+        self.assertEqual(self.run_scope("wt=re/harness/integration-tools && git -C $wt commit -q -m x -- a && "
+                                        "git -C $wt push -q fork local/integration-tools:local/integration-tools", t),
+                         None)   # no prompt (mixed command: the normal permission flow)
+        self.assertEqual(self.run_scope("wt=re/harness/integration-tools && "
+                                        "git -C $wt push -q fork local/integration-tools:local/integration-tools", t),
+                         "allow")
+        self.assertEqual(self.run_scope('d="' + upr + '"; git -C "${d}" push origin fix/x', t), "ask")
+
 
 class PublishGateTest(unittest.TestCase):
     def run_gate(self, cmd):

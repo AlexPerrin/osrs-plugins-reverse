@@ -77,7 +77,23 @@ server)
     if [[ -z $DRY ]]; then
         git -C "$wt" checkout -q -B local/integration-tools fork/local/integration-tools
         if grep -qx "$branch" "$wt/integration.txt"; then echo "ship: $branch already in integration.txt"; else
-            printf '%s\n' "$branch" >> "$wt/integration.txt"
+            # Insert at the end of the branch's section (fix/* under "# Upstream fixes", content/* and fin/* under
+            # "# Content", local/* under "# Local only"), not after the local-only branches.
+            python3 - "$wt/integration.txt" "$branch" <<'PY'
+import sys
+path, branch = sys.argv[1], sys.argv[2]
+lines = open(path).read().splitlines()
+section = "# Local only" if branch.startswith("local/") else "# Upstream fixes" if branch.startswith("fix/") else "# Content"
+start = next((i for i, l in enumerate(lines) if l.startswith(section)), None)
+if start is None:
+    lines.append(branch)
+else:
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("#")), len(lines))
+    while end > start + 1 and not lines[end - 1].strip():
+        end -= 1
+    lines.insert(end, branch)
+open(path, "w").write("\n".join(lines) + "\n")
+PY
             git -C "$wt" add integration.txt
             git -C "$wt" commit -q --author="$AUTHOR" -m "integration: add $branch ($TASK)"$'\n\n'"$TRAILER" -- integration.txt
             [[ -n $PUSH ]] && git -C "$wt" push -q fork local/integration-tools:local/integration-tools
@@ -87,7 +103,9 @@ server)
     fi
     iwt=$ROOT/re/harness/integration
     if [[ ! -d $iwt ]]; then run git worktree add -q --detach "$iwt" fork/main; fi
-    run sh -c "cd '$iwt' && git fetch -q fork && sh <(git show fork/local/integration-tools:scripts/build-integration.sh) fork" || { echo "ship: build-integration failed (unrecorded conflict?); see above"; exit 1; }
+    bi=$(mktemp); git -C "$CLONE" show fork/local/integration-tools:scripts/build-integration.sh > "$bi"
+    run sh -c "cd '$iwt' && git fetch -q fork && sh '$bi' fork" || { rm -f "$bi"; echo "ship: build-integration failed (unrecorded conflict?); see above"; exit 1; }
+    rm -f "$bi"
     if [[ -z $DRY ]]; then
         isha=$(git -C "$iwt" rev-parse HEAD)
         [[ -n $PUSH ]] && git -C "$iwt" push -q fork "HEAD:refs/heads/integration"

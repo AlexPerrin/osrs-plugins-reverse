@@ -201,8 +201,17 @@ def cmd_dispatch(a):
 
 def run_summary(log):
     try:
-        last = [l for l in open(log, errors="replace").read().splitlines() if l.startswith('{"type":"result"')][-1]
-        j = json.loads(last)
+        j = None
+        for line in open(log, errors="replace"):
+            if line.startswith("{"):
+                try:
+                    d = json.loads(line)
+                except ValueError:
+                    continue
+                if d.get("type") == "result":
+                    j = d
+        if j is None:
+            raise IndexError
         return (f"{j.get('num_turns', '?')} turns, {round(j.get('duration_ms', 0) / 60000)} min, "
                 f"${round(j.get('total_cost_usd', 0), 2)}" + (", is_error" if j.get("is_error") else "")), j.get("result", "")
     except (IndexError, ValueError, OSError):

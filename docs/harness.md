@@ -145,10 +145,25 @@ second BlueStacks instance is a row in `tools/instances.tsv`, its MCP server in 
   If a check never fails over a month, drop it; if a human step never changes the outcome (the spec review did
   not), make it asynchronous, as done here.
 
+## First headless run (cd47, host-menu-entry-removal, 2026-10-19)
+
+94 turns, 15 minutes, $7.38, one classifier denial, handed over with evidence; the hand-over check and the ship step
+ran from `reap`. What it taught, now fixed:
+- A client worktree lacks every git-ignored input: `re/` (build outputs, Ghidra, RuneLite sources), the official
+  APKs, `openrune/src` (the repack's modulus). `dispatch --run` now symlinks them from the main checkout. The Read
+  tool refuses paths that resolve through those symlinks; agents read evidence with shell commands.
+- `--permission-mode bypassPermissions` is refused by the classifier when launched from a session; `auto` works and
+  keeps the role hooks (a grant was denied, read-only commands ran).
+- Without the `osrs-devtools` MCP set up at the start of the slot, the agent fell back to raw `adb` input and
+  screenshots, which `exec-out` returned empty through WSL interop several times. Rule since then (CLAUDE.md, the
+  brief, device-test): game state through the data tools; screenshots only for drawing claims.
+- The restore check caught real drift (a leftover file, settings.properties rewritten by the login) and the stop
+  hook held the agent until it was fixed; that is the gate working as designed.
+
 ## Not built yet
 - `build-integration.sh` refusing a branch without green CI at its commit (today `handover-check.sh` is the only
   guard before `ship.sh`).
-- A headless run of a real task: the driver's `--run` path has been exercised only up to the `claude -p` command.
-  Run one client task headless with the orchestrator watching before trusting `run` unattended.
+- A headless server task: only a client task has run headless so far (above). Watch the first server-dev and
+  server-qa runs before trusting `run` unattended.
 - The release path: `release-vX.Y.Z` client-qa tasks are created by hand; the tag and GitHub release stay in the
   interactive session (publish_gate.py).

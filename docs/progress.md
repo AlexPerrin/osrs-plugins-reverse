@@ -28,7 +28,7 @@ listed under Upstream below.
 | Track | Done + live | In pipeline | Active | Ready | Blocked / waiting | Backlog | Completion (excl. backlog) |
 |---|---|---|---|---|---|---|---|
 | client | 13 | 0 | 0 | 5 | 1 | 0 | 68% (68% with pipeline) |
-| server | 15 | 1 | 0 | 28 | 3 | 27 | 32% (34% with pipeline) |
+| server | 16 | 0 | 0 | 28 | 3 | 27 | 34% (34% with pipeline) |
 | orch | 15 | 0 | 0 | 5 | 5 | 0 | 60% (60% with pipeline) |
 
 ## Finished or shipped on 2026-10-20 (UTC)
@@ -42,7 +42,7 @@ listed under Upstream below.
 - `fish-barrel-check-and-destroy` (server, live): Fish barrel: Check message box and Destroy
 - `fix-acc-cannon-text` (server, done): Cannon (#354): PR text and spec header wording for the upstream gate
 - `fix-stile-approach` (server, live): Stile: approach from the outside tile
-- `gate-acc-cannon` (server, gated): Upstream gate: acc/cannon (replaces draft #354/#355)
+- `gate-acc-cannon` (server, done): Upstream gate: acc/cannon (replaces draft #354/#355)
 - `gate-goblin-village-lookout-ladder` (server, done): Gates: fix/goblin-village-lookout-ladder 475eefb76
 - `gate-op-overrides` (server, done): Upstream gate: op overrides
 - `gate-quest-test-fixture` (server, done): Upstream gate: quest test fixture
@@ -69,10 +69,10 @@ listed under Upstream below.
 
 ## Upstream
 
-Upstream PRs (OpenRune/OpenRune-Server): 17 merged, 6 open for review, 3 draft, 2 closed (superseded). Merged share of non-superseded: 65%.
+Upstream PRs (OpenRune/OpenRune-Server): 17 merged, 7 open for review, 2 draft, 2 closed (superseded). Merged share of non-superseded: 65%.
 
-- Open for review: #362 fix: keep the classic/modern stone choice across the fu, #366 feat: Sheep Shearer quest, #367 feat: Goblin Diplomacy quest, #370 fix: answer "Don't be silly." when storing the rune pou, #372 fix: general store stock on the official inventories, a, #373 fix: climb the Goblin Village lookout ladder
-- Draft: #354 feat: dwarf multicannon, #355 feat: Genie random event, #368 feat: Witch's Potion quest
+- Open for review: #354 feat: dwarf multicannon, #362 fix: keep the classic/modern stone choice across the fu, #366 feat: Sheep Shearer quest, #367 feat: Goblin Diplomacy quest, #370 fix: answer "Don't be silly." when storing the rune pou, #372 fix: general store stock on the official inventories, a, #373 fix: climb the Goblin Village lookout ladder
+- Draft: #355 feat: Genie random event, #368 feat: Witch's Potion quest
 
 ## Harness
 

@@ -333,13 +333,13 @@ Wait for "Server ready in", free the locks, log "Live <date> ..." on the include
 ### Gates finished at hand-off
 | Gate | Verdict | Next |
 |---|---|---|
-| gate-acc-cannon (sq29), acc/cannon bc243d141 for #354 | **PASS** (fork docs ec733bc60). Break and repair seen in game; decay, Nulodion's replacement, part-built decay and pick-up of a broken cannon covered by the integration tests only (the PR text says so). Break came at 23 min 19 s real time = the code's 2500 ticks on a host running 0.559 s/tick. | #354: fold acc/cannon into content/cannon as a merge commit, update the description from fork docs pr-texts/cannon.upstream.body (4c75a5850), mark ready (user's OK given). Done 2:55 AM EDT: content/cannon -> 9c08b42ca (merge commit, tree = acc/cannon), description and comment posted; ready waits for upstream CI at 9c08b42ca (if not marked ready at hand-off, run `gh pr ready 354 -R OpenRune/OpenRune-Server` once CI is green). |
+| gate-acc-cannon (sq29), acc/cannon bc243d141 for #354 | **PASS** (fork docs ec733bc60). Break and repair seen in game; decay, Nulodion's replacement, part-built decay and pick-up of a broken cannon covered by the integration tests only (the PR text says so). Break came at 23 min 19 s real time = the code's 2500 ticks on a host running 0.559 s/tick. | #354: fold acc/cannon into content/cannon as a merge commit, update the description from fork docs pr-texts/cannon.upstream.body (4c75a5850), mark ready (user's OK given). **Done** 7:09-7:10 PM EDT (2026-10-20): content/cannon -> 9c08b42ca (merge commit, tree = acc/cannon), description and comment posted, upstream CI green, #354 marked ready for review. |
 | gate-acc-genie (sq30), acc/genie 3ccb86bd8 for #355 | **FAIL** (fork docs 970ba88ec): leave on the next call tick after Talk-to (RSProx 1718); lamp XP must equal the message | fix-genie-gate-findings (P1), then re-gate; #355 stays draft |
 
 Both gated acc/* commits the live server doesn't run (integration carries fin/cannon, fin/genie): section 7a.
 
 ### Upstream (OpenRune/OpenRune-Server)
-Open for review: #362, #366, #367, #370 (in review), #372, #373. Drafts: #354, #355 (gates above), #368 (Witch's
+Open for review: #354 (cannon, ready 7:10 PM EDT), #362, #366, #367, #370 (in review), #372, #373. Drafts: #355 (Genie, fix-genie-gate-findings), #368 (Witch's
 Potion; task gate-witchs-potion ready). 17 of our PRs merged so far.
 
 ### Ready queue left for v3 (top items)

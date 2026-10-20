@@ -27,6 +27,13 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **No second LOGGED_IN after a released rebuild hold (client/rebuild-double-logged-in, gen 46, device 2026-10-19)**: `Host`
+  drops a native 30 when the last posted state is already LOGGED_IN (the hold's release replay posted it), logging
+  `GameStateChanged LOGGED_IN again: already posted (rebuild released)`. Never seen before or now (qa/client-hostfixes-gen45.md
+  review note). Device: login, 6 teleports (Lumbridge <-> Fossil Island) and a `::drop` relog each post exactly one
+  LOADING/WorldViewLoaded/LOGGED_IN (CONNECTION_LOST -> LOGGED_IN unchanged); the guard line didn't fire. Evidence: gen 46
+  scratchpad `g46/rebuild-guard-logcat.txt`. offsets.md: Client vtable slot 6 `0x421a20` is the draw on doCycle's thread. No
+  network change.
 - **Ground items that leave the scene despawn (client/scene-item-despawn, gen 46, device 2026-10-19)**: `SceneObjects.refresh`
   posted no ItemDespawned for an item whose tile is outside the new base after a rebuild, so Ground Items counted a dropped
   item twice after a teleport round trip (qa/client-hostfixes-gen45.md obs. 1). Those items now despawn on a tile with their

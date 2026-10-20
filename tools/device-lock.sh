@@ -19,6 +19,7 @@
 #
 # LOCK_NAME=<instance> selects an instance from tools/instances.tsv; the default is `device` (BlueStacks
 # Pie64), `desktop` is the isolated desktop RuneLite (tools/multiclient/desktop.sh).
+# LOCK_DIR (default /tmp) is where the lock, grant and status files live; only tests set it.
 set -euo pipefail
 INSTANCES=$(dirname "$(readlink -f "$0")")/instances.tsv
 inst=${LOCK_NAME:-device}
@@ -27,7 +28,8 @@ if [[ -z $row ]]; then
     echo "unknown LOCK_NAME=$inst (instances: $(awk -F'\t' '!/^#/ && NF {printf "%s ", $1}' "$INSTANCES"))"
     exit 2
 fi
-LOCK=/tmp/osrs-$inst.lock GRANT=/tmp/osrs-$inst.grant STATUS=/tmp/osrs-$inst-status
+LOCK_DIR=${LOCK_DIR:-/tmp}   # tests point this at a temp dir; the live locks stay in /tmp
+LOCK=$LOCK_DIR/osrs-$inst.lock GRANT=$LOCK_DIR/osrs-$inst.grant STATUS=$LOCK_DIR/osrs-$inst-status
 
 GRANTS=$GRANT.d   # one file per holder: "<epoch second the grant ends> [reuse]"
 mkdir -p "$GRANTS"
@@ -98,6 +100,6 @@ env)
     cut -f3 <<<"$row"
     ;;
 *)
-    sed -n '2,21p' "$0"; exit 2
+    sed -n '2,22p' "$0"; exit 2
     ;;
 esac

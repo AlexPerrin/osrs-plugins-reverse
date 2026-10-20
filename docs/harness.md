@@ -52,7 +52,7 @@ flowchart LR
 | Brief | `task.py brief <id>` | The whole spawn prompt: the id, the agent's name, the granted instances, the evidence dir, how to hand over. Role text stays in `.claude/agents/*.md` |
 | Driver | `tools/harness/orchestrate.py` | `status` (dashboard), `next` (what fits the free slots), `dispatch` (name the agent, grant instances with `reuse`, claim, print the brief, or `--run` a headless `claude -p --agent <role>`), `reap` (finished runs → check → ship → QA task → approval), `run` (the loop) |
 | Hand-over check | `tools/harness/handover-check.sh <id>` | The evaluator between the dev's claim and the ship step, deterministic; rules below |
-| Ship | `tools/harness/ship.sh <id>` | Client: `--no-ff` merge into `master` with the standard message, push to origin main. Server: append to `integration.txt`, rebuild `integration` with `build-integration.sh`, push; prints the gate and deploy commands (they reserve instances, so they stay separate). A QA-role task is marked `done` (nothing to merge) |
+| Ship | `tools/harness/ship.sh <id>` | Client: `--no-ff` merge into `master` with the standard message, push to origin main, task `live`. Server: append to `integration.txt`, rebuild `integration` with `build-integration.sh`, push; prints the gate and deploy commands (they reserve instances, so they stay separate). A QA-role task is marked `done` (nothing to merge) |
 | Evidence | `re/evidence/<id>/` | Durable, in the main checkout, git-ignored. Screenshots, logcat extracts, the repack log, accuracy results. Replaces per-session scratchpads |
 | Instances | `tools/device-lock.sh` + `tools/instances.tsv` | One lock per test instance (`device`, `desktop`; add rows for more BlueStacks instances). `grant <who> <min> reuse` at dispatch: the agent takes and frees it for the whole task without asking |
 | Build queue | `tools/buildq.sh`, `openrune/upstream/qa/qa.sh` | Unchanged classes and memory guard; queue and lock dirs moved from a session scratchpad to `re/harness/{buildq,qa}` |
@@ -97,28 +97,48 @@ Agents can't push, write to GitHub, run `fork.sh`, deploy, grant devices or writ
   unknown), a push onto the fork's `main`, `--mirror`, anything naming OpenRune/OpenRune or github.com/OpenRune/,
   and pushes the parser can't see (`bash -c`, `$(...)`, heredocs).
 - `--docs-writes` (server-qa): one non-forced refspec onto `docs`, remote resolving to the fork.
+- Integration images and deploys (docs/integration-pipeline.md) are denied to every agent role, whatever the flags:
+  `tools/harness/deploy.sh` and `image.sh` (also `./deploy.sh` from `tools/harness`), `orchestrate.py
+  deploy|integrate|image`, `docker [image|container] tag|rm|rmi|stop|restart|kill` naming an `osrs-openrune` image or
+  container, and `docker compose`/`docker-compose` writes that name `osrs-openrune`, the live stack's service
+  `openrune` or `openrune/docker-compose.yml`, or run from `openrune/` (ps, logs, config, ls, images, top and version
+  stay allowed). The agents' own containers (`qa-or-*`, branch images) are not affected.
 - The word "upstream" alone (file names, commit messages, `re/upstream-pr/`) means nothing to the hook.
 
 ### Tests
 
 `tools/harness/tests/run.sh` (or `python3 -m unittest discover -s tools/harness/tests`): the hook table (temp repos
 whose remotes point at the fork or OpenRune), the hand-over check per track and role (temp repos, a local bare
-"fork", a gh stub), the QA ship path, reap approvals with gh stubbed, and `task.py lint` on the live store
-(read-only). No network or devices. Run them after any change to `tools/hooks/` or `tools/harness/`.
+"fork", a gh stub), the QA ship path, reap approvals with gh stubbed, `task.py lint` on the live store
+(read-only), and test_live.py (the `live` status and unblocking, `migrate-live`, the client ship to `live` in a temp
+checkout, the integration deny rules, `LOCK_DIR` in device-lock.sh, which sets where the lock, grant and status
+files live; default `/tmp`). No network or devices. Run them after any change to `tools/hooks/` or `tools/harness/`.
 
 ### Task lifecycle
 
 ```
-backlog → ready → in-progress → (specced, server) → handover → shipped → qa → gated → done
-                     ↓ blocked_by …          ↑ FAIL (check)        ↓ FAIL (gate)   ↓ waiting-user
-                   blocked ──────────────────┘                   failed → fix task
+backlog → ready → in-progress → (specced, server) → handover → shipped → live → qa → gated → done
+                     ↓ blocked_by …          ↑ FAIL (check)   (server)   ↑         ↓ FAIL (gate)   ↓ waiting-user
+                   blocked ──────────────────┘         client ship ──────┘       failed → fix task
 ```
 
 - `backlog`: a deliverable without a definition of done yet (the roadmap). `ready`: dispatchable once every
-  `blocked_by` task is `done`, `shipped`, `qa` or `gated` (live or past dev).
+  `blocked_by` task is `done`, `live`, `qa` or `gated`. **Not `shipped`**: a server task is `shipped` once it is in
+  `integration`, but the live server only has it after the gate, image and deploy; a client task blocked on it
+  would be dispatched against a server that doesn't have the fix yet (the bug fixed in phase 0 of
+  docs/integration-pipeline.md).
+- `live`: the change is on its live target. Server: deployed on the live server (the orchestrator sets it after the
+  deploy; later `deploy.sh` does). Local-only server tasks then go `live` → `done`. Client: **`ship.sh` sets `live`
+  directly**, because the client's live target is `master` itself: agents build and test from `master`, there is no
+  deploy step after the merge, and a release (vX.Y.Z) is a separate gate with its own task, not a precondition for
+  other tasks.
 - A **blocker** between tracks is an edge, not prose: the client dev runs `task.py new --track server ...` for the
-  server task and `task.py block <mine> --by <it>`. `task.py done <server-task>` flips the client task back to `ready`.
-  `lint` rejects dangling edges and cycles.
+  server task and `task.py block <mine> --by <it>`. When the server task becomes `live` or `done` (through `task.py
+  done`, `task.py set <id> status=live|done` or `migrate-live`), every task it unblocks that is `blocked` and has no
+  open blocker left goes back to `ready`. `lint` rejects dangling edges and cycles.
+- `task.py migrate-live [id ...] [--dry-run]` (one-off, 2026-10-20) moves `shipped` tasks that are already live to
+  `live`: a server task whose log has the orchestrator's `Live <date> ...` deploy line, and a client task (merged into
+  master). A server task without that line (shipped, not deployed) stays `shipped`.
 - A **hand-over** is `task.py handover` with branch, commit, evidence and summary after every definition-of-done
   box is `[x]`. The check and the ship step need no chat. A check FAIL sets the task back to `ready` with the failing
   items in the log; the next dispatch (a fresh agent, same role) fixes exactly those.

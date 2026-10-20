@@ -3,6 +3,12 @@
 does (docs/workflow.md "Agents"): pushes, GitHub writes, tools/fork.sh, deploys, device grants and progress
 writes. The orchestrator's own session doesn't load this hook.
 
+Integration images and deploys (docs/integration-pipeline.md, phase 0) are the orchestrator's too, whatever the
+flags: tools/harness/deploy.sh and image.sh, `orchestrate.py deploy|integrate|image`, `docker [image|container]
+tag|rm|rmi|stop|restart|kill` naming an osrs-openrune image or container, and `docker compose` / `docker-compose`
+naming osrs-openrune or the live stack's compose service `openrune` (or openrune/docker-compose.yml, or run from
+inside openrune/), except the read-only compose subcommands (ps, logs, config, ls, images, top, version).
+
 `--fork-writes` (server-dev, user 2026-10-19): the dev does its own GitHub work on our fork
 (AlexPerrin/OpenRune-Server): pushes whose remote resolves to the fork, tools/fork.sh (fork only by
 construction), and gh writes that name `AlexPerrin/OpenRune-Server`. Contributions to OpenRune's own repo stay
@@ -38,6 +44,57 @@ RULES = [
     (r"\bprogress\.py\b(?![^|;&]*--dry-run)", "progress writes (use --dry-run)"),
 ]
 PUSH = re.compile(RULES[0][0])
+
+# Orchestrator-only integration steps (checked per simple command; a `bash -c "..."` segment is checked as text).
+INTEGRATION = "integration images, deploys and live server containers"
+HARNESS_SCRIPT = re.compile(r"\bharness/(deploy|image)\.sh\b")
+ORCH_SUB = re.compile(r"\borchestrate\.py\b[^|;&\n]*?\s(deploy|integrate|image)(\s|$|['\"])")
+DOCKER_LIVE = re.compile(r"\bdocker\s+(?:(?:image|container)\s+)?(?:tag|rm|rmi|stop|restart|kill)\b[^;&|\n]*"
+                         r"osrs-openrune")
+COMPOSE = re.compile(r"\bdocker(?:\s+compose|-compose)\b")
+COMPOSE_LIVE = re.compile(r"osrs-openrune|(?<![\w.-])openrune(?![\w.-])")   # the service, -p, or openrune/<file>
+COMPOSE_READ = {"ps", "logs", "config", "ls", "images", "top", "version"}
+COMPOSE_VALUE_OPTS = {"-f", "--file", "-p", "--project-name", "--env-file", "--profile", "--project-directory",
+                      "--ansi", "--progress", "--parallel"}
+
+
+def compose_subcommand(w):
+    """The compose subcommand in words w (`docker compose [opts] <sub>` or `docker-compose [opts] <sub>`), or None."""
+    if not w:
+        return None
+    if os.path.basename(w[0]) == "docker" and len(w) > 1 and w[1] == "compose":
+        i = 2
+    elif os.path.basename(w[0]) == "docker-compose":
+        i = 1
+    else:
+        return None
+    while i < len(w):
+        if w[i] in COMPOSE_VALUE_OPTS:
+            i += 2
+        elif w[i].startswith("-"):
+            i += 1
+        else:
+            return w[i]
+    return None
+
+
+def integration_only(cmd, cwd):
+    """True when the command runs an orchestrator-only integration step (see the module doc)."""
+    for seg, w, c in walk(cmd, cwd):
+        if HARNESS_SCRIPT.search(seg) or ORCH_SUB.search(seg) or DOCKER_LIVE.search(seg):
+            return True
+        if w and w[0] in ("./deploy.sh", "./image.sh", "deploy.sh", "image.sh") and \
+                os.path.normpath(c).endswith(os.path.join("tools", "harness")):
+            return True
+        if COMPOSE.search(seg):
+            sub = compose_subcommand(w)
+            if sub in COMPOSE_READ:
+                continue
+            # A write: denied when it names the live stack, runs from openrune/, or hides inside `bash -c` etc.
+            in_openrune = os.path.basename(os.path.normpath(c)) == "openrune"
+            if COMPOSE_LIVE.search(seg) or in_openrune or sub is None:
+                return True
+    return False
 FORK_NAME = re.compile(r"AlexPerrin/OpenRune-Server", re.I)
 
 
@@ -119,6 +176,9 @@ def decide(data, argv, run=None):
     fork_ok, docs_ok = "--fork-writes" in argv, "--docs-writes" in argv
     cmd = data.get("tool_input", {}).get("command", "")
     cwd = data.get("cwd") or os.getcwd()
+    if integration_only(cmd, cwd):
+        return (f"Only the orchestrator does {INTEGRATION} (docs/integration-pipeline.md). "
+                "Send the request to the orchestrator instead; don't work around this.")
     for pattern, what in RULES:
         if re.search(pattern, cmd) and not allowed(what, cmd, cwd, fork_ok, docs_ok, run):
             detail = ""

@@ -5,13 +5,14 @@
 #   tools/harness/ship.sh <task-id> [--dry-run] [--no-push]
 #
 # Client: merges the task's branch into master in the main tree (--no-ff, the standard merge message with the dev's
-#         check and the Claude co-author line), pushes master to origin main, marks the task shipped. The branch is
-#         kept (release notes come from the commits); delete it when the release is out.
+#         check and the Claude co-author line), pushes master to origin main, marks the task live (master is the
+#         client's live target, with no separate deploy, so dependents unblock at the merge). The branch is kept
+#         (release notes come from the commits); delete it when the release is out.
 # Server: appends the branch to integration.txt on local/integration-tools (push clone), pushes it to the fork,
-#         rebuilds `integration` with scripts/build-integration.sh, pushes it, marks the task shipped with the new
-#         integration commit, and prints the gate + deploy commands (the gate is a buildq ticket of 8-17 minutes; the
-#         deploy needs both instances free). The image build and deploy stay separate commands, since they need the
-#         instance reservation.
+#         rebuilds `integration` with scripts/build-integration.sh, pushes it, marks the task shipped (not live: not
+#         deployed yet) with the new integration commit, and prints the gate + deploy commands (the gate is a buildq
+#         ticket of 8-17 minutes; the deploy needs both instances free). The image build and deploy stay separate
+#         commands, since they need the instance reservation.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 TASK=${1:?task-id}; shift
@@ -61,12 +62,12 @@ client)
     msg="Merge $branch: $title (dev's check: built, tried on the device)"
     [[ -n $summary ]] && msg+=$'\n\n'"$summary"
     msg+=$'\n\n'"Task: harness/tasks/$TASK.md"$'\n\n'"$TRAILER"
-    run git merge --no-ff --no-edit -m "$msg" "$commit" || { echo "ship: merge failed; resolve by hand, then task.py set $TASK status=shipped"; exit 1; }
+    run git merge --no-ff --no-edit -m "$msg" "$commit" || { echo "ship: merge failed; resolve by hand, then task.py set $TASK status=live"; exit 1; }
     if [[ -z $DRY ]]; then git commit --amend --no-edit --author="$AUTHOR" -q; fi
     [[ -n $PUSH ]] && run git push -q origin master:main
-    run "$T" set "$TASK" status=shipped
+    run "$T" set "$TASK" status=live
     run "$T" log "$TASK" "shipped: merged into master $(git rev-parse --short HEAD)${PUSH:+, pushed}"
-    echo "shipped $TASK to master"
+    echo "shipped $TASK to master (live)"
     ;;
 server)
     cd "$CLONE"

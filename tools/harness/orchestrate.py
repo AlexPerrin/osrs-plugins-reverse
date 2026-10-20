@@ -224,7 +224,7 @@ def free_instances(owner, instances):
         env = dict(ENV, LOCK_NAME=inst)
         if sh("bash", os.path.join(ROOT, "tools/device-lock.sh"), "status", env=env).stdout.find(f"({owner} dev,") >= 0:
             print(sh("bash", os.path.join(ROOT, "tools/device-lock.sh"), "free", owner, env=env).stdout.strip())
-        gp = f"/tmp/osrs-{inst}.grant.d/{owner}"
+        gp = os.path.join(os.environ.get("LOCK_DIR") or "/tmp", f"osrs-{inst}.grant.d", owner)
         if os.path.exists(gp):
             os.remove(gp)
 

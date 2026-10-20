@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
-"""Progress report: writes docs/progress.md from the task store, upstream PR states, the client coverage metrics
-(tools/progress.py --dry-run) and the integration pipeline phases. Read-only apart from the output file.
+"""Progress report: writes docs/progress.md. Read-only apart from the output file.
+
+Progress definitions (user, 2026-10-20):
+- Client progress = RuneLite compatibility on mobile (tools/progress.py: RuneLite API implemented, core plugins and
+  Plugin Hub plugins running on Android, protocol mapping that they depend on).
+- Server progress = parity with the official OSRS server; 100% = OpenRune is an identical copy of OSRS. Measured by
+  tools/harness/server_parity.py when it exists (task server-parity-metric); until then the report says so.
+- Task counts by track measure the workflow (throughput), not product progress.
 
   tools/harness/progress_report.py [--out docs/progress.md] [--no-gh]
 
@@ -102,6 +108,19 @@ def client_metrics():
     return rows
 
 
+def server_parity():
+    tool = os.path.join(ROOT, "tools", "harness", "server_parity.py")
+    if os.path.exists(tool):
+        try:
+            return subprocess.run(["python3", tool, "--markdown"], capture_output=True, text=True, timeout=600,
+                                  cwd=ROOT).stdout.splitlines()
+        except Exception as e:
+            return [f"(server_parity.py failed: {e})"]
+    return ["Not measured yet: task `server-parity-metric` defines and builds it (OSRS content counted from the",
+            "cache and wiki, against what the integration tree implements). Upstream merges toward parity are",
+            "listed under Upstream below."]
+
+
 def phases(ts):
     ph = sorted((t for t in ts if t["id"].startswith("integration-phase-")), key=lambda t: t["id"])
     done = sum(1 for t in ph if t.get("status") in CLOSED)
@@ -120,10 +139,11 @@ def main():
     day = now.strftime("%Y-%m-%d")
     body = [f"# Progress", "", f"Generated {now:%Y-%m-%d %H:%M} UTC by tools/harness/progress_report.py "
             "(task store, gh, tools/progress.py). Regenerate; don't edit by hand.", "",
-            "## Tasks by track", ""] + track_table(ts) + [
+            "## Client progress: RuneLite compatibility on mobile", ""] + client_metrics() + [
+            "", "## Server progress: parity with the official OSRS server", ""] + server_parity() + [
+            "", "## Workflow: tasks by track (throughput, not product progress)", ""] + track_table(ts) + [
             "", f"## Finished or shipped on {day} (UTC)", ""] + (finished_on(ts, day) or ["(none)"]) + [
             "", "## Upstream", ""] + upstream(a.no_gh) + [
-            "", "## Client coverage (tools/progress.py)", ""] + client_metrics() + [
             "", "## Harness", ""] + phases(ts) + [""]
     with open(a.out, "w") as f:
         f.write("\n".join(body))

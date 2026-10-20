@@ -1,8 +1,29 @@
 # Progress
 
-Generated 2026-10-20 06:07 UTC by tools/harness/progress_report.py (task store, gh, tools/progress.py). Regenerate; don't edit by hand.
+Generated 2026-10-20 06:10 UTC by tools/harness/progress_report.py (task store, gh, tools/progress.py). Regenerate; don't edit by hand.
 
-## Tasks by track
+## Client progress: RuneLite compatibility on mobile
+
+| Metric | Value |
+|---|---|
+| Mobile packets mapped | 240/253 (94.9%) |
+| Live packets mapped | 240/240 (100.0%) |
+| Mobile packets mapped, verified | 239/253 (94.5%) |
+| Mobile packets implemented | 233/253 (92.1%) |
+| Server→client mapped | 147/151 (97.4%) |
+| Client→server mapped | 93/102 (91.2%) |
+| Zone sub-prots implemented | 15/15 (100.0%) |
+| RuneLite API implemented | 661/866 (76.3%) |
+| Plugins running on Android | 89/90 (98.9%) |
+| Plugin Hub plugins running | 84/109 (77.1%) |
+
+## Server progress: parity with the official OSRS server
+
+Not measured yet: task `server-parity-metric` defines and builds it (OSRS content counted from the
+cache and wiki, against what the integration tree implements). Upstream merges toward parity are
+listed under Upstream below.
+
+## Workflow: tasks by track (throughput, not product progress)
 
 | Track | Done + live | In pipeline | Active | Ready | Blocked / waiting | Backlog | Completion (excl. backlog) |
 |---|---|---|---|---|---|---|---|
@@ -50,21 +71,6 @@ Upstream PRs (OpenRune/OpenRune-Server): 17 merged, 6 open for review, 3 draft, 
 
 - Open for review: #362 fix: keep the classic/modern stone choice across the fu, #366 feat: Sheep Shearer quest, #367 feat: Goblin Diplomacy quest, #370 fix: answer "Don't be silly." when storing the rune pou, #372 fix: general store stock on the official inventories, a, #373 fix: climb the Goblin Village lookout ladder
 - Draft: #354 feat: dwarf multicannon, #355 feat: Genie random event, #368 feat: Witch's Potion quest
-
-## Client coverage (tools/progress.py)
-
-| Metric | Value |
-|---|---|
-| Mobile packets mapped | 240/253 (94.9%) |
-| Live packets mapped | 240/240 (100.0%) |
-| Mobile packets mapped, verified | 239/253 (94.5%) |
-| Mobile packets implemented | 233/253 (92.1%) |
-| Server→client mapped | 147/151 (97.4%) |
-| Client→server mapped | 93/102 (91.2%) |
-| Zone sub-prots implemented | 15/15 (100.0%) |
-| RuneLite API implemented | 661/866 (76.3%) |
-| Plugins running on Android | 89/90 (98.9%) |
-| Plugin Hub plugins running | 84/109 (77.1%) |
 
 ## Harness
 

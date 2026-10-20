@@ -22,6 +22,10 @@ docs/backlog.md (upstream queue, roadmap, client and server tasks). Last rewrite
 All agents finished. Dispatch in roughly this order (server QA can run two companions in parallel; ask the user
 before adding more agents than that). Records: qa/<slug>.md on the fork's docs; branches on the fork unless noted.
 
+Build evidence: server gates now take build/test from the fork's GitHub Actions CI at the exact commit
+(.claude/skills/build-test/SKILL.md "CI first"); a first run on content/sheep-shearer 069c15fde was started
+2026-10-19 (check its result: `gh run list -R AlexPerrin/OpenRune-Server --branch content/sheep-shearer`).
+
 Server QA (companions sq24 for sd23's branches, sq25 for sd24's):
 1. Sheep Shearer RSProx comparison: content/sheep-shearer 069c15fde (both gates PASS). Recordings 1718 (rev 227,
    Leagues V, whole quest, ticks 7184-7744) and 1619-1622 (rev 225, shearing only); transcripts

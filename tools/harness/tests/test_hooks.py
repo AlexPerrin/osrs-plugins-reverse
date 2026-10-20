@@ -29,13 +29,21 @@ class DenyPublishTest(unittest.TestCase):
         cls.agent = init_repo(os.path.join(t, "agents", "sd1", "or"), remotes={"origin": FORK_URL})
         cls.docs = init_repo(os.path.join(t, "agents", "sq1", "docs"), remotes={"origin": FORK_URL})
         cls.ours = init_repo(os.path.join(t, "main"), remotes={"origin": OURS_URL})
+        # The real agent clones: origin is the local push clone (re/upstream-pr/or), fork is the fork.
+        cls.local = init_repo(os.path.join(t, "agents", "sd2", "or"), remotes={"origin": cls.upr, "fork": FORK_SSH})
+        cls._env = os.environ.get("HOOK_PUSH_CLONE")
+        os.environ["HOOK_PUSH_CLONE"] = cls.upr
 
     @classmethod
     def tearDownClass(cls):
         cls._tmp.cleanup()
+        if cls._env is None:
+            os.environ.pop("HOOK_PUSH_CLONE", None)
+        else:
+            os.environ["HOOK_PUSH_CLONE"] = cls._env
 
     def decide(self, cmd, cwd, flags):
-        cmd = cmd.format(upr=self.upr, agent=self.agent, docs=self.docs, ours=self.ours)
+        cmd = cmd.format(upr=self.upr, agent=self.agent, docs=self.docs, ours=self.ours, local=self.local)
         return deny_publish.decide({"tool_input": {"command": cmd}, "cwd": getattr(self, cwd)}, flags)
 
     CASES = [
@@ -53,6 +61,12 @@ class DenyPublishTest(unittest.TestCase):
         ('git commit -m "address upstream review" && git push origin fix/x', "agent", FORK, ALLOW),
         ("git push " + FORK_SSH + " fix/x", "ours", FORK, ALLOW),
         ("git -C {upr} push -o ci.skip fork fix/x >/dev/null 2>&1", "ours", FORK, ALLOW),
+        # --- agent clones whose origin is the local push clone (a folder, not GitHub)
+        ("git push origin docs", "local", FORK, ALLOW),
+        ("git push origin fix/x", "local", DOCS, DENY),
+        ("git push origin docs", "local", DOCS, ALLOW),
+        ("git push fork fix/x", "local", FORK, ALLOW),
+        ("git push upstream fix/x", "local", FORK, DENY),
         # --- pushes to OpenRune upstream, or targets the hook can't tell
         ("git push origin fix/x", "upr", FORK, DENY),
         ("git -C {upr} push origin fix/x", "agent", FORK, DENY),

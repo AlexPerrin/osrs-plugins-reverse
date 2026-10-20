@@ -53,6 +53,17 @@ def walk(cmd, cwd):
     return out
 
 
+def local_push_clone(url, d):
+    """The agent clones' `origin` is the local push clone re/upstream-pr/or (a folder on this machine): a push
+    there never leaves the machine, and only the orchestrator pushes from that clone to GitHub."""
+    if not url or "://" in url or re.match(r"^[\w.-]+@[\w.-]+:", url):
+        return False
+    clone = os.environ.get("HOOK_PUSH_CLONE") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
+                                                             "re", "upstream-pr", "or")
+    target = url if os.path.isabs(url) else os.path.join(d or ".", url)
+    return os.path.realpath(target).rstrip("/") == os.path.realpath(clone).rstrip("/")
+
+
 def push_problem(seg, w, cwd, docs, run):
     """Why this push segment isn't allowed (None = allowed) under --fork-writes (docs=False) / --docs-writes."""
     p = sp.parse_push(w, cwd) if w else None
@@ -63,6 +74,9 @@ def push_problem(seg, w, cwd, docs, run):
     if not p["remote"]:
         return "a bare `git push` (no remote: the target can't be told)"
     url = sp.push_url(p, run)
+    if local_push_clone(url, p["dir"]):
+        return None if not docs or (len(p["refspecs"]) == 1 and sp.dest(p["refspecs"][0]) == "docs"
+                                    and not sp.forced(p)) else "not a single non-forced refspec onto docs"
     if sp.norm_repo(url) != sp.FORK:
         return f"remote {p['remote']} in {p['dir']} is {url or 'unknown'}, not AlexPerrin/OpenRune-Server"
     if docs:

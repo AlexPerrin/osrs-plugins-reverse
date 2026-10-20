@@ -51,15 +51,59 @@ flowchart LR
 | Task store | `harness/tasks/<id>.md` via `tools/harness/task.py` | One file per deliverable: YAML frontmatter (track, status, prio, role, owner, instances, branch, commit, evidence, blockers) plus `## Task`, `## Definition of done` (checkboxes) and a dated `## Log`. The single source of truth for both tracks; `ready`, `status`, `lint`, `metrics` are computed from it |
 | Brief | `task.py brief <id>` | The whole spawn prompt: the id, the agent's name, the granted instances, the evidence dir, how to hand over. Role text stays in `.claude/agents/*.md` |
 | Driver | `tools/harness/orchestrate.py` | `status` (dashboard), `next` (what fits the free slots), `dispatch` (name the agent, grant instances with `reuse`, claim, print the brief, or `--run` a headless `claude -p --agent <role>`), `reap` (finished runs → check → ship → QA task → approval), `run` (the loop) |
-| Hand-over check | `tools/harness/handover-check.sh <id>` | The evaluator between the dev's claim and the ship step, deterministic: definition of done ticked; branch at the commit; evidence dir present; client: repack log with 7 `telemetry:` lines, a screenshot or logcat, Network QA when `network: true`; server: branch on the fork at the commit, off upstream main, `accuracy/<slug>.md` on docs, fork PR recorded, fork CI `success` at exactly that sha |
-| Ship | `tools/harness/ship.sh <id>` | Client: `--no-ff` merge into `master` with the standard message, push to origin main. Server: append to `integration.txt`, rebuild `integration` with `build-integration.sh`, push; prints the gate and deploy commands (they reserve instances, so they stay separate) |
+| Hand-over check | `tools/harness/handover-check.sh <id>` | The evaluator between the dev's claim and the ship step, deterministic; rules below |
+| Ship | `tools/harness/ship.sh <id>` | Client: `--no-ff` merge into `master` with the standard message, push to origin main. Server: append to `integration.txt`, rebuild `integration` with `build-integration.sh`, push; prints the gate and deploy commands (they reserve instances, so they stay separate). A QA-role task is marked `done` (nothing to merge) |
 | Evidence | `re/evidence/<id>/` | Durable, in the main checkout, git-ignored. Screenshots, logcat extracts, the repack log, accuracy results. Replaces per-session scratchpads |
 | Instances | `tools/device-lock.sh` + `tools/instances.tsv` | One lock per test instance (`device`, `desktop`; add rows for more BlueStacks instances). `grant <who> <min> reuse` at dispatch: the agent takes and frees it for the whole task without asking |
 | Build queue | `tools/buildq.sh`, `openrune/upstream/qa/qa.sh` | Unchanged classes and memory guard; queue and lock dirs moved from a session scratchpad to `re/harness/{buildq,qa}` |
 | Stop hooks | `tools/hooks/task_stop.py`, `slot_stop.py` | An agent can't finish while its task is still `in-progress`/`specced`, while it holds a lock, or before the device restore check passed |
-| Publish gates | `tools/hooks/publish_gate.py`, `github_scope.py`, `deny_publish.py` | Unchanged: upstream PR needs the QA record at the commit; tags need the release record; agents can't push upstream, deploy, grant or write progress |
-| Approvals | `harness/approvals/<id>.md` | The only thing that reaches the user: an upstream PR, a release, a deploy decision. Written by the driver when a task reaches `gated`; the orchestrator runs the action in the interactive session (the `ask` rules still prompt), then `task.py done <id>` and removes the file |
+| Publish gates | `tools/hooks/publish_gate.py`, `github_scope.py`, `deny_publish.py` (shared parsing: `shellparse.py`) | Upstream PR needs the QA record at the commit; tags need the release record; agents can't push upstream, deploy, grant or write progress (rule below) |
+| Approvals | `harness/approvals/<id>.md` | The only thing that reaches the user: an upstream PR, a release, a deploy decision. Written by the driver when a task reaches `gated`, unless the upstream action is already done (below); the orchestrator runs the action in the interactive session (the `ask` rules still prompt), then `task.py done <id>` and removes the file |
 | After compaction | `tools/hooks/session_state.sh` | Prints the dashboard (`orchestrate.py status`) and pointers, not the STATE docs |
+
+### Hand-over check rules
+
+- Every task: status `handover`, branch and commit set, definition of done all `[x]`, evidence dir non-empty.
+- Client dev: branch at the commit, commit not on `master` yet, a repack log with 7 `telemetry:` lines, a screenshot
+  or `*logcat*.txt`, and `netqa*.md` when `network: true`. A docs-only change (every file between
+  merge-base(master, commit) and the commit is `*.md`) needs no repack log, device evidence or Network QA.
+- QA roles (`*-qa`): a QA task verifies and ships nothing, so the branch and merge items are skipped (`--branch
+  master` with a commit already on master is fine); client QA needs the repack log, and `netqa*.md` when
+  `network: true`. `ship.sh` then marks it `done`, and `reap` creates no follow-up task.
+- Server dev: commit on `fork/<branch>`, off upstream main, an accuracy spec on the fork's `docs` branch named by any
+  of the task's `spec:` key, the branch slug or the task id (`task.py new --server-dod [--spec name]` writes a DoD
+  whose spec item names the same file), the fork PR recorded, fork CI `success` at exactly that sha (or `gate:` a
+  local gate log with `rc=0`).
+- Test overrides: `HARNESS_DIR`, `HANDOVER_REPO`, `HANDOVER_CLONE`, `HANDOVER_GH`, `HANDOVER_EVIDENCE_ROOT`.
+
+### Approvals after a restart
+
+Before `reap` files an approval for a `gated` task it checks whether the user's action was already taken: when the
+task's `pr:` (or the last OpenRune PR URL in its log) is an OpenRune/OpenRune-Server PR and `gh api
+repos/OpenRune/OpenRune-Server/pulls/<n>` shows it open, not a draft, with its head sha starting with the task's
+commit, it logs "upstream action already done (PR #n ready at <sha>)" and files nothing. Any gh error files the
+approval as before. PR bodies are edited with `gh api -X PATCH repos/<repo>/pulls/<n>` (`gh pr edit` fails on
+OpenRune-Server: deprecated projectCards field); `tools/fork.sh pr-edit` does that for the fork.
+
+### The role hook (deny_publish.py)
+
+Agents can't push, write to GitHub, run `fork.sh`, deploy, grant devices or write progress, except:
+- `--fork-writes` (server-dev): a push whose remote URL resolves to `AlexPerrin/OpenRune-Server`, `tools/fork.sh`,
+  and gh writes whose every gh segment names `AlexPerrin/OpenRune-Server`. The target is resolved, not guessed: the
+  remote after `push` (options and redirections like `2>&1` skipped), the directory from `git -C` and/or the last
+  `cd`, else the hook's `cwd`, then `git remote get-url --push`. In `re/upstream-pr/or`, `origin` is OpenRune and
+  `fork` is ours; in `re/agents/<name>/or` and docs clones, `origin` is the fork. Denied: a bare `git push` (target
+  unknown), a push onto the fork's `main`, `--mirror`, anything naming OpenRune/OpenRune or github.com/OpenRune/,
+  and pushes the parser can't see (`bash -c`, `$(...)`, heredocs).
+- `--docs-writes` (server-qa): one non-forced refspec onto `docs`, remote resolving to the fork.
+- The word "upstream" alone (file names, commit messages, `re/upstream-pr/`) means nothing to the hook.
+
+### Tests
+
+`tools/harness/tests/run.sh` (or `python3 -m unittest discover -s tools/harness/tests`): the hook table (temp repos
+whose remotes point at the fork or OpenRune), the hand-over check per track and role (temp repos, a local bare
+"fork", a gh stub), the QA ship path, reap approvals with gh stubbed, and `task.py lint` on the live store
+(read-only). No network or devices. Run them after any change to `tools/hooks/` or `tools/harness/`.
 
 ### Task lifecycle
 

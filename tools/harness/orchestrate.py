@@ -59,7 +59,8 @@ def task(*args):
 
 
 def load(tid):
-    text = open(os.path.join(TASKS, f"{tid}.md")).read()
+    with open(os.path.join(TASKS, f"{tid}.md")) as f:
+        text = f.read()
     m = re.match(r"---\n(.*?)\n---\n(.*)", text, re.S)
     return yaml.safe_load(m.group(1)) or {}, m.group(2)
 
@@ -242,7 +243,8 @@ def after_handover(tid):
         task("log", tid, "ship.sh failed; orchestrator action needed (see the driver output)")
         return False
     m, _ = load(tid)
-    if m["track"] == "server":
+    # ship.sh closes a QA task (done, nothing merged); only a server dev task gets an upstream-gate task.
+    if m["track"] == "server" and not (m.get("role") or "").endswith("-qa"):
         make_qa(tid)
     return True
 
@@ -293,11 +295,62 @@ def make_fix(qid):
     return fid
 
 
+UPSTREAM_REPO = "OpenRune/OpenRune-Server"
+UPSTREAM_PR = re.compile(r"github\.com/OpenRune/OpenRune-Server/pull/(\d+)", re.I)
+
+
+def gh_api(path):
+    """GET a GitHub API path as JSON (raises on any error). Tests replace this function."""
+    r = subprocess.run(["gh", "api", path], capture_output=True, text=True, timeout=30)
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.strip() or f"gh api {path} failed")
+    return json.loads(r.stdout)
+
+
+def upstream_pr_number(m, body):
+    """The task's upstream PR: its `pr:` if that is an OpenRune PR, else the last OpenRune PR URL in its log."""
+    hit = UPSTREAM_PR.search(str(m.get("pr") or ""))
+    if hit:
+        return int(hit.group(1))
+    hits = UPSTREAM_PR.findall(body.split("## Log")[-1] if "## Log" in body else body)
+    return int(hits[-1]) if hits else None
+
+
+def upstream_done(m, body, api=None):
+    """'PR #n ready at <sha>' when the upstream PR for this task is already open, non-draft and at the task's
+    commit (the user's action was already taken); None otherwise, including on any gh error (fail-safe: file the
+    approval)."""
+    n = upstream_pr_number(m, body)
+    commit = str(m.get("commit") or "")
+    if not n or len(commit) < 7:
+        return None
+    try:
+        pr = (api or gh_api)(f"repos/{UPSTREAM_REPO}/pulls/{n}")
+        sha = pr["head"]["sha"]
+        if pr.get("state") == "open" and not pr.get("draft") and sha.startswith(commit):
+            return f"PR #{n} ready at {sha[:9]}"
+    except Exception:
+        return None
+    return None
+
+
+def gated_approval(m, body, text, api=None):
+    """File the approval for a gated task unless the upstream action was already done."""
+    done = upstream_done(m, body, api)
+    if done:
+        task("log", m["id"], f"upstream action already done ({done}); no approval filed")
+        print(f"{m['id']}: upstream action already done ({done})")
+        return False
+    request_approval(m["id"], text)
+    return True
+
+
 def request_approval(tid, text):
     os.makedirs(APPROVALS, exist_ok=True)
     p = os.path.join(APPROVALS, f"{tid}.md")
-    open(p, "w").write(f"# Approval: {tid}\n\nStatus: pending (the user decides; the orchestrator runs it in the interactive session, "
-                       f"then `task.py done {tid}` and deletes this file)\n\n{text}\n")
+    with open(p, "w") as f:
+        f.write(f"# Approval: {tid}\n\nStatus: pending (the user decides; the orchestrator runs it in the interactive session, "
+                f"then `task.py done {tid}` and deletes this file)\n\n{text}\n")
     task("log", tid, f"approval requested: harness/approvals/{tid}.md")
     print(f"approval requested: {os.path.relpath(p, ROOT)}")
 
@@ -308,7 +361,7 @@ def cmd_reap(a):
             continue
         summary, result = run_summary(r["log"])
         tid, owner = r["task"], r["owner"]
-        m, _ = load(tid)
+        m, body = load(tid)
         task("log", tid, f"run {owner} ended: {summary}")
         free_instances(owner, m.get("instance"))
         if m["status"] in ("in-progress", "specced"):
@@ -317,8 +370,8 @@ def cmd_reap(a):
         elif m["status"] == "handover":
             after_handover(tid)
         elif m["status"] == "gated":
-            request_approval(tid, f"Upstream PR for `{m['branch']}` at `{m['commit']}` (gate PASS, record on fork docs). "
-                                  f"Open with the exact command in the interactive session; publish_gate.py checks the record.")
+            gated_approval(m, body, f"Upstream PR for `{m['branch']}` at `{m['commit']}` (gate PASS, record on fork docs). "
+                                    f"Open with the exact command in the interactive session; publish_gate.py checks the record.")
         elif m["status"] == "failed" and (m.get("role") or "").endswith("-qa"):
             make_fix(tid)
         if r.get("cwd", ROOT) != ROOT and os.path.isdir(r["cwd"]):
@@ -330,8 +383,9 @@ def cmd_reap(a):
         if m["status"] == "handover" and "handover-check" not in body.split("## Log")[-1].split(m["commit"][:9])[-1]:
             print(f"hand-over without a check: {m['id']}")
             after_handover(m["id"])
-        elif m["status"] == "gated" and not os.path.exists(os.path.join(APPROVALS, f"{m['id']}.md")) and "approval requested" not in body:
-            request_approval(m["id"], f"Upstream PR for `{m.get('branch')}` at `{m.get('commit')}` (gate PASS).")
+        elif (m["status"] == "gated" and not os.path.exists(os.path.join(APPROVALS, f"{m['id']}.md"))
+              and "approval requested" not in body and "upstream action already done" not in body):
+            gated_approval(m, body, f"Upstream PR for `{m.get('branch')}` at `{m.get('commit')}` (gate PASS).")
 
 
 def cmd_run(a):

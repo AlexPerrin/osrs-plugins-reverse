@@ -5,6 +5,7 @@ orchestrator, the driver (orchestrate.py), the agents and the hooks all read and
 
   task.py new --track client|server|orch --title "..." [--id slug] [--prio P1] [--role client-dev]
               [--blocked-by id,...] [--dod "item" ...] [--body-file f] [--status backlog|ready]
+              [--spec name] [--server-dod]    server: accuracy/<spec>.md; the standard DoD naming that file
   task.py list [--track t] [--status s,...] [--owner o]        one line per task
   task.py show <id>                                            the file
   task.py ready [--track t]                                    dispatchable: status ready, every blocked_by done
@@ -53,7 +54,17 @@ STATUSES = ("backlog", "ready", "in-progress", "specced", "blocked", "handover",
 CLOSED = ("done", "shipped", "gated", "qa")   # a blocker in these states no longer blocks (it is live or past dev)
 ROLES = {"client": "client-dev", "server": "server-dev", "orch": "orchestrator"}
 KEYS = ("id", "track", "title", "status", "prio", "role", "owner", "instance", "branch", "commit", "pr", "ci",
-        "evidence", "blocked_by", "unblocks", "created", "updated", "summary", "gate", "network")
+        "evidence", "blocked_by", "unblocks", "created", "updated", "summary", "gate", "network", "spec")
+
+
+def server_dod(spec):
+    """The standard server dev DoD. The spec item names accuracy/<spec>.md, the same file handover-check.sh reads
+    (it tries the task's spec: key, the branch slug, then the task id)."""
+    return [f"accuracy/{spec}.md on the fork's docs branch (accuracy-check: sources, RSProx comparison, caveats)",
+            "change built and checked in game on the branch server (evidence in re/evidence/<id>/)",
+            "one change only, branch off upstream main (no stacking)",
+            "fork PR open (tools/fork.sh pr-create) with green CI at the handed-over commit",
+            "PR text reviewed (pr-text-review)"]
 
 
 def now():
@@ -127,11 +138,19 @@ def cmd_new(a):
             "blocked_by": [s for s in (a.blocked_by or "").split(",") if s], "unblocks": [], "created": now()}
     if a.network:
         meta["network"] = True
+    if a.spec:
+        meta["spec"] = a.spec
     body = open(a.body_file).read() if a.body_file else ""
     if not re.search(r"^## Task", body, re.M):
         body = "## Task\n" + (a.task or a.title) + "\n\n" + body
     if not re.search(r"^## Definition of done", body, re.M):
-        dod = "\n".join(f"- [ ] {d}" for d in (a.dod or ["(write the definition of done before dispatch)"]))
+        items = list(a.dod or [])
+        if a.server_dod:
+            if a.track != "server":
+                sys.exit("task.py: --server-dod is for --track server")
+            meta["spec"] = meta.get("spec") or tid   # the DoD and the check name the same file
+            items = server_dod(meta["spec"]) + items
+        dod = "\n".join(f"- [ ] {d}" for d in (items or ["(write the definition of done before dispatch)"]))
         body = body.rstrip() + "\n\n## Definition of done\n" + dod + "\n"
     body = add_log(body, f"created ({a.status})")
     save(meta, body)
@@ -426,6 +445,8 @@ def main():
     s.add_argument("--id"); s.add_argument("--prio", default="P2"); s.add_argument("--role"); s.add_argument("--blocked-by")
     s.add_argument("--dod", action="append"); s.add_argument("--task"); s.add_argument("--body-file")
     s.add_argument("--status", default="ready", choices=STATUSES); s.add_argument("--network", action="store_true")
+    s.add_argument("--spec", help="server: the accuracy spec name (accuracy/<spec>.md), when not the branch slug or id")
+    s.add_argument("--server-dod", action="store_true", help="server: the standard DoD, its spec item naming accuracy/<spec or id>.md")
     s.set_defaults(f=cmd_new)
     s = sp.add_parser("list"); s.add_argument("--track"); s.add_argument("--status"); s.add_argument("--owner"); s.set_defaults(f=cmd_list)
     s = sp.add_parser("ready"); s.add_argument("--track"); s.set_defaults(f=cmd_ready)

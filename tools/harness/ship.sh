@@ -22,16 +22,27 @@ CLONE=$ROOT/re/upstream-pr/or
 AUTHOR="Alex Perrin <44126061+AlexPerrin@users.noreply.github.com>"
 TRAILER="Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 run() { if [[ -n $DRY ]]; then echo "+ $*"; else "$@"; fi; }
-meta() { python3 - "$ROOT/harness/tasks/$TASK.md" "$1" <<'PY'
+HD=${HARNESS_DIR:-$ROOT/harness}; export HARNESS_DIR=$HD
+TF=$HD/tasks/$TASK.md
+meta() { python3 - "$TF" "$1" <<'PY'
 import re, sys, yaml
 m = re.match(r"---\n(.*?)\n---", open(sys.argv[1]).read(), re.S)
 v = (yaml.safe_load(m.group(1)) or {}).get(sys.argv[2]); print("" if v in (None, False) else v)
 PY
 }
 track=$(meta track); status=$(meta status); branch=$(meta branch); commit=$(meta commit); title=$(meta title); summary=$(meta summary)
+role=$(meta role)
 [[ $status == handover ]] || { echo "ship: $TASK is $status, not handover"; exit 1; }
-last=$(grep -E 'handover-check (PASS|FAIL)' "$ROOT/harness/tasks/$TASK.md" | tail -1)
+last=$(grep -E 'handover-check (PASS|FAIL)' "$TF" | tail -1)
 [[ $last == *PASS* ]] || { echo "ship: the last hand-over check of $TASK is not PASS (run tools/harness/handover-check.sh $TASK)"; exit 1; }
+
+# A QA task (client-qa, server-qa) verifies a commit that is already on its trunk; there is nothing to merge.
+if [[ $role == *-qa ]]; then
+    run "$T" log "$TASK" "QA task verified ($branch@${commit:0:9}); nothing to ship"
+    run "$T" done "$TASK"
+    echo "closed QA task $TASK (done; nothing to ship)"
+    exit 0
+fi
 
 case $track in
 client)

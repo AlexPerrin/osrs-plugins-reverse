@@ -1,0 +1,161 @@
+"""Shell parsing shared by the Bash hooks (deny_publish.py, github_scope.py): split a command line into simple
+commands, drop redirections, and resolve where a `git push` goes. Not a full shell parser; the hooks fail closed
+where it can't tell (an unparsable segment, a push inside `bash -c`, `$(...)` or a script it can't see).
+"""
+import os
+import re
+import shlex
+import subprocess
+
+FORK = "alexperrin/openrune-server"
+# Upstream OpenRune (the repos the agents never write to). Matches OpenRune/OpenRune-Server, github.com/OpenRune/...
+# but not AlexPerrin/OpenRune-Server, and not the bare word "upstream" (file names, branch names, commit messages).
+UPSTREAM_NAME = re.compile(r"(?<![A-Za-z0-9_-])OpenRune/OpenRune|github\.com[:/]+OpenRune/", re.I)
+
+REDIR = re.compile(r"^\d*(>>?|<<?|&>>?|>&|<&)(.*)$")
+
+
+def strip_heredocs(command):
+    """Heredoc bodies are data (file contents, scripts fed to cat): drop them, keep the rest of the opening line."""
+    return re.sub(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?\n\s*\2\s*(?=\n|$)", r"\3", command, flags=re.S)
+
+
+def segments(command):
+    """Split at ; & && || | newline outside quotes. The & of a redirection (2>&1, &>f, <&3) doesn't split."""
+    segs, cur, i, quote = [], [], 0, None
+    while i < len(command):
+        c = command[i]
+        if quote:
+            cur.append(c)
+            if c == "\\" and quote == '"' and i + 1 < len(command):
+                cur.append(command[i + 1])
+                i += 1
+            elif c == quote:
+                quote = None
+        elif c in "'\"":
+            quote = c
+            cur.append(c)
+        elif c == "\\" and i + 1 < len(command):
+            cur.append(command[i:i + 2])
+            i += 1
+        elif c == "&" and (cur and cur[-1] in "<>" or command[i + 1:i + 2] == ">"):
+            cur.append(c)   # 2>&1, <&3, &>file
+        elif c in ";&|\n":
+            segs.append("".join(cur))
+            cur = []
+            if command[i:i + 2] in ("&&", "||"):
+                i += 1
+        else:
+            cur.append(c)
+        i += 1
+    segs.append("".join(cur))
+    return [s.strip().lstrip("({ ").rstrip(")} ").strip() for s in segs if s.strip()]
+
+
+def words(seg):
+    """shlex words of one simple command without leading VAR=x assignments and redirections; None if unparsable."""
+    try:
+        w = shlex.split(seg)
+    except ValueError:
+        return None
+    while w and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w[0]):
+        w = w[1:]
+    out, skip = [], False
+    for t in w:
+        if skip:
+            skip = False
+            continue
+        m = REDIR.match(t)
+        if m:
+            skip = m.group(2) == ""   # `2> file`: the target is the next word
+            continue
+        out.append(t)
+    return out
+
+
+def expand(path, cwd):
+    return os.path.normpath(os.path.join(cwd, os.path.expandvars(os.path.expanduser(path))))
+
+
+def cd_target(w, cwd):
+    """The new cwd if this simple command is `cd <dir>`, else None."""
+    if w and w[0] == "cd" and len(w) == 2:
+        return expand(w[1], cwd)
+    return None
+
+
+def norm_repo(url):
+    """owner/name, lowercased, from a GitHub URL or owner/name; '' when it isn't one."""
+    url = (url or "").strip().removesuffix("/").removesuffix(".git")
+    m = re.search(r"github\.com[:/]+([^/\s]+/[^/\s]+)$", url)
+    return (m.group(1) if m else url if re.fullmatch(r"[^/\s:]+/[^/\s:]+", url) else url).lower()
+
+
+VALUE_OPTS = {"-o", "--push-option", "--receive-pack", "--exec", "--repo"}
+
+
+def parse_push(w, cwd):
+    """For `git [-C d] [-c k=v] push [opts] [remote [refspec...]]` (w = words), a dict with dir, remote, refspecs
+    and opts; None when w isn't a git push."""
+    if not w or os.path.basename(w[0]) != "git":
+        return None
+    i, path = 1, cwd
+    while i < len(w) and w[i].startswith("-"):
+        if w[i] == "-C" and i + 1 < len(w):
+            path = expand(w[i + 1], path)
+            i += 2
+        elif w[i] in ("-c", "--git-dir", "--work-tree", "--namespace") and i + 1 < len(w):
+            if w[i] != "-c":
+                path = None   # can't tell the repo from a bare git dir option: unknown target
+            i += 2
+        else:
+            if w[i].startswith(("--git-dir=", "--work-tree=")):
+                path = None
+            i += 1
+    if i >= len(w) or w[i] != "push":
+        return None
+    opts, pos, remote, args, j = [], [], None, w[i + 1:], 0
+    while j < len(args):
+        a = args[j]
+        if a == "--":
+            pos += args[j + 1:]
+            break
+        if a.startswith("-"):
+            opts.append(a)
+            if a in VALUE_OPTS and j + 1 < len(args):
+                if a == "--repo":
+                    remote = args[j + 1]
+                j += 2
+                continue
+            if a.startswith("--repo="):
+                remote = a.split("=", 1)[1]
+        else:
+            pos.append(a)
+        j += 1
+    if remote is None and pos:
+        remote, pos = pos[0], pos[1:]
+    return {"dir": path, "remote": remote, "refspecs": pos, "opts": opts}
+
+
+def push_url(p, run=subprocess.run):
+    """The push URL of a parsed push ('' when it can't be told: no remote, unknown dir, unknown remote)."""
+    if not p or not p["remote"] or p["dir"] is None:
+        return ""
+    if "/" in p["remote"] or ":" in p["remote"]:
+        return p["remote"]
+    r = run(["git", "-C", p["dir"], "remote", "get-url", "--push", p["remote"]], capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def forced(p):
+    for o in p["opts"]:
+        if o.startswith("--force") or o in ("--mirror", "--delete", "--prune"):
+            return True
+        if re.fullmatch(r"-[A-Za-z]+", o) and re.search(r"[fd]", o):
+            return True
+    return any(r.startswith("+") or r.startswith(":") for r in p["refspecs"])
+
+
+def dest(refspec):
+    """The destination branch name of a refspec (src:dst, or src alone)."""
+    return refspec.lstrip("+").split(":")[-1].removeprefix("refs/heads/")

@@ -2,17 +2,17 @@
 id: repin-2
 track: orch
 title: Re-pin integration after the upstream merges
-status: ready
+status: in-progress
 prio: P1
 role: orchestrator
-owner: null
+owner: orch-repin
 instance: []
 branch: null
 commit: null
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:43Z'
-updated: '2026-10-20T03:29:14Z'
+updated: '2026-10-20T03:30:58Z'
 ---
 ## Task
 Live: integration 5cc473397 since 2026-10-19 04:05 UTC. Upstream merged #312 Slayer, #297 Waterfall, our #348, Doric #334 (another contributor), Knight's Sword #333, Ides of Milk #315, PR template #369 (main 829b9477d). Drop fix/17 (superseded by #312), fix/18 (merged) and fin/doric (upstream's #334 replaces it: check saved Doric varp names resolve) from integration.txt; add fix/rune-pouch-accuracy and fix/edgeville-general-store-stock (internal PASS) and fix/55 back after it; check for conflicts with our branches; re-pin on the new main; gate; deploy (rollback tag first). Was 'repin-after-merges'.
@@ -26,3 +26,5 @@ Live: integration 5cc473397 since 2026-10-19 04:05 UTC. Upstream merged #312 Sla
 ## Log
 - 2026-10-20T01:42:43Z created (ready)
 - 2026-10-20T03:29:14Z fin/op-overrides is no longer an upstream branch (user dropped it 2026-10-20) but local/treasure-trails uses LocOpOverrides/NpcOpOverrides. When re-pinning: keep it under 'Local only' (e.g. rename to local/op-overrides or fold into local/treasure-trails) and rebase onto main 829b9477d; fin/doric is being dropped anyway.
+- 2026-10-20T03:30:58Z claimed by orch-repin
+- 2026-10-20T03:30:58Z User 2026-10-20: keep our test server's OpenRune up to date with upstream main. fix/55 no longer comes back (#351 closed; its work is in #372, fix/edgeville-general-store-stock). Build and gate delegated to a fork of the orchestrator; deploy stays with the orchestrator when the devices are free.

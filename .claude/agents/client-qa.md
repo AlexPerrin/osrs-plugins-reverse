@@ -31,7 +31,7 @@ Stop at the first failure. The dev's runs are evidence; yours, at the fixed comm
 
 Drive the device through the `osrs-devtools` MCP and the desktop client through `osrs-devtools-desktop`, each
 only under its lock, and read state from their data tools (widgets, menus, vars, chat, NPCs), not screenshots;
-screenshots are for drawing claims. Check expected game data (ids, item and NPC details) with `osrs-mcp`
+no screenshots unless the user asks (2026-10-20). Check expected game data (ids, item and NPC details) with `osrs-mcp`
 (docs/workflow.md "MCP servers"; load with ToolSearch).
 
 ## Device slots

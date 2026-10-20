@@ -28,7 +28,7 @@ docs/offsets.md. History (docs/client-handoff.md) only when you need it.
 2. **Build** on `client/<topic>` (small fixes may go to `master`). Host builds: host/build.sh + `ninja -C re/build`
    + `tools/repack.sh` (every APK goes through the telemetry patch: 7 `telemetry:` lines).
 3. **Verify** by trying the changed plugin or host path on the device (`device-test`, BlueStacks against the test
-   server); a screenshot or log of it is your evidence. That is the whole check before a merge (no QA run;
+   server); a logcat extract or data-tool dump of it is your evidence (no screenshots unless the user asks). That is the whole check before a merge (no QA run;
    docs/workflow.md "Gates"). The telemetry assertions, netcheck/NetScan and the release hook are automatic: don't
    re-verify them by hand. Only when relevant: `network-qa` if the change adds or alters outbound traffic (a new
    host, a new fetch), `ab-test` if it claims parity with desktop drawing. `reverse` cross-checks are your tool,
@@ -49,7 +49,7 @@ docs/offsets.md. History (docs/client-handoff.md) only when you need it.
   need to ask. An instance you weren't granted: `task.py log` what you need and go on with the rest. The
   `osrs-devtools` MCP drives the Android device and `osrs-devtools-desktop` the desktop client: each only
   while you hold its lock. Game state comes from their data tools (widgets, menus, vars, chat, NPCs), not from
-  screenshots; a screenshot is evidence for drawing only, and for repeated chat lines (`get_chat_history`
+  screenshots; no screenshots unless the user asks (2026-10-20), and for repeated chat lines (`get_chat_history`
   under-reports repeats). Set the devtools up at the start of every slot (device-test skill, step 3).
 - `tools/device-restore-check.sh pre /tmp/osrs-slot/<your-name>` first; at the end of the slot (once, not per change)
   `check` on that dir until all OK, then `free <your-name>`. A stop hook won't let you finish while you hold a lock or the last check isn't all OK.

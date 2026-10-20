@@ -451,7 +451,8 @@ Evidence goes in `{EVIDENCE}/{meta['id']}/` (durable; never a session scratchpad
 Read game state through the MCP tools, not screenshots (user, 2026-10-19): `osrs-devtools` for the Android app
 (get_widget, get_npc_menu, list_npcs, get_var, get_chat_history, dump_interface; push devtools.jar + `setprop
 debug.osrsrl.devtools 1` + restart first, device-test skill), `osrs-devtools-desktop` for desktop RuneLite,
-`osrs-mcp` for ids, wiki and cache. A screenshot is evidence only for how something is drawn.
+`osrs-mcp` for ids, wiki and cache. No screenshots unless the user asks (user, 2026-10-20: "Dont screenshot!");
+evidence is a logcat extract or a data-tool dump.
 When done: tick the definition of done in the task file, then
 `tools/harness/task.py handover {meta['id']} --branch <branch> --commit <sha> --evidence {EVIDENCE}/{meta['id']} --summary "..."`
 (add --pr/--ci for a server branch; --repo <clone> when the commit is in your fork clone).

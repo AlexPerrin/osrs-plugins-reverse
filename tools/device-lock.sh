@@ -9,6 +9,8 @@
 #                                               it until it expires, for a pair given this instance for a task
 #   tools/device-lock.sh take  <who> <what...>  fails unless free AND granted to <who> (unexpired)
 #   tools/device-lock.sh free  <who>            only the holder can free it
+#   tools/device-lock.sh reclaim [why]          orchestrator only: release a lock its holder isn't using
+#   tools/device-lock.sh revoke <who>           orchestrator only: drop a finished agent's pending grant
 #   tools/device-lock.sh status                 "free" or the holder line (OVERDUE once past the
 #                                               granted time), plus pending grants; exit 0 if free
 #   tools/device-lock.sh status-all             status of every instance in tools/instances.tsv
@@ -71,6 +73,20 @@ free)
     fi
     rm -rf "$LOCK"
     echo "$inst free, restart ok ($who dev) $(date)" | tee "$STATUS"
+    ;;
+reclaim)
+    # Orchestrator only: release a lock whose holder isn't using it (idle, gone, or blocking a deploy). The holder
+    # retakes it with its grant when it really starts its check.
+    why=${2:-reclaimed by the orchestrator}
+    if [[ ! -d $LOCK ]]; then echo "already free"; exit 0; fi
+    prev=$(holder)
+    rm -rf "$LOCK"
+    echo "$inst free, reclaimed by the orchestrator ($why; was: $prev) $(date)" | tee "$STATUS"
+    ;;
+revoke)
+    # Orchestrator only: drop a holder's pending grant (a finished agent's leftover).
+    who=${2:?who}; name_ok "$who"
+    if [[ -f $GRANTS/$who ]]; then rm -f "$GRANTS/$who"; echo "$inst grant revoked for $who"; else echo "no grant for $who"; fi
     ;;
 status)
     now=$(date +%s)

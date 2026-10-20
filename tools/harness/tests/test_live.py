@@ -189,6 +189,8 @@ class IntegrationDenyTest(unittest.TestCase):
         # (command, cwd (relative to a temp root), denied)
         ("tools/harness/deploy.sh int-20261020-1", ".", True),
         ("tools/harness/ship.sh fix-x", ".", True),
+        ("LOCK_NAME=desktop tools/device-lock.sh reclaim idle", ".", True),
+        ("LOCK_NAME=desktop tools/device-lock.sh revoke sd28", ".", True),
         ("tools/harness/ship.sh fix-x --dry-run", ".", True),
         ("bash tools/harness/image.sh re/harness/qa/x int-20261020-1", ".", True),
         ("/home/alex/osrs-plugins-reverse/tools/harness/deploy.sh", ".", True),

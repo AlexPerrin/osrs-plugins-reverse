@@ -79,6 +79,10 @@ of docs/client-state.md (rewrite, don't append; "Next tasks" lives in the task s
 "why"` when you can't. The stop hook won't let you finish while the task is still in-progress. Your final message
 is one line: the task id and its new status. Report earlier only for new network traffic.
 
+Locks (user, 2026-10-20): take an instance lock only when you start using it (client or branch server up, check about
+to run) and free it right after; the orchestrator reclaims a lock held idle (`device-lock.sh reclaim`), and you retake
+it with your grant when you need it again.
+
 Ending (user, 2026-10-20): once you have handed over, blocked or failed the task, you are done. Stop every background
 job you started (TaskStop for background shells and Monitors), stop your dev container (`qa.sh dev-stop <name>`) and
 any branch-server containers you started, free every lock, then send your one-line final message and end. Start no new

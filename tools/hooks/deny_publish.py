@@ -40,7 +40,7 @@ RULES = [
      "GitHub writes"),
     (r"\btools/fork\.sh\b|(^|[\s/])fork\.sh\b", "fork pushes and PRs"),
     (r"\bopenrune\.sh\s+deploy\b|--env-file\s+switch\.env\s+up\b", "live server deploys and restarts"),
-    (r"\bdevice-lock\.sh\s+grant\b", "device grants"),
+    (r"\bdevice-lock\.sh\s+(grant|reclaim|revoke)\b", "device grants and lock reclaims"),
     (r"\bprogress\.py\b(?![^|;&]*--dry-run)", "progress writes (use --dry-run)"),
 ]
 PUSH = re.compile(RULES[0][0])

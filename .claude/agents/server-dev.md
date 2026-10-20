@@ -93,6 +93,10 @@ append; "Next tasks" lives in the task store now), commit (pathspec-only, see CL
 finish while the task is still in-progress or specced. Your final message is one line: the task id and its new
 status. A client task you unblock is in the task's `unblocks:`; the driver reopens it when yours is live.
 
+Locks (user, 2026-10-20): take an instance lock only when you start using it (client or branch server up, check about
+to run) and free it right after; the orchestrator reclaims a lock held idle (`device-lock.sh reclaim`), and you retake
+it with your grant when you need it again.
+
 Ending (user, 2026-10-20): once you have handed over, blocked or failed the task, you are done. Stop every background
 job you started (TaskStop for background shells and Monitors), stop your dev container (`qa.sh dev-stop <name>`) and
 any branch-server containers you started, free every lock, then send your one-line final message and end. Start no new

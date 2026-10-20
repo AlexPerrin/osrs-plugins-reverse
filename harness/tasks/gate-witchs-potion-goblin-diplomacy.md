@@ -15,7 +15,7 @@ evidence: /home/alex/osrs-plugins-reverse/re/evidence/gate-witchs-potion-goblin-
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:41Z'
-updated: '2026-10-20T04:11:50Z'
+updated: '2026-10-20T04:27:25Z'
 summary: 'Goblin Diplomacy upstream gate PASS at d77ac2b76 (record qa/goblin-diplomacy.md, fork docs 238550879). CI 39353936705 + Formatting 39353938933 green at the sha; fix_gameval_conflicts --check clean
   on main and branch; own boot 14.1s, no errors. Net diff = quest + #328 file deletions (40/40 strings moved verbatim) + synth 2392 name; GoblinCaveLadders untouched; merges clean with #373. Wiki re-check
   (osrs-mcp) and RSProx 3243/1694 at the source match. In game (fresh account, desktop) every claim of How it was tested reproduced. Previous FAIL items fixed. Recommended, not blocking: reword the re-dyeing
@@ -46,3 +46,4 @@ Goblin Diplomacy 4f5e59627 and Witch's Potion 4dc1ac9c7 (the -829 branches): int
 - 2026-10-20T04:11:50Z set pr=https://github.com/OpenRune/OpenRune-Server/pull/367
 - 2026-10-20T04:11:50Z User OK 2026-10-20: #367 fast-forwarded 5398c6087 -> d77ac2b76 (quest only), title 'feat: Goblin Diplomacy quest', description from fork docs 1c6ee11bf with #373 named for the ladder, comment https://github.com/OpenRune/OpenRune-Server/pull/367#issuecomment-6283189432. Still draft.
 - 2026-10-20T04:11:50Z done
+- 2026-10-20T04:27:25Z User OK 2026-10-20 ('If ready move from draft'): upstream CI green at d77ac2b76 (build & boot, spotless, gameval-conflicts); #367 marked ready for review.

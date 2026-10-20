@@ -10,8 +10,11 @@ description: "Test on the Android device (BlueStacks) against the OpenRune test 
    `adb shell setprop debug.osrsrl.devtools 1` and restart the app (docs/plugin-host.md).
 4. **Sign in.** Screenshot first; tap only "Sign in with Email / Username" (LOCAL_AUTH). After a force-stop the
    server may still hold the session: wait 30-60 s, "Try again" (958,668) only on that screen.
-5. **Test.** Drive it with `osrs-devtools` (load with ToolSearch). Prefer the data tools; confirm chat by
-   screenshot (`get_chat_history` under-reports repeats). Long-press = `input swipe x y x y 900`.
+5. **Test.** Drive it with `osrs-devtools` (load with ToolSearch) and read state from its data tools: menus
+   (`get_npc_menu`, `get_widget_at`), widgets (`get_widget`, `dump_interface`), vars (`get_var`), chat
+   (`get_chat_history`), NPCs and items (`list_*`). Raw `adb shell input` and screenshots are the fallback for what
+   the tools can't reach (the native long-press menu: `input swipe x y x y 900`) and for drawing claims; confirm
+   repeated chat lines by screenshot (`get_chat_history` under-reports repeats). `osrs-mcp` gives ids and game data.
 6. **Restore.** Remove what you added BY NAME, each in a plain `adb -s 127.0.0.1:5555 shell rm <path>` call of its
    own (no wildcards, loops or `bash -c`); clear the debug props; log in at 3219,3222.
 7. **Check.** `tools/device-restore-check.sh check /tmp/osrs-slot/<holder>` until every line is OK.

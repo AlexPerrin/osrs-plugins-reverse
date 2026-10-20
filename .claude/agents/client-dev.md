@@ -48,8 +48,9 @@ docs/offsets.md. History (docs/client-handoff.md) only when you need it.
   "<what>"` (desktop RuneLite: `LOCK_NAME=desktop`, tools/multiclient/desktop.sh, profile under C:\osrs-test only), no
   need to ask. An instance you weren't granted: `task.py log` what you need and go on with the rest. The
   `osrs-devtools` MCP drives the Android device and `osrs-devtools-desktop` the desktop client: each only
-  while you hold its lock. Prefer the data tools over screenshots, but confirm chat by screenshot
-  (`get_chat_history` under-reports repeats).
+  while you hold its lock. Game state comes from their data tools (widgets, menus, vars, chat, NPCs), not from
+  screenshots; a screenshot is evidence for drawing only, and for repeated chat lines (`get_chat_history`
+  under-reports repeats). Set the devtools up at the start of every slot (device-test skill, step 3).
 - `tools/device-restore-check.sh pre /tmp/osrs-slot/<your-name>` first; at the end of the slot (once, not per change)
   `check` on that dir until all OK, then `free <your-name>`. A stop hook won't let you finish while you hold a lock or the last check isn't all OK.
 - Remove test jars BY NAME in a plain `adb -s 127.0.0.1:5555 shell rm <dir>/hub-x.jar ...` call of their own: no

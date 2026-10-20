@@ -44,6 +44,7 @@ MAX = {"client": int(os.environ.get("HARNESS_MAX_CLIENT", "1")), "server": int(o
 PREFIX = {"client-dev": "cd", "client-qa": "cq", "server-dev": "sd", "server-qa": "sq"}
 DEFAULT_INSTANCES = {"client-dev": ["device"], "client-qa": ["device", "desktop"], "server-dev": ["desktop"], "server-qa": ["desktop"]}
 ENV = dict(os.environ, HARNESS_DIR=HARNESS)
+SHARED_IGNORED = ["re", "openrune/src", "openrune/rsprot"]
 
 
 def sh(*args, check=False, env=None, **kw):
@@ -176,6 +177,11 @@ def dispatch(tid, owner=None, instances=None, minutes=300, run=False):
         cwd = os.path.join(ROOT, "re/harness/wt", owner)
         if not os.path.isdir(cwd):
             sh("git", "-C", ROOT, "worktree", "add", "-q", "--detach", cwd, "master", check=True)
+        # Git-ignored inputs the build needs, shared with the main checkout: re/ (outputs, Ghidra, sources), the
+        # official APKs to repack, and the OpenRune tree (game key for the repack's modulus, osrs-mcp data).
+        for name in SHARED_IGNORED + [f for f in os.listdir(ROOT) if f.endswith(".apk")]:
+            if os.path.exists(os.path.join(ROOT, name)) and not os.path.lexists(os.path.join(cwd, name)):
+                os.symlink(os.path.join(ROOT, name), os.path.join(cwd, name))
     cmd = ["claude", "-p", "--agent", role, "--permission-mode", os.environ.get("HARNESS_PERMISSION_MODE", "auto"),
            "--output-format", "stream-json", "--verbose", "--no-session-persistence", brief]
     with open(log, "w") as f:

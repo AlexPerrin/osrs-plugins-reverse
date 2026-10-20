@@ -29,9 +29,10 @@ for native claims (offsets, patched bytes, the telemetry rewrites' match counts 
 the release notes; the attached APK carries no secrets or personal data.
 Stop at the first failure. The dev's runs are evidence; yours, at the fixed commit, count.
 
-Drive the device through the `osrs-devtools` MCP and the desktop client through
-`osrs-devtools-desktop`, each only under its lock; check expected game
-data (ids, item and NPC details) with `osrs-mcp` (docs/workflow.md "MCP servers"; load with ToolSearch).
+Drive the device through the `osrs-devtools` MCP and the desktop client through `osrs-devtools-desktop`, each
+only under its lock, and read state from their data tools (widgets, menus, vars, chat, NPCs), not screenshots;
+screenshots are for drawing claims. Check expected game data (ids, item and NPC details) with `osrs-mcp`
+(docs/workflow.md "MCP servers"; load with ToolSearch).
 
 ## Device slots
 `tools/device-lock.sh take <your-name> "<what>"` (or `LOCK_NAME=desktop`); the task's instances are granted to you,

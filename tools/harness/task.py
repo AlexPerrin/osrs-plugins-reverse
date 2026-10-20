@@ -365,6 +365,10 @@ def cmd_brief(a):
 Read the task file with `tools/harness/task.py show {meta['id']}`: it holds the task, its definition of done and the log.
 Instances granted to you (take them with tools/device-lock.sh, no need to ask): {inst}.
 Evidence goes in `{EVIDENCE}/{meta['id']}/` (durable; never a session scratchpad or a worktree's re/).
+Read game state through the MCP tools, not screenshots (user, 2026-10-19): `osrs-devtools` for the Android app
+(get_widget, get_npc_menu, list_npcs, get_var, get_chat_history, dump_interface; push devtools.jar + `setprop
+debug.osrsrl.devtools 1` + restart first, device-test skill), `osrs-devtools-desktop` for desktop RuneLite,
+`osrs-mcp` for ids, wiki and cache. A screenshot is evidence only for how something is drawn.
 When done: tick the definition of done in the task file, then
 `tools/harness/task.py handover {meta['id']} --branch <branch> --commit <sha> --evidence {EVIDENCE}/{meta['id']} --summary "..."`
 (add --pr/--ci for a server branch; --repo <clone> when the commit is in your fork clone).

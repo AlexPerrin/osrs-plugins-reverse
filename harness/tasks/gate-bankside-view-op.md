@@ -2,17 +2,18 @@
 id: gate-bankside-view-op
 track: server
 title: 'Upstream gate: bankside-view-op'
-status: ready
+status: in-progress
 prio: P2
 role: server-qa
-owner: null
-instance: []
+owner: sq28
+instance:
+- desktop
 branch: null
 commit: null
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:41Z'
-updated: '2026-10-20T01:42:41Z'
+updated: '2026-10-20T04:32:07Z'
 ---
 ## Task
 Finish the gate for bankside-view-op (QA stopped at wrap-up; records in openrune/upstream/qa/).
@@ -25,3 +26,4 @@ Finish the gate for bankside-view-op (QA stopped at wrap-up; records in openrune
 
 ## Log
 - 2026-10-20T01:42:41Z created (ready)
+- 2026-10-20T04:32:07Z claimed by sq28 (instances desktop)

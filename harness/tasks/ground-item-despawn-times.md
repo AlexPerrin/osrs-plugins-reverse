@@ -2,18 +2,19 @@
 id: ground-item-despawn-times
 track: server
 title: Ground item despawn times (OSRS Drop rules)
-status: ready
+status: in-progress
 prio: P1
 role: server-dev
-owner: null
-instance: []
+owner: sd28
+instance:
+- desktop
 branch: null
 commit: null
 blocked_by: []
 unblocks:
 - hub-ground-items-despawn
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T01:42:59Z'
+updated: '2026-10-20T04:32:06Z'
 ---
 ## Task
 Every player drop currently despawns after 200 ticks (constants.lootdrop_duration). Match OSRS Wiki 'Drop': tradeables become public after 60 s and despawn after a further 120 s (300 ticks total); untradeables 180 s; clue scrolls 61 min. Repro: ::item 10180 1, drop, gone 115 s later. Unblocks client: Clue Juggling Timers, Ground Items despawn (gen 44, scratchpad/g44/).
@@ -29,3 +30,4 @@ Every player drop currently despawns after 200 ticks (constants.lootdrop_duratio
 ## Log
 - 2026-10-20T01:42:40Z created (ready)
 - 2026-10-20T01:42:59Z unblocks hub-ground-items-despawn
+- 2026-10-20T04:32:06Z claimed by sd28 (instances desktop)

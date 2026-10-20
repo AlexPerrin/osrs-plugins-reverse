@@ -2,18 +2,19 @@
 id: clue-check-steps-tier
 track: server
 title: Clue scroll Check steps shows the tier
-status: ready
+status: in-progress
 prio: P2
 role: server-dev
-owner: null
-instance: []
+owner: sd29
+instance:
+- desktop
 branch: null
 commit: null
 blocked_by: []
 unblocks:
 - hub-clue-steps-tier
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T01:42:58Z'
+updated: '2026-10-20T04:32:07Z'
 ---
 ## Task
 Clue scroll Check should say 'You have completed N steps on this <tier> clue scroll.'; local/treasure-trails checkSteps lacks the tier. Unblocks client: Clue Steps hub plugin (gen 44). Gate: internal.
@@ -28,3 +29,4 @@ Clue scroll Check should say 'You have completed N steps on this <tier> clue scr
 ## Log
 - 2026-10-20T01:42:40Z created (ready)
 - 2026-10-20T01:42:58Z unblocks hub-clue-steps-tier
+- 2026-10-20T04:32:07Z claimed by sd29 (instances desktop)

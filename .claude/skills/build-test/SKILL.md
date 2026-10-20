@@ -60,7 +60,8 @@ build cache, no `clean`; test JVMs capped at `-Xmx1536m`). Without tasks it comp
 `upstream/main`), plus `buildCache` when packs, raw-cache or gamevals changed; a clone without `.data/cache`
 gets the cache steps first (the daemon is stopped for them: the cache tool needs 2.6 GB). Logs in
 `<clone>.logs/dev/`. `qa.sh dev-stop <owner>` when you finish (it also stops after 45 idle minutes);
-`qa.sh dev-status`. Only the QA gate's run at the fixed commit counts.
+`qa.sh dev-status`. Dev builds are evidence only; the dev's hand-over evidence is CI green at the commit (or a
+`qa.sh gate` where CI doesn't apply), and for the upstream gate only server-qa's run at the fixed commit counts.
 
 ## Client host
 `host/build.sh`, `ninja -C re/build`, then `tools/repack.sh` (7 `telemetry:` lines).

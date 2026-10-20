@@ -12,7 +12,7 @@ one QA companion. The orchestrator (the main session) sits above both: it routes
 | Trigger | The plugin backlog | A client blocker, or the feature backlog |
 | Analyse | The client (Ghidra), the server when needed, ids and data (`osrs-mcp`) | The accuracy baseline (`osrs-mcp`: wiki, cache, gamevals; Mod posts); the client's side of the protocol (Ghidra) |
 | Verify | BlueStacks against the test server; A/B against desktop RuneLite | Unit and integration tests, boot; desktop RuneLite against the branch's own server |
-| Gates | Merge gate, release gate | Internal gate, upstream gate |
+| Gates | Merge gate, release gate | Dev's own check (no QA) for the fork, upstream gate |
 | Ships to | `master`, then a tagged release (semver `vX.Y.Z`, pre-releases `vX.Y.Z-dev`) | `integration` and the live test server, then an upstream PR |
 | Agents | `client-dev` + `client-qa` | `server-dev` + `server-qa` |
 | State | `docs/client-state.md`, records in `qa/` | `STATE.md`, `accuracy/`, `qa/` on the fork's `docs` branch |
@@ -51,8 +51,8 @@ patches present in the build (the `repack.sh` + `patch_telemetry.py` log); nativ
   upstream (see "Changes for upstream"). Existing `fix/NN-<slug>` branches keep their names until merged.
 - `local/*`: our test-only pieces that never go upstream (Android protocol support, LOCAL_AUTH, test commands,
   world settings, deploy files). Small and separate by topic.
-- `integration` (the fork's default branch): `main` + every `content/*` and `fix/*` that passed the internal gate
-  and isn't merged upstream yet + every `local/*`, merged in a recorded order (`integration.txt`). Rebuilt by
+- `integration` (the fork's default branch): `main` + every `content/*` and `fix/*` handed over with the dev's
+  check and not merged upstream yet + every `local/*`, merged in a recorded order (`integration.txt`). Rebuilt by
   `scripts/build-integration.sh`, never hand-edited. The live server builds from a pinned `integration` commit.
 - `docs`: STATE.md, accuracy specs, QA records, PR texts, UPSTREAM-PRS.md.
 
@@ -102,13 +102,16 @@ Follow upstream's procedure (`tools/scripts/fix_gameval_conflicts.py`, and its C
 3. **Build** on `content/<slug>` or `fix/<slug>` off `main`, in the server dev's own clone, with tests for each
    rule and ids assigned as above.
 4. **Fork PR.** The orchestrator pushes the branch and opens the PR on the fork (`tools/fork.sh`, no
-   confirmation). This comes before QA, so QA has a fixed commit to check.
-5. **Internal gate** (`server-qa`): is it safe and accurate enough for our live server? Uncached build,
-   `spotlessCheck`, `test`, `integration`, boot on upstream `main` + the branch; behaviour against the accuracy
-   spec; in-game on desktop RuneLite where a plugin renders something. On PASS the orchestrator adds the branch to
-   `integration` and deploys. A client blocker is unblocked here.
-6. **Upstream gate** (`server-qa`): is it ready for upstream? The internal gate at the same commit, plus one
-   change only (nothing unrelated, no overlap with an upstream PR, none of our own docs: STATE.md, specs, QA
+   confirmation), so CI and QA have a fixed commit.
+5. **Dev's check** (`server-dev`, no QA step; user, 2026-10-19: "keep the gates minimal for developers"): the dev
+   owns accuracy during feature work: the spec with `accuracy-check` (wiki/cache baseline, including its RSProx
+   comparison), behaviour checked against it (in-game on desktop RuneLite where a plugin renders something), and
+   green build evidence at the commit (the fork's GitHub Actions CI; `qa.sh dev`/`qa.sh gate` where CI doesn't
+   apply). On hand-over with that evidence the orchestrator adds the branch to `integration` and deploys. A client
+   blocker is unblocked here.
+6. **Upstream gate** (`server-qa`, the track's only QA step): is it ready for upstream? An independent re-check of
+   accuracy (`accuracy-check`, including the RSProx comparison) and in-game behaviour, CI green at the exact
+   commit, plus one change only (nothing unrelated, no overlap with an upstream PR, none of our own docs: STATE.md, specs, QA
    records and PR texts live only on the fork's `docs` branch and never go upstream), based on current `main`,
    `fix_gameval_conflicts.py --check` clean, upstream's CONTRIBUTING (commit style, PR text with problem,
    change, tests, data sources, caveats, release note and checklist), every claim in the PR text true of the
@@ -117,8 +120,8 @@ Follow upstream's procedure (`tools/scripts/fix_gameval_conflicts.py`, and its C
    the user approves that item in discussion.
 7. **Upstream merge.** `fork.sh sync`, drop the branch from `integration.txt`, rebuild `integration`, deploy.
 
-A new commit voids both gates. The branch stays in `integration` at the commit that passed the internal gate
-until the new one passes it. Pushes to a branch that already has an open upstream PR change that PR, so they ask
+A new commit voids the upstream gate and needs the dev's evidence again. The branch stays in `integration` at
+the last commit handed over with that evidence until the new one is. Pushes to a branch that already has an open upstream PR change that PR, so they ask
 the user.
 
 ### Live server
@@ -133,8 +136,8 @@ A blocker is a task, not a message chain. When the client needs something from t
    source, and evidence (a Ghidra finding, an A/B run, a `server-probe` capture).
 2. The orchestrator files it as a server task that blocks the client task, and pauses or re-scopes the client
    task.
-3. The server task ships through the internal gate to the live server. The orchestrator then unblocks the client
-   task. The upstream gate follows on its own schedule; the client never waits for it.
+3. The server task ships on the dev's checked hand-over (spec, accuracy check, green CI) to the live server.
+   The orchestrator then unblocks the client task. The upstream gate follows on its own schedule; the client never waits for it.
 
 The same applies the other way (a server task that needs a client change or a device check).
 
@@ -161,8 +164,8 @@ The same applies the other way (a server task that needs a client change or a de
 ## Shared skills
 
 Tools belong to no role. Each is a skill any agent calls when it needs it: a dev while building, a companion
-against a fixed commit for its gate. Only the companion's run counts for a gate; a dev's run is evidence it
-hands over.
+against a fixed commit for its gate. Only the companion's run counts for a QA gate; a dev's run is evidence it
+hands over (on the server track, the dev's check that puts a branch into `integration`).
 
 | Skill | What it does | Resource | Typical callers |
 |---|---|---|---|
@@ -199,20 +202,20 @@ Every gate is defined before its work starts, and recorded against an exact comm
 |---|---|---|---|---|
 | Merge | client | `client-qa` | Device regression for what changed, A/B where it draws, Network QA if network-relevant, native claims | merge to `master` |
 | Release | client | `client-qa` | Full client QA on `master`, Network QA, privacy patches in the build | tag; GitHub release on the user's OK |
-| Internal | server | `server-qa` | `build-test` (the fork's GitHub Actions CI at the commit; local `qa.sh gate` for `integration`), `accuracy-check` against the spec (including its RSProx comparison), in-game where it renders | into `integration`, deploy |
-| Upstream | server | `server-qa` | Internal at the same commit + one change only, no upstream overlap, on current `main` + `fix_gameval_conflicts.py --check` + CONTRIBUTING + `pr-text-review` + caveats complete | upstream queue (fork PR); upstream only on the user's approval per item |
+| Dev's check | server | `server-dev` (no QA) | Spec with `accuracy-check` (including its RSProx comparison), behaviour against it, in-game where it renders, `build-test` evidence (the fork's GitHub Actions CI at the commit; `qa.sh dev`/`qa.sh gate` where CI doesn't apply; local `qa.sh gate` for `integration`) | into `integration`, deploy |
+| Upstream | server | `server-qa` | Independent `accuracy-check` (including RSProx) and in-game re-check, CI at the exact commit, one change only, no upstream overlap, on current `main`, `fix_gameval_conflicts.py --check`, CONTRIBUTING, AGENTS.md, PR template, `pr-text-review`, caveats complete | upstream queue (fork PR); upstream only on the user's approval per item |
 
 Records start with these lines exactly, because the hooks parse them:
 ```
 # QA: <branch or version>
 - Branch: `<branch>`
 - Commit: `<full sha>`
-## Internal gate: **PASS**     (server; or **FAIL**)
 ## Upstream gate: **PASS**     (server; or **FAIL**, or **PENDING** until it runs)
 ## Verdict: **PASS**           (client merge or release; or **FAIL**)
 ```
-A FAIL says precisely what must change. Older server records with only `## Verdict:` were full QA runs and count
-for both server gates.
+A FAIL says precisely what must change. A server record may also carry `## Internal gate: N/A (dev-checked)`, or
+omit that line; older records with an internal gate line keep it, and the hook reads only the upstream line. Older
+server records with only `## Verdict:` were full QA runs and count as the upstream gate.
 
 Each user rule gets an observable check where possible, not only an instruction: Network QA for "never contact
 Jagex", netcheck/R1 for plugin networking, the telemetry patch's one-match assertions, buildq for build
@@ -226,8 +229,8 @@ concurrency, and the hooks below.
 - **Gotchas that keep recurring become checks or tools, not prose** (the device restore check, test jars removed
   by name only).
 - **Blockers are written in both STATE docs' "Next tasks"**: the client task says `blocked by server: <slug>`, the
-  server task says `unblocks client: <task>`. The orchestrator clears both when the server change passes the
-  internal gate and is live.
+  server task says `unblocks client: <task>`. The orchestrator clears both when the server change is handed over
+  with the dev's check and is live.
 - **The orchestrator keeps its context small** by delegating anything beyond a couple of quick commands to a subagent
   and relaying verdicts, not logs. It keeps docs/orchestrator.md (in-flight agents, pending decisions, locks) current
   at milestones. It restarts only to avoid repeated compaction (not on a schedule): then a fresh session takes over
@@ -248,7 +251,7 @@ flowchart TB
   end
 
   subgraph server["Server track · fork clones re/agents/NAME/or"]
-    sdev["server-dev<br/>spec · build · tests"] -- "fork PR @ commit" --> sqa["server-qa<br/>internal / upstream gate"]
+    sdev["server-dev<br/>spec · accuracy · build · CI"] -- "fork PR @ commit" --> sqa["server-qa<br/>upstream gate"]
     sqa -- "FAIL" --> sdev
   end
 
@@ -257,7 +260,7 @@ flowchart TB
   cdev -. "blocker" .-> orch -. "server task" .-> sdev
 
   orch -- "merge gate" --> master[(master)] -- "release gate" --> release[(vX.Y.Z)]
-  orch -- "internal gate" --> integ[(integration → live server)]
+  orch -- "dev's check" --> integ[(integration → live server)]
   orch -- "upstream gate" --> upstream[(upstream PR)]
 
   skills[["shared skills: reverse · device-test · ab-test · server-probe<br/>build-test · network-qa · accuracy-check · pr-text-review"]]
@@ -280,8 +283,8 @@ flowchart TB
 | Permissions | `.claude/settings.json` | Every GitHub write and push asks the user |
 
 How it handles the bottlenecks:
-- **The client waiting on the server.** Blockers ship through the internal gate to the live server; the
-  upstream gate's paperwork happens afterwards and never holds the client.
+- **The client waiting on the server.** Blockers ship on the dev's checked hand-over to the live server; the
+  upstream gate happens afterwards and never holds the client.
 - **Waiting for review.** The companion takes over shipping, so a dev starts its next task on hand-over: feature
   N is in QA while N+1 is being built.
 - **Rework.** The spec and the gate are fixed before coding. A FAIL goes back to the same dev with exactly what
@@ -294,9 +297,8 @@ How it handles the bottlenecks:
   spawn is one task with a turn cap. The orchestrator relays decisions, not reports, and batches pushes and
   grants. Builds are waited on with a background command that notifies, not by polling.
 
-Not built yet: an integration gate (`scripts/build-integration.sh` refusing a `content/*` or `fix/*` branch
-without an internal PASS at its commit). It waits until the cutover's branches have QA records; today almost
-none do, so it would stop the cutover.
+Not built yet: an integration check (`scripts/build-integration.sh` refusing a `content/*` or `fix/*` branch
+without green CI at its commit).
 
 Why: up to gen 40, a single orchestrator session ran for about 2.7 days through 4 compactions, spawning 79
 general-purpose agents with briefs of about 3,700 characters, and each dev generation ran 2,500-3,900 turns before

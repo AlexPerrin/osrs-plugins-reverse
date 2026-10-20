@@ -1,6 +1,6 @@
 ---
 name: accuracy-check
-description: "Write or check a server feature's accuracy spec against OSRS sources (wiki, cache, Mod posts), and check behaviour against it. Use before coding a server feature, and in server QA."
+description: "Write or check a server feature's accuracy spec against OSRS sources (wiki, cache, Mod posts), and check behaviour against it. Use before coding a server feature, before handing it over (the dev's check), and in the upstream gate."
 ---
 # Accuracy check
 
@@ -43,11 +43,11 @@ The spec is `accuracy/<slug>.md` on the fork's `docs` branch (QA.md section 2). 
 5. The tests, one per rule (only where AGENTS.md wants them).
 6. The PR split and `Depends:` (docs/workflow.md "Changes for upstream").
 
-## Checking (server-qa)
+## Checking (server-dev before hand-over; server-qa independently in the upstream gate)
 1. Re-read each source yourself; don't rely on the spec's quotes.
 2. **Compare against the RSProx recordings** listed in the spec or `references/rsprox.md` (transcripts under
    `re/ref/rsprox/txt/`, notes under `re/ref/rsprox/notes/`): each recorded detail that the branch implements must
-   match, or be fixed, or be a caveat. Record the comparison in the QA record (recording ids, revision, which rules
+   match, or be fixed, or be a caveat. Record the comparison in the hand-over or the QA record (recording ids, revision, which rules
    matched or diverged; no player names or chat). Tick the PR template's rsprox item only when this was done.
 3. Check the branch's behaviour (tests, in-game) against each rule.
 4. Every gameplay-visible divergence is either fixed or listed in the PR's Caveats.

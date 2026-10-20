@@ -16,7 +16,8 @@ History (docs/client-handoff.md, docs/server-handoff.md) is read only when neede
   tags, deploys, device grants, progress files and decisions.
 - One dev/QA pair per track, spawned from .claude/agents/ with one task each and its definition of done:
   `client-dev` + `client-qa` in this repo (merge and release gates); `server-dev` + `server-qa` on the fork, each
-  in its own clone `re/agents/<name>/or` (internal gate → live server, then upstream gate → upstream PR).
+  in its own clone `re/agents/<name>/or` (dev's own check: accuracy spec + green CI → integration and live server;
+  server-qa runs only the upstream gate → upstream PR).
 - Tools are shared skills any role calls (docs/workflow.md "Shared skills"); only a companion's run at a fixed
   commit counts for a gate. Hooks enforce the role limits and the gates.
 - MCP servers (docs/workflow.md "MCP servers"): `osrs-mcp` (OpenRune's: OSRS Wiki, gamevals, decoded cache;

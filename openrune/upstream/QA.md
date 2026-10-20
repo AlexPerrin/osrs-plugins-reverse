@@ -1,10 +1,13 @@
 # QA gate for OpenRune-Server PRs
 
-No PR is opened, on our fork or upstream, and no draft is marked ready, until its branch passes this
-gate. The result is recorded in `qa/<slug>.md`, and the orchestrator checks that record before it
-runs `tools/fork.sh pr-create` or `gh pr create`.
+This is the upstream gate, the server track's only QA step (user, 2026-10-19). No upstream PR is
+opened, and no upstream draft is marked ready, until its branch passes it. The result is recorded in
+`qa/<slug>.md`, and the orchestrator checks that record before it runs `gh pr create` upstream. Fork PRs,
+`integration` and the live server don't wait for it: they take the dev's own check (spec and
+`accuracy-check` including RSProx, green CI at the commit; docs/workflow.md "Server track").
 
-QA is done by the QA agent, not by the agent that wrote the branch.
+QA is done by the QA agent, not by the agent that wrote the branch: an independent re-check of the
+dev's accuracy and in-game claims.
 
 ## 1. Build and tests (exact branch commit)
 
@@ -113,11 +116,12 @@ branch commit, with logs beside them in `<clone>.logs/`.
 
 ## Record (`qa/<slug>.md`)
 
-The record holds:
+The record starts with the header lines in docs/workflow.md "Gates" (`## Upstream gate: **PASS**`
+is what the publish hook reads; `## Internal gate:` is optional, `N/A (dev-checked)`), and holds:
 - the branch and commit;
 - the date;
 - the result of each section above, as pass, fail or n/a, with a reason;
 - the evidence;
 - the verdict: **PASS**, or **FAIL** with what has to change.
 
-A new commit on the branch voids the record and QA must be redone.
+A new commit on the branch voids the record and QA must be redone before it goes upstream.

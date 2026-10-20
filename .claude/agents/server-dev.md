@@ -27,7 +27,10 @@ Read first: `docs` STATE.md, then docs/workflow.md "Server track", "Blockers bet
 "Gates". History (docs/server-handoff.md, docs/openrune-port.md) only when you need it.
 
 ## Your loop
-1. **Spec**: `accuracy/<slug>.md` on `docs` with `accuracy-check`. First check upstream for the same content
+You own accuracy and the build for our fork and live server: no QA runs before `integration` (user, 2026-10-19).
+QA (`server-qa`) runs only the upstream gate.
+
+1. **Spec**: `accuracy/<slug>.md` on `docs` with `accuracy-check`, including its RSProx comparison. First check upstream for the same content
    (`gh pr list -R OpenRune/OpenRune-Server --search <topic>`, issues, recent `main`); if it's there, say so and
    build on it or stop. Then each mechanic's source (wiki section, cache, Mod post), planned behaviour, caveats,
    guesses, tests, and the PR split: one quest, feature or fix per PR, a shared base as its own change, `Depends:`
@@ -41,14 +44,17 @@ Read first: `docs` STATE.md, then docs/workflow.md "Server track", "Blockers bet
    test-only pieces. Anything unrelated you fix on the way goes on its own `fix/<slug>`. New gamevals: write
    `name = -1` (names prefixed with the feature), run `python3 tools/scripts/fix_gameval_conflicts.py`, commit what
    it assigns (docs/workflow.md "Gameval ids"). Commit subjects feat:/fix:. Tests for each rule.
-4. **Verify** with `build-test`: dev evidence with `qa.sh dev <name> <clone>` (your warm container; `qa.sh dev-stop
-   <name>` when done), a full gate with `GATE_VOL=<name>-gate-gradle GATE_OWNER=<name> qa.sh gate <clone>`; and
-   `ab-test` on desktop RuneLite against your branch server where it renders,
-   driven with the `osrs-devtools-desktop` MCP under the desktop lock.
+4. **Verify** with `build-test`: dev builds with `qa.sh dev <name> <clone>` (your warm container; `qa.sh dev-stop
+   <name>` when done); behaviour against the spec with `accuracy-check`; and `ab-test` on desktop RuneLite against
+   your branch server where it renders, driven with the `osrs-devtools-desktop` MCP under the desktop lock. The
+   build evidence you hand over is the fork's GitHub Actions CI green at the commit (`build-test` "CI first"; once
+   "main" has pushed the branch), or `GATE_VOL=<name>-gate-gradle GATE_OWNER=<name> qa.sh gate <clone>` where CI
+   doesn't apply.
 5. **PR text** on `docs` per upstream's CONTRIBUTING (problem, change, tests, data sources, caveats, release note,
    checklist, and `Depends:` if any), ending with the Claude Code line; check it with `pr-text-review`.
-6. **Hand over** your clone path, branch, commit and text paths to "main". It pushes, opens the fork PR and gives
-   `server-qa` the internal gate, then the upstream gate. Start your next task; QA fixes come back to you.
+6. **Hand over** your clone path, branch, commit, text paths and evidence (spec and accuracy check, CI run URL at
+   the commit) to "main". It pushes, opens the fork PR, adds the branch to `integration` and deploys; `server-qa`
+   runs only the upstream gate, later. Start your next task; QA fixes come back to you.
 
 ## Limits
 - Never touch the Android device. Desktop RuneLite: `LOCK_NAME=desktop tools/device-lock.sh take server "<what>"`
@@ -63,4 +69,4 @@ Read first: `docs` STATE.md, then docs/workflow.md "Server track", "Blockers bet
 ## Finishing
 Done means the definition of done is met. Update the affected lines of STATE.md on `docs` (rewrite, don't
 append), commit (pathspec-only, see CLAUDE.md), and send one final report to "main": branch, commit, text paths,
-`build-test` results, what is left. Report earlier only for a spec review, a decision, or a blocker.
+`build-test` evidence (CI run URL and sha), the accuracy check's result, what is left. Report earlier only for a spec review, a decision, or a blocker.

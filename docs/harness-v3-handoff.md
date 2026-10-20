@@ -317,14 +317,26 @@ user's "We will have to wait for v3".
   train's commit).
 - Unblocked by this deploy (ready for v3): hub-clue-steps-tier, hub-ground-items-despawn (client checks on the device).
 
-### Running at hand-off (they finish into the task store)
-| Agent | Task | Holds | Next for the orchestrator |
-|---|---|---|---|
-| sq29 | gate-acc-cannon: upstream gate of acc/cannon bc243d141 for #354 | desktop until ~06:55 UTC | on PASS: fold acc/cannon into content/cannon (merge commit), update #354's description, ready (user's OK given; announce each upstream step) |
-| sq30 | gate-acc-genie: **FAIL** at 3ccb86bd8 (2:45 AM EDT; record fork docs 970ba88ec) | (freed) | two code fixes filed as fix-genie-gate-findings (P1): leave on the next call tick after Talk-to (RSProx 1718), lamp XP equal to the message; then re-gate; #355 stays draft |
+### Deploy procedure (used for train int-20261020-1; to be scripted in pipeline phases 2-3)
+Gate the train's integration commit (`QA_ROOT=re/harness/qa openrune/upstream/qa/qa.sh clone integration <sha>`, then
+`qa.sh gate <clone>`); stage the image context without key files and apply the cache fixes (openrune/scripts:
+add_varcs, fix_long_varps, fix_reftable, check_cache on data/cache/LIVE); build from the Dockerfile in
+re/evidence/int-20261020-1/Dockerfile-e27ff4d (key files and game.yml `COPY --from` the live image); compare key
+hashes; boot-check privately; then, with device, desktop and desktop2 held:
+```
+docker tag osrs-openrune:241 osrs-openrune:rollback-<live sha7>
+docker tag osrs-openrune:integration-<sha7> osrs-openrune:241
+(cd openrune && docker compose --env-file switch.env up -d --no-deps openrune)   # never --build
+```
+Wait for "Server ready in", free the locks, log "Live <date> ..." on the included tasks, `task.py migrate-live`.
 
-Note for both: they gate acc/* commits the live server doesn't run (integration carries fin/cannon, fin/genie):
-section 7a. v3 should converge them (7c item 1) when folding into the PR branches.
+### Gates finished at hand-off
+| Gate | Verdict | Next |
+|---|---|---|
+| gate-acc-cannon (sq29), acc/cannon bc243d141 for #354 | **PASS** (fork docs ec733bc60). Break and repair seen in game; decay, Nulodion's replacement, part-built decay and pick-up of a broken cannon covered by the integration tests only (the PR text says so). Break came at 23 min 19 s real time = the code's 2500 ticks on a host running 0.559 s/tick. | #354: fold acc/cannon into content/cannon as a merge commit, update the description from fork docs pr-texts/cannon.upstream.body (4c75a5850), mark ready (user's OK given). Done 2:55 AM EDT: content/cannon -> 9c08b42ca (merge commit, tree = acc/cannon), description and comment posted; ready waits for upstream CI at 9c08b42ca (if not marked ready at hand-off, run `gh pr ready 354 -R OpenRune/OpenRune-Server` once CI is green). |
+| gate-acc-genie (sq30), acc/genie 3ccb86bd8 for #355 | **FAIL** (fork docs 970ba88ec): leave on the next call tick after Talk-to (RSProx 1718); lamp XP must equal the message | fix-genie-gate-findings (P1), then re-gate; #355 stays draft |
+
+Both gated acc/* commits the live server doesn't run (integration carries fin/cannon, fin/genie): section 7a.
 
 ### Upstream (OpenRune/OpenRune-Server)
 Open for review: #362, #366, #367, #370 (in review), #372, #373. Drafts: #354, #355 (gates above), #368 (Witch's

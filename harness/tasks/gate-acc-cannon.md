@@ -10,12 +10,13 @@ instance:
 - desktop
 branch: acc/cannon
 commit: bc243d141fc27d5128d29d8266cf51e89a4f6c08
+pr: https://github.com/OpenRune/OpenRune-Server/pull/354
 evidence: /home/alex/osrs-plugins-reverse/re/evidence/gate-acc-cannon
 blocked_by: []
 unblocks:
 - cleanup-scratchpad-qa-acc
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T06:46:57Z'
+updated: '2026-10-20T23:10:13Z'
 summary: 'PASS at bc243d141: PR text fixed (fork docs 4c75a5850), CI 39350604565/39350606847 green at the sha, gameval check clean, wiki re-read. In game on desktop vs own branch server: 25-min break (msg,
   loc 14916, firing stops), owner-offline break, Repair (msg, fires again). Decay/Nulodion replacement not seen in game (user: finish up), integration-covered as the PR text says. Record: fork docs ec733bc60
   qa/gate-acc-cannon.md. Left: the #354 merge-commit update after the user''s OK (orchestrator).'
@@ -44,3 +45,5 @@ acc/cannon bc243d141: dev run first (sd23's report: worktree wt/acc-cannon to bc
 - 2026-10-20T05:36:58Z Orchestrator: desktop2 granted to sq29 (desktop held by sd28 past its time).
 - 2026-10-20T06:46:53Z handover acc/cannon@bc243d141: PASS at bc243d141: PR text fixed (fork docs 4c75a5850), CI 39350604565/39350606847 green at the sha, gameval check clean, wiki re-read. In game on desktop vs own branch server: 25-min break (msg, loc 14916, firing stops), owner-offline break, Repair (msg, fires again). Decay/Nulodion replacement not seen in game (user: finish up), integration-covered as the PR text says. Record: fork docs ec733bc60 qa/gate-acc-cannon.md. Left: the #354 merge-commit update after the user's OK (orchestrator).
 - 2026-10-20T06:46:57Z set status=gated
+- 2026-10-20T23:10:13Z set pr=https://github.com/OpenRune/OpenRune-Server/pull/354
+- 2026-10-20T23:10:13Z User's OK (2026-10-19/20: leave draft after PASS): #354 content/cannon fast-forwarded 7b62ce683 -> 9c08b42ca (merge commit, tree = acc/cannon bc243d141, no force), description from fork docs pr-texts/cannon.upstream.body (4c75a5850; via gh api: gh 2.45 can't edit), comment https://github.com/OpenRune/OpenRune-Server/pull/354#issuecomment-6303832955. Ready waits for upstream CI at 9c08b42ca.

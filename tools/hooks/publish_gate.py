@@ -77,8 +77,12 @@ def main():
     if not re.search(r"\bgh\s+pr\s+create\b", cmd):
         return
     head = re.search(r"--head[=\s]+[\"']?(?:AlexPerrin:)?([A-Za-z0-9._/-]+)", cmd)
-    if not ("OpenRune/" in cmd or (head and "AlexPerrin:" in cmd)):
-        return  # not an upstream PR
+    repo = re.search(r"(?:-R|--repo)[=\s]+[\"']?(?:https?://github\.com/)?([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)", cmd)
+    on_fork = bool(repo) and repo.group(1).lower() == "alexperrin/openrune-server"
+    upstream = (re.search(r"(?<![A-Za-z0-9_-])OpenRune/OpenRune|github\.com[:/]+OpenRune/", cmd, re.I)
+                or (not on_fork and head and re.search(r"--head[=\s]+[\"']?AlexPerrin:", cmd)))
+    if on_fork and not re.search(r"(?<![A-Za-z0-9_-])OpenRune/OpenRune", cmd, re.I) or not upstream:
+        return  # a fork PR (fork.sh, -R AlexPerrin/OpenRune-Server) or not an upstream PR
     if not head:
         deny("upstream `gh pr create` needs an explicit --head AlexPerrin:<branch> so its QA record can be checked")
     branch = head.group(1)
@@ -102,4 +106,5 @@ def main():
     deny(f"{branch} is at {sha[:9]}, but no record has an upstream gate PASS for it ({'; '.join(found)})")
 
 
-main()
+if __name__ == "__main__":
+    main()

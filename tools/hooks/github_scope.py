@@ -14,9 +14,11 @@ Deny rules and the other gate hooks (publish_gate.py, deny_publish.py) still app
 import json
 import os
 import re
-import shlex
 import subprocess
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import shellparse as sp  # noqa: E402
 
 ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OURS = {"alexperrin/osrs-plugins-reverse", "alexperrin/openrune-server"}
@@ -59,15 +61,12 @@ def has_upstream_pr(branch):
 
 def classify(seg, cwd):
     """('ours'|'upstream'|'unknown'|'read'|None, detail): None = not a GitHub write and not a known read."""
-    try:
-        w = shlex.split(seg)
-    except ValueError:
+    w = sp.words(seg)
+    if w is None:
         # A fragment of a quoted string or script split at a | or ;: no opinion unless it names upstream.
         if re.search(r"OpenRune/OpenRune", seg) and re.search(r"\bgh\b|\bpush\b", seg):
             return "unknown", "unparsable command naming upstream"
         return None, ""
-    while w and re.match(r"^[A-Z_][A-Z0-9_]*=", w[0]):
-        w = w[1:]
     if not w:
         return "read", ""
     cmd = os.path.basename(w[0])
@@ -125,66 +124,27 @@ def classify(seg, cwd):
             return "upstream", repo
         return "unknown", f"target repo {repo or 'not known'}"
     if cmd == "git":
-        args, path = w[1:], cwd
-        while args and args[0] in ("-C", "-c"):
-            if args[0] == "-C" and len(args) > 1:
-                path = os.path.join(cwd, args[1])
-            args = args[2:]
-        if not args:
-            return None, ""
-        if args[0] in GIT_READ:
-            return "read", ""
-        if args[0] != "push":
-            return None, ""
-        rest = [a for a in args[1:] if not a.startswith("-")]
-        remote = rest[0] if rest else "origin"
-        if "/" in remote or ":" in remote:
-            url = remote
-        else:
-            r = subprocess.run(["git", "-C", path, "remote", "get-url", "--push", remote], capture_output=True, text=True)
-            url = r.stdout.strip() if r.returncode == 0 else ""
+        p = sp.parse_push(w, cwd)
+        if p is None:
+            args = w[1:]
+            while args and args[0] in ("-C", "-c"):
+                args = args[2:]
+            return ("read", "") if args and args[0] in GIT_READ else (None, "")
+        if not p["remote"]:
+            return "unknown", "bare git push (no remote named)"
+        url = sp.push_url(p)
         repo = norm(url) if url else None
         if repo == FORK.lower():
-            for spec in rest[1:]:
-                dest = spec.split(":")[-1].removeprefix("+").removeprefix("refs/heads/")
+            for spec in p["refspecs"]:
+                dest = sp.dest(spec)
                 if dest and not dest.startswith("refs/tags/") and has_upstream_pr(dest):
                     return "upstream", f"fork branch {dest} has an open upstream PR"
         if repo in OURS:
             return "ours", repo
         if repo and repo.startswith("openrune/"):
             return "upstream", repo
-        return "unknown", f"push to {url or remote}"
+        return "unknown", f"push to {url or p['remote']}"
     return None, ""
-
-
-def segments(command):
-    """Split at the shell's command separators (; & && || | newline) outside quotes."""
-    segs, cur, i, quote = [], [], 0, None
-    while i < len(command):
-        c = command[i]
-        if quote:
-            cur.append(c)
-            if c == "\\" and quote == '"' and i + 1 < len(command):
-                cur.append(command[i + 1])
-                i += 1
-            elif c == quote:
-                quote = None
-        elif c in "'\"":
-            quote = c
-            cur.append(c)
-        elif c == "\\" and i + 1 < len(command):
-            cur.append(command[i:i + 2])
-            i += 1
-        elif c in ";&|\n":
-            segs.append("".join(cur))
-            cur = []
-            if command[i:i + 2] in ("&&", "||"):
-                i += 1
-        else:
-            cur.append(c)
-        i += 1
-    segs.append("".join(cur))
-    return segs
 
 
 def main():
@@ -196,15 +156,12 @@ def main():
         return
     cwd = data.get("cwd") or ROOT
     # Heredoc bodies are data (scripts, file contents), not commands: drop them before splitting.
-    command = re.sub(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?\n\s*\2\s*(?=\n|$)", r"\3", command, flags=re.S)
+    command = sp.strip_heredocs(command)
     kinds, asks = [], []
-    for seg in segments(command):
-        seg = seg.strip()
-        if not seg:
-            continue
-        m = re.match(r"cd\s+(\S+)$", seg)
-        if m:
-            cwd = os.path.join(cwd, os.path.expanduser(m.group(1)))
+    for seg in sp.segments(command):
+        nd = sp.cd_target(sp.words(seg), cwd)
+        if nd:
+            cwd = nd
         kind, detail = classify(seg, cwd)
         kinds.append(kind)
         if kind in ("upstream", "unknown"):

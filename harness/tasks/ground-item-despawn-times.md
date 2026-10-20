@@ -2,7 +2,7 @@
 id: ground-item-despawn-times
 track: server
 title: Ground item despawn times (OSRS Drop rules)
-status: shipped
+status: live
 prio: P1
 role: server-dev
 owner: sd28
@@ -17,7 +17,7 @@ blocked_by: []
 unblocks:
 - hub-ground-items-despawn
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T06:16:55Z'
+updated: '2026-10-20T06:47:04Z'
 summary: 'Left: DoD 3 (client dev verifies hub-ground-items-despawn after the deploy). Player drops use OSRS timers: GE-tradeable private 100 / despawn 300, others never public / 300, clue+challenge scrolls
   and Mimic 6100. OBJ_ADD now carries timeUntilPublic/timeUntilDespawn/ownership/neverBecomesPublic (self while private, other after reveal), matched to RSProx 73/91/1621/1702/1718; in game the drops showed
   the official values and despawned at +299. Found that ItemServerType.tradeable reads true for untradeables, so the rule uses stockmarket (not re-run in game; the desktop was reclaimed). Spec and PR text
@@ -52,3 +52,5 @@ Every player drop currently despawns after 200 ticks (constants.lootdrop_duratio
 - 2026-10-20T05:56:48Z set status=shipped
 - 2026-10-20T06:16:33Z in train int-20261020-1: integration e27ff4d08 (pushed); gate + deploy pending
 - 2026-10-20T06:16:55Z Train int-20261020-1: integration e27ff4d08 (fix/76-obj-add-timers dropped as superseded, tools ff7e6eec8). Follow-up despawn-copy-owner-id adds the ownerId copy fix on this branch. Upstream: this branch (fork PR #23) is the only PR; fix/76 is never opened.
+- 2026-10-20T06:47:04Z Live 2026-10-20 06:46 UTC (integration e27ff4d08, image integration-e27ff4d; rollback osrs-openrune:rollback-e5b18a8).
+- 2026-10-20T06:47:04Z migrate-live: shipped -> live (deployed: Live 2026-10-20 06:46 UTC (integration e27ff4d08, image integration-e27ff4d; rollback osrs-openrune:rollback-e5b18a8))

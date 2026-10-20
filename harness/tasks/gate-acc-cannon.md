@@ -2,29 +2,33 @@
 id: gate-acc-cannon
 track: server
 title: 'Upstream gate: acc/cannon (replaces draft #354/#355)'
-status: in-progress
+status: gated
 prio: P1
 role: server-qa
 owner: sq29
 instance:
 - desktop
 branch: acc/cannon
-commit: bc243d141
+commit: bc243d141fc27d5128d29d8266cf51e89a4f6c08
+evidence: /home/alex/osrs-plugins-reverse/re/evidence/gate-acc-cannon
 blocked_by: []
 unblocks:
 - cleanup-scratchpad-qa-acc
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T05:36:58Z'
+updated: '2026-10-20T06:46:57Z'
+summary: 'PASS at bc243d141: PR text fixed (fork docs 4c75a5850), CI 39350604565/39350606847 green at the sha, gameval check clean, wiki re-read. In game on desktop vs own branch server: 25-min break (msg,
+  loc 14916, firing stops), owner-offline break, Repair (msg, fires again). Decay/Nulodion replacement not seen in game (user: finish up), integration-covered as the PR text says. Record: fork docs ec733bc60
+  qa/gate-acc-cannon.md. Left: the #354 merge-commit update after the user''s OK (orchestrator).'
 ---
 ## Task
 acc/cannon bc243d141: dev run first (sd23's report: worktree wt/acc-cannon to bc243d141, delete .data/cache/SERVER, qa.sh dev; fill RESULTS_PENDING), then internal + upstream gates. Replaces the pre-audit draft (#354/#355); upstream merged the pre-audit #356/#357 on 2026-10-19 so the audit delta becomes follow-up fixes off main. Then the gated rewrite replaces the draft's content with a non-force-push merge commit after the user's OK. Evidence: scratchpad/acc/logs.
 
 ## Definition of done
-- [ ] RESULTS_PENDING in the cannon accuracy spec filled from the dev run at bc243d141
-- [ ] qa/gate-acc-cannon.md on the fork's docs branch with the verdict (PASS/FAIL) at the exact commit
-- [ ] independent accuracy re-check against the spec and an in-game run at that commit
-- [ ] fork CI green at the exact commit (build-test 'CI first')
-- [ ] PR text reviewed against CONTRIBUTING (pr-text-review); scope one change
+- [x] RESULTS_PENDING in the cannon accuracy spec filled from the dev run at bc243d141
+- [x] qa/gate-acc-cannon.md on the fork's docs branch with the verdict (PASS/FAIL) at the exact commit
+- [x] independent accuracy re-check against the spec and an in-game run at that commit
+- [x] fork CI green at the exact commit (build-test 'CI first')
+- [x] PR text reviewed against CONTRIBUTING (pr-text-review); scope one change
 - [ ] draft PR updated with a merge commit only after the user's OK
 
 ## Log
@@ -38,3 +42,5 @@ acc/cannon bc243d141: dev run first (sd23's report: worktree wt/acc-cannon to bc
 - 2026-10-20T05:19:18Z set blocked_by= status=ready
 - 2026-10-20T05:19:18Z claimed by sq29 (instances desktop)
 - 2026-10-20T05:36:58Z Orchestrator: desktop2 granted to sq29 (desktop held by sd28 past its time).
+- 2026-10-20T06:46:53Z handover acc/cannon@bc243d141: PASS at bc243d141: PR text fixed (fork docs 4c75a5850), CI 39350604565/39350606847 green at the sha, gameval check clean, wiki re-read. In game on desktop vs own branch server: 25-min break (msg, loc 14916, firing stops), owner-offline break, Repair (msg, fires again). Decay/Nulodion replacement not seen in game (user: finish up), integration-covered as the PR text says. Record: fork docs ec733bc60 qa/gate-acc-cannon.md. Left: the #354 merge-commit update after the user's OK (orchestrator).
+- 2026-10-20T06:46:57Z set status=gated

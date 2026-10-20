@@ -2,7 +2,7 @@
 id: hub-clue-steps-tier
 track: client
 title: Clue Steps hub plugin
-status: blocked
+status: ready
 prio: P2
 role: client-dev
 owner: null
@@ -13,7 +13,7 @@ blocked_by:
 - clue-check-steps-tier
 unblocks: []
 created: '2026-10-20T01:42:43Z'
-updated: '2026-10-20T01:42:58Z'
+updated: '2026-10-20T06:47:04Z'
 ---
 ## Task
 Clue Steps hub plugin reads the steps/tier message on the device once the server includes the tier (docs/client-state.md Next tasks 1).
@@ -25,3 +25,4 @@ Clue Steps hub plugin reads the steps/tier message on the device once the server
 ## Log
 - 2026-10-20T01:42:43Z created (ready)
 - 2026-10-20T01:42:58Z blocked by clue-check-steps-tier: server's Check message must include the tier first
+- 2026-10-20T06:47:04Z unblocked by clue-check-steps-tier (live)

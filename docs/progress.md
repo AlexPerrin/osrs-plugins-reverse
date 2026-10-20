@@ -1,6 +1,6 @@
 # Progress
 
-Generated 2026-10-20 06:31 UTC by tools/harness/progress_report.py (task store, gh, tools/progress.py). Regenerate; don't edit by hand.
+Generated 2026-10-20 06:47 UTC by tools/harness/progress_report.py (task store, gh, tools/progress.py). Regenerate; don't edit by hand.
 
 ## Client progress: RuneLite compatibility on mobile
 
@@ -27,29 +27,31 @@ listed under Upstream below.
 
 | Track | Done + live | In pipeline | Active | Ready | Blocked / waiting | Backlog | Completion (excl. backlog) |
 |---|---|---|---|---|---|---|---|
-| client | 13 | 0 | 0 | 3 | 3 | 0 | 68% (68% with pipeline) |
-| server | 13 | 2 | 2 | 27 | 2 | 27 | 28% (33% with pipeline) |
-| orch | 14 | 1 | 0 | 5 | 5 | 0 | 56% (60% with pipeline) |
+| client | 13 | 0 | 0 | 5 | 1 | 0 | 68% (68% with pipeline) |
+| server | 15 | 1 | 0 | 28 | 3 | 27 | 32% (34% with pipeline) |
+| orch | 15 | 0 | 0 | 5 | 5 | 0 | 60% (60% with pipeline) |
 
 ## Finished or shipped on 2026-10-20 (UTC)
 
 - `cleanup-docker` (orch, done): Cleanup: Docker leftovers (~16 GB, user runs it)
 - `client-docs-trim` (client, live): Trim client docs
 - `client-gpu-117hd-feasibility` (client, done): Stretch goal: GPU plugin and 117 HD on the Android app (feasibility spike)
-- `clue-check-steps-tier` (server, shipped): Clue scroll Check steps shows the tier
+- `clue-check-steps-tier` (server, live): Clue scroll Check steps shows the tier
 - `docs-branch-migrate` (server, done): Migrate accuracy/qa docs to the fork's docs branch
 - `edgeville-general-store-stock` (orch, done): Upstream #371: Edgeville general store stock
 - `fish-barrel-check-and-destroy` (server, live): Fish barrel: Check message box and Destroy
 - `fix-acc-cannon-text` (server, done): Cannon (#354): PR text and spec header wording for the upstream gate
 - `fix-stile-approach` (server, live): Stile: approach from the outside tile
+- `gate-acc-cannon` (server, gated): Upstream gate: acc/cannon (replaces draft #354/#355)
 - `gate-goblin-village-lookout-ladder` (server, done): Gates: fix/goblin-village-lookout-ladder 475eefb76
 - `gate-op-overrides` (server, done): Upstream gate: op overrides
 - `gate-quest-test-fixture` (server, done): Upstream gate: quest test fixture
 - `gate-witchs-potion-goblin-diplomacy` (server, done): Upstream gates: Witch's Potion and Goblin Diplomacy
-- `ground-item-despawn-times` (server, shipped): Ground item despawn times (OSRS Drop rules)
+- `ground-item-despawn-times` (server, live): Ground item despawn times (OSRS Drop rules)
 - `host-menu-entry-removal` (client, live): Host gap 2: native menu entry removal (No Examine)
 - `hub-batch-next` (client, live): Next hub plugin batch from the ranking
 - `hub-fish-barrel-check` (client, live): Fish Barrel hub plugin: Check path
+- `int-20261020-1` (orch, done): Integration train int-20261020-1
 - `integration-phase-0` (orch, done): Integration pipeline phase 0: live status, deny rules for deploy, LOCK_DIR override
 - `integration-phase-1` (orch, done): Integration pipeline phase 1: queue, lock, trains, commit pins (ship.sh enqueues; integration.lock on local/integration-tools)
 - `pr-362-merge-main` (server, done): #362 fix/57: merge upstream main, unstack

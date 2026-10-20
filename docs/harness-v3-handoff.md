@@ -309,26 +309,13 @@ Task store: `tools/harness/orchestrate.py status` (117 tasks, lint clean). No ne
 user's "We will have to wait for v3".
 
 ### Live
-- Test server: integration **e5b18a87b** on upstream main 829b9477d (image `osrs-openrune:integration-e5b18a8` =
-  `:241`, deployed 04:44 UTC). Rollback: `osrs-openrune:rollback-5cc4733`.
-- Fork default branch: `integration`. Pins: `integration.lock` on fork `local/integration-tools` (ff7e6eec8, fix/76
-  dropped).
-
-### Ready to deploy (not done at hand-off)
-- Train **int-20261020-1**: integration **e27ff4d08** = live + clue Check tier (local/treasure-trails) + ground item
-  despawn timers (fix/ground-item-despawn-times, fix/76 dropped as superseded). Gate PASS (853 tests, integration
-  rc=0, 647 s); image `osrs-openrune:integration-e27ff4d` (0e7eb63799a6), key files and game.yml from `:241` by
-  `COPY --from` (sha256 match), boot check 10.18 s, 0 errors. Evidence: re/evidence/int-20261020-1/.
-- Deploy when device, desktop and desktop2 are all free (standing approval):
-  ```
-  for i in device desktop desktop2; do LOCK_NAME=$i tools/device-lock.sh grant orch 20 && LOCK_NAME=$i tools/device-lock.sh take orch "deploy e27ff4d"; done
-  docker tag osrs-openrune:241 osrs-openrune:rollback-e5b18a8
-  docker tag osrs-openrune:integration-e27ff4d osrs-openrune:241
-  (cd openrune && docker compose --env-file switch.env up -d --no-deps openrune)   # never --build
-  # wait for "Server ready in" in `docker logs osrs-openrune`, then free the three locks
-  tools/harness/task.py migrate-live   # after logging "Live <date> ..." on clue-check-steps-tier and ground-item-despawn-times
-  ```
-  Then the client checks hub-clue-steps-tier and hub-ground-items-despawn unblock.
+- Test server: integration **e27ff4d08** on upstream main 829b9477d (image `osrs-openrune:integration-e27ff4d` = `:241`,
+  deployed 2026-10-20 06:46 UTC / 2:46 AM EDT, train int-20261020-1): everything below plus the clue Check tier text
+  and the ground item despawn timers (fix/76 dropped as superseded). Ready in 9.6 s, 0 errors.
+  Rollback: `osrs-openrune:rollback-e5b18a8` (the previous live, integration e5b18a87b), then `rollback-5cc4733`.
+- Fork default branch: `integration`. Pins: `integration.lock` on fork `local/integration-tools` (ff7e6eec8 + the
+  train's commit).
+- Unblocked by this deploy (ready for v3): hub-clue-steps-tier, hub-ground-items-despawn (client checks on the device).
 
 ### Running at hand-off (they finish into the task store)
 | Agent | Task | Holds | Next for the orchestrator |

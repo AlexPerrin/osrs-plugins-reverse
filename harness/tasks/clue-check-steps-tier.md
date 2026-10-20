@@ -2,7 +2,7 @@
 id: clue-check-steps-tier
 track: server
 title: Clue scroll Check steps shows the tier
-status: shipped
+status: live
 prio: P2
 role: server-dev
 owner: sd29
@@ -16,7 +16,7 @@ blocked_by: []
 unblocks:
 - hub-clue-steps-tier
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T05:26:01Z'
+updated: '2026-10-20T06:47:04Z'
 summary: 'Left: client verification (hub-clue-steps-tier) after the deploy. Check steps now says ''You have completed N step(s) on this <tier> clue scroll.'' (beginner/easy/medium/hard), matching RSProx
   91/1034/1106/3931. One commit 48b320359 on fork local/treasure-trails (local-only, no upstream PR; scope note replaces ''fork PR'' and ''off upstream main''). Tests: unit message test + integration test
   giving a clue of each tier and asserting the sent message; dev build integration 25 tests, 0 failures. Fork CI run 39372316037 in progress at hand-over; Formatting (advisory) failed only on pre-existing
@@ -45,3 +45,5 @@ Clue scroll Check should say 'You have completed N steps on this <tier> clue scr
 - 2026-10-20T05:12:19Z set status=shipped integration=f9cc1618c11a085321f0486ad561f4f94348e489
 - 2026-10-20T05:12:19Z shipped: in integration f9cc1618c (pushed); gate + deploy pending
 - 2026-10-20T05:26:01Z Integration f9cc1618c (adds the clue Check tier to the live e5b18a87b): gate PASS, test 849/0, integration 216/0, spotless ok (725s). Image osrs-openrune:integration-f9cc161 id 377f3a085d6f, built from the gated install + .data (add_varcs 1293/1294, fix_long_varps 40 ops in 6 scripts, fix_reftable 9973/9974); game.key, rsa.properties, game.yml and entrypoint by COPY --from osrs-openrune:241. sha256 of game.key/rsa.properties/game.yml identical to the live image. Boot (private container, tmpfs DB): Server ready in 10.70s, 0 ERROR/WARN/exception lines; container removed. Evidence re/evidence/clue-check-steps-tier/ (gate-f9cc1618c.out, boot-f9cc161.log, Dockerfile-f9cc161). Not deployed.
+- 2026-10-20T06:47:03Z Live 2026-10-20 06:46 UTC (integration e27ff4d08, image integration-e27ff4d; rollback osrs-openrune:rollback-e5b18a8).
+- 2026-10-20T06:47:04Z migrate-live: shipped -> live (deployed: Live 2026-10-20 06:46 UTC (integration e27ff4d08, image integration-e27ff4d; rollback osrs-openrune:rollback-e5b18a8))

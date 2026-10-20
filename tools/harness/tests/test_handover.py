@@ -137,7 +137,7 @@ class HandoverCheckTest(unittest.TestCase):
         git(work, "push", "-q", "origin", "main")
         git(work, "push", "-q", "fork", "main")
         sha = commit_file(work, "content/stile.kt", "stile\n")
-        for b in ("fix/stile-approach", "fix/b-slug", "fix/c-branch", "fix/d-branch"):
+        for b in ("fix/stile-approach", "fix/b-slug", "fix/c-branch", "fix/d-branch", "local/treasure-trails"):
             git(work, "push", "-q", "fork", f"HEAD:refs/heads/{b}")
         git(work, "checkout", "-q", "--orphan", "docs")
         git(work, "rm", "-rq", "--cached", ".")
@@ -179,6 +179,20 @@ class HandoverCheckTest(unittest.TestCase):
         rc, out = self.check("task-d")
         self.assertEqual(rc, 1, out)
         self.assertIn("accuracy/{d-spec,d-branch,task-d}.md", out)
+
+    def test_local_branch_needs_no_fork_pr(self):
+        # clue-check-steps-tier (2026-10-20): a fix on local/treasure-trails never goes upstream, so no fork PR.
+        sha = self.server_clone(["clue-tier"])
+        write_task(self.harness, "clue-tier", track="server", role="server-dev", branch="local/treasure-trails",
+                   commit=sha, evidence=self.evidence("clue-tier", {"dev-summary.txt": "25 passed"}))
+        rc, out = self.check("clue-tier")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("never upstream", out)
+        write_task(self.harness, "fix-no-pr", track="server", role="server-dev", branch="fix/b-slug", commit=sha,
+                   evidence=self.evidence("fix-no-pr", {"x.txt": "x"}))
+        rc, out = self.check("fix-no-pr")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("no fork PR recorded", out)
 
     def test_server_qa_task_ships_nothing(self):
         sha = self.server_clone([])

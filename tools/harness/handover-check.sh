@@ -119,7 +119,11 @@ server)
     done
     [[ -n $found ]] && ok "accuracy/$found.md on docs" \
         || fail "no accuracy spec on the fork's docs branch (tried accuracy/{$(IFS=,; echo "${tried[*]}")}.md; the spec is part of the dev's check)"
-    [[ -n $pr ]] && ok "fork PR $pr" || fail "no fork PR recorded (task.py handover --pr <url>)"
+    if [[ $branch == local/* ]]; then
+        ok "local/* branch: never upstream, so no fork PR (fork CI at the commit is the build evidence)"
+    else
+        [[ -n $pr ]] && ok "fork PR $pr" || fail "no fork PR recorded (task.py handover --pr <url>)"
+    fi
     if [[ -n $gate ]]; then
         [[ -f $gate ]] && grep -q 'rc=0' "$gate" && ok "local gate log $gate" || fail "local gate log $gate missing or not rc=0"
     else

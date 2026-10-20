@@ -93,6 +93,10 @@ append; "Next tasks" lives in the task store now), commit (pathspec-only, see CL
 finish while the task is still in-progress or specced. Your final message is one line: the task id and its new
 status. A client task you unblock is in the task's `unblocks:`; the driver reopens it when yours is live.
 
+Scratch files (2026-10-20): the session scratchpad is shared by every agent of the session. Keep your helpers, scripts
+and temp files under `<scratchpad>/<your-name>/`, never at the scratchpad's top level (another agent's file of the
+same name drove the wrong client on 10-20).
+
 Locks (user, 2026-10-20): take an instance lock only when you start using it (client or branch server up, check about
 to run) and free it right after; the orchestrator reclaims a lock held idle (`device-lock.sh reclaim`), and you retake
 it with your grant when you need it again.

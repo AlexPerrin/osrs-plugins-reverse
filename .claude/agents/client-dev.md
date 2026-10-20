@@ -79,6 +79,10 @@ of docs/client-state.md (rewrite, don't append; "Next tasks" lives in the task s
 "why"` when you can't. The stop hook won't let you finish while the task is still in-progress. Your final message
 is one line: the task id and its new status. Report earlier only for new network traffic.
 
+Scratch files (2026-10-20): the session scratchpad is shared by every agent of the session. Keep your helpers, scripts
+and temp files under `<scratchpad>/<your-name>/`, never at the scratchpad's top level (another agent's file of the
+same name drove the wrong client on 10-20).
+
 Locks (user, 2026-10-20): take an instance lock only when you start using it (client or branch server up, check about
 to run) and free it right after; the orchestrator reclaims a lock held idle (`device-lock.sh reclaim`), and you retake
 it with your grant when you need it again.

@@ -35,6 +35,25 @@ commit, evidence path, PR URL) so the new driver takes it from there. Then start
 `tools/harness/orchestrate.py status`, `reap` (hand-over checks and ship steps), `next`, `dispatch <id>`. The only
 hand-written state left is this file (decisions) and the STATE docs (what is live, gotchas).
 
+**Old session done (2026-10-19 ~23:00):** all its agents (sd23, sd24, sd25, sq24, sq25) have finished, and their
+results are in the task store. Unpushed: sd23's 513144d3d and a44a3daa0; dev docs commits (sd23 de3dac3fa,
+sd24 aa924079b, sd25 ce5e5c8bb plus uncommitted edits); QA records (sq24 docs-publish 60f5e23ea, sq25 8c59858aa).
+Master 87f3fa9 (desktop2) is unpushed. Hooks in agent role files only take effect in a new session.
+Waiting on the user (each upstream item needs an OK):
+- #362: gated at 113b4bbac. Push it, post the comment (drop "Title and description updated"), and decide whether
+  to retitle to "fix: keep the classic/modern stone choice across the fullscreen world map".
+- #366: Sheep Shearer gated at 01da94f17. Fast-forward push onto content/quests-sheep-romeo, the comment, and
+  ready vs draft.
+- #371: gated at a695b985f (data plus handlers). Push it (it stays a draft), the comment, and close #351 with
+  its comment.
+- Lookout ladder: gated at b87819158. It opens together with the quest-only #367 update, after the #367/#368
+  upstream gate.
+- Members' general stores (~29): proposed as a separate follow-up PR built from RSProx transcriptions; no
+  answer yet.
+User decisions this session: no stacked PRs; fork changes need no approval, only upstream ones; devs and QA do
+their own fork GitHub work; the orchestrator only coordinates; #362 option (a); #371 = all general store
+data and handlers, draft until ready; read-heavy lookups go to subtasks.
+
 ## Standing decisions
 - Updated versions go onto the existing upstream PRs (#354-#357, #366-#368) after their gates, each push confirmed at
   the time; overlapping content (Doric #334, farming #231, specials #313, fletching #262) goes upstream as draft PRs

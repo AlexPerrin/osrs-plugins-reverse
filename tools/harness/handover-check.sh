@@ -69,7 +69,7 @@ server)
         extra=$(git -C "$CLONE" rev-list --count "origin/main..$commit" 2>/dev/null)
         ok "off upstream main ($extra commits on top of $(git -C "$CLONE" rev-parse --short "$mb"))"
     else fail "no merge base with upstream main"; fi
-    slug=${branch#*/}
+    slug=$(meta spec); [[ -n $slug ]] || slug=${branch#*/}   # task `spec:` overrides the branch slug
     if git -C "$CLONE" cat-file -e "fork/docs:accuracy/$slug.md" 2>/dev/null || git -C "$CLONE" cat-file -e "docs:accuracy/$slug.md" 2>/dev/null; then
         ok "accuracy/$slug.md on docs"
     else fail "no accuracy/$slug.md on the fork's docs branch (the spec is part of the dev's check)"; fi

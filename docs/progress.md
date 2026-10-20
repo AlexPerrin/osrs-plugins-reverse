@@ -1,6 +1,6 @@
 # Progress
 
-Generated 2026-10-20 06:10 UTC by tools/harness/progress_report.py (task store, gh, tools/progress.py). Regenerate; don't edit by hand.
+Generated 2026-10-20 06:31 UTC by tools/harness/progress_report.py (task store, gh, tools/progress.py). Regenerate; don't edit by hand.
 
 ## Client progress: RuneLite compatibility on mobile
 
@@ -28,8 +28,8 @@ listed under Upstream below.
 | Track | Done + live | In pipeline | Active | Ready | Blocked / waiting | Backlog | Completion (excl. backlog) |
 |---|---|---|---|---|---|---|---|
 | client | 13 | 0 | 0 | 3 | 3 | 0 | 68% (68% with pipeline) |
-| server | 13 | 2 | 2 | 25 | 2 | 27 | 30% (34% with pipeline) |
-| orch | 14 | 0 | 1 | 5 | 5 | 0 | 56% (56% with pipeline) |
+| server | 13 | 2 | 2 | 27 | 2 | 27 | 28% (33% with pipeline) |
+| orch | 14 | 1 | 0 | 5 | 5 | 0 | 56% (60% with pipeline) |
 
 ## Finished or shipped on 2026-10-20 (UTC)
 

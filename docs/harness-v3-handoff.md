@@ -302,10 +302,61 @@ Better as one clean break in v3:
 
 Keep: the task store, the hand-over check, the train scripts, role agents, the tests.
 
-## 8. State at hand-off
+## 8. State at hand-off (2026-10-20 ~06:35 UTC)
 
-What v2 shipped: docs/v2-shipped.md (server features live and in the last train, client features on master,
-upstream PR activity, harness changes). Live progress: docs/progress.md (regenerate with
-tools/harness/progress_report.py).
+What v2 shipped: docs/v2-shipped.md. Live progress: docs/progress.md (`tools/harness/progress_report.py`).
+Task store: `tools/harness/orchestrate.py status` (117 tasks, lint clean). No new work was dispatched after the
+user's "We will have to wait for v3".
 
-(Running work at hand-off is listed here at session end.)
+### Live
+- Test server: integration **e5b18a87b** on upstream main 829b9477d (image `osrs-openrune:integration-e5b18a8` =
+  `:241`, deployed 04:44 UTC). Rollback: `osrs-openrune:rollback-5cc4733`.
+- Fork default branch: `integration`. Pins: `integration.lock` on fork `local/integration-tools` (ff7e6eec8, fix/76
+  dropped).
+
+### Ready to deploy (not done at hand-off)
+- Train **int-20261020-1**: integration **e27ff4d08** = live + clue Check tier (local/treasure-trails) + ground item
+  despawn timers (fix/ground-item-despawn-times, fix/76 dropped as superseded). Gate PASS (853 tests, integration
+  rc=0, 647 s); image `osrs-openrune:integration-e27ff4d` (0e7eb63799a6), key files and game.yml from `:241` by
+  `COPY --from` (sha256 match), boot check 10.18 s, 0 errors. Evidence: re/evidence/int-20261020-1/.
+- Deploy when device, desktop and desktop2 are all free (standing approval):
+  ```
+  for i in device desktop desktop2; do LOCK_NAME=$i tools/device-lock.sh grant orch 20 && LOCK_NAME=$i tools/device-lock.sh take orch "deploy e27ff4d"; done
+  docker tag osrs-openrune:241 osrs-openrune:rollback-e5b18a8
+  docker tag osrs-openrune:integration-e27ff4d osrs-openrune:241
+  (cd openrune && docker compose --env-file switch.env up -d --no-deps openrune)   # never --build
+  # wait for "Server ready in" in `docker logs osrs-openrune`, then free the three locks
+  tools/harness/task.py migrate-live   # after logging "Live <date> ..." on clue-check-steps-tier and ground-item-despawn-times
+  ```
+  Then the client checks hub-clue-steps-tier and hub-ground-items-despawn unblock.
+
+### Running at hand-off (they finish into the task store)
+| Agent | Task | Holds | Next for the orchestrator |
+|---|---|---|---|
+| sq29 | gate-acc-cannon: upstream gate of acc/cannon bc243d141 for #354 | desktop until ~06:55 UTC | on PASS: fold acc/cannon into content/cannon (merge commit), update #354's description, ready (user's OK given; announce each upstream step) |
+| sq30 | gate-acc-genie: upstream gate of acc/genie 3ccb86bd8 for #355 | desktop2 | on PASS: same for content/genie / #355 |
+
+Note for both: they gate acc/* commits the live server doesn't run (integration carries fin/cannon, fin/genie):
+section 7a. v3 should converge them (7c item 1) when folding into the PR branches.
+
+### Upstream (OpenRune/OpenRune-Server)
+Open for review: #362, #366, #367, #370 (in review), #372, #373. Drafts: #354, #355 (gates above), #368 (Witch's
+Potion; task gate-witchs-potion ready). 17 of our PRs merged so far.
+
+### Ready queue left for v3 (top items)
+- Server: despawn-copy-owner-id (on the despawn branch), server-parity-metric (server progress), fix-bankside-view-op-refresh,
+  gate-witchs-potion, members-general-stores, spec-* dev checks, 11 content tasks for the user's plugins (backlog).
+- Client: hub-clue-steps-tier and hub-ground-items-despawn (after the deploy), client-gpu-plugin-feasibility,
+  client-117hd-feasibility, sidecar-ge-digest.
+- Harness: integration-phase-2 (ready) .. phase-5, server-tooling-to-fork, two cleanups.
+- User decisions open: WikiSync / AFK Marks Canifis / Quest Voiceover (new hosts), client setters (Animation
+  Smoothing, Camera).
+
+### Where things are
+- Design and review: docs/harness-v3-handoff.md (this), docs/integration-pipeline.md, re/evidence/harness-v2-review/.
+- Memory (auto-loaded): approvals only for upstream + releases, explain before prompting, gh CLI, agents exit,
+  locks, no screenshots, progress definitions, user plugins, stretch goals, harness v3 priorities.
+- Settings: `.claude/settings.local.json` allows Edit on tools/hooks, tools/harness, docs/harness.md (also in
+  worktrees) and has autoMode rules for harness edits and the deploy key; the `--build` deploy rules are removed.
+- Untouched by request or rule: `qa-dev-sq24` container and `sq24-dev-gradle` volume (from an earlier session);
+  BlueStacks kept running (user).

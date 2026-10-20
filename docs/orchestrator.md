@@ -1,5 +1,10 @@
 # Orchestrator handoff
 
+> **2026-10-20 ~06:35 UTC: harness v2 session handed off.** Start here: docs/harness-v3-handoff.md (section 8 is the
+> state at hand-off: what is live, the ready-to-deploy train int-20261020-1, the two running gates and their next
+> steps). What v2 shipped: docs/v2-shipped.md. Progress: docs/progress.md.
+
+
 Rewritten at each milestone so a fresh orchestrator session can take over without the old conversation. Read with
 CLAUDE.md, `tools/harness/orchestrate.py status` (tasks, runs, instances, approvals), docs/client-state.md and the
 fork's STATE.md (`git -C re/upstream-pr/or show fork/docs:STATE.md`). Last rewrite: 2026-10-19 (harness v2: the queue moved to harness/tasks).

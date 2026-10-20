@@ -12,7 +12,7 @@ commit: null
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:42Z'
-updated: '2026-10-20T01:42:42Z'
+updated: '2026-10-20T04:51:15Z'
 ---
 ## Task
 Gate the grand-exchange branch and its PR text (UPSTREAM-PRS.md). GE needs #352 and an rsprot bump (list as caveats).
@@ -25,3 +25,4 @@ Gate the grand-exchange branch and its PR text (UPSTREAM-PRS.md). GE needs #352 
 
 ## Log
 - 2026-10-20T01:42:42Z created (ready)
+- 2026-10-20T04:51:15Z rsprot bump to 1.0.0-ALPHA-20261014 decided here (user 2026-10-20: leave it until this gate): the GE PR either carries the one-line bump or waits for upstream's.

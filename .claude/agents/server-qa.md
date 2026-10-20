@@ -7,7 +7,7 @@ hooks:
     - matcher: Bash
       hooks:
         - type: command
-          command: python3 "$CLAUDE_PROJECT_DIR"/tools/hooks/deny_publish.py
+          command: python3 "$CLAUDE_PROJECT_DIR"/tools/hooks/deny_publish.py --docs-writes
     - matcher: Edit|Write
       hooks:
         - type: command
@@ -68,7 +68,7 @@ yourself at the source (file and line, recording and tick) before you write it d
 ## Limits
 Never touch the Android device or the tester account; use desktop/desktop or a fresh account on the branch
 server. Never connect anything to Jagex servers. Never read or modify C:\Users\Alex\.runelite. Commit only your
-records and QA.md (pathspec-only, see CLAUDE.md). You never push or post; a hook denies those. If anything is
-denied, don't work around it: report it.
+records and QA.md (pathspec-only, see CLAUDE.md) and push them onto the fork's `docs` branch yourself, a plain
+non-forced push; any other push, and any post, a hook denies. If anything is denied, don't work around it: report it.
 
 Send the verdict to "main" when it's recorded: PASS or FAIL, the commit, the record path.

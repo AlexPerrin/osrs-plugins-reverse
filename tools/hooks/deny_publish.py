@@ -8,6 +8,9 @@ writes. The orchestrator's own session doesn't load this hook.
 `-R AlexPerrin/OpenRune-Server`. Anything naming upstream (OpenRune/*) stays denied. github_scope.py still asks
 the user before a push to a fork branch that backs an open upstream PR.
 
+`--docs-writes` (server-qa, user 2026-10-19): the companion pushes its own records to the fork's `docs` branch
+(a plain push of a local branch or HEAD onto `docs`, never forced). Nothing else.
+
 Reads the hook JSON on stdin; prints a deny decision, or nothing (normal permission flow).
 """
 import json
@@ -46,12 +49,22 @@ def fork_write(what, cmd):
     return False
 
 
+def docs_write(what, cmd):
+    """With --docs-writes: is this a non-forced push of a branch onto the fork's docs branch, and nothing else?"""
+    if what != "pushes" or UPSTREAM.search(cmd) or re.search(r"--force|\s-f\b|\s\+", cmd):
+        return False
+    pushes = [seg for seg in re.split(r"[|;&]+", cmd) if re.search(r"\bgit\b.*\bpush\b", seg)]
+    return all(re.search(r"\bpush\s+(fork|origin|\S*AlexPerrin/OpenRune-Server\S*)\s+"
+                         r"(docs|(HEAD|[A-Za-z0-9._/-]+):(refs/heads/)?docs)\s*$", seg.strip()) for seg in pushes)
+
+
 def main():
     fork_ok = "--fork-writes" in sys.argv[1:]
+    docs_ok = "--docs-writes" in sys.argv[1:]
     cmd = json.load(sys.stdin).get("tool_input", {}).get("command", "")
     for pattern, what in RULES:
         if re.search(pattern, cmd):
-            if fork_ok and fork_write(what, cmd):
+            if fork_ok and fork_write(what, cmd) or docs_ok and docs_write(what, cmd):
                 continue
             print(json.dumps({"hookSpecificOutput": {
                 "hookEventName": "PreToolUse",

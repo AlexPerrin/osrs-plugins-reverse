@@ -170,8 +170,8 @@ The same applies the other way (a server task that needs a client change or a de
   and QA.md may still be in `openrune/upstream/` here; the hooks read both places.
 - **QA is a companion.** It gates only what goes out to others: the orchestrator hands it `master` at a commit
   for a client release, or a server dev's fork branch at a commit for upstream, and the dev moves on to its next
-  task; the companion runs the gate, records the result, sends fixes back to its dev, and reports PASS or FAIL
-  to the orchestrator.
+  task; the companion runs the gate, records the result (server QA pushes its own records to the fork's `docs`
+  branch, non-forced), sends fixes back to its dev, and reports PASS or FAIL to the orchestrator.
   A companion never writes the code it checks (a hook limits it to records, QA.md and scratch files).
 - **One owner per branch or area at a time.** Another agent that needs a change sends it to the owner, through
   the orchestrator.
@@ -294,7 +294,7 @@ flowchart TB
 | Client release gate | `tools/hooks/publish_gate.py` (settings) | `git tag vX.Y.Z[-pre]` and `gh release create vX.Y.Z[-pre]` need `qa/client-X.Y.Z[-pre].md` with `## Verdict: **PASS**` for the tagged commit |
 | State after compaction | `tools/hooks/session_state.sh` (settings, `SessionStart` `compact`) | The orchestrator rebuilds from disk, not from the summary |
 | Shared skills | `.claude/skills/<name>/SKILL.md` | One procedure per tool, for dev and QA alike |
-| Orchestrator-only actions | `tools/hooks/deny_publish.py` (role files) | Agents can't push, post, run fork.sh, deploy, grant devices or write progress; with `--fork-writes` (server-dev) fork pushes, fork PRs and fork.sh pass, anything naming upstream stays denied |
+| Orchestrator-only actions | `tools/hooks/deny_publish.py` (role files) | Agents can't push, post, run fork.sh, deploy, grant devices or write progress; with `--fork-writes` (server-dev) fork pushes, fork PRs and fork.sh pass, anything naming upstream stays denied; with `--docs-writes` (server-qa) only a non-forced push onto the fork's `docs` branch passes |
 | QA write scope | `tools/hooks/qa_write_scope.py` (QA role files) | Companions write records, QA.md and scratch files only |
 | Slot stop gate | `tools/hooks/slot_stop.py <holder>` (settings) | No agent finishes holding a lock, or with a device slot that hasn't passed its restore check |
 | Permissions | `.claude/settings.json` | Every GitHub write and push asks the user |

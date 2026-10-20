@@ -12,7 +12,7 @@ commit: null
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:43Z'
-updated: '2026-10-20T01:42:43Z'
+updated: '2026-10-20T04:49:10Z'
 ---
 ## Task
 Waiting item 5: rsprot bump to 1.0.0-ALPHA-20261014: our PR/issue, or leave to the maintainers? (GE gate caveat depends on it.)
@@ -22,3 +22,4 @@ Waiting item 5: rsprot bump to 1.0.0-ALPHA-20261014: our PR/issue, or leave to t
 
 ## Log
 - 2026-10-20T01:42:43Z created (waiting-user)
+- 2026-10-20T04:49:10Z User 2026-10-20 asked whether it's useful; explained (only the Grand Exchange upstream PR needs it; the live server uses our own RSProt). Waiting for the answer.

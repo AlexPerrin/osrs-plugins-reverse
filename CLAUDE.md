@@ -12,8 +12,9 @@ History (docs/client-handoff.md, docs/server-handoff.md) is read only when neede
 
 ## Roles
 - Both tracks run one loop: trigger → analyse → build → verify → ship (docs/workflow.md).
-- The orchestrator (the main session) routes tasks and blockers, and owns every ship step: pushes, PRs, merges,
-  tags, deploys, device grants, progress files and decisions.
+- The orchestrator (the main session) coordinates agents and human input: it routes tasks and blockers, relays
+  the user's OK for anything upstream, and owns merges, tags, deploys, device grants, progress files and decisions.
+  Server devs do their own fork GitHub work (push, fork PRs, CI); it doesn't do agents' GitHub work.
 - One dev/QA pair per track, spawned from .claude/agents/ with one task each and its definition of done:
   `client-dev` + `client-qa` in this repo (dev's own check: built + the changed path tried on the device → master;
   client-qa runs only the release gate, full regression + Network QA → vX.Y.Z); `server-dev` + `server-qa` on the fork, each

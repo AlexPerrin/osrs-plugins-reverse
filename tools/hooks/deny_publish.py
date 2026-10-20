@@ -3,6 +3,11 @@
 does (docs/workflow.md "Agents"): pushes, GitHub writes, tools/fork.sh, deploys, device grants and progress
 writes. The orchestrator's own session doesn't load this hook.
 
+`--fork-writes` (server-dev, user 2026-10-19): the dev does its own GitHub work on our fork
+(AlexPerrin/OpenRune-Server): pushes to the fork or the local push clone, tools/fork.sh, and gh writes with
+`-R AlexPerrin/OpenRune-Server`. Anything naming upstream (OpenRune/*) stays denied. github_scope.py still asks
+the user before a push to a fork branch that backs an open upstream PR.
+
 Reads the hook JSON on stdin; prints a deny decision, or nothing (normal permission flow).
 """
 import json
@@ -22,10 +27,32 @@ RULES = [
 ]
 
 
+FORK = re.compile(r"AlexPerrin/OpenRune-Server", re.I)
+UPSTREAM = re.compile(r"OpenRune/OpenRune|github\.com[:/]+OpenRune/|\bupstream\b", re.I)
+
+
+def fork_write(what, cmd):
+    """With --fork-writes: is this push / gh write / fork.sh call aimed only at our fork?"""
+    if UPSTREAM.search(cmd):
+        return False
+    segs = re.split(r"[|;&]+", cmd)
+    if what == "fork pushes and PRs":
+        return True
+    if what == "pushes":
+        return all(re.search(r"\bpush\b(\s+-\S+)*\s+(fork|origin|\S*AlexPerrin/OpenRune-Server\S*)(\s|$)", seg)
+                   for seg in segs if re.search(r"\bgit\b.*\bpush\b", seg))
+    if what == "GitHub writes":
+        return all(FORK.search(seg) for seg in segs if re.search(r"\bgh\b", seg))
+    return False
+
+
 def main():
+    fork_ok = "--fork-writes" in sys.argv[1:]
     cmd = json.load(sys.stdin).get("tool_input", {}).get("command", "")
     for pattern, what in RULES:
         if re.search(pattern, cmd):
+            if fork_ok and fork_write(what, cmd):
+                continue
             print(json.dumps({"hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",

@@ -1,8 +1,10 @@
 # Workflow: one loop, two tracks
 
 Both tracks run the same loop: **trigger → analyse → build → verify → ship**. Each track has one dev agent and
-one QA companion. The orchestrator (the main session) sits above both: it routes tasks, does every ship step
-(push, PR, deploy, release, tag) and decides. Agents never push, post or deploy.
+one QA companion. The orchestrator (the main session) sits above both: it coordinates agents and human input,
+routes tasks, deploys, releases, tags and decides; it doesn't do agents' GitHub work. Server devs push to the fork
+and open fork PRs themselves (user, 2026-10-19); anything upstream needs the user's OK, relayed by the
+orchestrator. Agents never deploy, grant devices or write progress.
 
 | Slot | Client track | Server track |
 |---|---|---|
@@ -110,8 +112,8 @@ Follow upstream's procedure (`tools/scripts/fix_gameval_conflicts.py`, and its C
    orchestrator reviews it before coding.
 3. **Build** on `content/<slug>` or `fix/<slug>` off `main`, in the server dev's own clone, with tests for each
    rule and ids assigned as above.
-4. **Fork PR.** The orchestrator pushes the branch and opens the PR on the fork (`tools/fork.sh`, no
-   confirmation), so CI and QA have a fixed commit.
+4. **Fork PR.** The server dev pushes the branch and opens the PR on the fork (`tools/fork.sh`, `git push fork`
+   or `gh ... -R AlexPerrin/OpenRune-Server`; no confirmation for the fork), so CI and QA have a fixed commit.
 5. **Dev's check** (`server-dev`, no QA step; user, 2026-10-19: "keep the gates minimal for developers"): the dev
    owns accuracy during feature work: the spec with `accuracy-check` (wiki/cache baseline, including its RSProx
    comparison), behaviour checked against it (in-game on desktop RuneLite where a plugin renders something), and
@@ -292,7 +294,7 @@ flowchart TB
 | Client release gate | `tools/hooks/publish_gate.py` (settings) | `git tag vX.Y.Z[-pre]` and `gh release create vX.Y.Z[-pre]` need `qa/client-X.Y.Z[-pre].md` with `## Verdict: **PASS**` for the tagged commit |
 | State after compaction | `tools/hooks/session_state.sh` (settings, `SessionStart` `compact`) | The orchestrator rebuilds from disk, not from the summary |
 | Shared skills | `.claude/skills/<name>/SKILL.md` | One procedure per tool, for dev and QA alike |
-| Orchestrator-only actions | `tools/hooks/deny_publish.py` (role files) | Agents can't push, post, run fork.sh, deploy, grant devices or write progress |
+| Orchestrator-only actions | `tools/hooks/deny_publish.py` (role files) | Agents can't push, post, run fork.sh, deploy, grant devices or write progress; with `--fork-writes` (server-dev) fork pushes, fork PRs and fork.sh pass, anything naming upstream stays denied |
 | QA write scope | `tools/hooks/qa_write_scope.py` (QA role files) | Companions write records, QA.md and scratch files only |
 | Slot stop gate | `tools/hooks/slot_stop.py <holder>` (settings) | No agent finishes holding a lock, or with a device slot that hasn't passed its restore check |
 | Permissions | `.claude/settings.json` | Every GitHub write and push asks the user |

@@ -16,7 +16,7 @@ evidence: /home/alex/osrs-plugins-reverse/re/evidence/fix-stile-approach
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T04:21:24Z'
+updated: '2026-10-20T04:44:43Z'
 summary: '513144d3d on fork (PR #21), CI+Formatting green; 17 in-game crossings from every side/angle walk to the in-line tile, step on T+1, climb T+2, step off T+5 = RSProx 1718; dev''s check PASS. Docs
   554bd95c7 (spec, PR text, qa record, STATE) local in re/agents/sd27/or branch docs: orchestrator to publish it and update PR #21''s body (hook denied both).'
 integration: a07ec2d8f
@@ -50,3 +50,4 @@ fix/stile-approach 8a8c0ca7a failed the internal gate: the player walks onto the
 - 2026-10-20T03:57:59Z sd27: docs rebased onto fork/docs 8c4a29bfa and published as 52233ff59; fork PR #21 title and body updated from pr-texts; handover-check PASS.
 - 2026-10-20T04:21:24Z set status=shipped integration=a07ec2d8f
 - 2026-10-20T04:21:24Z Shipped in the re-pin: integration a07ec2d8f (gate PASS 844/214, boot clean; repin-2). Deploy pending (image needs the live key).
+- 2026-10-20T04:44:43Z Live 2026-10-20 04:44 UTC (integration e5b18a87b, image integration-e5b18a8).

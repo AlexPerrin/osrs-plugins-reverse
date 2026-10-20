@@ -17,7 +17,7 @@ fork's STATE.md (`git -C re/upstream-pr/or show fork/docs:STATE.md`). Last rewri
   edit an original PR description; merge main into PR branches rather than force-push.
 
 ## Live
-- Server: integration 5cc473397 (image osrs-openrune:integration-5cc4733), rollback osrs-openrune:rollback-5da8d3e.
+- Server: integration e5b18a87b on upstream main 829b9477d (image osrs-openrune:integration-e5b18a8, live 2026-10-20 04:44 UTC), rollback osrs-openrune:rollback-5cc4733.
 - Client: v0.1.0 released; dev builds via tools/release-dev.sh.
 - Build system: one-container QA gate + shared build cache + dev lane (qa.sh gate / dev), buildq classes.
 

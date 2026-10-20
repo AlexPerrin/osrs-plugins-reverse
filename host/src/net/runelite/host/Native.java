@@ -297,6 +297,8 @@ final class Native {
     static native String property(String name);
     /** {x, y, z, pitch, yaw}: camera in local units (z = height), 14-bit angles. */
     static native int[] camera();
+    /** Camera pitch (0) or yaw (1) target, which the game eases the camera towards (client thread only). */
+    static native boolean setCameraTarget(int which, int value);
     /** {width, height} of the game surface in pixels (0 before the first frame). */
     static native int[] screenSize();
     /** Direct buffer over the native back buffer, sized w*h*4 (RGBA, premultiplied). */

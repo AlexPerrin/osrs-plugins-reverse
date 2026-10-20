@@ -36,7 +36,7 @@ readelf/objdump). The Ghidra project in `re/ghidra` loads the library at image b
 | local player fine x, height, y | `+0x8950c`, `+0x89510`, `+0x89514` | Walk diff; 128 units per tile, tile centre = ×128 + 64 |
 | camera x, height, y | `+0x89488`, `+0x8948c`, `+0x89490` | Swipe diffs; local units (height negative = up) |
 | camera pitch, yaw | `+0x89494`, `+0x89498` | 14-bit angles (16384 per turn), the same units as RuneLite 1.13's API; written masked `& 0x3fff` by `0x4517a8`, pitch clamped 0x400–0xbf8 (wider if `+0x8951c` is set) |
-| camera pitch/yaw targets | `+0x8949c`, `+0x894a0` | Follow the swipe |
+| camera pitch/yaw targets | `+0x8949c`, `+0x894a0` | Follow the swipe; the game eases pitch/yaw towards them. Written by `setCameraPitchTarget/YawTarget` (`game::set_camera_target`), verified hub-batch-next with Camera Smoothing |
 | camera focal point x, height, y | `+0x89500`, `+0x89504`, `+0x89508` | Smoothed player position; equals the player's fine x/y in the WorldView frame (checked after teleports, `setprop debug.osrsrl.camlog 1`) |
 | render WorldView | `Client+0xc940` | The player-position/camera code (`0x51d0a4`) uses `Client[0x1928]`; the same pointer as `+0xc950` in every case checked |
 | projection scale | 285 per 720 canvas px (fitted); 199 on the 503-high UI canvas | The game renders on the GPU (no `glUniformMatrix4fv`; likely a UBO). With RuneLite's CPU formula on a 720-px-high canvas, scale 285 puts four NPCs within ~15 px of their figures and stays aligned after rotating the camera. Default zoom only; the zoom field (maybe `+0x894ec`, 576) isn't mapped. Override with `setprop debug.osrsrl.scale N` |

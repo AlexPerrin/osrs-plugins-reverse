@@ -105,10 +105,14 @@ struct Camera {
     bool valid = false;
     int x = 0, y = 0, z = 0;
     int pitch = 0, yaw = 0;  // 0..16383
+    int pitch_target = 0, yaw_target = 0;  // +0x8949c, +0x894a0: the camera eases towards these
     int focal_x = 0, focal_z = 0, focal_y = 0;  // +0x89500: smoothed player position (camera frame)
     int render_base_x = 0, render_base_y = 0, render_wv_same = 0;  // debug: WorldView at Client+0xc940
 };
 Camera camera();
+// Writes the camera pitch (which 0) or yaw (which 1) target, as RuneLite's setCameraPitchTarget/
+// setCameraYawTarget; the game eases the camera towards it. Yaw is masked to 14 bits. Game thread only.
+bool set_camera_target(int which, int value);
 // The 3D viewport the scene renderer projects with (drawRenderable 0x72db3c): screen offset =
 // r * zoom / depth, centre, clip rect, far plane. Reached as renderer = holder->vtbl[3](holder),
 // holder = *(Client +0x90) + 0x1b0 (scene draw caller 0x457128), viewport = *(renderer +0x630c60).

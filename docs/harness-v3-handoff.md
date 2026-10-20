@@ -143,20 +143,24 @@ done), and the three reviews in `re/evidence/harness-v2-review/`: `kpi.md` (meas
 
 ## 6. Stretch goals: what is desirable from a new harness
 
-Beyond fixing section 5, in rough order of value. Each is a goal, not a commitment; v3 picks its scope with the user.
+Beyond fixing section 5. **The user's priorities for v3 (2026-10-20): 1. runs overnight without the user,
+2. a live dashboard, 3. self-healing** (items 1, 3 and 4 below). The others are optional; v3 picks their scope with
+the user. Section 5c's core issues are the means to these three: overnight runs need the driver-run loop, durable
+rules, lease-based resources and reconciliation; the dashboard needs the event log; self-healing needs
+reconciliation and leases.
 
 ### 6a. Harness
 
-1. **Runs overnight without the user.** The driver works the queue for hours: dispatch, check, ship, train, deploy,
+1. **Runs overnight without the user** (user priority 1). The driver works the queue for hours: dispatch, check, ship, train, deploy,
    unblock, re-pin, with every step logged. The user returns to a summary, not a backlog. Only upstream actions and
    client releases wait, as approvals.
 2. **Async approvals and notifications.** Approvals form a queue the user can act on from anywhere: an Artifact page
    or a phone push, with the exact command and text, and approve/deny. Work that doesn't depend on them keeps going.
    A blocked or failed task, or an idle instance, pings once.
-3. **A live dashboard.** Tasks per track, running agents and their cost, instance leases, the build queue, the live
+3. **A live dashboard** (user priority 2). Tasks per track, running agents and their cost, instance leases, the build queue, the live
    server (integration, image, rollback), upstream PRs and their review state, and the KPI trends from the event log.
    One page instead of `status` dumps in chat.
-4. **Self-healing.** Stale grants, lingering agents, dead branch servers, a disconnected MCP, a failed deploy (auto
+4. **Self-healing** (user priority 3). Stale grants, lingering agents, dead branch servers, a disconnected MCP, a failed deploy (auto
    rollback), a drifted task store: detected and repaired by the driver, with an event, before anyone notices.
 5. **Cost-aware agents.** A token and time budget per task and role; the smallest agent that fits (scripts first, a
    fresh role agent next, a fork only when the full context really matters); model choice per role (the earlier

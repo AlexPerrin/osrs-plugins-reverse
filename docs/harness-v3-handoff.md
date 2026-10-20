@@ -232,6 +232,76 @@ Dashboard: 1-3 as tiles with trends, 4-7 as an incident list, 8-12 as tables; ea
 - **Upstream contribution flow** that keeps pace with the maintainers: fast re-gates, small single-change PRs, no
   stacking, accuracy against the official game.
 
-## 7. State at hand-off
+## 7. The integration and upstream change model (and the breaking changes v3 should make)
+
+### 7a. Finding: one feature, many branches
+
+Each feature lives on three or four fork branches, with nothing tying them together (2026-10-20):
+
+| Feature | Fork branches | Integration (live server) runs | Upstream PR branch |
+|---|---|---|---|
+| Cannon | acc/cannon, content/cannon, fin/cannon | fin/cannon | content/cannon (#354); acc/cannon is the gated rewrite |
+| Genie | acc/genie, content/genie, fin/genie | fin/genie | content/genie (#355); acc/genie holds today's 7 accuracy fixes |
+| Goblin Diplomacy | content/goblin-diplomacy, -829, -unstacked, fin/goblin-diplomacy | fin/goblin-diplomacy | content/goblin-diplomacy (#367) |
+| Witch's Potion | 4 branches | fin/witchs-potion | content/witchs-potion (#368) |
+| Ground item timers | fix/76-obj-add-timers and fix/ground-item-despawn-times (same fix) | both, until the first train conflicted | fork PR #23 only (fix/76 dropped 10-20, tools ff7e6eec8) |
+
+Consequences: the test server does not run what goes upstream (the genie fixes are on acc/genie, live runs
+fin/genie); gates ran on commits the server never ran; every gate, rewrite or unstack created a branch name; only
+the orchestrator's memory knew which branch was current, which is why integration work fell to full-context fork
+agents. The first scripted train exposed one case directly (fix/76 vs the despawn fix, resolved by dropping fix/76;
+resolution notes in re/evidence/int-20261020-1/resolution.md).
+
+### 7b. The model v3 should implement
+
+1. **One change, one branch.** A feature or fix has exactly one branch, the one its upstream PR uses
+   (`fix/<slug>`, `content/<slug>`). Integration merges that branch at a pin. Rewrites, merges from main and gate
+   fixes are new commits on it, never new branches. `local/<slug>` for what never goes upstream. No `fin/*`,
+   `acc/*`, `-829`, `-unstacked`.
+2. **A change record**, keyed by the slug: branch, upstream PR, spec, PR text, gate records, pin, live commit,
+   upstream state, caveats. Today one feature is scattered over hand-linked tasks (spec-genie, gate-acc-genie,
+   fix-acc-cannon-text, wait-354-355-undraft); in v3 tasks are the stages of a change.
+3. **One lifecycle the driver advances**, generating each stage's task and brief from the record:
+   dev (spec, code, fork CI) -> queued -> in a train (rebuild, gate, image) -> live (client checks unblock) ->
+   upstream gate (QA, at the live commit) -> gated (approval to open/update the PR: the user) -> in review
+   (maintainer comments become fix tasks on the same branch; each new commit re-enters at queued) -> merged upstream
+   (the next re-pin drops the branch from integration). An agent never has to work out where a change stands.
+4. **Gate only what is live.** The upstream gate runs on a commit integration already carries, so the in-game
+   check is on the real test server and "gate PASS" means "what we tested is what we send".
+5. **No fork agents for integration.** Trains are scripts (docs/integration-pipeline.md phases 2-5); the only
+   agent is a small integrator for exceptions, briefed from the change record and the stop output.
+
+This feeds the user's three priorities: overnight runs (the driver advances changes without history), the dashboard
+(one row per change and its stage), self-healing (clear invariants: pins match records, gate commit is live,
+merged means dropped).
+
+### 7c. Breaking changes: considered 2026-10-20, all handed to v3
+
+The user chose to hand all of these to v3 ("Place all items in handoff") rather than apply them in v2. Only the
+fix/76 drop (an instance of item 1) was done.
+
+Considered for "now" (cheap while little is in flight):
+1. **Converge to one branch per change**: fold acc/* into content/* for cannon and genie (merge commits; updates
+   #354/#355 upstream, needs the user's OK per PR), point integration at the PR branches, archive fin/*, acc/*,
+   -829, -unstacked. Changes what the live server runs: one train, gate and deploy per step. Order: cannon and
+   genie (their gates ran 10-20 on acc/* commits that are not live), then Goblin Diplomacy, Witch's Potion, the rest.
+2. **Gate only what is live**: enforced in the hand-over check and the gate brief (needs item 1 first).
+3. **`change:` id on every task** (the branch slug), back-filled once; additive, the key for 7b's record.
+4. **Event log from day one** (`events.jsonl`, append-only, UTC) from task.py, the checks, ship, trains, locks,
+   deploys; additive; the baseline section 6a-kpi needs.
+5. **UTC everywhere, branch servers named per agent** (`qa-or-server-<agent>`): small output/name breaks; both
+   caused wrong calls on 10-20 (an "overdue" lock that wasn't, a reclaim judged on container names).
+
+Better as one clean break in v3:
+6. **Change record + driver state machine** (7b), replacing hand-linked tasks.
+7. **Policy as data**: one versioned file read by hooks, briefs and the driver, replacing rules spread over hooks,
+   role files and memory.
+8. **Lease-based instances**, replacing device-lock.sh; the devtools bridge and client scripts check the lease
+   (10-20: an agent stopped another's client, another's commands drove a third agent's client).
+9. **Settings as code**, and the server tooling on the fork (task server-tooling-to-fork).
+
+Keep: the task store, the hand-over check, the train scripts, role agents, the tests.
+
+## 8. State at hand-off
 
 (Updated at session end.)

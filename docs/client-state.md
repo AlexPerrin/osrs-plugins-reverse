@@ -17,8 +17,8 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 - Build: client/herbiboar-after-teleport's head (gen 45; includes client/host-prompt-enter), built in the gen 45 worktree with
   `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1 MODULUS=<openrune.sh modulus> tools/repack.sh` (7 `telemetry:`
-  lines) and installed with `adb install-multiple -r` (Windows adb.exe, `wslpath -w` paths). Reinstall master's build after the
-  merge gates if they fail.
+  lines) and installed with `adb install-multiple -r` (Windows adb.exe, `wslpath -w` paths). Gen 46's five branches are merged
+  in master (dev's check each); reinstall master's build when a device check needs it.
 - Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3219,3222.
 - **Expected drift: a Fish barrel in the tester's inventory slot 15** (spawned gen 44; OpenRune's barrel Destroy does nothing,
   filed as a server task). Leave it (orchestrator, gen 44); destroy it once that fix is live. The restore check's MANUAL line says so.
@@ -95,7 +95,7 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
   The old project had no user-made symbols, comments, signatures or data types, so nothing was carried over; it is kept
   at `re/ghidra-old` until main deletes it. New `Callers.java` (reverse skill table); the objdump whole-binary check stays.
 
-- **World entry thread safety (client/world-entry-thread-safety, gen 43)**: `Native.worldEntry` no longer walks the game's
+- **World entry thread safety (client/world-entry-thread-safety, gen 43; merged in master, merge gate PASS at b4b11a4)**: `Native.worldEntry` no longer walks the game's
   world list off the game thread. The game frees and rebuilds that list (new address each time) whenever the login-screen
   world switcher opens, on the game thread (parser `0x4320dc`: callers `0x412e78` and the login handler `0x41615c`, both only under doCycle, and
   the CS2 world list ops 6500-6531 `0x4c2544`; offsets.md "World list").
@@ -190,9 +190,7 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Next tasks
 
-1. Merge gate for client/world-entry-thread-safety with client-qa. Regression on plugins that draw into images (Poison
-   infobox, Instance Map, Bank Tags icons) with the merged BufferedImage fix; Quick Prayer Preview checked gen 43.
-2. When the server tasks from gen 44 are live: Fish Barrel (Check), Clue Steps, Did I Compost's treated path, destroy the slot-15 Fish barrel.
-3. More hub plugins from the ranking (`scratchpad/client38/ranking.json` or refetch); netcheck + stubcheck each.
-4. Host gap 2 (native menu entry removal).
-5. Opportunistic: a capture that includes a GE digest fetch (should go to the sidecar).
+1. When the server tasks from gen 44 are live: Fish Barrel (Check), Clue Steps, Did I Compost's treated path, destroy the slot-15 Fish barrel.
+2. More hub plugins from the ranking (`scratchpad/client38/ranking.json` or refetch); netcheck + stubcheck each.
+3. Host gap 2 (native menu entry removal).
+4. Opportunistic: a capture that includes a GE digest fetch (should go to the sidecar).

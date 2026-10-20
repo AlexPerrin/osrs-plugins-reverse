@@ -45,10 +45,10 @@ Server QA (companions sq24 for sd23's branches, sq25 for sd24's):
    climbs). Fix: start from the tile outside the stile on the player's side, in line; check in game; text update.
 
 Client:
-8. client-qa: one merge-gate session for gen 46's five branches (scene-item-despawn 359aa21, rebuild-double-logged-in
-   f01f851, host-config-rsprofiles 77baa50, host-javax-sound-shim e8a3836, poison-sprite-override e2ee7b7); restore
-   settings.properties before the restore check (rsprofile keys). Then merge to master; docs-only conflicts in
-   client-state.md.
+8. Done: gen 46's five branches (scene-item-despawn 359aa21, rebuild-double-logged-in f01f851, host-config-rsprofiles
+   77baa50, host-javax-sound-shim e8a3836, poison-sprite-override e2ee7b7) merged to master on the dev's check (new client
+   model, no merge gate); master builds (host/build.sh + ninja). Push pending. Device restore checks: restore
+   settings.properties first (the login now writes rsprofile keys).
 
 Other: the re-pin (docs/backlog.md `repin-2`: drop fix/17, fix/18, fin/doric; add the gated branches); the
 deny_publish `git stash push` false positive; RSProx coverage for the roadmap items.

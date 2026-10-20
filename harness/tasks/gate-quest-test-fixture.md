@@ -2,7 +2,7 @@
 id: gate-quest-test-fixture
 track: server
 title: 'Upstream gate: quest test fixture'
-status: ready
+status: done
 prio: P1
 role: server-qa
 owner: null
@@ -14,7 +14,7 @@ unblocks:
 - gate-vampyre-slayer
 - cleanup-pirates-treasure
 created: '2026-10-20T01:42:41Z'
-updated: '2026-10-20T01:42:59Z'
+updated: '2026-10-20T04:31:54Z'
 ---
 ## Task
 Gate the QuestTalkFixture branch (shared base for every quest PR) and its PR text (UPSTREAM-PRS.md). Goes upstream first in the PR order (waiting item: order of new upstream PRs).
@@ -30,3 +30,5 @@ Gate the QuestTalkFixture branch (shared base for every quest PR) and its PR tex
 - 2026-10-20T01:42:59Z unblocks unstack-367-368
 - 2026-10-20T01:42:59Z unblocks gate-vampyre-slayer
 - 2026-10-20T01:42:59Z unblocks cleanup-pirates-treasure
+- 2026-10-20T04:31:54Z Obsolete (orchestrator 2026-10-20): user's option A (2026-10-19) = no QuestTalkFixture upstream; quest PRs carry no tests (#366 and #367 dropped theirs). The fixture stays local only (local/quest-test-fixture in integration). Unblocking gate-vampyre-slayer and cleanup-pirates-treasure.
+- 2026-10-20T04:31:54Z set status=done

@@ -2,7 +2,7 @@
 id: unstack-367-368
 track: server
 title: 'Unstack #367 Goblin Diplomacy and #368 Witch''s Potion'
-status: ready
+status: done
 prio: P2
 role: server-dev
 owner: null
@@ -13,7 +13,7 @@ ci: https://github.com/AlexPerrin/OpenRune-Server/actions/runs/39353936705
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T04:11:50Z'
+updated: '2026-10-20T05:08:37Z'
 summary: GD d77ac2b76 CI green; second branch content/witchs-potion-unstacked 23e1b7c5d (CI rerun 39349238661 queued). No fork PR yet; docs commit ce5e5c8bb + uncommitted text edits in re/agents/sd25/docs.
   See log.
 spec: goblin-diplomacy
@@ -44,3 +44,5 @@ spec: goblin-diplomacy
 - 2026-10-20T02:50:16Z back to ready after the hand-over check (partial): next dev records the fork PR URLs (--pr), copies the in-game and CI evidence to re/evidence/unstack-367-368/, ticks the DoD items met, lists Witch's Potion 23e1b7c5d (CI rerun 39349238661) in the summary, then task.py handover; specs: accuracy/goblin-diplomacy.md, accuracy/witchs-potion.md
 - 2026-10-20T03:34:09Z #373 (lookout ladder) opened 2026-10-20. #367's current head still adds the ladder to GoblinCaveLadders.kt and would conflict with #373; the quest-only update (d77ac2b76) drops it.
 - 2026-10-20T04:11:50Z #367 updated to the quest-only d77ac2b76 (2026-10-20, user OK); the ladder overlap with #373 is gone. #368 waits for gate-witchs-potion.
+- 2026-10-20T05:08:37Z Closed (2026-10-20): Goblin Diplomacy is done (#367 at d77ac2b76, ready for review). Witch's Potion continues as gate-witchs-potion (content/witchs-potion-unstacked 23e1b7c5d), then its #368 update with the user's OK.
+- 2026-10-20T05:08:37Z set status=done

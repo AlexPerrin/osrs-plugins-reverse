@@ -13,7 +13,7 @@ commit: null
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:41Z'
-updated: '2026-10-20T03:18:49Z'
+updated: '2026-10-20T03:28:23Z'
 ---
 ## Task
 Gate the op-overrides branch (shared base for every quest PR) and its PR text (UPSTREAM-PRS.md). Goes upstream with the fixture first.
@@ -29,3 +29,4 @@ Gate the op-overrides branch (shared base for every quest PR) and its PR text (U
 - 2026-10-20T03:16:26Z claimed by sq26 (instances desktop)
 - 2026-10-20T03:18:49Z FAIL at 46bc3ab31: branch not on current upstream main (c2492318d vs 829b9477d); upstream #334 gates Doric's anvils via DoricsQuest.mayUseAnvil so the API has no user/test upstream; PR text stale (claims base 1be5dfb5f, stacked on Doric, not on #369 template, Ap-path caveat missing); no fork CI at the commit. Record committed locally as 8c4a29bfa in re/agents/sq26/docs (qa/gate-op-overrides.md) but push to fork docs was DENIED by hook ('Only the orchestrator does pushes'); orchestrator please push. Desktop not taken (in-game not run: stopped at scope fail).
 - 2026-10-20T03:18:49Z set status=failed
+- 2026-10-20T03:28:23Z QA record 8c4a29bfa pushed to fork docs by the orchestrator at the user's request (sq26's push was blocked by the push hook).

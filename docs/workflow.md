@@ -199,7 +199,7 @@ Every gate is defined before its work starts, and recorded against an exact comm
 |---|---|---|---|---|
 | Merge | client | `client-qa` | Device regression for what changed, A/B where it draws, Network QA if network-relevant, native claims | merge to `master` |
 | Release | client | `client-qa` | Full client QA on `master`, Network QA, privacy patches in the build | tag; GitHub release on the user's OK |
-| Internal | server | `server-qa` | `build-test`, `accuracy-check` against the spec (including its RSProx comparison), in-game where it renders | into `integration`, deploy |
+| Internal | server | `server-qa` | `build-test` (the fork's GitHub Actions CI at the commit; local `qa.sh gate` for `integration`), `accuracy-check` against the spec (including its RSProx comparison), in-game where it renders | into `integration`, deploy |
 | Upstream | server | `server-qa` | Internal at the same commit + one change only, no upstream overlap, on current `main` + `fix_gameval_conflicts.py --check` + CONTRIBUTING + `pr-text-review` + caveats complete | upstream queue (fork PR); upstream only on the user's approval per item |
 
 Records start with these lines exactly, because the hooks parse them:
@@ -306,6 +306,9 @@ it was replaced. Sources: the Claude Code docs on hooks, subagents, skills, and 
 ## Capacity
 
 The machine has 16 threads. WSL has 20 GB (`.wslconfig`); Windows (the host) the rest.
+- **GitHub Actions** on the fork runs upstream's CI (build, tests, boot) for upstream-bound branches on GitHub's runners,
+  in parallel and free (public repo), so those gates use no local build slot. Local slots are for `integration`, the
+  live image, branch servers for in-game checks, and dev builds.
 - **Windows:** several BlueStacks instances (about 2-3 GB each) and desktop RuneLite clients (about 1 GB each).
   Each dev/QA pair gets its own BlueStacks instance and desktop client (own profile and port), so pairs never
   wait for each other; the device lock becomes one lock per instance (`LOCK_NAME=<instance>`). Only a server

@@ -8,6 +8,9 @@ QA is done by the QA agent, not by the agent that wrote the branch.
 
 ## 1. Build and tests (exact branch commit)
 
+- For branches on upstream `main`: the fork's GitHub Actions `CI` (upstream's own `.github/workflows/ci.yml`: freshCache, buildCache, generateRsa, `assemble test integration`, boot to ready; plus `Formatting` = spotlessCheck and `Gameval Conflict Check`) at the exact branch commit
+  is the build-and-test evidence (record the run URL and sha; build-test skill, "CI first"). The local run below is
+  for `integration`, the live image, and the fallback.
 - Use a fresh `git clone --shared` of `re/upstream-pr/or` at the branch commit, with its own Gradle
   home volume.
 - Run `clean`, then `:or-cache:freshCache`, `:or-cache:buildCache`, `spotlessCheck`, `assemble`,

@@ -15,7 +15,8 @@
   orchestrate.py approvals                    actions waiting for the user (harness/approvals/)
 
 Slots: HARNESS_MAX_CLIENT (1: one Android instance), HARNESS_MAX_SERVER (2), one QA companion per track. Headless
-runs use HARNESS_PERMISSION_MODE (acceptEdits): tools outside the allow rules are denied, not asked; the role hooks
+runs use HARNESS_PERMISSION_MODE (auto: the classifier decides, prompts are denied; bypassPermissions is refused by the
+classifier when launched from a session); the role hooks
 (deny_publish, qa_write_scope, slot_stop, task_stop) still apply. Nothing here touches upstream or releases: those
 become approval files for the user's interactive session.
 """
@@ -175,8 +176,8 @@ def dispatch(tid, owner=None, instances=None, minutes=300, run=False):
         cwd = os.path.join(ROOT, "re/harness/wt", owner)
         if not os.path.isdir(cwd):
             sh("git", "-C", ROOT, "worktree", "add", "-q", "--detach", cwd, "master", check=True)
-    cmd = ["claude", "-p", "--agent", role, "--permission-mode", os.environ.get("HARNESS_PERMISSION_MODE", "acceptEdits"),
-           "--output-format", "json", "--no-session-persistence", brief]
+    cmd = ["claude", "-p", "--agent", role, "--permission-mode", os.environ.get("HARNESS_PERMISSION_MODE", "auto"),
+           "--output-format", "stream-json", "--verbose", "--no-session-persistence", brief]
     with open(log, "w") as f:
         proc = subprocess.Popen(cmd, cwd=cwd, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                                 env=dict(ENV, CLAUDE_PROJECT_DIR=cwd), start_new_session=True)
@@ -194,7 +195,7 @@ def cmd_dispatch(a):
 
 def run_summary(log):
     try:
-        last = [l for l in open(log, errors="replace").read().splitlines() if l.startswith("{")][-1]
+        last = [l for l in open(log, errors="replace").read().splitlines() if l.startswith('{"type":"result"')][-1]
         j = json.loads(last)
         return (f"{j.get('num_turns', '?')} turns, {round(j.get('duration_ms', 0) / 60000)} min, "
                 f"${round(j.get('total_cost_usd', 0), 2)}" + (", is_error" if j.get("is_error") else "")), j.get("result", "")

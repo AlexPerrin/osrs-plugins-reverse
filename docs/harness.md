@@ -111,7 +111,7 @@ are free (standing approval for deploys with a rollback tag).
 tools/harness/orchestrate.py run --interval 120     # reap, dispatch while slots are free, repeat; Ctrl-C to stop
 tools/harness/orchestrate.py run --once             # one pass
 ```
-`dispatch --run` starts `claude -p --agent <role> --permission-mode $HARNESS_PERMISSION_MODE --output-format json`
+`dispatch --run` starts `claude -p --agent <role> --permission-mode $HARNESS_PERMISSION_MODE --output-format stream-json --verbose` (every tool call is a line in `re/harness/runs/<name>.log`) (default `auto`)
 with the brief, in a worktree under `re/harness/wt/<name>` for client roles, logs under `re/harness/runs/`. In
 `-p` mode nobody answers permission prompts: anything outside the allow rules is denied, so before the first
 headless run extend `.claude/settings.local.json` for the agents' routine commands (the `fewer-permission-prompts`

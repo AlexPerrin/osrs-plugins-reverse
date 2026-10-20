@@ -27,6 +27,12 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
 
 ## Recent state
 
+- **javax.sound.sampled shim (client/host-javax-sound-shim, gen 46, device 2026-10-19)**: `host/awt/javax/sound/sampled` (AudioSystem,
+  Clip, FloatControl, Control, Line, DataLine, AudioInputStream, the two exceptions; `HostClip` plays the file's bytes through
+  AudioPlayer/MediaPlayer). Drop Sounds now starts and plays a valuable-drop clip from a real wav, but its pinned download URL is dead
+  upstream (404, repo renamed; desktop is affected too), so it saves 404 text as its wavs: **pin dropped** (orchestrator's decision; removed from host/plugins/hub/plugins.txt).
+  Network QA PASS (only the approved raw.githubusercontent.com GETs are new; docs/app-telemetry.md). Evidence: gen 46 scratchpad
+  `g46/dropsounds-logcat.txt`, `netqa-logcat.txt`, `sockets-b4.txt`.
 - **ConfigManager.getRSProfiles (client/host-config-rsprofiles, gen 46, device 2026-10-19)**: Time Tracking's farming completion
   check no longer throws NoSuchMethodError. The host's one RS profile (`rsprofile.default`) gets desktop's profile keys
   (displayName, type, accountHash) at each login (`Host.postGameState`, before RuneScapeProfileChanged), and `getRSProfiles()`
@@ -142,8 +148,8 @@ History: docs/client-handoff.md (per-gen log up to gen 40). Last rewrite: 2026-1
    Enter"). Decimal Prices converts "1.5k" to 1500.
 7. **Herbiboar after a teleport: fixed (client/herbiboar-after-teleport, gen 45).** A rebuild's LOADING now waits for the new
    scene base, so getMapRegions answers the new regions; Herbi AFK draws its path line too.
-8. Host API gaps found by the v0.1.0 gate (backlog): no `javax.sound.sampled` (Drop Sounds throws at start).
-   `ConfigManager.getRSProfiles()`: fixed (client/host-config-rsprofiles, gen 46).
+8. Host API gaps found by the v0.1.0 gate: fixed. `javax.sound.sampled` shimmed (client/host-javax-sound-shim, gen 46; Drop Sounds' own
+   download URL is dead upstream). `ConfigManager.getRSProfiles()`: fixed (client/host-config-rsprofiles, gen 46).
 
 ## Gotchas
 

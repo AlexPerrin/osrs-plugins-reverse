@@ -355,6 +355,20 @@ Max Hit) -> "Try again" -> Play Now -> another restart (devtools bridge) -> Play
   172.217.119.4 (Google), all :443. No Jagex address. 0 `ConsentSync`/`Singular` lines.
 - No GE digest fetch happened in this run (still unconfirmed, as in gen 38).
 
+### Network QA, gen 46 Drop Sounds (2026-10-19 19:33:50-19:41:18)
+
+Build: client/host-javax-sound-shim (javax.sound.sampled shim), `OPENRUNE=1 SERVER=10.0.2.2:8080 GAME_PORT=43594 LOCAL_AUTH=1
+MODULUS=... tools/repack.sh` (7 `telemetry:` lines). Plugins: the default 3, devtools and `hub-dropsounds.jar` (its read-only GETs to
+raw.githubusercontent.com/MitzDK/DropSounds approved by the orchestrator, gen 46). Sampler: ESTABLISHED uid-10071 rows every 0.5 s,
+585 samples. Run: app start, Sign out -> "Sign in with Email / Username" -> Play Now -> LOGGED_IN, walk, tabs, `::tele` to Fossil Island
+and back, `::drop` relog, force-stop + launch, Play Now, a minute of walking.
+- App-uid sockets: 10.0.2.2:43594, 10.0.2.2:8080; 104.26.8.233 (runelite); 172.64.152.249, 104.18.35.7 (Braze); 172.64.155.231
+  (OneTrust); **185.199.110.133:443** (GitHub, raw.githubusercontent.com range) at 19:34:19, one second after `started plugin Drop
+  Sounds`: its two wav GETs (both 404 upstream, see plugin-host.md). All :443 but the 10.0.2.2 ones.
+- netd DNS: `api.runelite.net`, `static.runelite.net`, `sdk.fra-01.braze.eu` (one each, after the restart). No `*.jagex.com`,
+  `*.runescape.com`, `*.singular.net`, `app-measurement.com` or `*.x.invalid` lookup; 0 `ConsentSync`/`Singular` lines; no Jagex
+  address. **PASS** (only the approved GitHub host is new).
+
 ### Network QA, v0.1.0 release gate (2026-10-18 22:22:02-22:27:38)
 
 Run by client-qa for the v0.1.0 release gate; full record in qa/client-0.1.0.md section 6 (evidence `netqa-logcat.txt`,

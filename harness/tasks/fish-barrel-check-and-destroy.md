@@ -2,7 +2,7 @@
 id: fish-barrel-check-and-destroy
 track: server
 title: 'Fish barrel: Check message box and Destroy'
-status: shipped
+status: live
 prio: P1
 role: server-dev
 owner: sd26
@@ -17,7 +17,7 @@ blocked_by: []
 unblocks:
 - hub-fish-barrel-check
 created: '2026-10-20T01:42:40Z'
-updated: '2026-10-20T04:44:42Z'
+updated: '2026-10-20T05:29:22Z'
 summary: 'Left: (1) fork PR - tools/fork.sh pr-create was denied by hook (''only the orchestrator does fork pushes and PRs''); orchestrator please open it from docs pr-texts/fish-barrel-check-and-destroy.{title,upstream.body}
   (CI + Formatting already green at 4e2d4562a via workflow_dispatch); (2) client verification of hub-fish-barrel-check after deploy. Done: Check opens the item box (objectbox 193, read by the hub plugin
   at 193:2; the plain message box is 229, found in the desktop check) with ''The barrel is empty.'' / ''The barrel contains:<br>N x Name, ...'', no game messages; Destroy (op 5) shows the confirmation (empty/filled
@@ -53,3 +53,4 @@ Fish barrel Check sends GAMEMESSAGE lines instead of the chatbox message box (in
 - 2026-10-20T04:25:12Z set status=shipped integration=e5b18a87b
 - 2026-10-20T04:25:12Z shipped: in integration e5b18a87b (pushed with a lease over a07ec2d8f); gate + deploy pending
 - 2026-10-20T04:44:42Z Live 2026-10-20 04:44 UTC (integration e5b18a87b, image integration-e5b18a8).
+- 2026-10-20T05:29:22Z migrate-live: shipped -> live (deployed: Live 2026-10-20 04:44 UTC (integration e5b18a87b, image integration-e5b18a8))

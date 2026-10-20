@@ -188,6 +188,8 @@ class IntegrationDenyTest(unittest.TestCase):
     CASES = [
         # (command, cwd (relative to a temp root), denied)
         ("tools/harness/deploy.sh int-20261020-1", ".", True),
+        ("tools/harness/ship.sh fix-x", ".", True),
+        ("tools/harness/ship.sh fix-x --dry-run", ".", True),
         ("bash tools/harness/image.sh re/harness/qa/x int-20261020-1", ".", True),
         ("/home/alex/osrs-plugins-reverse/tools/harness/deploy.sh", ".", True),
         ("./deploy.sh int-1", "tools/harness", True),

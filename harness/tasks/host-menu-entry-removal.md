@@ -2,7 +2,7 @@
 id: host-menu-entry-removal
 track: client
 title: 'Host gap 2: native menu entry removal (No Examine)'
-status: shipped
+status: live
 prio: P3
 role: client-dev
 owner: cd47
@@ -14,7 +14,7 @@ evidence: /home/alex/osrs-plugins-reverse/re/evidence/host-menu-entry-removal
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:43Z'
-updated: '2026-10-20T02:05:17Z'
+updated: '2026-10-20T05:29:22Z'
 summary: 'Host gap 2 fixed: MenuOpened runs in a menu session and AndroidMenu.applyOrder (presort''s order/removal logic, shared) shortens or reorders the game''s open menu from a plugin''s setMenuEntries.
   Device with hub-no-examine on the new build: Genie + Overgrown cat long-press menu 10 -> 8 entries without Examine, inventory Logs = Use/Drop/Cancel, fountain = Walk here/Cancel, Talk-to tapped in the
   shortened menu ran Talk-to; no exceptions. Host Java only, no network change. Evidence: screenshots, menu-logcat.txt, repack.log (7 telemetry lines). Device restored (check all OK, lock freed).'
@@ -42,3 +42,4 @@ Host gap 2: let plugins remove native menu entries (No Examine) through the host
 - 2026-10-20T02:05:02Z set status=shipped
 - 2026-10-20T02:05:02Z shipped: merged into master eeac264, pushed
 - 2026-10-20T02:05:17Z run cd47: 94 turns, 15 min, $7.38, 1 classifier denial (APK symlink + repack command; recovered)
+- 2026-10-20T05:29:22Z migrate-live: shipped -> live (client ship = merged into master)

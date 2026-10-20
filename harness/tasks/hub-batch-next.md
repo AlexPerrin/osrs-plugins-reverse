@@ -2,7 +2,7 @@
 id: hub-batch-next
 track: client
 title: Next hub plugin batch from the ranking
-status: shipped
+status: live
 prio: P3
 role: client-dev
 owner: cd49
@@ -14,7 +14,7 @@ evidence: /home/alex/osrs-plugins-reverse/re/evidence/hub-batch-next
 blocked_by: []
 unblocks: []
 created: '2026-10-20T01:42:43Z'
-updated: '2026-10-20T05:13:54Z'
+updated: '2026-10-20T05:29:22Z'
 summary: 'User''s plugins first (re/evidence/hub-batch-next/user-plugins.md): 16 of their hub plugins pinned, netcheck clean, start on the device; Camera Smoothing now runs (host: setCameraPitchTarget/YawTarget
   write Client +0x8949c/+0x894a0; camlog on/off logs). Plus 9 ranking plugins (venom/spec-regen/afk timers, player highlighter, marks of grace, tick counter, virtual level ups, idle alarm, dynamic inventory
   tags) start. Report Button starts but mobile has no report button; Stretched Mode n/a; Animation Smoothing and Camera need stub setters. Left: afk-marks-canafis (NET-RAW NTP, needs main OK), wikisync
@@ -38,3 +38,4 @@ More hub plugins from the ranking (scratchpad/client38/ranking.json, keep it, or
 - 2026-10-20T05:13:48Z handover-check PASS
 - 2026-10-20T05:13:53Z set status=shipped
 - 2026-10-20T05:13:54Z shipped: merged into master a4f3740, pushed
+- 2026-10-20T05:29:22Z migrate-live: shipped -> live (client ship = merged into master)

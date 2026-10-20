@@ -141,6 +141,56 @@ done), and the three reviews in `re/evidence/harness-v2-review/`: `kpi.md` (meas
 10. **Approvals wait silently.** An approval in chat blocks until the user reads it (8.5 h once). v3 needs approvals as
     a queue the user can act on asynchronously (and notification), with all other work continuing.
 
-## 6. State at hand-off
+## 6. Stretch goals: what is desirable from a new harness
+
+Beyond fixing section 5, in rough order of value. Each is a goal, not a commitment; v3 picks its scope with the user.
+
+### 6a. Harness
+
+1. **Runs overnight without the user.** The driver works the queue for hours: dispatch, check, ship, train, deploy,
+   unblock, re-pin, with every step logged. The user returns to a summary, not a backlog. Only upstream actions and
+   client releases wait, as approvals.
+2. **Async approvals and notifications.** Approvals form a queue the user can act on from anywhere: an Artifact page
+   or a phone push, with the exact command and text, and approve/deny. Work that doesn't depend on them keeps going.
+   A blocked or failed task, or an idle instance, pings once.
+3. **A live dashboard.** Tasks per track, running agents and their cost, instance leases, the build queue, the live
+   server (integration, image, rollback), upstream PRs and their review state, and the KPI trends from the event log.
+   One page instead of `status` dumps in chat.
+4. **Self-healing.** Stale grants, lingering agents, dead branch servers, a disconnected MCP, a failed deploy (auto
+   rollback), a drifted task store: detected and repaired by the driver, with an event, before anyone notices.
+5. **Cost-aware agents.** A token and time budget per task and role; the smallest agent that fits (scripts first, a
+   fresh role agent next, a fork only when the full context really matters); model choice per role (the earlier
+   review found Opus and Fable equal on reversing, so cost and speed decide); cost per task in the event log.
+6. **Elastic instances.** More than one Android device and desktop (desktop2 exists; more BlueStacks instances or
+   emulators), on-demand branch servers named by agent, leases that scale. Parallel client checks instead of one
+   device slot.
+7. **Faster builds again.** Test-impact selection (gate only the modules a change touches, a full gate per train),
+   a warm pool of gate containers, cache-hit tracking, and client host builds with timings and caching.
+8. **Upstream automation.** Maintainer review comments become tasks automatically. Fork CI runs on every push to a
+   PR branch. Re-gates are queued when a PR head moves. Merged PRs drop out of integration on the next train.
+   PR texts are kept in sync with their commits.
+9. **Policy as code with tests.** One versioned policy file (who may push where, what needs approval, which
+   instances a role may use, screenshot rule, exit rule) read by hooks, briefs and the driver; a test per past
+   incident; changes reviewed once with the user, taking effect without restarting sessions.
+10. **Golden-task evaluation.** A small set of replayable tasks (a server fix, a client plugin port, a gate) to compare
+    harness versions and models on time, tokens and first-pass check rate before rolling a change out.
+11. **Reproducible runs.** Every train, image and deploy records the exact commits, tools version and settings, so any
+    live state can be rebuilt or bisected.
+12. **Session continuity.** No more compaction-driven restarts: the orchestrator's state lives on disk (task store,
+    events, policy), so a fresh session picks up in one command, and long sessions hand over automatically.
+
+### 6b. Product goals the harness should carry
+
+- **GPU plugin** and **117 HD** on the Android app, separately (client-gpu-plugin-feasibility,
+  client-117hd-feasibility): spikes first, then porting tasks from each plan.
+- **The user's own RuneLite plugins** (project-user-plugins): 22 of 25 hub plugins start; the rest need user decisions
+  (WikiSync, AFK Marks Canifis, Quest Voiceover use new hosts), client setters (Animation Smoothing, Camera), the
+  host WorldEntity API (Sailing, Barracuda Trials), and 11 server content tasks (Barbarian Assault, Guardians of the
+  Rift, Trouble Brewing, Gnome Restaurant, Sailing, drift nets, Forestry, kebbit tracking, Stealing Artefacts,
+  Canifis rooftop, Perilous Moons).
+- **Upstream contribution flow** that keeps pace with the maintainers: fast re-gates, small single-change PRs, no
+  stacking, accuracy against the official game.
+
+## 7. State at hand-off
 
 (Updated at session end.)

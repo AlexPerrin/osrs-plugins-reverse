@@ -73,6 +73,6 @@ st=$($ADB $S logcat -d -s osrsrl-host | grep -o 'GameStateChanged [A-Z_]*' | tai
 if docker exec osrs-openrune-http test -e /tmp/local-auth-user 2>/dev/null; then off "/tmp/local-auth-user exists in osrs-openrune-http"
 else ok "/tmp/local-auth-user absent"; fi
 
-echo "MANUAL player at $HOME_TILE (devtools get_client_state, or the overlay's 'player world' line); 1 coin pouch, 100,289 coins, GE lobster offer kept; a Fish barrel in inventory slot 15 is expected (spawned gen 44; the server's barrel Destroy does nothing yet, destroy it once that fix is live)"
+echo "MANUAL player at $HOME_TILE (devtools get_client_state, or the overlay's 'player world' line); 1 coin pouch, 100,289 coins, GE lobster offer kept; inventory slot 15 empty (the gen 44 Fish barrel was destroyed in hub-fish-barrel-check)"
 echo $bad > "$dir/result"   # read by tools/hooks/slot_stop.py (0 = all OK)
 exit $bad

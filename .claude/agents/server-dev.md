@@ -92,3 +92,8 @@ append; "Next tasks" lives in the task store now), commit (pathspec-only, see CL
 `task.py handover` (above), or `task.py block`/`task.py fail <id> "why"` when you can't. The stop hook won't let you
 finish while the task is still in-progress or specced. Your final message is one line: the task id and its new
 status. A client task you unblock is in the task's `unblocks:`; the driver reopens it when yours is live.
+
+Ending (user, 2026-10-20): once you have handed over, blocked or failed the task, you are done. Stop every background
+job you started (TaskStop for background shells and Monitors), stop your dev container (`qa.sh dev-stop <name>`) and
+any branch-server containers you started, free every lock, then send your one-line final message and end. Start no new
+background work or waits after the hand-over; don't wait on CI after it either (the hand-over check reads CI itself).

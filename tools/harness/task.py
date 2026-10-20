@@ -394,6 +394,10 @@ When done: tick the definition of done in the task file, then
 Blocked by the other track: `task.py block {meta['id']} --by <new-task-id> "repro, expected behaviour, source"` and
 create that task with `task.py new`. Can't finish: `task.py fail {meta['id']} "why"`. The stop hook won't let you
 finish while the task is still in-progress.
+Ending (user, 2026-10-20): once you have handed over, blocked or failed the task, you are done. Stop every background
+job you started (TaskStop for background shells and Monitors), stop your dev container (`qa.sh dev-stop <name>`) and
+any branch-server containers you started, free every lock, then send your one-line final message and end. Start no new
+background work or waits after the hand-over; don't wait on CI after it either (the hand-over check reads CI itself).
 """)
     print(body.split("## Log")[0].rstrip())
 

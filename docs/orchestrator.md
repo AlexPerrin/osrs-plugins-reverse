@@ -2,7 +2,7 @@
 
 Rewritten at each milestone so a fresh orchestrator session can take over without the old conversation. Read with
 CLAUDE.md, docs/client-state.md, the fork's STATE.md (`git -C re/upstream-pr/or show fork/docs:STATE.md`) and
-docs/backlog.md (upstream queue, roadmap, client and server tasks). Last rewrite: 2026-10-19 evening.
+docs/backlog.md (upstream queue, roadmap, client and server tasks). Last rewrite: 2026-10-19 ~20:30 (handoff for restart).
 
 ## How the orchestrator works
 - Delegate: anything beyond a couple of quick commands goes to a subagent (typed roles from .claude/agents/, or a
@@ -18,15 +18,36 @@ docs/backlog.md (upstream queue, roadmap, client and server tasks). Last rewrite
 - Client: v0.1.0 released; dev builds via tools/release-dev.sh.
 - Build system: one-container QA gate + shared build cache + dev lane (qa.sh gate / dev), buildq classes.
 
-## In flight (2026-10-19 evening)
-| Owner | Work | State | Next |
-|---|---|---|---|
-| sd23 (server-dev) | acc/genie: move RandomEventLocations lists to a server-only dbtable (pattern: dbtable.music_classic); acc/cannon bc243d141: Ranged XP on capped damage, load message, caveats, template text | coding / dev builds | hand over → sq24 |
-| sd24 (server-dev) | Witch's Potion text fixes (in-game run + cheats, id note); fix/goblin-village-lookout-ladder 475eefb76 dev run; fix/57 merge-main e551ba7ce dev run (#362) | in progress | hand over → sq25 |
-| sq24 (server-qa) | fix/stile-approach 8a8c0ca7a in-game check (gate passed); then Sheep Shearer vs RSProx recordings | needs desktop lock (granted) | record qa/stile-approach.md, then the RSProx comparison |
-| sq25 (server-qa) | content/goblin-diplomacy-829 4f5e59627 gates (incl. whether deleting #328's GoblinGenerals/Grubfoot is in scope) | gate + in-game | record qa/goblin-diplomacy.md |
-| RSProx transcription (general) | gunzip + transcribe 1619-1622, 1718 (Sheep Shearer), then Goblin Diplomacy and Witch's Potion recordings; notes in re/ref/rsprox/notes/ | running | update references/rsprox.md on the fork's docs |
-| client dev gen 46 | 5 host fixes, one branch each off master a063f11: scene-item-despawn 359aa21, rebuild-double-logged-in f01f851, host-config-rsprofiles 77baa50, host-javax-sound-shim e8a3836, poison-sprite-override (in progress) | holds the device | then one client-qa session gates all five |
+## Queue for the next orchestrator (nothing in flight at handoff, 2026-10-19 ~20:30)
+All agents finished. Dispatch in roughly this order (server QA can run two companions in parallel; ask the user
+before adding more agents than that). Records: qa/<slug>.md on the fork's docs; branches on the fork unless noted.
+
+Server QA (companions sq24 for sd23's branches, sq25 for sd24's):
+1. Sheep Shearer RSProx comparison: content/sheep-shearer 069c15fde (both gates PASS). Recordings 1718 (rev 227,
+   Leagues V, whole quest, ticks 7184-7744) and 1619-1622 (rev 225, shearing only); transcripts
+   re/ref/rsprox/txt/, notes re/ref/rsprox/notes/sheep-shearer.md. Then the #366 update (user OK): fast-forward
+   push 069c15fde onto content/quests-sheep-romeo, the review comment (stile fixed separately), ready vs draft.
+2. acc/genie e9c7bcac3 (fork #18): full re-gate; zones moved into dbtable.random_event_zones. Search RSProx (NPC).
+3. fix/goblin-village-lookout-ladder 475eefb76: both gates, in game.
+4. fix/57 merge e551ba7ce (#362, NOT on the fork yet; in re/agents/sd24/or, worktree w57, clone g57): both gates,
+   in game; then the user's OK for the fast-forward push, the drafted comment (pr-texts/gameframe-fullscreen-map.comment)
+   and ready.
+5. Goblin Diplomacy 4f5e59627 and Witch's Potion 4dc1ac9c7 (-829 branches): internal PASS; upstream needs the
+   RSProx comparison (search by NPC id / TEXT; nothing transcribed yet) and, for Goblin Diplomacy, the text fix
+   (gate + in-game run + cheats; "moved verbatim from #328"). Then the user's OK to replace #367/#368 (merge commit).
+6. acc/cannon bc243d141: dev run first (sd23's report: wt/acc-cannon to bc243d141, delete .data/cache/SERVER,
+   qa.sh dev; fill RESULTS_PENDING), then the gates.
+7. fix/stile-approach 8a8c0ca7a: internal FAIL (the player walks onto the stile's own blocking tile, so it never
+   climbs). Fix: start from the tile outside the stile on the player's side, in line; check in game; text update.
+
+Client:
+8. client-qa: one merge-gate session for gen 46's five branches (scene-item-despawn 359aa21, rebuild-double-logged-in
+   f01f851, host-config-rsprofiles 77baa50, host-javax-sound-shim e8a3836, poison-sprite-override e2ee7b7); restore
+   settings.properties before the restore check (rsprofile keys). Then merge to master; docs-only conflicts in
+   client-state.md.
+
+Other: the re-pin (docs/backlog.md `repin-2`: drop fix/17, fix/18, fin/doric; add the gated branches); the
+deny_publish `git stash push` false positive; RSProx coverage for the roadmap items.
 
 ## Waiting on the user
 - #366 Sheep Shearer (both gates PASS at 069c15fde): on hold until the RSProx comparison; then the fast-forward push,
@@ -38,5 +59,5 @@ docs/backlog.md (upstream queue, roadmap, client and server tasks). Last rewrite
 - Docker clean-up (~16 GB): the command is for the user to run (the classifier blocks it for agents).
 
 ## Locks and resources
-Device: client dev gen 46. Desktop: grants to sq25 and server-qa (sq24). BlueStacks Pie64 must be started on
+Device: free (runs gen 46's poison-sprite-override build; the tester has a fish barrel in slot 15 until the server's barrel Destroy fix). Desktop: free, RuneLite on the live target. BlueStacks Pie64 must be started on
 Windows after a reboot/WSL restart (`HD-Player.exe --instance Pie64`). WSL has 20 GB (C:\Users\Alex\.wslconfig).

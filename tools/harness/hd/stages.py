@@ -70,7 +70,7 @@ def observed(ch, obs):
         integ = lv.get("integration")
         if integ is None:
             out["live"] = (None, "live.json missing: nothing deployed by the daemon yet")
-        elif pin != commit:
+        elif not pin or not (pin.startswith(commit) or commit.startswith(pin)):
             out["live"] = (False, f"integration pin is {pin[:9] if pin else 'absent'}, not {commit[:9]} (next train)")
         else:
             c = obs.contains("fork", integ, commit)

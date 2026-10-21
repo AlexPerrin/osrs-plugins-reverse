@@ -193,6 +193,8 @@ def decide(data, argv, run=None):
 def log_denial(data, reason):
     """BR-P3: every denial is an event (fail-safe: a missing hd never blocks the hook)."""
     try:
+        if os.environ.get("HARNESS_DIR") and not os.environ.get("HD_HARNESS_DIR"):
+            os.environ["HD_HARNESS_DIR"] = os.environ["HARNESS_DIR"]   # the v2 tests' temp store: no real event
         root = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         sys.path.insert(0, os.path.join(root, "tools", "harness"))
         from hd import ROOT as main_root

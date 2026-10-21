@@ -9,6 +9,7 @@ Changes
   block <slug> --by <other> ["why"]       a dep edge + a blocked hold (BR-C4)
   fail <slug> "why"                       an agent that cannot finish: a decision hold
   gate <slug> PASS|FAIL ["note"]          the QA companion's verdict after pushing the record
+  hold <slug> blocked|decision|failed|exception "reason"   an operator's hold (never a stage: BR-S2);  unhold <slug>
   resolve <batch> "note"                  the integrator recorded a resolution; the train resumes
   check <slug>                            run the hand-over check now and print it
   brief <slug> [--stage dev|gate]         the spawn brief      dispatch <slug> [--print]   spawn now
@@ -162,7 +163,33 @@ def cmd_fail(a):
     print(f"{ch['slug']}: decision hold: {a.why}")
 
 
+def cmd_hold(a):
+    """BR-S2: an operator adds a hold or a note, never a stage."""
+    ch = _load(a.slug)
+    store.set_hold(ch, a.kind, a.reason)
+    ch["owner"] = None
+    store.save(ch)
+    events.emit("hold", change=ch["slug"], hold=a.kind, reason=a.reason, by="operator")
+    print(f"{ch['slug']}: {a.kind} hold")
+
+
+def cmd_unhold(a):
+    ch = _load(a.slug)
+    store.clear_hold(ch, a.why or "cleared by the operator")
+    store.save(ch)
+    events.emit("hold", change=ch["slug"], hold="none", reason=a.why, by="operator")
+    print(f"{ch['slug']}: hold cleared")
+
+
 def cmd_gate(a):
+    if not store.exists(a.slug) and store.rec_load("batches", a.slug):
+        b = store.rec_load("batches", a.slug)
+        b["step"] = "gated" if a.verdict == "PASS" else "failed"
+        b["verdict"] = {"result": a.verdict, "note": a.note, "at": iso()}
+        store.rec_save("batches", a.slug, b)
+        events.emit("batch", batch=a.slug, step=b["step"], detail=a.note, batch_kind=b.get("kind"))
+        print(f"{a.slug}: release gate {a.verdict} recorded")
+        return
     ch = _load(a.slug)
     if a.verdict == "FAIL":
         store.set_hold(ch, "failed", a.note or "upstream gate FAIL (see the record)")
@@ -229,7 +256,7 @@ def cmd_lint(a):
             print(f"lint: {ch['slug']}: stage {ch.stage}"); bad += 1
         if ch.stage != "backlog" and not ch.has_dod():
             print(f"lint: {ch['slug']}: {ch.stage} without a definition of done"); bad += 1
-        if ch.reached("checked") and not (ch.get("branch") and ch.get("commit")):
+        if ch.reached("checked") and not (ch.get("branch") and ch.get("commit")) and not (ch.stage == "live" and ch["track"] != "server"):
             print(f"lint: {ch['slug']}: {ch.stage} without branch and commit"); bad += 1
         if ch.get("track") == "server" and ch.get("branch") and policy.branch_track(ch["branch"]) is None:
             print(f"lint: {ch['slug']}: branch {ch['branch']} is not content/, fix/ or local/ (BR-C1)"); bad += 1
@@ -379,9 +406,7 @@ def cmd_batches(a):
 
 def cmd_train(a):
     from . import batches
-    if a.now:
-        os.environ["HD_TRAIN_NOW"] = "1"
-    for line in batches.advance(_obs()) or []:
+    for line in batches.advance(_obs(), now=a.now) or []:
         print(line)
 
 
@@ -401,6 +426,11 @@ def cmd_events(a):
     for e in events.read(kinds=[a.kind] if a.kind else None, change=a.change, limit=a.limit):
         rest = {k: v for k, v in e.items() if k not in ("ts", "kind")}
         print(f"{local(e['ts']):18} {e['kind']:9} " + json.dumps(rest, sort_keys=True)[:200])
+
+
+def cmd_recount(a):
+    from . import metrics
+    print(", ".join(metrics.recount("hd recount")))
 
 
 def cmd_kpi(a):
@@ -430,6 +460,8 @@ def main(argv=None):
     s.add_argument("--partial", action="store_true"); s.set_defaults(f=cmd_handover)
     s = sp.add_parser("block"); s.add_argument("slug"); s.add_argument("--by", required=True); s.add_argument("why", nargs="?"); s.set_defaults(f=cmd_block)
     s = sp.add_parser("fail"); s.add_argument("slug"); s.add_argument("why"); s.set_defaults(f=cmd_fail)
+    s = sp.add_parser("hold"); s.add_argument("slug"); s.add_argument("kind", choices=["blocked", "decision", "failed", "exception"]); s.add_argument("reason"); s.set_defaults(f=cmd_hold)
+    s = sp.add_parser("unhold"); s.add_argument("slug"); s.add_argument("why", nargs="?"); s.set_defaults(f=cmd_unhold)
     s = sp.add_parser("gate"); s.add_argument("slug"); s.add_argument("verdict", choices=["PASS", "FAIL"]); s.add_argument("note", nargs="?"); s.set_defaults(f=cmd_gate)
     s = sp.add_parser("resolve"); s.add_argument("batch"); s.add_argument("note"); s.set_defaults(f=cmd_resolve)
     s = sp.add_parser("check"); s.add_argument("slug"); s.set_defaults(f=cmd_check)
@@ -457,6 +489,7 @@ def main(argv=None):
     s = sp.add_parser("release-request"); s.add_argument("tag"); s.set_defaults(f=cmd_release_request)
     s = sp.add_parser("events"); s.add_argument("--kind"); s.add_argument("--change"); s.add_argument("--limit", type=int, default=50); s.set_defaults(f=cmd_events)
     sp.add_parser("kpi").set_defaults(f=cmd_kpi)
+    sp.add_parser("recount").set_defaults(f=cmd_recount)
     s = sp.add_parser("migrate"); s.add_argument("--apply", action="store_true"); s.set_defaults(f=cmd_migrate)
     sp.add_parser("version").set_defaults(f=lambda a: print("hd 3.0"))
     a = p.parse_args(argv)

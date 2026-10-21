@@ -6,21 +6,23 @@ RuneLite plugins running inside the official OSRS Android app (native/ hooks plu
 tested against an OpenRune test server (openrune/; upstream branches in re/upstream-pr/or, the fork
 AlexPerrin/OpenRune-Server).
 
-How work is organised (tracks, agents, gates): docs/workflow.md; the machinery that drives it (task store, driver,
-hand-over check, ship step): docs/harness.md. Current state, read first:
-- tasks, runs, instances, approvals: `tools/harness/orchestrate.py status` (one task = one file in harness/tasks/)
+How work is organised (tracks, agents, gates): docs/workflow.md; the machinery that drives it (harness v3: the
+change store, the daemon, leases, trains, approvals, the dashboard): docs/harness-v3.md (docs/harness.md is v2,
+history). Current state, read first:
+- changes, leases, batches, approvals: `python3 tools/harness/hd.py status` (one change = one file in harness/changes/)
 - client: docs/client-state.md
 - server: STATE.md on the fork's `docs` branch (`git -C re/upstream-pr/or show docs:STATE.md`)
 
 History (docs/client-handoff.md; server: server-handoff.md and archive/ on the fork's `docs` branch) is read only when needed.
 
 ## Roles
-- Both tracks run one loop: trigger → analyse → build → verify → ship (docs/workflow.md).
-- The orchestrator (the main session) coordinates agents and human input: it routes tasks and blockers, relays
-  the user's OK for anything upstream, and owns merges, tags, deploys, device grants, progress files and decisions.
-  Server devs do their own fork GitHub work (push, fork PRs, CI); it doesn't do agents' GitHub work.
-- One dev/QA pair per track, spawned from .claude/agents/ with one harness task each (`orchestrate.py dispatch <id>`
-  grants its instances and prints the brief; the agent hands over with `task.py handover`, never only in chat):
+- Both tracks run one loop: a change goes backlog → ready → dev → checked → live → gated → published → merged
+  (docs/harness-v3-prd.md); the daemon `harnessd` (`hd start`) advances it from observations.
+- The orchestrator (the main session) is a console: decisions, exceptions, and relaying the user's OK for upstream
+  actions and releases (the dashboard's approvals, or `hd approve`). The daemon owns merges, trains, deploys,
+  leases and dispatch. Server devs do their own fork GitHub work (push, fork PRs, CI).
+- Stage executors are spawned from .claude/agents/ with one change and one stage each (`hd dispatch <slug>`
+  grants its leases and prints or starts the brief; the agent hands over with `hd handover`, never only in chat):
   `client-dev` + `client-qa` in this repo (dev's own check: built + the changed path tried on the device → master;
   client-qa runs only the release gate, full regression + Network QA → vX.Y.Z); `server-dev` + `server-qa` on the fork, each
   in its own clone `re/agents/<name>/or` (dev's own check: accuracy spec + green CI → integration and live server;
@@ -35,9 +37,10 @@ History (docs/client-handoff.md; server: server-handoff.md and archive/ on the f
 - **Builds** go through `tools/buildq.sh` (classes gate/dev/measure with a memory guard; gates via `qa.sh gate` in
   one 5 GB container, dev builds via `qa.sh dev`). Client host builds are host/build.sh + `ninja -C re/build` +
   repack (no docker).
-- **Devices**: `tools/device-lock.sh` (`LOCK_NAME=<instance>` from tools/instances.tsv), granted per task at dispatch
-  (`reuse`); an agent takes the instances its task lists without asking. Server restarts reserve every instance.
-- **Evidence** goes in `re/evidence/<task-id>/` in the main checkout, never a session scratchpad.
+- **Devices**: leases (`hd lease`, or `tools/device-lock.sh` with `LOCK_NAME=<instance>` from tools/instances.tsv),
+  granted per change at dispatch; an agent takes the instances its change lists without asking, heartbeats while
+  using them, frees them right after; idle holds are reclaimed. A deploy drains and reserves every instance.
+- **Evidence** goes in `re/evidence/<slug>/` in the main checkout, never a session scratchpad.
 - **Testing tools over screenshots**: client, desktop and server state is read through the MCP data tools
   (`osrs-devtools` for the Android app, `osrs-devtools-desktop` for desktop RuneLite, `osrs-mcp` for wiki, gamevals and
   cache; `server-probe` for logs and packets). A screenshot is evidence only for how something is drawn.

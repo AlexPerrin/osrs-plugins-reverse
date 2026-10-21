@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 sys.path.insert(0, os.path.join(ROOT, "tools", "harness"))
 
-ENV_KEYS = ("HD_HARNESS_DIR", "HD_STATE_DIR", "HD_EVENTS", "HD_POLICY", "HD_LOCK_DIR", "HD_EVIDENCE_DIR", "HD_NO_FETCH")
+ENV_KEYS = ("HD_HARNESS_DIR", "HD_STATE_DIR", "HD_EVENTS", "HD_POLICY", "HD_LOCK_DIR", "HD_EVIDENCE_DIR", "HD_NO_FETCH", "HD_NO_RECOUNT")
 
 
 def sandbox(test):
@@ -26,7 +26,7 @@ def sandbox(test):
     os.environ.update(HD_HARNESS_DIR=harness, HD_STATE_DIR=os.path.join(harness, "state"),
                       HD_EVENTS=os.path.join(harness, "state", "events.jsonl"),
                       HD_POLICY=os.path.join(harness, "policy.yaml"), HD_LOCK_DIR=os.path.join(d, "locks"),
-                      HD_EVIDENCE_DIR=os.path.join(d, "evidence"), HD_NO_FETCH="1")
+                      HD_EVIDENCE_DIR=os.path.join(d, "evidence"), HD_NO_FETCH="1", HD_NO_RECOUNT="1")
 
     def restore():
         for k, v in old.items():

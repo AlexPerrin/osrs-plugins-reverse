@@ -133,14 +133,14 @@ class HealTest(unittest.TestCase):
         self.assertEqual(heal.run(FakeObserver(), store.index()), [])   # already draining
 
     def test_a_broken_step_never_stops_the_others(self):
-        orig = batches.status
-        batches.status = lambda: (_ for _ in ()).throw(RuntimeError("corrupt batch"))
-        self.addCleanup(setattr, batches, "status", orig)
+        orig = batches.open_batches
+        batches.open_batches = lambda kind=None: (_ for _ in ()).throw(RuntimeError("corrupt batch"))
+        self.addCleanup(setattr, batches, "open_batches", orig)
         obs = FakeObserver(containers={"qa-or-x": {"status": "Exited (0) 1 hour ago"}})
         acts = heal.run(obs, {})
         self.assertEqual(acts, ["container qa-or-x removed (Exited (0) 1 hour ago)"])
-        ev = events.read(kinds=["error"])[-1]
-        self.assertEqual((ev["step"], ev["error"]), ("dead_batches", "RuntimeError: corrupt batch"))
+        errs = {(e["step"], e["error"]) for e in events.read(kinds=["error"])}
+        self.assertIn(("dead_batches", "RuntimeError: corrupt batch"), errs)
 
 
 if __name__ == "__main__":

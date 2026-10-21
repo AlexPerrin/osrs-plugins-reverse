@@ -286,10 +286,30 @@ def plan():
     return changes, batches, notes
 
 
+def full_sha(short, pins):
+    """A 40-char sha for a short one: the pin that starts with it, else `git rev-parse` in the push clone."""
+    if not short or len(short) >= 40:
+        return short
+    for pin in pins.values():
+        if pin and pin.startswith(short):
+            return pin
+    import subprocess
+    c = os.path.join(ROOT, "re", "upstream-pr", "or")
+    r = subprocess.run(["git", "-C", c, "rev-parse", "-q", "--verify", f"{short}^{{commit}}"], capture_output=True, text=True)
+    return r.stdout.strip() or short
+
+
 def write(changes, batches):
     os.makedirs(changes_dir(), exist_ok=True)
+    try:
+        pins = integration_branches()
+    except Exception:
+        pins = {}
     n = 0
     for slug, c in changes.items():
+        c["commit"] = full_sha(c.get("commit"), pins)
+        if c.get("gated_commit"):
+            c["gated_commit"] = full_sha(c["gated_commit"], pins)
         if store.exists(slug):
             continue
         role = store.ROLES[c["track"]]

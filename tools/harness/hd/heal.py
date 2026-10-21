@@ -97,7 +97,7 @@ def _containers(obs, idx):
 def _dead_batches(obs, idx):
     from . import batches
     out = []
-    for b in batches.status():
+    for b in batches.open_batches():
         pid, step = b.get("pid"), b.get("step")
         if step not in ("gating", "imaging", "deploying") or not pid or obs.alive(pid) or b.get("result"):
             continue

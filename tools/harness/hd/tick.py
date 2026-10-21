@@ -21,7 +21,7 @@ reconciles and reports what it would do without spawning, shipping, training or 
 import time
 import traceback
 
-from . import agents, approvals, batches, check, events, heal, leases, policy, ship, stages, store
+from . import agents, approvals, batches, check, events, heal, leases, metrics, policy, ship, stages, store
 from .util import iso, minutes_since
 
 
@@ -155,7 +155,7 @@ def reap(ctx):
 
 def ship_and_train(ctx):
     for slug, ch in list(ctx.idx.items()):
-        if ch.stage != "checked":
+        if ch.stage != "checked" or ch.hold:
             continue
         if ch.get("track") == "server":
             if ctx.dry_run:
@@ -241,6 +241,27 @@ def repin(ctx):
 
 # --- 6 gates and releases ---------------------------------------------------------------------------------------------------
 
+def release_record(b):
+    """The client release record qa/client-<version>.md in this repo with Verdict PASS at the batch's commit."""
+    import os
+    import re
+    tag = (store.read_json(os.path.join(__import__("hd").state_dir(), "release.request"), {}) or {}).get("tag") or b.get("tag") or ""
+    version = re.sub(r"^(client-)?v", "", tag)
+    if not version:
+        return None
+    from . import ROOT
+    p = os.path.join(ROOT, "qa", f"client-{version}.md")
+    try:
+        text = open(p).read()
+    except OSError:
+        return None
+    commit = re.search(r"^- Commit: `([0-9a-f]{7,40})`", text, re.M)
+    verdict = re.search(r"^## Verdict: \*\*(PASS|FAIL)\*\*", text, re.M)
+    if commit and verdict and str(b.get("commit") or "").startswith(commit.group(1)):
+        return verdict.group(1), p
+    return None
+
+
 def gates(ctx):
     if ctx.dry_run:
         return
@@ -248,6 +269,25 @@ def gates(ctx):
     if due:
         b = batches.new_release(due)
         ctx.act(f"release batch {b.get('id')} for {len(due)} live client changes")
+    running = agents.running()
+    for b in batches.open_batches("release"):
+        if b.get("step") in ("queued", "gating"):
+            rec = release_record(b)
+            if rec:
+                b["step"] = "gated" if rec[0] == "PASS" else "failed"
+                b["record"] = rec[1]
+                store.rec_save("batches", b["id"], b)
+                events.emit("batch", batch=b["id"], step=b["step"], detail=rec[1], batch_kind="release")
+                ctx.act(f"release {b['id']}: gate {rec[0]} ({rec[1]})")
+                continue
+            if b.get("step") == "queued" and not any(r.get("role") == "client-qa" and r.get("batch") == b["id"] for r in running):
+                pol = policy.track("client")
+                pseudo = {"slug": b["id"], "id": b["id"], "track": "client", "batch": b["id"], "branch": "master",
+                          "commit": b.get("commit"), "title": f"release gate {b['id']}", "role": "client-qa"}
+                r = agents.spawn(pseudo, "client-qa", "gate", pol.get("qa_instances", []))
+                b["step"] = "gating"
+                store.rec_save("batches", b["id"], b)
+                ctx.act(f"client-qa {r.get('name')} -> release {b['id']}")
 
 
 # --- 7 approvals ---------------------------------------------------------------------------------------------------------------
@@ -258,8 +298,8 @@ def approvals_step(ctx):
             a = approvals.ensure(ch, ctx.obs)
             if a:
                 ctx.act(f"approval {a.get('id')} ({a.get('action')}) for {slug}")
-    for b in batches.status():
-        if b.get("kind") == "release" and b.get("step") == "gated" and not ctx.dry_run:
+    for b in batches.open_batches("release"):
+        if b.get("step") == "gated" and not ctx.dry_run:
             a = approvals.ensure_release(b)
             if a:
                 ctx.act(f"release approval {a.get('id')}")
@@ -327,6 +367,17 @@ def dispatch(ctx):
         ctx.act(f"{role} {r.get('name')} -> {ch['slug']} ({ex})")
 
 
+# --- 8b metrics (BR-H5) ------------------------------------------------------------------------------------------------------------
+
+def metrics_step(ctx):
+    if ctx.dry_run:
+        return
+    went_live = any(a.endswith("-> live") and not a.startswith(("int-", "rel-")) for a in ctx.actions)
+    if metrics.due(client_went_live=went_live):
+        names = metrics.recount("client live" if went_live else "daily")
+        ctx.act(f"recount: {len(names)} metrics")
+
+
 # --- 9 heal --------------------------------------------------------------------------------------------------------------------------
 
 def heal_step(ctx):
@@ -348,7 +399,7 @@ def tick(obs=None, dry_run=False, interval=60):
     ctx = Ctx(obs, dry_run)
     for name, fn in (("reconcile", reconcile), ("reap", reap), ("ship", ship_and_train), ("deploy", deploy),
                      ("repin", repin), ("gates", gates), ("approvals", approvals_step), ("dispatch", dispatch),
-                     ("heal", heal_step)):
+                     ("metrics", metrics_step), ("heal", heal_step)):
         _step(ctx, name, fn)
     secs = round(time.time() - t0, 1)
     n = (store.rec_load("view", "tick") or {}).get("n", 0) + 1

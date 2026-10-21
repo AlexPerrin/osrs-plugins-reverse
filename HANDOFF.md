@@ -1,8 +1,34 @@
 # HANDOFF: start here (harness v3 session)
 
-Written 2026-10-20 7:15 PM EDT by the harness-v2 orchestrator session. You are the next orchestrator and the builder of
-**harness v3**. This file is the entry point: read it top to bottom, run section 2, then read section 3 as needed.
-Times for the user are always US Eastern (EDT now); never report UTC to them.
+Updated 2026-10-20 8:45 PM EDT by the v3 build session. **Harness v3 (`harnessd`, "hd") is built and
+tested; it is not started yet.** Read docs/harness-v3.md (what exists), then this file. Times for the user are
+always US Eastern; never report UTC to them.
+
+## 0. v3 in one minute
+- The store is `harness/changes/<slug>.md` (117 changes, migrated from v2's tasks by `hd migrate --apply`; v2's
+  `harness/tasks/` is kept as history and is no longer read). State that is observed, not remembered, lives in
+  the git-ignored `harness/state/` (events.jsonl, leases, runs, batches, approvals, live.json).
+- First commands:
+```
+python3 tools/harness/hd.py status                 # progress, approvals, every change with why it waits
+python3 tools/harness/hd.py tick --dry-run         # what one tick would do (reads git, gh, docker; writes nothing)
+python3 tools/harness/hd.py lease status           # the leases (device, desktop, desktop2, integration, live-server, ghidra)
+python3 tools/harness/hd.py events --limit 30      # the event log, local time
+python3 -m unittest discover -s tools/harness/tests   # 169 tests, must pass
+```
+- To run it: `python3 tools/harness/hd.py start --interval 60 --port 7790` (the daemon: ticks, trains, deploys,
+  agents, approvals; dashboard at http://127.0.0.1:7790/), `hd stop`, `hd daemon-status`, `hd digest`. The
+  read-only page alone: `hd serve`. The first real start is the user's call (it spawns paid agents and takes
+  the instances).
+- What the first real ticks will do (from the dry run at 8:40 PM EDT): move `57-gameframe-fullscreen-map`,
+  `sheep-shearer` and `edgeville-general-store-stock` to `published` (open upstream PRs); return `cannon`,
+  `genie` and `goblin-diplomacy-unstacked` to `checked` (the live server runs `fin/*`, not these branches; each
+  carries a `decision` hold: fold into the PR branch, the user's OK per PR); dispatch one client-dev
+  (`hub-ground-items-despawn`), two server-devs (`ground-item-despawn-times` further work, then by priority) and
+  one server-qa (upstream gates for live branches without a record), within the slots and free leases.
+- Open: the acc/* and fin/* convergence decisions (one `decision` card each on the dashboard), the spec-missing
+  `failed` holds on five live content branches (a dev writes the spec before the gate), the notification channel
+  (the digest is written to harness/state/digest.md), milestone dates for the forecast.
 
 ## 1. The project in five lines
 - RuneLite plugins running inside the official OSRS **Android app** (native/ hooks + host/ Java plugin host), in this
@@ -13,18 +39,18 @@ Times for the user are always US Eastern (EDT now); never report UTC to them.
 - Progress, as the user defines it: **client = RuneLite compatibility on mobile** (`tools/progress.py`);
   **server = parity with the official OSRS server**, 100% = an identical copy (not measured yet: task
   `server-parity-metric`).
-- Work runs through **harness v2**: a file task store (`harness/tasks/`), a driver (`tools/harness/orchestrate.py`),
-  role agents (`.claude/agents/`), hooks (`tools/hooks/`), a hand-over check, a ship step and integration trains.
-- Your job: run the loop (dispatch, check, ship, deploy, upstream with approval) and build v3.
+- Work runs through **harness v3** (`tools/harness/hd.py`, docs/harness-v3.md): a change store, a daemon that
+  observes, advances, dispatches, heals and logs, leases, trains, approvals and a dashboard. v2's files
+  (`tools/harness/orchestrate.py`, `task.py`, `harness/tasks/`) are history.
+- Your job: start the daemon when the user says so, act on decisions and exceptions, relay the user's approvals
+  (the dashboard or `hd approve`), and keep building against docs/harness-v3-prd.md.
 
-## 2. First commands
+## 2. First commands (v2 era; v3's are in section 0)
 ```
 git pull --ff-only origin main
-python3 tools/harness/orchestrate.py status          # tasks, instances, build queue, approvals
-python3 tools/harness/orchestrate.py integrate status # integration queue and trains
-python3 tools/harness/progress_report.py && sed -n 1,40p docs/progress.md
-python3 -m unittest discover -s tools/harness/tests   # 60 tests, must pass
-git -C re/upstream-pr/or fetch -q fork origin && git -C re/upstream-pr/or log --oneline -1 origin/main
+python3 tools/harness/hd.py status
+python3 -m unittest discover -s tools/harness/tests   # 169 tests, must pass
+git -C re/upstream-pr/or fetch -q origin main && git -C re/upstream-pr/or log --oneline -1 origin/main
 ```
 If upstream main moved past 829b9477d, a re-pin is due (the user's rule: keep the test server on current upstream).
 

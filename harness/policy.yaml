@@ -1,0 +1,80 @@
+# Harness policy (BR-P*): one versioned file read by the daemon, the hooks and the briefs. Rules, not prose.
+version: 3
+
+tracks:
+  client:
+    live_target: master              # a client change is live when master contains its commit
+    branch_prefixes: [client/]
+    dev_role: client-dev
+    qa_role: client-qa
+    dev_slots: 1                     # = Android instances (BR-R5)
+    instances: [device]              # granted to a dev at dispatch
+    qa_instances: [device, desktop]
+  server:
+    live_target: integration         # pin = commit and the live server runs that integration (live.json)
+    branch_prefixes: [content/, fix/, local/]
+    dev_role: server-dev
+    qa_role: server-qa
+    dev_slots: 2
+    instances: [desktop]
+    qa_instances: [desktop]
+  harness:
+    live_target: master
+    branch_prefixes: [harness/]
+    dev_role: harness-dev
+    dev_slots: 1
+    instances: []
+
+repos:
+  ours: AlexPerrin/osrs-plugins-reverse
+  fork: AlexPerrin/OpenRune-Server
+  upstream: OpenRune/OpenRune-Server
+  fork_clone: re/upstream-pr/or      # the push clone: remote `fork` = the fork, `origin` = upstream
+  fork_remote: fork
+  upstream_remote: origin
+  docs_branch: docs
+
+resources:                           # every lease (BR-R1); instances come from tools/instances.tsv too
+  device:      {kind: android, default_minutes: 300}
+  desktop:     {kind: desktop, default_minutes: 300}
+  desktop2:    {kind: desktop, default_minutes: 300}
+  integration: {kind: lock, default_minutes: 90}      # one train at a time (BR-B2)
+  live-server: {kind: lock, default_minutes: 30}      # a deploy
+  ghidra:      {kind: lock, default_minutes: 120}     # the one Ghidra writer
+
+leases:
+  heartbeat_minutes: 20              # no heartbeat and no attached process for this long = idle (BR-R2)
+  drain_cap_minutes: 30              # a pending deploy waits this long for holders, then reclaims (BR-R4)
+
+batches:
+  train_debounce_minutes: 10         # BR-B1
+  gate_timeout_minutes: 60
+  image_timeout_minutes: 30
+  deploy_ready_timeout_seconds: 300  # "Server ready in", else auto-rollback (BR-B3)
+  release_after_live_changes: 6      # BR-B6: a release batch after N live client changes (or on demand)
+
+agents:
+  permission_mode: auto              # claude -p --permission-mode; hooks still apply
+  model: null                        # null = the role file's / default model
+  budget_usd: {client-dev: 25, server-dev: 25, client-qa: 15, server-qa: 15, integrator: 8, harness-dev: 15}
+  budget_minutes: {client-dev: 240, server-dev: 240, client-qa: 180, server-qa: 150, integrator: 60, harness-dev: 120}
+  linger_grace_minutes: 2            # stopped this long after its stage is reached (BR-G2)
+  roles:
+    client-dev:  {track: client, stage: dev,  worktree: true,  pushes: []}
+    server-dev:  {track: server, stage: dev,  worktree: false, pushes: [fork]}
+    client-qa:   {track: client, stage: gate, worktree: true,  pushes: []}
+    server-qa:   {track: server, stage: gate, worktree: false, pushes: [fork-docs]}
+    integrator:  {track: server, stage: train, worktree: false, pushes: [fork-tools]}
+    harness-dev: {track: harness, stage: dev, worktree: true,  pushes: []}
+  names: {client-dev: cd, server-dev: sd, client-qa: cq, server-qa: sq, integrator: ig, harness-dev: hd}
+
+approvals:                           # BR-A1: the only two kinds that prompt the user (+ decision = a question)
+  kinds: [upstream, release, decision]
+  notify: digest                     # BR-A7: one digest per tick with news
+
+evidence:
+  client_repack_telemetry_lines: 7
+  client_device_evidence: ["*logcat*.txt", "*.dump.*", "*devtools*.json", "*.png"]
+  client_network_report: "netqa*.md"
+
+priorities: {P0: 0, P1: 1, P2: 2, P3: 3}

@@ -259,7 +259,7 @@ class IntegrationDenyTest(unittest.TestCase):
         import json
         data = json.dumps({"tool_name": "Bash", "tool_input": {"command": "tools/harness/deploy.sh x"}, "cwd": self.root})
         out = subprocess.run([sys.executable, os.path.join(HOOKS, "deny_publish.py"), "--fork-writes"], input=data,
-                             capture_output=True, text=True).stdout
+                             capture_output=True, text=True, env=dict(os.environ, HD_EVENTS=os.devnull)).stdout
         self.assertIn('"deny"', out)
         self.assertIn("integration images, deploys", out)
 

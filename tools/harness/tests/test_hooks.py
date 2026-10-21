@@ -141,7 +141,7 @@ class DenyPublishTest(unittest.TestCase):
         def run(cmd, flags):
             data = json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd}, "cwd": self.agent})
             return subprocess.run([sys.executable, os.path.join(HOOKS, "deny_publish.py"), *flags], input=data,
-                                  capture_output=True, text=True).stdout
+                                  capture_output=True, text=True, env=dict(os.environ, HD_EVENTS=os.devnull)).stdout
         self.assertEqual(run("git push origin fix/x", FORK), "")
         self.assertIn('"deny"', run("git push origin fix/x", NONE))
 

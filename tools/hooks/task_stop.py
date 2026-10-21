@@ -39,8 +39,8 @@ def transcript_facts(path):
                     break
                 slug = slug or (re.search(r"Harness change `([a-z0-9][a-z0-9.-]{1,60})`", line) or [None, None])[1]
                 name = name or (re.search(r"Your name is `([a-z0-9_-]{1,20})`", line) or [None, None])[1]
-                stage = stage or (re.search(r"Stage: `?(dev|gate|train)`?", line) or [None, None])[1]
-                batch = batch or (re.search(r"Batch `([a-z0-9][a-z0-9.-]{1,60})`", line) or [None, None])[1]
+                stage = stage or (re.search(r"stage `(dev|gate|train)`", line) or [None, None])[1]
+                batch = batch or (re.search(r"Stage `train`: batch `([a-z0-9][a-z0-9.-]{1,60})`", line) or [None, None])[1]
     except OSError:
         pass
     return slug, name or os.environ.get("HD_AGENT"), stage or "dev", batch
@@ -54,7 +54,8 @@ def main():
     if not path or not os.path.isfile(path):
         return
     slug, name, stage, batch = transcript_facts(path)
-    if stage == "train" and batch:
+    if stage == "train":
+        batch = batch or slug
         b = store.rec_load("batches", batch) or {}
         if b.get("step") == "exception" and not b.get("resolution"):
             block(f"Batch {batch} is still at exception. Record what you did: `{HD} resolve {batch} \"<what was recorded or dropped>\"`.")

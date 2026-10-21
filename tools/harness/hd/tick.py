@@ -304,7 +304,7 @@ def dispatch(ctx):
             if ctx.dry_run:
                 ctx.act(f"would spawn an integrator for {b['id']} [dry run]")
             else:
-                r = agents.spawn_integrator(b) if hasattr(agents, "spawn_integrator") else None
+                r = agents.spawn(b, "integrator", "train", [])
                 if r:
                     running.append(r)
                     ctx.act(f"integrator {r.get('name')} for {b['id']}")

@@ -54,7 +54,13 @@ class RunTest(unittest.TestCase):
         self.assertEqual(daemon.status()["ticks"], 1)
 
     def test_not_implemented_tick_is_an_event(self):
-        daemon.run(interval=1, once=True)   # the real stub raises NotImplementedError
+        from unittest import mock
+        from hd import tick
+
+        def boom(*a, **kw):
+            raise NotImplementedError("stub")
+        with mock.patch.object(tick, "tick", boom):
+            daemon.run(interval=1, once=True)
         self.assertEqual(events.read(kinds=["error"])[0]["step"], "tick")
 
     def test_stop_without_daemon(self):

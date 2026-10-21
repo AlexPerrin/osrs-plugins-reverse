@@ -57,3 +57,38 @@ def change(slug="feat", track="server", stage="ready", branch=None, commit=None,
 
 SHA = "a" * 40
 SHB = "b" * 40
+
+
+def env(test, **kv):
+    """Set environment variables for the test's duration (None removes)."""
+    old = {k: os.environ.get(k) for k in kv}
+    for k, v in kv.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+
+    def restore():
+        for k, v in old.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    test.addCleanup(restore)
+
+
+def dead_pid():
+    """A pid that belonged to a process that has exited (reaped, so os.kill(pid, 0) fails)."""
+    import subprocess
+    p = subprocess.Popen(["true"])
+    p.wait()
+    return p.pid
+
+
+def stub(d, name, body):
+    """An executable script in d; returns its path."""
+    p = os.path.join(d, name)
+    with open(p, "w") as f:
+        f.write("#!/usr/bin/env bash\n" + body)
+    os.chmod(p, 0o755)
+    return p

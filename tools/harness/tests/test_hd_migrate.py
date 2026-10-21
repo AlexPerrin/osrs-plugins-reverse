@@ -68,7 +68,8 @@ class MigrateTest(unittest.TestCase):
         c = changes["cannon"]
         self.assertEqual(c["hold"][0], "decision")
         self.assertIn("content/cannon", c["hold"][1])
-        self.assertIn("Cannon text fix", c["hold"][1])
+        self.assertIn("lamp xp wrong", c["hold"][1])   # the gate FAIL is the hold; the fix task is its remedy
+        self.assertIn("fix-acc-cannon-text", c["folded"])
         self.assertEqual(changes["content-new-quest"]["stage"], "backlog")
         self.assertEqual(changes["android"]["local_only"], True)
         self.assertEqual(changes["android"]["stage"], "live")

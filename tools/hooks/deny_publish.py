@@ -190,9 +190,25 @@ def decide(data, argv, run=None):
     return None
 
 
+def log_denial(data, reason):
+    """BR-P3: every denial is an event (fail-safe: a missing hd never blocks the hook)."""
+    try:
+        root = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        sys.path.insert(0, os.path.join(root, "tools", "harness"))
+        from hd import ROOT as main_root
+        sys.path.insert(0, os.path.join(main_root, "tools", "harness"))
+        from hd import events
+        events.emit("denial", source="deny_publish", rule=reason[:120], agent=os.environ.get("HD_AGENT"),
+                    command=str(data.get("tool_input", {}).get("command", ""))[:200])
+    except Exception:
+        pass
+
+
 def main():
-    reason = decide(json.load(sys.stdin), sys.argv[1:])
+    data = json.load(sys.stdin)
+    reason = decide(data, sys.argv[1:])
     if reason:
+        log_denial(data, reason)
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",

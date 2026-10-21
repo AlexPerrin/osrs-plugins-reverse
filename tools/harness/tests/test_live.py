@@ -265,50 +265,32 @@ class IntegrationDenyTest(unittest.TestCase):
 
 
 class LockDirTest(unittest.TestCase):
-    LOCK = os.path.join(ROOT, "tools", "device-lock.sh")
+    """device-lock.sh is a wrapper over `hd lease` (harness v3): the lease lives in the hd state dir and LOCK_DIR
+    holds only the v2 mirror files (osrs-<name>.lock/owner while held, osrs-<name>-status)."""
 
-    def lock(self, d, *args, name="desktop"):
-        env = dict(os.environ, LOCK_NAME=name)
-        env.pop("LOCK_DIR", None)
-        if d is not None:
-            env["LOCK_DIR"] = d
-        return subprocess.run(["bash", self.LOCK, *args], capture_output=True, text=True, env=env)
+    def setUp(self):
+        import hd_helpers
+        self.d = hd_helpers.sandbox(self)
+        self.lock_dir = os.environ["HD_LOCK_DIR"]
+
+    def run_lock(self, *args, name="device"):
+        env = dict(os.environ, LOCK_NAME=name, LOCK_DIR=self.lock_dir)
+        return subprocess.run(["bash", os.path.join(ROOT, "tools", "device-lock.sh"), *args], capture_output=True, text=True, env=env)
 
     def test_lock_dir_holds_every_file(self):
-        d = tempdir(self)
-        who = f"tld{os.getpid() % 100000}"
-        live_grant = f"/tmp/osrs-desktop.grant.d/{who}"
-        self.assertIn("granted to", self.lock(d, "grant", who, "5", "reuse").stdout)
-        self.assertTrue(os.path.isfile(os.path.join(d, "osrs-desktop.grant.d", who)))
-        self.assertFalse(os.path.exists(live_grant))
-        r = self.lock(d, "take", who, "test")
-        self.assertEqual(r.returncode, 0, r.stdout)
-        self.assertTrue(os.path.isdir(os.path.join(d, "osrs-desktop.lock")))
-        with open(os.path.join(d, "osrs-desktop-status")) as f:
-            self.assertIn(f"({who} dev,", f.read())
-        st = self.lock(d, "status")
-        self.assertEqual(st.returncode, 1)
-        self.assertIn(f"({who} dev,", st.stdout)
-        self.assertIn("free", self.lock(d, "free", who).stdout)
-        self.assertFalse(os.path.exists(os.path.join(d, "osrs-desktop.lock")))
-        self.assertEqual(self.lock(d, "status").stdout.strip().splitlines()[-1], "free")
-        self.assertFalse(os.path.exists(live_grant))
-        # status-all passes LOCK_DIR on to every instance
-        self.lock(d, "grant", who, "5", name="device")
-        self.assertIn(f"grant pending: {who}", self.lock(d, "status-all").stdout)
+        who = "sd99"
+        self.assertEqual(self.run_lock("grant", who, "30", "reuse", name="desktop").returncode, 0)
+        r = self.run_lock("take", who, "ab test", name="desktop")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(os.path.isfile(os.path.join(self.lock_dir, "osrs-desktop.lock", "owner")))
+        self.assertIn("taking desktop (sd99 dev, ab test)", open(os.path.join(self.lock_dir, "osrs-desktop.lock", "owner")).read())
+        self.assertNotEqual(self.run_lock("status", name="desktop").returncode, 0)
+        self.assertEqual(self.run_lock("take", "other", "x", name="desktop").returncode, 1)
+        self.assertEqual(self.run_lock("free", who, name="desktop").returncode, 0)
+        self.assertFalse(os.path.exists(os.path.join(self.lock_dir, "osrs-desktop.lock")))
+        self.assertEqual(self.run_lock("status", name="desktop").returncode, 0)
+        self.assertFalse(os.path.exists("/tmp/osrs-desktop.lock") and self.lock_dir != "/tmp")
 
     def test_default_is_tmp(self):
-        with open(self.LOCK) as f:
-            src = f.read()
-        self.assertIn("LOCK_DIR=${LOCK_DIR:-/tmp}", src)
-        self.assertIn("LOCK=$LOCK_DIR/osrs-$inst.lock GRANT=$LOCK_DIR/osrs-$inst.grant STATUS=$LOCK_DIR/osrs-$inst-status",
-                      src)
-        # The unset default resolves to the same paths as before (checked with the script's own expansion).
-        out = subprocess.run(["bash", "-c", 'unset LOCK_DIR; inst=device; LOCK_DIR=${LOCK_DIR:-/tmp}; '
-                              'echo $LOCK_DIR/osrs-$inst.lock $LOCK_DIR/osrs-$inst.grant $LOCK_DIR/osrs-$inst-status'],
-                             capture_output=True, text=True).stdout.split()
-        self.assertEqual(out, ["/tmp/osrs-device.lock", "/tmp/osrs-device.grant", "/tmp/osrs-device-status"])
-
-
-if __name__ == "__main__":
-    unittest.main()
+        src = open(os.path.join(ROOT, "tools", "device-lock.sh")).read()
+        self.assertIn("HD_LOCK_DIR=${LOCK_DIR:-${HD_LOCK_DIR:-/tmp}}", src)

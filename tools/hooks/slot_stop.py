@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-"""SubagentStop hook for the dev and QA agents: the end-of-slot gate (docs/workflow.md "Gates").
+"""SubagentStop / Stop hook for the stage executors (harness v3): the end-of-slot gate. An agent cannot finish
+while it holds a lease (BR-R2: leases only while in use), or while a device backup it made
+(`tools/device-restore-check.sh pre /tmp/osrs-slot/<name>`) has no later passing `check`.
 
-  slot_stop.py <holder>     holder = the agent's device-lock name: client, client-qa, server, server-qa
-
-The agent can't finish while it holds the device or desktop lock. An agent that backed up the Android device
-(`tools/device-restore-check.sh pre /tmp/osrs-slot/<holder>`) also can't finish until a later `check` on that dir
-passed (the check writes `<dir>/result`, 0 = all OK). The block reason goes back to the agent as its next
-instruction.
+  slot_stop.py <role>     the role is kept for the settings matcher; the agent's name comes from the transcript
+                          ("Your name is `<name>`") or HD_AGENT.
 """
 import json
 import os
+import re
 import sys
 
-HOLDER = sys.argv[1]
-SLOT = f"/tmp/osrs-slot/{HOLDER}"
-LOCKS = {"device": "/tmp/osrs-device.lock", "desktop": "/tmp/osrs-desktop.lock"}
+ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(ROOT, "tools", "harness"))
+try:
+    from hd import ROOT as MAIN
+    sys.path.insert(0, os.path.join(MAIN, "tools", "harness"))
+    from hd import leases   # noqa: E402
+except Exception:
+    leases = None
 
 
 def block(reason):
@@ -29,27 +33,44 @@ def mtime(path):
         return None
 
 
+def agent_name(data):
+    path = data.get("agent_transcript_path") or data.get("transcript_path")
+    try:
+        with open(path, errors="replace") as f:
+            for i, line in enumerate(f):
+                if i > 80:
+                    break
+                m = re.search(r"Your name is `([a-z0-9_-]{1,20})`", line)
+                if m:
+                    return m.group(1)
+    except (OSError, TypeError):
+        pass
+    return os.environ.get("HD_AGENT") or (sys.argv[1] if len(sys.argv) > 1 else None)
+
+
 def main():
-    if json.load(sys.stdin).get("stop_hook_active"):
-        return  # already continuing because of this hook; don't loop
-    pre, result = mtime(f"{SLOT}/settings.properties"), mtime(f"{SLOT}/result")
+    data = json.load(sys.stdin)
+    if data.get("stop_hook_active"):
+        return
+    name = agent_name(data)
+    if not name:
+        return
+    slot = f"/tmp/osrs-slot/{name}"
+    pre, result = mtime(f"{slot}/settings.properties"), mtime(f"{slot}/result")
     if pre is not None:
         if result is None or result < pre:
-            block(f"Your device slot has no restore check yet: run `tools/device-restore-check.sh check {SLOT}` "
-                  "while you still hold the device lock, fix every OFF line, then free the lock.")
-        with open(f"{SLOT}/result") as f:
+            block(f"Your device slot has no restore check yet: run `tools/device-restore-check.sh check {slot}` while you "
+                  "still hold the device lease, fix every OFF line, then release the lease.")
+        with open(f"{slot}/result") as f:
             if f.read().strip() != "0":
-                block(f"The last restore check reported OFF lines: fix them, rerun "
-                      f"`tools/device-restore-check.sh check {SLOT}` until it is all OK, then free the lock.")
-    for name, lock in LOCKS.items():
-        try:
-            with open(f"{lock}/owner") as f:
-                owner = f.read()
-        except OSError:
-            continue
-        if owner.startswith(f"taking device ({HOLDER} dev,"):
-            env = "LOCK_NAME=desktop " if name == "desktop" else ""
-            block(f"You still hold the {name} lock: restore it, then `{env}tools/device-lock.sh free {HOLDER}`.")
+                block(f"The last restore check reported OFF lines: fix them, rerun `tools/device-restore-check.sh check {slot}` "
+                      "until it is all OK, then release the lease.")
+    if leases is None:
+        return
+    held = [r for r, st in leases.status_all().items() if st.get("holder") == name]
+    if held:
+        block("You still hold " + ", ".join(held) + ": restore the instance, then "
+              + "; ".join(f"`python3 tools/harness/hd.py lease release {r} {name}`" for r in held) + ".")
 
 
 main()

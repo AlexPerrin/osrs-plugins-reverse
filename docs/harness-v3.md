@@ -72,6 +72,15 @@ Only `upstream` (open, ready, comment-and-push on an OpenRune PR) and `release` 
 `pr-texts/<slug>.*`, the gate record, the diff range and the caveats. Approve / Deny from the page (or
 `hd approve|deny`); the daemon runs it within a tick and records the result. PR descriptions are never replaced.
 
+## Watching agents: Claude Code Agent Monitor (2026-10-21)
+The page on port 7790 is the **project tracker** (progress, approvals, changes, batches, live state); operations
+data stays in `/text` and `/api/view`. Agents are watched in **Claude Code Agent Monitor** (CCAM,
+~/tools/Claude-Code-Agent-Monitor, MIT): `npm start` in that directory serves http://127.0.0.1:4820/ (started with
+nohup; log ~/tools/ccam-logs/ccam.log). On first launch it wired its hook handler into `~/.claude/settings.json`
+(PreToolUse, PostToolUse, Stop, SubagentStop, Notification, SessionStart, SessionEnd, UserPromptSubmit), so every
+session on this machine, the daemon's headless agents included, streams to it; it also discovers the saved
+transcripts (every run has a session id: `hd agents`, `claude --resume <id>`).
+
 ## Commands you will use
 ```
 hd status            hd list [--track] [--all]     hd show <slug>       hd events [--kind] [--change]   hd kpi

@@ -16,6 +16,8 @@ python3 tools/harness/hd.py lease status           # the leases (device, desktop
 python3 tools/harness/hd.py events --limit 30      # the event log, local time
 python3 -m unittest discover -s tools/harness/tests   # 169 tests, must pass
 ```
+- Agents are watched in Claude Code Agent Monitor (http://127.0.0.1:4820/, `cd ~/tools/Claude-Code-Agent-Monitor
+  && npm start`); the page on 7790 is the project tracker. docs/harness-v3.md "Watching agents".
 - To run it: `python3 tools/harness/hd.py start --interval 60 --port 7790` (the daemon: ticks, trains, deploys,
   agents, approvals; dashboard at http://127.0.0.1:7790/), `hd stop`, `hd daemon-status`, `hd digest`. The
   read-only page alone: `hd serve`. The first real start is the user's call (it spawns paid agents and takes

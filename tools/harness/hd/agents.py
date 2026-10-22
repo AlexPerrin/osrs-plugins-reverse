@@ -197,9 +197,11 @@ def spawn(ch, role, stage, instances=None):
             print(f"--- spawn with the Agent tool: subagent_type={role}, name {name} ---\n{text}")
     else:
         a = policy.get()["agents"]
+        import uuid
+        rec["session"] = str(uuid.uuid4())   # a saved session: `claude --resume <session>` opens the agent's chat
         cmd = ["claude", "-p", "--agent", role, "--permission-mode", a.get("permission_mode", "auto"),
                "--max-budget-usd", str(b["usd"]), "--output-format", "stream-json", "--verbose",
-               "--no-session-persistence", text]
+               "--session-id", rec["session"], text]
         os.makedirs(os.path.dirname(log), exist_ok=True)
         with open(log, "w") as f:
             proc = subprocess.Popen(cmd, cwd=cwd, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
@@ -248,6 +250,37 @@ def _result(log):
     if out is None and turns:
         out = {"usage": usage, "num_turns": turns, "partial": True, "is_error": True}
     return out
+
+
+def transcript(log, turns=5):
+    """The last `turns` assistant turns of a run log as readable text: the assistant's words and each tool call
+    (name and a short argument), for `hd tail`."""
+    out = []
+    try:
+        with open(log, errors="replace") as f:
+            for line in f:
+                if not line.startswith("{"):
+                    continue
+                try:
+                    d = json.loads(line)
+                except ValueError:
+                    continue
+                if d.get("type") == "assistant":
+                    parts = []
+                    for c in (d.get("message") or {}).get("content") or []:
+                        if c.get("type") == "text" and c.get("text", "").strip():
+                            parts.append(c["text"].strip())
+                        elif c.get("type") == "tool_use":
+                            inp = c.get("input") or {}
+                            arg = inp.get("command") or inp.get("file_path") or inp.get("pattern") or inp.get("prompt") or ""
+                            parts.append(f"[{c.get('name')}] {str(arg)[:160]}")
+                    if parts:
+                        out.append("\n".join(parts))
+                elif d.get("type") == "result":
+                    out.append(f"[result] {(d.get('result') or '')[:400]}")
+    except OSError:
+        return "(no log)"
+    return "\n---\n".join(out[-turns:]) if out else "(nothing yet)"
 
 
 def _tokens(res):

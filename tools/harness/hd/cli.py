@@ -14,6 +14,8 @@ Changes
   check <slug>                            run the hand-over check now and print it
   brief <slug> [--stage dev|gate]         the spawn brief      dispatch <slug> [--print]   spawn now
   note "text" [--kind user|upstream|...]  a note event (the console records the user's messages as kind user)
+  agents [--all]                          running agents: usage so far, `claude --resume <session>` to open the chat
+  tail <name> [--turns 5]                 the last turns of an agent's log as text
 Daemon
   status [--json]   tick [--dry-run]   run [--interval 60] [--once]   start [--interval] [--port 7790]   stop
   serve [--port]    daemon-status      digest
@@ -245,6 +247,30 @@ def cmd_dispatch(a):
     print(f"{r.get('name')} ({role}) -> {ch['slug']} ({ex}); pid {r.get('pid')}; log {r.get('log')}")
 
 
+def cmd_agents(a):
+    from . import agents
+    rows = agents.running() if not a.all else store.rec_all("runs")
+    if not rows:
+        print("no running agents")
+    for r in rows:
+        res = agents._result(r["log"]) or {}
+        tok = agents._tokens(res) or 0
+        print(f"{r['name']:5} {r['role']:11} {str(r.get('change')):34} {r.get('stage'):5} since {local(r.get('started'))}  "
+              f"turns {res.get('num_turns') or 0:<4} tokens {tok:<9} {'ended ' + str(r.get('exit'))[:30] if r.get('ended') else 'running'}")
+        if r.get("session"):
+            print(f"      open the chat: claude --resume {r['session']}    log: {r['log']}")
+        else:
+            print(f"      log: {r['log']}  (hd tail {r['name']})")
+
+
+def cmd_tail(a):
+    from . import agents
+    r = store.rec_load("runs", a.name)
+    if not r:
+        sys.exit(f"hd: no run {a.name}")
+    print(agents.transcript(r["log"], a.turns))
+
+
 def cmd_lint(a):
     bad = 0
     idx = store.index()
@@ -468,6 +494,8 @@ def main(argv=None):
     s = sp.add_parser("brief"); s.add_argument("slug"); s.add_argument("--stage", default="dev"); s.set_defaults(f=cmd_brief)
     s = sp.add_parser("dispatch"); s.add_argument("slug"); s.add_argument("--stage"); s.add_argument("--print", action="store_true"); s.set_defaults(f=cmd_dispatch)
     sp.add_parser("lint").set_defaults(f=cmd_lint)
+    s = sp.add_parser("agents"); s.add_argument("--all", action="store_true"); s.set_defaults(f=cmd_agents)
+    s = sp.add_parser("tail"); s.add_argument("name"); s.add_argument("--turns", type=int, default=5); s.set_defaults(f=cmd_tail)
     s = sp.add_parser("status"); s.add_argument("--json", action="store_true"); s.set_defaults(f=cmd_status)
     s = sp.add_parser("tick"); s.add_argument("--dry-run", action="store_true"); s.set_defaults(f=cmd_tick)
     s = sp.add_parser("run"); s.add_argument("--interval", type=int, default=60); s.add_argument("--once", action="store_true"); s.set_defaults(f=cmd_run)

@@ -4,17 +4,18 @@ track: client
 title: Clue Steps hub plugin
 prio: P2
 role: client-dev
-stage: ready
+stage: dev
 hold: null
 deps:
 - treasure-trails
 branch: null
 commit: null
 local_only: false
-owner: null
-instances: []
+owner: cd49
+instances:
+- device
 created: '2026-10-20T01:42:43Z'
-updated: '2026-10-21T00:25:19Z'
+updated: '2026-10-22T01:33:23Z'
 ---
 ## Change
 Clue Steps hub plugin reads the steps/tier message on the device once the server includes the tier (docs/client-state.md Next tasks 1).
@@ -25,3 +26,5 @@ Clue Steps hub plugin reads the steps/tier message on the device once the server
 
 ## Log
 - 2026-10-21T00:25:19Z migrated from v2 tasks: hub-clue-steps-tier
+- 2026-10-22T01:33:23Z ready -> dev: dispatched to cd49
+- 2026-10-22T01:33:23Z run cd49 started (client-dev, stage dev, instances device)

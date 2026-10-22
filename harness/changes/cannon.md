@@ -4,7 +4,7 @@ track: server
 title: 'Cannon (#354): PR text and spec header wording for the upstream gate'
 prio: P1
 role: server-dev
-stage: live
+stage: checked
 hold:
   kind: decision
   reason: 'branch acc/cannon is not one-change-one-branch (BR-C1): fold into content/cannon (changes the upstream PR head: your OK per PR), then point integration at it'
@@ -25,7 +25,7 @@ summary: 'Text only, fork docs 4c75a5850: PR text checklist and spec header now 
   at bc243d141.'
 live_commit: bc243d141fc27d5128d29d8266cf51e89a4f6c08
 created: '2026-10-20T05:16:26Z'
-updated: '2026-10-21T00:25:19Z'
+updated: '2026-10-22T00:00:47Z'
 ---
 ## Change
 Cannon (#354): PR text and spec header wording for the upstream gate
@@ -37,3 +37,4 @@ Cannon (#354): PR text and spec header wording for the upstream gate
 ## Log
 - 2026-10-21T00:25:19Z migrated from v2 tasks: fix-acc-cannon-text, gate-acc-cannon
 - 2026-10-21T00:25:19Z hold decision: branch acc/cannon is not one-change-one-branch (BR-C1): fold into content/cannon (changes the upstream PR head: your OK per PR), then point integration at it
+- 2026-10-22T00:00:47Z live -> checked: drift: integration pin is absent, not bc243d141 (next train)

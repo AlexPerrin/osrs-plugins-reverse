@@ -1,14 +1,15 @@
 # osrs-plugins-reverse
 
-**New session: read HANDOFF.md first** (state at hand-off, first commands, priorities, rules for the v3 orchestrator).
+**This repo is the client and its APK releases only.** Server code and tooling go to the OpenRune fork; the harness that
+runs both tracks is its own repo, **AlexPerrin/osrs-harness** (`~/osrs-harness`; read its HANDOFF.md first). The
+shims here (`tools/harness/hd.py`, `tools/hooks/*.py`, `tools/device-lock.sh`, the `harness` symlink) exec it.
 
 RuneLite plugins running inside the official OSRS Android app (native/ hooks plus the host/ Java plugin host),
 tested against an OpenRune test server (openrune/; upstream branches in re/upstream-pr/or, the fork
 AlexPerrin/OpenRune-Server).
 
 How work is organised (tracks, agents, gates): docs/workflow.md; the machinery that drives it (harness v3: the
-change store, the daemon, leases, trains, approvals, the dashboard): docs/harness-v3.md (docs/harness.md is v2,
-history). Current state, read first:
+change store, the daemon, leases, trains, approvals, the dashboard): ~/osrs-harness/docs/harness-v3.md. Current state, read first:
 - changes, leases, batches, approvals: `python3 tools/harness/hd.py status` (one change = one file in harness/changes/)
 - client: docs/client-state.md
 - server: STATE.md on the fork's `docs` branch (`git -C re/upstream-pr/or show docs:STATE.md`)

@@ -13,7 +13,7 @@ local_only: false
 owner: null
 instances: []
 created: '2026-10-20T01:42:42Z'
-updated: '2026-10-21T00:25:19Z'
+updated: '2026-10-22T00:23:52Z'
 ---
 ## Change
 Server roadmap (docs/rsps-coverage.md, 2026-10-19): content/druidic-ritual (members). Missing upstream, no open upstream PR by anyone else. Reference: re/ref/ LostCity quests/quest_druid (evidence for guesses only, never copied). Size S. Notes: gates Herblore. Check upstream again first, spec with accuracy-check (OSRS Wiki and cache are the baseline), one PR per change, no stacking.
@@ -27,3 +27,4 @@ Server roadmap (docs/rsps-coverage.md, 2026-10-19): content/druidic-ritual (memb
 
 ## Log
 - 2026-10-21T00:25:19Z migrated from v2 tasks: content-druidic-ritual
+- 2026-10-22T00:23:52Z RSProx recordings: 3131 (rev 232, 34 matches; npc 5045), 3249 (rev 233, 21 matches; npc 5045, npc 5044), 3250 (rev 233, 2 matches; npc 5045), 3274 (rev 234, 2 matches; npc 5045), 350 (rev 230, 1 matches; npc 5045), 3243 (rev 233, 1 matches; npc 5045), 3270 (rev 234, 1 matches; npc 5045), 3276 (rev 234, 1 matches; npc 5045) | 8 recordings; keys: npc 5045,5044; text Druidic Ritual

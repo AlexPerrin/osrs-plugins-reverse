@@ -13,7 +13,7 @@ local_only: false
 owner: null
 instances: []
 created: '2026-10-20T04:57:23Z'
-updated: '2026-10-21T00:25:19Z'
+updated: '2026-10-22T00:23:52Z'
 ---
 ## Change
 Found by client task hub-batch-next (the user's own Plugin Hub list, orchestrator 2026-10-20): the plugin builds, passes netcheck/stubcheck and starts on the device, but OpenRune has no content for it to read, so it can't be exercised. Survey 2026-10-20 of re/upstream-pr/or (docs tree e71437e and local integration e5b18a8): only the reward chest (zeah MoonChestScript.kt) and moonlight potions; PROGRESS lists Moons of Peril as missing. Wiki: Perilous Moons. Check upstream again first, spec with accuracy-check (OSRS Wiki and cache are the baseline), one PR per change, no stacking. Client re-test after it is live: hub perilous-moons-splits records split times
@@ -26,3 +26,4 @@ Found by client task hub-batch-next (the user's own Plugin Hub list, orchestrato
 
 ## Log
 - 2026-10-21T00:25:19Z migrated from v2 tasks: content-moons-of-peril
+- 2026-10-22T00:23:52Z RSProx recordings: 1104 (rev 237, 166 matches; npc 13016, npc 13017, npc 13018, text Moons of Peril), 3276 (rev 234, 88 matches; npc 13016, npc 13017, npc 13018), 1693 (rev 226, 35 matches; npc 13016, npc 13017, npc 13018, text Moons of Peril), 1106 (rev 237, 6 matches; text Moons of Peril), 1108 (rev 237, 6 matches; text Moons of Peril), 1149 (rev 237, 5 matches; text Moons of Peril), 1107 (rev 237, 3 matches; text Moons of Peril), 1098 (rev 237, 2 matches; text Moons of Peril) [+19 more] | 27 recordings; keys: npc 13016,13017,13018; text Moons of Peril

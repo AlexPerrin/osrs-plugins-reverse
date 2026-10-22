@@ -80,7 +80,9 @@ def _stage_text(ch, stage, name):
                          "green CI at the commit; one change only; off current upstream main.")
     elif stage == "gate":
         what = f"batch `{ch.get('batch')}`" if ch.get("batch") else f"`{branch}` at `{ch.get('commit')}`"
-        lines = [f"Stage `gate`: run the gate on {what} (the role file says which gate and how). Push the record to the",
+        lines = [f"Stage `gate`: run the gate on {what} (the role file says which gate and how). A release gate copies its build",
+                 "(base.apk, split.apk, THIRD_PARTY_NOTICES.md, the repack log) into the evidence dir before it ends: the worktree is",
+                 "removed with the run and the release attaches those copies. Push the record to the",
                  f"fork's docs branch, then `{HD} gate {slug} PASS|FAIL \"note\"`. You never write the code you check."]
     else:
         lines = [f"Stage `train`: batch `{slug}` stopped on an exception. Record a resolution (or drop one change with a",

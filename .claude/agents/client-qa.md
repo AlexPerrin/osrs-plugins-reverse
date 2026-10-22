@@ -43,6 +43,12 @@ no need to ask. `tools/device-restore-check.sh pre /tmp/osrs-slot/<your-name>` f
 OK at the end, then `free <your-name>`. A stop hook won't let you finish while you hold a lock or the last check isn't all OK.
 Test jars by name in a plain `adb shell rm` call of their own, never wildcards. LOCAL_AUTH sign-in only.
 
+## The artifacts (durable)
+Your worktree is removed when you end. Copy the release build into `re/evidence/<batch-id>/` in the main checkout before
+you finish: `base.apk` and `split.apk` from your `re/out`, `THIRD_PARTY_NOTICES.md`, and the repack log; the record's
+files table must be of those copies (sha256), since the release attaches them (2026-10-21: a gated build was lost
+with its worktree).
+
 ## The record
 `qa/client-<version>.md` (e.g. `qa/client-0.2.0.md`; the publish gate hook reads it before a tag), starting exactly:
 ```

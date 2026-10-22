@@ -333,7 +333,7 @@ function decide(btn,what){var f=btn.closest('form');var note=f.querySelector('te
  .catch(function(e){document.getElementById('err').textContent=String(e);refresh()})}
 function render(v){var p=v.progress,c=p.client,s=p.server,u=p.upstream,k=v.kpis,h='';
  document.title='harness'+(v.pending?' ('+v.pending+')':'');document.getElementById('badge').textContent=v.pending?v.pending+' pending':'';
- h+='<p class="muted small">Project tracker. Agents: <a href="http://127.0.0.1:4820/">Claude Code Agent Monitor</a> · operations: <a href="/text">/text</a> · data: <a href="/api/view">/api/view</a></p>';
+ h+='<p class="muted small">Project tracker. Agents: <a href="//127.0.0.1:4820/">Claude Code Agent Monitor</a> · operations: <a href="/text">/text</a> · data: <a href="/api/view">/api/view</a></p>';
  h+='<h2>Progress</h2><div class="tiles">';
  ['api','plugins_core','plugins_user','plugins_hub','packets'].forEach(function(key){var x=c[key];if(!x)return;if(key=='plugins_user'&&x.value==null)return;
   h+=tile(x.name,x.value,x.total,x.pct,x.trend,x.delta_week,x.note,'/events?kind=metric')});

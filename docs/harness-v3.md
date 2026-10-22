@@ -26,6 +26,8 @@ tools/harness/hd/                the package (one module per concern; each docst
 tools/harness/image.sh           gated clone -> deploy image (keys only by COPY --from the live image; boot check)
 tools/harness/deploy.sh          image -> live (rollback tag, compose up --no-deps, "Server ready in", auto-rollback)
 tools/harness/Dockerfile.integration
+tools/harness/rsprox_coverage.py  RSProx coverage of the roadmap: harness/rsprox-coverage.yaml (search keys per content-*
+                                 change) -> cached rsprox.net searches -> one Log line per change (--log), recordings or 'none'
 harness/policy.yaml              tracks, repos, resources, leases, batches, agents (budgets, roles), approvals (BR-P*)
 harness/changes/<slug>.md        the store (committed)
 harness/state/                   git-ignored: events.jsonl, leases/, runs/, batches/, approvals/, images/, deploys/,
@@ -78,6 +80,7 @@ hd approvals         hd approve <id>               hd deny <id> --note "..."
 hd lease status      hd batches                    hd train --now       hd resume <batch>
 hd new --track server --slug x --title "..." --server-dod [--prio P1] [--deps a,b]
 hd migrate [--apply] (v2 tasks -> changes, once)   hd lint   hd check <slug>
+python3 tools/harness/rsprox_coverage.py [slug...] [--log] [--offline]   (roadmap RSProx coverage; manifest harness/rsprox-coverage.yaml)
 ```
 Tests: `python3 -m unittest discover -s tools/harness/tests` (a test per business rule: test_hd_*.py).
 

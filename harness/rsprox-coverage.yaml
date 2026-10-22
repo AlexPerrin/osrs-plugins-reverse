@@ -1,0 +1,69 @@
+# RSProx search keys per content-* change (tools/harness/rsprox_coverage.py): gameval ids per table (osrs-mcp
+# gameval_search) and strings. One key = one cached rsprox.net search (re/ref/rsprox/search/t<type>_<key>.json).
+content-barbarian-assault:
+  npc: [1656, 1657, 1666, 5739, 5777]     # commander, captain, quickstart, penance fighter lv1, egg launcher
+  text: ["Barbarian Assault"]
+content-black-knights-fortress:
+  npc: [4771, 516, 517]                   # Sir Amik Varze, black knight, aggressive black knight
+  text: ["Black Knights' Fortress"]
+content-demon-slayer:
+  npc: [11868, 5083, 5079, 5080]          # Aris, Sir Prysin, Delrith, Delrith weakened
+  text: ["Demon Slayer"]
+content-dragon-slayer:
+  npc: [814, 822, 816, 823]               # Guildmaster, Oziach, Elvarg, Melzar the Mad
+  text: ["Dragon Slayer"]
+content-drift-net-fishing:
+  npc: [7782]                             # fossil fish shoal
+  loc: [30952, 30953, 30954, 30955]       # drift net none/setup/somefish/full
+  text: ["drift net"]
+content-druidic-ritual:
+  npc: [5045, 5044]                       # Kaqemeex, Sanfew
+  text: ["Druidic Ritual"]
+content-fishing-trawler:
+  npc: [5607, 5608, 10707]                # Murphy (3 forms)
+  interface: [366, 367, 368]              # trawler overlay, reward, start
+  text: ["Fishing Trawler"]
+content-forestry-events:
+  npc: [12119, 12514, 12519, 12543, 12537, 12163]   # forester, beekeeper, dryad, entling, pheasant, leprechaun
+  text: ["Forestry"]
+content-gnome-restaurant:
+  npc: [2656]                             # Aluft Gianne
+  loc: [17126]                            # restaurant table
+  text: ["Gianne jnr"]
+content-guardians-of-the-rift:
+  npc: [11403, 11405, 11406, 11407]       # Great Guardian, abyssal pyramid/walker/leech
+  text: ["Guardians of the Rift"]
+content-hunter-kebbit-tracking:
+  npc: [7210]                             # spooked kebbit dummy
+  loc: [19456, 19457, 19966]              # kebbit caves (Eagles' Peak tracking)
+  text: ["kebbit"]
+content-kalphite-queen:
+  npc: [963]                              # Kalphite Queen (phase 1)
+  text: ["Kalphite Queen"]
+content-moons-of-peril:
+  npc: [13016, 13017, 13018]              # blood, blue, eclipse moon bosses
+  text: ["Moons of Peril"]
+content-player-trading:
+  interface: [334, 335, 336]              # tradeconfirm, trademain, tradeside
+  text: ["wishes to trade with you"]
+content-random-events:
+  npc: [322, 6750, 321, 325]              # drunken dwarf, mysterious old man, mime, maze data
+  text: ["Strange plant"]
+content-rooftop-agility-canifis:
+  loc: [14843, 14844, 14845, 14846, 14847, 14848, 14894, 14897]   # start tree, jumps 1-5, polevault, leapdown
+  text: ["Mark of grace"]
+content-sailing:
+  npc: [15378, 15241, 15496]              # port wizard, small sail boat, bank boat banker
+  text: ["Sailing"]
+content-shield-of-arrav:
+  npc: [2881, 5210, 5212, 5214]           # Baraek, Katrine, Straven, Curator
+  text: ["Shield of Arrav"]
+content-stealing-artefacts:
+  npc: [6971, 6972, 6764]                 # Captain Khaled default/task/multi
+  text: ["Stealing artefacts", "Captain Khaled"]
+content-trouble-brewing:
+  npc: [1816, 1817, 1818]                 # Honest Jimmy, brew monkey, swarm
+  text: ["Trouble Brewing"]
+content-tutorial-island:
+  npc: [8503, 3305, 3312, 3311, 3307, 3310, 3309]   # survival, cook, quest, mining, combat, account, magic instructors
+  text: ["Gielinor Guide"]

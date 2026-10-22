@@ -482,8 +482,31 @@ def drop_pin(text, branch):
     return "".join(l for l in text.splitlines(keepends=True) if (l.split() or [""])[0] != branch)
 
 
+def held_entries(entries):
+    """Queue entries whose change carries a hold (decision, blocked, exception, failed): a train never takes them;
+    they leave the queue and are re-queued by the tick when the hold clears (the change is still `checked`)."""
+    out = []
+    for e in entries:
+        try:
+            ch = store.load(e["slug"]) if store.exists(e["slug"]) else None
+        except Exception:
+            ch = None
+        if ch is not None and ch.hold:
+            out.append(e)
+    return out
+
+
 def _start_train(entries, now_=False):
     """A new train for `entries` (the queue, drained) when the integration lease is free; the batch or None."""
+    held = held_entries(entries)
+    if held:
+        with queue_lock():
+            q = read_queue()
+            q["entries"] = [e for e in q["entries"] if e["slug"] not in {h["slug"] for h in held}]
+            write_queue(q)
+        for h in held:
+            events.emit("batch", step="skipped", detail=f"{h['slug']} left the queue: its change is held", batch_kind="train")
+        entries = [e for e in entries if e["slug"] not in {h["slug"] for h in held}]
     if leases.status("integration").get("holder"):
         return None
     if not try_train_lock():

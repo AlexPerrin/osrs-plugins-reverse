@@ -349,7 +349,14 @@ def candidates(ctx):
 def dispatch(ctx):
     running = agents.running()
     for b in batches.open_batches("train"):
-        if b.get("step") == "exception" and not any(r.get("role") == "integrator" and r.get("batch") == b["id"] for r in running):
+        if b.get("step") != "exception":
+            continue
+        # one integrator per exception: a run started after this exception (alive, ended or stopped by an operator)
+        # means it is handled; a resume that fails again makes a new exception step and a new integrator
+        since = next((x.get("started") for x in reversed(b.get("steps") or []) if x.get("step") == "exception"), None)
+        handled = any(r.get("role") == "integrator" and r.get("batch") == b["id"] and (since is None or (r.get("started") or "") >= since)
+                      for r in store.rec_all("runs"))
+        if not handled:
             if ctx.dry_run:
                 ctx.act(f"would spawn an integrator for {b['id']} [dry run]")
             else:

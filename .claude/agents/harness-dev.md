@@ -33,6 +33,10 @@ tools/harness/hd/, tools/harness/tests/test_hd_*.py (the style; hd_helpers.sandb
    --summary "..."`. The daemon checks and merges; a FAIL returns the change to ready with the items.
 
 ## Limits
+Your commit holds only your change. A test or file you did not cause to fail is not yours to fix: say so in the
+hand-over summary (`--summary "... test X fails on master too"`) and leave it (2026-10-21: two cleanup changes
+re-pinned unrelated tests and could not merge). A change whose work is a side effect (deleting refs, cleaning
+containers) still hands over the commit that records it (a note in docs/ or the change file), never unrelated edits.
 No pushes, GitHub writes, deploys, leases or progress writes (a hook denies them). Never run the daemon, a train, a
 deploy or an agent for real from your worktree. Scratch files under `<scratchpad>/<your-name>/`. If anything is
 denied, report it; don't work around it.

@@ -54,6 +54,7 @@ batches:
   release_after_live_changes: 6      # BR-B6: a release batch after N live client changes (or on demand)
 
 agents:
+  max_concurrent: 3                  # total running agents (the usage window, not dollars, is the constraint)
   permission_mode: auto              # claude -p --permission-mode; hooks still apply
   model: null                        # null = the role file's / default model
   budget_usd: {client-dev: 25, server-dev: 25, client-qa: 15, server-qa: 15, integrator: 8, harness-dev: 15}

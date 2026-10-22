@@ -223,20 +223,30 @@ def _open():
 
 
 def _result(log):
-    """The last stream-json `result` line of a run log, or None."""
-    out = None
+    """The last stream-json `result` line of a run log; for a run that ended without one (stopped, killed) a
+    synthetic result with the usage summed over its assistant messages and `partial: True`, so the usage window
+    spent is still counted; None when the log holds nothing."""
+    out, usage, turns = None, {}, 0
     try:
         with open(log, errors="replace") as f:
             for line in f:
-                if line.startswith("{"):
-                    try:
-                        d = json.loads(line)
-                    except ValueError:
-                        continue
-                    if d.get("type") == "result":
-                        out = d
+                if not line.startswith("{"):
+                    continue
+                try:
+                    d = json.loads(line)
+                except ValueError:
+                    continue
+                if d.get("type") == "result":
+                    out = d
+                elif d.get("type") == "assistant":
+                    turns += 1
+                    for k, v in ((d.get("message") or {}).get("usage") or {}).items():
+                        if isinstance(v, (int, float)):
+                            usage[k] = usage.get(k, 0) + v
     except OSError:
         return None
+    if out is None and turns:
+        out = {"usage": usage, "num_turns": turns, "partial": True, "is_error": True}
     return out
 
 
@@ -266,7 +276,7 @@ def _end(r, exit_):
     """Bookkeeping for a run that is over: the record, the change's cost and owner, leases, worktree, event."""
     res = _result(r["log"]) or {}
     if exit_ is None:
-        exit_ = "no-result" if not res else "error" if res.get("is_error") else "ok"
+        exit_ = "no-result" if not res or res.get("partial") else "error" if res.get("is_error") else "ok"
     r.update(ended=iso(), exit=exit_, turns=res.get("num_turns"), minutes=round((res.get("duration_ms") or 0) / 60000, 1),
              usd=round(res.get("total_cost_usd") or 0, 2), tokens=_tokens(res), result=(res.get("result") or "")[-500:])
     store.rec_save(RUNS, r["name"], r)

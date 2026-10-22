@@ -365,8 +365,9 @@ def dispatch(ctx):
                 if r:
                     running.append(r)
                     ctx.act(f"integrator {r.get('name')} for {b['id']}")
+    cap = int(policy.get()["agents"].get("max_concurrent", 0) or 0)
     for ch, ex, role in candidates(ctx):
-        if slots_free(role, running) <= 0:
+        if (cap and len(running) >= cap) or slots_free(role, running) <= 0:
             ctx.stalled.append(ch["slug"])
             continue
         pol = policy.track(ch["track"])

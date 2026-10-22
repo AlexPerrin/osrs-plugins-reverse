@@ -10,7 +10,8 @@ Changes
   fail <slug> "why"                       an agent that cannot finish: a decision hold
   gate <slug> PASS|FAIL ["note"]          the QA companion's verdict after pushing the record
   hold <slug> blocked|decision|failed|exception "reason"   an operator's hold (never a stage: BR-S2);  unhold <slug>
-  resolve <batch> "note"                  the integrator recorded a resolution; the train resumes
+  resolve <batch> "note" [--decision]     the integrator recorded a resolution and the train resumes; --decision: nothing
+                                          recorded, the user decides (no resume)
   check <slug>                            run the hand-over check now and print it
   brief <slug> [--stage dev|gate]         the spawn brief      dispatch <slug> [--print]   spawn now
   note "text" [--kind user|upstream|...]  a note event (the console records the user's messages as kind user)
@@ -210,6 +211,13 @@ def cmd_resolve(a):
     if not b:
         sys.exit(f"hd: no batch {a.batch}")
     b["resolution"] = a.note
+    if a.decision:
+        # nothing was recorded: the train stays at exception for the user, no resume, no second integrator
+        b["decision"] = a.note
+        store.rec_save("batches", a.batch, b)
+        events.emit("batch", batch=a.batch, step="decision", detail=a.note[:300], batch_kind=b.get("kind"))
+        print(f"{a.batch}: decision recorded; the train waits (not resumed)")
+        return
     store.rec_save("batches", a.batch, b)
     events.emit("batch", batch=a.batch, step="resolved", detail=a.note)
     print(batches.resume(a.batch))
@@ -501,7 +509,7 @@ def main(argv=None):
     s = sp.add_parser("hold"); s.add_argument("slug"); s.add_argument("kind", choices=["blocked", "decision", "failed", "exception"]); s.add_argument("reason"); s.set_defaults(f=cmd_hold)
     s = sp.add_parser("unhold"); s.add_argument("slug"); s.add_argument("why", nargs="?"); s.set_defaults(f=cmd_unhold)
     s = sp.add_parser("gate"); s.add_argument("slug"); s.add_argument("verdict", choices=["PASS", "FAIL"]); s.add_argument("note", nargs="?"); s.set_defaults(f=cmd_gate)
-    s = sp.add_parser("resolve"); s.add_argument("batch"); s.add_argument("note"); s.set_defaults(f=cmd_resolve)
+    s = sp.add_parser("resolve"); s.add_argument("batch"); s.add_argument("note"); s.add_argument("--decision", action="store_true", help="nothing recorded: the user decides; no resume"); s.set_defaults(f=cmd_resolve)
     s = sp.add_parser("check"); s.add_argument("slug"); s.set_defaults(f=cmd_check)
     s = sp.add_parser("brief"); s.add_argument("slug"); s.add_argument("--stage", default="dev"); s.set_defaults(f=cmd_brief)
     s = sp.add_parser("dispatch"); s.add_argument("slug"); s.add_argument("--stage"); s.add_argument("--print", action="store_true"); s.set_defaults(f=cmd_dispatch)

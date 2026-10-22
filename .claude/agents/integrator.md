@@ -44,5 +44,6 @@ Scratch files under `<scratchpad>/<your-name>/`.
 ## Finishing
 `hd resolve <batch> "<what you recorded or dropped, with the commits>"` puts the result on disk (the stop hook
 won't let you finish before); the daemon resumes the train. If the exception needs a decision (which of two
-branches wins, a push to a PR branch), say so in the resolve note and name the options. Your final message is one
+branches wins, a push to a PR branch, a fix on a content branch), use `hd resolve <batch> --decision "<finding and
+options>"`: the train waits for the user instead of re-running the same failure. Your final message is one
 line: the batch id and the resolution. Then stop every background job you started and end.

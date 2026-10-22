@@ -117,6 +117,19 @@ class ReapTest(unittest.TestCase):
         self.assertEqual(events.read(kinds=["check"])[0]["result"], "PASS")
         self.assertTrue(any("check PASS" in a for a in acts))
 
+    def test_check_pass_keeps_a_blocked_hold(self):
+        """A hand-over clears a failed hold (BR-S3), never a blocked one: the dep is still not live."""
+        H.change("srv", "server", stage="checked", commit=SHA)
+        ch = H.change("cli", "client", stage="dev", commit=SHB, owner="cd1", deps=["srv"], evidence="re/evidence/cli")
+        store.set_hold(ch, "blocked", "waiting for srv"); store.save(ch)
+        obs = FakeObserver(tips={("ours", "client/cli"): SHB, ("fork", "content/srv"): SHA}, contains={("ours", "master", SHB): False},
+                           evidence={"re/evidence/cli": ["repack.log", "logcat.txt"]}, files={"repack.log": "telemetry: a\n" * 7},
+                           pins={}, live={"integration": "c" * 40})
+        tick.tick(obs)
+        cli = store.load("cli")
+        self.assertEqual((cli.stage, cli.hold), ("checked", "blocked"))
+        self.assertEqual([c for c in self.calls if c[0] == "enqueue"], [])
+
     def test_check_fail_returns_to_ready_with_items(self):
         """BR-S5."""
         ch = H.change("feat", "server", stage="dev", commit=SHA, owner="sd1", evidence="re/evidence/feat")

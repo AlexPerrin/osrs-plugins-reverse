@@ -125,7 +125,8 @@ def run_check(ctx, ch):
     events.emit("check", change=ch["slug"], result="PASS" if passed else "FAIL",
                 items=[t for ok, t in items if ok is False])
     if passed:
-        store.clear_hold(ch, "handed over")
+        if ch.hold == "failed":
+            store.clear_hold(ch, "handed over (BR-S3)")   # a blocked or decision hold is not the dev's to clear
         store.set_stage(ch, "checked", "hand-over check PASS")
         ch["owner"] = None
         ch.pop("check", None)

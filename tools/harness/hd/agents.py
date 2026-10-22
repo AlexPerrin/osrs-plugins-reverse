@@ -181,18 +181,25 @@ def spawn(ch, role, stage, instances=None):
             store.set_stage(ch, "dev", f"dispatched to {name}")
         store.add_log(ch, f"run {name} started ({role}, stage {stage}, instances {', '.join(instances) or 'none'})")
     text = brief(ch, role, stage, instances)
-    mode = os.environ.get("HD_SPAWN")
+    mode = os.environ.get("HD_SPAWN") or policy.get()["agents"].get("spawn_mode")
+    if mode == "headless":
+        mode = None
     cwd = ROOT if mode else workspace(name, role)
     log = _log_path(name)
     rec = {"name": name, "role": role, "change": slug, "stage": stage, "pid": None, "pgid": None, "started": iso(),
            "cwd": cwd, "log": log, "budget": b, "instances": list(instances), "ended": None, "exit": None}
     if stage == "train" or ch.get("batch"):
         rec["batch"] = slug if stage == "train" else ch.get("batch")
-    if mode in ("fake", "print"):
+    if mode in ("fake", "print", "console"):
         os.makedirs(os.path.dirname(log), exist_ok=True)
         with open(log, "w") as f:
             f.write(text)
-        rec["fake"] = True
+        if mode == "console":
+            # the console session spawns it with the Agent tool (visible in the user's CLI) and ends it with
+            # `hd run-end`; the daemon only decides and books it
+            rec["console"] = True
+        else:
+            rec["fake"] = True
         if mode == "print":
             print(f"--- spawn with the Agent tool: subagent_type={role}, name {name} ---\n{text}")
     else:
@@ -210,18 +217,48 @@ def spawn(ch, role, stage, instances=None):
     _persist(ch)
     store.rec_save(RUNS, name, rec)
     events.emit("agent", action="start", name=name, role=role, change=slug, stage=stage, pid=rec["pid"])
+    if rec.get("console"):
+        events.emit("agent", action="request", name=name, role=role, change=slug, stage=stage, log=log,
+                    worktree=bool(policy.role(role).get("worktree")))
     return rec
 
 
 # --- the end of a run ---------------------------------------------------------------------------------------------
 
 def running():
-    return [r for r in store.rec_all(RUNS) if not r.get("ended") and pid_alive(r.get("pid"))]
+    return [r for r in store.rec_all(RUNS) if not r.get("ended") and (r.get("console") or pid_alive(r.get("pid")))]
 
 
 def _open():
-    """Runs not ended: alive processes and fake/print runs (which end only through stop())."""
-    return [r for r in store.rec_all(RUNS) if not r.get("ended") and (r.get("fake") or pid_alive(r.get("pid")))]
+    """Runs not ended: alive processes, console runs (ended by `hd run-end`) and fake/print runs (ended by stop())."""
+    return [r for r in store.rec_all(RUNS) if not r.get("ended") and (r.get("fake") or r.get("console") or pid_alive(r.get("pid")))]
+
+
+def end_console(name, exit_="ok", turns=None, tokens=None, minutes=None, result=""):
+    """`hd run-end`: the console session reports that an Agent-tool run ended; the usual bookkeeping, with the
+    usage the session saw."""
+    r = store.rec_load(RUNS, name)
+    if not r or r.get("ended"):
+        return r
+    r = _end(r, exit_)
+    r.update(turns=turns, tokens=tokens, minutes=minutes, result=(result or "")[-500:])
+    store.rec_save(RUNS, name, r)
+    slug = r.get("change")
+    if slug and store.exists(slug) and tokens:
+        ch = store.load(slug)
+        cost = ch.get("cost") or {}
+        cost["tokens"] = (cost.get("tokens") or 0) + tokens
+        ch["cost"] = cost
+        store.save(ch)
+    return r
+
+
+def link(name, agent_id):
+    r = store.rec_load(RUNS, name)
+    if r:
+        r["agent_id"] = agent_id
+        store.rec_save(RUNS, name, r)
+    return r
 
 
 def _result(log):
@@ -350,6 +387,9 @@ def stop(name, why):
     pid = r.get("pid")
     if pid and pid_alive(pid):
         _kill(r.get("pgid") or pid, pid)
+    if r.get("console"):
+        # the process belongs to the console session: ask it to TaskStop the agent
+        events.emit("agent", action="stop-request", name=name, agent_id=r.get("agent_id"), why=why)
     return _end(r, f"stopped:{why}")
 
 

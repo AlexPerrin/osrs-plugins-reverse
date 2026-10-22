@@ -181,3 +181,34 @@ class AgentsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ConsoleModeTest(unittest.TestCase):
+    def setUp(self):
+        H.sandbox(self)
+        os.environ["HD_SPAWN"] = "console"
+        self.addCleanup(os.environ.pop, "HD_SPAWN", None)
+
+    def test_request_run_end_and_stop(self):
+        ch = H.change("feat", "server")
+        rec = agents.spawn(ch, "server-dev", "dev")
+        self.assertTrue(rec["console"])
+        self.assertIsNone(rec["pid"])
+        self.assertIn(rec["name"], [r["name"] for r in agents.running()])   # counts against the cap and slots
+        ev = [e for e in events.read(kinds=["agent"]) if e["action"] == "request"]
+        self.assertEqual((ev[0]["name"], ev[0]["role"], ev[0]["worktree"]), (rec["name"], "server-dev", False))
+        self.assertIn("Harness change `feat`", open(rec["log"]).read())
+        agents.link(rec["name"], "agent-123")
+        self.assertEqual(agents.poll(), [])   # never ends on its own
+        r = agents.end_console(rec["name"], "ok", turns=12, tokens=500000, minutes=7.5)
+        self.assertEqual((r["exit"], r["turns"], r["tokens"]), ("ok", 12, 500000))
+        self.assertEqual(store.load("feat")["cost"]["tokens"], 500000)
+        self.assertEqual(agents.running(), [])
+        # a stop on a console run asks the session to TaskStop it
+        ch2 = H.change("feat2", "server")
+        rec2 = agents.spawn(ch2, "server-dev", "dev")
+        agents.link(rec2["name"], "agent-456")
+        agents.stop(rec2["name"], "lingering")
+        ev = [e for e in events.read(kinds=["agent"]) if e["action"] == "stop-request"]
+        self.assertEqual((ev[0]["name"], ev[0]["agent_id"]), (rec2["name"], "agent-456"))
+        self.assertTrue(store.rec_load("runs", rec2["name"])["exit"].startswith("stopped:"))

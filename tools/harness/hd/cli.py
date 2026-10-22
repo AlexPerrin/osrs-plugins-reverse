@@ -17,6 +17,8 @@ Changes
   note "text" [--kind user|upstream|...]  a note event (the console records the user's messages as kind user)
   agents [--all]                          running agents: usage so far, `claude --resume <session>` to open the chat
   tail <name> [--turns 5]                 the last turns of an agent's log as text
+  run-end <name> [--exit ok] [--turns n] [--tokens n] [--minutes m]   console mode: the session reports an Agent-tool run ended
+  run-link <name> <agent-id>              console mode: the Agent-tool id of a run (for TaskStop on a stop-request)
 Daemon
   status [--json]   tick [--dry-run]   run [--interval 60] [--once]   start [--interval]   stop   (the tick loop)
   serve [--port 7790] [--detach]   serve-stop   (the dashboard: its own process, never restarted with the loop)
@@ -280,6 +282,18 @@ def cmd_tail(a):
     print(agents.transcript(r["log"], a.turns))
 
 
+def cmd_run_end(a):
+    from . import agents
+    r = agents.end_console(a.name, a.exit, a.turns, a.tokens, a.minutes, a.result or "")
+    print(f"{a.name}: {r.get('exit') if r else 'no such run'}")
+
+
+def cmd_run_link(a):
+    from . import agents
+    agents.link(a.name, a.agent_id)
+    print(f"{a.name} <- {a.agent_id}")
+
+
 def cmd_lint(a):
     bad = 0
     idx = store.index()
@@ -516,6 +530,9 @@ def main(argv=None):
     sp.add_parser("lint").set_defaults(f=cmd_lint)
     s = sp.add_parser("agents"); s.add_argument("--all", action="store_true"); s.set_defaults(f=cmd_agents)
     s = sp.add_parser("tail"); s.add_argument("name"); s.add_argument("--turns", type=int, default=5); s.set_defaults(f=cmd_tail)
+    s = sp.add_parser("run-end"); s.add_argument("name"); s.add_argument("--exit", default="ok"); s.add_argument("--turns", type=int)
+    s.add_argument("--tokens", type=int); s.add_argument("--minutes", type=float); s.add_argument("--result"); s.set_defaults(f=cmd_run_end)
+    s = sp.add_parser("run-link"); s.add_argument("name"); s.add_argument("agent_id"); s.set_defaults(f=cmd_run_link)
     s = sp.add_parser("status"); s.add_argument("--json", action="store_true"); s.set_defaults(f=cmd_status)
     s = sp.add_parser("tick"); s.add_argument("--dry-run", action="store_true"); s.set_defaults(f=cmd_tick)
     s = sp.add_parser("run"); s.add_argument("--interval", type=int, default=60); s.add_argument("--once", action="store_true"); s.set_defaults(f=cmd_run)

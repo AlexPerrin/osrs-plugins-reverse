@@ -333,6 +333,7 @@ function decide(btn,what){var f=btn.closest('form');var note=f.querySelector('te
  .catch(function(e){document.getElementById('err').textContent=String(e);refresh()})}
 function render(v){var p=v.progress,c=p.client,s=p.server,u=p.upstream,k=v.kpis,h='';
  document.title='harness'+(v.pending?' ('+v.pending+')':'');document.getElementById('badge').textContent=v.pending?v.pending+' pending':'';
+ h+='<p class="muted small">Project tracker. Agents: <a href="http://127.0.0.1:4820/">Claude Code Agent Monitor</a> · operations: <a href="/text">/text</a> · data: <a href="/api/view">/api/view</a></p>';
  h+='<h2>Progress</h2><div class="tiles">';
  ['api','plugins_core','plugins_user','plugins_hub','packets'].forEach(function(key){var x=c[key];if(!x)return;if(key=='plugins_user'&&x.value==null)return;
   h+=tile(x.name,x.value,x.total,x.pct,x.trend,x.delta_week,x.note,'/events?kind=metric')});
@@ -351,22 +352,6 @@ function render(v){var p=v.progress,c=p.client,s=p.server,u=p.upstream,k=v.kpis,
   W(r.hold?'<span class="b '+esc(r.hold)+'">'+esc(r.hold)+'</span> '+esc(r.reason||''):''),W(esc(r.waiting||'')),esc(r.age),esc(r.owner||''),cost(r.cost),esc(r.prio),'<code>'+esc(r.commit||'')+'</code>']}),function(r){return r[3].h?'hold':''});
  h+='<h2>Batches</h2>'+table(['batch','kind','step','includes','integration','image','created'],v.batches.map(function(b){return [ev(b.id,'batch'),esc(b.kind),esc(b.step),W(esc((b.includes||[]).join(', '))),'<code>'+esc((b.integration||'').slice(0,9))+'</code>',esc(b.image||''),t(b.created)]}));
  var l=v.live||{};h+='<h2>Live</h2><div class="card small">integration <code>'+esc((l.integration||'').slice(0,9)||'-')+'</code> · image '+esc(l.image||'-')+' · rollback '+esc(l.rollback||'-')+' · since '+t(l.since)+' · upstream main at pin <code>'+esc((l.upstream_main||'').slice(0,9)||'-')+'</code>'+(l.upstream_tip?' · tip <code>'+esc(l.upstream_tip.slice(0,9))+'</code>':'')+(l.repin_due?' · <b>re-pin due</b>':'')+' · '+ev('deploys','deploy')+'</div>';
- var R=v.resources;h+='<h2>Resources</h2>'+table(['resource','holder','purpose','since','expiry','pid','grants'],R.leases.map(function(r){return [ev(r.resource,'lease'),esc(r.holder||(r.drain?'draining':'free')),W(esc(r.purpose||'')),t(r.since),t(r.expiry),esc(r.pid||r.container||''),esc((r.grants||[]).join(' '))]}));
- h+='<p class="small muted">buildq: '+esc(R.buildq)+' · MemAvailable '+(R.mem_available_mb==null?'n/a':R.mem_available_mb+' MB')+'</p>';
- h+='<h2>Agents</h2>'+table(['agent','role','change','stage','alive','started','turns','minutes','usd'],v.agents.map(function(a){return [ev(a.name,'agent',a.change),esc(a.role),esc(a.change),esc(a.stage),a.alive?'yes':'<span class="b failed">no</span>',t(a.started)+' ('+ago(a.started)+')',num(a.turns),num(a.minutes,0),num(a.usd,2)]}));
- h+='<h2>Stalls</h2>'+(v.stalls.length?'<ul>'+v.stalls.map(function(s){return '<li>'+ev(s.slug,'tick')+': '+esc(s.reason)+'</li>'}).join('')+'</ul>':'<p class="muted small">nothing ready is stuck</p>');
- var dl=k.deadlocks;h+='<h2>Harness KPIs</h2>'+table(['kpi','value','trend'],[
-  ['unattended hours',ev(num(k.unattended_hours),'tick'),''],
-  ['live per day (7d mean)',ev(num(k.live_per_day.mean,2),'stage'),spark(p.trends.live)],
-  ['lead time ready→live (h)','median '+num(k.lead_time_h.median)+' · p90 '+num(k.lead_time_h.p90)+' · n '+k.lead_time_h.n,''],
-  ['check first pass',ev((k.check_first_pass.rate==null?'-':Math.round(k.check_first_pass.rate*100)+'%')+' ('+k.check_first_pass.pass+'/'+k.check_first_pass.n+')','check'),''],
-  ['gate first pass',(k.gate_first_pass.rate==null?'-':Math.round(k.gate_first_pass.rate*100)+'%')+' ('+k.gate_first_pass.pass+'/'+k.gate_first_pass.n+')',''],
-  ['stall minutes',ev(num(k.stall_minutes),'tick'),''],
-  ['interventions per day',ev(num(k.interventions_per_day.mean,2),'note'),spark(p.trends.interventions)],
-  ['denials per hour',ev(num(k.denials_per_hour.total,2),'denial')+' · '+kv(k.denials_per_hour.by_source),spark(p.trends.denials)],
-  ['tokens per change',W(Object.keys(k.tokens_per_change).map(function(r){var x=k.tokens_per_change[r];return esc(r)+': $'+num(x.usd,2)+' '+num(x.minutes,0)+'m '+num(x.turns,0)+'t (n '+x.n+')'}).join('<br>')||'-'),spark(p.trends.usd)],
-  ['deadlocks',ev(dl.count,'heal')+' · detect '+num(dl.detect_min)+' min · recover '+num(dl.recover_min)+' min',''],
-  ['gate build (s)',ev('median '+num(k.builds.median,0)+' · last '+num(k.builds.last,0),'batch'),'']]);
  document.getElementById('root').innerHTML=h;var d=v.daemon||{};
  document.getElementById('foot').innerHTML='generated '+t(v.generated)+' ('+esc(v.generated_local)+') · daemon '+(d.pid?'pid '+d.pid+(d.alive?'':' (dead)')+' · last tick '+t(d.last_tick)+' ('+num(d.tick_seconds)+' s, every '+esc(d.interval)+' s, '+esc(d.ticks)+' ticks)':'not running')+' · <a href="/text">text</a> · <a href="/api/view">json</a> · <a href="/events?limit=200">events</a>'}
 function refresh(){fetch('/api/view').then(function(r){return r.json()}).then(function(v){document.getElementById('err').textContent='';render(v)}).catch(function(e){document.getElementById('err').textContent='refresh failed: '+e})}

@@ -102,7 +102,8 @@ def _lease_text(name, instances):
     if not instances:
         return ["Instances granted to you: none."]
     return [f"Instances granted to you (take without asking): {', '.join(instances)}. Take one only when you start using",
-            "it, heartbeat while you use it, free it right after; an idle lease is reclaimed with the evidence:",
+            "it and free it right after. The lease is bound to your process: it counts as in use while you run and is",
+            "reclaimed once you end (no heartbeat needed; `lease heartbeat` exists only for a helper outside your process):",
             f"  take with: {HD} lease take <instance> {name} \"<what>\"",
             f"  heartbeat: {HD} lease heartbeat <instance> {name}",
             f"  free: {HD} lease release <instance> {name}"]
@@ -358,24 +359,17 @@ def _left_stage(r, idx):
 
 
 def lingering(idx):
-    grace = int(policy.get()["agents"].get("linger_grace_minutes", 2))
+    """Runs whose subject no longer needs them, on the atomic fact alone (the owner field, the batch step), with no
+    grace period (feedback-atomic-not-time)."""
     out = []
     for r in _open():
         left = _left_stage(r, idx)
-        if not left:
-            continue
-        why, since = left
-        m = minutes_since(since) if since else None
-        if m is None or m >= grace:
-            out.append((r, f"lingering: {why}" + (f" for {m:.0f} min" if m is not None else "")))
+        if left:
+            out.append((r, f"lingering: {left[0]}"))
     return out
 
 
 def over_budget():
-    out = []
-    for r in _open():
-        limit = (r.get("budget") or {}).get("minutes")
-        m = minutes_since(r.get("started"))
-        if limit and m is not None and m > limit:
-            out.append((r, f"over budget: {m:.0f} min > {limit}"))
-    return out
+    """Nothing: the dollar budget is enforced atomically by `claude --max-budget-usd`; minutes are informational
+    (feedback-atomic-not-time), never a reason to stop a working agent."""
+    return []

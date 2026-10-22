@@ -204,11 +204,15 @@ def deploy(ctx):
         st = leases.status(r)
         if st.get("holder") and st["holder"] != leases.DAEMON:
             leases.drain(r)
+            is_idle, why = leases.idle(r, container_alive=lambda n: (ctx.obs.container(n) or {}).get("status") == "running")
             d = st.get("drain") or leases.status(r).get("drain") or {}
             m = minutes_since(d.get("since")) or 0
-            if m > cap:
-                leases.reclaim(r, f"drain cap {cap} min passed for the deploy of {b['id']} (held {m:.0f} min)")
-                ctx.act(f"{r}: reclaimed for the deploy")
+            if is_idle:
+                leases.reclaim(r, f"idle during the drain for the deploy of {b['id']}: {why}")
+                ctx.act(f"{r}: reclaimed for the deploy ({why})")
+            elif m > cap:
+                leases.reclaim(r, f"drain cap {cap} min passed for the deploy of {b['id']} (held {m:.0f} min, backstop)")
+                ctx.act(f"{r}: reclaimed for the deploy (cap)")
     if not leases.holders_free([r for r in res if leases.status(r).get("holder") != leases.DAEMON]):
         held = [f"{r} by {leases.status(r)['holder']}" for r in res if leases.status(r).get("holder") not in (None, leases.DAEMON)]
         ctx.act(f"deploy of {b['id']} waits for: {', '.join(held)}")

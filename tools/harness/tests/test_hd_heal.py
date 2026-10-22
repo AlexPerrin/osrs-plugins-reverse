@@ -34,7 +34,7 @@ class HealTest(unittest.TestCase):
         obs = FakeObserver(containers={"qa-or-feat": {"status": "exited"}})
         acts = heal.run(obs, {})
         self.assertEqual(len(acts), 2)   # the reclaim, then the exited container's removal
-        self.assertIn("lease desktop reclaimed from sq1: no attached process or container, last heartbeat 60 min ago", acts[0])
+        self.assertIn("lease desktop reclaimed from sq1: attached container qa-or-feat is not running", acts[0])
         self.assertEqual(acts[1], "container qa-or-feat removed (exited)")
         self.assertIsNone(leases.status("desktop")["holder"])
         ev = [e for e in events.read(kinds=["lease"]) if e["action"] == "reclaim"][-1]
@@ -50,13 +50,10 @@ class HealTest(unittest.TestCase):
         store.set_stage(ch, "checked", "check PASS", commit=SHA)
         ch["owner"] = None   # the check clears the owner
         store.save(ch)
-        util.freeze("2026-10-21T01:01:00Z")
-        self.assertEqual(heal.run(FakeObserver(), store.index()), [])
-        util.freeze("2026-10-21T01:05:00Z")
         acts = heal.run(FakeObserver(), store.index())
-        self.assertEqual(acts, [f"agent {rec['name']} stopped: lingering: owner is None (change at checked) for 5 min"])
+        self.assertEqual(acts, [f"agent {rec['name']} stopped: lingering: owner is None (change at checked)"])
         r = store.rec_load(agents.RUNS, rec["name"])
-        self.assertEqual(r["exit"], "stopped:lingering: owner is None (change at checked) for 5 min")
+        self.assertEqual(r["exit"], "stopped:lingering: owner is None (change at checked)")
         self.assertNotIn(rec["name"], leases.status("desktop")["grants"])
         self.assertEqual(store.load("feat").stage, "checked")
 

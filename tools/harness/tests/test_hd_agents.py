@@ -148,11 +148,8 @@ class AgentsTest(unittest.TestCase):
         store.set_stage(ch, "checked", "hand-over check PASS", commit=SHA)
         ch["owner"] = None   # the check clears the owner (tick.run_check)
         store.save(ch)
-        util.freeze("2026-10-21T01:01:00Z")
-        self.assertEqual(agents.lingering(store.index()), [])   # within the grace
-        util.freeze("2026-10-21T01:10:00Z")
-        got = agents.lingering(store.index())
-        self.assertEqual([(r["name"], why) for r, why in got], [(rec["name"], "lingering: owner is None (change at checked) for 10 min")])
+        got = agents.lingering(store.index())   # at once: no grace (feedback-atomic-not-time)
+        self.assertEqual([(r["name"], why) for r, why in got], [(rec["name"], "lingering: owner is None (change at checked)")])
         # a dev run on a live change under a failed hold (BR-S3) is not lingering while it owns the change
         held = H.change("fixme", "server", stage="live", commit=SHA)
         store.set_hold(held, "failed", "gate FAIL"); store.save(held)
@@ -162,7 +159,7 @@ class AgentsTest(unittest.TestCase):
         agents.stop(rec2["name"], "test")
         self.assertEqual(agents.over_budget(), [])
         util.freeze("2026-10-21T06:00:00Z")
-        self.assertEqual(agents.over_budget()[0][1], "over budget: 300 min > 240")
+        self.assertEqual(agents.over_budget(), [])   # minutes never stop a run (feedback-atomic-not-time)
 
     def test_lingering_gate_and_train(self):
         util.freeze("2026-10-21T01:00:00Z")
@@ -179,7 +176,7 @@ class AgentsTest(unittest.TestCase):
         store.rec_save("batches", "int-1", dict(batch, step="rebuilding"))
         util.freeze("2026-10-21T01:40:00Z")
         whys = sorted(why for _, why in agents.lingering(store.index()))
-        self.assertEqual(whys, ["lingering: batch at rebuilding for 10 min", "lingering: gate recorded for 10 min"])
+        self.assertEqual(whys, ["lingering: batch at rebuilding", "lingering: gate recorded"])
 
 
 if __name__ == "__main__":

@@ -42,9 +42,9 @@ resources:                           # every lease (BR-R1); instances come from 
   live-server: {kind: lock, default_minutes: 30}      # a deploy
   ghidra:      {kind: lock, default_minutes: 120}     # the one Ghidra writer
 
-leases:
-  heartbeat_minutes: 20              # no heartbeat and no attached process for this long = idle (BR-R2)
-  drain_cap_minutes: 30              # a pending deploy waits this long for holders, then reclaims (BR-R4)
+leases:                              # in use = the holder's process is alive (bound at take); the minutes below are backstops
+  heartbeat_minutes: 20              # only for a holder with nothing attached (not spawned by the daemon)
+  drain_cap_minutes: 30              # a pending deploy reclaims idle holders at once; busy ones only past this backstop
 
 batches:
   train_debounce_minutes: 10         # BR-B1
@@ -57,8 +57,8 @@ agents:
   permission_mode: auto              # claude -p --permission-mode; hooks still apply
   model: null                        # null = the role file's / default model
   budget_usd: {client-dev: 25, server-dev: 25, client-qa: 15, server-qa: 15, integrator: 8, harness-dev: 15}
-  budget_minutes: {client-dev: 240, server-dev: 240, client-qa: 180, server-qa: 150, integrator: 60, harness-dev: 120}
-  linger_grace_minutes: 2            # stopped this long after its stage is reached (BR-G2)
+  budget_minutes: {client-dev: 240, server-dev: 240, client-qa: 180, server-qa: 150, integrator: 60, harness-dev: 120}  # lease grants only; never a stop
+  linger_grace_minutes: 0            # a run is stopped as soon as its change no longer names it (no time grace)
   roles:
     client-dev:  {track: client, stage: dev,  worktree: true,  pushes: []}
     server-dev:  {track: server, stage: dev,  worktree: false, pushes: [fork]}

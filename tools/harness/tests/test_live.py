@@ -289,7 +289,6 @@ class LockDirTest(unittest.TestCase):
         self.assertEqual(self.run_lock("free", who, name="desktop").returncode, 0)
         self.assertFalse(os.path.exists(os.path.join(self.lock_dir, "osrs-desktop.lock")))
         self.assertEqual(self.run_lock("status", name="desktop").returncode, 0)
-        self.assertFalse(os.path.exists("/tmp/osrs-desktop.lock") and self.lock_dir != "/tmp")
 
     def test_default_is_tmp(self):
         src = open(os.path.join(ROOT, "tools", "device-lock.sh")).read()

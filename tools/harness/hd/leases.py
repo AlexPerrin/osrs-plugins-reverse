@@ -101,8 +101,15 @@ def _ts(epoch):
     return dt.datetime.fromtimestamp(epoch, dt.timezone.utc)
 
 
+def run_of(holder):
+    """The holder's run record (an agent the daemon spawned), or None."""
+    r = store.rec_load("runs", holder)
+    return r if isinstance(r, dict) else None
+
+
 def take(resource, holder, purpose="", pid=None, container=None, minutes=None, change=None):
-    """(ok, message)."""
+    """(ok, message). A lease taken by an agent the daemon spawned is bound to that agent's process (its run record's
+    pid) unless the caller attaches another pid or container: whether it is in use is then a fact, not a guess."""
     if not known(resource):
         return False, f"unknown resource {resource}"
     r = _rec(resource)
@@ -124,8 +131,11 @@ def take(resource, holder, purpose="", pid=None, container=None, minutes=None, c
         until = _ts(now().timestamp() + minutes * 60)
     if until is None:
         until = _ts(now().timestamp() + default_minutes(resource) * 60)
+    run = run_of(holder)
+    if pid is None and run and run.get("pid") and not run.get("ended"):
+        pid = run["pid"]
     r.update(holder=holder, purpose=purpose, since=iso(), expiry=iso(until), heartbeat=iso(), pid=pid,
-             container=container, change=change or (g or {}).get("change"))
+             container=container, change=change or (g or {}).get("change"), run=holder if run else None)
     _save(r)
     events.emit("lease", action="take", resource=resource, holder=holder, purpose=purpose, change=r.get("change"))
     return True, f"{resource} taken by {holder} ({purpose}) until {iso(until)}"
@@ -216,23 +226,36 @@ def holds(resource, holder):
 
 
 def idle(resource, container_alive=None):
-    """(idle, evidence) for a held lease: no attached live process or container and no heartbeat within the policy
-    window, or past expiry. `container_alive(name)` is injected (docker)."""
+    """(idle, evidence) for a held lease, decided on facts in this order (feedback-atomic-not-time):
+    the holder's run ended -> idle; an attached process or container is alive -> in use; an attached process is
+    dead -> idle; nothing attached (a holder the daemon did not spawn): the heartbeat window, then the expiry,
+    are the only backstops. The daemon's own leases are never idle (batches release them)."""
     r = _rec(resource)
     if not r.get("holder"):
         return False, "free"
+    if r["holder"] == DAEMON:
+        return False, "held by the daemon"
+    run = run_of(r["holder"])
+    if run and run.get("ended"):
+        return True, f"run {r['holder']} ended ({run.get('exit')})"
+    if r.get("pid"):
+        if pid_alive(r["pid"]):
+            return False, f"pid {r['pid']} alive"
+        return True, f"attached process {r['pid']} is dead"
+    if r.get("container"):
+        if container_alive and container_alive(r["container"]):
+            return False, f"container {r['container']} running"
+        return True, f"attached container {r['container']} is not running"
+    if run and run.get("pid") and not pid_alive(run["pid"]):
+        return True, f"run {r['holder']} process {run['pid']} is dead"
     hb = policy.get().get("leases", {}).get("heartbeat_minutes", 20)
-    if r.get("expiry") and parse(r["expiry"]) and parse(r["expiry"]) < now():
-        return True, f"past expiry {r['expiry']}"
-    if r.get("pid") and pid_alive(r["pid"]):
-        return False, f"pid {r['pid']} alive"
-    if r.get("container") and container_alive and container_alive(r["container"]):
-        return False, f"container {r['container']} running"
     m = minutes_since(r.get("heartbeat") or r.get("since"))
+    if r.get("expiry") and parse(r["expiry"]) and parse(r["expiry"]) < now():
+        return True, f"past expiry {r['expiry']} (backstop: nothing attached)"
     if m is not None and m < hb:
-        return False, f"heartbeat {m:.0f} min ago"
-    return True, (f"no attached process or container, last heartbeat {m:.0f} min ago (limit {hb})" if m is not None
-                  else "no heartbeat, no attached process")
+        return False, f"nothing attached; heartbeat {m:.0f} min ago (backstop window {hb})"
+    return True, (f"nothing attached and no heartbeat for {m:.0f} min (backstop window {hb})" if m is not None
+                  else "nothing attached, no heartbeat")
 
 
 def holders_free(resources):

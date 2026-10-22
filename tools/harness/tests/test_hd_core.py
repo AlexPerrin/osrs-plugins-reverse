@@ -261,15 +261,30 @@ class LeaseTest(unittest.TestCase):
         kinds = [e["action"] for e in events.read(kinds=["lease"])]
         self.assertEqual(kinds, ["deny", "grant", "take", "deny", "release"])
 
+    def test_bound_to_the_run_process(self):
+        """feedback-atomic-not-time: a lease of a daemon-spawned agent is in use while its process lives, idle the
+        moment the run ended or its process died, whatever the clock says."""
+        store.rec_save("runs", "sd9", {"name": "sd9", "pid": os.getpid(), "ended": None})
+        leases.grant("desktop", "sd9", 600)
+        leases.take("desktop", "sd9", "ab")
+        self.assertEqual(leases.status("desktop")["pid"], os.getpid())
+        util.freeze(util.now() + __import__("datetime").timedelta(hours=9))
+        self.addCleanup(util.freeze, None)
+        self.assertEqual(leases.idle("desktop"), (False, f"pid {os.getpid()} alive"))
+        store.rec_save("runs", "sd9", {"name": "sd9", "pid": os.getpid(), "ended": "2026-10-21T00:00:00Z", "exit": "ok"})
+        idle, why = leases.idle("desktop")
+        self.assertTrue(idle)
+        self.assertIn("run sd9 ended", why)
+
     def test_idle_and_reclaim(self):
         leases.grant("desktop", "sq1", 600)
         leases.take("desktop", "sq1", "gate")
-        self.assertEqual(leases.idle("desktop")[0], False)   # heartbeat just now
+        self.assertEqual(leases.idle("desktop")[0], False)   # nothing attached: the heartbeat backstop, just now
         util.freeze(util.now() + __import__("datetime").timedelta(hours=4))
         self.addCleanup(util.freeze, None)
         idle, why = leases.idle("desktop")
         self.assertTrue(idle)
-        self.assertIn("last heartbeat", why)
+        self.assertIn("no heartbeat", why)
         leases.reclaim("desktop", why)
         self.assertIsNone(leases.status("desktop")["holder"])
         ev = events.read(kinds=["lease"])[-1]

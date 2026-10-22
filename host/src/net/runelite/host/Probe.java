@@ -380,6 +380,14 @@ final class Probe {
                     Log.i(TAG, "wjump " + id + "," + a[2] + " from " + before + " now " + wm.getWorldMapPosition());
                     break;
                 }
+                case "infoboxes": {  // "infoboxes <n> 0": log every InfoBox (class, text, tooltip); n distinguishes repeat dumps
+                    java.util.List<net.runelite.client.ui.overlay.infobox.InfoBox> boxes = net.runelite.client.RuneLite.getInjector()
+                        .getInstance(net.runelite.client.ui.overlay.infobox.InfoBoxManager.class).getInfoBoxes();
+                    Log.i(TAG, "infoboxes #" + id + ": " + boxes.size() + " at tick " + c.getTickCount());
+                    for (net.runelite.client.ui.overlay.infobox.InfoBox b : boxes)
+                        Log.i(TAG, "infobox " + b.getClass().getName() + " text '" + b.getText() + "' tooltip '" + b.getTooltip() + "'");
+                    break;
+                }
                 case "examine": {  // "examine <obj> <count>": the server's examine_item clientscript 6003, run client-side
                     c.runScript(6003, id, Integer.parseInt(a[2]), "Probe examine text.", 1, 100, 1, 60, 40);
                     Log.i(TAG, "runScript 6003 obj " + id + " count " + a[2]);

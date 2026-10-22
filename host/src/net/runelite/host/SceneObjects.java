@@ -154,12 +154,19 @@ final class SceneObjects {
                 int plane = (int) (k >>> 62), wx = (int) (k >>> 44 & 0x3fff), wy = (int) (k >>> 28 & 0xffff);
                 Tile tile = tile(plane, wx - baseX, wy - baseY);
                 if (tile == null) tile = departed(oldTiles, oldBase, plane, wx, wy);
-                if (tile != null) bus.post(new ItemDespawned(tile, e.getValue()));
+                AndroidTileItem gone = e.getValue();
+                android.util.Log.i(Host.TAG, "ground item despawned: " + gone + " at " + wx + "," + wy + "," + plane
+                        + " tick " + tick + " (despawn tick " + gone.despawnTime + ", " + (tick - gone.despawnTime) + " late)");
+                if (tile != null) bus.post(new ItemDespawned(tile, gone));
             }
         for (AndroidTileObject o : spawned) postSpawn(bus, o, baseX, baseY);
         for (long[] s : itemSpawns) {
             Tile tile = tile((int) s[1], (int) s[2], (int) s[3]);
-            if (tile != null) bus.post(new ItemSpawned(tile, nextItems.get(s[0])));
+            AndroidTileItem item = nextItems.get(s[0]);
+            android.util.Log.i(Host.TAG, "ground item spawned: " + item + " at " + (baseX + s[2]) + "," + (baseY + s[3]) + "," + s[1]
+                    + " tick " + tick + ": visible in " + (item.visibleTime - tick) + ", despawn in " + (item.despawnTime - tick)
+                    + " ticks, ownership " + item.ownership + (item.isPrivate ? ", private" : ""));
+            if (tile != null) bus.post(new ItemSpawned(tile, item));
         }
     }
 

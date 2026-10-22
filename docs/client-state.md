@@ -2,8 +2,8 @@
 
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
-from this file). Tasks and blockers: `tools/harness/task.py list --track client`. Last rewrite: 2026-10-20, client dev
-cd50 (task hub-fish-barrel-check).
+from this file). Tasks and blockers: `tools/harness/task.py list --track client`. Last rewrite: 2026-10-21, client dev
+cd48 (change hub-ground-items-despawn).
 
 ## What this is
 
@@ -28,16 +28,20 @@ cd50 (task hub-fish-barrel-check).
   unchanged). No user symbols/comments in it. The old project stays at `re/ghidra-old` until main deletes it.
   `Callers.java` is in the reverse skill's table; the objdump whole-binary check stays.
 
-## Installed on the device (last recorded: end of task hub-fish-barrel-check, 2026-10-20)
+## Installed on the device (last recorded: end of change hub-ground-items-despawn, 2026-10-21)
 
-- Build: master a4f3740 (hub-batch-next merged; rebuilt by hub-fish-barrel-check, no code change), `OPENRUNE=1 LOCAL_AUTH=1
-  MODULUS=<openrune.sh modulus> tools/repack.sh` (7 `telemetry:` lines), installed with `adb install-multiple -r`
-  (Windows adb.exe, `\\wsl.localhost\...` paths). Building in a worktree: symlink each entry of the main checkout's `re/`
-  except `build` and `out` (the shared `re/build` compiles the main checkout's native/, so configure your own:
-  `cmake -S native -B re/build -G Ninja` with the NDK toolchain, arm64-v8a, android-26, Release), symlink `base.apk`
-  and `split_config.arm64_v8a.apk`, and pass MODULUS explicitly (openrune/ isn't checked out there).
-- Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3219,3222.
-- Tester inventory: 9 items (slots 0-8), slot 15 empty. The gen 44 Fish barrel (it held 3 raw shrimps) was destroyed
+- Build: client/ground-items-despawn 30d79d4 (master 7bb7048 + host ground-item timer logging and the `infoboxes`
+  hook; no native change), `OPENRUNE=1 LOCAL_AUTH=1 MODULUS=<openrune.sh modulus> tools/repack.sh` (7 `telemetry:`
+  lines), installed with `adb install-multiple -r` (Windows adb.exe, `wslpath -w` paths; relative WSL paths fail).
+  Building in a harness worktree (`re/harness/wt/<name>`): `re/` is a symlink to the main checkout's `re/`, so
+  host/build.sh, `ninja -C re/build` (the main checkout's native/, same as master when it has no native edits) and
+  repack work as in the main checkout; MODULUS comes from `openrune/scripts/openrune.sh modulus` run in the main
+  checkout (openrune/ isn't checked out in the worktree; pipe through `tr -d '\n'`, don't truncate it).
+- Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3226,3215 (moved
+  there during hub-ground-items-despawn). `grounditems.groundItemTimers` was set to TICKS and
+  `cluescrolljuggling.dropTimerReduction` to 100 in settings.properties during that change (plus a stray
+  `.dropTimerReduction=100` under an empty group); the slot restore pushed the backup back.
+- Tester inventory: 9 items (slots 0-8). The gen 44 Fish barrel (it held 3 raw shrimps) was destroyed
   through OpenRune's destroy confirmation (interface 584) in hub-fish-barrel-check.
 - settings.properties: every login writes `rsprofile.rsprofile.default.{type,displayName,accountHash}`, which the slot
   backup of 2026-10-20 lacks, so the restore check reports OFF after a login; push the backup back while logged in to
@@ -57,7 +61,13 @@ cd50 (task hub-fish-barrel-check).
   dropped (`... again: already posted (rebuild released)`). A `setGameState(LOADING)` reload shows no native 25, so no
   LOADING is posted (desktop would). Row "Herbiboar".
 - **Scene items**: items whose tile leaves the scene on a rebuild get `ItemDespawned` on a tile with their old world
-  location and item layer. Ground item despawn/visible timers and ownership come from OBJ_ADD (fix/76 live).
+  location and item layer. Ground item despawn/visible timers and ownership come from OBJ_ADD (fix/76 live), now
+  with OSRS durations (server fix/ground-item-despawn-times live): a dropped tradeable reads `visible in 99, despawn
+  in 299` ticks and despawns exactly at its despawn tick, a dropped clue `despawn in 6099, private` (checked
+  2026-10-21, hub-ground-items-despawn). `SceneObjects` logs `ground item spawned: TileItem[id xN] at x,y,plane tick T:
+  visible in A, despawn in B ticks, ownership O[, private]` and `ground item despawned: ... tick T (despawn tick D, T-D
+  late)`; world spawns read -1 timers. After a relog the server re-sends the player's own drops with timeUntilDespawn
+  0xFFFF (despawn tick 65535 in the host log): server task ground-item-relogin-timers.
 - **Soft keyboard Enter** (`PromptEnter`): the IME's Done is an editor action on the game's hidden EditText, not a key
   event; with KeyListeners registered the host sends VK_ENTER through KeyManager first, then the game's submit once.
 - **Camera targets**: `setCameraPitchTarget/YawTarget` write the game's targets (Client `+0x8949c/+0x894a0`); the game
@@ -125,7 +135,21 @@ cd50 (task hub-fish-barrel-check).
   not in devtools' `get_npc_menu`.
 - Probe hooks (`debug.osrsrl.set`, `probe`, `say`, `wdump`) run once per distinct value; `setprop` values with spaces
   or parentheses need `shell "setprop key 'value'"`. Probe output tag: `osrsrl-probe`. Plugin config:
-  `debug.osrsrl.set 'config <group> <key>=<value>'` (`config <group> <key>` unsets it), not `probe`.
+  `debug.osrsrl.set 'config <group> <key>=<value>'` (`config <group> <key>` unsets it), not `probe`. InfoBox texts
+  (Clue Juggling Timers and the like, which no data tool reads): `debug.osrsrl.set 'infoboxes <n> 0'` logs every
+  InfoBox's class, text and tooltip (`infoboxes #n: <count> at tick T`); bump `n` for each dump. A failing `probe`
+  value (e.g. an unknown command) is retried every few seconds: clear it with `setprop debug.osrsrl.probe ''`.
+- Mobile tab stones (interface 601, two 7-stone columns at canvas x 799 and 838, rows 39 px from y 221): the
+  inventory stone is **601:71** (top of the right column; device tap `input tap 1842 517` at 1920x1080), magic is
+  601:100. `item_action` needs it open (`get_widget 9764864` = 149:0 `hidden:false`); devtools `click_component` on a
+  stone and `press_key F4` don't open it, an adb tap does. `list_interfaces` doesn't list the open side panel's group.
+- Idle logout: the client logs out after 5 min without real input; devtools `press_key` doesn't reset it, an adb
+  `input tap` (e.g. the inventory stone) every 2 min does. Long waits (despawn timers) need that keep-alive.
+- adb from WSL: `input tap` prints nothing, so a retry-until-output wrapper taps repeatedly (toggling panels); retry
+  only reads. Plugin debug logs: `setprop log.tag.rl.<23-char tag> DEBUG` (tag = `rl.` + the simple class name cut to
+  23, e.g. `rl.ClueScrollJugglingPl`). `logcat -d` through adb.exe loses lines now and then; for evidence run a
+  device-side `logcat -v threadtime -s <tags> -f /sdcard/Download/<file> -r 32768 -n 20` in the background and
+  `exec-out cat` it (remove the files at the end of the slot).
 - Typing into a prompt: `adb shell input keyevent KEYCODE_1 ...` one key at a time (digits, `KEYCODE_PERIOD`); read the
   input with `get_var varcstr 359`. The bank's long-press menu gains a "Withdraw-<last X>" entry after a valid X and loses
   it after an invalid one, so rows shift: screenshot the menu before tapping (gen 44 withdrew all bank coins by tapping a

@@ -60,8 +60,9 @@ def reconcile(ctx):
             continue
         stage, why, moved = stages.derive(ch, ctx.obs, ctx.idx)
         waiting[slug] = why
-        if moved and ch.reached("checked") and not ctx.dry_run:
-            # BR-C2: a new commit on the branch; the handed-over commit stays recorded as what is live/gated
+        if moved and ch.reached("checked") and not ch.get("owner") and not ctx.dry_run:
+            # BR-C2: a new commit on the branch with no run owning the change (a dev's pushes while it works on a
+            # failed-hold fix are expected: its hand-over moves the commit); the handed-over commit stays recorded
             if ch.stage == "live" or ch.reached("live"):
                 ch["live_commit"] = ch["commit"]
             events.emit("stage", change=slug, **{"from": ch.stage, "to": "ready"}, commit=moved,

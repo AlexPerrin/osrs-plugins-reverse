@@ -48,6 +48,12 @@ class DenyPublishTest(unittest.TestCase):
 
     CASES = [
         # (command, cwd, flags, expected)
+        # --- words as data are not commands (hd4, 2026-10-21: a grep pattern naming docker-compose and openrune.sh)
+        ("grep -rnE 'openrune/(upstream|docker-compose|switch\\.env)|openrune\\.sh|qa\\.sh' tools docs | cut -c1-200", "ours", NONE, ALLOW),
+        ('echo "docker rm osrs-openrune is the orchestrator\'s job"', "ours", NONE, ALLOW),
+        ("docker rm -f osrs-openrune", "ours", FORK, DENY),
+        ('bash -c "cd openrune && docker compose --env-file switch.env up -d --no-deps openrune"', "ours", FORK, DENY),
+        ("docker compose -f openrune/docker-compose.yml ps", "ours", NONE, ALLOW),
         # --- reading a harness script is not running it (sd32, 2026-10-21)
         ("sed -n 1,47p tools/harness/integrate.py; cat re/harness/integration-tools/integration.lock | head", "ours", FORK, ALLOW),
         ("grep -n lease tools/harness/ship.sh tools/harness/deploy.sh", "agent", NONE, ALLOW),

@@ -210,8 +210,10 @@ class Observer:
                     return None
                 prs = [p]
             else:
-                prs = self._gh_json(["pr", "list", "-R", self.upstream_repo, "--head", str(number_or_branch), "--state",
-                                     "all", "--limit", "5", "--json",
+                # a fork PR's head is `owner:branch` for gh's filter; a plain branch name finds only same-repo PRs
+                owner = self.fork_repo.split("/")[0]
+                prs = self._gh_json(["pr", "list", "-R", self.upstream_repo, "--head", f"{owner}:{number_or_branch}",
+                                     "--state", "all", "--limit", "5", "--json",
                                      "number,url,state,isDraft,headRefOid,mergedAt,title,headRefName"])
                 if prs is None:
                     return None

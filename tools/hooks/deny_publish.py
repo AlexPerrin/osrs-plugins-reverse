@@ -45,13 +45,8 @@ RULES = [
 ]
 PUSH = re.compile(RULES[0][0])
 
-# Orchestrator-only integration steps (checked per simple command; a `bash -c "..."` segment is checked as text).
+# Orchestrator-only integration steps (decided per simple command on the resolved command word; `bash -c` recurses).
 INTEGRATION = "integration images, deploys and live server containers"
-HARNESS_SCRIPT = re.compile(r"\bharness/(?:(?:deploy|image|ship)\.sh|integrate\.py)\b")
-ORCH_SUB = re.compile(r"\borchestrate\.py\b[^|;&\n]*?\s(deploy|integrate|image)(\s|$|['\"])")
-DOCKER_LIVE = re.compile(r"\bdocker\s+(?:(?:image|container)\s+)?(?:tag|rm|rmi|stop|restart|kill)\b[^;&|\n]*"
-                         r"osrs-openrune")
-COMPOSE = re.compile(r"\bdocker(?:\s+compose|-compose)\b")
 COMPOSE_LIVE = re.compile(r"osrs-openrune|(?<![\w.-])openrune(?![\w.-])")   # the service, -p, or openrune/<file>
 COMPOSE_READ = {"ps", "logs", "config", "ls", "images", "top", "version"}
 COMPOSE_VALUE_OPTS = {"-f", "--file", "-p", "--project-name", "--env-file", "--profile", "--project-directory",
@@ -78,37 +73,69 @@ def compose_subcommand(w):
     return None
 
 
-INTERPRETERS = {"python3", "python", "bash", "sh", "env"}
+INTERPRETERS = {"python3", "python", "bash", "sh", "env", "nohup", "timeout"}
 
 
-def runs_harness_script(w):
-    """The segment runs one of the orchestrator-only harness scripts (as the command, or through an interpreter),
-    not merely names one as an argument (`sed -n 1,40p tools/harness/integrate.py` is a read)."""
-    if not w:
-        return False
+def _exe(w):
+    """The command word after interpreters, their options and env assignments (`python3 x.py`, `env A=1 bash s.sh`),
+    as a bare name (`./deploy.sh` and `tools/harness/deploy.sh` are both `deploy.sh`)."""
     i = 0
-    while i < len(w) and (os.path.basename(w[i]) in INTERPRETERS or (i > 0 and w[i].startswith("-"))):
+    while i < len(w) and (os.path.basename(w[i]) in INTERPRETERS or (i > 0 and w[i].startswith("-"))
+                          or (os.path.basename(w[0]) == "env" and "=" in w[i])):
         i += 1
-    return i < len(w) and bool(HARNESS_SCRIPT.search(w[i]))
+    return os.path.basename(w[i]) if i < len(w) else ""
+
+
+SCRIPTS = {"deploy.sh", "image.sh", "ship.sh", "integrate.py"}
+
+
+def _ours(w, cwd):
+    """The script word resolves to this repo's (or a worktree's) tools/harness: `tools/harness/deploy.sh` from the
+    root, `./deploy.sh` from tools/harness; another project's deploy.sh is not ours."""
+    i = 0
+    while i < len(w) and (os.path.basename(w[i]) in INTERPRETERS or (i > 0 and w[i].startswith("-"))
+                          or (os.path.basename(w[0]) == "env" and "=" in w[i])):
+        i += 1
+    if i >= len(w):
+        return False
+    path = os.path.normpath(os.path.join(cwd or "", w[i]))
+    return path.endswith(os.path.join("tools", "harness", os.path.basename(w[i])))
+DOCKER_WRITES = {"tag", "rm", "rmi", "stop", "restart", "kill"}
 
 
 def integration_only(cmd, cwd):
-    """True when the command runs an orchestrator-only integration step (see the module doc)."""
+    """True when the command runs an orchestrator-only integration step: the harness deploy/image/ship/integrate
+    scripts, `orchestrate.py deploy|integrate|image`, a docker write on an osrs-openrune image or container, or a
+    compose write on the live stack. Decided on each simple command's resolved command word and arguments, never
+    on words that appear as data (a grep pattern, a message); a `bash -c` wrapper is judged by recursing into its
+    quoted command."""
     for seg, w, c in walk(cmd, cwd):
-        if runs_harness_script(w) or ORCH_SUB.search(seg) or DOCKER_LIVE.search(seg):
+        if not w:
+            continue
+        if os.path.basename(w[0]) in ("bash", "sh", "zsh") and "-c" in w and w.index("-c") + 1 < len(w):
+            if integration_only(w[w.index("-c") + 1], c):
+                return True
+            continue
+        exe = _exe(w)
+        if exe in SCRIPTS and _ours(w, c):
             return True
-        if w and w[0] in ("./deploy.sh", "./image.sh", "./ship.sh", "./integrate.py", "deploy.sh", "image.sh", "ship.sh") and \
-                os.path.normpath(c).endswith(os.path.join("tools", "harness")):
+        if exe == "orchestrate.py" and _ours(w, c) and any(a in ("deploy", "integrate", "image") for a in w[1:]):
             return True
-        if COMPOSE.search(seg):
+        if exe == "docker" and len(w) > 1 and w[1] != "compose":
+            args = w[2:] if w[1] in ("image", "container") else w[1:]
+            if args and args[0] in DOCKER_WRITES and any("osrs-openrune" in a for a in args[1:]):
+                return True
+            continue
+        if exe in ("docker-compose", "docker") and (exe == "docker-compose" or w[1:2] == ["compose"]):
             sub = compose_subcommand(w)
             if sub in COMPOSE_READ:
                 continue
-            # A write: denied when it names the live stack, runs from openrune/, or hides inside `bash -c` etc.
-            in_openrune = os.path.basename(os.path.normpath(c)) == "openrune"
-            if COMPOSE_LIVE.search(seg) or in_openrune or sub is None:
+            names_live = any(COMPOSE_LIVE.search(a) for a in w[1:])
+            if names_live or os.path.basename(os.path.normpath(c)) == "openrune" or sub is None:
                 return True
     return False
+
+
 FORK_NAME = re.compile(r"AlexPerrin/OpenRune-Server", re.I)
 
 

@@ -42,6 +42,8 @@ commands with your change slug and name filled in.
 - **Build**: `build-test`: the fork's GitHub Actions CI green at the exact commit (`qa.sh gate` on upstream `main` +
   the branch where CI doesn't apply), boot to "Server ready in".
 - `reverse` (`-readOnly`) when the branch relies on a claim about the client's protocol.
+- **Tests**: only what the change needs (the maintainer declines tests for handlers, packets, shops and simple
+  content: #348 review, "No Test is needed for this tbh"); a new test file the PR text does not justify is a FAIL item.
 - **Scope**: one quest, feature or fix; nothing unrelated in the diff; no open upstream PR for the same content
   (`gh pr list -R OpenRune/OpenRune-Server --search <topic>`); based on current `upstream/main`; `Depends:` stated.
 - `python3 tools/scripts/fix_gameval_conflicts.py --check` clean on the branch.

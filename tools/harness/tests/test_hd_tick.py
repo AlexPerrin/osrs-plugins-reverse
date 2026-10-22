@@ -74,6 +74,14 @@ class ReconcileTest(unittest.TestCase):
         ev = [e for e in events.read(kinds=["stage"]) if e.get("change") == "feat"]
         self.assertEqual((ev[0]["from"], ev[0]["to"], ev[0]["commit"]), ("live", "ready", SHB))
         self.assertIn(("spawn", "feat", "server-dev", "dev"), self.calls)   # re-dispatched in the same tick
+        # a dev working on a failed-hold fix pushes to the branch: not a re-entry while it owns the change
+        owned = H.change("owned", "server", stage="live", commit=SHA, owner="sd9")
+        store.set_hold(owned, "failed", "gate FAIL"); store.save(owned)
+        obs = FakeObserver(tips={("fork", "content/owned"): SHB}, pins={"content/owned": SHA}, live={"integration": "c" * 40},
+                           contains={("fork", "c" * 40, SHA): True}, records=[])
+        tick.tick(obs)
+        self.assertEqual(store.load("owned")["commit"], SHA)
+        self.assertEqual(store.load("owned")["owner"], "sd9")
 
     def test_deps_hold_set_and_cleared(self):
         """BR-C4."""

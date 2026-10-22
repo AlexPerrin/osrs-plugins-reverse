@@ -17,8 +17,9 @@ Changes
   agents [--all]                          running agents: usage so far, `claude --resume <session>` to open the chat
   tail <name> [--turns 5]                 the last turns of an agent's log as text
 Daemon
-  status [--json]   tick [--dry-run]   run [--interval 60] [--once]   start [--interval] [--port 7790]   stop
-  serve [--port]    daemon-status      digest
+  status [--json]   tick [--dry-run]   run [--interval 60] [--once]   start [--interval]   stop   (the tick loop)
+  serve [--port 7790] [--detach]   serve-stop   (the dashboard: its own process, never restarted with the loop)
+  daemon-status     digest
 Resources
   lease grant <res> <who> [--minutes n] [--once]   lease take <res> <who> "what" [--pid n] [--container c]
   lease heartbeat <res> <who>   lease release <res> <who>   lease reclaim <res> "why"   lease revoke <res> <who>
@@ -336,7 +337,9 @@ def cmd_run(a):
 def cmd_start(a):
     from . import daemon
     pid = daemon.start(a.interval, a.port)
-    print(f"harnessd started (pid {pid}); dashboard http://127.0.0.1:{a.port}/")
+    sv = daemon.server_status()
+    print(f"harnessd started (pid {pid})" + (f"; dashboard http://127.0.0.1:{sv.get('port')}/" if sv.get("alive")
+                                              else "; dashboard not running: hd serve --detach"))
 
 
 def cmd_stop(a):
@@ -346,6 +349,10 @@ def cmd_stop(a):
 
 def cmd_serve(a):
     from . import daemon
+    if a.detach:
+        pid = daemon.start_server(a.port)
+        print(f"dashboard server started (pid {pid}); http://127.0.0.1:{a.port}/")
+        return
     s = daemon.serve(a.port)
     print(f"serving http://127.0.0.1:{a.port}/ (Ctrl-C to stop)")
     try:
@@ -356,9 +363,14 @@ def cmd_serve(a):
         s.shutdown()
 
 
+def cmd_serve_stop(a):
+    from . import daemon
+    print(daemon.stop_server()["text"])
+
+
 def cmd_daemon_status(a):
     from . import daemon
-    print(json.dumps(daemon.status(), indent=1))
+    print(json.dumps({"loop": daemon.status(), "server": daemon.server_status()}, indent=1))
 
 
 def cmd_digest(a):
@@ -501,7 +513,8 @@ def main(argv=None):
     s = sp.add_parser("run"); s.add_argument("--interval", type=int, default=60); s.add_argument("--once", action="store_true"); s.set_defaults(f=cmd_run)
     s = sp.add_parser("start"); s.add_argument("--interval", type=int, default=60); s.add_argument("--port", type=int, default=7790); s.set_defaults(f=cmd_start)
     sp.add_parser("stop").set_defaults(f=cmd_stop)
-    s = sp.add_parser("serve"); s.add_argument("--port", type=int, default=7790); s.set_defaults(f=cmd_serve)
+    s = sp.add_parser("serve"); s.add_argument("--port", type=int, default=7790); s.add_argument("--detach", action="store_true"); s.set_defaults(f=cmd_serve)
+    sp.add_parser("serve-stop").set_defaults(f=cmd_serve_stop)
     sp.add_parser("daemon-status").set_defaults(f=cmd_daemon_status)
     sp.add_parser("digest").set_defaults(f=cmd_digest)
     s = sp.add_parser("lease"); s.add_argument("action", choices=["grant", "take", "heartbeat", "release", "reclaim", "revoke", "status", "holds", "drain", "undrain"])

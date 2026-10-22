@@ -84,7 +84,8 @@ transcripts (every run has a session id: `hd agents`, `claude --resume <id>`).
 ## Commands you will use
 ```
 hd status            hd list [--track] [--all]     hd show <slug>       hd events [--kind] [--change]   hd kpi
-hd start|stop        hd tick --dry-run             hd daemon-status     hd digest
+hd serve --detach    hd serve-stop   (the page: its own process)      hd daemon-status     hd digest
+hd start|stop        (the tick loop; restart it freely for a code change)   hd tick --dry-run
 hd approvals         hd approve <id>               hd deny <id> --note "..."
 hd lease status      hd batches                    hd train --now       hd resume <batch>
 hd new --track server --slug x --title "..." --server-dod [--prio P1] [--deps a,b]

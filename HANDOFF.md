@@ -18,9 +18,9 @@ python3 -m unittest discover -s tools/harness/tests   # 169 tests, must pass
 ```
 - Agents are watched in Claude Code Agent Monitor (http://127.0.0.1:4820/, `cd ~/tools/Claude-Code-Agent-Monitor
   && npm start`); the page on 7790 is the project tracker. docs/harness-v3.md "Watching agents".
-- To run it: `python3 tools/harness/hd.py start --interval 60 --port 7790` (the daemon: ticks, trains, deploys,
-  agents, approvals; dashboard at http://127.0.0.1:7790/), `hd stop`, `hd daemon-status`, `hd digest`. The
-  read-only page alone: `hd serve`. The first real start is the user's call (it spawns paid agents and takes
+- To run it: `hd serve --detach` (the tracker page, its own process, http://127.0.0.1:7790/; never restarted with
+  the loop) and `hd start --interval 60` (the tick loop: trains, deploys, agents, approvals); `hd stop`,
+  `hd serve-stop`, `hd daemon-status`, `hd digest`. A code change needs only `hd stop && hd start`. The first real start is the user's call (it spawns paid agents and takes
   the instances).
 - What the first real ticks will do (from the dry run at 8:40 PM EDT): move `57-gameframe-fullscreen-map`,
   `sheep-shearer` and `edgeville-general-store-stock` to `published` (open upstream PRs); return `cannon`,

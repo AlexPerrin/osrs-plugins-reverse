@@ -176,12 +176,8 @@ def serve(port=7790):
 
 # --- process control ------------------------------------------------------------------------------------------------
 
-def start(interval=60, port=7790):
-    """Double-fork the daemon (the grandchild is reparented to init, so nothing waits on it); returns its pid.
-    The daemon writes daemon.json itself (run()); the parent writes nothing."""
-    st = status()
-    if st.get("alive"):
-        raise RuntimeError(f"harnessd already running (pid {st.get('pid')})")
+def _detach(log_name, banner, main):
+    """Double-fork a process (reparented to init) running main(); returns its pid. stdio goes to the log."""
     os.makedirs(state_dir(), exist_ok=True)
     r, w = os.pipe()
     pid = os.fork()
@@ -196,7 +192,7 @@ def start(interval=60, port=7790):
         os.close(r)
         os.waitpid(pid, 0)
         if not data.strip().isdigit():
-            raise RuntimeError("harnessd failed to start (see harness/state/daemon.log)")
+            raise RuntimeError(f"failed to start (see harness/state/{log_name})")
         return int(data)
     try:   # the intermediate child: new session, fork again, report the pid, exit
         os.close(r)
@@ -207,7 +203,7 @@ def start(interval=60, port=7790):
             os.close(w)
             os._exit(0)
         os.close(w)
-        log = os.open(_path("daemon.log"), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+        log = os.open(_path(log_name), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
         null = os.open(os.devnull, os.O_RDONLY)
         os.dup2(null, 0)
         os.dup2(log, 1)
@@ -215,17 +211,67 @@ def start(interval=60, port=7790):
         os.close(null)
         os.close(log)
         sys.stdout.reconfigure(line_buffering=True)
-        print(f"harnessd {os.getpid()} starting {iso()} port {port} interval {interval}", flush=True)
-        srv = serve(port)
-        run(interval)
-        srv.shutdown()
-        print(f"harnessd {os.getpid()} stopped {iso()}", flush=True)
+        print(f"{banner} {os.getpid()} starting {iso()}", flush=True)
+        main()
+        print(f"{banner} {os.getpid()} stopped {iso()}", flush=True)
     except BaseException as e:
         try:
-            print(f"harnessd {os.getpid()} died: {e!r}", flush=True)
+            print(f"{banner} {os.getpid()} died: {e!r}", flush=True)
         finally:
             os._exit(1)
     os._exit(0)
+
+
+def start(interval=60, port=None):
+    """The tick loop as a detached process (harness/state/daemon.json, daemon.log); returns its pid. It serves no
+    page: the dashboard is its own process (start_server), so the loop restarts without closing the port."""
+    st = status()
+    if st.get("alive"):
+        raise RuntimeError(f"harnessd already running (pid {st.get('pid')})")
+    global PORT
+    PORT = port or PORT
+    return _detach("daemon.log", "harnessd", lambda: run(interval))
+
+
+def _server_json():
+    return _path("server.json")
+
+
+def start_server(port=7790):
+    """The dashboard server as a detached process (harness/state/server.json, server.log); returns its pid."""
+    st = server_status()
+    if st.get("alive"):
+        raise RuntimeError(f"dashboard server already running (pid {st.get('pid')}, port {st.get('port')})")
+
+    def main():
+        srv = serve(port)
+        write_json(_server_json(), {"pid": os.getpid(), "port": srv.server_address[1], "started": iso()})
+        stop_ev = threading.Event()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            signal.signal(sig, lambda *_: stop_ev.set())
+        stop_ev.wait()
+        srv.shutdown()
+        write_json(_server_json(), {"pid": None, "port": port, "stopped": iso()})
+    return _detach("server.log", "harnessd-http", main)
+
+
+def stop_server():
+    d = read_json(_server_json(), {}) or {}
+    pid = d.get("pid")
+    if not pid_alive(pid):
+        return {"pid": pid, "stopped": True, "text": "dashboard server not running"}
+    os.kill(int(pid), signal.SIGTERM)
+    for _ in range(STOP_WAIT_S * 10):
+        if not pid_alive(pid):
+            return {"pid": pid, "stopped": True, "text": f"dashboard server {pid} stopped"}
+        time.sleep(0.1)
+    return {"pid": pid, "stopped": False, "text": f"dashboard server {pid} still running"}
+
+
+def server_status():
+    d = read_json(_server_json(), {}) or {}
+    d["alive"] = pid_alive(d.get("pid"))
+    return d
 
 
 def stop():

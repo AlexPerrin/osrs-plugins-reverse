@@ -40,7 +40,7 @@ class HealTest(unittest.TestCase):
         ev = [e for e in events.read(kinds=["lease"]) if e["action"] == "reclaim"][-1]
         self.assertEqual((ev["holder"], ev["resource"]), ("sq1", "desktop"))
         self.assertIn("heartbeat", ev)
-        self.assertIn("last heartbeat 60 min ago", ev["why"])
+        self.assertIn("attached container qa-or-feat is not running", ev["why"])
 
     def test_lingering_agent_stopped(self):
         util.freeze("2026-10-21T01:00:00Z")

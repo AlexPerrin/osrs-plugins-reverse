@@ -16,6 +16,11 @@ python3 tools/harness/hd.py lease status           # the leases (device, desktop
 python3 tools/harness/hd.py events --limit 30      # the event log, local time
 python3 -m unittest discover -s tools/harness/tests   # 169 tests, must pass
 ```
+- **Console mode** (policy `agents.spawn_mode: console`): the daemon decides each dispatch and emits an `agent request`
+  event with the brief's path (harness/state/runs/<name>.log); the console session spawns it with the Agent tool
+  (subagent_type = the role; isolation worktree for client-dev, client-qa, harness-dev), runs `hd run-link <name>
+  <agent-id>`, and on completion `hd run-end <name> --tokens N --turns N`; a `stop-request` event means TaskStop
+  that agent. Headless (`claude -p`) is `spawn_mode: headless`. The session must stay alive for dispatch.
 - Agents are watched in Claude Code Agent Monitor (http://127.0.0.1:4820/, `cd ~/tools/Claude-Code-Agent-Monitor
   && npm start`); the page on 7790 is the project tracker. docs/harness-v3.md "Watching agents".
 - To run it: `hd serve --detach` (the tracker page, its own process, http://127.0.0.1:7790/; never restarted with

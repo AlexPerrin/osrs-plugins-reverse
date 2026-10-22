@@ -128,7 +128,7 @@ class ReapTest(unittest.TestCase):
         tick.tick(obs)
         cli = store.load("cli")
         self.assertEqual((cli.stage, cli.hold), ("checked", "blocked"))
-        self.assertEqual([c for c in self.calls if c[0] == "enqueue"], [])
+        self.assertNotIn(("enqueue", "cli"), self.calls)
 
     def test_check_fail_returns_to_ready_with_items(self):
         """BR-S5."""

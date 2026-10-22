@@ -1,3 +1,4 @@
+import os
 """Approvals (BR-A1..A8): the user's yes or no on one outward action. Record `harness/state/approvals/<id>.json`:
   {id, kind: upstream|release|decision, change, batch, action: open-pr|update-pr|ready-pr|comment|tag-release,
    commands: [[argv]...], text: {title, body, comment}, record (the gate record name), diff: "base..head",
@@ -236,9 +237,27 @@ def _overtaken(a, obs):
     return pr is not None and _action(pr, a.get("commit") or ch.get("commit") or "") != a.get("action")
 
 
+def _release_tag_answered(a):
+    """A `release-tag` decision answered with a tag: the release request is written and the release batch queued,
+    so the tick spawns the release gate (BR-B6)."""
+    tag = (a.get("note") or "").strip()
+    if not tag or not a.get("batch"):
+        return
+    from . import state_dir
+    from .util import write_json
+    write_json(os.path.join(state_dir(), "release.request"), {"tag": tag, "at": iso(), "approval": a["id"]})
+    b = store.rec_load("batches", a["batch"])
+    if b:
+        b.update(step="queued", tag=tag, note=None)
+        store.rec_save("batches", a["batch"], b)
+        events.emit("batch", batch=a["batch"], step="queued", detail=f"release tag {tag}", batch_kind="release")
+
+
 def _done(a, last):
     a.update(state="done", result=last, executed=iso())
     store.rec_save(APPROVALS, a["id"], a)
+    if a.get("action") == "release-tag":
+        _release_tag_answered(a)
     if a.get("change") and store.exists(a["change"]):
         ch = store.load(a["change"])
         m = PR_URL.search(last or "")

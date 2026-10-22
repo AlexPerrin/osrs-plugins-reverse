@@ -227,11 +227,12 @@ class CheckTest(unittest.TestCase):
         ok, its = check.run(ch, o)
         self.assertTrue(any("not aaaaaaaaa" in t for _, t in its))
 
-    def test_server_local_needs_no_pr(self):
+    def test_server_local_needs_no_pr_and_no_spec(self):
         ch = H.change("loc", "server", stage="dev", commit=SHA, branch="local/loc", local_only=True, evidence="re/evidence/loc")
         o = self.obs(tips={("fork", "local/loc"): SHA}, evidence={"re/evidence/loc": ["x"]},
-                     docs={"accuracy/loc.md": "x"}, ci={("local/loc", SHA): "success"})
-        self.assertTrue(check.run(ch, o)[0])
+                     docs={}, ci={("local/loc", SHA): "success"})
+        ok, its = check.run(ch, o)
+        self.assertTrue(ok, check.render(ch, its))
 
 
 class LeaseTest(unittest.TestCase):

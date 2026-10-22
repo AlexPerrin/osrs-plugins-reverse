@@ -20,6 +20,7 @@ def items(ch, obs):
     out = []
     ok = lambda t: out.append((True, t))
     fail = lambda t: out.append((False, t))
+    pending = lambda t: out.append((None, t))   # not decidable yet (CI running): the check waits, it does not fail
     track, branch, commit = ch.get("track"), ch.get("branch"), ch.get("commit")
     if not (branch and commit):
         fail("branch or commit missing")
@@ -102,8 +103,12 @@ def items(ch, obs):
             if obs.docs_file(f"accuracy/{name}.md") is not None:
                 found = name
                 break
-    (ok if found else fail)(f"accuracy/{found}.md on the fork's docs branch" if found
-                            else f"no accuracy spec on the fork's docs branch (tried {', '.join(tried)})")
+    if found:
+        ok(f"accuracy/{found}.md on the fork's docs branch")
+    elif branch.startswith("local/") or ch.get("local_only"):
+        ok("local/* branch: no accuracy spec needed (never upstream; the change file says what it is for)")
+    else:
+        fail(f"no accuracy spec on the fork's docs branch (tried {', '.join(tried)})")
     if branch.startswith("local/") or ch.get("local_only"):
         ok("local/* branch: never upstream, no fork PR needed")
     elif ch.get("pr"):
@@ -123,9 +128,11 @@ def items(ch, obs):
         if ci == "success":
             ok("fork CI success at the commit")
         elif ci is None:
-            fail("could not read fork CI (gh)")
+            pending("fork CI could not be read (gh); retried next tick")
         elif ci == "none":
-            fail(f"no CI run at {commit[:9]} on the fork")
+            fail(f"no CI run at {commit[:9]} on the fork (gh workflow run ci.yml --ref {branch})")
+        elif ci == "pending":
+            pending("fork CI still running at the commit")
         else:
             fail(f"fork CI at the commit: {ci}")
     return out
@@ -137,14 +144,19 @@ def _match(name, pattern):
 
 
 def run(ch, obs):
-    """(passed, items)"""
+    """(passed, items); passed is True, False, or None while an item is still pending and none failed."""
     its = items(ch, obs)
-    return all(o for o, _ in its), its
+    if any(o is False for o, _ in its):
+        return False, its
+    if any(o is None for o, _ in its):
+        return None, its
+    return True, its
 
 
 def render(ch, its):
     lines = [f"check {ch['slug']} ({ch.get('track')}) {ch.get('branch')}@{str(ch.get('commit') or '')[:9]}"]
     for o, t in its:
-        lines.append(f"  {'OK  ' if o else 'FAIL'} {t}")
-    lines.append("PASS" if all(o for o, _ in its) else f"FAIL ({sum(1 for o, _ in its if not o)})")
+        lines.append(f"  {'OK  ' if o else 'WAIT' if o is None else 'FAIL'} {t}")
+    fails = sum(1 for o, _ in its if o is False)
+    lines.append(f"FAIL ({fails})" if fails else "PENDING" if any(o is None for o, _ in its) else "PASS")
     return "\n".join(lines)

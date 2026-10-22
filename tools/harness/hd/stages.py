@@ -110,10 +110,13 @@ def observed(ch, obs):
         out["published"] = (False, f"upstream PR #{pr['number']} head is {str(pr.get('head'))[:9]}, not {commit[:9]}")
     else:
         out["published"] = (True, f"upstream PR #{pr['number']} open for review at {commit[:9]}")
-    # merged: upstream main contains the commit
-    m = obs.contains("upstream", "main", commit)
-    out["merged"] = (m, "upstream main contains the commit" if m else "not merged upstream yet" if m is not None
-                     else "could not read upstream main")
+    # merged: the upstream PR is merged (squash merges leave no ancestor), or upstream main contains the commit
+    if pr and pr.get("merged"):
+        out["merged"] = (True, f"upstream PR #{pr['number']} merged")
+    else:
+        m = obs.contains("upstream", "main", commit)
+        out["merged"] = (m, "upstream main contains the commit" if m else "not merged upstream yet" if m is not None
+                         else "could not read upstream main")
     return out
 
 

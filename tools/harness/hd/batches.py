@@ -730,20 +730,34 @@ def _clear_repin_pending():
         write_json(_repin_path(), r)
 
 
+def merged_branches(obs):
+    """Listed branches whose change's upstream PR is merged (a squash merge leaves no ancestor in main), or whose
+    pin upstream main contains: what a re-pin drops."""
+    out = []
+    listed = set(obs.integration_list())
+    for ch in store.all_changes():
+        b = ch.get("branch")
+        if ch.get("track") != "server" or not b or b not in listed or ch.get("local_only"):
+            continue
+        pr = obs.upstream_pr(ch.get("upstream_pr") or b)
+        if (pr and pr.get("merged")) or (ch.get("commit") and obs.contains("upstream", "main", ch["commit"])):
+            out.append(b)
+    return out
+
+
 def repin_due(obs):
     um = obs.upstream_main()
     if not um:
         return None
-    if (read_json(_repin_path(), {}) or {}).get("to") == um:
-        return None
     recorded = store.live().get("upstream_main")
+    last = (read_json(_repin_path(), {}) or {})
+    if last.get("to") == um and not (merged_branches(obs) and last.get("at") and
+                                     set(merged_branches(obs)) - set(last.get("dropped") or [])):
+        return None
     if recorded and recorded != um:
         return um
-    for ch in store.all_changes():
-        if ch.get("track") != "server" or not ch.get("commit") or not ch.reached("checked") or ch.stage == "merged":
-            continue
-        if obs.pin(ch["branch"]) and obs.contains("upstream", "main", ch["commit"]):
-            return um
+    if merged_branches(obs):
+        return um
     return None
 
 
@@ -760,8 +774,9 @@ def repin(obs):
         wt = _tools_checkout()
         lst, pins = _tools_files(wt)
         pinned = integrate.parse_pins(pins)
+        merged = set(merged_branches(obs))
         for branch in integrate.listed(lst):
-            if branch != TOOLS_BRANCH and pinned.get(branch) and obs.contains("upstream", "main", pinned[branch]):
+            if branch != TOOLS_BRANCH and (branch in merged or (pinned.get(branch) and obs.contains("upstream", "main", pinned[branch]))):
                 dropped.append(branch)
                 lst, pins = remove_from_list(lst, branch), drop_pin(pins, branch)
         if dropped:

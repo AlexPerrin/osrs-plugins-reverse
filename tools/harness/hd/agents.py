@@ -344,10 +344,11 @@ def _left_stage(r, idx):
     if ch is None:
         return "change missing", None
     if stage == "dev":
-        if ch.stage != "dev":
-            return f"change at {ch.stage}", ch.get("updated")
+        # A dev run executes on a change at dev, or at a later stage under a `failed` hold (BR-S3: the fix is a new
+        # commit); it lingers once the change no longer names it as owner (a hand-over, a check or a re-entry
+        # cleared it), not merely because the stage is not `dev`.
         if ch.get("owner") != name:
-            return f"owner is {ch.get('owner')}", ch.get("updated")
+            return f"owner is {ch.get('owner')} (change at {ch.stage})", ch.get("updated")
         return None
     if ch.stage != "live":
         return f"change at {ch.stage}", ch.get("updated")

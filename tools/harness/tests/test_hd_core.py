@@ -265,7 +265,7 @@ class LeaseTest(unittest.TestCase):
         leases.grant("desktop", "sq1", 600)
         leases.take("desktop", "sq1", "gate")
         self.assertEqual(leases.idle("desktop")[0], False)   # heartbeat just now
-        util.freeze("2026-10-21T05:00:00Z")
+        util.freeze(util.now() + __import__("datetime").timedelta(hours=4))
         self.addCleanup(util.freeze, None)
         idle, why = leases.idle("desktop")
         self.assertTrue(idle)
@@ -279,7 +279,7 @@ class LeaseTest(unittest.TestCase):
     def test_attached_pid_is_not_idle(self):
         leases.grant("desktop", "sd1", 600)
         leases.take("desktop", "sd1", "ab", pid=os.getpid())
-        util.freeze("2026-10-21T05:00:00Z")
+        util.freeze(util.now() + __import__("datetime").timedelta(hours=4))
         self.addCleanup(util.freeze, None)
         self.assertEqual(leases.idle("desktop")[0], False)
 
@@ -299,7 +299,7 @@ class LeaseTest(unittest.TestCase):
 
     def test_grant_expires(self):
         leases.grant("device", "cd1", 1)
-        util.freeze("2026-10-21T05:00:00Z")
+        util.freeze(util.now() + __import__("datetime").timedelta(hours=4))
         self.addCleanup(util.freeze, None)
         ok, msg = leases.take("device", "cd1", "late")
         self.assertFalse(ok)

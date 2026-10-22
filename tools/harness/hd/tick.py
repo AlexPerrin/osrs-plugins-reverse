@@ -32,7 +32,7 @@ class Ctx:
         self.idx = store.index()
 
     def act(self, text):
-        self.actions.append(text)
+        self.actions.append(text if isinstance(text, str) else str(text)[:200])
 
     def refresh(self, slug=None):
         if slug:
@@ -339,7 +339,7 @@ def candidates(ctx):
 
 def dispatch(ctx):
     running = agents.running()
-    for b in batches.status():
+    for b in batches.open_batches("train"):
         if b.get("step") == "exception" and not any(r.get("role") == "integrator" and r.get("batch") == b["id"] for r in running):
             if ctx.dry_run:
                 ctx.act(f"would spawn an integrator for {b['id']} [dry run]")

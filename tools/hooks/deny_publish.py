@@ -78,10 +78,24 @@ def compose_subcommand(w):
     return None
 
 
+INTERPRETERS = {"python3", "python", "bash", "sh", "env"}
+
+
+def runs_harness_script(w):
+    """The segment runs one of the orchestrator-only harness scripts (as the command, or through an interpreter),
+    not merely names one as an argument (`sed -n 1,40p tools/harness/integrate.py` is a read)."""
+    if not w:
+        return False
+    i = 0
+    while i < len(w) and (os.path.basename(w[i]) in INTERPRETERS or (i > 0 and w[i].startswith("-"))):
+        i += 1
+    return i < len(w) and bool(HARNESS_SCRIPT.search(w[i]))
+
+
 def integration_only(cmd, cwd):
     """True when the command runs an orchestrator-only integration step (see the module doc)."""
     for seg, w, c in walk(cmd, cwd):
-        if HARNESS_SCRIPT.search(seg) or ORCH_SUB.search(seg) or DOCKER_LIVE.search(seg):
+        if runs_harness_script(w) or ORCH_SUB.search(seg) or DOCKER_LIVE.search(seg):
             return True
         if w and w[0] in ("./deploy.sh", "./image.sh", "./ship.sh", "./integrate.py", "deploy.sh", "image.sh", "ship.sh") and \
                 os.path.normpath(c).endswith(os.path.join("tools", "harness")):

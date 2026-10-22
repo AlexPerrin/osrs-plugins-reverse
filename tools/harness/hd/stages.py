@@ -126,7 +126,8 @@ def derive(ch, obs, idx):
     rec = ch.stage
     obs_ = observed(ch, obs)
     tip = obs_.get("tip", (None, ""))[0]
-    moved = tip if (tip and ch.get("commit") and tip != ch.get("commit")) else None
+    commit = ch.get("commit")
+    moved = tip if (tip and commit and not (tip.startswith(commit) or commit.startswith(tip))) else None
     if rec in ("backlog", "ready", "dev"):
         ok, open_ = deps_met(ch, idx)
         if rec == "backlog":

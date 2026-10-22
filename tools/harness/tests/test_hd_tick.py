@@ -228,7 +228,7 @@ class DeployTest(unittest.TestCase):
         leases.grant("device", "cd1", 6000); leases.take("device", "cd1", "check", pid=os.getpid())
         tick.tick(FakeObserver())
         from hd import util
-        util.freeze("2026-10-21T06:00:00Z")
+        util.freeze(util.now() + __import__("datetime").timedelta(hours=4))
         self.addCleanup(util.freeze, None)
         acts = tick.tick(FakeObserver())
         self.assertTrue(any("reclaimed for the deploy" in a for a in acts), acts)

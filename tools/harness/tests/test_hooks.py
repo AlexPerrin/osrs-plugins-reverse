@@ -48,6 +48,11 @@ class DenyPublishTest(unittest.TestCase):
 
     CASES = [
         # (command, cwd, flags, expected)
+        # --- reading a harness script is not running it (sd32, 2026-10-21)
+        ("sed -n 1,47p tools/harness/integrate.py; cat re/harness/integration-tools/integration.lock | head", "ours", FORK, ALLOW),
+        ("grep -n lease tools/harness/ship.sh tools/harness/deploy.sh", "agent", NONE, ALLOW),
+        ("python3 tools/harness/integrate.py build --now", "ours", FORK, DENY),
+        ("tools/harness/deploy.sh int-1", "ours", FORK, DENY),
         # --- the legitimate fork actions the old bare-word `upstream` rule denied
         ("tools/fork.sh pr-edit 21 pr-texts/stile-approach.upstream.body", "agent", FORK, ALLOW),
         ('git commit -m "qa: upstream gate FAIL" && git push origin x:docs', "docs", DOCS, ALLOW),

@@ -56,7 +56,7 @@ class HealTest(unittest.TestCase):
         acts = heal.run(FakeObserver(), store.index())
         self.assertEqual(acts, [f"agent {rec['name']} stopped: lingering: owner is None (change at checked) for 5 min"])
         r = store.rec_load(agents.RUNS, rec["name"])
-        self.assertEqual(r["exit"], "lingering: change at checked for 5 min".join(["stopped:", ""]))
+        self.assertEqual(r["exit"], "stopped:lingering: owner is None (change at checked) for 5 min")
         self.assertNotIn(rec["name"], leases.status("desktop")["grants"])
         self.assertEqual(store.load("feat").stage, "checked")
 

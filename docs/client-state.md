@@ -3,7 +3,7 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `tools/harness/task.py list --track client`. Last rewrite: 2026-10-21, client dev
-cd48 (change hub-ground-items-despawn).
+cd49 (change hub-clue-steps-tier).
 
 ## What this is
 
@@ -28,19 +28,23 @@ cd48 (change hub-ground-items-despawn).
   unchanged). No user symbols/comments in it. The old project stays at `re/ghidra-old` until main deletes it.
   `Callers.java` is in the reverse skill's table; the objdump whole-binary check stays.
 
-## Installed on the device (last recorded: end of change hub-ground-items-despawn, 2026-10-21)
+## Installed on the device (last recorded: end of change hub-clue-steps-tier, 2026-10-21)
 
-- Build: client/ground-items-despawn 30d79d4 (master 7bb7048 + host ground-item timer logging and the `infoboxes`
-  hook; no native change), `OPENRUNE=1 LOCAL_AUTH=1 MODULUS=<openrune.sh modulus> tools/repack.sh` (7 `telemetry:`
-  lines), installed with `adb install-multiple -r` (Windows adb.exe, `wslpath -w` paths; relative WSL paths fail).
-  Building in a harness worktree (`re/harness/wt/<name>`): `re/` is a symlink to the main checkout's `re/`, so
+- Build: client/hub-clue-steps-tier (master 3aca471's host and native, no code change: the change is the device
+  check of the Clue Steps hub plugin against the live server), `OPENRUNE=1 LOCAL_AUTH=1 MODULUS=<openrune.sh modulus>
+  tools/repack.sh` (7 `telemetry:` lines), installed with `adb install-multiple -r` (Windows adb.exe, `wslpath -w`
+  paths; relative WSL paths fail). Building in a harness worktree: `re/` must point at the main checkout's `re/`
+  (`re/harness/wt/<name>` has the symlink; a `.claude/worktrees/` one needs `ln -s /home/alex/osrs-plugins-reverse/re re`
+  plus symlinks for `base.apk` and `split_config.arm64_v8a.apk`, which repack.sh reads from the repo root), then
   host/build.sh, `ninja -C re/build` (the main checkout's native/, same as master when it has no native edits) and
   repack work as in the main checkout; MODULUS comes from `openrune/scripts/openrune.sh modulus` run in the main
-  checkout (openrune/ isn't checked out in the worktree; pipe through `tr -d '\n'`, don't truncate it).
+  checkout (openrune/ isn't checked out in the worktree; pipe through `tr -d '\n'`, don't truncate it). The worktree
+  hook refuses shell commands that pass a runtime-computed value to a script: put the build in a script file under
+  the session scratchpad and run that.
 - Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3226,3215 (moved
-  there during hub-ground-items-despawn). `grounditems.groundItemTimers` was set to TICKS and
-  `cluescrolljuggling.dropTimerReduction` to 100 in settings.properties during that change (plus a stray
-  `.dropTimerReduction=100` under an empty group); the slot restore pushed the backup back.
+  there during hub-ground-items-despawn). Clue Steps wrote `clueSteps.rsprofile.default.{idEasy,clueEasy}` to
+  settings.properties during hub-clue-steps-tier; the slot restore pushed the backup back. The spawned easy clue
+  (2677) was dropped at 3226,3215 (61-minute private timer) and the server varp `trail_easy_steps_done` reset to 0.
 - Tester inventory: 9 items (slots 0-8). The gen 44 Fish barrel (it held 3 raw shrimps) was destroyed
   through OpenRune's destroy confirmation (interface 584) in hub-fish-barrel-check.
 - settings.properties: every login writes `rsprofile.rsprofile.default.{type,displayName,accountHash}`, which the slot

@@ -12,8 +12,8 @@ Metrics (all counted from source, nothing hand-maintained):
 
 Usage: tools/progress.py [--no-history] [--working] [--dry-run]
   --dry-run prints the numbers and per-interface API gaps without writing any file (for agents).
-  Protocol numbers come from server/rsprot.patch as committed in HEAD; --working reads the
-  server/rsprot working copy instead (uncommitted work, never for published numbers).
+  Protocol numbers come from sidecar/rsprot.patch as committed in the fork's local/server-tools; --working reads the
+  sidecar/rsprot working copy instead (uncommitted work, never for published numbers).
 """
 import csv
 import datetime
@@ -24,7 +24,9 @@ import tempfile
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ANDROID = os.path.join(ROOT, "server/rsprot/protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android")
+SERVER_TOOLS = os.environ.get("SERVER_TOOLS") or os.path.expanduser("~/src/openrune-work/server-tools")   # the fork's local/server-tools
+RSPROT = os.path.join(SERVER_TOOLS, "sidecar/rsprot")
+ANDROID = os.path.join(RSPROT, "protocol/osrs-241/osrs-241-android/src/main/kotlin/net/rsprot/protocol/android")
 S2C_TOTAL, C2S_TOTAL, ZONE_TOTAL = 151, 102, 15
 SDK = os.environ.get("ANDROID_SDK", "/mnt/c/Users/Alex/AppData/Local/Android/Sdk")
 API_PAIRS = [
@@ -246,14 +248,14 @@ COMMITTED = False
 
 
 def use_committed_protocol():
-    """Point ANDROID at the Android module as committed (server/rsprot.patch in HEAD), so the
+    """Point ANDROID at the Android module as committed (sidecar/rsprot.patch in local/server-tools), so the
     published numbers never include another agent's uncommitted work."""
     global ANDROID, COMMITTED
     COMMITTED = True
     tmp = tempfile.mkdtemp(prefix="progress-rsprot-")
-    patch = subprocess.run(["git", "-C", ROOT, "show", "HEAD:server/rsprot.patch"], capture_output=True, check=True).stdout
+    patch = subprocess.run(["git", "-C", SERVER_TOOLS, "show", "HEAD:sidecar/rsprot.patch"], capture_output=True, check=True).stdout
     subprocess.run(["git", "apply", "--include=protocol/osrs-241/osrs-241-android/*", "-"], cwd=tmp, input=patch, check=True)
-    ANDROID = os.path.join(tmp, os.path.relpath(ANDROID, os.path.join(ROOT, "server/rsprot")))
+    ANDROID = os.path.join(tmp, os.path.relpath(ANDROID, RSPROT))
 
 
 def main():

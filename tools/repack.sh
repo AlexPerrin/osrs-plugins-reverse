@@ -30,7 +30,7 @@ KS_PASS=android
 if [[ -n ${OPENRUNE:-} ]]; then
     SERVER=${SERVER:-10.0.2.2:8080}
     GAME_PORT=${GAME_PORT:-43594}
-    MODULUS=${MODULUS:-$("$ROOT/openrune/scripts/openrune.sh" modulus)}
+    MODULUS=${MODULUS:-$("${SERVER_TOOLS:-$HOME/src/openrune-work/server-tools}/scripts/openrune.sh" modulus)}
 fi
 mkdir -p "$OUT"
 
@@ -70,7 +70,7 @@ unzip -p "$ROOT/split_config.arm64_v8a.apk" lib/arm64-v8a/liblibs.hal.system.osc
 python3 -I "$ROOT/tools/patch_telemetry.py" --native "$GAME_SO.orig" "$GAME_SO"
 rm "$GAME_SO.orig"
 if [[ -n ${SERVER:-} ]]; then
-    MODULUS=${MODULUS:-$(grep '^modulus=' "$ROOT/server/data/rsa.properties" | cut -d= -f2)}
+    MODULUS=${MODULUS:-$(grep '^modulus=' "${SERVER_TOOLS:-$HOME/src/openrune-work/server-tools}/sidecar/data/rsa.properties" | cut -d= -f2)}
     mv "$GAME_SO" "$GAME_SO.orig"
     python3 -I "$ROOT/tools/patch_server.py" "$GAME_SO.orig" "$GAME_SO" --server "$SERVER" --modulus "$MODULUS"
     rm "$GAME_SO.orig"

@@ -7,15 +7,15 @@ Android build (241.4) is repacked to load `libosrsrl.so`, which hooks the native
 host loads unmodified RuneLite plugins on ART. The target plugin is **Quest Helper**.
 
 Development runs against a rev-241 test server that speaks the Android game protocol: since 2026-10-16
-that is OpenRune-Server with our Android support (`openrune/`); the original hand-written server
-(`server/`) is kept as a fallback.
+that is OpenRune-Server with our Android support (the fork's `local/server-tools` branch); the original hand-written
+server (`sidecar/` there) is kept as a fallback.
 That protocol differs from the desktop one, and no public mapping of it exists. Nobody needs a Jagex
 account: the server is also the local sign-in provider.
 
 ## Status
 
 <!-- progress:start -->
-![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-94.9%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-92.1%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-76.1%25-blue) ![Plugins running on Android](https://img.shields.io/badge/Plugins%20running%20on%20Android-98.9%25-blue) ![Plugin Hub plugins running](https://img.shields.io/badge/Plugin%20Hub%20plugins%20running-68.9%25-blue)
+![Mobile packets mapped](https://img.shields.io/badge/Mobile%20packets%20mapped-94.9%25-blue) ![Mobile packets implemented](https://img.shields.io/badge/Mobile%20packets%20implemented-92.1%25-blue) ![RuneLite API implemented](https://img.shields.io/badge/RuneLite%20API%20implemented-76.3%25-blue) ![Plugins running on Android](https://img.shields.io/badge/Plugins%20running%20on%20Android-98.9%25-blue) ![Plugin Hub plugins running](https://img.shields.io/badge/Plugin%20Hub%20plugins%20running-77.3%25-blue)
 
 [![Progress map](docs/progress.svg)](docs/progress.md)
 
@@ -26,13 +26,13 @@ account: the server is also the local sign-in provider.
 - **Server→client mapped**: 147/151 (97.4%)
 - **Client→server mapped**: 93/102 (91.2%)
 - **Zone sub-prots implemented**: 15/15 (100.0%)
-- **RuneLite API implemented**: 659/866 (76.1%)
+- **RuneLite API implemented**: 661/866 (76.3%)
 - **Plugins running on Android**: 89/90 (98.9%)
-- **Plugin Hub plugins running**: 71/103 (68.9%)
+- **Plugin Hub plugins running**: 85/110 (77.3%)
 
 \* RuneLite API: abstract methods of the API interfaces the plugin host backs so far, not of the whole RuneLite API. Mobile packets count the opcodes in the client's own size tables.
 
-Details: [docs/progress.md](docs/progress.md) (as of 2026-10-18, `9330b8b+`).
+Details: [docs/progress.md](docs/progress.md) (as of 2026-10-24, `bce8d50+`).
 <!-- progress:end -->
 
 Milestones:
@@ -52,7 +52,7 @@ Milestones:
 - [x] **Third full quest with Quest Helper: Romeo & Juliet** (multi-NPC route across Varrock,
   dialogue-option highlights, item requirements turning green, completion), 2026-10-16
 - [x] OpenRune-Server port: Android client in game; Cook's Assistant, Sheep Shearer and Romeo & Juliet
-  pass end to end with Quest Helper on it (`openrune/`, `docs/openrune-port.md`), 2026-10-16
+  pass end to end with Quest Helper on it (the fork's `local/server-tools` branch, `docs/openrune-port.md` there), 2026-10-16
 - [x] **Default test server switched to OpenRune** (ports 43594/8080, shared login key; old server kept
   as the stopped fallback `osrs-rsps-test`), 2026-10-16
 - [ ] Multi-client: desktop RuneLite (via RSProx) and the Android client on the same server
@@ -81,7 +81,7 @@ Milestones:
 |---|---|---|---|
 | `native/` | `libosrsrl.so`: hooks, game accessors, JNI bridge, overlay | client dev | `docs/client-handoff.md`, `docs/offsets.md` |
 | `host/` | Java plugin host (RuneLite API on the Android game) | client dev | `docs/plugin-host.md` |
-| `server/` | Kotlin RSPS + Android codecs (`server/rsprot.patch` over RSProt) | server dev | `server-handoff.md` on the fork's `docs` branch, `docs/android-protocol.md` |
+| (fork) | the test server: `OpenRune-Server` (`~/src/OpenRune-Server`) and the fork's `local/server-tools` branch | server dev | `server-handoff.md` on the fork's `docs` branch, `docs/android-protocol.md` |
 | `tools/` | repack/patch scripts, Ghidra helpers, memory agent, `progress.py` | shared | |
 | `re/` | git-ignored inputs/outputs (APK libs, Ghidra project, jars, builds) | | |
 
@@ -91,7 +91,7 @@ Milestones:
 codec bindings (against the client's opcode size tables) and the RuneLite API methods the host
 actually overrides (against its generated throwing stubs). It rewrites `docs/progress.md`, this
 status block, and one row per day in `docs/progress-history.csv`. Run it before each milestone
-commit (it needs `server/rsprot` from `server/scripts/rsprot.sh init` and `host/build.sh` output).
+commit (it needs the patched RSProt checkout under `$SERVER_TOOLS/sidecar/rsprot`, from `sidecar/scripts/rsprot.sh init` and `host/build.sh` output).
 
 ## Disclaimer
 

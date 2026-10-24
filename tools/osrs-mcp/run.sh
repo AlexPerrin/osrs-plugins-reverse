@@ -4,7 +4,7 @@
 # gamevals, the decoded cache and game.yml are mounted, read-only; the server's keys are not.
 # Build the jars first: openrune/scripts/openrune.sh gradle :tools:osrs-mcp:installDist --no-configuration-cache
 set -euo pipefail
-SRC="$(cd "$(dirname "$0")/../../openrune/src" && pwd)"
+SRC="$(cd "${SERVER_TOOLS:-$HOME/src/openrune-work/server-tools}/src" && pwd)"
 LIB="$SRC/tools/osrs-mcp/build/install/osrs-mcp/lib"
 [[ -d $LIB ]] || { echo "osrs-mcp not built: see the header of $0" >&2; exit 1; }
 exec docker run --rm -i -u 1000:1000 \

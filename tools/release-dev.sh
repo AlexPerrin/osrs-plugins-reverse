@@ -43,7 +43,7 @@ mkdir -p "$work/x/base" "$work/x/split" "$work/o/base" "$work/o/split"
 unzip -q re/out/base.apk -d "$work/x/base"; unzip -q re/out/split.apk -d "$work/x/split"
 unzip -q base.apk -d "$work/o/base"; unzip -q split_config.arm64_v8a.apk -d "$work/o/split"
 patterns=("PRIVATE KEY" "privateExponent" "alexperrin" "Alex Perrin" "@gmail.com" 'C:\Users' "/home/alex" "/mnt/c/Users")
-d=$(openssl pkey -in openrune/src/.data/game.key -text -noout 2>/dev/null | awk '/privateExponent:/{f=1;next} /^[a-zA-Z]/{f=0} f' | tr -d ' :\n' | sed 's/^00//' | cut -c1-24)
+d=$(openssl pkey -in ${SERVER_TOOLS:-$HOME/src/openrune-work/server-tools}/src/.data/game.key -text -noout 2>/dev/null | awk '/privateExponent:/{f=1;next} /^[a-zA-Z]/{f=0} f' | tr -d ' :\n' | sed 's/^00//' | cut -c1-24)
 [[ -n $d ]] && patterns+=("$d")
 hits=0 keys=0 scanned=0
 while IFS= read -r -d '' f; do

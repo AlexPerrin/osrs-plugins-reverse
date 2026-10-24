@@ -5,7 +5,5 @@ re/
 *:Zone.Identifier
 host/plugins/*/build/
 __pycache__/
-openrune/src/
-openrune/rsprot/
 harness/state/
 /harness

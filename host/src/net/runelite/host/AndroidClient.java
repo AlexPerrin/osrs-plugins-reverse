@@ -928,8 +928,127 @@ public class AndroidClient extends ClientStub {
     // The mobile client has no stretched mode, minimap ctrl-zoom, free camera / oculus orb or camera
     // shake toggle; these report desktop's defaults. No Jagex launcher either (null display name, as
     // RuneLite started without it).
-    @Override public boolean isStretchedEnabled() { return false; }
-    @Override public boolean isStretchedFast() { return false; }
+    // Stretched mode: stored for plugins that read it back; the app always draws at the device's own
+    // resolution, so it changes nothing (getStretchedDimensions stays the real canvas).
+    private boolean stretched, stretchedFast;
+    @Override public boolean isStretchedEnabled() { return stretched; }
+    @Override public void setStretchedEnabled(boolean on) { stretched = on; }
+    @Override public boolean isStretchedFast() { return stretchedFast; }
+    @Override public void setStretchedFast(boolean on) { stretchedFast = on; }
+    @Override public void invalidateStretching(boolean resize) { }  // nothing is cached: the canvas is read per cycle
+
+    // --- rendering surface (AndroidRender says what each means on Android) ---
+    @Override public net.runelite.api.Rasterizer getRasterizer() { return AndroidRender.RASTERIZER; }
+    @Override public net.runelite.api.TextureProvider getTextureProvider() { return AndroidRender.TEXTURES; }
+    // The game's own loaded sprite arrays (Native.spriteArray), copied on the game thread; null before
+    // they are loaded or off the game thread. Copies: writing them doesn't change what the game draws.
+    @Override public net.runelite.api.SpritePixels[] getCrossSprites() {
+        int[] a = Native.isClientThread() ? Native.spriteArray(0) : null;
+        if (a == null) return null;
+        net.runelite.api.SpritePixels[] out = new net.runelite.api.SpritePixels[a[0]];
+        for (int i = 0, o = 1; i < out.length; i++) {
+            int w = a[o], h = a[o + 1], n = a[o + 6];
+            HostSpritePixels s = new HostSpritePixels(java.util.Arrays.copyOfRange(a, o + 7, o + 7 + w * h), w, h);
+            s.setOffsetX(a[o + 2]);
+            s.setOffsetY(a[o + 3]);
+            s.setMaxWidth(a[o + 4]);
+            s.setMaxHeight(a[o + 5]);
+            out[i] = s;
+            o += 7 + w * h + n;
+        }
+        return out;
+    }
+    @Override public net.runelite.api.IndexedSprite[] getMapScene() {
+        int[] a = Native.isClientThread() ? Native.spriteArray(1) : null;
+        if (a == null) return null;
+        net.runelite.api.IndexedSprite[] out = new net.runelite.api.IndexedSprite[a[0]];
+        for (int i = 0, o = 1; i < out.length; i++) {
+            int w = a[o], h = a[o + 1], n = a[o + 6];
+            HostIndexedSprite s = HostIndexedSprite.blank(w, h);
+            byte[] px = s.getPixels();
+            for (int k = 0; k < w * h; k++) px[k] = (byte) a[o + 7 + k];
+            s.setPalette(java.util.Arrays.copyOfRange(a, o + 7 + w * h, o + 7 + w * h + n));
+            s.setOffsetX(a[o + 2]);
+            s.setOffsetY(a[o + 3]);
+            s.setOriginalWidth(a[o + 4]);
+            s.setOriginalHeight(a[o + 5]);
+            out[i] = s;
+            o += 7 + w * h + n;
+        }
+        return out;
+    }
+    /** The map function icons (desktop's mapIcons: gameval SpriteID.Mapfunction._0.._n), frame 0 of each from the game's sprite cache. */
+    private net.runelite.api.SpritePixels[] mapIcons;
+    @Override public net.runelite.api.SpritePixels[] getMapIcons() {
+        if (mapIcons != null) return mapIcons;
+        if (!isClientThread()) return null;
+        java.util.List<net.runelite.api.SpritePixels> out = new java.util.ArrayList<>();
+        for (int i = 0; ; i++) {
+            int id;
+            try {
+                id = net.runelite.api.gameval.SpriteID.Mapfunction.class.getField("_" + i).getInt(null);
+            } catch (ReflectiveOperationException e) {
+                break;
+            }
+            int[] r = Native.sprite(id);
+            if (r == null && i == 0) return null;  // the sprites archive isn't loaded yet: try again later
+            out.add(r == null ? null : new HostSpritePixels(java.util.Arrays.copyOfRange(r, 2, 2 + r[0] * r[1]), r[0], r[1]));
+        }
+        return mapIcons = out.toArray(new net.runelite.api.SpritePixels[0]);
+    }
+    @Override public net.runelite.api.BufferProvider getBufferProvider() { AndroidRender.BUFFER.request(); return AndroidRender.BUFFER; }
+    /**
+     * Desktop's Rasterizer3D clip, relative to the 3D centre: the scene renderer's viewport
+     * (Native.viewport: centre x/y, clip x0, y0, x1, y1) on the game thread, else the 3D viewport's size.
+     */
+    private int[] clip3d() {
+        // renderer +0x630c60 +0x24..+0x30 (setter 0x730cbc): -cx, w - cx, -cy, h - cy in screen pixels,
+        // scaled here to the canvas the viewport getters use.
+        int[] v = isClientThread() ? Native.viewport() : null;
+        int w = getViewportWidth(), h = getViewportHeight();
+        if (v != null && v[0] != 0 && v[5] > v[4] && v[7] > v[6]) {
+            float sx = (float) w / (v[5] - v[4]), sy = (float) h / (v[7] - v[6]);
+            return new int[] {Math.round(v[4] * sx), Math.round(v[5] * sx), Math.round(v[6] * sy), Math.round(v[7] * sy)};
+        }
+        return new int[] {-(w / 2), w - w / 2, -(h / 2), h - h / 2};
+    }
+    @Override public int getRasterizer3D_clipNegativeMidX() { return clip3d()[0]; }
+    @Override public int getRasterizer3D_clipMidX2() { return clip3d()[1]; }
+    @Override public int getRasterizer3D_clipNegativeMidY() { return clip3d()[2]; }
+    @Override public int getRasterizer3D_clipMidY2() { return clip3d()[3]; }
+    /**
+     * The scene's skybox colour (Native.skyboxColour, the renderer settings' RGBA that feeds the
+     * shaders' skyboxColour). 0 means none set (the game's own sky); setting 0 clears it.
+     */
+    private int skybox;
+    @Override public int getSkyboxColor() {
+        if (isClientThread()) { int v = Native.skyboxColour(); skybox = (v >>> 24) == 0 ? 0 : v & 0xffffff; }
+        return skybox;
+    }
+    @Override public void setSkyboxColor(int rgb) {
+        if (isClientThread() && Native.setSkyboxColour(rgb == 0 ? 0 : 0xff000000 | rgb)) skybox = rgb;
+    }
+    // The camera focal point (Client camera block +0x78..+0x80, the smoothed player position the camera
+    // orbits): X local x, Y local y, Z height, as getCameraX/Y/Z. The game moves it towards the player each frame.
+    @Override public float getCameraFocalPointX() { return cam()[5]; }
+    @Override public float getCameraFocalPointY() { return cam()[6]; }
+    @Override public float getCameraFocalPointZ() { return cam()[7]; }
+    @Override public void setCameraFocalPointX(float v) { setFocal(0, v); }
+    @Override public void setCameraFocalPointY(float v) { setFocal(1, v); }
+    @Override public void setCameraFocalPointZ(float v) { setFocal(2, v); }
+    private void setFocal(int axis, float v) {
+        if (isClientThread() && Native.setCameraFocal(axis, Math.round(v))) cameraCache = null;
+    }
+    // The mobile renderer draws every 2D layer itself; the mask is kept for plugins that read it back.
+    private int draw2DMask = -1;
+    @Override public int getDraw2DMask() { return draw2DMask; }
+    @Override public void setDraw2DMask(int mask) { draw2DMask = mask; }
+    // No GPU plugin hook on Android: the game renders with its own GL pipeline and never calls these.
+    private net.runelite.api.hooks.DrawCallbacks drawCallbacks;
+    @Override public net.runelite.api.hooks.DrawCallbacks getDrawCallbacks() { return drawCallbacks; }
+    @Override public void setDrawCallbacks(net.runelite.api.hooks.DrawCallbacks cb) { drawCallbacks = cb; }
+    /** The mobile game picks entities under a tap itself (Native.pickAt); a GPU plugin's clickbox has nothing to feed. */
+    @Override public void checkClickbox(net.runelite.api.Projection p, net.runelite.api.Model m, int orientation, int x, int y, int z, long hash) { }
     @Override public boolean isMinimapZoom() { return false; }
     @Override public int getCameraMode() { return 0; }
     @Override public int getOculusOrbState() { return 0; }

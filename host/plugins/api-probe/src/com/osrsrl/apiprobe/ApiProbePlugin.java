@@ -30,6 +30,7 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
+import net.runelite.api.Rasterizer;
 import net.runelite.api.Scene;
 import net.runelite.api.Tile;
 import net.runelite.api.coords.LocalPoint;
@@ -546,6 +547,65 @@ public class ApiProbePlugin extends Plugin {
         };
         SPECIAL.put("Widget.createChild1", child);
         SPECIAL.put("Widget.createChild2", child);
+        // The image must match the sprite's size (desktop throws otherwise); the live BufferedImage may be any size.
+        SPECIAL.put("SpritePixels.toBufferedImage1", (p, row, inst) -> {
+            net.runelite.api.SpritePixels s = (net.runelite.api.SpritePixels) inst;
+            java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(s.getWidth(), s.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            s.toBufferedImage(img);
+            p.set(row, "pass", "drawn into a " + s.getWidth() + "x" + s.getHeight() + " image");
+        });
+        // Rasterizer draws: on a 20x20 corner of its pixels, cleared first; read the pixels back; restore them.
+        SPECIAL.put("Rasterizer.fillRectangle5", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.fillRectangle(1, 1, 4, 4, 0x123456);
+            return new int[] {px[w + 1], px[4 * w + 4], px[5 * w + 5]};
+        }, v -> v[0] == 0x123456 && v[1] == 0x123456 && v[2] == 0));
+        SPECIAL.put("Rasterizer.rasterFlat7", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.rasterFlat(0, 0, 16, 0, 16, 0, 0x654321);
+            return new int[] {px[2 * w + 2], px[15 * w + 15]};
+        }, v -> v[0] == 0x654321 && v[1] == 0));
+        SPECIAL.put("Rasterizer.rasterGouraud9", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.rasterGouraud(0, 0, 16, 0, 16, 0, 0x7f, 0x7f, 0x7f);  // white
+            return new int[] {px[2 * w + 2], px[15 * w + 15]};
+        }, v -> v[0] != 0 && v[1] == 0));
+        SPECIAL.put("Rasterizer.setDrawRegion4", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.setDrawRegion(4, 4, 8, 8);
+            r.fillRectangle(0, 0, 20, 20, 0xffffff);
+            r.resetRasterClipping();
+            return new int[] {px[5 * w + 5], px[2 * w + 2], px[10 * w + 10]};
+        }, v -> v[0] == 0xffffff && v[1] == 0 && v[2] == 0));
+        SPECIAL.put("Rasterizer.resetRasterClipping0", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.setDrawRegion(4, 4, 8, 8);
+            r.resetRasterClipping();
+            r.fillRectangle(0, 0, 20, 20, 0xffffff);
+            return new int[] {px[2 * w + 2], px[10 * w + 10]};
+        }, v -> v[0] == 0xffffff && v[1] == 0xffffff));
+        // Low res: one colour per 8-pixel run of a gouraud gradient; full res: the colour changes inside a run.
+        SPECIAL.put("Rasterizer.setRasterGouraudLowRes1", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.setRasterGouraudLowRes(true);
+            r.rasterGouraud(0, 0, 19, 0, 19, 0, 0x0000, 0x007f, 0x0000);
+            int lowRunEqual = px[w + 8] == px[w + 15] ? 1 : 0;
+            r.setRasterGouraudLowRes(false);
+            r.rasterGouraud(0, 0, 19, 0, 19, 0, 0x0000, 0x007f, 0x0000);
+            int fullRunDiffers = px[w + 8] != px[w + 15] ? 1 : 0;
+            return new int[] {lowRunEqual, fullRunDiffers};
+        }, v -> v[0] == 1 && v[1] == 1));
+    }
+
+    interface Draw {
+        int[] run(Rasterizer r, int[] px, int w);
+    }
+
+    private static void raster(ApiProbePlugin p, Row row, Rasterizer r, Draw draw, java.util.function.Predicate<int[]> ok) {
+        int[] px = r.getPixels();
+        int w = r.getWidth();
+        if (w < 20 || r.getHeight() < 20) { p.set(row, "mismatch", "pixels " + w + "x" + r.getHeight() + " (smaller than 20x20)"); return; }
+        int[] saved = px.clone();
+        r.resetRasterClipping();
+        r.fillRectangle(0, 0, 20, 20, 0);
+        int[] v = draw.run(r, px, w);
+        System.arraycopy(saved, 0, px, 0, px.length);
+        String hex = Arrays.stream(v).mapToObj(Integer::toHexString).collect(java.util.stream.Collectors.joining(","));
+        p.set(row, ok.test(v) ? "pass" : "mismatch", "drawn into " + w + "x" + r.getHeight() + " pixels; read back " + hex + " (restored)");
     }
 
     // ---- arguments ----

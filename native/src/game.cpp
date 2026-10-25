@@ -776,6 +776,14 @@ bool set_camera_target(int which, int value) {
     return true;
 }
 
+bool set_camera_focal(int axis, int value) {
+    uintptr_t c = client();
+    if (!c || axis < 0 || axis > 2) return false;
+    static constexpr int kOff[3] = {0x78, 0x80, 0x7c};
+    *reinterpret_cast<int32_t*>(c + g_build->f_camera + kOff[axis]) = value;
+    return true;
+}
+
 Camera camera() {
     Camera cam;
     uintptr_t c = client();
@@ -2261,6 +2269,122 @@ bool sprite_info(int id, int out[6]) {
     uintptr_t spr = slot[1];
     for (int i = 0; i < 6; i++) out[i] = read_at<int32_t>(spr + 0x18 + 4 * i);
     return out[0] > 0 && out[1] > 0;
+}
+
+bool sprite_array(int which, std::vector<int32_t>& out) {
+    uintptr_t c = client();
+    if (!g_build || !c || which < 0 || which > 1 || game_state() < 10) return false;
+    uintptr_t obj = read_at<uintptr_t>(c + (which == 0 ? 0x2510 : 0x24b8));
+    if (!obj) return false;
+    uint64_t n = read_at<uint64_t>(obj + 8);
+    uintptr_t arr = read_at<uintptr_t>(obj + 0x10);
+    if (!arr || n == 0 || n > 4096) return false;
+    out.assign(1, static_cast<int32_t>(n));
+    for (uint64_t i = 0; i < n; i++) {
+        uintptr_t r = arr + i * (which == 0 ? 0x30 : 0x48);
+        int base = which == 0 ? 0x18 : 0x30;
+        int w = read_at<int32_t>(r + base), h = read_at<int32_t>(r + base + 4);
+        if (w < 0 || h < 0 || w > 2048 || h > 2048) return false;
+        for (int k = 0; k < 6; k++) out.push_back(read_at<int32_t>(r + base + 4 * k));
+        uintptr_t px = read_at<uintptr_t>(r + 0x10);
+        uint64_t pal_n = which == 1 ? read_at<uint64_t>(r + 0x18) : 0;
+        uintptr_t pal = which == 1 ? read_at<uintptr_t>(r + 0x28) : 0;
+        if (pal_n > 256 || (pal_n && !pal)) return false;
+        out.push_back(static_cast<int32_t>(pal_n));
+        size_t count = static_cast<size_t>(w) * h;
+        for (size_t k = 0; k < count; k++)
+            out.push_back(!px ? 0 : which == 0 ? static_cast<int32_t>(reinterpret_cast<const uint32_t*>(px)[k])
+                                               : reinterpret_cast<const uint8_t*>(px)[k]);
+        for (uint64_t k = 0; k < pal_n; k++) out.push_back(static_cast<int32_t>(reinterpret_cast<const uint32_t*>(pal)[k]));
+    }
+    return true;
+}
+
+namespace {
+uintptr_t texture_provider() {
+    uintptr_t c = client();
+    if (!g_build || !c || game_state() < 10) return 0;
+    uintptr_t p = read_at<uintptr_t>(c + 0x4710);
+    return p && read_at<uintptr_t>(p) == g_base + 0xa75748 ? p : 0;  // its vtable, else not built yet
+}
+uintptr_t texture_at(uintptr_t p, int id) {
+    uintptr_t b = read_at<uintptr_t>(p + 8), e = read_at<uintptr_t>(p + 0x10);
+    if (id < 0 || b + static_cast<uintptr_t>(id) * 16 >= e) return 0;
+    return read_at<uintptr_t>(b + static_cast<uintptr_t>(id) * 16 + 8);
+}
+}  // namespace
+
+bool textures(std::vector<int32_t>& out) {
+    uintptr_t p = texture_provider();
+    if (!p) return false;
+    uintptr_t b = read_at<uintptr_t>(p + 8), e = read_at<uintptr_t>(p + 0x10);
+    if (!b || e < b || (e - b) / 16 > 65536) return false;
+    out.clear();
+    for (int id = 0; id < static_cast<int>((e - b) / 16); id++) {
+        uintptr_t t = texture_at(p, id);
+        uintptr_t px = t ? read_at<uintptr_t>(t + 0x58) : 0;
+        int32_t v[8] = {t != 0, t ? read_at<uint16_t>(t + 0x30) : 0, t ? read_at<uint8_t>(t + 0x34) : 0,
+                        t ? read_at<int32_t>(t + 0x38) : -1, t ? read_at<int32_t>(t + 0x3c) : 0,
+                        t ? read_at<int32_t>(t + 0x40) : 0, t ? read_at<uint8_t>(t + 0x60) : 0,
+                        px ? static_cast<int32_t>(read_at<uint64_t>(px + 8)) : 0};
+        out.insert(out.end(), v, v + 8);
+    }
+    return true;
+}
+
+bool texture_pixels(int id, bool load, std::vector<int32_t>& out) {
+    uintptr_t p = texture_provider();
+    uintptr_t t = p ? texture_at(p, id) : 0;
+    if (!t) return false;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    uintptr_t ctrl = 0, obj = read_at<uintptr_t>(t + 0x58);
+    if (load) {
+        SharedPtr r = reinterpret_cast<SharedPtr (*)(uintptr_t, int)>(g_base + 0x6d4930)(p, id);
+        ctrl = r.ctrl;
+        obj = r.obj;
+    }
+    uint64_t n = obj ? read_at<uint64_t>(obj + 8) : 0;
+    auto px = obj ? read_at<const int32_t*>(obj + 0x10) : nullptr;
+    bool ok = px && n > 0 && n <= 128 * 128;
+    if (ok) out.assign(px, px + n);
+    if (ctrl) release_shared(ctrl);
+    return ok;
+}
+
+bool skybox_colour(int& argb) {
+    uintptr_t c = client();
+    uintptr_t sc = c ? read_at<uintptr_t>(c + 0x90) : 0;
+    if (!sc) return false;
+    auto ch = [&](int i) {
+        float f = read_at<float>(sc + 0x90 + 4 * i);
+        return static_cast<uint32_t>(f <= 0 ? 0 : f >= 1 ? 255 : static_cast<int>(f * 255 + 0.5f));
+    };
+    argb = static_cast<int>(ch(3) << 24 | ch(0) << 16 | ch(1) << 8 | ch(2));
+    return true;
+}
+
+bool set_skybox_colour(int argb) {
+    uintptr_t c = client();
+    uintptr_t sc = c ? read_at<uintptr_t>(c + 0x90) : 0;
+    if (!sc) return false;
+    auto f = [&](int shift) { return static_cast<float>((static_cast<uint32_t>(argb) >> shift) & 0xff) / 255.0f; };
+    reinterpret_cast<void (*)(uintptr_t, float, float, float, float)>(g_base + 0x6b083c)(sc, f(16), f(8), f(0), f(24));
+    return true;
+}
+
+double texture_brightness() {
+    uintptr_t p = texture_provider();
+    return p ? read_at<double>(p + 0x38) : __builtin_nan("");
+}
+
+bool set_texture_brightness(double b) {
+    uintptr_t p = texture_provider();
+    if (!p || !(b > 0 && b < 2)) return false;
+    *reinterpret_cast<double*>(p + 0x38) = b;
+    return true;
 }
 
 // Overwrites the cached sprite's pixels in place (sprite overrides); same size only. The cache

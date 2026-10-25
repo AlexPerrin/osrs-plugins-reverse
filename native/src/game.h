@@ -113,6 +113,9 @@ Camera camera();
 // Writes the camera pitch (which 0) or yaw (which 1) target, as RuneLite's setCameraPitchTarget/
 // setCameraYawTarget; the game eases the camera towards it. Yaw is masked to 14 bits. Game thread only.
 bool set_camera_target(int which, int value);
+// Writes the camera focal point (Client camera block +0x78/+0x7c/+0x80: x, height, y) on axis 0 x, 1 y,
+// 2 height (RuneLite's setCameraFocalPointX/Y/Z). The game moves it towards the player each frame. Game thread only.
+bool set_camera_focal(int axis, int value);
 // The 3D viewport the scene renderer projects with (drawRenderable 0x72db3c): screen offset =
 // r * zoom / depth, centre, clip rect, far plane. Reached as renderer = holder->vtbl[3](holder),
 // holder = *(Client +0x90) + 0x1b0 (scene draw caller 0x457128), viewport = *(renderer +0x630c60).
@@ -305,6 +308,26 @@ bool sprite(int id, std::vector<uint32_t>& pixels, int& width, int& height);
 // Frame 0's placement: {width, height, x offset, y offset, full width, full height} (Sprite +0x18..+0x2c;
 // the pixels are the trimmed width x height block at the offsets in the full canvas). Game thread only.
 bool sprite_info(int id, int out[6]);
+// The game's own loaded sprite arrays (Client loader 0x412e78): which 0 = crosses (Client +0x2510, Sprite
+// records 0x30 apart), 1 = mapscenes (Client +0x24b8, IndexedSprite records 0x48 apart). Per frame:
+// {w, h, x offset, y offset, canvas w, canvas h, palette length n, w*h pixels (ARGB, or palette indices
+// when n > 0), n palette ARGB}, after a leading frame count. Game thread only.
+bool sprite_array(int which, std::vector<int32_t>& out);
+// The texture provider (Client +0x4710, vtable 0xa75748, built in loader state 10 by 0x6d3bec).
+// Per texture 8 ints {present, average colour (HSL), flag +0x34, sprite group, animation direction,
+// animation speed, loaded, pixel count}. Game thread only.
+bool textures(std::vector<int32_t>& out);
+// A texture's size*size pixels: load = false reads them only if loaded; load = true goes through the
+// provider's getTexturePixels (vtable slot 2, 0x6d4930), which loads and LRU-evicts as the game does.
+bool texture_pixels(int id, bool load, std::vector<int32_t>& out);
+// The provider's brightness (+0x38, double; desktop's Rasterizer3D brightness). NaN if absent.
+// The scene's skybox colour: S = *(Client +0x90) (the scene renderer's settings), float RGBA 0..1 at
+// S +0x90..+0x9c, written by the game's setter 0x6b083c(S, r, g, b, a); alpha 0 (the default) = no colour
+// set. As ARGB with alpha 0 or 0xff. Game thread only.
+bool skybox_colour(int& argb);
+bool set_skybox_colour(int argb);
+double texture_brightness();
+bool set_texture_brightness(double b);
 // Writes a same-size sprite's pixels into the game's cached copy (overrides). Game thread only.
 bool sprite_write(int id, const uint32_t* pixels, int width, int height);
 bool item_sprite(int id, int quantity, int border, int shadow, int text_mode, bool noted,

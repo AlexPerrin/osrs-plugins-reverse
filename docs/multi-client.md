@@ -81,7 +81,7 @@ Starting `http-desktop` creates no other container and does not touch `osrs-open
 
 ## Headless check
 
-`tools/multiclient/desktop_login.py` is a scripted rev-241 desktop client.
+`~/osrs-harness/bench/multiclient/desktop_login.py` is a scripted rev-241 desktop client.
 - What it does:
   - JS5 CRCs;
   - INIT_GAME_CONNECTION;
@@ -91,7 +91,7 @@ Starting `http-desktop` creates no other container and does not touch `osrs-open
 - It only reads, so it changes nothing in the world, and it disconnects after `--seconds`.
 
 ```
-python3 -I tools/multiclient/desktop_login.py            # desktop/desktop on 127.0.0.1:43594, /rsa from :8082
+python3 -I ~/osrs-harness/bench/multiclient/desktop_login.py            # desktop/desktop on 127.0.0.1:43594, /rsa from :8082
 ```
 
 Result on 2026-10-16. The Android app was signed in as `tester` at the same time; the server log
@@ -118,7 +118,7 @@ Protocol notes:
 - If the previous run's session is still in the world, the login answers 5 ("already online"). The
   script retries for up to 75 s.
 
-`tools/multiclient/proxy-targets.yaml` also loads with RSProx's own parser
+`~/osrs-harness/bench/multiclient/proxy-targets.yaml` also loads with RSProx's own parser
 (`YamlProxyTargetConfig.load`, run against the `re/rsprox` build): name, URL, modulus, revision
 241.1, port 43594 and the 1.13.2 bootstrap pin all come through.
 
@@ -129,12 +129,12 @@ PLAYER_INFO bit by bit; it is step 6 of the GUI walkthrough.
 
 ```
 WSL                                      Windows (C:\osrs-test, user.home = C:\osrs-test\home)
-tools/multiclient/desktop.sh ──powershell──> jdk\bin\java OsrsTestLauncher (headless RSProx)
+~/osrs-harness/bench/multiclient/desktop.sh ──powershell──> jdk\bin\java OsrsTestLauncher (headless RSProx)
                                                ├─ :43600 jav_config/world list (rewritten from :8082)
                                                ├─ :43701 game proxy ── re-encrypts login ──> OpenRune :43594
                                                └─ RuneLite launcher ─> RuneLite 1.13.2 client
                                                      └─ OpenRune-DeveloperTools, MCP on 127.0.0.1:7780
-tools/multiclient/desktop-devtools-mcp.sh ──curl.exe (WSL interop)──> 127.0.0.1:7780/mcp
+~/osrs-harness/bench/multiclient/desktop-devtools-mcp.sh ──curl.exe (WSL interop)──> 127.0.0.1:7780/mcp
 ```
 
 ### Layout and isolation
@@ -156,7 +156,7 @@ tools/multiclient/desktop-devtools-mcp.sh ──curl.exe (WSL interop)──> 12
   credentials lookup (`.runelite/credentials.properties`), which only applies to the official
   target anyway.
 - The user's `C:\Users\Alex\.runelite` and the installed RuneLite are never touched.
-- `OsrsTestLauncher` (source `tools/multiclient/headless/`) refuses to start in any of these cases:
+- `OsrsTestLauncher` (source `~/osrs-harness/bench/multiclient/headless/`) refuses to start in any of these cases:
   - `user.home` is not under `C:\osrs-test`;
   - any `RSPS_*` or `JX_*` (Jagex launcher) variable is set;
   - the selected target is not exactly one "OpenRune Test" with a `http://127.0.0.1:` jav_config and
@@ -195,15 +195,15 @@ out (and with the orchestrator's OK).
 ### Build, start, log in, stop
 
 ```
-tools/multiclient/make_proxy_target.sh     # refresh the modulus from :8082/rsa
-tools/multiclient/desktop-build.sh         # Docker build of RSProx + launcher, stage into C:\osrs-test
+~/osrs-harness/bench/multiclient/make_proxy_target.sh     # refresh the modulus from :8082/rsa
+~/osrs-harness/bench/multiclient/desktop-build.sh         # Docker build of RSProx + launcher, stage into C:\osrs-test
                                            # (SKIP_RSPROX_BUILD=1 to only restage)
-tools/multiclient/desktop.sh start         # checks 7780/43600-9/43700-19 are free; ~10 s to the login screen
-tools/multiclient/desktop.sh login         # desktop/desktop via the Existing User form, retries ~2 min
-tools/multiclient/desktop.sh status        # our processes (exe under C:\osrs-test) + their sockets
-tools/multiclient/desktop.sh log 80        # tail of the newest log
-tools/multiclient/desktop.sh logout        # in-game logout
-tools/multiclient/desktop.sh stop          # logout, then kill only processes whose exe is under C:\osrs-test
+~/osrs-harness/bench/multiclient/desktop.sh start         # checks 7780/43600-9/43700-19 are free; ~10 s to the login screen
+~/osrs-harness/bench/multiclient/desktop.sh login         # desktop/desktop via the Existing User form, retries ~2 min
+~/osrs-harness/bench/multiclient/desktop.sh status        # our processes (exe under C:\osrs-test) + their sockets
+~/osrs-harness/bench/multiclient/desktop.sh log 80        # tail of the newest log
+~/osrs-harness/bench/multiclient/desktop.sh logout        # in-game logout
+~/osrs-harness/bench/multiclient/desktop.sh stop          # logout, then kill only processes whose exe is under C:\osrs-test
 ```
 
 - **First start only:** the client shows the terms screen. Click Accept at canvas (302,311) with
@@ -229,9 +229,9 @@ tools/multiclient/desktop.sh stop          # logout, then kill only processes wh
 
 ### Driving it (MCP)
 
-`tools/multiclient/desktop-devtools-mcp.sh`:
+`~/osrs-harness/bench/multiclient/desktop-devtools-mcp.sh`:
 - An MCP stdio server, the same as `tools/devtools-mcp.sh` for Android. Register it as
-  `{"command": "<repo>/tools/multiclient/desktop-devtools-mcp.sh"}`, for example as
+  `{"command": "<repo>/~/osrs-harness/bench/multiclient/desktop-devtools-mcp.sh"}`, for example as
   `osrs-devtools-desktop`.
 - WSL runs in NAT mode, so Windows' 127.0.0.1 is not reachable from WSL. Each JSON-RPC line goes
   through Windows' `curl.exe` instead (about 0.1 s per call). Nothing is opened beyond Windows
@@ -240,7 +240,7 @@ tools/multiclient/desktop.sh stop          # logout, then kill only processes wh
 - Input is `canvas.dispatchEvent`, so the user's real mouse and keyboard focus are not used.
 
 ```
-M=tools/multiclient/desktop-devtools-mcp.sh
+M=~/osrs-harness/bench/multiclient/desktop-devtools-mcp.sh
 $M --call tools/list                                  # 47 tools
 $M --tool get_client_state '{}'                       # gameState, worldX/worldY/plane, camera, ...
 $M --tool walk_to '{"x":3218,"y":3222,"plane":0}'
@@ -251,7 +251,7 @@ $M --tool screenshot '{}'                             # PNG (base64) of the canv
 
 ### Second instance (desktop2)
 
-`DESKTOP_INSTANCE=desktop2` (tools/multiclient/instance.sh) runs a second isolated client next to
+`DESKTOP_INSTANCE=desktop2` (~/osrs-harness/bench/multiclient/instance.sh) runs a second isolated client next to
 `desktop`, for two QA agents in parallel.
 
 | | desktop | desktop2 |
@@ -260,13 +260,13 @@ $M --tool screenshot '{}'                             # PNG (base64) of the canv
 | RSProx jav_config / proxy | 43600 / 43701 | 43620 / 43721 (`-Dosrstest.portskip=20`) |
 | devtools MCP | 7780 | 7781 (`openrunedevtools.port`, seeded by desktop-build.sh) |
 
-- Stage: `SKIP_RSPROX_BUILD=1 DESKTOP_INSTANCE=desktop2 tools/multiclient/desktop-build.sh` (copies
+- Stage: `SKIP_RSPROX_BUILD=1 DESKTOP_INSTANCE=desktop2 ~/osrs-harness/bench/multiclient/desktop-build.sh` (copies
   `C:\osrs-test\jdk` on first use). First start shows the terms screen: Accept at (302,311).
-- Every `desktop.sh` command takes the env: `DESKTOP_INSTANCE=desktop2 tools/multiclient/desktop.sh start|login|stop`
+- Every `desktop.sh` command takes the env: `DESKTOP_INSTANCE=desktop2 ~/osrs-harness/bench/multiclient/desktop.sh start|login|stop`
   (and `DESKTOP_TARGET_YAML=...` as usual). `stop` matches executables under `C:\osrs-test2` only; the
   two instances never match each other's processes.
 - No MCP server is registered for it. Drive it with the bridge as a CLI:
-  `DESKTOP_INSTANCE=desktop2 DESKTOP_DEVTOOLS_PORT=7781 tools/multiclient/desktop-devtools-mcp.sh --tool <name> '<json>'`,
+  `DESKTOP_INSTANCE=desktop2 DESKTOP_DEVTOOLS_PORT=7781 ~/osrs-harness/bench/multiclient/desktop-devtools-mcp.sh --tool <name> '<json>'`,
   or POST JSON-RPC to `http://127.0.0.1:7781/mcp` with Windows' `/mnt/c/Windows/System32/curl.exe`.
 - The new java.exe path can raise a Windows Firewall prompt on its first start; answer Cancel.
 
@@ -417,8 +417,8 @@ You need:
      The same checkout builds in Docker here (`re/rsprox`, `eclipse-temurin:11`, `./gradlew assemble`
      passes). The GUI itself has to run on Windows.
 2. **Add our server as a proxy target.**
-   - In WSL: `tools/multiclient/make_proxy_target.sh`. It rewrites
-     `tools/multiclient/proxy-targets.yaml` with the modulus the server serves.
+   - In WSL: `~/osrs-harness/bench/multiclient/make_proxy_target.sh`. It rewrites
+     `~/osrs-harness/bench/multiclient/proxy-targets.yaml` with the modulus the server serves.
    - Copy it into your RSProx folder (PowerShell):
      ```
      mkdir -Force $env:USERPROFILE\.rsprox
@@ -507,12 +507,12 @@ updates only to Android players, so use OpenRune for multi-client.
 | Path | What |
 |---|---|
 | `openrune/docker-compose.yml` | `http-desktop` service (`osrs-openrune-http-desktop`, :8082, world host 127.0.0.1) |
-| `tools/multiclient/desktop_login.py` | headless desktop login check |
-| `tools/multiclient/make_proxy_target.sh` | writes `proxy-targets.yaml` from the live `/rsa` |
-| `tools/multiclient/proxy-targets.yaml` | RSProx target "OpenRune Test" (rev 241.1, port 43594, RuneLite 1.13.2 pin) |
-| `tools/multiclient/desktop-build.sh` | builds RSProx + headless launcher (Docker) and stages the isolated `C:\osrs-test` home |
-| `tools/multiclient/desktop.sh` | start / login / relogin / status / log / logout / stop of the isolated desktop client |
-| `tools/multiclient/headless/OsrsTestLauncher.java` | headless RSProx session launcher with the OpenRune-only guard |
-| `tools/multiclient/headless/export-runtime.init.gradle.kts` | Gradle init script exporting RSProx's runtime classpath |
-| `tools/multiclient/desktop-devtools-mcp.sh`, `desktop_devtools_mcp.py` | MCP stdio bridge to the desktop Developer-Tools server (via Windows curl.exe) |
+| `~/osrs-harness/bench/multiclient/desktop_login.py` | headless desktop login check |
+| `~/osrs-harness/bench/multiclient/make_proxy_target.sh` | writes `proxy-targets.yaml` from the live `/rsa` |
+| `~/osrs-harness/bench/multiclient/proxy-targets.yaml` | RSProx target "OpenRune Test" (rev 241.1, port 43594, RuneLite 1.13.2 pin) |
+| `~/osrs-harness/bench/multiclient/desktop-build.sh` | builds RSProx + headless launcher (Docker) and stages the isolated `C:\osrs-test` home |
+| `~/osrs-harness/bench/multiclient/desktop.sh` | start / login / relogin / status / log / logout / stop of the isolated desktop client |
+| `~/osrs-harness/bench/multiclient/headless/OsrsTestLauncher.java` | headless RSProx session launcher with the OpenRune-only guard |
+| `~/osrs-harness/bench/multiclient/headless/export-runtime.init.gradle.kts` | Gradle init script exporting RSProx's runtime classpath |
+| `~/osrs-harness/bench/multiclient/desktop-devtools-mcp.sh`, `desktop_devtools_mcp.py` | MCP stdio bridge to the desktop Developer-Tools server (via Windows curl.exe) |
 | `re/rsprox` (git-ignored) | RSProx checkout (blurite/rsprox, MIT), builds in Docker with `eclipse-temurin:11` |

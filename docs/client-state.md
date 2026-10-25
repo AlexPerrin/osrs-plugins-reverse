@@ -121,7 +121,7 @@ cd49 (change hub-clue-steps-tier).
   failed to connect at session start, `python3 -I tools/devtools_mcp.py --call tools/call '{"name":...,"arguments":{}}'`
   reaches the same tools. adb.exe from WSL fails now and then (`UtilAcceptVsock accept4 failed 110`): retry in an
   `until` loop, or batch taps and `screencap -p /sdcard/...` in one `adb shell "..."` call.
-- Slot start/end: `tools/device-restore-check.sh pre <dir>` before touching anything, `check <dir>` at the end (OK/OFF per
+- Slot start/end: `~/osrs-harness/bench/device-restore-check.sh pre <dir>` before touching anything, `check <dir>` at the end (OK/OFF per
   item). Remove test jars and files by name, in a plain `adb shell rm` call of their own, never with wildcards. Hub plugins
   go on the device as the dexed `re/host/plugins-extra/hub-<name>.jar`, not `re/hub-build/<name>.jar` ("no
   plugin-classes.txt"). Back up with `adb exec-out cat` (`shell cat` adds CRLF). Don't use `tools/plugin-test.sh` for

@@ -3,8 +3,8 @@
 #   tools/release-dev.sh          build master, check it, tag v<VERSION>-dev.<N>, publish a GitHub pre-release
 #   tools/release-dev.sh --dry    the same build and checks, without tagging or publishing
 # VERSION (repo root) holds the next official version; N counts the dev builds of it (1, 2, ...).
-# Dev builds are automated (user, 2026-10-19); official releases vX.Y.Z go through client-qa's release gate
-# (qa/client-X.Y.Z.md, enforced by the harness's hooks/publish_gate.py). The checks here are machine checks only:
+# Dev builds are automated (user, 2026-10-19); official releases vX.Y.Z need the release gate record
+# qa/client-X.Y.Z.md (checked by the osrs-harness repo's hooks/publish_gate.py). The checks here are machine checks only:
 #   - master is clean and equal to origin/main (the build is of a pushed commit);
 #   - the repack log has all 7 `telemetry:` lines (patch_telemetry.py asserts exactly one match each);
 #   - the APKs carry no secrets or personal data (private keys, the server's RSA private exponent, the

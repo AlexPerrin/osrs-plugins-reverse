@@ -1,6 +1,6 @@
 # Desktop test instances (sourced by desktop.sh and desktop-build.sh). DESKTOP_INSTANCE picks one; the
 # default is `desktop`. Each has its own Windows dir (its own JDK copy, so `stop` matches only its
-# processes by executable path), user.home, RSProx ports and devtools port. Rows match tools/instances.tsv.
+# processes by executable path), user.home, RSProx ports and devtools port.
 #   name      dir            devtools  RSProx jav_config / proxy (OsrsTestLauncher -Dosrstest.portskip)
 #   desktop   C:\osrs-test   7780      43600 / 43701
 #   desktop2  C:\osrs-test2  7781      43620 / 43721

@@ -8,7 +8,7 @@ the response is written to stdout as one line. Notifications (202, no body) prin
 
 Enable on the device first: push the devtools plugin jar, `adb shell setprop debug.osrsrl.devtools 1`,
 restart the game (docs/plugin-host.md). Env: ADB, ANDROID_SERIAL (as tools/agent.py).
-  tools/devtools-mcp.sh                       # MCP stdio server (register in .mcp.json)
+  tools/devtools-mcp.sh                       # MCP stdio server (registered in the harness repo's .mcp.json)
   tools/devtools_mcp.py --call tools/list     # one request, for testing
 """
 import json

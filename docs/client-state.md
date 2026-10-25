@@ -2,7 +2,7 @@
 
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
-from this file). Tasks and blockers: `tools/harness/task.py list --track client`. Last rewrite: 2026-10-21, client dev
+from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-21, client dev
 cd49 (change hub-clue-steps-tier).
 
 ## What this is
@@ -37,8 +37,8 @@ cd49 (change hub-clue-steps-tier).
   (`re/harness/wt/<name>` has the symlink; a `.claude/worktrees/` one needs `ln -s /home/alex/osrs-plugins-reverse/re re`
   plus symlinks for `base.apk` and `split_config.arm64_v8a.apk`, which repack.sh reads from the repo root), then
   host/build.sh, `ninja -C re/build` (the main checkout's native/, same as master when it has no native edits) and
-  repack work as in the main checkout; MODULUS comes from `openrune/scripts/openrune.sh modulus` run in the main
-  checkout (openrune/ isn't checked out in the worktree; pipe through `tr -d '\n'`, don't truncate it). The worktree
+  repack work as in the main checkout; MODULUS comes from `$SERVER_TOOLS/scripts/openrune.sh modulus` (the fork's
+  local/server-tools; pipe through `tr -d '\n'`, don't truncate it). The worktree
   hook refuses shell commands that pass a runtime-computed value to a script: put the build in a script file under
   the session scratchpad and run that.
 - Plugins dir: the default 3 only (grounditems, opponentinfo, quest-helper). Tester LOGGED_IN at 3226,3215 (moved
@@ -117,9 +117,7 @@ cd49 (change hub-clue-steps-tier).
 
 ## Gotchas
 
-- Device: your task's `instance:` list is granted at dispatch; `tools/device-lock.sh take <your-name> "<what>"`, free when
-  done (status shows OVERDUE past the granted time). The osrs-devtools MCP drives the Android device, only under the
-  lock. It needs `devtools.jar` in plugins/ and `setprop debug.osrsrl.devtools 1` plus an app restart. If the MCP server
+- Device: start your own client (harness skill `test-instances`); no lock. The osrs-devtools MCP drives the Android device. It needs `devtools.jar` in plugins/ and `setprop debug.osrsrl.devtools 1` plus an app restart. If the MCP server
   failed to connect at session start, `python3 -I tools/devtools_mcp.py --call tools/call '{"name":...,"arguments":{}}'`
   reaches the same tools. adb.exe from WSL fails now and then (`UtilAcceptVsock accept4 failed 110`): retry in an
   `until` loop, or batch taps and `screencap -p /sdcard/...` in one `adb shell "..."` call.
@@ -131,7 +129,7 @@ cd49 (change hub-clue-steps-tier).
 - Login: screenshot first. Signed out: only "Sign in with Email / Username". After a force-stop the server often still
   holds the session: Play Now shows "Either your account is still logged in" -> wait ~30-60 s, "Try again" (958,668),
   Play Now (957,563). **Don't tap 958,668 blind**: on the Play Now screen it's "Sign out" (answer "No" at 1130,625).
-- Chat commands: devtools `type_chat` (or `server/tools/device.sh cmd`) submits only while the soft keyboard is shown once
+- Chat commands: devtools `type_chat` (or the fork's `tools/device.sh cmd`) submits only while the soft keyboard is shown once
   it has been opened in the session (gap 1); verify with `get_var varcstr 335` or a screenshot. Item spawn is
   `::item <id> <n>` (no `::obj`), `::openbank`, `::mypos`. **`get_chat_history` under-reports repeated lines**; confirm
   by screenshot.

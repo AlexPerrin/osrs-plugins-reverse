@@ -68,7 +68,7 @@ Milestones:
   on the game's script VM, which work under BlueStacks' ARM translation), 2026-10-16
 - [x] **Agent-drivable Android client:** OpenRune-Developer-Tools (MCP) runs inside the plugin host, so
   agents talk to NPCs, walk dialogue, click, walk and screenshot over an adb tunnel (`osrs-devtools`
-  in `.mcp.json`; device-loopback only, token, off by default), 2026-10-16
+  in the harness repo's `.mcp.json`; device-loopback only, token, off by default), 2026-10-16
 - [x] **All 53 core RuneLite plugins tracked run on Android** (the last were Emojis, Player Indicators and
   Clue Scroll; Loot Tracker records clue caskets via packet-ordered events), 2026-10-17
 - [ ] More plugins (region-dependent ones excluded): Status Bars, Chat History, InfoBox-based plugins

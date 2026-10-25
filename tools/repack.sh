@@ -3,8 +3,8 @@
 #   tools/repack.sh            -> re/out/{base,split}.apk, signed with re/debug.keystore
 #   tools/repack.sh --install  -> also replaces the app on the connected device
 #   SERVER=10.0.2.2:8080 tools/repack.sh
-#                              -> also points the game at the test server in server/ (config URLs +
-#                                 login RSA modulus from server/data/rsa.properties, or $MODULUS)
+#                              -> also points the game at the test server (config URLs +
+#                                 login RSA modulus from $SERVER_TOOLS/sidecar/data/rsa.properties, or $MODULUS)
 #   LOCAL_AUTH=1 SERVER=... tools/repack.sh
 #                              -> also lets the app sign in against the server's local OpenID
 #                                 provider (server LOCAL_AUTH=true) instead of a Jagex account
@@ -12,9 +12,9 @@
 #                              -> also patches the game port the client connects to (it ignores
 #                                 jav_config for that; tools/openrune/patch_port.py)
 #   OPENRUNE=1 LOCAL_AUTH=1 tools/repack.sh
-#                              -> the build for OpenRune (openrune/): SERVER=10.0.2.2:8080 (its
-#                                 jav_config sidecar), GAME_PORT=43594 and the modulus of
-#                                 openrune/src/.data/game.key, unless set explicitly
+#                              -> the build for OpenRune ($SERVER_TOOLS, the fork's local/server-tools):
+#                                 SERVER=10.0.2.2:8080 (its jav_config sidecar), GAME_PORT=43594 and
+#                                 the modulus from `$SERVER_TOOLS/scripts/openrune.sh modulus`, unless set explicitly
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)

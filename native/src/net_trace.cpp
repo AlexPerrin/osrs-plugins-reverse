@@ -1,6 +1,6 @@
 // Logs the game's outgoing connections and DNS lookups (logcat tag "osrsrl").
 // Enabled with `adb shell setprop debug.osrsrl.nettrace 1`; useful when pointing the client at
-// the test server in server/.
+// the test server.
 #include "net_trace.h"
 
 #include <arpa/inet.h>

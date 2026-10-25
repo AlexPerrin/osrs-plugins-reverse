@@ -59,8 +59,8 @@ final class Native {
     static native Object[] connection();
     /** Writes the SERVER_TICK_END count serverTick() reads; game thread only. */
     static native boolean setServerTick(int tick);
-    /** Client int fields by index (game.cpp kClientInts): ORB_STATE, ORB_X, ORB_Y. Set: game thread only. */
-    static final int ORB_STATE = 0, ORB_X = 1, ORB_Y = 2;
+    /** Client int fields by index (game.cpp kClientInts): ORB_STATE, ORB_X, ORB_Y, CHAT_CYCLE, CHANGED_SKILL_COUNT. Set: game thread only. */
+    static final int ORB_STATE = 0, ORB_X = 1, ORB_Y = 2, CHAT_CYCLE = 3, CHANGED_SKILL_COUNT = 4;
     static native int clientInt(int which);
     static native boolean setClientInt(int which, int value);
     /** Music volume 0-255 (Client +0x2f58); set applies it to the playing songs; game thread only. */
@@ -179,6 +179,8 @@ final class Native {
     static native void setHiddenActors(int[] npcs, int[] players);
     /** GE item search results: ids (null = keep), count / index (Integer.MIN_VALUE = keep). Client thread only. */
     static native boolean setGeSearch(short[] ids, int count, int index);
+    /** {count, index, ids...} of the GE search results the setters write; game thread only, else null. */
+    static native int[] geSearch();
     /** Minimap dot style of category 0-6: sets it when thickness >= 0, returns {styled, dot rgb, outline rgb, thickness} (null if unavailable). Client thread only. */
     static native int[] minimapDot(int cat, int dot, int outline, int thickness);
     /** Turns the script VM callbacks (Host.onScript) on or off. */

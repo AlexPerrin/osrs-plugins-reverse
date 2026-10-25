@@ -30,8 +30,8 @@ done
 # back into the game yet; the bag stores them instead of throwing.
 java -cp "$API" "$ROOT/host/gen/GenStub.java" net.runelite.api.widgets.Widget net.runelite.host WidgetBag --bag \
     > "$OUT/gen/net/runelite/host/WidgetBag.java"
-# Models aren't read from the game yet; plugins that build fake objects get inert bags.
-for iface in ModelData Model worldmap.WorldMap worldmap.WorldMapData; do
+# The world map isn't read from the game yet; plugins get inert bags.
+for iface in worldmap.WorldMap worldmap.WorldMapData; do
     name=${iface##*.}
     java -cp "$API" "$ROOT/host/gen/GenStub.java" net.runelite.api.$iface net.runelite.host ${name}Bag --bag \
         > "$OUT/gen/net/runelite/host/${name}Bag.java"

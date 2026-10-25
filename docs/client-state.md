@@ -3,7 +3,7 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-25, client dev
-client-api-probe-1 (change client-api-probe).
+client-api-model-1 (change client-api-model).
 
 ## What this is
 
@@ -48,8 +48,11 @@ client-api-probe-1 (change client-api-probe).
   reason is the evidence). Setters: altered value, read back, restored. The `native` column comes from
   `host/gen/NativeCalls.java` (host methods reaching `Native.*`), which host/build.sh writes into host.jar as
   `api-native.txt` beside `osrsrl-build.txt` (`git describe` of the host build, the report's `# build:`). The probe
-  stays loaded until the app restarts (unregistered); it adds one chat line "api-probe: addChatMessage". 2026-10-25 at
-  this change's head: 60.9% (765/1256), same on two runs.
+  stays loaded until the app restarts (unregistered); it adds one chat line "api-probe: addChatMessage". Model rows run
+  on the live NPC's first model (`loadModel`/`loadModelData` of its composition's model id; model 0 isn't in OpenRune's
+  cache) and `applyTransformations` on that NPC's idle sequence (evidence: vertices moved); `Mesh.scale` uses 128 (1:1)
+  so the live model keeps its geometry for the Model rows. 2026-10-25: 60.9% (765/1256) at aba2ced, 66.3% (833/1256)
+  after client-api-model (every Model/Mesh/ModelData/AABB row and applyTransformations pass, no pass lost).
 - `THIRD_PARTY_NOTICES.md` (repo root) covers everything third-party in libosrsrl.so and host.jar (Dear ImGui + stb +
   ProggyClean, the RuneLite client subset/API/http-api, host/build.sh's Maven jars, the client jar's shaders and
   CC-licensed fonts); the rest of the APK is Jagex's app. Releases attach it (`tools/release-dev.sh`). **Update it when
@@ -85,6 +88,14 @@ client-api-probe-1 (change client-api-probe).
   resource-packs-repository) predates gen 40; leave it.
 
 ## Host behaviour worth knowing (details in docs/plugin-host.md rows)
+
+- **Models**: `Client.loadModelData` decodes through the game's model store (`game::model_data`, a fresh ModelData per
+  call, null if the model isn't loaded); `AndroidModelData.light` runs the game's normal and colour passes in Java;
+  `loadModel` = loadModelData + recolours + light(64, 768, -50, -10, -50). Actor models (`NPC/Player.getModel`) are
+  read from vtable slot 0 with alpha, textures, priorities and texture triangles (`game.cpp pack_mesh`). Bounds and
+  `getAABB` use the game's formulas (diameter has the game's extra +1). `applyTransformations` re-lights the model id
+  natively, writes the Java vertices in, poses with the game's animate (classic sequences only; skeletal or an
+  out-of-range frame gives null) and copies the scratch result. `drawFrustum`/`drawOrtho` draw nothing.
 
 - **Menus**: `PostMenuSort` (presort) and `MenuOpened` both run in a menu session (`AndroidMenu.beginSession`); afterwards
   `AndroidMenu.applyOrder` writes text edits back and sends a permutation or subset of the game's entries to
@@ -153,7 +164,7 @@ client-api-probe-1 (change client-api-probe).
   reaches the same tools. adb.exe from WSL fails now and then (`UtilAcceptVsock accept4 failed 110`): retry in an
   `until` loop, or batch taps and `screencap -p /sdcard/...` in one `adb shell "..."` call.
 - Own Android instance without a second BlueStacks: BlueStacks has only Pie64 (the user's, adb 127.0.0.1:5555, shown as
-  emulator-5554); the AVD above with `-read-only -port 5590` (adb `emulator-5590`, 2400x1080 landscape in game) is a
+  emulator-5554); the AVD above with `-read-only -port <free even port>` (adb `emulator-<port>`, 2400x1080 landscape in game) is a
   separate instance with its own app data, gone when it stops. Fresh each boot: `adb install` the single APK, `pm grant`
   Chrome, push the default jars, then "Sign in with Email / Username" (1200,640), Accept (1026,668), Chrome "Stay signed
   out" (540,2087, portrait), the privacy X (2310,165), Play Now (1197,540); it signs in as tester.
@@ -193,7 +204,11 @@ client-api-probe-1 (change client-api-probe).
   it after an invalid one, so rows shift: screenshot the menu before tapping (gen 44 withdrew all bank coins by tapping a
   shifted row). Valuable drops ask "Really put it down?". Untradeables have Destroy (coal bag and fish barrel work). `::tele` within the same zone posts no LOADING.
 - Ground Item Sounds writes 3.6 MB of wavs to `.runelite/plugin-data/ground-item-sounds` on first start.
-- Builds: host/build.sh + `ninja -C re/build` + repack (no docker). Any build container goes through
+- Builds: host/build.sh + `ninja -C re/build` + repack (no docker). A worktree with native/ edits needs its own `re/`
+  (not the symlink): symlink every entry of the main `re/` except `host`, `build`, `out`, copy `host/plugins-extra`,
+  and configure `re/build` with cmake from the worktree's native/ (NDK r27d toolchain, arm64-v8a, android-26, Ninja);
+  the default plugin jars are in the main `re/host/plugins/`. repack still edits the shared `re/apk/base` smali (same
+  idempotent patch). Any build container goes through
   `tools/buildq.sh` (not gradle.lock). Every APK goes through `tools/repack.sh` (7 `telemetry:` lines).
 - Network QA only when a build can change network behaviour (list in app-telemetry.md); any new outbound host: stop and
   report at once.

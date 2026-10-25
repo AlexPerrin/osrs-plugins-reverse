@@ -66,8 +66,12 @@ final class Native {
     static native int runEnergy();
     /** {height, x0, y0, z0, ...}: an NPC's or player's posed model this frame (unrotated); client thread only. */
     static native int[] actorModel(boolean player, int index);
-    /** Posed mesh {height, n, f, colourFlag, x[n], y[n], z[n], a[f], b[f], c[f], (colours1/2/3[f])}; client thread only. */
+    /** Posed model, packed as game.cpp pack_mesh (AndroidModel parses it); client thread only. */
     static native int[] actorMesh(boolean player, int index);
+    /** Model id's ModelData from the game's model store, packed as actorMesh; null if not loaded; client thread only. */
+    static native int[] modelData(int id);
+    /** Model id lit, its vertices set to xyz {x[n], y[n], z[n]}, posed by sequence a/b (b -1: none); packed as actorMesh; null if not possible. */
+    static native int[] poseModel(int id, int[] xyz, int seqA, int frameA, int seqB, int frameB);
     /** Posed model height (desktop Model.height), -1 if unknown or off the game thread. */
     static native int actorHeight(boolean player, int index);
     /** Font <img=N> table: meta 7 ints per icon {gameIndex (-1 = custom), w, h, ox, oy, fullW, fullH}. */

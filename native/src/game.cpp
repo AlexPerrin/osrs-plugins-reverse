@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include <sys/system_properties.h>
 #include <unistd.h>
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
@@ -108,6 +109,12 @@ struct Build {
     // AnimationState::setSequence(state*, seq id); -1 clears it. A graphics object's state is at +0x280,
     // and the per-cycle walk (0x455f24) drops objects whose state has no sequence (+0x288 == 0).
     uintptr_t seq_set;
+    // Model store: shared_ptr<ModelData> load(holder, group = model id, file 0) (x8 result; ObjType::getModel
+    // 0x63f1e8 calls it with x0 = *(*GOT 0xa83dd8)); a fresh ModelData per call (decoder 0x720c4c).
+    uintptr_t model_store, model_store_got;
+    // shared_ptr<SeqType> getSeqType(int id) (x8, as getObjType); animate(out x8 {ctrl, Model*}, AnimReq*)
+    // (NpcType::getModel 0x6380d8 fills the request; the result is one global scratch Model).
+    uintptr_t get_seq_type, animate;
 };
 
 constexpr Build kBuilds[] = {
@@ -125,7 +132,9 @@ constexpr Build kBuilds[] = {
      0x72b758, 0x1d2f52d, 0x1d7ddf0,
      0x18e2130, 0x3f0a04,
      0x413d64, 0x413de4,
-     0x659274},
+     0x659274,
+     0x71d824, 0xa83dd8,
+     0x6447a0, 0x6325cc},
 };
 
 constexpr const char* kGameLib = "liblibs.hal.system.osclient.so";
@@ -2411,54 +2420,188 @@ bool append_model(uintptr_t renderable, int dx, int dz, std::vector<int32_t>& xy
     return ok;
 }
 
-// Mesh of a posed model for Model.getVertices*/getFaceIndices*/getFaceColors*: {height, vertex
-// count n, face count f, colour flag, x[n], y[n], z[n], a[f], b[f], c[f], colours1[f], colours2[f],
-// colours3[f]} (colour arrays only when the flag is 1). Faces: +0x70 count, +0x88/+0xa0/+0xb8 int*
-// vertex indices. Lit face colours: +0xd0/+0xe8/+0x100 int* (written by the light pass 0x72aea4 from
-// the ModelData's 16-bit HSL colours; colours3 = -1 for a flat face, -2 for a hidden one, as desktop's
-// Model.getFaceColors1/2/3).
+// Packed mesh of a game Model (lit) or ModelData (unlit), for the host's AndroidModel/AndroidModelData:
+// {height, n, f, flags, t, priority, singleTile, x[n], y[n], z[n], a[f], b[f], c[f], then for each flag bit
+// set, in order: 1 lit colours 1/2/3 [3f], 2 unlit HSL colours [f], 4 render types [f], 8 priorities [f],
+// 16 alpha [f], 32 textures [f] (-1 none), 64 texture coords [f] (-1 none), 128 texture triangle types [t];
+// then P/M/N [3t] when t > 0}. Both share the Mesh layout (x/y/z int* +0x38/+0x50/+0x68, faces int* +0x88/
+// +0xa0/+0xb8, face count +0x70); optional arrays are shared_ptr {ctrl, obj} with obj {?, u64 count +8,
+// data +0x10}, null when absent. Model (light 0x72a520): vertex count +0x20, lit colours int* +0xd0/+0xe8/
+// +0x100 (colours3 -1 flat, -2 hidden), priorities +0x110, alpha +0x120, texture coords +0x130, textures
+// +0x140, priority byte +0x158, texture triangles +0x15c with P/M/N int* +0x170/+0x188/+0x1a0, height +0x18,
+// single-tile +0x1d. ModelData (decoder 0x720c4c): vertex count +0x24, render types +0xc8, priorities
+// +0xd8, alpha +0xe8, texture coords +0xf8, colours (short) +0x108, textures +0x118, priority byte +0x140,
+// texture triangles +0x144 with types byte* +0x158 and P/M/N u16* +0x170/+0x188/+0x1a0.
+struct MeshLayout {
+    uint32_t n, types, prio, alpha, coords, unlit, tex, priority, t, tri_types;
+    bool model;
+};
+constexpr MeshLayout kModel{0x20, 0, 0x110, 0x120, 0x130, 0, 0x140, 0x158, 0x15c, 0, true};
+constexpr MeshLayout kModelData{0x24, 0xc8, 0xd8, 0xe8, 0xf8, 0x108, 0x118, 0x140, 0x144, 0x158, false};
+
+// data* of an optional array with at least `count` elements, else null.
+template <typename T>
+const T* opt_array(uintptr_t m, uint32_t off, int count) {
+    if (!off) return nullptr;
+    uintptr_t obj = read_at<uintptr_t>(m + off);
+    if (!obj || read_at<uint64_t>(obj + 8) < static_cast<uint64_t>(count)) return nullptr;
+    return read_at<const T*>(obj + 0x10);
+}
+
+template <typename T>
+void put(std::vector<int32_t>& out, const T* p, int n) {
+    for (int i = 0; i < n; i++) out.push_back(static_cast<int32_t>(p[i]));
+}
+
+bool pack_mesh(uintptr_t m, const MeshLayout& L, std::vector<int32_t>& out) {
+    out.clear();
+    int n = read_at<int32_t>(m + L.n), f = read_at<int32_t>(m + 0x70);
+    int t = read_at<int32_t>(m + L.t);
+    auto xs = read_at<const int32_t*>(m + 0x38), ys = read_at<const int32_t*>(m + 0x50), zs = read_at<const int32_t*>(m + 0x68);
+    auto fa = read_at<const int32_t*>(m + 0x88), fb = read_at<const int32_t*>(m + 0xa0), fc = read_at<const int32_t*>(m + 0xb8);
+    if (n <= 0 || n >= 20000 || f < 0 || f >= 40000 || !xs || !ys || !zs || (f > 0 && (!fa || !fb || !fc))) return false;
+    if (t < 0 || t > 4096) t = 0;
+    const int32_t *c1 = nullptr, *c2 = nullptr, *c3 = nullptr;
+    if (L.model && f > 0) {
+        c1 = read_at<const int32_t*>(m + 0xd0), c2 = read_at<const int32_t*>(m + 0xe8), c3 = read_at<const int32_t*>(m + 0x100);
+        if (!c1 || !c2 || !c3) c1 = c2 = c3 = nullptr;
+    }
+    auto unlit = opt_array<int16_t>(m, L.unlit, f);
+    auto types = opt_array<uint8_t>(m, L.types, f);
+    auto prio = opt_array<uint8_t>(m, L.prio, f);
+    auto alpha = opt_array<int8_t>(m, L.alpha, f);
+    auto tex = opt_array<int16_t>(m, L.tex, f);
+    auto coords = opt_array<int8_t>(m, L.coords, f);
+    const uint8_t* tri_types = L.tri_types && t > 0 ? read_at<const uint8_t*>(m + L.tri_types) : nullptr;
+    const int32_t *pm = nullptr, *mm = nullptr, *nm = nullptr;      // Model: int
+    const uint16_t *pd = nullptr, *md = nullptr, *nd = nullptr;     // ModelData: u16
+    if (t > 0) {
+        if (L.model) pm = read_at<const int32_t*>(m + 0x170), mm = read_at<const int32_t*>(m + 0x188), nm = read_at<const int32_t*>(m + 0x1a0);
+        else pd = read_at<const uint16_t*>(m + 0x170), md = read_at<const uint16_t*>(m + 0x188), nd = read_at<const uint16_t*>(m + 0x1a0);
+        if (L.model ? !(pm && mm && nm) : !(pd && md && nd)) t = 0;
+    }
+    int flags = (c1 ? 1 : 0) | (unlit ? 2 : 0) | (types ? 4 : 0) | (prio ? 8 : 0) | (alpha ? 16 : 0) | (tex ? 32 : 0) |
+                (coords ? 64 : 0) | (tri_types && t > 0 ? 128 : 0);
+    out.reserve(7 + 3 * static_cast<size_t>(n) + 12 * static_cast<size_t>(f) + 4 * static_cast<size_t>(t));
+    out.push_back(L.model ? read_at<int32_t>(m + 0x18) : 0);
+    out.push_back(n);
+    out.push_back(f);
+    out.push_back(flags);
+    out.push_back(t);
+    out.push_back(read_at<int8_t>(m + L.priority));
+    out.push_back(L.model ? read_at<uint8_t>(m + 0x1d) : 0);
+    out.insert(out.end(), xs, xs + n);
+    out.insert(out.end(), ys, ys + n);
+    out.insert(out.end(), zs, zs + n);
+    for (auto arr : {fa, fb, fc}) out.insert(out.end(), arr, arr + f);
+    // A face index outside the vertex range would make the Java side throw: reject the model.
+    for (size_t i = 7 + 3 * static_cast<size_t>(n), e = i + 3 * static_cast<size_t>(f); i < e; i++)
+        if (out[i] < 0 || out[i] >= n) { out.clear(); return false; }
+    if (c1)
+        for (auto arr : {c1, c2, c3}) out.insert(out.end(), arr, arr + f);
+    if (unlit) put(out, unlit, f);
+    if (types) put(out, types, f);
+    if (prio) put(out, prio, f);
+    if (alpha) put(out, alpha, f);
+    if (tex) put(out, tex, f);
+    if (coords) put(out, coords, f);
+    if (flags & 128) put(out, tri_types, t);
+    if (t > 0) {
+        if (L.model) for (auto arr : {pm, mm, nm}) put(out, arr, t);
+        else for (auto arr : {pd, md, nd}) put(out, arr, t);
+    }
+    return true;
+}
+
+struct ModelSp {
+    uintptr_t ctrl, obj;
+    ~ModelSp() {}  // non-trivial: returned through x8, as the game's shared_ptr
+};
+
+// The posed model of an actor this frame (Renderable vtable slot 0), packed by pack_mesh.
 bool read_mesh(uintptr_t renderable, std::vector<int32_t>& out) {
     out.clear();
     if (!renderable) return false;
     uintptr_t vt = read_at<uintptr_t>(renderable);
     if (!vt) return false;
-    struct SharedPtr {
-        uintptr_t ctrl, obj;
-        ~SharedPtr() {}
-    };
-    auto fn = reinterpret_cast<SharedPtr (*)(uintptr_t, int)>(read_at<uintptr_t>(vt));
+    auto fn = reinterpret_cast<ModelSp (*)(uintptr_t, int)>(read_at<uintptr_t>(vt));
     g_own_model_call = true;
-    SharedPtr r = fn(renderable, cycle());
+    ModelSp r = fn(renderable, cycle());
     g_own_model_call = false;
-    uintptr_t ctrl = r.ctrl, m = r.obj;
-    if (!m) { release_shared(ctrl); return false; }
-    int n = read_at<int32_t>(m + 0x20), f = read_at<int32_t>(m + 0x70);
-    auto xs = read_at<const int32_t*>(m + 0x38), ys = read_at<const int32_t*>(m + 0x50), zs = read_at<const int32_t*>(m + 0x68);
-    auto fa = read_at<const int32_t*>(m + 0x88), fb = read_at<const int32_t*>(m + 0xa0), fc = read_at<const int32_t*>(m + 0xb8);
-    auto c1 = read_at<const int32_t*>(m + 0xd0), c2 = read_at<const int32_t*>(m + 0xe8), c3 = read_at<const int32_t*>(m + 0x100);
-    bool ok = n > 0 && n < 20000 && f >= 0 && f < 40000 && xs && ys && zs && (f == 0 || (fa && fb && fc));
-    if (ok) {
-        bool colours = f > 0 && c1 && c2 && c3;
-        out.reserve(4 + 3 * static_cast<size_t>(n) + (colours ? 6 : 3) * static_cast<size_t>(f));
-        out.push_back(read_at<int32_t>(m + 0x18));
-        out.push_back(n);
-        out.push_back(f);
-        out.push_back(colours ? 1 : 0);
-        out.insert(out.end(), xs, xs + n);
-        out.insert(out.end(), ys, ys + n);
-        out.insert(out.end(), zs, zs + n);
-        for (auto arr : {fa, fb, fc}) out.insert(out.end(), arr, arr + f);
-        if (colours)
-            for (auto arr : {c1, c2, c3}) out.insert(out.end(), arr, arr + f);
-        // A face index outside the vertex range would make the Java side throw: reject the model.
-        for (size_t i = 4 + 3 * static_cast<size_t>(n), e = i + 3 * static_cast<size_t>(f); i < e; i++)
-            if (out[i] < 0 || out[i] >= n) { ok = false; break; }
-    }
-    release_shared(ctrl);
-    if (!ok) out.clear();
+    bool ok = r.obj && pack_mesh(r.obj, kModel, out);
+    release_shared(r.ctrl);
     return ok;
 }
 }  // namespace
+
+namespace {
+ModelSp load_model_data(int id) {
+    ModelSp none{0, 0};
+    if (!g_build || !g_build->model_store || id < 0 || id > 0xffff) return none;
+    uintptr_t got = read_at<uintptr_t>(g_base + g_build->model_store_got);
+    uintptr_t holder = got ? read_at<uintptr_t>(got) : 0;
+    if (!holder) return none;
+    return reinterpret_cast<ModelSp (*)(uintptr_t, int, int)>(g_base + g_build->model_store)(holder, id, 0);
+}
+
+// A classic-frame SeqType (+4 skeletal id < 0) with `frame` inside its frame ids (plain array: count +0x48,
+// data +0x50 = frameSet << 16 | frame), else null: the game indexes the frames unchecked.
+ModelSp seq_frame(int id, int frame) {
+    ModelSp none{0, 0};
+    if (id < 0 || frame < 0 || !g_build->get_seq_type) return none;
+    ModelSp s = reinterpret_cast<ModelSp (*)(int)>(g_base + g_build->get_seq_type)(id);
+    if (!s.obj) { release_shared(s.ctrl); return none; }
+    uint64_t frames = read_at<uint64_t>(s.obj + 0x48);
+    if (read_at<int32_t>(s.obj + 4) >= 0 || !read_at<uintptr_t>(s.obj + 0x50) || frames > 10000 ||
+        static_cast<uint64_t>(frame) >= frames) {
+        release_shared(s.ctrl);
+        return none;
+    }
+    return s;
+}
+}  // namespace
+
+bool pose_model(int id, const std::vector<int32_t>& xyz, int seq_a, int frame_a, int seq_b, int frame_b, std::vector<int32_t>& out) {
+    out.clear();
+    if (!g_build || !g_build->animate) return false;
+    ModelSp md = load_model_data(id);
+    if (!md.obj) { release_shared(md.ctrl); return false; }
+    // ModelData vtable slot 0x70: light(out x8, this, ambient, contrast, x, y, z) -> a fresh lit Model.
+    auto light = reinterpret_cast<ModelSp (*)(uintptr_t, int, int, int, int, int)>(read_at<uintptr_t>(read_at<uintptr_t>(md.obj) + 0x70));
+    ModelSp lit = light(md.obj, 64, 768, -50, -10, -50);
+    ModelSp a = seq_frame(seq_a, frame_a), b = seq_frame(seq_b, frame_b);
+    bool ok = false;
+    int n = lit.obj ? read_at<int32_t>(lit.obj + 0x20) : 0;
+    if (lit.obj && a.obj && n > 0 && xyz.size() == static_cast<size_t>(n) * 3) {
+        // The caller's vertices (its translate/rotate/scale) replace the store's before posing.
+        auto xs = read_at<int32_t*>(lit.obj + 0x38), ys = read_at<int32_t*>(lit.obj + 0x50), zs = read_at<int32_t*>(lit.obj + 0x68);
+        for (int i = 0; i < n; i++) { xs[i] = xyz[i]; ys[i] = xyz[n + i]; zs[i] = xyz[2 * n + i]; }
+        struct AnimReq {
+            uintptr_t model_data, model;
+            int32_t rotate, pad0;
+            uintptr_t seq_a;
+            int32_t frame_a, pad1;
+            uintptr_t seq_b;
+            int32_t frame_b, ambient, contrast, x, y, z;
+        } req{md.obj, lit.obj, 0, 0, a.obj, frame_a, 0, b.obj, b.obj ? frame_b : -1, 64, 768, -50, -10, -50};
+        static_assert(offsetof(AnimReq, seq_a) == 0x18 && offsetof(AnimReq, frame_b) == 0x30 && offsetof(AnimReq, z) == 0x44);
+        ModelSp posed = reinterpret_cast<ModelSp (*)(AnimReq*)>(g_base + g_build->animate)(&req);
+        ok = posed.obj && pack_mesh(posed.obj, kModel, out);  // the scratch Model: packed before anything reuses it
+        release_shared(posed.ctrl);
+    }
+    release_shared(b.ctrl);
+    release_shared(a.ctrl);
+    release_shared(lit.ctrl);
+    release_shared(md.ctrl);
+    return ok;
+}
+
+bool model_data(int id, std::vector<int32_t>& out) {
+    out.clear();
+    ModelSp r = load_model_data(id);
+    bool ok = r.obj && pack_mesh(r.obj, kModelData, out);
+    return ok;
+}
 
 bool actor_mesh(uintptr_t actor, std::vector<int32_t>& out) { return read_mesh(actor, out); }
 

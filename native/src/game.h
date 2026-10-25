@@ -332,6 +332,14 @@ bool actor_model(uintptr_t actor, std::vector<int32_t>& xyz, int& height);
 // Full posed mesh (vertices, faces, lit face colours) of an Npc/Player; layout in game.cpp
 // read_mesh. Game thread only.
 bool actor_mesh(uintptr_t actor, std::vector<int32_t>& out);
+// Model id's ModelData from the game's model store (a fresh decode), packed as actor_mesh (game.cpp
+// pack_mesh); false if the model isn't loaded. Game thread only.
+bool model_data(int id, std::vector<int32_t>& out);
+// Client.applyTransformations: model id lit with the defaults, its vertices replaced by xyz (x[n], y[n], z[n]),
+// posed by classic-frame sequence a at frame_a (and b at frame_b, -1 for none) through the game's animate;
+// packed as actor_mesh. False for an unloaded model, a vertex count other than n, or a frame out of range.
+// Game thread only.
+bool pose_model(int id, const std::vector<int32_t>& xyz, int seq_a, int frame_a, int seq_b, int frame_b, std::vector<int32_t>& out);
 // The posed model's height (max -y over its vertices, as the desktop Model.height that
 // Actor.getLogicalHeight reports), or -1. Game thread only.
 int actor_height(uintptr_t actor);

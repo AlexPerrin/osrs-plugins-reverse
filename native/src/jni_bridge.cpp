@@ -214,6 +214,26 @@ jintArray n_actor_mesh(JNIEnv* env, jclass, jboolean player, jint index) {
     env->SetIntArrayRegion(arr, 0, static_cast<jsize>(mesh.size()), mesh.data());
     return arr;
 }
+// Model id's ModelData from the game's model store (layout: game.cpp pack_mesh); null if not loaded.
+jintArray n_model_data(JNIEnv* env, jclass, jint id) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    std::vector<int32_t> mesh;
+    if (!game::model_data(id, mesh)) return nullptr;
+    jintArray arr = env->NewIntArray(static_cast<jsize>(mesh.size()));
+    env->SetIntArrayRegion(arr, 0, static_cast<jsize>(mesh.size()), mesh.data());
+    return arr;
+}
+// Client.applyTransformations (game.cpp pose_model); null if it can't be posed.
+jintArray n_pose_model(JNIEnv* env, jclass, jint id, jintArray xyz, jint seqA, jint frameA, jint seqB, jint frameB) {
+    if (!client_thread::on_client_thread() || !xyz) return nullptr;
+    std::vector<int32_t> v(static_cast<size_t>(env->GetArrayLength(xyz)));
+    env->GetIntArrayRegion(xyz, 0, static_cast<jsize>(v.size()), v.data());
+    std::vector<int32_t> mesh;
+    if (!game::pose_model(id, v, seqA, frameA, seqB, frameB, mesh)) return nullptr;
+    jintArray arr = env->NewIntArray(static_cast<jsize>(mesh.size()));
+    env->SetIntArrayRegion(arr, 0, static_cast<jsize>(mesh.size()), mesh.data());
+    return arr;
+}
 // meta: 7 ints per icon {gameIndex, w, h, ox, oy, fullW, fullH}; pixels/palettes null for game icons.
 void n_set_mod_icons(JNIEnv* env, jclass, jintArray meta, jobjectArray pixels, jobjectArray palettes) {
     if (!meta) return;
@@ -1703,6 +1723,8 @@ const JNINativeMethod kNatives[] = {
     {"runEnergy", "()I", reinterpret_cast<void*>(n_run_energy)},
     {"actorModel", "(ZI)[I", reinterpret_cast<void*>(n_actor_model)},
     {"actorMesh", "(ZI)[I", reinterpret_cast<void*>(n_actor_mesh)},
+    {"modelData", "(I)[I", reinterpret_cast<void*>(n_model_data)},
+    {"poseModel", "(I[IIIII)[I", reinterpret_cast<void*>(n_pose_model)},
     {"actorHeight", "(ZI)I", reinterpret_cast<void*>(n_actor_height)},
     {"setModIcons", "([I[[B[[I)V", reinterpret_cast<void*>(n_set_mod_icons)},
     {"modIconSizes", "()[I", reinterpret_cast<void*>(n_mod_icon_sizes)},

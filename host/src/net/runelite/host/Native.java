@@ -267,6 +267,10 @@ final class Native {
     static native boolean reloadScene();
     /** Removes the top-level scene tile's ground decoration with the game's remover; client thread only. */
     static native boolean removeGroundObject(int plane, int x, int y);
+    /** Scene terrain data (game::scene_terrain: what 0 scene fields, 1 tile paint, 2 tile model, 3/4/5 map underlays/overlays/shapes, 6 skybox), or null. Client thread. */
+    static native int[] sceneTerrain(int what, int plane, int x, int y);
+    /** what 0: scene field (0 draw distance, 1 min level); 1: field of the tile paint at ptr (0 sw .. 3 nw, 4 texture, 5 rgb). Client thread. */
+    static native boolean sceneSet(int what, int plane, int x, int y, long ptr, int field, int value);
     /** Ambient (loc) sounds: per entry obj low, obj high, sound id, plane, n, n background ids; client thread. */
     static native int[] ambientSounds();
     /** Projectiles (Client +0xcb30 list): 27 ints each, layout in jni_bridge.cpp n_projectiles; client thread. */

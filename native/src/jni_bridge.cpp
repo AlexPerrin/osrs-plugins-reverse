@@ -1028,6 +1028,18 @@ bool require_client_thread(JNIEnv* env, const char* what);
 jboolean n_remove_ground_object(JNIEnv* env, jclass, jint plane, jint x, jint y) {
     return require_client_thread(env, "removeGroundObject") && game::remove_ground_decoration(plane, x, y);
 }
+// game::scene_terrain's packing, or null.
+jintArray n_scene_terrain(JNIEnv* env, jclass, jint what, jint plane, jint x, jint y) {
+    if (!require_client_thread(env, "sceneTerrain")) return nullptr;
+    std::vector<int32_t> v;
+    if (!game::scene_terrain(what, plane, x, y, v)) return nullptr;
+    jintArray arr = env->NewIntArray(static_cast<jsize>(v.size()));
+    if (arr) env->SetIntArrayRegion(arr, 0, static_cast<jsize>(v.size()), v.data());
+    return arr;
+}
+jboolean n_scene_set(JNIEnv* env, jclass, jint what, jint plane, jint x, jint y, jlong ptr, jint field, jint value) {
+    return require_client_thread(env, "sceneSet") && game::scene_set(what, plane, x, y, static_cast<uint64_t>(ptr), field, value);
+}
 // Per ambient sound: obj low, obj high, sound id, plane, n, n background ids.
 jintArray n_ambient_sounds(JNIEnv* env, jclass) {
     if (!require_client_thread(env, "ambientSounds")) return nullptr;
@@ -1657,6 +1669,8 @@ const JNINativeMethod kNatives[] = {
     {"endTargetMode", "()Z", reinterpret_cast<void*>(n_end_target_mode)},
     {"reloadScene", "()Z", reinterpret_cast<void*>(n_reload_scene)},
     {"removeGroundObject", "(III)Z", reinterpret_cast<void*>(n_remove_ground_object)},
+    {"sceneTerrain", "(IIII)[I", reinterpret_cast<void*>(n_scene_terrain)},
+    {"sceneSet", "(IIIIJII)Z", reinterpret_cast<void*>(n_scene_set)},
     {"ambientSounds", "()[I", reinterpret_cast<void*>(n_ambient_sounds)},
     {"projectiles", "()[I", reinterpret_cast<void*>(n_projectiles)},
     {"graphicsObjects", "()[I", reinterpret_cast<void*>(n_graphics_objects)},

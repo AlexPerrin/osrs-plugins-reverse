@@ -61,6 +61,17 @@ bool reload_scene();
 // removal list when the renderer flag 0x1d7ddc0 is set, and frees the object. Top-level scene,
 // game thread only; false when there is no tile or no ground decoration there.
 bool remove_ground_decoration(int plane, int x, int y);
+// Scene terrain (docs/offsets.md "Scene terrain"), top-level scene, game thread only; false when
+// unreadable. what: 0 scene fields {draw distance, min level, tint (hue | sat << 8 | lum << 16 |
+// amount << 24)}; 1 tile paint {ptr lo, ptr hi, sw, se, ne, nw, texture, rgb, flat};
+// 2 tile model {ptr lo, ptr hi, shape, rotation, underlay rgb, overlay rgb, texture, overlay mask,
+// vertices, faces, (x, height, y) per vertex, (a, b, c) per face, (colour a, b, c) per face};
+// 3/4/5 map underlay ids / overlay ids / shapes {planes, size x, size y, [plane][x][y] values};
+// 6 the skybox model packed as pack_mesh does.
+bool scene_terrain(int what, int plane, int x, int y, std::vector<int32_t>& out);
+// what 0: scene field `field` (0 draw distance, 1 min level) = value; 1: paint field `field`
+// (0 sw, 1 se, 2 ne, 3 nw, 4 texture, 5 rgb) of the tile's paint, when it is still `ptr`.
+bool scene_set(int what, int plane, int x, int y, uint64_t ptr, int field, int value);
 // Actor overhead text (+0x2d8, assigned with the game's string assign 0x3f1498) and its timer
 // (+0x2f4, ticks left). `text` null keeps the string. Game thread only.
 bool actor_set_overhead(uintptr_t actor, const std::string* text, int cycle);

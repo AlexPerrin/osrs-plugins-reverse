@@ -21,6 +21,7 @@
 
 namespace game {
 void install_message_hook();
+void install_scene_load_hook();
 namespace {
 
 // Offsets are ELF virtual addresses (as in readelf/objdump; Ghidra shows them +0x100000)
@@ -197,6 +198,7 @@ bool init() {
             g_build = &b;
             LOGI("game: build %s recognised", b.name);
             install_message_hook();
+            install_scene_load_hook();
             return true;
         }
     }
@@ -3293,6 +3295,123 @@ bool remove_ground_decoration(int plane, int x, int y) {
     if (!tile || !read_at<uintptr_t>(tile + 0x118)) return false;
     reinterpret_cast<void (*)(uintptr_t, int, int, int)>(g_base + 0x6dca24)(scene, plane, x, y);
     return read_at<uintptr_t>(tile + 0x118) == 0;
+}
+
+// Scene terrain (docs/offsets.md "Scene terrain"): scene fields, tile paint/model, the loader's
+// map arrays and the skybox.
+namespace {
+uintptr_t top_scene() {
+    uintptr_t wv = top_world_view();
+    return wv ? read_at<uintptr_t>(wv + 0x10) : 0;
+}
+
+uintptr_t scene_tile(uintptr_t scene, int plane, int x, int y) {
+    int planes = read_at<int32_t>(scene + 0x944), sx = read_at<int32_t>(scene + 0x948), sy = read_at<int32_t>(scene + 0x94c);
+    uintptr_t slots = read_at<uintptr_t>(scene + 0x968);
+    if (!slots || plane < 0 || plane >= planes || x < 0 || x >= sx || y < 0 || y >= sy) return 0;
+    return read_at<uintptr_t>(slots + ((static_cast<size_t>(plane) * sx + x) * sy + y) * 0x10 + 8);
+}
+
+// The loader frees the map arrays after the build, so they are copied whenever it builds a plane
+// of the top-level scene (0x70d30c(scene, map data, ..., plane); map data 0x1d10e78).
+constexpr uintptr_t kSceneLoad = 0x70d30c, kMapData = 0x1d10e78;
+constexpr uint32_t kSceneLoadCode[4] = {0xd106c3ff, 0x6d1423e9, 0xa9157bfd, 0xa9166ffc};
+using SceneLoadFn = void (*)(uintptr_t, uintptr_t, uint64_t, int, int, int);
+SceneLoadFn g_scene_load = nullptr;
+std::vector<int32_t> g_map[3];  // {planes, size x, size y, values}
+
+template <typename T>
+void copy_map(int which, std::vector<int32_t>& out) {
+    uintptr_t d = g_base + kMapData + static_cast<uintptr_t>(which) * 0x20;
+    auto data = read_at<const T*>(d + 0x10);
+    int sx = read_at<uint8_t>(d + 0x18), sy = read_at<uint8_t>(d + 0x19);
+    if (!data || sx < 1 || sy < 1) return;
+    out = {4, sx, sy};
+    out.insert(out.end(), data, data + 4 * static_cast<size_t>(sx) * sy);
+}
+
+void hook_scene_load(uintptr_t scene, uintptr_t map, uint64_t a, int b, int c, int plane) {
+    if (map == g_base + kMapData && scene == top_scene()) {
+        copy_map<uint16_t>(0, g_map[0]);
+        copy_map<uint16_t>(1, g_map[1]);
+        copy_map<uint8_t>(2, g_map[2]);
+    }
+    if (plane == 0) LOGI("scene load: map arrays %s (%zu values)", map == g_base + kMapData && scene == top_scene() ? "copied" : "skipped", g_map[0].size());
+    g_scene_load(scene, map, a, b, c, plane);
+}
+
+void push_ptr(std::vector<int32_t>& out, uintptr_t p) {
+    out.push_back(static_cast<int32_t>(p & 0xffffffff));
+    out.push_back(static_cast<int32_t>(static_cast<uint64_t>(p) >> 32));
+}
+}  // namespace
+
+bool scene_terrain(int what, int plane, int x, int y, std::vector<int32_t>& out) {
+    out.clear();
+    uintptr_t scene = top_scene();
+    if (!scene) return false;
+    switch (what) {
+    case 0:
+        out = {read_at<int32_t>(scene + 0x8e0), read_at<int32_t>(scene + 0x54d54), read_at<int32_t>(scene + 0x2f0)};
+        return true;
+    case 1: {
+        uintptr_t t = scene_tile(scene, plane, x, y), p = t ? read_at<uintptr_t>(t + 0x128) : 0;
+        if (!p) return false;
+        push_ptr(out, p);
+        for (int off = 0; off <= 0x14; off += 4) out.push_back(read_at<int32_t>(p + off));
+        out.push_back(read_at<uint8_t>(p + 0x18));
+        return true;
+    }
+    case 2: {
+        uintptr_t t = scene_tile(scene, plane, x, y), m = t ? read_at<uintptr_t>(t + 0x130) : 0;
+        if (!m) return false;
+        auto vb = read_at<const int32_t*>(m + 0x8), ve = read_at<const int32_t*>(m + 0x10);
+        auto cb = read_at<const int32_t*>(m + 0x38), ce = read_at<const int32_t*>(m + 0x40);
+        auto fb = read_at<const int32_t*>(m + 0x50), fe = read_at<const int32_t*>(m + 0x58);
+        if (!vb || !fb || !cb) return false;
+        size_t nv = (ve - vb) / 3, nf = (fe - fb) / 3;
+        if (nv > 64 || nf > 64 || static_cast<size_t>(ce - cb) != 3 * nf) return false;
+        push_ptr(out, m);
+        for (int off = 0x6c; off <= 0x7c; off += 4) out.push_back(read_at<int32_t>(m + off));  // shape..texture
+        out.push_back(read_at<int32_t>(m + 0x68));
+        out.push_back(static_cast<int32_t>(nv));
+        out.push_back(static_cast<int32_t>(nf));
+        out.insert(out.end(), vb, vb + 3 * nv);
+        out.insert(out.end(), fb, fb + 3 * nf);
+        out.insert(out.end(), cb, cb + 3 * nf);
+        for (size_t i = 10 + 3 * nv, e = i + 3 * nf; i < e; i++)
+            if (out[i] < 0 || static_cast<size_t>(out[i]) >= nv) { out.clear(); return false; }
+        return true;
+    }
+    case 3: case 4: case 5:
+        out = g_map[what - 3];
+        return !out.empty();
+    case 6: {
+        uintptr_t m = read_at<uintptr_t>(scene + 0x54dc8);
+        // Only a static Model (vptr 0xa778f0) has the layout pack_mesh reads.
+        return m && read_at<uintptr_t>(m) == g_base + 0xa778f0 && pack_mesh(m, kModel, out);
+    }
+    default: return false;
+    }
+}
+
+void install_scene_load_hook() {
+    g_scene_load = reinterpret_cast<SceneLoadFn>(inline_hook(g_base + kSceneLoad, kSceneLoadCode, reinterpret_cast<void*>(hook_scene_load)));
+    LOGI("game: scene load hook %s", g_scene_load ? "installed" : "FAILED");
+}
+
+bool scene_set(int what, int plane, int x, int y, uint64_t ptr, int field, int value) {
+    uintptr_t scene = top_scene();
+    if (!scene) return false;
+    if (what == 0 && (field == 0 || field == 1)) {
+        *reinterpret_cast<volatile int32_t*>(scene + (field == 0 ? 0x8e0 : 0x54d54)) = value;
+        return true;
+    }
+    if (what != 1 || field < 0 || field > 5) return false;
+    uintptr_t t = scene_tile(scene, plane, x, y), p = t ? read_at<uintptr_t>(t + 0x128) : 0;
+    if (!p || p != ptr) return false;
+    *reinterpret_cast<volatile int32_t*>(p + 4 * field) = value;
+    return true;
 }
 
 // Projectiles: Client +0xcb30 is a std::list (libc++: node {next, prev, ctrl, Projectile*}; header

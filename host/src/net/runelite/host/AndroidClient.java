@@ -19,6 +19,10 @@ public class AndroidClient extends ClientStub {
         return id == WorldView.TOPLEVEL || id == -1 ? getTopLevelWorldView() : null;
     }
 
+    @Override public net.runelite.api.SceneTilePaint createSceneTilePaint(int sw, int se, int ne, int nw, int texture, int rgb, boolean flat) {
+        return new AndroidScene.TilePaint(0, 0, 0, 0, sw, se, ne, nw, texture, rgb, flat);
+    }
+
     /**
      * Never null, as in RuneLite: plugins (QH's minimap overlay) call getPlane()/isInstance() on it
      * before login. Its accessors fall back to zeros/empty sets while no scene is loaded.

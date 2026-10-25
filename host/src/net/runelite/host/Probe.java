@@ -275,6 +275,30 @@ final class Probe {
                     Log.i(TAG, "set text " + a[1] + " '" + before + "' -> '" + w.getText() + "' type " + w.getType());
                     break;
                 }
+                case "terrain": {  // "terrain <scene x> <scene y>": that tile's terrain on the current plane, and the scene's
+                    net.runelite.api.Scene s = c.getTopLevelWorldView().getScene();
+                    int z = c.getTopLevelWorldView().getPlane(), y = Integer.parseInt(a[2].trim());
+                    short[][][] u = s.getUnderlayIds(), o = s.getOverlayIds();
+                    byte[][][] sh = s.getTileShapes();
+                    net.runelite.api.Tile t = s.getTiles()[z][id][y];
+                    net.runelite.api.SceneTilePaint p = t.getSceneTilePaint();
+                    net.runelite.api.SceneTileModel m = t.getSceneTileModel();
+                    int paints = 0, models = 0;
+                    for (net.runelite.api.Tile[] col : s.getTiles()[z]) for (net.runelite.api.Tile k : col) {
+                        if (k.getSceneTilePaint() != null) paints++;
+                        if (k.getSceneTileModel() != null) models++;
+                    }
+                    Log.i(TAG, "terrain " + t.getWorldLocation() + " underlay " + (u == null ? "?" : u[z][id][y]) + " overlay " + (o == null ? "?" : o[z][id][y])
+                            + " shape " + (sh == null ? "?" : sh[z][id][y]) + " paint " + (p == null ? null : "sw/se/ne/nw " + p.getSwColor() + "/" + p.getSeColor() + "/" + p.getNeColor() + "/" + p.getNwColor()
+                            + " texture " + p.getTexture() + " rgb " + Integer.toHexString(p.getRBG()) + " flat " + p.isFlat())
+                            + " model " + (m == null ? null : "shape " + m.getShape() + " rotation " + m.getRotation() + " underlay/overlay rgb " + Integer.toHexString(m.getModelUnderlay()) + "/" + Integer.toHexString(m.getModelOverlay())
+                            + " vertices x " + java.util.Arrays.toString(m.getVertexX()) + " y " + java.util.Arrays.toString(m.getVertexY()) + " z " + java.util.Arrays.toString(m.getVertexZ())
+                            + " faces " + java.util.Arrays.toString(m.getFaceX()) + java.util.Arrays.toString(m.getFaceY()) + java.util.Arrays.toString(m.getFaceZ())
+                            + " textures " + java.util.Arrays.toString(m.getTriangleTextureId()))
+                            + "; plane " + z + ": " + paints + " paints, " + models + " models; draw distance " + s.getDrawDistance() + " min level " + s.getMinLevel()
+                            + " tint " + s.getOverrideHue() + "/" + s.getOverrideSaturation() + "/" + s.getOverrideLuminance() + "/" + s.getOverrideAmount() + " skybox " + s.getSkybox());
+                    break;
+                }
                 case "iparam": {  // "iparam <item id> <param>": item param as int and string
                     int key = Integer.parseInt(a[2]);
                     if (key < 0) {  // -1: list every param 0..4095 the item has

@@ -3,7 +3,7 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-25, client dev
-client-api-model-1 (change client-api-model).
+client-api-scene-tile-1 (change client-api-scene-tile).
 
 ## What this is
 
@@ -52,7 +52,10 @@ client-api-model-1 (change client-api-model).
   on the live NPC's first model (`loadModel`/`loadModelData` of its composition's model id; model 0 isn't in OpenRune's
   cache) and `applyTransformations` on that NPC's idle sequence (evidence: vertices moved); `Mesh.scale` uses 128 (1:1)
   so the live model keeps its geometry for the Model rows. 2026-10-25: 60.9% (765/1256) at aba2ced, 66.3% (833/1256)
-  after client-api-model (every Model/Mesh/ModelData/AABB row and applyTransformations pass, no pass lost).
+  after client-api-model (every Model/Mesh/ModelData/AABB row and applyTransformations pass, no pass lost), 70.8%
+  (889/1256) after client-api-scene-tile (Scene terrain, Tile paint/model, createSceneTilePaint and every
+  SceneTilePaint/SceneTileModel row pass, no pass lost). Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs
+  that tile's underlay/overlay/shape, paint and model and the scene's draw distance, min level, tint and skybox.
 - `THIRD_PARTY_NOTICES.md` (repo root) covers everything third-party in libosrsrl.so and host.jar (Dear ImGui + stb +
   ProggyClean, the RuneLite client subset/API/http-api, host/build.sh's Maven jars, the client jar's shaders and
   CC-licensed fonts); the rest of the APK is Jagex's app. Releases attach it (`tools/release-dev.sh`). **Update it when
@@ -96,6 +99,13 @@ client-api-model-1 (change client-api-model).
   `getAABB` use the game's formulas (diameter has the game's extra +1). `applyTransformations` re-lights the model id
   natively, writes the Java vertices in, poses with the game's animate (classic sequences only; skeletal or an
   out-of-range frame gives null) and copies the scratch result. `drawFrustum`/`drawOrtho` draw nothing.
+
+- **Scene terrain**: `Scene` draw distance/min level/tint/skybox and `Tile.getSceneTilePaint/getSceneTileModel` read the
+  game's scene on the client thread (docs/offsets.md "Scene terrain"; the last value off it, setters only on it).
+  Underlay/overlay ids and tile shapes are raw map values ([plane][104][104], overlay shape = value + 1 as desktop),
+  copied by a hook on the scene loader `0x70d30c` because the game frees them after the build (logcat
+  `scene load: map arrays copied (43267 values)` per rebuild). SceneTilePaint colour/texture setters write the game's
+  paint; `Tile.setSceneTilePaint/Model` accept only the tile's own (the game owns them).
 
 - **Menus**: `PostMenuSort` (presort) and `MenuOpened` both run in a menu session (`AndroidMenu.beginSession`); afterwards
   `AndroidMenu.applyOrder` writes text edits back and sends a permutation or subset of the game's entries to

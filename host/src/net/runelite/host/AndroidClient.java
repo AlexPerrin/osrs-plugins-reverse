@@ -19,6 +19,10 @@ public class AndroidClient extends ClientStub {
         return id == WorldView.TOPLEVEL || id == -1 ? getTopLevelWorldView() : null;
     }
 
+    @Override public net.runelite.api.SceneTilePaint createSceneTilePaint(int sw, int se, int ne, int nw, int texture, int rgb, boolean flat) {
+        return new AndroidScene.TilePaint(0, 0, 0, 0, sw, se, ne, nw, texture, rgb, flat);
+    }
+
     /**
      * Never null, as in RuneLite: plugins (QH's minimap overlay) call getPlane()/isInstance() on it
      * before login. Its accessors fall back to zeros/empty sets while no scene is loaded.
@@ -521,18 +525,27 @@ public class AndroidClient extends ClientStub {
         return AndroidObjectComposition.lookup(id);
     }
 
-    // --- models: not read from the game; inert placeholders so fake-object code runs (nothing is drawn) ---
+    // --- models: decoded by the game's model store (AndroidModelData), lit in Java (AndroidModel) ---
 
-    static final class InertModelData extends ModelDataBag {
-        @Override public net.runelite.api.Model light() { return new ModelBag(); }
-        @Override public net.runelite.api.Model light(int a, int b, int c, int d, int e) { return new ModelBag(); }
+    @Override public net.runelite.api.ModelData loadModelData(int id) { return AndroidModelData.load(id); }
+    @Override public net.runelite.api.ModelData mergeModels(net.runelite.api.ModelData... m) { return AndroidModelData.merge(m, m.length); }
+    @Override public net.runelite.api.ModelData mergeModels(net.runelite.api.ModelData[] m, int n) { return AndroidModelData.merge(m, n); }
+    @Override public net.runelite.api.Model loadModel(int id) { return loadModel(id, null, null); }
+
+    @Override public net.runelite.api.Model applyTransformations(net.runelite.api.Model m, net.runelite.api.Animation a, int fa, net.runelite.api.Animation b, int fb) {
+        return m instanceof AndroidModel ? ((AndroidModel) m).transformed(a, fa, b, fb) : null;
     }
 
-    @Override public net.runelite.api.ModelData loadModelData(int id) { return new InertModelData(); }
-    @Override public net.runelite.api.ModelData mergeModels(net.runelite.api.ModelData... m) { return new InertModelData(); }
-    @Override public net.runelite.api.ModelData mergeModels(net.runelite.api.ModelData[] m, int n) { return new InertModelData(); }
-    @Override public net.runelite.api.Model loadModel(int id) { return new ModelBag(); }
-    @Override public net.runelite.api.Model loadModel(int id, short[] a, short[] b) { return new ModelBag(); }
+    /** Desktop's loadModel: the ModelData, recoloured find[i] -> replace[i], lit with the defaults; null if not loaded. */
+    @Override public net.runelite.api.Model loadModel(int id, short[] find, short[] replace) {
+        net.runelite.api.ModelData md = loadModelData(id);
+        if (md == null) return null;
+        if (find != null && replace != null) {
+            md = md.cloneColors();
+            for (int i = 0; i < Math.min(find.length, replace.length); i++) md.recolor(find[i], replace[i]);
+        }
+        return md.light();
+    }
     @Override public net.runelite.api.RuneLiteObject createRuneLiteObject() { return new net.runelite.api.RuneLiteObject(this); }
     // RuneLiteObjects (Quest Helper's fake NPCs): registration is tracked so isActive() answers as on
     // desktop, but nothing is drawn (no scene renderables are injected; orchestrator decision, gen 28).

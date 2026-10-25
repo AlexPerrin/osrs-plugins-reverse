@@ -66,8 +66,12 @@ final class Native {
     static native int runEnergy();
     /** {height, x0, y0, z0, ...}: an NPC's or player's posed model this frame (unrotated); client thread only. */
     static native int[] actorModel(boolean player, int index);
-    /** Posed mesh {height, n, f, colourFlag, x[n], y[n], z[n], a[f], b[f], c[f], (colours1/2/3[f])}; client thread only. */
+    /** Posed model, packed as game.cpp pack_mesh (AndroidModel parses it); client thread only. */
     static native int[] actorMesh(boolean player, int index);
+    /** Model id's ModelData from the game's model store, packed as actorMesh; null if not loaded; client thread only. */
+    static native int[] modelData(int id);
+    /** Model id lit, its vertices set to xyz {x[n], y[n], z[n]}, posed by sequence a/b (b -1: none); packed as actorMesh; null if not possible. */
+    static native int[] poseModel(int id, int[] xyz, int seqA, int frameA, int seqB, int frameB);
     /** Posed model height (desktop Model.height), -1 if unknown or off the game thread. */
     static native int actorHeight(boolean player, int index);
     /** Font <img=N> table: meta 7 ints per icon {gameIndex (-1 = custom), w, h, ox, oy, fullW, fullH}. */
@@ -274,6 +278,10 @@ final class Native {
     static native boolean reloadScene();
     /** Removes the top-level scene tile's ground decoration with the game's remover; client thread only. */
     static native boolean removeGroundObject(int plane, int x, int y);
+    /** Scene terrain data (game::scene_terrain: what 0 scene fields, 1 tile paint, 2 tile model, 3/4/5 map underlays/overlays/shapes, 6 skybox), or null. Client thread. */
+    static native int[] sceneTerrain(int what, int plane, int x, int y);
+    /** what 0: scene field (0 draw distance, 1 min level); 1: field of the tile paint at ptr (0 sw .. 3 nw, 4 texture, 5 rgb). Client thread. */
+    static native boolean sceneSet(int what, int plane, int x, int y, long ptr, int field, int value);
     /** Ambient (loc) sounds: per entry obj low, obj high, sound id, plane, n, n background ids; client thread. */
     static native int[] ambientSounds();
     /** Projectiles (Client +0xcb30 list): 27 ints each, layout in jni_bridge.cpp n_projectiles; client thread. */

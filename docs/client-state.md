@@ -3,7 +3,7 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-25, client dev
-client-api-actor-anim-2 (change client-api-actor-anim).
+client-api-actor-anim-3 (change client-api-actor-anim).
 
 ## What this is
 
@@ -59,7 +59,7 @@ client-api-actor-anim-2 (change client-api-actor-anim).
   cache, index and config row listed in that change passes, no pass lost; the probe checks `NodeCache.reset` and
   `resetHealthBarCaches` by the game cache's entry count, the IndexDataBase rows on the first group with files, and seeds
   NpcOverrides from any NPC that has one; host objects that override toString describe themselves in the evidence. The
-  health bar check needs a health bar seen first (attack anything): with an empty cache it reads `0 -> 0`. After client-api-actor-anim (report and diff in its evidence dir): the Actor
+  health bar check needs a health bar seen first (attack anything): with an empty cache it reads `0 -> 0`. After client-api-actor-anim, 81.4% (1023/1256, every pass of main's and the branch's reports kept; report and diff in its evidence dir): the Actor
   animation/pose/spot anim setters, Player.setSkullIcon, Renderable/Node on actors and every ActorSpotAnim row pass,
   no pass lost; the probe adds spot anim 199 with a 10000-cycle delay in slot 7 for the ActorSpotAnim rows and removes
   it at the end. Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs

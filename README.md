@@ -141,40 +141,51 @@ installed for play.
 
 ## Requirements and install
 
-**Current state: there is no current download.** The latest release, `v0.1.1`, lists no files. The older release
-`v0.1.0` lists a two-file split APK (`base` and `split`) and the notices file; that is the previous packaging, built
-before the build changed, and this README does not document it. The universal APK is a new output of the build. A release
-that attaches it, together with `THIRD_PARTY_NOTICES.md`, is planned (the `client-single-apk` change; see
-[Status and roadmap](#status-and-roadmap)). Until then, build the APK yourself (see
-[Building from source](#building-from-source)). This README does not link a download.
+**Download.** The release page is [releases/latest](https://github.com/AlexPerrin/osrs-plugins-reverse/releases/latest).
+A release of this project carries two files and the sha256 of each in its notes: **one universal APK** and
+`THIRD_PARTY_NOTICES.md`. Check the APK against the sha256 on the release page before you install it. At the time of
+writing the newest published release, `v0.1.1`, lists no files and `v0.1.0` lists the older two-file split APK; a
+release that attaches the single APK is planned (see [Status and roadmap](#status-and-roadmap)). Until the release
+you open lists one APK, build it yourself (see [Building from source](#building-from-source)).
 
-Requirements for the build as it works today:
+**What the APK is.** It is Jagex's Old School RuneScape Android app (build 241.4), repacked by this project: the
+official app's code, resources and game library are inside it, next to this project's native library
+(`libosrsrl.so`), its plugin host (`host.jar`) and the licence notices (also embedded as
+`assets/THIRD_PARTY_NOTICES.md`). The Jagex content in it is not covered by this project's licence (see
+Legal and safety below). The release ships no plugins.
 
-- **The official OSRS Android app, build 241.4**, as `base.apk` and `split_config.arm64_v8a.apk` in the repository
-  root. You supply these from an app you are entitled to use; they are not in this repository and are not
-  provided (`*.apk` is git-ignored).
+Requirements:
+
+- **A 64-bit ARM Android environment (arm64-v8a only).** The native library is arm64-v8a only: a 64-bit ARM phone or an
+  emulator with ARM translation. Development devices: BlueStacks (Pie 64, Android 9) and, for the release gate, an
+  Android Studio emulator (x86_64 with arm64 translation). Android 9 (API 28) is the lowest tested; a real phone has
+  not been tested.
 - **An OpenRune-compatible test server** that speaks the Android (revision 241) protocol and a local sign-in
   provider. The one used in development is OpenRune-Server with this project's Android support (the fork's
-  `local/server-tools` branch); upstream OpenRune does not provide the Android protocol on its own. The build points
-  the game at `10.0.2.2:43594` (game) and `10.0.2.2:8080` (config), which is the Android emulator's alias for the
-  host machine's loopback. On a phone or another address the config host must be changed at repack time (`SERVER=`).
-- **An arm64 Android environment.** The native library is arm64-v8a only. Development devices: BlueStacks (Pie 64,
-  Android 9) and, for the release gate, an Android Studio emulator (x86_64 with arm64 translation). Android 9
-  (API 28) is the lowest tested.
-- No Jagex account is needed: the test server is also the sign-in provider ("Sign in with Email / Username").
+  `local/server-tools` branch); upstream OpenRune does not provide the Android protocol on its own. The APK from a
+  test server build points the game at `10.0.2.2:43594` (game) and `10.0.2.2:8080` (config), which is the Android
+  emulator's alias for the host machine's loopback; on a phone or another address the config host has to be set at
+  repack time (`SERVER=`), so build it yourself. The APK cannot sign in to Jagex: the test server is also the sign-in
+  provider ("Sign in with Email / Username"), and no Jagex account is needed.
+- **The official app uninstalled first.** The APK has the same package name as the official app
+  (`com.jagex.oldscape.android`) but a different signing key, so Android refuses to install it over the official app
+  (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`, observed on 2026-10-24). Uninstall the official app first; **its data is
+  deleted** with it. Installing this APK replaces the official app on that device.
 
-Install of a built APK (one universal APK, with `adb`):
+Install, with one `adb` command (or sideload the same file by any other means):
 
 ```
-adb install re/out/osrs-runelite.apk
+adb install osrs-runelite.apk
 ```
 
-- The repacked app has the same package name as the official app (`com.jagex.oldscape.android`) but a different
-  signing key. If the official app is installed, `adb install` fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`
-  (observed on 2026-10-24) and you have to uninstall the official app first, which deletes its data.
-- **No plugins load from the APK alone.** The host loads plugin jars from
-  `/sdcard/Android/data/com.jagex.oldscape.android/files/plugins/`. Push the jars you want there with `adb push`,
-  restart the app, and sign in. Building the jars is described in [Building from source](#building-from-source).
+(Use the file name from the release page; a locally built APK is `re/out/osrs-runelite.apk`.)
+
+**Plugins.** The APK alone loads no plugins. The host loads plugin jars from
+`/sdcard/Android/data/com.jagex.oldscape.android/files/plugins/` on the device, and no release attaches any jar. Build
+the jars you want (see [Building from source](#building-from-source)), push them there with `adb push`, restart the
+app, and sign in. Plugin Hub plugins keep their authors' licences, listed under Licences and credits below.
+
+**Demo video.** Coming. It is not recorded yet and nothing here links to it.
 
 ## What this is not
 
@@ -183,7 +194,7 @@ adb install re/out/osrs-runelite.apk
   RuneLite's plugin code against a re-implementation of part of RuneLite's API.
 - **Not complete.** About three quarters of the API interfaces it backs are implemented, and the GPU plugin and 117 HD
   do not run (both are feasibility studies only).
-- **Not a product.** There is no installer, no download, no update channel and no support, and any build can break
+- **Not a product.** There is no installer, no update channel and no support, and any build can break
   when the game updates. The offsets are specific to build 241.4.
 - **Not a Jagex mod or a tool that the game accepts.** It changes the official app. Nothing here is approved by
   Jagex.
@@ -194,15 +205,17 @@ adb install re/out/osrs-runelite.apk
 
 - **No affiliation.** This project is not affiliated with, endorsed by, sponsored by or approved by Jagex Ltd or by
   RuneLite or its maintainers.
-- **Trademarks.** Old School RuneScape and RuneScape are trademarks of Jagex Ltd. RuneLite is the name of an
-  independent open source project. They are used here only to say what this project works with.
+- **Trademarks.** Old School RuneScape and RuneScape are trademarks of Jagex Ltd; the trademarks and the app
+  are Jagex's. RuneLite is the name of an independent open source project. The names are used here only to say what
+  this project works with.
 - **What the licence covers, and what it does not.** This repository's own code (`native/`, `host/`, `tools/`) is
-  under the ISC licence ([LICENSE](LICENSE)). The repository does not contain Jagex's app. **A built APK does**: it
-  is the official app (its code, resources and the game library) plus our additions. That app and its content are
-  Jagex's property and **are not covered** by this project's licence, by the licences listed in
-  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), or by anything else in this repository; nothing here grants any right
-  to them. The notices file says the same. Whether a built APK may be redistributed is a question for Jagex's
-  terms, not something this project can grant.
+  under the ISC licence ([LICENSE](LICENSE)). The repository does not contain Jagex's app. **The APK that the release
+  ships does**: it contains Jagex's Old School RuneScape app (its code, resources and the game library) plus our
+  additions. That app and its content are Jagex's property and **are not covered** by this project's ISC licence, by
+  the licences listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), or by anything else in this repository;
+  nothing here grants any right to them. The notices file says the same. Whether that content may be redistributed
+  is a question for Jagex's terms, not something this project can grant, and this project does not claim that it
+  may.
 - **Use on Jagex's servers is not what this is for, and it may break their rules.** The build connects to a test
   server, not to Jagex. Jagex's rules restrict third-party clients and modifications of its app, and a modified
   client logging in to an official server can put the account at risk, up to a ban. This project does not

@@ -311,6 +311,11 @@ public class AndroidWorldView extends WorldViewStub {
         };
     }
 
+    @Override public net.runelite.api.Projectile createProjectile(int id, int plane, int startX, int startY, int startZ, int startCycle, int endCycle,
+            int slope, int startHeight, int endHeight, net.runelite.api.Actor target, int targetX, int targetY) {
+        return Host.client().createProjectile(id, plane, startX, startY, startZ, startCycle, endCycle, slope, startHeight, endHeight, target, targetX, targetY);
+    }
+
     /** The top-level view's map spotanims (Client.getGraphicsObjects). */
     @Override public net.runelite.api.Deque<net.runelite.api.GraphicsObject> getGraphicsObjects() {
         return Host.client().getGraphicsObjects();

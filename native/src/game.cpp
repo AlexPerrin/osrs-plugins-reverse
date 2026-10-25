@@ -4158,6 +4158,22 @@ bool projectile_set_end_cycle(uintptr_t obj, int cycle) {
     return false;
 }
 
+// PROJANIM_SPECIFIC's tail (0x4467cc): make_shared 0x46e490(&sp, &struct) (sp = {ctrl, obj}, ctor
+// 0x477b14), list push_back 0x46e5d4(Client + 0xcb30, &sp) (copies sp, ref + 1), release 0x46e64c(ctrl).
+uintptr_t projectile_create(const int32_t (&s)[15]) {
+    uintptr_t c = client();
+    if (!c || game_state() != 30) return 0;
+    alignas(16) int32_t st[16] = {};
+    memcpy(st, s, sizeof s);
+    alignas(16) uintptr_t sp[2] = {0, 0};
+    reinterpret_cast<void (*)(uintptr_t*, const int32_t*)>(g_base + 0x46e490)(sp, st);
+    if (!sp[0]) return 0;
+    reinterpret_cast<void (*)(uintptr_t, uintptr_t*)>(g_base + 0x46e5d4)(c + 0xcb30, sp);
+    uintptr_t obj = sp[1];
+    reinterpret_cast<void (*)(uintptr_t)>(g_base + 0x46e64c)(sp[0]);
+    return obj;
+}
+
 namespace {
 constexpr uint32_t kAmbientLive = 0xb78, kAmbientPending = 0xb90;
 }  // namespace

@@ -161,12 +161,14 @@ public class ApiProbePlugin extends Plugin {
         if (done || client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null) return;
         try {
             if (!seeded) { seed(); seeded = true; return; }
+            if (byIface.containsKey(API + "PendingLogin") && client.getFriendContainer() != null)  // notices live ~5 s
+                for (net.runelite.api.PendingLogin l : client.getFriendContainer().getPendingLogins()) { live.putIfAbsent(net.runelite.api.PendingLogin.class, l); break; }
             runLater();
             for (int n = 0; n < ROWS_PER_TICK; n++) {
                 if (current == null || !current.hasNext()) {
                     current = null;
                     if (!next()) {
-                        if (later.isEmpty() && !awaitingHitsplat()) finish();
+                        if (later.isEmpty() && !awaitingHitsplat() && !awaited()) finish();
                         return;
                     }
                     continue;
@@ -197,6 +199,34 @@ public class ApiProbePlugin extends Plugin {
     @Subscribe
     public void onGraphicsObjectCreated(GraphicsObjectCreated e) {
         if (!done && e.getGraphicsObject() != null) live.putIfAbsent(net.runelite.api.GraphicsObject.class, e.getGraphicsObject());
+    }
+
+    // A health bar type as the game first uses it, and the script a callback runs in (only as their own interface).
+    @Subscribe
+    public void onPostHealthBarConfig(net.runelite.api.events.PostHealthBarConfig e) {
+        if (!done && e.getHealthBarConfig() != null) live.putIfAbsent(net.runelite.api.HealthBarConfig.class, e.getHealthBarConfig());
+    }
+
+    @Subscribe
+    public void onScriptCallbackEvent(net.runelite.api.events.ScriptCallbackEvent e) {
+        if (!done && e.getScript() != null) live.putIfAbsent(net.runelite.api.Script.class, e.getScript());
+    }
+
+    /**
+     * Interfaces the run set-up makes live while the probe runs, named in `debug.osrsrl.probewait` (comma-separated
+     * simple names, e.g. "PendingLogin,Script": a friend logs in, a tab with a callback script opens): the probe ends
+     * only once each has an instance.
+     */
+    private boolean awaited() {
+        String w;
+        try {
+            w = (String) host("Native", "property", new Class<?>[] {String.class}, "debug.osrsrl.probewait");
+        } catch (Exception e) {
+            return false;
+        }
+        if (w == null) return false;
+        for (String t : w.split(",")) if (!t.trim().isEmpty() && byIface.containsKey(API + t.trim())) return true;
+        return false;
     }
 
     /** In combat (the local player interacting with someone) and no hitsplat seen yet: the next one is on its way. */
@@ -333,6 +363,17 @@ public class ApiProbePlugin extends Plugin {
                 }
             }
         }
+        // An animated loc (DynamicObject, only as its own interface): the first scene object renderable that is one.
+        for (Tile[] col : tiles[plane])
+            for (Tile tile : col) {
+                if (tile == null || live.containsKey(net.runelite.api.DynamicObject.class)) continue;
+                List<Object> rs = new ArrayList<>();
+                for (net.runelite.api.GameObject g : tile.getGameObjects()) if (g != null) rs.add(g.getRenderable());
+                if (tile.getWallObject() != null) { rs.add(tile.getWallObject().getRenderable1()); rs.add(tile.getWallObject().getRenderable2()); }
+                if (tile.getDecorativeObject() != null) { rs.add(tile.getDecorativeObject().getRenderable()); rs.add(tile.getDecorativeObject().getRenderable2()); }
+                if (tile.getGroundObject() != null) rs.add(tile.getGroundObject().getRenderable());
+                for (Object r : rs) if (r instanceof net.runelite.api.DynamicObject) { live.put(net.runelite.api.DynamicObject.class, r); break; }
+            }
     }
 
     private static Object font(Widget[] ws, int depth) {
@@ -842,6 +883,27 @@ public class ApiProbePlugin extends Plugin {
             r.fillRectangle(0, 0, 20, 20, 0xffffff);
             return new int[] {px[2 * w + 2], px[10 * w + 10]};
         }, v -> v[0] == 0xffffff && v[1] == 0xffffff));
+        // The padding the game's health bar draw reads (the host config's padding(): the game type's field).
+        SPECIAL.put("HealthBarConfig.setPadding1", (p, row, inst) -> {
+            Method get = inst.getClass().getDeclaredMethod("padding");
+            get.setAccessible(true);
+            net.runelite.api.HealthBarConfig c = (net.runelite.api.HealthBarConfig) inst;
+            int old = (Integer) get.invoke(inst);
+            if (old < 0) { p.set(row, "mismatch", "no actor shows this health bar type now"); return; }
+            c.setPadding(old + 1);
+            int read = (Integer) get.invoke(inst);
+            c.setPadding(old);
+            int back = (Integer) get.invoke(inst);
+            p.set(row, read == old + 1 && back == old ? "pass" : "mismatch", "game type padding " + old + " -> set " + (old + 1) + " -> " + read + " -> restored " + back);
+        });
+        // Text into the Rasterizer's pixels: white "Wg" in the cleared corner lights some of its pixels.
+        SPECIAL.put("FontTypeFace.drawWidgetText11", (p, row, inst) -> raster(p, row, p.client.getRasterizer(), (r, px, w) -> {
+            ((net.runelite.api.FontTypeFace) inst).drawWidgetText("Wg", 0, 0, 20, 20, 0xffffff, -1, 256, 0, 0, 0);
+            int[] now = r.getPixels();
+            int lit = 0;
+            for (int y = 0; y < 20; y++) for (int x = 0; x < 20; x++) if ((now[y * w + x] & 0xffffff) == 0xffffff) lit++;
+            return new int[] {lit};
+        }, v -> v[0] > 0));
         // Low res: one colour per 8-pixel run of a gouraud gradient; full res: the colour changes inside a run.
         SPECIAL.put("Rasterizer.setRasterGouraudLowRes1", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
             r.setRasterGouraudLowRes(true);

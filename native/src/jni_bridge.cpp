@@ -375,6 +375,29 @@ jintArray n_object_model(JNIEnv* env, jclass, jint plane, jint sx, jint sy, jint
     env->SetIntArrayRegion(arr, 5, static_cast<jsize>(m.xyz.size()), m.xyz.data());
     return arr;
 }
+// An animated loc's fields (game::dynamic_object) or, with mesh, its model packed as actorMesh; null if none.
+jintArray n_dynamic_object(JNIEnv* env, jclass, jint plane, jint sx, jint sy, jint layer, jlong tag, jint slot, jboolean mesh) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    int32_t f[game::kDynamicObjectFields];
+    std::vector<int32_t> m;
+    if (!game::dynamic_object(plane, sx, sy, layer, static_cast<uint64_t>(tag), slot, f, mesh ? &m : nullptr)) return nullptr;
+    jsize n = mesh ? static_cast<jsize>(m.size()) : game::kDynamicObjectFields;
+    jintArray arr = env->NewIntArray(n);
+    env->SetIntArrayRegion(arr, 0, n, mesh ? m.data() : f);
+    return arr;
+}
+// {id, front sprite, back sprite, width, padding} per health bar type on a live actor; null off the game thread.
+jintArray n_health_bar_types(JNIEnv* env, jclass) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    std::vector<int32_t> v;
+    for (const game::HealthBarType& t : game::health_bar_types()) v.insert(v.end(), {t.id, t.front_sprite, t.back_sprite, t.width, t.padding});
+    jintArray arr = env->NewIntArray(static_cast<jsize>(v.size()));
+    env->SetIntArrayRegion(arr, 0, static_cast<jsize>(v.size()), v.data());
+    return arr;
+}
+jboolean n_health_bar_set_padding(JNIEnv*, jclass, jint id, jint padding) {
+    return client_thread::on_client_thread() && game::health_bar_set_padding(id, padding);
+}
 jintArray n_varps(JNIEnv* env, jclass) {
     std::vector<int32_t> v = game::varps();
     jintArray arr = env->NewIntArray(static_cast<jsize>(v.size()));
@@ -973,6 +996,24 @@ jint n_text_width(JNIEnv* env, jclass, jint font, jstring text) {
     if (c) env->ReleaseStringUTFChars(text, c);
     return game::text_width(font, s);
 }
+jint n_font_ascent(JNIEnv*, jclass, jint font) {
+    return client_thread::on_client_thread() ? game::font_ascent(font) : -1;
+}
+// {int[] opcodes, int[] int operands} of script `id` (script_hooks::script_code); null if not loaded.
+jobjectArray n_script_code(JNIEnv* env, jclass, jint id) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    std::vector<int32_t> ops, ints;
+    if (!script_hooks::script_code(id, ops, ints)) return nullptr;
+    jobjectArray out = env->NewObjectArray(2, env->FindClass("[I"), nullptr);
+    int i = 0;
+    for (auto* v : {&ops, &ints}) {
+        jintArray a = env->NewIntArray(static_cast<jsize>(v->size()));
+        env->SetIntArrayRegion(a, 0, static_cast<jsize>(v->size()), v->data());
+        env->SetObjectArrayElement(out, i++, a);
+        env->DeleteLocalRef(a);
+    }
+    return out;
+}
 jintArray n_script_active_widget(JNIEnv* env, jclass, jboolean dot) {
     if (!client_thread::on_client_thread()) return nullptr;
     int id, index;
@@ -1057,6 +1098,49 @@ jstring latin1_string(JNIEnv* env, const std::string& s) {
 
 // {String[] names, String[] previous names (null when none), int[] {world, rank} pairs}, or null
 // while the list isn't loaded.
+// {String[] names, int[] worlds} of the pending friend login/logout notices; null off the game thread.
+jobjectArray n_pending_logins(JNIEnv* env, jclass) {
+    std::vector<game::PendingLogin> list;
+    if (!client_thread::on_client_thread() || !game::pending_logins(list)) return nullptr;
+    jsize n = static_cast<jsize>(list.size());
+    jobjectArray names = env->NewObjectArray(n, env->FindClass("java/lang/String"), nullptr);
+    std::vector<jint> worlds;
+    for (jsize i = 0; i < n; i++) {
+        jstring t = latin1_string(env, list[i].name);
+        env->SetObjectArrayElement(names, i, t);
+        env->DeleteLocalRef(t);
+        worlds.push_back(list[i].world);
+    }
+    jintArray w = env->NewIntArray(n);
+    env->SetIntArrayRegion(w, 0, n, worlds.data());
+    jobjectArray out = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(out, 0, names);
+    env->SetObjectArrayElement(out, 1, w);
+    return out;
+}
+// Per equipment slot (12) a {short[] recolour-to, short[] retexture-to} pair or null, of a player's appearance;
+// null off the game thread or before the first appearance.
+jobjectArray n_player_overrides(JNIEnv* env, jclass, jint index) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    game::ObjOverride o[12];
+    if (!game::appearance_overrides(game::live_player(index), o)) return nullptr;
+    jclass pair = env->FindClass("[[S"), shorts = env->FindClass("[S");
+    jobjectArray out = env->NewObjectArray(12, pair, nullptr);
+    for (int i = 0; i < 12; i++) {
+        if (!o[i].present) continue;
+        jobjectArray p = env->NewObjectArray(2, shorts, nullptr);
+        int k = 0;
+        for (auto* v : {&o[i].recolour, &o[i].retexture}) {
+            jshortArray a = env->NewShortArray(static_cast<jsize>(v->size()));
+            env->SetShortArrayRegion(a, 0, static_cast<jsize>(v->size()), v->data());
+            env->SetObjectArrayElement(p, k++, a);
+            env->DeleteLocalRef(a);
+        }
+        env->SetObjectArrayElement(out, i, p);
+        env->DeleteLocalRef(p);
+    }
+    return out;
+}
 jobjectArray n_friends(JNIEnv* env, jclass, jboolean ignores) {
     std::vector<game::FriendEntry> list;
     if (!game::friend_list(ignores, list)) return nullptr;
@@ -1908,6 +1992,8 @@ const JNINativeMethod kNatives[] = {
     {"screenSize", "()[I", reinterpret_cast<void*>(n_screen_size)},
     {"walkDestination", "()[I", reinterpret_cast<void*>(n_walk_destination)},
     {"friends", "(Z)[Ljava/lang/Object;", reinterpret_cast<void*>(n_friends)},
+    {"pendingLogins", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_pending_logins)},
+    {"playerOverrides", "(I)[[[S", reinterpret_cast<void*>(n_player_overrides)},
     {"friendListState", "()I", reinterpret_cast<void*>(n_friend_list_state)},
     {"targetState", "(I)[B", reinterpret_cast<void*>(n_target_state)},
     {"targetMode", "()[I", reinterpret_cast<void*>(n_target_mode)},
@@ -2022,6 +2108,9 @@ const JNINativeMethod kNatives[] = {
     {"actorSpotAnimSet", "(ZIIII)Z", reinterpret_cast<void*>(n_actor_spot_anim_set)},
     {"actorCreateSpotAnim", "(ZIIIII)Z", reinterpret_cast<void*>(n_actor_create_spot_anim)},
     {"objectModel", "(IIIIJ)[I", reinterpret_cast<void*>(n_object_model)},
+    {"dynamicObject", "(IIIIJIZ)[I", reinterpret_cast<void*>(n_dynamic_object)},
+    {"healthBarTypes", "()[I", reinterpret_cast<void*>(n_health_bar_types)},
+    {"healthBarSetPadding", "(II)Z", reinterpret_cast<void*>(n_health_bar_set_padding)},
     {"varcInt", "(I)I", reinterpret_cast<void*>(n_varc_int)},
     {"varcString", "(I)Ljava/lang/String;", reinterpret_cast<void*>(n_varc_string)},
     {"setVarbit", "(II)Z", reinterpret_cast<void*>(n_set_varbit)},
@@ -2081,6 +2170,8 @@ const JNINativeMethod kNatives[] = {
     {"scriptEventSource", "()[I", reinterpret_cast<void*>(n_script_event_source)},
     {"scriptActiveWidget", "(Z)[I", reinterpret_cast<void*>(n_script_active_widget)},
     {"textWidth", "(ILjava/lang/String;)I", reinterpret_cast<void*>(n_text_width)},
+    {"fontAscent", "(I)I", reinterpret_cast<void*>(n_font_ascent)},
+    {"scriptCode", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_code)},
     {"widgetListener", "(III)[Ljava/lang/Object;", reinterpret_cast<void*>(n_widget_listener)},
     {"widgetClearListener", "(III)Z", reinterpret_cast<void*>(n_widget_clear_listener)},
     {"widgetTriggers", "(III)[I", reinterpret_cast<void*>(n_widget_triggers)},

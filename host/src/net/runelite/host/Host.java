@@ -81,6 +81,9 @@ public final class Host {
                 Log.e(TAG, "actor event failed", t);
             }
         }
+        boolean hit = false;
+        for (Object[] c : all) hit |= ((Integer) c[1] & AndroidNPC.CHANGED_HITSPLAT) != 0;
+        if (hit) AndroidHealthBarConfig.poll(bus);  // a head bar comes with a hitsplat
     }
     static AndroidPlayer player(int index) { return playerCache.get(index); }
     /** RuneLite's interacting encoding: NPC index, or player index + 32768; -1 = none. */

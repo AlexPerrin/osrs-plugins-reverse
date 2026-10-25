@@ -47,14 +47,32 @@ final class AndroidNameables {
         @Override public int getSize() { return 400; }
         @Override public Friend[] getMembers() { Entry[] e = read(false); Friend[] f = new Friend[e.length]; System.arraycopy(e, 0, f, 0, e.length); return f; }
         @Override public Friend findByName(String name) { return find(read(false), name); }
-        // Login/logout notices the game hasn't shown yet; not read from the game (always empty).
+        // Login/logout notices the game hasn't shown yet (Native.pendingLogins: the game's queue, read per
+        // iteration on the game thread; empty elsewhere). addLast and clear don't change the game's queue.
         private final net.runelite.api.Deque<net.runelite.api.PendingLogin> pending = new net.runelite.api.Deque<net.runelite.api.PendingLogin>() {
-            final java.util.ArrayDeque<net.runelite.api.PendingLogin> q = new java.util.ArrayDeque<>();
             @Override public void addLast(net.runelite.api.PendingLogin p) { }
             @Override public void clear() { }
-            @Override public java.util.Iterator<net.runelite.api.PendingLogin> iterator() { return q.iterator(); }
+            @Override public java.util.Iterator<net.runelite.api.PendingLogin> iterator() {
+                java.util.List<net.runelite.api.PendingLogin> l = new java.util.ArrayList<>();
+                Object[] r = Native.isClientThread() ? Native.pendingLogins() : null;
+                if (r != null) {
+                    String[] names = (String[]) r[0];
+                    int[] worlds = (int[]) r[1];
+                    for (int i = 0; i < names.length; i++) l.add(new Pending(names[i], (short) worlds[i]));
+                }
+                return l.iterator();
+            }
         };
         @Override public net.runelite.api.Deque<net.runelite.api.PendingLogin> getPendingLogins() { return pending; }
+    }
+
+    static final class Pending implements net.runelite.api.PendingLogin {
+        private final String name;
+        private final short world;
+        Pending(String name, short world) { this.name = name; this.world = world; }
+        @Override public String getName() { return name; }
+        @Override public short getWorld() { return world; }
+        @Override public String toString() { return "PendingLogin[" + name + " world " + world + "]"; }
     }
 
     static final class Ignores implements net.runelite.api.NameableContainer<Ignore> {

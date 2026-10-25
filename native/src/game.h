@@ -182,6 +182,8 @@ int widget_flags(uintptr_t widget);  // +0x2b0: bit i+1 = op i shown (when no IF
 // The IF_SETEVENTS range covering a widget (component +0x04, CC_CREATE index +0x08): out = {flags, op mask};
 // false when none covers it (the game then uses +0x2b0). Game thread.
 bool widget_events(uintptr_t widget, int out[2]);
+// All IF_SETEVENTS ranges, 5 ints each {component, start, end, flags, op mask}.
+bool widget_event_ranges(std::vector<int32_t>& out);
 void widget_set_flags(uintptr_t widget, int flags);  // game thread only
 struct SubInterface { int component, group, type; };  // `group` is open inside `component`; type = IF_OPENSUB modal mode (node +8)
 std::vector<SubInterface> open_sub_interfaces();
@@ -420,6 +422,10 @@ bool enum_def(int id, EnumDef& out);
 // Definition params (opcode 249). kind: 0 obj, 1 npc, 2 loc. Game thread only.
 struct TypeParam { bool is_string = false; int int_value = 0; std::string string_value; };
 bool type_param(int kind, int id, int key, TypeParam& out);
+// Every param key of that definition (empty when it has none); false if the definition is missing.
+bool type_param_keys(int kind, int id, std::vector<int32_t>& keys);
+// Sub-op texts under an op of an npc (kind 1) or loc (2); present = the op has a sub-op list.
+bool sub_ops(int kind, int id, int op, std::vector<std::string>& out, bool& present);
 
 // Menus (long-press menu). Entries are what the game shows, top-level first as stored.
 struct MenuEntry {
@@ -543,6 +549,21 @@ bool set_afk_timeout_minutes(int minutes);
 // Client varcs (VarClientInt/VarClientStr); false when unset. Game thread only.
 bool varc_int(int id, int& out);
 bool varc_string(int id, std::string& out);
+// Every int (type 1) and string (type 2) varc; other types are left out. Game thread only.
+// Game caches (0 obj, 1 loc, 2 seq, 3 item model, 4 item sprite, 5 health bar): entry count (-1 bad
+// id) and the game's own clear. Game thread, between cycles.
+// NPC model overrides (head = chathead +0x750, else body +0x758); false when the NPC has none.
+struct NpcOverrides { std::vector<int32_t> models; std::vector<int16_t> recolours, retextures; bool use_local_player = false; };
+bool npc_overrides(int index, bool head, NpcOverrides& out);
+// The NPC's head icon archive ids and sprite indices (override object, else its NpcType's); false if none.
+bool npc_head_icons(int index, std::vector<int32_t>& archives, std::vector<int32_t>& sprites);
+long cache_size(int which);
+// js5 archives by id (0..25): a group's file ids; a file's bytes (getFile 0x6be3dc). Game thread only.
+bool archive_file_ids(int id, int group, std::vector<int32_t>& out);
+bool archive_file(int id, int group, int file, std::vector<uint8_t>& out);
+bool cache_reset(int which);
+struct VarcEntry { int id = 0, type = 0, int_value = 0; std::string string_value; };
+bool varc_entries(std::vector<VarcEntry>& out);
 // Client-side writes through the game's own script-VM setters. Game thread only.
 struct VarbitDef { int varp = -1, lsb = 0, msb = 0; };
 bool varbit_def(int id, VarbitDef& out);

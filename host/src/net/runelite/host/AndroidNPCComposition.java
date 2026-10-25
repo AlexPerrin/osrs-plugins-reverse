@@ -64,6 +64,8 @@ final class AndroidNPCComposition extends NPCCompositionStub {
     @Override public boolean isMinimapVisible() { return v[3] != 0; }
     @Override public boolean isInteractible() { return v[4] != 0; }
     @Override public String[] getActions() { return actions; }
+    @Override public net.runelite.api.EntityOps getOps() { return CacheConfig.ops(Params.NPC, v[0], actions); }
+    @Override public net.runelite.api.IterableHashTable<net.runelite.api.Node> getParams() { return CacheConfig.params(Params.NPC, v[0]); }
     @Override public int[] getConfigs() { return transforms; }
 
     /** RuneLite semantics: the multi-NPC for the current varbit/varp value (null = hidden). */

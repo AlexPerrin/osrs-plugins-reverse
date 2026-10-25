@@ -380,4 +380,26 @@ final class Native {
 
     /** True while a MenuTap event is dispatched (menuEntries() then reads the tapped menu). */
     static native boolean menuTapping();
+
+    // Cache, index and config lookups (CacheConfig). Client thread only: they throw elsewhere.
+    /** Param keys of a definition (Params kinds), or null when the definition is missing. */
+    static native int[] typeParamKeys(int kind, int id);
+    /** File ids of a group of archive `id`, or null when the group is absent. */
+    static native int[] archiveFileIds(int id, int group);
+    /** A file's bytes through the game's getFile, or null (absent, or its group not loaded yet). */
+    static native byte[] archiveFile(int id, int group, int file);
+    /** Entry count of game cache `which` (CacheConfig.Cache order), -1 for a bad id. */
+    static native long cacheSize(int which);
+    /** Runs the game's clear of that cache. */
+    static native boolean cacheReset(int which);
+    /** {int[] models, short[] recolours, short[] retextures, int[] {mirror local player}} of an NPC's head or body override, or null. */
+    static native Object[] npcOverrides(int index, boolean head);
+    /** An NPC's head icon archive ids then sprite indices (equal halves), or null. */
+    static native int[] npcHeadIcons(int index);
+    /** Sub-op texts under op `op` of an npc (Params.NPC) or loc (Params.LOC); null when it has none. */
+    static native String[] subOps(int kind, int id, int op);
+    /** {int[] ids, Object[] values (Integer/String)} of the varc store, or null. */
+    static native Object[] varcEntries();
+    /** IF_SETEVENTS ranges, 5 ints each {component, start, end, flags, op mask}. */
+    static native int[] widgetEventRanges();
 }

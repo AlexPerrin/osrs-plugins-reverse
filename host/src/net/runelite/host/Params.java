@@ -17,6 +17,12 @@ final class Params {
 
     static void set(int kind, int id, int param, Object value) { overrides.put(key(kind, id, param), value); }
 
+    /** A host-side override (setValue / IterableHashTable.put), or null. */
+    static Object override(int kind, int id, int key) { return overrides.get(key(kind, id, key)); }
+
+    /** Integer, String or null (absent), override first. */
+    static Object value(int kind, int id, int key) { return get(kind, id, key); }
+
     private static Object get(int kind, int id, int key) {
         Object o = overrides.get(key(kind, id, key));
         if (o != null) return o;

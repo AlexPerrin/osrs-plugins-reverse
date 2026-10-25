@@ -1661,6 +1661,96 @@ jintArray n_skills(JNIEnv* env, jclass) {
     return arr;
 }
 
+// ---- cache, index and config lookups (client-api-cache-config) ----
+jintArray n_type_param_keys(JNIEnv* env, jclass, jint kind, jint id) {
+    if (!require_client_thread(env, "typeParamKeys")) return nullptr;
+    std::vector<int32_t> keys;
+    return game::type_param_keys(kind, id, keys) ? int_array(env, keys) : nullptr;
+}
+jobjectArray n_sub_ops(JNIEnv* env, jclass, jint kind, jint id, jint op) {
+    if (!require_client_thread(env, "subOps")) return nullptr;
+    std::vector<std::string> v;
+    bool present = false;
+    if (!game::sub_ops(kind, id, op, v, present) || !present) return nullptr;
+    jobjectArray r = env->NewObjectArray(static_cast<jsize>(v.size()), env->FindClass("java/lang/String"), nullptr);
+    for (size_t i = 0; i < v.size(); i++) {
+        jstring str = v[i].empty() ? nullptr : latin1_string(env, v[i]);
+        env->SetObjectArrayElement(r, static_cast<jsize>(i), str);
+        if (str) env->DeleteLocalRef(str);
+    }
+    return r;
+}
+jintArray n_archive_file_ids(JNIEnv* env, jclass, jint id, jint group) {
+    if (!require_client_thread(env, "archiveFileIds")) return nullptr;
+    std::vector<int32_t> v;
+    return game::archive_file_ids(id, group, v) ? int_array(env, v) : nullptr;
+}
+jbyteArray n_archive_file(JNIEnv* env, jclass, jint id, jint group, jint file) {
+    if (!require_client_thread(env, "archiveFile")) return nullptr;
+    std::vector<uint8_t> v;
+    if (!game::archive_file(id, group, file, v)) return nullptr;
+    jbyteArray r = env->NewByteArray(static_cast<jsize>(v.size()));
+    if (r) env->SetByteArrayRegion(r, 0, static_cast<jsize>(v.size()), reinterpret_cast<const jbyte*>(v.data()));
+    return r;
+}
+// {int[] models, short[] recolours, short[] retextures, int[] {use local player}}, or null.
+jobjectArray n_npc_overrides(JNIEnv* env, jclass, jint index, jboolean head) {
+    if (!require_client_thread(env, "npcOverrides")) return nullptr;
+    game::NpcOverrides o;
+    if (!game::npc_overrides(index, head, o)) return nullptr;
+    auto shorts = [env](const std::vector<int16_t>& v) {
+        jshortArray a = env->NewShortArray(static_cast<jsize>(v.size()));
+        if (a) env->SetShortArrayRegion(a, 0, static_cast<jsize>(v.size()), v.data());
+        return a;
+    };
+    jobjectArray r = env->NewObjectArray(4, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(r, 0, int_array(env, o.models));
+    env->SetObjectArrayElement(r, 1, shorts(o.recolours));
+    env->SetObjectArrayElement(r, 2, shorts(o.retextures));
+    env->SetObjectArrayElement(r, 3, int_array(env, {o.use_local_player ? 1 : 0}));
+    return r;
+}
+// archive ids then sprite indices (two halves of equal length), or null.
+jintArray n_npc_head_icons(JNIEnv* env, jclass, jint index) {
+    if (!require_client_thread(env, "npcHeadIcons")) return nullptr;
+    std::vector<int32_t> a, sp;
+    if (!game::npc_head_icons(index, a, sp)) return nullptr;
+    sp.resize(a.size(), -1);
+    a.insert(a.end(), sp.begin(), sp.end());
+    return int_array(env, a);
+}
+jlong n_cache_size(JNIEnv*, jclass, jint which) { return game::cache_size(which); }
+jboolean n_cache_reset(JNIEnv* env, jclass, jint which) {
+    return require_client_thread(env, "cacheReset") && game::cache_reset(which);
+}
+// {int[] ids, Object[] values (Integer or String)}, or null.
+jobjectArray n_varc_entries(JNIEnv* env, jclass) {
+    if (!require_client_thread(env, "varcEntries")) return nullptr;
+    std::vector<game::VarcEntry> v;
+    if (!game::varc_entries(v)) return nullptr;
+    std::vector<int32_t> ids;
+    for (auto& e : v) ids.push_back(e.id);
+    jclass object = env->FindClass("java/lang/Object");
+    jclass integer = env->FindClass("java/lang/Integer");
+    jmethodID value_of = env->GetStaticMethodID(integer, "valueOf", "(I)Ljava/lang/Integer;");
+    jobjectArray values = env->NewObjectArray(static_cast<jsize>(v.size()), object, nullptr);
+    for (size_t i = 0; i < v.size(); i++) {
+        jobject o = v[i].type == 2 ? static_cast<jobject>(latin1_string(env, v[i].string_value))
+                                   : env->CallStaticObjectMethod(integer, value_of, v[i].int_value);
+        env->SetObjectArrayElement(values, static_cast<jsize>(i), o);
+        env->DeleteLocalRef(o);
+    }
+    jobjectArray r = env->NewObjectArray(2, object, nullptr);
+    env->SetObjectArrayElement(r, 0, int_array(env, ids));
+    env->SetObjectArrayElement(r, 1, values);
+    return r;
+}
+jintArray n_widget_event_ranges(JNIEnv* env, jclass) {
+    if (!require_client_thread(env, "widgetEventRanges")) return nullptr;
+    std::vector<int32_t> v;
+    return game::widget_event_ranges(v) ? int_array(env, v) : nullptr;
+}
+
 const JNINativeMethod kNatives[] = {
     {"skills", "()[I", reinterpret_cast<void*>(n_skills)},
     {"inventory", "(I)[I", reinterpret_cast<void*>(n_inventory)},
@@ -1853,6 +1943,16 @@ const JNINativeMethod kNatives[] = {
     {"widgetClearListener", "(III)Z", reinterpret_cast<void*>(n_widget_clear_listener)},
     {"widgetTriggers", "(III)[I", reinterpret_cast<void*>(n_widget_triggers)},
     {"scriptStats", "()[J", reinterpret_cast<void*>(n_script_stats)},
+    {"typeParamKeys", "(II)[I", reinterpret_cast<void*>(n_type_param_keys)},
+    {"archiveFileIds", "(II)[I", reinterpret_cast<void*>(n_archive_file_ids)},
+    {"archiveFile", "(III)[B", reinterpret_cast<void*>(n_archive_file)},
+    {"npcOverrides", "(IZ)[Ljava/lang/Object;", reinterpret_cast<void*>(n_npc_overrides)},
+    {"npcHeadIcons", "(I)[I", reinterpret_cast<void*>(n_npc_head_icons)},
+    {"cacheSize", "(I)J", reinterpret_cast<void*>(n_cache_size)},
+    {"cacheReset", "(I)Z", reinterpret_cast<void*>(n_cache_reset)},
+    {"subOps", "(III)[Ljava/lang/String;", reinterpret_cast<void*>(n_sub_ops)},
+    {"varcEntries", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_varc_entries)},
+    {"widgetEventRanges", "()[I", reinterpret_cast<void*>(n_widget_event_ranges)},
 };
 
 JNIEnv* game_thread_env() {

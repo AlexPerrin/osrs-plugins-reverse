@@ -1229,6 +1229,40 @@ jintArray n_sprite_info(JNIEnv* env, jclass, jint id) {
     return r;
 }
 
+static jintArray int_array(JNIEnv* env, const std::vector<int32_t>& v) {
+    jintArray r = env->NewIntArray(static_cast<jsize>(v.size()));
+    if (r) env->SetIntArrayRegion(r, 0, static_cast<jsize>(v.size()), reinterpret_cast<const jint*>(v.data()));
+    return r;
+}
+jintArray n_sprite_array(JNIEnv* env, jclass, jint which) {
+    std::vector<int32_t> v;
+    if (!client_thread::on_client_thread() || !game::sprite_array(which, v)) return nullptr;
+    return int_array(env, v);
+}
+jintArray n_textures(JNIEnv* env, jclass) {
+    std::vector<int32_t> v;
+    if (!client_thread::on_client_thread() || !game::textures(v)) return nullptr;
+    return int_array(env, v);
+}
+jintArray n_texture_pixels(JNIEnv* env, jclass, jint id, jboolean load) {
+    std::vector<int32_t> v;
+    if (!client_thread::on_client_thread() || !game::texture_pixels(id, load, v)) return nullptr;
+    return int_array(env, v);
+}
+jint n_skybox_colour(JNIEnv*, jclass) {
+    int v = 0;
+    return client_thread::on_client_thread() && game::skybox_colour(v) ? v : 0;
+}
+jboolean n_set_skybox_colour(JNIEnv*, jclass, jint argb) {
+    return client_thread::on_client_thread() && game::set_skybox_colour(argb);
+}
+jdouble n_texture_brightness(JNIEnv*, jclass) {
+    return client_thread::on_client_thread() ? game::texture_brightness() : __builtin_nan("");
+}
+jboolean n_set_texture_brightness(JNIEnv*, jclass, jdouble b) {
+    return client_thread::on_client_thread() && game::set_texture_brightness(b);
+}
+
 jboolean n_sprite_write(JNIEnv* env, jclass, jint id, jintArray pixels, jint w, jint h) {
     if (!client_thread::on_client_thread() || !pixels || w <= 0 || h <= 0 || env->GetArrayLength(pixels) < w * h) return false;
     std::vector<uint32_t> px(static_cast<size_t>(w) * h);
@@ -1380,6 +1414,11 @@ jintArray n_camera(JNIEnv* env, jclass) {
 jboolean n_set_camera_target(JNIEnv*, jclass, jint which, jint value) {
     if (!client_thread::on_client_thread()) return false;
     return game::set_camera_target(which, value);
+}
+
+jboolean n_set_camera_focal(JNIEnv*, jclass, jint axis, jint value) {
+    if (!client_thread::on_client_thread()) return false;
+    return game::set_camera_focal(axis, value);
 }
 
 // {valid, zoom, centreX, centreY, clip x0, y0, x1, y1, far, scene camera x/h/y, sin/cos pitch, sin/cos yaw x65536} (game thread only; valid 0 otherwise).
@@ -1658,6 +1697,7 @@ const JNINativeMethod kNatives[] = {
     {"property", "(Ljava/lang/String;)Ljava/lang/String;", reinterpret_cast<void*>(n_property)},
     {"camera", "()[I", reinterpret_cast<void*>(n_camera)},
     {"setCameraTarget", "(II)Z", reinterpret_cast<void*>(n_set_camera_target)},
+    {"setCameraFocal", "(II)Z", reinterpret_cast<void*>(n_set_camera_focal)},
     {"viewport", "()[I", reinterpret_cast<void*>(n_viewport)},
     {"playSound", "(III)Z", reinterpret_cast<void*>(n_play_sound)},
     {"screenSize", "()[I", reinterpret_cast<void*>(n_screen_size)},
@@ -1696,6 +1736,13 @@ const JNINativeMethod kNatives[] = {
     {"sprite", "(I)[I", reinterpret_cast<void*>(n_sprite)},
     {"spriteWrite", "(I[III)Z", reinterpret_cast<void*>(n_sprite_write)},
     {"spriteInfo", "(I)[I", reinterpret_cast<void*>(n_sprite_info)},
+    {"spriteArray", "(I)[I", reinterpret_cast<void*>(n_sprite_array)},
+    {"textures", "()[I", reinterpret_cast<void*>(n_textures)},
+    {"skyboxColour", "()I", reinterpret_cast<void*>(n_skybox_colour)},
+    {"setSkyboxColour", "(I)Z", reinterpret_cast<void*>(n_set_skybox_colour)},
+    {"texturePixels", "(IZ)[I", reinterpret_cast<void*>(n_texture_pixels)},
+    {"textureBrightness", "()D", reinterpret_cast<void*>(n_texture_brightness)},
+    {"setTextureBrightness", "(D)Z", reinterpret_cast<void*>(n_set_texture_brightness)},
     {"menuPoint", "()[I", reinterpret_cast<void*>(n_menu_point)},
     {"sceneObjects", "()[I", reinterpret_cast<void*>(n_scene_objects)},
     {"groundItems", "()[I", reinterpret_cast<void*>(n_ground_items)},

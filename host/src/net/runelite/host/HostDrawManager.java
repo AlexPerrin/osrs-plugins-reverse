@@ -31,11 +31,14 @@ public final class HostDrawManager extends DrawManager {
             // Every-frame listeners only: with no next-frame listener queued the supplier isn't used
             // (a null image would drop queued listeners, hence the lock with requestNextFrameListener).
             if (!pending) {
+                int[] f = Native.takeFrame();  // one getBufferProvider().getPixels() asked for
+                if (f != null) AndroidRender.BUFFER.adopt(f);
                 processDrawComplete(() -> null);
                 return;
             }
         }
         int[] f = Native.takeFrame();
+        if (f != null) AndroidRender.BUFFER.adopt(f);
         if (f == null) {
             if (++waitedCycles % 50 == 0) Native.requestFrame();  // a lost request (no swap happened)
             return;

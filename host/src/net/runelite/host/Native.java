@@ -224,6 +224,17 @@ final class Native {
     static native int[] sprite(int id);
     /** Sprite frame 0's {width, height, x offset, y offset, full width, full height}, null while not loaded; client thread only. */
     static native int[] spriteInfo(int id);
+    /** The game's sprite arrays (0 crosses, 1 mapscenes): count, then per frame {w, h, ox, oy, cw, ch, n, pixels or indices, n palette}; game thread. */
+    static native int[] spriteArray(int which);
+    /** Texture provider: 8 ints per texture {present, avg HSL, flag, sprite, anim direction, anim speed, loaded, pixel count}; game thread. */
+    static native int[] textures();
+    /** A texture's pixels (load: through the game's provider, else only if loaded); game thread. */
+    static native int[] texturePixels(int id, boolean load);
+    static native double textureBrightness();
+    /** The scene's skybox colour as ARGB (alpha 0: none set); game thread. */
+    static native int skyboxColour();
+    static native boolean setSkyboxColour(int argb);
+    static native boolean setTextureBrightness(double b);
     /** Writes same-size ARGB pixels into the game's cached sprite; client thread only. */
     static native boolean spriteWrite(int id, int[] pixels, int w, int h);
     /** The game's idle logout timeout (AFKTimeout setting) in minutes, -1 if unknown. */
@@ -307,6 +318,8 @@ final class Native {
     static native int[] camera();
     /** Camera pitch (0) or yaw (1) target, which the game eases the camera towards (client thread only). */
     static native boolean setCameraTarget(int which, int value);
+    /** Camera focal point axis 0 x, 1 y, 2 height (local units); game thread. */
+    static native boolean setCameraFocal(int axis, int value);
     /** {width, height} of the game surface in pixels (0 before the first frame). */
     static native int[] screenSize();
     /** Direct buffer over the native back buffer, sized w*h*4 (RGBA, premultiplied). */

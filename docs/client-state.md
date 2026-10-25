@@ -3,7 +3,7 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-25, client dev
-client-api-scene-tile-1 (change client-api-scene-tile).
+client-api-render-2 (change client-api-render).
 
 ## What this is
 
@@ -50,11 +50,12 @@ client-api-scene-tile-1 (change client-api-scene-tile).
   `api-native.txt` beside `osrsrl-build.txt` (`git describe` of the host build, the report's `# build:`). The probe
   stays loaded until the app restarts (unregistered); it adds one chat line "api-probe: addChatMessage". Model rows run
   on the live NPC's first model (`loadModel`/`loadModelData` of its composition's model id; model 0 isn't in OpenRune's
-  cache) and `applyTransformations` on that NPC's idle sequence (evidence: vertices moved); `Mesh.scale` uses 128 (1:1)
+  cache) and `applyTransformations` on that NPC's idle sequence (evidence: vertices moved; a run whose seeded NPC gives loadModel a model the cache lacks returns null there and fails applyTransformations: re-run); `Mesh.scale` uses 128 (1:1)
   so the live model keeps its geometry for the Model rows. 2026-10-25: 60.9% (765/1256) at aba2ced, 66.3% (833/1256)
   after client-api-model (every Model/Mesh/ModelData/AABB row and applyTransformations pass, no pass lost), 70.8%
   (889/1256) after client-api-scene-tile (Scene terrain, Tile paint/model, createSceneTilePaint and every
-  SceneTilePaint/SceneTileModel row pass, no pass lost). Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs
+  SceneTilePaint/SceneTileModel row pass, no pass lost), 75.9% (953/1256, every pass of the three reports kept) after client-api-render (probe effect checks for the
+  Rasterizer draws and a size-matched image for `SpritePixels.toBufferedImage`). Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs
   that tile's underlay/overlay/shape, paint and model and the scene's draw distance, min level, tint and skybox.
 - `THIRD_PARTY_NOTICES.md` (repo root) covers everything third-party in libosrsrl.so and host.jar (Dear ImGui + stb +
   ProggyClean, the RuneLite client subset/API/http-api, host/build.sh's Maven jars, the client jar's shaders and
@@ -138,6 +139,11 @@ client-api-scene-tile-1 (change client-api-scene-tile).
   slr.ws world list when the fetched list lacks it. The game rebuilds that list on the game thread whenever the
   login-screen world switcher opens, so off-thread `Native.worldEntry` returns a copy made in after_cycle
   (`client_thread::world_entry`; logcat `world list: N entries at 0x...` per reload). offsets.md "World list".
+- **Rendering surface** (`AndroidRender.java`, plugin-host.md row "Rendering surface"): the mobile game draws on the GPU,
+  so `getBufferProvider` is a canvas-sized copy of the last captured frame (`getPixels` requests the next capture;
+  HostDrawManager hands every captured frame to it), `getRasterizer` draws into that copy (not shown on screen), the
+  texture provider, skybox colour, viewport clip and camera focal point are the game's own (offsets.md "Render state"),
+  projections are the main camera. Stretched flags, draw2DMask and DrawCallbacks are stored only.
 - **BufferedImage drawing**: `CanvasGraphics.forImage` draws into a live Bitmap shared with the image (no `dispose()`
   needed).
 - **Network gates**: at load, `Host.loadJar` runs `NetScan.refusal` before the DexClassLoader and refuses NET-RAW jars

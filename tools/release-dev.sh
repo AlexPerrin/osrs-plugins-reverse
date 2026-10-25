@@ -9,8 +9,9 @@
 #   - the repack log has all 7 `telemetry:` lines (patch_telemetry.py asserts exactly one match each);
 #   - the APKs carry no secrets or personal data (private keys, the server's RSA private exponent, the
 #     user's name or email, home paths, keystores).
-# The release attaches the full repacked APKs (user's decision, 2026-10-19) and THIRD_PARTY_NOTICES.md (the
-# licence notices for the third-party code in libosrsrl.so and its host.jar).
+# The release attaches the single universal repacked APK (re/out/osrs-runelite.apk; user's decisions 2026-10-19 and
+# 2026-10-24) and THIRD_PARTY_NOTICES.md (the licence notices for the third-party code in libosrsrl.so and its
+# host.jar; also embedded in the APK as assets/THIRD_PARTY_NOTICES.md). The split pair stays buildable, not attached.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
@@ -39,9 +40,12 @@ t=$(grep -c '^telemetry:' "$work/repack.log" || true)
 # Secrets and personal data, in what we add or change only: a file identical to the official APK's is skipped;
 # for a changed file only the strings the official one lacks are checked (the game library and the official
 # app already carry OpenSSL's "PRIVATE KEY" labels and public CA bundles).
-mkdir -p "$work/x/base" "$work/x/split" "$work/o/base" "$work/o/split"
+mkdir -p "$work/x/base" "$work/x/split" "$work/x/single" "$work/o/base" "$work/o/split" "$work/o/single"
 unzip -q re/out/base.apk -d "$work/x/base"; unzip -q re/out/split.apk -d "$work/x/split"
+unzip -q re/out/osrs-runelite.apk -d "$work/x/single"
 unzip -q base.apk -d "$work/o/base"; unzip -q split_config.arm64_v8a.apk -d "$work/o/split"
+# the single APK is the base's files plus the split's lib/: its "official" counterpart is the two merged
+unzip -q base.apk -d "$work/o/single"; unzip -q -o split_config.arm64_v8a.apk -d "$work/o/single"
 patterns=("PRIVATE KEY" "privateExponent" "alexperrin" "Alex Perrin" "@gmail.com" 'C:\Users' "/home/alex" "/mnt/c/Users")
 d=$(openssl pkey -in ${SERVER_TOOLS:-$HOME/src/openrune-work/server-tools}/src/.data/game.key -text -noout 2>/dev/null | awk '/privateExponent:/{f=1;next} /^[a-zA-Z]/{f=0} f' | tr -d ' :\n' | sed 's/^00//' | cut -c1-24)
 [[ -n $d ]] && patterns+=("$d")
@@ -49,6 +53,8 @@ hits=0 keys=0 scanned=0
 while IFS= read -r -d '' f; do
     rel=${f#"$work/x/"}; orig="$work/o/$rel"
     [[ $rel == */META-INF/* ]] && continue   # our own signature
+    # the embedded notices are the committed file (cmp'd below); third parties' own copyright lines carry their emails
+    [[ $rel == single/assets/THIRD_PARTY_NOTICES.md ]] && continue
     if [[ -f $orig ]] && cmp -s "$f" "$orig"; then continue; fi
     scanned=$((scanned + 1))
     case $f in *.jks|*.keystore|*.p12|*.pem|*.key) echo "release-dev: key file $rel" >&2; keys=$((keys + 1)) ;; esac
@@ -67,8 +73,11 @@ echo "release-dev: secrets check on $scanned added or changed files"
 [[ $hits -eq 0 && $keys -eq 0 ]] || die "secrets check failed ($hits pattern hits, $keys key files)"
 
 [[ -s THIRD_PARTY_NOTICES.md ]] || die "THIRD_PARTY_NOTICES.md is missing"
-assets=("$work/osrs-plugins-$tag-base.apk" "$work/osrs-plugins-$tag-split.apk" "$work/THIRD_PARTY_NOTICES.md")
-cp re/out/base.apk "${assets[0]}"; cp re/out/split.apk "${assets[1]}"; cp THIRD_PARTY_NOTICES.md "${assets[2]}"
+# The single universal APK is the release artifact (user, 2026-10-24); the split pair is no longer attached.
+unzip -p re/out/osrs-runelite.apk assets/THIRD_PARTY_NOTICES.md | cmp -s - THIRD_PARTY_NOTICES.md \
+    || die "the single APK does not carry this THIRD_PARTY_NOTICES.md as assets/THIRD_PARTY_NOTICES.md"
+assets=("$work/osrs-plugins-$tag.apk" "$work/THIRD_PARTY_NOTICES.md")
+cp re/out/osrs-runelite.apk "${assets[0]}"; cp THIRD_PARTY_NOTICES.md "${assets[1]}"
 sums=$(cd "$work" && sha256sum "$(basename "${assets[0]}")" "$(basename "${assets[1]}")")
 prev=$(git tag -l 'v*' --sort=-creatordate | sed -n 1p)
 changes=$(git log -n 40 --no-merges --format='- %s (%h)' ${prev:+"$prev"..}HEAD)
@@ -88,10 +97,13 @@ embedded plugin host (Dear ImGui, the RuneLite client subset and API, Guice, Gua
 with their copyright notices and licence texts. The rest of the APK is Jagex's Old School RuneScape app, which
 those licences don't cover.
 
-**Install** (both files, as one app):
+**Install** (one universal APK, arm64-v8a only: a 64-bit ARM device, or an emulator with ARM translation):
 \`\`\`
-adb install-multiple -r $(basename "${assets[0]}") $(basename "${assets[1]}")
+adb install $(basename "${assets[0]}")
 \`\`\`
+It is signed with the repo's debug key, so an installed official or Play copy of the app has to be uninstalled
+first (\`INSTALL_FAILED_UPDATE_INCOMPATIBLE\` otherwise). \`THIRD_PARTY_NOTICES.md\` is also inside the APK as
+\`assets/THIRD_PARTY_NOTICES.md\`.
 
 **SHA-256**
 \`\`\`

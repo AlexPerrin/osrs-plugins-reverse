@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Rebuilds the official OSRS split APKs with libosrsrl.so injected.
-#   tools/repack.sh            -> re/out/{base,split}.apk, signed with re/debug.keystore
-#   tools/repack.sh --install  -> also replaces the app on the connected device
+# Rebuilds the official OSRS app with libosrsrl.so injected.
+#   tools/repack.sh            -> re/out/osrs-runelite.apk (ONE universal arm64 APK, the release artifact) and
+#                                 the split pair re/out/{base,split}.apk, all signed with re/debug.keystore
+#   tools/repack.sh --install  -> also replaces the app on the connected device (the single APK, `adb install -r`)
+#   tools/repack.sh --install-split -> the same with the split pair (`adb install-multiple -r`)
 #   SERVER=10.0.2.2:8080 tools/repack.sh
 #                              -> also points the game at the test server (config URLs +
 #                                 login RSA modulus from $SERVER_TOOLS/sidecar/data/rsa.properties, or $MODULUS)
@@ -63,6 +65,26 @@ print("patched", path)
 EOF
 $APKTOOL b -q "$RE/apk/base" -o "$OUT/base-unsigned.apk"
 
+# 2b. The single-APK variant of the base: the same decoded tree with the split-required flags removed
+#     (android:requiredSplitTypes/splitTypes on <manifest>, android:isSplitRequired and the
+#     com.android.vending.splits.required meta-data), so the base installs without the ABI split.
+rm -rf "$RE/apk/base-single"
+cp -a "$RE/apk/base" "$RE/apk/base-single"
+python3 -I - "$RE/apk/base-single/AndroidManifest.xml" <<'EOF'
+import re, sys
+p = sys.argv[1]
+s = open(p).read()
+n = 0
+for pat in (r' android:requiredSplitTypes="[^"]*"', r' android:splitTypes="[^"]*"', r' android:isSplitRequired="[^"]*"',
+            r'\s*<meta-data android:name="com\.android\.vending\.splits\.required"[^>]*/>'):
+    s, k = re.subn(pat, "", s); n += k
+if "requiredSplitTypes" in s or "splits.required" in s or "isSplitRequired" in s or n < 3:
+    sys.exit("split-required flags not removed as expected (%d edits)" % n)
+open(p, "w").write(s)
+print("single: removed %d split-required attributes/meta-data" % n)
+EOF
+$APKTOOL b -q "$RE/apk/base-single" -o "$OUT/single-unsigned.apk"
+
 # 3. The game library: consent sync URLs zeroed in every build (patch_telemetry.py --native, so the
 #    app never posts to account.jagex.com), then optionally retargeted at the test server.
 GAME_SO=$OUT/liblibs.hal.system.osclient.so
@@ -94,26 +116,54 @@ with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dst, "w") as zout:
     zout.write(so, "lib/arm64-v8a/libosrsrl.so", compress_type=zipfile.ZIP_DEFLATED)
 EOF
 
+# 4b. The single APK: the single-variant base plus every native library of the arm64 split (the game library
+#     as patched in step 3, the hook library, crashlytics, ...). The split's manifest, signature and stamp
+#     files are not carried over.
+#     THIRD_PARTY_NOTICES.md travels inside it as assets/THIRD_PARTY_NOTICES.md (next to assets/LICENCE.txt).
+python3 -I - "$OUT/single-unsigned.apk" "$OUT/split-unsigned.apk" "$OUT/osrs-runelite-unsigned.apk" "$ROOT/THIRD_PARTY_NOTICES.md" <<'EOF'
+import re, sys, zipfile
+base, split, dst, notices = sys.argv[1:]
+with zipfile.ZipFile(base) as zb, zipfile.ZipFile(split) as zs, zipfile.ZipFile(dst, "w") as zout:
+    names = set()
+    for item in zb.infolist():
+        # signature files go (apksigner re-signs); META-INF/services and the rest stay (kotlinx's Main dispatcher
+        # is found through META-INF/services, without it the consent library crashes at sign-in)
+        if re.fullmatch(r"META-INF/(MANIFEST\.MF|[^/]+\.(SF|RSA|DSA|EC))", item.filename) or item.filename.startswith("lib/"): continue
+        zout.writestr(item, zb.read(item.filename)); names.add(item.filename)
+    for item in zs.infolist():
+        if not item.filename.startswith("lib/arm64-v8a/") or item.filename in names: continue
+        zout.writestr(item, zs.read(item.filename)); names.add(item.filename)
+    zout.write(notices, "assets/THIRD_PARTY_NOTICES.md", compress_type=zipfile.ZIP_DEFLATED); names.add("assets/THIRD_PARTY_NOTICES.md")
+    if not {"lib/arm64-v8a/libosrsrl.so", "lib/arm64-v8a/liblibs.hal.system.osclient.so"} <= names:
+        sys.exit("hook or game library missing from the single APK")
+    print("single: %d entries, %d native libraries" % (len(names), sum(n.startswith("lib/") for n in names)))
+EOF
+rm "$OUT/single-unsigned.apk"
+
 # 5. Align + sign with one key (all splits must share a signer).
 if [[ ! -f $KEYSTORE ]]; then
     keytool -genkeypair -keystore "$KEYSTORE" -storepass $KS_PASS -keypass $KS_PASS -alias osrsrl \
         -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=osrsrl" >/dev/null
 fi
-for name in base split; do
+for name in base split osrs-runelite; do
     zipalign -p -f 4 "$OUT/$name-unsigned.apk" "$OUT/$name.apk"
     apksigner sign --ks "$KEYSTORE" --ks-pass pass:$KS_PASS "$OUT/$name.apk"
     rm "$OUT/$name-unsigned.apk"
 done
-echo "built $OUT/base.apk $OUT/split.apk"
+echo "built $OUT/osrs-runelite.apk (single) and $OUT/base.apk $OUT/split.apk (split pair)"
 
-if [[ ${1:-} == --install ]]; then
+if [[ ${1:-} == --install || ${1:-} == --install-split ]]; then
     # Under WSL the emulator is only visible to Windows adb: ADB=/mnt/c/.../adb.exe
     ADB=${ADB:-adb}
     SERIAL_ARGS=(); [[ -n ${ANDROID_SERIAL:-} ]] && SERIAL_ARGS=(-s "$ANDROID_SERIAL")
     apk_path() { [[ $ADB == *.exe ]] && wslpath -w "$1" || echo "$1"; }
     # Update in place so app data (the Jagex sign-in) survives. Only when the installed app has a
     # different signer (e.g. the Play build) does it have to be uninstalled first.
-    install() { "$ADB" "${SERIAL_ARGS[@]}" install-multiple -r "$(apk_path "$OUT/base.apk")" "$(apk_path "$OUT/split.apk")"; }
+    if [[ ${1:-} == --install ]]; then
+        install() { "$ADB" "${SERIAL_ARGS[@]}" install -r "$(apk_path "$OUT/osrs-runelite.apk")"; }
+    else
+        install() { "$ADB" "${SERIAL_ARGS[@]}" install-multiple -r "$(apk_path "$OUT/base.apk")" "$(apk_path "$OUT/split.apk")"; }
+    fi
     if ! out=$(install 2>&1); then
         echo "$out"
         if [[ $out == *INSTALL_FAILED_UPDATE_INCOMPATIBLE* ]]; then

@@ -36,6 +36,8 @@ import net.runelite.api.Tile;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.GraphicsObjectCreated;
+import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -66,6 +68,7 @@ public class ApiProbePlugin extends Plugin {
         EXCLUDED.put(API + "hooks.DrawCallbacks", "a GPU plugin implements it and the client calls it");
         EXCLUDED.put(API + "widgets.JavaScriptCallback", "a plugin's widget listener: the client calls it");
         EXCLUDED.put(API + "TileFunction", "a plugin's minimap tile drawer: the client calls it");
+        EXCLUDED.put(API + "ClientConfiguration", "RuneLite's loader implements it (RSAppletStub) and hands it to GameEngine.setConfiguration");
     }
 
     /** Destructive or session-ending: never called. */
@@ -92,7 +95,6 @@ public class ApiProbePlugin extends Plugin {
         SKIP.put("GameEngine.resizeCanvas", engine);
         SKIP.put("GameEngine.setConfiguration", engine);
         SKIP.put("GameEngine.unblockStartup", engine);
-        SKIP.put("ClientConfiguration.onError", "reports a fatal client error");
         String scene = "removes the game's scene data, not restorable";
         SKIP.put("Scene.removeTile", scene);
         SKIP.put("Scene.removeGameObject", scene);
@@ -163,7 +165,10 @@ public class ApiProbePlugin extends Plugin {
             for (int n = 0; n < ROWS_PER_TICK; n++) {
                 if (current == null || !current.hasNext()) {
                     current = null;
-                    if (!next()) { if (later.isEmpty()) finish(); return; }
+                    if (!next()) {
+                        if (later.isEmpty() && !awaitingHitsplat()) finish();
+                        return;
+                    }
                     continue;
                 }
                 Row row = current.next();
@@ -180,6 +185,24 @@ public class ApiProbePlugin extends Plugin {
                 // logcat has the failure
             }
         }
+    }
+
+    // Combat state comes from events: the first hitsplat and graphics object (a map spotanim) as they appear. Only
+    // as their own interface: a graphics object's Node/Renderable methods would take those interfaces' rows.
+    @Subscribe
+    public void onHitsplatApplied(HitsplatApplied e) {
+        if (!done && e.getHitsplat() != null) live.putIfAbsent(net.runelite.api.Hitsplat.class, e.getHitsplat());
+    }
+
+    @Subscribe
+    public void onGraphicsObjectCreated(GraphicsObjectCreated e) {
+        if (!done && e.getGraphicsObject() != null) live.putIfAbsent(net.runelite.api.GraphicsObject.class, e.getGraphicsObject());
+    }
+
+    /** In combat (the local player interacting with someone) and no hitsplat seen yet: the next one is on its way. */
+    private boolean awaitingHitsplat() {
+        return live.get(net.runelite.api.Hitsplat.class) == null && byIface.containsKey(API + "Hitsplat")
+            && client.getLocalPlayer().getInteracting() != null;
     }
 
     /** A row's check that reads its effect on the next game tick (client cycles ran in between). */
@@ -275,10 +298,17 @@ public class ApiProbePlugin extends Plugin {
         if (roots != null)
             for (Widget w : roots)
                 if (w != null && (w.getDynamicChildren() == null || w.getDynamicChildren().length == 0)) { register(w, 0); break; }
+        if (roots != null) register(font(roots, 0), 0);  // the first widget with a game font
         register(client.getItemContainer(93), 0);  // inventory
         register(client.getMenu(), 0);
         register(client.getTopLevelWorldView(), 0);
-        for (Object n : client.getTopLevelWorldView().npcs()) { register(n, 0); break; }
+        // The NPC whose first model the game's model store holds and that has an idle sequence: the Model rows and
+        // applyTransformations run on it (an NPC whose model is missing gives loadModel null).
+        for (net.runelite.api.NPC n : client.getTopLevelWorldView().npcs()) {
+            int[] m = n.getComposition() != null ? n.getComposition().getModels() : null;
+            if (m != null && m.length > 0 && n.getIdlePoseAnimation() != -1 && client.loadModelData(m[0]) != null) { register(n, 0); break; }
+        }
+        for (Object n : client.getTopLevelWorldView().npcs()) { register(n, 0); break; }  // any NPC when none qualifies
         for (net.runelite.api.NPC n : client.getTopLevelWorldView().npcs()) {  // overrides are rare: any NPC's
             register(n.getModelOverrides(), 0);
             register(n.getChatheadOverrides(), 0);
@@ -303,6 +333,19 @@ public class ApiProbePlugin extends Plugin {
                 }
             }
         }
+    }
+
+    private static Object font(Widget[] ws, int depth) {
+        if (ws == null || depth > 8) return null;
+        for (Widget w : ws) {
+            if (w == null) continue;
+            if (w.getFontId() >= 0 && w.getFont() != null) return w.getFont();
+            for (Widget[] kids : new Widget[][] {w.getStaticChildren(), w.getNestedChildren(), w.getDynamicChildren()}) {
+                Object f = font(kids, depth + 1);
+                if (f != null) return f;
+            }
+        }
+        return null;
     }
 
     /** Records `v` (and the elements of arrays, iterables and maps) as the live instance of each of its types not yet held. */
@@ -612,6 +655,28 @@ public class ApiProbePlugin extends Plugin {
             // InetSocketAddress prints "/<address>:<port>" (no java.net refs here: the host's netscan refuses them)
             boolean ok = host != null && String.valueOf(peer).startsWith("/" + host + ":");
             p.set(row, ok ? "pass" : "mismatch", "fd " + n + " peer " + peer + ", world host " + describe(host));
+        });
+        // The world map's regions (loaded once the map has been opened): the first region with icons is the
+        // WorldMapRegion rows' instance and its first icon the WorldMapIcon rows'.
+        SPECIAL.put("WorldMapRenderer.getMapRegions0", (p, row, inst) -> {
+            p.call(row, inst);
+            for (net.runelite.api.worldmap.WorldMapRegion[] col : ((net.runelite.api.worldmap.WorldMapRenderer) inst).getMapRegions())
+                for (net.runelite.api.worldmap.WorldMapRegion r : col)
+                    if (r != null && !r.getMapIcons().isEmpty()) {
+                        p.live.put(net.runelite.api.worldmap.WorldMapRegion.class, r);
+                        p.live.put(net.runelite.api.worldmap.WorldMapIcon.class, r.getMapIcons().iterator().next());
+                        return;
+                    }
+        });
+        // A graphics object's finished flag (finished() is its getter); true ends the animation, harmless on a
+        // combat swing's spotanim: the game drops it on its next pass.
+        SPECIAL.put("GraphicsObject.setFinished1", (p, row, inst) -> {
+            net.runelite.api.GraphicsObject g = (net.runelite.api.GraphicsObject) inst;
+            boolean old = g.finished();
+            g.setFinished(!old);
+            boolean read = g.finished();
+            g.setFinished(old);
+            p.set(row, read == !old && g.finished() == old ? "pass" : "mismatch", "finished " + old + " -> set " + !old + " -> " + read + " -> restored " + g.finished());
         });
         // Posing: the result's vertices against the input model's, so the evidence shows the sequence moved them.
         SPECIAL.put("Client.applyTransformations5", (p, row, inst) -> {
@@ -1203,6 +1268,9 @@ public class ApiProbePlugin extends Plugin {
         if (t == float.class) return 0f;
         if (t == double.class) return 0d;
         if (t == String.class) return "api-probe";
+        // The kinds an overlay hands a plugin: a host Graphics2D (as an overlay's) and a colour.
+        if (t == java.awt.Graphics2D.class) return new java.awt.image.BufferedImage(64, 64, java.awt.image.BufferedImage.TYPE_INT_ARGB).createGraphics();
+        if (t == java.awt.Color.class) return java.awt.Color.RED;
         if (t.isArray()) return Array.newInstance(t.getComponentType(), 0);
         if (t.isEnum()) return t.getEnumConstants()[0];
         Object v = live.get(t);

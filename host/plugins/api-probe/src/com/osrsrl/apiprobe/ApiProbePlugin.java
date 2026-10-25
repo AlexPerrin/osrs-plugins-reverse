@@ -476,6 +476,18 @@ public class ApiProbePlugin extends Plugin {
             Object v = row.m.invoke(inst, ChatMessageType.GAMEMESSAGE, "", "api-probe: addChatMessage", null, false);
             p.set(row, v != null ? "pass" : "mismatch", describe(v) + " " + (v != null ? ((net.runelite.api.MessageNode) v).getValue() : ""));
         });
+        // Posing: the result's vertices against the input model's, so the evidence shows the sequence moved them.
+        SPECIAL.put("Client.applyTransformations5", (p, row, inst) -> {
+            Object[] a = p.args(row);
+            net.runelite.api.Model in = (net.runelite.api.Model) a[0];
+            net.runelite.api.Model out = (net.runelite.api.Model) row.m.invoke(inst, a);
+            p.register(out, 0);
+            if (out == null) { p.set(row, "mismatch", "null for sequence " + describe(a[1] == null ? null : ((net.runelite.api.Animation) a[1]).getId())); return; }
+            int moved = 0, n = Math.min(in.getVerticesCount(), out.getVerticesCount());
+            for (int i = 0; i < n; i++)
+                if (in.getVerticesX()[i] != out.getVerticesX()[i] || in.getVerticesY()[i] != out.getVerticesY()[i] || in.getVerticesZ()[i] != out.getVerticesZ()[i]) moved++;
+            p.set(row, moved > 0 ? "pass" : "mismatch", describe(out) + ": sequence " + ((net.runelite.api.Animation) a[1]).getId() + " frame 0 moved " + moved + " of " + n + " vertices");
+        });
         // Widget position, size and actions: set altered values, read back, restore.
         SPECIAL.put("Widget.setPos2", (p, row, inst) -> {
             Widget w = (Widget) inst;
@@ -567,12 +579,29 @@ public class ApiProbePlugin extends Plugin {
             case "Client.getWidget(II)Lnet/runelite/api/widgets/Widget;": return new Object[] {widgetId() >>> 16, widgetId() & 0xffff};
             case "Client.getVarbitValue(I)I": return new Object[] {8119};
             case "Client.getVarpValue(I)I": return new Object[] {1000};
+            // A model the cache has (the live NPC's) and that NPC's idle sequence, so the rows read real geometry.
+            case "Client.loadModel(I)Lnet/runelite/api/Model;": return new Object[] {npcModel()};
+            case "Client.loadModel(I[S[S)Lnet/runelite/api/Model;": return new Object[] {npcModel(), new short[0], new short[0]};
+            case "Client.loadModelData(I)Lnet/runelite/api/ModelData;": return new Object[] {npcModel()};
+            case "Client.applyTransformations(Lnet/runelite/api/Model;Lnet/runelite/api/Animation;ILnet/runelite/api/Animation;I)Lnet/runelite/api/Model;": {
+                Object npc = live.get(net.runelite.api.NPC.class);
+                int seq = npc != null ? ((net.runelite.api.NPC) npc).getIdlePoseAnimation() : -1;
+                return new Object[] {arg(net.runelite.api.Model.class), client.loadAnimation(seq), 0, null, 0};
+            }
+            // scale 0 would flatten the live model the Model rows read next; 128 = 1:1
+            case "Mesh.scale(III)Lnet/runelite/api/Mesh;": return new Object[] {128, 128, 128};
             default: break;
         }
         Class<?>[] ps = row.m.getParameterTypes();
         Object[] a = new Object[ps.length];
         for (int i = 0; i < ps.length; i++) a[i] = arg(ps[i]);
         return a;
+    }
+
+    private int npcModel() {
+        Object npc = live.get(net.runelite.api.NPC.class);
+        int[] m = npc != null && ((net.runelite.api.NPC) npc).getComposition() != null ? ((net.runelite.api.NPC) npc).getComposition().getModels() : null;
+        return m != null && m.length > 0 ? m[0] : 0;
     }
 
     private int widgetId() {

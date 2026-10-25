@@ -419,8 +419,8 @@ in the host so agents can drive device tests. Off by default and never in the de
   (`host/gen/StubMethods.java`), whatever its version check decides. The host only loads plugins
   from `files/plugins/`, and at startup deletes any jar that updater could have left (one early test
   run downloaded one before the stub; it was never loaded).
-- Shared device: driving `osrs-devtools` (the `.mcp.json` entry) drives the shared BlueStacks, so
-  callers must hold `tools/device-lock.sh` first, and the sign-in safety rule applies to anything it
+- Shared device: driving `osrs-devtools` (the harness repo's `.mcp.json` entry) drives the BlueStacks app, so
+  the sign-in safety rule applies to anything it
   clicks (signed out: only "Sign in with Email / Username"; never Google/Jagex account screens).
 - Enable: `adb push re/host/plugins-extra/devtools.jar .../files/plugins/`,
   `adb shell setprop debug.osrsrl.devtools 1`, restart the game.
@@ -458,8 +458,7 @@ in the host so agents can drive device tests. Off by default and never in the de
   logcat the bridge makes one unauthenticated request, and the server logs the token again (at most
   once a second).
 - Procedure for an agent using osrs-devtools end to end:
-  1. Device: ask the orchestrator for "OK device", then `tools/device-lock.sh take <who> <what>` must print
-     "taking device". The sign-in safety rule applies; devtools input is refused unless LOGGED_IN.
+  1. Device: start your own client (harness skill `test-instances`). The sign-in safety rule applies; devtools input is refused unless LOGGED_IN.
   2. Build once if needed: `host/plugins/devtools/build.sh` (makes `re/host/plugins-extra/devtools.jar`).
   3. Push and enable: `$ADB -s 127.0.0.1:5555 push re/host/plugins-extra/devtools.jar
      /sdcard/Android/data/com.jagex.oldscape.android/files/plugins/`, then
@@ -472,7 +471,7 @@ in the host so agents can drive device tests. Off by default and never in the de
      then interact_npc {npcIndex, option}, then get_dialogue / continue_dialogue / select_option; type_chat for
      `::` commands; walk_to; screenshot.
   6. Clean up: `$ADB shell setprop debug.osrsrl.devtools ""`, restart with the default plugins
-     (`tools/plugin-test.sh` without EXTRA removes the jar), log in, `tools/device-lock.sh free <who>`.
+     (`tools/plugin-test.sh` without EXTRA removes the jar), log in.
 
 ## Gaps, in rough order
 

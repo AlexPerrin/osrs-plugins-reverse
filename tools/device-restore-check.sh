@@ -6,7 +6,7 @@
 #   tools/device-restore-check.sh check <dir>   at the end: prints one line per item, OK or OFF, and
 #                                               exits 1 if anything is off
 # Read-only on the device (it never removes or changes anything; fix what it reports by hand,
-# test jars by name). Hold the device lock while running it.
+# test jars by name).
 set -u
 ADB=${ADB:-/mnt/c/Users/Alex/AppData/Local/Android/Sdk/platform-tools/adb.exe}
 S="-s ${ANDROID_SERIAL:-127.0.0.1:5555}"

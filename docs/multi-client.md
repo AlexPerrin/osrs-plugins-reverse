@@ -252,7 +252,7 @@ $M --tool screenshot '{}'                             # PNG (base64) of the canv
 ### Second instance (desktop2)
 
 `DESKTOP_INSTANCE=desktop2` (tools/multiclient/instance.sh) runs a second isolated client next to
-`desktop`, for two QA agents in parallel. Lock: `LOCK_NAME=desktop2 tools/device-lock.sh`.
+`desktop`, for two QA agents in parallel.
 
 | | desktop | desktop2 |
 |---|---|---|
@@ -266,7 +266,7 @@ $M --tool screenshot '{}'                             # PNG (base64) of the canv
   (and `DESKTOP_TARGET_YAML=...` as usual). `stop` matches executables under `C:\osrs-test2` only; the
   two instances never match each other's processes.
 - No MCP server is registered for it. Drive it with the bridge as a CLI:
-  `env $(LOCK_NAME=desktop2 tools/device-lock.sh env) tools/multiclient/desktop-devtools-mcp.sh --tool <name> '<json>'`,
+  `DESKTOP_INSTANCE=desktop2 DESKTOP_DEVTOOLS_PORT=7781 tools/multiclient/desktop-devtools-mcp.sh --tool <name> '<json>'`,
   or POST JSON-RPC to `http://127.0.0.1:7781/mcp` with Windows' `/mnt/c/Windows/System32/curl.exe`.
 - The new java.exe path can raise a Windows Firewall prompt on its first start; answer Cancel.
 
@@ -307,7 +307,7 @@ $M --tool screenshot '{}'                             # PNG (base64) of the canv
 
 1. Start both clients:
    - desktop: `desktop.sh start && desktop.sh login`;
-   - Android: under the device lock (`tools/device-lock.sh`), `tools/devtools-mcp.sh`.
+   - Android: `tools/devtools-mcp.sh` (your own instance, no lock).
 2. Put both characters in the same state, with the same commands on each client (`type_chat` on
    both):
    - `::quest cook reset` or `::quest cook <stage>`;
@@ -497,7 +497,7 @@ coordinate base.
 | "RuneScape has been updated" / login response 6 | RuneLite is not rev 241. Keep `runelite_bootstrap_commithash` (1.13.2) in the target |
 | Plugin Hub empty or "outdated client" | A pinned RuneLite much older than the current release can lose Plugin Hub builds. Sideload the Quest Helper jar with `--developer-mode`, or update the pin |
 | Desktop sees no doors opening or ground items | It would mean a desktop zone-update regression in `openrune.patch`. Rerun the headless check; the zone packets must decode |
-| The Android app stops working | Desktop work never restarts `osrs-openrune` or `osrs-openrune-http`. If it happened, the container restart needs the device-lock protocol (`tools/device-lock.sh`) |
+| The Android app stops working | Desktop work never restarts `osrs-openrune` or `osrs-openrune-http`. If it happened, the container restart is the orchestrator's |
 
 The old fallback server (`server/`, `osrs-rsps-test`) is Android-only. Its `World.kt` sends zone
 updates only to Android players, so use OpenRune for multi-client.

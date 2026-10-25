@@ -3,7 +3,7 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-25, client dev
-client-api-scene-tile-1 (change client-api-scene-tile).
+client-api-actor-anim-1 (change client-api-actor-anim).
 
 ## What this is
 
@@ -54,7 +54,10 @@ client-api-scene-tile-1 (change client-api-scene-tile).
   so the live model keeps its geometry for the Model rows. 2026-10-25: 60.9% (765/1256) at aba2ced, 66.3% (833/1256)
   after client-api-model (every Model/Mesh/ModelData/AABB row and applyTransformations pass, no pass lost), 70.8%
   (889/1256) after client-api-scene-tile (Scene terrain, Tile paint/model, createSceneTilePaint and every
-  SceneTilePaint/SceneTileModel row pass, no pass lost). Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs
+  SceneTilePaint/SceneTileModel row pass, no pass lost); after client-api-actor-anim (report in ~/osrs-harness/evidence/client-api-actor-anim) the Actor
+  animation/pose/spot anim setters, Player.setSkullIcon, Renderable/Node on actors and every ActorSpotAnim row pass;
+  the probe adds spot anim 199 with a 10000-cycle delay in slot 7 for the ActorSpotAnim rows and removes it at the
+  end). Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs
   that tile's underlay/overlay/shape, paint and model and the scene's draw distance, min level, tint and skybox.
 - `THIRD_PARTY_NOTICES.md` (repo root) covers everything third-party in libosrsrl.so and host.jar (Dear ImGui + stb +
   ProggyClean, the RuneLite client subset/API/http-api, host/build.sh's Maven jars, the client jar's shaders and
@@ -107,6 +110,14 @@ client-api-scene-tile-1 (change client-api-scene-tile).
   `scene load: map arrays copied (43267 values)` per rebuild). SceneTilePaint colour/texture setters write the game's
   paint; `Tile.setSceneTilePaint/Model` accept only the tile's own (the game owns them).
 
+- **Actor writes** (client-api-actor-anim): `Actor.setAnimation/setPoseAnimation` go through the game's
+  AnimationState::setSequence (+0x4c8 / +0x4a8) and restart; frames, the 8 pose ids and `Player.setSkullIcon` (+0x730)
+  are plain field writes; the Java copy changes at once (no AnimationChanged for a plugin's own write). Spot anims are
+  the game's Actor +0x6f0 vector read live (`ActorSpotAnims`, a view per slot); `createSpotAnim/removeSpotAnim/
+  clearSpotAnims` call the game's adder `0x4714e8` (as PLAYER_SPOTANIM_SPECIFIC); the deprecated
+  getGraphic/setGraphic/graphic height/spot anim frame work on slot 0. `getOverheadText` keeps the text after its timer
+  (desktop's field). `isDead` changes only on a head bar update or `setDead`. Probe `debug.osrsrl.set 'spotanim <id>
+  <delay>'` (local player's slot 0, -1 removes, -2 lists) and `'anim <id> 0'` log the result. docs/offsets.md "Actor spot anims".
 - **Menus**: `PostMenuSort` (presort) and `MenuOpened` both run in a menu session (`AndroidMenu.beginSession`); afterwards
   `AndroidMenu.applyOrder` writes text edits back and sends a permutation or subset of the game's entries to
   `Native.menuReorder` (logcat `menu reorder (MenuOpened) [...] of N: true`). Entries with submenus can't be dropped

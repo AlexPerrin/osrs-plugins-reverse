@@ -275,6 +275,21 @@ final class Probe {
                     Log.i(TAG, "set text " + a[1] + " '" + before + "' -> '" + w.getText() + "' type " + w.getType());
                     break;
                 }
+                case "spotanim": {  // "spotanim <id> <delay>": the local player's slot-0 spot anim (-1 removes it, -2 only lists)
+                    net.runelite.api.Player me = c.getLocalPlayer();
+                    if (id != -2) me.createSpotAnim(0, id, 0, Integer.parseInt(a[2].trim()));
+                    StringBuilder sb = new StringBuilder();
+                    for (net.runelite.api.ActorSpotAnim s : me.getSpotAnims()) sb.append(' ').append(s);
+                    Log.i(TAG, "spotanim " + id + ": getGraphic " + me.getGraphic() + " spot anims" + sb + " cycle " + c.getGameCycle());
+                    break;
+                }
+                case "anim": {  // "anim <id> <n>": the local player's animation (-1 clears it)
+                    net.runelite.api.Player me = c.getLocalPlayer();
+                    int before = me.getAnimation();
+                    me.setAnimation(id);
+                    Log.i(TAG, "anim " + before + " -> " + me.getAnimation() + " frame " + me.getAnimationFrame());
+                    break;
+                }
                 case "terrain": {  // "terrain <scene x> <scene y>": that tile's terrain on the current plane, and the scene's
                     net.runelite.api.Scene s = c.getTopLevelWorldView().getScene();
                     int z = c.getTopLevelWorldView().getPlane(), y = Integer.parseInt(a[2].trim());

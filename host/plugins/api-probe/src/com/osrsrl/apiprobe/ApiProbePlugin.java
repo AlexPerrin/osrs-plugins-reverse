@@ -98,10 +98,6 @@ public class ApiProbePlugin extends Plugin {
         String scene = "removes the game's scene data, not restorable";
         SKIP.put("Scene.removeTile", scene);
         SKIP.put("Scene.removeGameObject", scene);
-        String coll = "mutates a game-owned collection, not restorable";
-        SKIP.put("Deque.clear", coll);
-        SKIP.put("Deque.addLast", coll);
-        SKIP.put("IterableHashTable.put", coll);
     }
 
     @Inject private Client client;
@@ -165,12 +161,12 @@ public class ApiProbePlugin extends Plugin {
         if (done || client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null) return;
         try {
             if (!seeded) { seed(); seeded = true; return; }
+            runLater();
             for (int n = 0; n < ROWS_PER_TICK; n++) {
                 if (current == null || !current.hasNext()) {
                     current = null;
                     if (!next()) {
-                        if (awaitingHitsplat()) return;
-                        finish();
+                        if (later.isEmpty() && !awaitingHitsplat()) finish();
                         return;
                     }
                     continue;
@@ -207,6 +203,46 @@ public class ApiProbePlugin extends Plugin {
     private boolean awaitingHitsplat() {
         return live.get(net.runelite.api.Hitsplat.class) == null && byIface.containsKey(API + "Hitsplat")
             && client.getLocalPlayer().getInteracting() != null;
+    }
+
+    /** A row's check that reads its effect on the next game tick (client cycles ran in between). */
+    interface Check {
+        void run() throws Exception;
+    }
+
+    private final List<Object[]> later = new ArrayList<>();  // {Row, Check}
+
+    void later(Row row, Check c) {
+        row.result = "pending";
+        later.add(new Object[] {row, c});
+    }
+
+    private void runLater() {
+        List<Object[]> now = new ArrayList<>(later);
+        later.clear();
+        for (Object[] l : now) {
+            Row row = (Row) l[0];
+            try {
+                ((Check) l[1]).run();
+            } catch (Throwable e) {
+                Throwable c = e instanceof InvocationTargetException ? e.getCause() : e;
+                set(row, "throw", c.getClass().getName() + ": " + c.getMessage());
+            }
+        }
+    }
+
+    // Events the hook rows raise, recorded for their later checks.
+    final List<net.runelite.api.events.SoundEffectPlayed> sounds = new ArrayList<>();
+    final List<net.runelite.api.events.AreaSoundEffectPlayed> areaSounds = new ArrayList<>();
+
+    @Subscribe
+    public void onSoundEffectPlayed(net.runelite.api.events.SoundEffectPlayed e) {
+        if (sounds.size() < 256) sounds.add(e);
+    }
+
+    @Subscribe
+    public void onAreaSoundEffectPlayed(net.runelite.api.events.AreaSoundEffectPlayed e) {
+        if (areaSounds.size() < 256) areaSounds.add(e);
     }
 
     /** The next interface with a live instance and unprobed rows; then one retry of deferred rows. */
@@ -383,7 +419,7 @@ public class ApiProbePlugin extends Plugin {
             if (s != null) s.run(this, row, inst);
             else if (setter(m) != null) roundTrip(row, inst, setter(m));
             else if (indexedGetter(m) != null) indexedRoundTrip(row, inst, indexedGetter(m));
-            else if (m.getName().startsWith("set") && m.getReturnType() == void.class) set(row, "skipped", "setter without a getter to read back and restore");
+            else if (m.getName().startsWith("set") && m.getReturnType() == void.class) noGetter(row, inst);
             else call(row, inst);
         } catch (Missing e) {
             if (!retried) { row.result = "deferred"; deferred.add(row); return; }
@@ -414,6 +450,61 @@ public class ApiProbePlugin extends Plugin {
         if (!r.isPrimitive() && v != null && !r.isInstance(v)) { set(row, "mismatch", "returned " + v.getClass().getName()); return; }
         set(row, "pass", describe(v));
     }
+
+    /**
+     * A setter with no getter and no effect check: its effect can only be host state, so the instance's
+     * fields are compared around the call. No field changed and no native call: the host does nothing (inert).
+     */
+    private void noGetter(Row row, Object inst) throws Exception {
+        Map<String, Object> before = fields(inst);
+        row.m.invoke(inst, args(row));
+        Map<String, Object> after = fields(inst);
+        List<String> changed = new ArrayList<>();
+        for (Map.Entry<String, Object> e : before.entrySet())
+            if (!same(e.getValue(), after.get(e.getKey()))) changed.add(e.getKey() + " " + describe(e.getValue()) + " -> " + describe(after.get(e.getKey())));
+        if (changed.isEmpty() && !row.nat) set(row, "inert", "no effect: none of " + before.size() + " fields of " + inst.getClass().getSimpleName() + " changed, no native call");
+        else set(row, "mismatch", "no getter or effect check; changed: " + changed + (row.nat ? " (native)" : ""));
+    }
+
+    /** Shallow copy of every instance field of `o` (arrays cloned), by declaring class and name. */
+    static Map<String, Object> fields(Object o) throws IllegalAccessException {
+        Map<String, Object> out = new TreeMap<>();
+        for (Class<?> k = o.getClass(); k != null && k != Object.class; k = k.getSuperclass())
+            for (java.lang.reflect.Field f : k.getDeclaredFields()) {
+                if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+                f.setAccessible(true);
+                Object v = f.get(o);
+                if (v != null && v.getClass().isArray()) v = v instanceof Object[] ? ((Object[]) v).clone() : cloneArray(v);
+                out.put(k.getSimpleName() + "." + f.getName(), v);
+            }
+        return out;
+    }
+
+    private static Object cloneArray(Object a) {
+        int n = Array.getLength(a);
+        Object c = Array.newInstance(a.getClass().getComponentType(), n);
+        System.arraycopy(a, 0, c, 0, n);
+        return c;
+    }
+
+    /** A static method of a host class (net.runelite.host), by reflection: the host's own state for effect checks. */
+    static Object host(String cls, String name, Class<?>[] types, Object... args) throws Exception {
+        Method m = Class.forName("net.runelite.host." + cls, false, Client.class.getClassLoader()).getDeclaredMethod(name, types);
+        m.setAccessible(true);
+        return m.invoke(null, args);
+    }
+
+    static Object hostField(String cls, String name) throws Exception {
+        java.lang.reflect.Field f = Class.forName("net.runelite.host." + cls, false, Client.class.getClassLoader()).getDeclaredField(name);
+        f.setAccessible(true);
+        return f.get(null);
+    }
+
+    static int clientInt(int which) throws Exception {
+        return (Integer) host("Native", "clientInt", new Class<?>[] {int.class}, which);
+    }
+
+    static final int CHAT_CYCLE = 3, CHANGED_SKILL_COUNT = 4;  // Native.clientInt indices
 
     /** setX(v) with a getter getX()/isX(): set an altered value, read it back, restore, read again. */
     private void roundTrip(Row row, Object inst, Method get) throws Exception {
@@ -455,7 +546,9 @@ public class ApiProbePlugin extends Plugin {
         String n = m.getName();
         Class<?> p = m.getParameterTypes()[0];
         List<String> names = new ArrayList<>();
-        if (n.startsWith("set") && n.length() > 3) {
+        if (ALIAS.containsKey(n)) {
+            names.add(ALIAS.get(n));
+        } else if (n.startsWith("set") && n.length() > 3) {
             String suf = n.substring(3);
             names.add("get" + suf);
             names.add("is" + suf);
@@ -476,11 +569,19 @@ public class ApiProbePlugin extends Plugin {
         return null;
     }
 
+    /** Setters whose getter has another name. */
+    static final Map<String, String> ALIAS = new HashMap<>();
+    static {
+        ALIAS.put("setActionFrame", "getAnimationFrame");  // desktop's older name for the animation frame
+    }
+
     private static Method indexedGetter(Method m) {
         if (!m.getName().startsWith("set") || m.getParameterCount() != 2 || m.getParameterTypes()[0] != int.class) return null;
         String suf = m.getName().substring(3);
         Class<?> p = m.getParameterTypes()[1];
-        for (String g : new String[] {"get" + suf, "get" + suf + "Value"}) {
+        String type = p == int.class ? "Int" : p.isPrimitive() ? Character.toUpperCase(p.getName().charAt(0)) + p.getName().substring(1) : p.getSimpleName();
+        // ParamHolder.setValue(int, int/long/String) reads back as getIntValue/getLongValue/getStringValue
+        for (String g : new String[] {"get" + suf, "get" + suf + "Value", "get" + type + suf}) {
             try {
                 Method get = m.getDeclaringClass().getMethod(g, int.class);
                 if (box(get.getReturnType()) == box(p)) return get;
@@ -805,6 +906,273 @@ public class ApiProbePlugin extends Plugin {
             for (int i = 0; b != null && i < Math.min(8, b.length); i++) hex.append(String.format("%02x", b[i] & 0xff));
             p.set(row, b != null && b.length > 0 ? "pass" : "mismatch", describe(inst) + (g == null ? " no group with files" : " group " + g[0] + " file " + g[1] + ": " + describe(b) + " " + hex));
         });
+    }
+
+    static final int VARP = 1000, VARBIT = 8119, SOUND = 2266;
+    static final String[] LISTENER_KINDS = {"TIMER", "DRAG", "VAR_TRANSMIT", "STORED", "TARGET_ENTER", "TARGET_LEAVE"};  // WidgetListeners kinds
+
+    // Setters and hooks without a getter: each effect read where it lands (an event, a game field, host state).
+    static {
+        // On a copy of the varps, so the game's are untouched: getVarbitValue(int[], int) reads it back.
+        SPECIAL.put("Client.setVarbitValue3", (p, row, inst) -> {
+            Client c = (Client) inst;
+            int[] v = c.getVarps().clone();
+            int old = c.getVarbitValue(v, VARBIT), alt = old == 0 ? 1 : 0;
+            c.setVarbitValue(v, VARBIT, alt);
+            int read = c.getVarbitValue(v, VARBIT);
+            c.setVarbitValue(v, VARBIT, old);
+            int back = c.getVarbitValue(v, VARBIT), game = c.getVarbitValue(VARBIT);
+            p.set(row, read == alt && back == old && game == old ? "pass" : "mismatch", "varbit " + VARBIT + " in a copy of getVarps(): " + old + " -> set " + alt + " -> "
+                + read + " -> restored " + back + "; the game's still " + game);
+        });
+        // Publishes an edit of the array getVarps() returned: the game's varp then reads the edited value.
+        SPECIAL.put("Client.queueChangedVarp1", (p, row, inst) -> {
+            Client c = (Client) inst;
+            int[] v = c.getVarps();
+            int old = v[VARP], alt = (Integer) alter(old, int.class);
+            v[VARP] = alt;
+            c.queueChangedVarp(VARP);
+            int read = c.getVarpValue(VARP);
+            v = c.getVarps();
+            v[VARP] = old;
+            c.queueChangedVarp(VARP);
+            int back = c.getVarpValue(VARP);
+            p.set(row, read == alt && back == old ? "pass" : "mismatch", "varp " + VARP + " " + old + ", array edited to " + alt + " and queued: getVarpValue " + read + " -> restored " + back);
+        });
+        // The game's changed-skills ring count (what the skill tab's onStatTransmit scripts run on).
+        SPECIAL.put("Client.queueChangedSkill1", (p, row, inst) -> {
+            int before = clientInt(CHANGED_SKILL_COUNT);
+            ((Client) inst).queueChangedSkill(net.runelite.api.Skill.ATTACK);
+            int after = clientInt(CHANGED_SKILL_COUNT);
+            p.set(row, after == before + 1 ? "pass" : "mismatch", "ATTACK: changed-skills count " + before + " -> " + after);
+        });
+        // The chat cycle the chatbox rebuilds on: set back one, then refreshChat sets it again.
+        SPECIAL.put("Client.refreshChat0", (p, row, inst) -> {
+            int before = clientInt(CHAT_CYCLE);
+            host("Native", "setClientInt", new Class<?>[] {int.class, int.class}, CHAT_CYCLE, before - 1);
+            ((Client) inst).refreshChat();
+            int after = clientInt(CHAT_CYCLE);
+            p.set(row, after != before - 1 ? "pass" : "mismatch", "chat cycle " + before + " -> set " + (before - 1) + " -> refreshChat " + after + " (game cycle " + ((Client) inst).getGameCycle() + ")");
+        });
+        // The GE search results OC_FINDNEXT reads: the game's fields (Native.geSearch {count, index, ids...}), restored.
+        Special ge = (p, row, inst) -> {
+            Client c = (Client) inst;
+            int[] old = geSearch();
+            if (old == null) { p.set(row, "mismatch", "GE search fields unreadable"); return; }
+            short[] ids = new short[old.length - 2];
+            for (int i = 0; i < ids.length; i++) ids[i] = (short) old[i + 2];
+            int[] want = old.clone();
+            if (row.name.equals("setGeSearchResultIds")) { c.setGeSearchResultIds(new short[] {995, 1511}); want = new int[] {old[0], old[1], 995, 1511}; }
+            else if (row.name.equals("setGeSearchResultCount")) { c.setGeSearchResultCount(old[0] + 1); want[0]++; }
+            else { c.setGeSearchResultIndex(old[1] + 1); want[1]++; }
+            int[] read = geSearch();
+            c.setGeSearchResultIds(ids);
+            c.setGeSearchResultCount(old[0]);
+            c.setGeSearchResultIndex(old[1]);
+            int[] back = geSearch();
+            p.set(row, Arrays.equals(read, want) && Arrays.equals(back, old) ? "pass" : "mismatch",
+                "{count, index, ids} " + Arrays.toString(old) + " -> " + Arrays.toString(read) + " -> restored " + Arrays.toString(back));
+        };
+        SPECIAL.put("Client.setGeSearchResultIds1", ge);
+        SPECIAL.put("Client.setGeSearchResultCount1", ge);
+        SPECIAL.put("Client.setGeSearchResultIndex1", ge);
+        // Desktop's inventory drag delay: on mobile the inventory items' drag dead time (Widget +0x324).
+        SPECIAL.put("Client.setInventoryDragDelay1", (p, row, inst) -> {
+            Client c = (Client) inst;
+            Widget inv = c.getWidget(149, 0);
+            Widget[] items = inv == null ? null : inv.getDynamicChildren();
+            if (items == null || items.length == 0) { p.set(row, "mismatch", "no inventory item widget (149:0) to read the drag dead time of"); return; }
+            int old = items[0].getDragDeadTime();
+            c.setInventoryDragDelay(old + 10);
+            int read = items[0].getDragDeadTime();
+            c.setInventoryDragDelay(old);
+            p.set(row, read == old + 10 ? "pass" : "mismatch", "149:0[0] drag dead time " + old + " -> setInventoryDragDelay(" + (old + 10) + ") -> " + read);
+        });
+        // Sounds: the SoundEffectPlayed / AreaSoundEffectPlayed the game's queue raises, read on the next tick.
+        // Each overload uses its own id, so their events don't mix.
+        Special sound = (p, row, inst) -> {
+            Client c = (Client) inst;
+            int n = row.m.getParameterCount(), id = SOUND + n;
+            LocalPoint lp = c.getLocalPlayer().getLocalLocation();
+            int x = lp.getSceneX(), y = lp.getSceneY();
+            if (n == 1) c.playSoundEffect(id);
+            else if (n == 2) c.playSoundEffect(id, 32);
+            else if (n == 4) c.playSoundEffect(id, x, y, 1);
+            else c.playSoundEffect(id, x, y, 1, 5);
+            p.later(row, () -> {
+                net.runelite.api.events.SoundEffectPlayed s = null;
+                net.runelite.api.events.AreaSoundEffectPlayed a = null;
+                for (net.runelite.api.events.SoundEffectPlayed e : p.sounds) if (e.getSoundId() == id) s = e;
+                for (net.runelite.api.events.AreaSoundEffectPlayed e : p.areaSounds) if (e.getSoundId() == id) a = e;
+                String ev = "sound " + id + ": SoundEffectPlayed " + (s == null ? "none" : "delay " + s.getDelay())
+                    + ", AreaSoundEffectPlayed " + (a == null ? "none" : "at " + a.getSceneX() + "," + a.getSceneY() + " range " + a.getRange() + " delay " + a.getDelay());
+                boolean ok;
+                if (n == 1) ok = s != null && s.getDelay() == 0;
+                else if (n == 2) { ok = false; ev += "; volume 32 is not applied (desktop plays it at that volume)"; }
+                else ok = a != null && a.getSceneX() == x && a.getSceneY() == y && a.getRange() == 1 && a.getDelay() == (n == 5 ? 5 : 0);
+                if (n >= 4) ev += "; asked at " + x + "," + y + " range 1";
+                p.set(row, ok ? "pass" : "mismatch", ev);
+            });
+        };
+        SPECIAL.put("Client.playSoundEffect1", sound);
+        SPECIAL.put("Client.playSoundEffect2", sound);
+        SPECIAL.put("Client.playSoundEffect4", sound);
+        SPECIAL.put("Client.playSoundEffect5", sound);
+        // The probe's own chat line: once the game has it (next tick), removed; the buffer's line count drops.
+        SPECIAL.put("ChatLineBuffer.removeMessageNode1", (p, row, inst) -> {
+            net.runelite.api.MessageNode node = p.client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "api-probe: removeMessageNode", null);
+            int type = ChatMessageType.GAMEMESSAGE.getType();
+            p.later(row, () -> {
+                net.runelite.api.ChatLineBuffer b = p.client.getChatLineMap().get(type);
+                int n1 = b == null ? 0 : b.getLength();
+                boolean had = b != null && Arrays.asList(b.getLines()).contains(node);
+                if (b != null) b.removeMessageNode(node);
+                net.runelite.api.ChatLineBuffer a = p.client.getChatLineMap().get(type);
+                int n2 = a == null ? 0 : a.getLength();
+                boolean has = a != null && Arrays.asList(a.getLines()).contains(node);
+                p.set(row, had && !has && n2 == n1 - 1 ? "pass" : "mismatch", "probe line id " + node.getId() + ": " + type + " buffer " + n1 + " lines (line in it " + had + ") -> removed: " + n2 + " (in it " + has + ")");
+            });
+        });
+        // The game's ambient sounds, cleared and re-added in the same cycle (as Ambient Sound plugins do).
+        Special deque = (p, row, inst) -> {
+            net.runelite.api.Deque<net.runelite.api.AmbientSoundEffect> d = p.client.getAmbientSoundEffects();
+            List<net.runelite.api.AmbientSoundEffect> had = new ArrayList<>();
+            for (net.runelite.api.AmbientSoundEffect e : d) had.add(e);
+            if (had.isEmpty()) { p.set(row, "mismatch", "no ambient sound in the scene to clear and re-add"); return; }
+            d.clear();
+            int left = 0;
+            for (Object e : d) left++;
+            for (net.runelite.api.AmbientSoundEffect e : had) d.addLast(e);
+            int back = 0;
+            for (Object e : d) back++;
+            p.set(row, left == 0 && back == had.size() ? "pass" : "mismatch", "ambient sounds " + had.size() + " -> clear " + left + " -> addLast each " + back);
+        };
+        SPECIAL.put("Deque.clear0", deque);
+        SPECIAL.put("Deque.addLast1", deque);
+        // A probe-owned slot of the local player's spot anim table: put a copy of the probe's slot-7 spot anim.
+        SPECIAL.put("IterableHashTable.put2", (p, row, inst) -> {
+            net.runelite.api.Actor a = p.client.getLocalPlayer();
+            net.runelite.api.ActorSpotAnim src = a.getSpotAnims().get(PROBE_SLOT);
+            if (src == null) { p.set(row, "mismatch", "no probe spot anim in slot " + PROBE_SLOT + " to put"); return; }
+            int slot = PROBE_SLOT + 2;
+            Object before = a.getSpotAnims().get(slot);
+            a.getSpotAnims().put(src, slot);
+            p.later(row, () -> {
+                net.runelite.api.ActorSpotAnim s = a.getSpotAnims().get(slot);
+                a.removeSpotAnim(slot);
+                p.set(row, before == null && s != null && s.getId() == src.getId() ? "pass" : "mismatch", "local player's spot anims slot " + slot + ": " + describe(before) + " -> put " + describe(src) + " -> " + describe(s) + " (removed again)");
+            });
+        });
+        // The world map's display position: the game moves it to the target on its next cycle while the map is open.
+        SPECIAL.put("WorldMap.setWorldMapPositionTarget1", (p, row, inst) -> {
+            net.runelite.api.worldmap.WorldMap m = (net.runelite.api.worldmap.WorldMap) inst;
+            net.runelite.api.Point old = m.getWorldMapPosition();
+            if (old == null) { p.set(row, "mismatch", "no world map position (the map was not opened since the app started)"); return; }
+            int plane = p.client.getTopLevelWorldView().getPlane();
+            m.setWorldMapPositionTarget(new WorldPoint(old.getX() + 8, old.getY() + 8, plane));
+            p.later(row, () -> {
+                net.runelite.api.Point read = m.getWorldMapPosition();
+                m.setWorldMapPositionTarget(new WorldPoint(old.getX(), old.getY(), plane));
+                p.later(row, () -> {
+                    net.runelite.api.Point back = m.getWorldMapPosition();
+                    boolean ok = read != null && read.getX() == old.getX() + 8 && read.getY() == old.getY() + 8 && old.equals(back);
+                    p.set(row, ok ? "pass" : "mismatch", "position " + old + " -> target +8,+8 -> next tick " + read + " -> restored " + back
+                        + (ok ? "" : " (the game moves it only while the world map is open)"));
+                });
+            });
+        });
+        // Sub-ops: set, read back with getSubOps, restore (the host's entry removed when there was none).
+        SPECIAL.put("Widget.setSubOp3", (p, row, inst) -> {
+            Widget w = (Widget) inst;
+            String[][] old = w.getSubOps();
+            String prev = old != null && old[0] != null && old[0].length > 0 ? old[0][0] : null;
+            w.setSubOp(0, 0, "api-probe");
+            String[][] r = w.getSubOps();
+            String read = r != null && r[0] != null && r[0].length > 0 ? r[0][0] : null;
+            if (old == null) {
+                @SuppressWarnings("unchecked") Map<Long, String[][]> t = (Map<Long, String[][]>) hostField("AndroidWidget", "SUB_OPS");
+                synchronized (t) { t.remove(((long) w.getId() << 32) | (w.getIndex() & 0xffffffffL)); }
+            } else {
+                w.setSubOp(0, 0, prev);
+            }
+            p.set(row, "api-probe".equals(read) && (old == null ? w.getSubOps() == null : same(prev, w.getSubOps()[0][0])) ? "pass" : "mismatch",
+                "sub-op 0/0 " + describe(prev) + " -> " + describe(read) + " -> restored " + (w.getSubOps() == null ? "none" : describe(w.getSubOps()[0][0])));
+        });
+        // Layout: a probe-created child moved by setOriginalX lands at its new relative x only after the call.
+        Special reval = (p, row, inst) -> {
+            Widget parent = p.listenerParent((Widget) inst);
+            Widget c = parent.createChild(-1, 3);
+            c.setOriginalWidth(10);
+            c.setOriginalHeight(10);
+            row.m.invoke(c);
+            int x0 = c.getRelativeX();
+            c.setOriginalX(c.getOriginalX() + 7);
+            int x1 = c.getRelativeX();
+            row.m.invoke(c);
+            int x2 = c.getRelativeX();
+            parent.deleteAllChildren();
+            p.set(row, x1 == x0 && x2 == x0 + 7 ? "pass" : "mismatch", "child of " + wid(parent) + ": relative x " + x0 + ", original x +7 -> " + x1 + " -> " + row.name + " " + x2 + " (child deleted)");
+        };
+        SPECIAL.put("Widget.revalidate0", reval);
+        SPECIAL.put("Widget.revalidateScroll0", reval);
+        // Java listeners on a probe-created child: where the host keeps each, and whether its event runs it.
+        Special listener = (p, row, inst) -> {
+            Widget parent = p.listenerParent((Widget) inst);
+            Widget c = parent.createChild(-1, 3);
+            int[] runs = {0};
+            net.runelite.api.widgets.JavaScriptCallback cb = ev -> runs[0]++;
+            row.m.invoke(c, (Object) new Object[] {cb});
+            int id = c.getId(), idx = c.getIndex();
+            long key = (long) id << 32 | (idx & 0xffffffffL);
+            String kind = null;
+            @SuppressWarnings("unchecked") Map<Integer, Map<Long, Object[]>> all = (Map<Integer, Map<Long, Object[]>>) hostField("WidgetListeners", "javaListeners");
+            for (Map.Entry<Integer, Map<Long, Object[]>> e : all.entrySet())
+                if (e.getValue().containsKey(key)) kind = LISTENER_KINDS[e.getKey()];
+            if (kind == null && ((Map<?, ?>) hostField("WidgetListeners", "dragComplete")).containsKey(key)) kind = "DRAG_COMPLETE";
+            String where = "child " + wid(parent) + "[" + idx + "]: " + (kind == null ? "not stored" : "stored as " + kind);
+            Check clear = () -> {
+                row.m.invoke(c, (Object) null);
+                parent.deleteAllChildren();
+            };
+            Class<?> cl = Client.class;
+            if ("TIMER".equals(kind)) {
+                p.later(row, () -> {
+                    int n = runs[0];
+                    boolean hidden = c.isHidden();
+                    clear.run();
+                    p.set(row, n > 0 ? "pass" : "mismatch", where + "; ran " + n + " times by the next tick" + (hidden ? " (hidden)" : ""));
+                });
+                return;
+            }
+            if ("DRAG".equals(kind)) host("WidgetListeners", "runDrag", new Class<?>[] {cl, int.class, int.class}, p.client, id, idx);
+            else if ("DRAG_COMPLETE".equals(kind)) host("WidgetListeners", "runDragComplete", new Class<?>[] {cl, int.class, int.class, int.class, int.class}, p.client, id, idx, -1, -1);
+            else if ("TARGET_ENTER".equals(kind) || "TARGET_LEAVE".equals(kind))
+                host("WidgetListeners", "runFor", new Class<?>[] {cl, int.class, int.class, int.class}, p.client, Arrays.asList(LISTENER_KINDS).indexOf(kind), id, idx);
+            int n = runs[0];
+            clear.run();
+            if ("STORED".equals(kind)) p.set(row, "inert", where + " (kept, never run: no host event runs a STORED listener)");
+            else p.set(row, kind != null && n > 0 ? "pass" : "mismatch", where + "; the host's " + kind + " dispatch ran it " + n + " times");
+        };
+        for (String l : new String[] {"Click", "DialogAbort", "DragComplete", "Drag", "Hold", "MouseLeave", "MouseOver", "MouseRepeat", "Release",
+            "ScrollWheel", "TargetEnter", "TargetLeave", "Timer"})
+            SPECIAL.put("Widget.setOn" + l + "Listener1", listener);
+    }
+
+    static int[] geSearch() throws Exception {
+        return (int[]) host("Native", "geSearch", new Class<?>[0]);
+    }
+
+    static String wid(Widget w) {
+        return (w.getId() >>> 16) + ":" + (w.getId() & 0xffff);
+    }
+
+    /** A visible root other than the probe's widget, with no dynamic children: the children the listener and layout rows create go there. */
+    Widget listenerParent(Widget seeded) {
+        Widget[] roots = client.getWidgetRoots();
+        if (roots != null)
+            for (Widget w : roots)
+                if (w != null && w != seeded && !w.isHidden() && (w.getDynamicChildren() == null || w.getDynamicChildren().length == 0)) return w;
+        return seeded;
     }
 
     /** {group, file} of the first group of `idx` with a file, or null. */

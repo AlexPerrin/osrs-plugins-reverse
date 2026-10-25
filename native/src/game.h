@@ -75,6 +75,14 @@ bool scene_set(int what, int plane, int x, int y, uint64_t ptr, int field, int v
 // Actor overhead text (+0x2d8, assigned with the game's string assign 0x3f1498) and its timer
 // (+0x2f4, ticks left). `text` null keeps the string. Game thread only.
 bool actor_set_overhead(uintptr_t actor, const std::string* text, int cycle);
+// Actor state writes (game thread; Native.actorSet): sequences through the game's setSequence.
+enum { kActorAnimation = 0, kActorAnimationFrame = 1, kActorPoseAnimation = 2, kActorPoseFrame = 3, kActorSkull = 4,
+       kActorPose = 8 /* ..15: idle, idle left, idle right, walk, walk 180, walk left, walk right, run */ };
+bool actor_set(uintptr_t actor, bool player, int what, int value);
+// Spot anims: 6 ints per entry {slot, id, height, start cycle, frame, frame cycle}; field 0..4 = id..frame cycle.
+bool actor_spot_anims(uintptr_t actor, std::vector<int32_t>& out);
+bool actor_spot_anim_set(uintptr_t actor, int slot, int field, int value);
+bool actor_create_spot_anim(uintptr_t actor, int slot, int id, int height, int delay);  // id -1 removes the slot
 bool friend_list(bool ignores, std::vector<FriendEntry>& out);
 Point scene_base();        // world tile of scene tile (0, 0) (top-level WorldView)
 Point player_world();       // world tile (x, y) = scene base + scene tile; {-1, -1} if unavailable

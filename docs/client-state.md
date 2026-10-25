@@ -3,7 +3,7 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-25, client dev
-client-api-client-state-1 (change client-api-client-state).
+client-api-client-state-2 (change client-api-client-state).
 
 ## What this is
 
@@ -59,7 +59,10 @@ client-api-client-state-1 (change client-api-client-state).
   cache, index and config row listed in that change passes, no pass lost; the probe checks `NodeCache.reset` and
   `resetHealthBarCaches` by the game cache's entry count, the IndexDataBase rows on the first group with files, and seeds
   NpcOverrides from any NPC that has one; host objects that override toString describe themselves in the evidence. The
-  health bar check needs a health bar seen first (attack anything): with an empty cache it reads `0 -> 0`. After client-api-client-state (report and diff in its evidence dir): every session, settings and menu row listed in that change passes, no pass lost; the probe checks `getSocketFD` by the fd's peer against `getWorldHost` and the menu draws by the pixels drawn into the frame copy, so a long-press menu must be open when it runs (`input swipe x y x y 900` on the scene, then load the probe); `getWorldList` is null until the login screen's world switcher has loaded the list, and the MidiRequest rows need a song playing (OpenRune plays none by itself here: play an unlocked track, e.g. "Alone", from the music tab, which sets the music mode to single). The probe jar must not reference java.net classes: the host's netscan refuses it. Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs
+  health bar check needs a health bar seen first (attack anything): with an empty cache it reads `0 -> 0`. After client-api-actor-anim, 81.4% (1023/1256, every pass of main's and the branch's reports kept; report and diff in its evidence dir): the Actor
+  animation/pose/spot anim setters, Player.setSkullIcon, Renderable/Node on actors and every ActorSpotAnim row pass,
+  no pass lost; the probe adds spot anim 199 with a 10000-cycle delay in slot 7 for the ActorSpotAnim rows and removes
+  it at the end. After client-api-client-state (report and diff in its evidence dir): every session, settings and menu row listed in that change passes, no pass lost; the probe checks `getSocketFD` by the fd's peer against `getWorldHost` and the menu draws by the pixels drawn into the frame copy, so a long-press menu must be open when it runs (`input swipe x y x y 900` on the scene, then load the probe); `getWorldList` is null until the login screen's world switcher has loaded the list, and the MidiRequest rows need a song playing (OpenRune plays none by itself here: play an unlocked track, e.g. "Alone", from the music tab, which sets the music mode to single). The probe jar must not reference java.net classes: the host's netscan refuses it. Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs
   that tile's underlay/overlay/shape, paint and model and the scene's draw distance, min level, tint and skybox.
 - `THIRD_PARTY_NOTICES.md` (repo root) covers everything third-party in libosrsrl.so and host.jar (Dear ImGui + stb +
   ProggyClean, the RuneLite client subset/API/http-api, host/build.sh's Maven jars, the client jar's shaders and
@@ -112,6 +115,14 @@ client-api-client-state-1 (change client-api-client-state).
   `scene load: map arrays copied (43267 values)` per rebuild). SceneTilePaint colour/texture setters write the game's
   paint; `Tile.setSceneTilePaint/Model` accept only the tile's own (the game owns them).
 
+- **Actor writes** (client-api-actor-anim): `Actor.setAnimation/setPoseAnimation` go through the game's
+  AnimationState::setSequence (+0x4c8 / +0x4a8) and restart; frames, the 8 pose ids and `Player.setSkullIcon` (+0x730)
+  are plain field writes; the Java copy changes at once (no AnimationChanged for a plugin's own write). Spot anims are
+  the game's Actor +0x6f0 vector read live (`ActorSpotAnims`, a view per slot); `createSpotAnim/removeSpotAnim/
+  clearSpotAnims` call the game's adder `0x4714e8` (as PLAYER_SPOTANIM_SPECIFIC); the deprecated
+  getGraphic/setGraphic/graphic height/spot anim frame work on slot 0. `getOverheadText` keeps the text after its timer
+  (desktop's field). `isDead` changes only on a head bar update or `setDead`. Probe `debug.osrsrl.set 'spotanim <id>
+  <delay>'` (local player's slot 0, -1 removes, -2 lists) and `'anim <id> 0'` log the result. docs/offsets.md "Actor spot anims".
 - **Menus**: `PostMenuSort` (presort) and `MenuOpened` both run in a menu session (`AndroidMenu.beginSession`); afterwards
   `AndroidMenu.applyOrder` writes text edits back and sends a permutation or subset of the game's entries to
   `Native.menuReorder` (logcat `menu reorder (MenuOpened) [...] of N: true`). Entries with submenus can't be dropped

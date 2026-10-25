@@ -453,6 +453,7 @@ public class ApiProbePlugin extends Plugin {
         void run(ApiProbePlugin p, Row row, Object inst) throws Exception;
     }
 
+    static final int PROBE_SLOT = 7, LEVELUP_SPOTANIM = 199, SPOTANIM_DELAY = 10000;  // 200 s at 50 cycles/s
     static final Map<String, Special> SPECIAL = new HashMap<>();
     static {
         // Hint arrows: set, observe hasHintArrow and its target, clear, observe it gone.
@@ -592,6 +593,56 @@ public class ApiProbePlugin extends Plugin {
         };
         SPECIAL.put("Widget.createChild1", child);
         SPECIAL.put("Widget.createChild2", child);
+        // Spot anims: a level-up spot anim (199) with a long delay, so the game keeps it unstarted. The one
+        // createSpotAnim adds stays (it is the ActorSpotAnim rows' live instance) until finish removes it.
+        SPECIAL.put("Actor.createSpotAnim4", (p, row, inst) -> {
+            net.runelite.api.Actor a = (net.runelite.api.Actor) inst;
+            a.createSpotAnim(PROBE_SLOT, LEVELUP_SPOTANIM, 0, SPOTANIM_DELAY);
+            net.runelite.api.ActorSpotAnim s = a.getSpotAnims().get(PROBE_SLOT);
+            p.register(s, 0);
+            p.cleanup.add(() -> a.removeSpotAnim(PROBE_SLOT));
+            p.set(row, s != null && s.getId() == LEVELUP_SPOTANIM && a.hasSpotAnim(LEVELUP_SPOTANIM) ? "pass" : "mismatch",
+                "slot " + PROBE_SLOT + " -> " + describe(s) + "; hasSpotAnim(" + LEVELUP_SPOTANIM + ") " + a.hasSpotAnim(LEVELUP_SPOTANIM));
+        });
+        SPECIAL.put("Actor.removeSpotAnim1", (p, row, inst) -> {
+            net.runelite.api.Actor a = (net.runelite.api.Actor) inst;
+            a.createSpotAnim(PROBE_SLOT + 1, LEVELUP_SPOTANIM, 0, SPOTANIM_DELAY);
+            Object before = a.getSpotAnims().get(PROBE_SLOT + 1);
+            a.removeSpotAnim(PROBE_SLOT + 1);
+            Object after = a.getSpotAnims().get(PROBE_SLOT + 1);
+            p.set(row, before != null && after == null ? "pass" : "mismatch", "slot " + (PROBE_SLOT + 1) + " " + describe(before) + " -> removed: " + describe(after));
+        });
+        // Clears every spot anim, then puts back the ones there were (frame progress is not kept).
+        SPECIAL.put("Actor.clearSpotAnims0", (p, row, inst) -> {
+            net.runelite.api.Actor a = (net.runelite.api.Actor) inst;
+            List<int[]> had = new ArrayList<>();
+            for (net.runelite.api.ActorSpotAnim s : a.getSpotAnims())
+                had.add(new int[] {(int) s.getHash(), s.getId(), s.getHeight(), Math.max(0, s.getStartCycle() - p.client.getGameCycle())});
+            a.createSpotAnim(PROBE_SLOT + 1, LEVELUP_SPOTANIM, 0, SPOTANIM_DELAY);
+            int n = 0;
+            for (Object s : a.getSpotAnims()) n++;
+            a.clearSpotAnims();
+            int left = 0;
+            for (Object s : a.getSpotAnims()) left++;
+            for (int[] s : had) a.createSpotAnim(s[0], s[1], s[2], s[3]);
+            int back = 0;
+            for (Object s : a.getSpotAnims()) back++;
+            p.set(row, n == had.size() + 1 && left == 0 && back == had.size() ? "pass" : "mismatch", "spot anims " + n + " -> cleared " + left + " -> restored " + back);
+        });
+        // The deprecated slot-0 accessors: round trip on a slot-0 spot anim (a temporary one when there is none).
+        Special slot0 = (p, row, inst) -> {
+            net.runelite.api.Actor a = (net.runelite.api.Actor) inst;
+            boolean temp = a.getSpotAnims().get(0) == null;
+            if (temp) a.createSpotAnim(0, LEVELUP_SPOTANIM, 0, SPOTANIM_DELAY);
+            try {
+                p.roundTrip(row, inst, setter(row.m));
+            } finally {
+                if (temp) a.removeSpotAnim(0);
+            }
+            if (temp) row.evidence += " (temporary slot-0 spot anim " + LEVELUP_SPOTANIM + ")";
+        };
+        SPECIAL.put("Actor.setGraphicHeight1", slot0);
+        SPECIAL.put("Actor.setSpotAnimFrame1", slot0);
         // The image must match the sprite's size (desktop throws otherwise); the live BufferedImage may be any size.
         SPECIAL.put("SpritePixels.toBufferedImage1", (p, row, inst) -> {
             net.runelite.api.SpritePixels s = (net.runelite.api.SpritePixels) inst;
@@ -715,6 +766,8 @@ public class ApiProbePlugin extends Plugin {
         String hex = Arrays.stream(v).mapToObj(Integer::toHexString).collect(java.util.stream.Collectors.joining(","));
         p.set(row, ok.test(v) ? "pass" : "mismatch", "drawn into " + w + "x" + r.getHeight() + " pixels; read back " + hex + " (restored)");
     }
+
+    private final List<Runnable> cleanup = new ArrayList<>();
 
     // ---- arguments ----
 
@@ -867,6 +920,7 @@ public class ApiProbePlugin extends Plugin {
     private void finish() throws Exception {
         done = true;
         eventBus.unregister(this);
+        for (Runnable r : cleanup) r.run();
         for (Map.Entry<String, List<Row>> e : byIface.entrySet())
             for (Row r : e.getValue())
                 if (r.result == null) set(r, "unreached", "no live " + simple(r.iface) + " instance");

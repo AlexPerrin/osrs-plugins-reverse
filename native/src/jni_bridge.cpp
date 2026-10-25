@@ -1616,6 +1616,27 @@ jboolean n_actor_set_overhead(JNIEnv* env, jclass, jboolean player, jint index, 
     if (text) t = to_latin1(env, text);
     return game::actor_set_overhead(a, text ? &t : nullptr, cycle);
 }
+static uintptr_t live_actor(jboolean player, jint index) {
+    return player ? game::live_player(index) : game::live_npc(index);
+}
+jboolean n_actor_set(JNIEnv*, jclass, jboolean player, jint index, jint what, jint value) {
+    return client_thread::on_client_thread() && game::actor_set(live_actor(player, index), player, what, value);
+}
+// {slot, id, height, start cycle, frame, frame cycle} per spot anim, or null without the actor.
+jintArray n_actor_spot_anims(JNIEnv* env, jclass, jboolean player, jint index) {
+    if (!client_thread::on_client_thread()) return nullptr;
+    std::vector<int32_t> v;
+    if (!game::actor_spot_anims(live_actor(player, index), v)) return nullptr;
+    jintArray arr = env->NewIntArray(static_cast<jsize>(v.size()));
+    if (!v.empty()) env->SetIntArrayRegion(arr, 0, static_cast<jsize>(v.size()), v.data());
+    return arr;
+}
+jboolean n_actor_spot_anim_set(JNIEnv*, jclass, jboolean player, jint index, jint slot, jint field, jint value) {
+    return client_thread::on_client_thread() && game::actor_spot_anim_set(live_actor(player, index), slot, field, value);
+}
+jboolean n_actor_create_spot_anim(JNIEnv*, jclass, jboolean player, jint index, jint slot, jint id, jint height, jint delay) {
+    return client_thread::on_client_thread() && game::actor_create_spot_anim(live_actor(player, index), slot, id, height, delay);
+}
 void n_widget_set_text(JNIEnv* env, jclass, jint id, jint index, jstring text) {
     if (!client_thread::on_client_thread()) return;
     std::string latin1;
@@ -1989,6 +2010,10 @@ const JNINativeMethod kNatives[] = {
     {"setModIcons", "([I[[B[[I)V", reinterpret_cast<void*>(n_set_mod_icons)},
     {"modIconSizes", "()[I", reinterpret_cast<void*>(n_mod_icon_sizes)},
     {"actorSetOverhead", "(ZILjava/lang/String;I)Z", reinterpret_cast<void*>(n_actor_set_overhead)},
+    {"actorSet", "(ZIII)Z", reinterpret_cast<void*>(n_actor_set)},
+    {"actorSpotAnims", "(ZI)[I", reinterpret_cast<void*>(n_actor_spot_anims)},
+    {"actorSpotAnimSet", "(ZIIII)Z", reinterpret_cast<void*>(n_actor_spot_anim_set)},
+    {"actorCreateSpotAnim", "(ZIIIII)Z", reinterpret_cast<void*>(n_actor_create_spot_anim)},
     {"objectModel", "(IIIIJ)[I", reinterpret_cast<void*>(n_object_model)},
     {"varcInt", "(I)I", reinterpret_cast<void*>(n_varc_int)},
     {"varcString", "(I)Ljava/lang/String;", reinterpret_cast<void*>(n_varc_string)},

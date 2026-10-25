@@ -242,6 +242,10 @@ public class ApiProbePlugin extends Plugin {
         register(client.getMenu(), 0);
         register(client.getTopLevelWorldView(), 0);
         for (Object n : client.getTopLevelWorldView().npcs()) { register(n, 0); break; }
+        for (net.runelite.api.NPC n : client.getTopLevelWorldView().npcs()) {  // overrides are rare: any NPC's
+            register(n.getModelOverrides(), 0);
+            register(n.getChatheadOverrides(), 0);
+        }
         Scene scene = client.getTopLevelWorldView().getScene();
         register(scene, 0);
         LocalPoint lp = me.getLocalLocation();
@@ -603,6 +607,69 @@ public class ApiProbePlugin extends Plugin {
         }, v -> v[0] == 1 && v[1] == 1));
     }
 
+    // Caches: the entry count (the host cache's size()) before and after reset, which runs the game's clear.
+    static String resetCache(Object cache, Runnable reset) throws Exception {
+        Method size = cache.getClass().getMethod("size");
+        size.setAccessible(true);
+        Object before = size.invoke(cache);
+        reset.run();
+        return "entries " + before + " -> " + size.invoke(cache);
+    }
+
+    static {
+        SPECIAL.put("NodeCache.reset0", (p, row, inst) -> {
+            net.runelite.api.NodeCache c = (net.runelite.api.NodeCache) inst;
+            try {
+                c.getClass().getMethod("size");
+            } catch (NoSuchMethodException e) {
+                c.reset();  // a cache with nothing host-side to count
+                p.set(row, "pass", "returned");
+                return;
+            }
+            String ev = describe(c) + ": " + resetCache(c, c::reset);
+            p.set(row, ev.endsWith("-> 0") ? "pass" : "mismatch", ev);
+        });
+        SPECIAL.put("Client.resetHealthBarCaches0", (p, row, inst) -> {
+            Client c = (Client) inst;
+            Object hb = null;
+            try {
+                java.lang.reflect.Field f = Class.forName("net.runelite.host.CacheConfig", false, Client.class.getClassLoader()).getDeclaredField("CACHES");
+                f.setAccessible(true);
+                hb = Array.get(f.get(null), 5);
+            } catch (ReflectiveOperationException e) {
+                c.resetHealthBarCaches();
+                p.set(row, "pass", "returned (no host cache to count)");
+                return;
+            }
+            String ev = "health bar types + sprites " + resetCache(hb, c::resetHealthBarCaches);
+            p.set(row, ev.endsWith("-> 0") ? "pass" : "mismatch", ev);
+        });
+        // Index reads on a group the live index has: the first group with files, its first file's bytes.
+        SPECIAL.put("IndexDataBase.getFileIds1", (p, row, inst) -> {
+            int[] g = firstFile((net.runelite.api.IndexDataBase) inst);
+            int[] ids = ((net.runelite.api.IndexDataBase) inst).getFileIds(g == null ? 0 : g[0]);
+            p.set(row, ids != null && ids.length > 0 ? "pass" : "mismatch", describe(inst) + " group " + (g == null ? 0 : g[0]) + ": " + describe(ids)
+                + (ids != null && ids.length > 0 ? " first " + ids[0] + " last " + ids[ids.length - 1] : ""));
+        });
+        SPECIAL.put("IndexDataBase.loadData2", (p, row, inst) -> {
+            net.runelite.api.IndexDataBase idx = (net.runelite.api.IndexDataBase) inst;
+            int[] g = firstFile(idx);
+            byte[] b = g == null ? null : idx.loadData(g[0], g[1]);
+            StringBuilder hex = new StringBuilder();
+            for (int i = 0; b != null && i < Math.min(8, b.length); i++) hex.append(String.format("%02x", b[i] & 0xff));
+            p.set(row, b != null && b.length > 0 ? "pass" : "mismatch", describe(inst) + (g == null ? " no group with files" : " group " + g[0] + " file " + g[1] + ": " + describe(b) + " " + hex));
+        });
+    }
+
+    /** {group, file} of the first group of `idx` with a file, or null. */
+    static int[] firstFile(net.runelite.api.IndexDataBase idx) {
+        for (int g = 0; g < 4096; g++) {
+            int[] ids = idx.getFileIds(g);
+            if (ids != null && ids.length > 0) return new int[] {g, ids[0]};
+        }
+        return null;
+    }
+
     interface Draw {
         int[] run(Rasterizer r, int[] px, int w);
     }
@@ -647,6 +714,12 @@ public class ApiProbePlugin extends Plugin {
                 Object npc = live.get(net.runelite.api.NPC.class);
                 int seq = npc != null ? ((net.runelite.api.NPC) npc).getIdlePoseAnimation() : -1;
                 return new Object[] {arg(net.runelite.api.Model.class), client.loadAnimation(seq), 0, null, 0};
+            }
+            // The config archive (2), so the IndexDataBase rows read config files; a DB row the cache has.
+            case "Client.getIndex(I)Lnet/runelite/api/IndexDataBase;": return new Object[] {2};
+            case "Client.getDBRowConfig(I)Lnet/runelite/api/dbtable/DBRowConfig;": {
+                for (int r = 0; r < 20000; r++) if (client.getDBRowConfig(r) != null) return new Object[] {r};
+                return new Object[] {0};
             }
             // scale 0 would flatten the live model the Model rows read next; 128 = 1:1
             case "Mesh.scale(III)Lnet/runelite/api/Mesh;": return new Object[] {128, 128, 128};
@@ -748,9 +821,18 @@ public class ApiProbePlugin extends Plugin {
         else if (v instanceof Number || v instanceof Boolean || v instanceof Character || v instanceof Enum) s = String.valueOf(v);
         else if (v instanceof String) s = "\"" + v + "\"";
         else if (c.getName().startsWith("java.") || c.getName().startsWith(API)) s = String.valueOf(v);
+        else if (ownToString(c)) s = String.valueOf(v);  // a host object that says what it holds
         else s = c.getSimpleName().isEmpty() ? c.getName() : c.getSimpleName();
         s = s.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
         return s.length() > 120 ? s.substring(0, 117) + "..." : s;
+    }
+
+    private static boolean ownToString(Class<?> c) {
+        try {
+            return c.getMethod("toString").getDeclaringClass() != Object.class;
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
     }
 
     private void finish() throws Exception {

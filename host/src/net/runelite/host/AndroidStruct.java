@@ -17,5 +17,5 @@ final class AndroidStruct implements StructComposition {
     @Override public void setValue(int param, int value) { Params.set(Params.STRUCT, id, param, value); }
     @Override public void setValue(int param, String value) { Params.set(Params.STRUCT, id, param, value); }
     @Override public void setValue(int param, long value) { Params.set(Params.STRUCT, id, param, value); }
-    @Override public IterableHashTable<Node> getParams() { return null; }
+    @Override public IterableHashTable<Node> getParams() { return CacheConfig.params(Params.STRUCT, id); }
 }

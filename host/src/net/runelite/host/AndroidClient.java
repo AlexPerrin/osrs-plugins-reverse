@@ -1312,6 +1312,11 @@ public class AndroidClient extends ClientStub {
     @Override public net.runelite.api.NodeCache getWidgetSpriteCache() { return () -> {}; }
     /** Struct compositions are read from the game per call (nothing cached host-side), so reset is a no-op. PostStructComposition is not posted. */
     @Override public net.runelite.api.NodeCache getStructCompositionCache() { return () -> {}; }
+    @Override public net.runelite.api.dbtable.DBRowConfig getDBRowConfig(int rowID) { return CacheConfig.dbRow(rowID); }
+    /** A copy of the game's varc store (int and string varcs), read on the client thread. */
+    @Override public java.util.Map<Integer, Object> getVarcMap() { return CacheConfig.varcs(); }
+    /** IF_SETEVENTS flags keyed component << 32 | index (CacheConfig.widgetFlags). */
+    @Override public net.runelite.api.HashTable<net.runelite.api.widgets.WidgetConfigNode> getWidgetFlags() { return CacheConfig.widgetFlags(); }
     /**
      * The game's own item icon renderer (createItemSprite, docs/offsets.md): 36x32, border 0/1/2,
      * shadow colour, quantity text per `stackable` (0 never, 1 always, 2 if the item stacks).
@@ -1623,12 +1628,21 @@ public class AndroidClient extends ClientStub {
     final GraphicsObjects graphicsObjects = new GraphicsObjects();
     @Override public net.runelite.api.Deque<net.runelite.api.GraphicsObject> getGraphicsObjects() { return graphicsObjects; }
 
-    /** The sprite index stands for the game's sprite cache; getSprites reads frame 0 from it. */
-    private final net.runelite.api.IndexDataBase spriteIndex = Inert.of(net.runelite.api.IndexDataBase.class);
-    @Override public net.runelite.api.IndexDataBase getIndexSprites() { return spriteIndex; }
+    /** The game's js5 archives (CacheConfig.Index); getSprites reads frame 0 of the sprites archive's groups from the game's sprite cache. */
+    @Override public net.runelite.api.IndexDataBase getIndex(int id) { return CacheConfig.index(id); }
+    @Override public net.runelite.api.IndexDataBase getIndexConfig() { return CacheConfig.index(2); }
+    @Override public net.runelite.api.IndexDataBase getIndexSprites() { return CacheConfig.index(8); }
+    @Override public net.runelite.api.IndexDataBase getIndexScripts() { return CacheConfig.index(12); }
+    @Override public net.runelite.api.NodeCache getItemCompositionCache() { return CacheConfig.CACHES[CacheConfig.OBJ]; }
+    @Override public net.runelite.api.NodeCache getObjectCompositionCache() { return CacheConfig.CACHES[CacheConfig.LOC]; }
+    @Override public net.runelite.api.NodeCache getAnimationCache() { return CacheConfig.CACHES[CacheConfig.SEQ]; }
+    @Override public net.runelite.api.NodeCache getItemModelCache() { return CacheConfig.CACHES[CacheConfig.ITEM_MODEL]; }
+    @Override public net.runelite.api.NodeCache getItemSpriteCache() { return CacheConfig.CACHES[CacheConfig.ITEM_SPRITE]; }
+    /** The game's HealthBarType and health bar sprite caches, cleared by its own clear (0x6604d0). */
+    @Override public void resetHealthBarCaches() { CacheConfig.CACHES[CacheConfig.HEALTH_BAR].reset(); }
 
     @Override public net.runelite.api.SpritePixels[] getSprites(net.runelite.api.IndexDataBase source, int archiveId, int fileId) {
-        if (source != spriteIndex || fileId != 0 || !isClientThread()) return null;
+        if (!(source instanceof CacheConfig.Index) || ((CacheConfig.Index) source).id != 8 || fileId != 0 || !isClientThread()) return null;
         int[] r = Native.sprite(archiveId);
         if (r == null) return null;
         int w = r[0], h = r[1];

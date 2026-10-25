@@ -3,7 +3,7 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-25, client dev
-client-api-render-2 (change client-api-render).
+client-api-cache-config-1 (change client-api-cache-config).
 
 ## What this is
 
@@ -55,7 +55,11 @@ client-api-render-2 (change client-api-render).
   after client-api-model (every Model/Mesh/ModelData/AABB row and applyTransformations pass, no pass lost), 70.8%
   (889/1256) after client-api-scene-tile (Scene terrain, Tile paint/model, createSceneTilePaint and every
   SceneTilePaint/SceneTileModel row pass, no pass lost), 75.9% (953/1256, every pass of the three reports kept) after client-api-render (probe effect checks for the
-  Rasterizer draws and a size-matched image for `SpritePixels.toBufferedImage`). Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs
+  Rasterizer draws and a size-matched image for `SpritePixels.toBufferedImage`). After client-api-cache-config (report and diff in its evidence dir): every
+  cache, index and config row listed in that change passes, no pass lost; the probe checks `NodeCache.reset` and
+  `resetHealthBarCaches` by the game cache's entry count, the IndexDataBase rows on the first group with files, and seeds
+  NpcOverrides from any NPC that has one; host objects that override toString describe themselves in the evidence. The
+  health bar check needs a health bar seen first (attack anything): with an empty cache it reads `0 -> 0`. Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs
   that tile's underlay/overlay/shape, paint and model and the scene's draw distance, min level, tint and skybox.
 - `THIRD_PARTY_NOTICES.md` (repo root) covers everything third-party in libosrsrl.so and host.jar (Dear ImGui + stb +
   ProggyClean, the RuneLite client subset/API/http-api, host/build.sh's Maven jars, the client jar's shaders and
@@ -144,6 +148,13 @@ client-api-render-2 (change client-api-render).
   HostDrawManager hands every captured frame to it), `getRasterizer` draws into that copy (not shown on screen), the
   texture provider, skybox colour, viewport clip and camera focal point are the game's own (offsets.md "Render state"),
   projections are the main camera. Stretched flags, draw2DMask and DrawCallbacks are stored only.
+- **Cache, index and config** (`CacheConfig.java`, plugin-host.md row "Cache, index and config lookups"): js5 archives
+  through the game's getFile, the game's own LRU cache clears for the NodeCache getters and resetHealthBarCaches (between
+  cycles only: getLocType hands out pointers into its nodes), varc map, IF_SETEVENTS table, params, ops with sub-ops, NPC
+  overrides and head icons (offsets.md "js5 archives", "Game caches", "NPC overrides / head icons"). Off the client thread
+  the reads answer null/empty. OpenRune sends no NPC body/head customisation, so NpcOverrides stays unreached on the test
+  server; only one Android client can hold the tester account at a time (LOCAL_AUTH): a second gets "Either your account
+  is still logged in" until the first logs out.
 - **BufferedImage drawing**: `CanvasGraphics.forImage` draws into a live Bitmap shared with the image (no `dispose()`
   needed).
 - **Network gates**: at load, `Host.loadJar` runs `NetScan.refusal` before the DexClassLoader and refuses NET-RAW jars

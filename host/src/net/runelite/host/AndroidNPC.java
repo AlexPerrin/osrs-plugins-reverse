@@ -16,6 +16,16 @@ public class AndroidNPC extends NPCStub {
     }
 
     @Override public int getIndex() { return index; }
+    @Override public net.runelite.api.NpcOverrides getModelOverrides() { return CacheConfig.npcOverrides(index, false); }
+    @Override public net.runelite.api.NpcOverrides getChatheadOverrides() { return CacheConfig.npcOverrides(index, true); }
+    @Override public int[] getOverheadArchiveIds() { return CacheConfig.headIcons(index, false); }
+    @Override public short[] getOverheadSpriteIds() {
+        int[] s = CacheConfig.headIcons(index, true);
+        if (s == null) return null;
+        short[] out = new short[s.length];
+        for (int i = 0; i < s.length; i++) out[i] = (short) s[i];
+        return out;
+    }
     /**
      * As RuneLite's client: a multi-NPC reports the id/name it currently transforms into, and -1/null
      * while it transforms to nothing (the game doesn't draw it), so id-matching plugins skip it.

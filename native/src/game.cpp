@@ -1762,6 +1762,8 @@ constexpr uint32_t kClientInts[] = {
     0x894bc,  // 0 oculus orb state / camera mode (CAM_MODE writes it; 0x41d0a4 acts on 1 and 2)
     0x89500,  // 1 oculus orb focal point X (local units)
     0x89508,  // 2 oculus orb focal point Y
+    0x413e6c, // 3 chat cycle (refreshChat's 0x43aacc sets it; the chatbox rebuilds when it changes)
+    0x413de4, // 4 changed-skills ring count (241.4's f_changed_skill_count; queueChangedSkill bumps it)
 };
 }  // namespace
 bool client_int(int which, int& out) {
@@ -2617,6 +2619,17 @@ bool set_ge_search_ids(const int16_t* ids, int n) {
     }
     if (n) memcpy(reinterpret_cast<void*>(v[0]), ids, static_cast<size_t>(n) * 2);
     v[1] = v[0] + static_cast<size_t>(n) * 2;
+    return true;
+}
+
+bool ge_search(std::vector<int>& out) {
+    uintptr_t c = client();
+    if (!c) return false;
+    auto* v = reinterpret_cast<const uintptr_t*>(c + kGeIds);
+    size_t n = v[0] && v[1] >= v[0] ? (v[1] - v[0]) / 2 : 0;
+    if (n > 0xffff) return false;
+    out.assign({read_at<int32_t>(c + kGeCount), read_at<int32_t>(c + kGeIndex)});
+    for (size_t i = 0; i < n; i++) out.push_back(read_at<int16_t>(v[0] + i * 2));
     return true;
 }
 

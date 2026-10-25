@@ -33,6 +33,8 @@ bool minimap_dot_get(int cat, int out[4]);
 // Client.setGeSearchResultIds/Count/Index: the GE item search results OC_FINDNEXT reads. Game thread only.
 bool set_ge_search_ids(const int16_t* ids, int n);
 bool set_ge_search_int(bool index, int value);
+// {count, index, ids...} as the setters left them. Game thread only.
+bool ge_search(std::vector<int>& out);
 // Client.queueChangedSkill: records `skill` in the changed-skills ring as UPDATE_STAT does, so the
 // skill tab's onStatTransmit scripts redraw it. Game thread only.
 bool queue_changed_skill(int skill);
@@ -560,7 +562,8 @@ bool world_list(std::vector<WorldEntry>& out);
 bool connection(std::string& host, int ports[2]);
 // Writes the SERVER_TICK_END count (Client +0x3058) that server_tick() reads.
 bool set_server_tick(int tick);
-// Client int fields by index (game.cpp kClientInts: 0 oculus orb state, 1/2 orb focal point X/Y).
+// Client int fields by index (game.cpp kClientInts: 0 oculus orb state, 1/2 orb focal point X/Y, 3 chat
+// cycle, 4 changed-skills count).
 bool client_int(int which, int& out);
 bool set_client_int(int which, int value);
 // Music volume 0-255 (Client +0x2f58); set also applies it to the playing songs.

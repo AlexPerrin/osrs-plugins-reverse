@@ -785,6 +785,13 @@ jboolean n_set_ge_search(JNIEnv* env, jclass, jshortArray ids, jint count, jint 
     if (index != INT32_MIN) ok = game::set_ge_search_int(true, index) && ok;
     return ok;
 }
+jintArray n_ge_search(JNIEnv* env, jclass) {
+    std::vector<int> v;
+    if (!client_thread::on_client_thread() || !game::ge_search(v)) return nullptr;
+    jintArray a = env->NewIntArray(static_cast<jsize>(v.size()));
+    env->SetIntArrayRegion(a, 0, static_cast<jsize>(v.size()), v.data());
+    return a;
+}
 jboolean n_queue_changed_skill(JNIEnv*, jclass, jint skill) { return client_thread::on_client_thread() && game::queue_changed_skill(skill); }
 
 void n_set_script_events(JNIEnv*, jclass, jboolean on) { script_hooks::set_enabled(on); }
@@ -2057,6 +2064,7 @@ const JNINativeMethod kNatives[] = {
     {"queueChangedSkill", "(I)Z", reinterpret_cast<void*>(n_queue_changed_skill)},
     {"setHiddenActors", "([I[I)V", reinterpret_cast<void*>(n_set_hidden_actors)},
     {"setGeSearch", "([SII)Z", reinterpret_cast<void*>(n_set_ge_search)},
+    {"geSearch", "()[I", reinterpret_cast<void*>(n_ge_search)},
     {"minimapDot", "(IIII)[I", reinterpret_cast<void*>(n_minimap_dot)},
     {"setScriptEvents", "(Z)V", reinterpret_cast<void*>(n_set_script_events)},
     {"scriptStacks", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_script_stacks)},

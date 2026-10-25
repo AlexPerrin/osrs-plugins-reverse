@@ -19,6 +19,23 @@ cd49 (change hub-clue-steps-tier).
 
 - **v0.1.0**: release gate PASS at 09c05c9 (qa/client-0.1.0.md; notes draft qa/client-0.1.0-notes.md). Everything since
   (gens 41-46, host-menu-entry-removal) is on master on the dev's check.
+- Android Studio emulator (Windows SDK, AVD `Medium_Phone_API_37.0`, x86_64 image with arm64 translation) runs the single
+  APK: `emulator.exe -avd Medium_Phone_API_37.0 -port 5590 -read-only -no-snapshot -no-window -gpu swiftshader_indirect`
+  with `ANDROID_AVD_HOME=C:\Users\Alex\.android\avd` (the first sign-in opens Chrome: "Stay signed out"; `pm grant com.android.chrome android.permission.ACCESS_LOCAL_NETWORK`
+  or Chrome shows ERR_LOCAL_NETWORK_PERMISSION_MISSING for 10.0.2.2:8080; close the "Your Privacy" dialog with its X; a
+  shell-pushed `files/plugins` dir needs `chmod 777` or the host loads 0 plugins; the stock AVD has the Play build
+  installed, uninstall it first). Verified 2026-10-24: single APK installs, hooks load, sign-in and LOGGED_IN.
+- **The release artifact is ONE universal APK**, `re/out/osrs-runelite.apk` (client-single-apk, 2026-10-24): `tools/repack.sh`
+  builds the base with the split-required flags removed (`android:requiredSplitTypes`/`splitTypes` on `<manifest>`,
+  `isSplitRequired`, the `com.android.vending.splits.required` meta-data; the decoded manifest is text, so a copy of
+  `re/apk/base` is edited, no AXML tool), folds in every `lib/arm64-v8a/*` of the arm64 split (patched game lib, hook
+  lib, crashlytics), embeds `assets/THIRD_PARTY_NOTICES.md`, aligns and signs with `re/debug.keystore`. Install:
+  `adb install osrs-runelite.apk` (`tools/repack.sh --install`). arm64-v8a only, as the split was; a build without the
+  META-INF/services entries crashes at sign-in (kotlinx Main dispatcher), so only signature files are dropped. The split
+  pair `re/out/{base,split}.apk` is still built (`--install-split`) but is not released. Failure modes: an installed
+  official/Play copy (other signer) gives `INSTALL_FAILED_UPDATE_INCOMPATIBLE`: uninstall it first; a device with
+  no arm64 ABI cannot run the native libs. `tools/release-dev.sh` attaches the single APK and `THIRD_PARTY_NOTICES.md`.
+  The release gate re-runs on this exact artifact.
 - `THIRD_PARTY_NOTICES.md` (repo root) covers everything third-party in libosrsrl.so and host.jar (Dear ImGui + stb +
   ProggyClean, the RuneLite client subset/API/http-api, host/build.sh's Maven jars, the client jar's shaders and
   CC-licensed fonts); the rest of the APK is Jagex's app. Releases attach it (`tools/release-dev.sh`). **Update it when
@@ -32,7 +49,7 @@ cd49 (change hub-clue-steps-tier).
 
 - Build: client/hub-clue-steps-tier (master 3aca471's host and native, no code change: the change is the device
   check of the Clue Steps hub plugin against the live server), `OPENRUNE=1 LOCAL_AUTH=1 MODULUS=<openrune.sh modulus>
-  tools/repack.sh` (7 `telemetry:` lines), installed with `adb install-multiple -r` (Windows adb.exe, `wslpath -w`
+  tools/repack.sh` (7 `telemetry:` lines), installed (then as the split pair with `adb install-multiple -r`; now `adb install -r` of the single APK; Windows adb.exe, `wslpath -w`
   paths; relative WSL paths fail). Building in a harness worktree: `re/` must point at the main checkout's `re/`
   (`re/harness/wt/<name>` has the symlink; a `.claude/worktrees/` one needs `ln -s /home/alex/osrs-plugins-reverse/re re`
   plus symlinks for `base.apk` and `split_config.arm64_v8a.apk`, which repack.sh reads from the repo root), then

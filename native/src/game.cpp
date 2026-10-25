@@ -669,7 +669,7 @@ static ActorState read_actor(uintptr_t a) {
     st.pose_animation = read_at<int32_t>(a + 0x4b8);
     st.pose_frame = read_at<int16_t>(a + 0x4be);
     st.overhead_cycle = read_at<int32_t>(a + 0x2f4);
-    if (st.overhead_cycle > 0) st.overhead_text = read_string(a + 0x2d8);
+    st.overhead_text = read_string(a + 0x2d8);  // kept after the timer ends, as desktop's field
     // Hitmarks (adder 0x472240): std::vector at +0x330/+0x338 of 12-byte {type, amount, end cycle}
     // slots, end cycle = cycle + delay + HitmarkType duration; empty slots are -1.
     uintptr_t hb = read_at<uintptr_t>(a + 0x330), he = read_at<uintptr_t>(a + 0x338);
@@ -1803,6 +1803,81 @@ bool actor_set_overhead(uintptr_t a, const std::string* text, int cycle) {
         reinterpret_cast<void* (*)(uintptr_t, const void*)>(g_base + 0x3f1498)(a + 0x2d8, s.bytes);
     }
     if (cycle >= 0) *reinterpret_cast<int32_t*>(a + 0x2f4) = cycle;
+    return true;
+}
+
+// Actor sequence states (AnimationState: +0x00 ctrl, +0x08 SeqType*, +0x10 id, +0x14 u16 frame cycle,
+// +0x16 u16 frame): +0x4c8 the animation, +0x4a8 the pose. Set as AnimationState::setSequence followed by
+// the game's restart (0x65950c); the animation's start delay +0x4e8 is cleared, as desktop's setAnimation.
+bool actor_set(uintptr_t a, bool player, int what, int value) {
+    if (!a || !g_build || !g_build->seq_set) return false;
+    auto set_seq = [&](uintptr_t st) {
+        reinterpret_cast<void (*)(uintptr_t, int)>(g_base + g_build->seq_set)(st, value);
+        if (value >= 0) {
+            *reinterpret_cast<int32_t*>(st + 0x14) = 0;
+            *reinterpret_cast<uint16_t*>(st + 0x18) = 0;
+        }
+    };
+    switch (what) {
+        case kActorAnimation: set_seq(a + 0x4c8); *reinterpret_cast<int32_t*>(a + 0x4e8) = 0; return true;
+        case kActorAnimationFrame: *reinterpret_cast<int16_t*>(a + 0x4de) = static_cast<int16_t>(value); return true;
+        case kActorPoseAnimation: set_seq(a + 0x4a8); return true;
+        case kActorPoseFrame: *reinterpret_cast<int16_t*>(a + 0x4be) = static_cast<int16_t>(value); return true;
+        case kActorSkull:
+            if (!player) return false;
+            *reinterpret_cast<int32_t*>(a + 0x730) = value;
+            return true;
+        default:
+            if (what >= kActorPose && what < kActorPose + 8) {  // +0x280 idle .. +0x29c run
+                *reinterpret_cast<int32_t*>(a + 0x280 + 4 * (what - kActorPose)) = value;
+                return true;
+            }
+            return false;
+    }
+}
+
+// Spot anims: Actor +0x6f0/+0x6f8 std::vector of 0x18-byte {int slot; ctrl +8; SpotAnim* +0x10}, sorted by
+// slot. SpotAnim (ctor 0x5855b4): +0x25c spotanim id, +0x264 height, +0x268 start cycle, +0x26c loop flag,
+// AnimationState at +0x270 (u16 frame cycle +0x284, u16 frame +0x286). The actor update (0x435240) drops an
+// entry once started when its id is -1, it has no sequence or its sequence ended.
+static const uint32_t kSpotAnimField[] = {0x25c, 0x264, 0x268, 0x286, 0x284};
+
+bool actor_spot_anims(uintptr_t a, std::vector<int32_t>& out) {
+    if (!a) return false;
+    uintptr_t b = read_at<uintptr_t>(a + 0x6f0), e = read_at<uintptr_t>(a + 0x6f8);
+    if (e < b || (e - b) / 0x18 > 256) return false;
+    for (uintptr_t p = b; p < e; p += 0x18) {
+        uintptr_t s = read_at<uintptr_t>(p + 0x10);
+        if (!s) continue;
+        out.push_back(read_at<int32_t>(p));
+        out.push_back(read_at<int32_t>(s + 0x25c));
+        out.push_back(read_at<int32_t>(s + 0x264));
+        out.push_back(read_at<int32_t>(s + 0x268));
+        out.push_back(read_at<int16_t>(s + 0x286));
+        out.push_back(read_at<uint16_t>(s + 0x284));
+    }
+    return true;
+}
+
+bool actor_spot_anim_set(uintptr_t a, int slot, int field, int value) {
+    if (!a || field < 0 || field > 4) return false;
+    uintptr_t b = read_at<uintptr_t>(a + 0x6f0), e = read_at<uintptr_t>(a + 0x6f8);
+    if (e < b || (e - b) / 0x18 > 256) return false;
+    for (uintptr_t p = b; p < e; p += 0x18) {
+        uintptr_t s = read_at<uintptr_t>(p + 0x10);
+        if (read_at<int32_t>(p) != slot || !s) continue;
+        if (field >= 3) *reinterpret_cast<uint16_t*>(s + kSpotAnimField[field]) = static_cast<uint16_t>(value);
+        else *reinterpret_cast<int32_t*>(s + kSpotAnimField[field]) = value;
+        return true;
+    }
+    return false;
+}
+
+// The game's adder 0x4714e8(actor, slot, id, height, delay, cycle, loop), as PLAYER_SPOTANIM_SPECIFIC
+// (dispatcher case 0x62): replaces the slot's spot anim, starting at cycle + delay; id -1 removes the slot.
+bool actor_create_spot_anim(uintptr_t a, int slot, int id, int height, int delay) {
+    if (!a || !g_build) return false;
+    reinterpret_cast<void (*)(uintptr_t, int, int, int, int, int, int)>(g_base + 0x4714e8)(a, slot, id, height, delay, cycle(), 0);
     return true;
 }
 

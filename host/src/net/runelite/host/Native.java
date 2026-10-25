@@ -301,6 +301,14 @@ final class Native {
     static native int[] collisionFlags(int plane, int size);
     /** Writes an actor's overhead text (null keeps it) and timer (-1 keeps it); client thread only. */
     static native boolean actorSetOverhead(boolean player, int index, String text, int cycle);
+    /** Writes actor state (game.h kActor*: animation, frames, pose, skull); client thread only. */
+    static native boolean actorSet(boolean player, int index, int what, int value);
+    /** {slot, id, height, start cycle, frame, frame cycle} per spot anim, or null; client thread only. */
+    static native int[] actorSpotAnims(boolean player, int index);
+    /** Writes one spot anim field (0 id, 1 height, 2 start cycle, 3 frame, 4 frame cycle); client thread only. */
+    static native boolean actorSpotAnimSet(boolean player, int index, int slot, int field, int value);
+    /** The game's spot anim adder: replaces the slot's spot anim (id -1 removes it); client thread only. */
+    static native boolean actorCreateSpotAnim(boolean player, int index, int slot, int id, int height, int delay);
     /** Open sub-interfaces: {component, group, modal mode} triples. */
     static native int[] subInterfaces();
     static native boolean widgetExists(int componentId);

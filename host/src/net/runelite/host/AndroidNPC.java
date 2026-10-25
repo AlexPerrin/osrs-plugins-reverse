@@ -13,6 +13,7 @@ public class AndroidNPC extends NPCStub {
 
     AndroidNPC(int index) {
         this.index = index;
+        this.spotAnims = new ActorSpotAnims(false, index);
     }
 
     @Override public int getIndex() { return index; }
@@ -123,11 +124,8 @@ public class AndroidNPC extends NPCStub {
         int size = comp != null ? Math.max(1, comp.getSize()) : 1;
         return new net.runelite.api.coords.WorldArea(getWorldLocation(), size, size);
     }
-    @Override public int getGraphic() { return -1; }
     @Override public int getHealthRatio() { return healthRatio; }
     @Override public int getHealthScale() { return healthScale; }
-    /** As desktop after a head bar update to 0 (RuneLite sets the actor dead then). ActorDeath is not posted. */
-    @Override public boolean isDead() { return healthScale > 0 && healthRatio == 0; }
     @Override public int getFootprintSize() {
         net.runelite.api.NPCComposition c = getComposition();
         return c != null ? Math.max(1, c.getSize()) : 1;
@@ -170,6 +168,7 @@ public class AndroidNPC extends NPCStub {
         System.arraycopy(p, o + 6, pose, 0, 8);
         poseAnimation = p[o + 14];
         poseAnimationFrame = p[o + 15];
+        if (p[o + 16] != healthRatio || p[o + 17] != healthScale) dead = p[o + 17] > 0 && p[o + 16] == 0;
         healthRatio = p[o + 16];
         healthScale = p[o + 17];
         newHitsplats = AndroidHitsplat.diff(p, o + 18, hitsplatSlots);
@@ -183,7 +182,7 @@ public class AndroidNPC extends NPCStub {
     @Override public int getCurrentOrientation() { return currentOrientation; }
     @Override public net.runelite.api.Actor getInteracting() { return Host.actor(interacting); }
     @Override public boolean isInteracting() { return interacting >= 0; }
-    @Override public String getOverheadText() { return overheadCycle > 0 ? overheadText : null; }
+    @Override public String getOverheadText() { return overheadText; }
     @Override public int getOverheadCycle() { return overheadCycle; }
     @Override public void setOverheadText(String text) {
         overheadText = text;
@@ -196,7 +195,7 @@ public class AndroidNPC extends NPCStub {
         Host.invoke(() -> Native.actorSetOverhead(false, idx, null, cycle));
     }
 
-    // Pose animations (Actor +0x280..+0x29c, +0x4b8): read-only snapshot values.
+    // Pose animations (Actor +0x280..+0x29c, +0x4b8): snapshot values; setters write the game.
     final int[] pose = {-1, -1, -1, -1, -1, -1, -1, -1};
     int poseAnimation = -1, poseAnimationFrame = -1;
     @Override public int getIdlePoseAnimation() { return pose[0]; }
@@ -209,6 +208,57 @@ public class AndroidNPC extends NPCStub {
     @Override public int getRunAnimation() { return pose[7]; }
     @Override public int getPoseAnimation() { return poseAnimation; }
     @Override public int getPoseAnimationFrame() { return poseAnimationFrame; }
-    @Override public net.runelite.api.IterableHashTable<net.runelite.api.ActorSpotAnim> getSpotAnims() { return NoSpotAnims.INSTANCE; }
-    @Override public boolean hasSpotAnim(int id) { return false; }
+
+    // Writes (client thread) go to the game's actor fields (Native.actorSet, game.h kActor*), so the game
+    // draws them; the Java copy changes at once for a read-back before the next snapshot.
+    private void write(int what, int value) {
+        final int idx = index;
+        Host.invoke(() -> Native.actorSet(false, idx, what, value));
+    }
+    @Override public void setAnimation(int id) { animation = id; write(0, id); }
+    @Override public void setAnimationFrame(int frame) { animationFrame = frame; write(1, frame); }
+    @Override public void setActionFrame(int frame) { setAnimationFrame(frame); }  // desktop's older name for it
+    @Override public void setPoseAnimation(int id) { poseAnimation = id; write(2, id); }
+    @Override public void setPoseAnimationFrame(int frame) { poseAnimationFrame = frame; write(3, frame); }
+    private void setPose(int i, int id) { pose[i] = id; write(8 + i, id); }
+    @Override public void setIdlePoseAnimation(int id) { setPose(0, id); }
+    @Override public void setIdleRotateLeft(int id) { setPose(1, id); }
+    @Override public void setIdleRotateRight(int id) { setPose(2, id); }
+    @Override public void setWalkAnimation(int id) { setPose(3, id); }
+    @Override public void setWalkRotate180(int id) { setPose(4, id); }
+    @Override public void setWalkRotateLeft(int id) { setPose(5, id); }
+    @Override public void setWalkRotateRight(int id) { setPose(6, id); }
+    @Override public void setRunAnimation(int id) { setPose(7, id); }
+
+    // Spot anims (Actor +0x6f0, live); the deprecated graphic accessors work on slot 0, as desktop.
+    private final ActorSpotAnims spotAnims;
+    @Override public net.runelite.api.IterableHashTable<net.runelite.api.ActorSpotAnim> getSpotAnims() { return spotAnims; }
+    @Override public boolean hasSpotAnim(int id) { return spotAnims.has(id); }
+    @Override public void createSpotAnim(int slot, int id, int height, int delay) { spotAnims.create(slot, id, height, delay); }
+    @Override public void removeSpotAnim(int slot) { spotAnims.remove(slot); }
+    @Override public void clearSpotAnims() { spotAnims.clear(); }
+    @Override public int getGraphic() { net.runelite.api.ActorSpotAnim s = spotAnims.first(); return s == null ? -1 : s.getId(); }
+    @Override public void setGraphic(int id) {
+        if (id == -1) spotAnims.remove(0);
+        else spotAnims.create(0, id, getGraphicHeight(), 0);
+    }
+    @Override public int getGraphicHeight() { net.runelite.api.ActorSpotAnim s = spotAnims.first(); return s == null ? 0 : s.getHeight(); }
+    @Override public void setGraphicHeight(int height) { net.runelite.api.ActorSpotAnim s = spotAnims.first(); if (s != null) s.setHeight(height); }
+    @Override public int getSpotAnimFrame() { net.runelite.api.ActorSpotAnim s = spotAnims.first(); return s == null ? -1 : s.getFrame(); }
+    @Override public void setSpotAnimFrame(int frame) { net.runelite.api.ActorSpotAnim s = spotAnims.first(); if (s != null) s.setFrame(frame); }
+
+    /** As desktop: set on a head bar update to 0 (ActorDeath is not posted), or by setDead. */
+    private boolean dead;
+    @Override public boolean isDead() { return dead; }
+    @Override public void setDead(boolean dead) { this.dead = dead; }
+
+    // Renderable/Node as desktop: the model height is the draw's (the posed model's, or a setModelHeight
+    // of this cycle); actors aren't linked into a node list.
+    private int modelHeight, modelHeightStamp = -1;
+    @Override public int getModelHeight() { return modelHeightStamp == Host.cycleStamp ? modelHeight : getLogicalHeight(); }
+    @Override public void setModelHeight(int height) { modelHeight = height; modelHeightStamp = Host.cycleStamp; }
+    @Override public int getRenderMode() { return RENDERMODE_DEFAULT; }
+    @Override public long getHash() { return 0; }
+    @Override public net.runelite.api.Node getNext() { return null; }
+    @Override public net.runelite.api.Node getPrevious() { return null; }
 }

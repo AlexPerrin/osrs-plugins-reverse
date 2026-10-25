@@ -88,6 +88,9 @@ java -cp "$ASM" "$ROOT/host/gen/CompatRewrite.java" "$OUT/client-subset.raw.jar"
 # Resources (fonts, runelite.properties, icons, ...) go into host.jar beside the dex files.
 mkdir -p "$OUT/resources"
 (cd "$OUT/client-classes" && find . -type f ! -name '*.class' -exec cp --parents {} "$OUT/resources/" \;)
+# For tools/api-probe.sh: the commit this host was built from, and the host methods that reach native hooks.
+git -C "$ROOT" describe --always --dirty --abbrev=12 > "$OUT/resources/osrsrl-build.txt" 2>/dev/null || echo unknown > "$OUT/resources/osrsrl-build.txt"
+java -cp "$ASM" "$ROOT/host/gen/NativeCalls.java" "$OUT/classes" > "$OUT/resources/api-native.txt"
 (cd "$OUT/classes" && jar cf ../host-classes.jar .)
 
 # 4. Dex everything into one jar. Missing desktop-only classes (java.awt, Swing) only warn;

@@ -2,8 +2,8 @@
 
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
-from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-21, client dev
-cd49 (change hub-clue-steps-tier).
+from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-25, client dev
+client-api-probe-1 (change client-api-probe).
 
 ## What this is
 
@@ -36,6 +36,20 @@ cd49 (change hub-clue-steps-tier).
   official/Play copy (other signer) gives `INSTALL_FAILED_UPDATE_INCOMPATIBLE`: uninstall it first; a device with
   no arm64 ABI cannot run the native libs. `tools/release-dev.sh` attaches the single APK and `THIRD_PARTY_NOTICES.md`.
   The release gate re-runs on this exact artifact.
+- **API probe** (`tools/api-probe.sh [out-dir]`, goal client-api): with `ANDROID_SERIAL` set to your own instance running
+  this repo's build, logged in, it builds `host/plugins/api-probe` (jar + `api-methods.txt`, the denominator from
+  `ApiList.java`: every abstract method of every net.runelite.api interface in runelite-api-1.13.1.jar, 1286, less the
+  4 caller-implemented interfaces = 1256), pushes it, loads it into the running host with `debug.osrsrl.set 'load
+  api-probe.jar <n>'` (no restart, no login), waits for `files/api-probe.tsv`, pulls it, removes the jar and report by
+  name and prints `pass N / 1256 = P%`. The probe seeds live instances (local player = Actor, a root widget with no
+  dynamic children, inventory container, menu, first NPC, the scene's objects) and registers every value a getter
+  returns; per row: pass, throw, inert (resolves to a *Stub/*Bag/Inert path), mismatch (setter read back otherwise),
+  unchecked (native void action), unreached (no live instance), skipped (destructive or no getter to restore; the
+  reason is the evidence). Setters: altered value, read back, restored. The `native` column comes from
+  `host/gen/NativeCalls.java` (host methods reaching `Native.*`), which host/build.sh writes into host.jar as
+  `api-native.txt` beside `osrsrl-build.txt` (`git describe` of the host build, the report's `# build:`). The probe
+  stays loaded until the app restarts (unregistered); it adds one chat line "api-probe: addChatMessage". 2026-10-25 at
+  this change's head: 60.9% (765/1256), same on two runs.
 - `THIRD_PARTY_NOTICES.md` (repo root) covers everything third-party in libosrsrl.so and host.jar (Dear ImGui + stb +
   ProggyClean, the RuneLite client subset/API/http-api, host/build.sh's Maven jars, the client jar's shaders and
   CC-licensed fonts); the rest of the APK is Jagex's app. Releases attach it (`tools/release-dev.sh`). **Update it when
@@ -138,6 +152,11 @@ cd49 (change hub-clue-steps-tier).
   failed to connect at session start, `python3 -I tools/devtools_mcp.py --call tools/call '{"name":...,"arguments":{}}'`
   reaches the same tools. adb.exe from WSL fails now and then (`UtilAcceptVsock accept4 failed 110`): retry in an
   `until` loop, or batch taps and `screencap -p /sdcard/...` in one `adb shell "..."` call.
+- Own Android instance without a second BlueStacks: BlueStacks has only Pie64 (the user's, adb 127.0.0.1:5555, shown as
+  emulator-5554); the AVD above with `-read-only -port 5590` (adb `emulator-5590`, 2400x1080 landscape in game) is a
+  separate instance with its own app data, gone when it stops. Fresh each boot: `adb install` the single APK, `pm grant`
+  Chrome, push the default jars, then "Sign in with Email / Username" (1200,640), Accept (1026,668), Chrome "Stay signed
+  out" (540,2087, portrait), the privacy X (2310,165), Play Now (1197,540); it signs in as tester.
 - Slot start/end: `~/osrs-harness/bench/device-restore-check.sh pre <dir>` before touching anything, `check <dir>` at the end (OK/OFF per
   item). Remove test jars and files by name, in a plain `adb shell rm` call of their own, never with wildcards. Hub plugins
   go on the device as the dexed `re/host/plugins-extra/hub-<name>.jar`, not `re/hub-build/<name>.jar` ("no

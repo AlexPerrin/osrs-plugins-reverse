@@ -57,6 +57,11 @@ final class Probe {
     private static void testSetter(net.runelite.api.Client c, String[] a) {
         if (a.length < 3) return;
         try {
+            if (a[0].equals("load") && Host.loader != null) {  // "load <jar> <n>": load plugins/<jar> now (n makes each load a new value)
+                Log.i(TAG, "load " + a[1]);
+                Host.loader.accept(a[1]);
+                return;
+            }
             if (a[0].equals("db")) {  // "db <row> <column> <tuple> [rows]": getDBTableField over rows row..row+rows-1
                 a = String.join(" ", a).split(" +");
                 int row = Integer.parseInt(a[1]), col = Integer.parseInt(a[2]), tup = Integer.parseInt(a[3]);

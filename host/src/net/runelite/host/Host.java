@@ -252,6 +252,7 @@ public final class Host {
         if (jars != null) {
             for (File jar : jars) loadJar(plugins, jar, cacheDir);
         }
+        loader = jar -> loadJar(plugins, new File(pluginDir, jar), cacheDir);
         worldView().androidScene().objects.bus = bus;
         Probe.init(plugins.getPlugins());
         eventBus = bus;
@@ -260,6 +261,9 @@ public final class Host {
         Log.i(TAG, "host ready; " + plugins.getPlugins().size() + " plugin(s) running");
         startStackSampler();
     }
+
+    /** Loads one more jar from the plugins dir after start (Probe's `load` hook; tools/api-probe.sh). */
+    static java.util.function.Consumer<String> loader;
 
     private static void loadJar(HostPluginManager plugins, File jar, String cacheDir) {
         try {

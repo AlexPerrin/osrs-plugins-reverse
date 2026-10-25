@@ -1281,6 +1281,12 @@ jboolean n_graphics_object_finish(JNIEnv* env, jclass, jlong obj) {
 jboolean n_projectile_set_end_cycle(JNIEnv* env, jclass, jlong obj, jint cycle) {
     return require_client_thread(env, "projectileSetEndCycle") && game::projectile_set_end_cycle(static_cast<uintptr_t>(obj), cycle);
 }
+jlong n_projectile_create(JNIEnv* env, jclass, jintArray in) {
+    if (!require_client_thread(env, "projectileCreate") || !in || env->GetArrayLength(in) != 15) return 0;
+    int32_t s[15];
+    env->GetIntArrayRegion(in, 0, 15, reinterpret_cast<jint*>(s));
+    return static_cast<jlong>(game::projectile_create(s));
+}
 // size*size collision flags of a plane (scene x major), or null.
 jintArray n_collision_flags(JNIEnv* env, jclass, jint plane, jint size) {
     if (!require_client_thread(env, "collisionFlags")) return nullptr;
@@ -2006,6 +2012,7 @@ const JNINativeMethod kNatives[] = {
     {"projectiles", "()[I", reinterpret_cast<void*>(n_projectiles)},
     {"graphicsObjects", "()[I", reinterpret_cast<void*>(n_graphics_objects)},
     {"projectileSetEndCycle", "(JI)Z", reinterpret_cast<void*>(n_projectile_set_end_cycle)},
+    {"projectileCreate", "([I)J", reinterpret_cast<void*>(n_projectile_create)},
     {"graphicsObjectFinish", "(J)Z", reinterpret_cast<void*>(n_graphics_object_finish)},
     {"ambientClear", "()Z", reinterpret_cast<void*>(n_ambient_clear)},
     {"ambientRestore", "(J)Z", reinterpret_cast<void*>(n_ambient_restore)},

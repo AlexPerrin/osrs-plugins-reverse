@@ -468,6 +468,21 @@ public class AndroidClient extends ClientStub {
     /** The game's projectile list (Projectiles, refreshed per client tick). */
     final Projectiles projectiles = new Projectiles();
     @Override public net.runelite.api.Deque<net.runelite.api.Projectile> getProjectiles() { return projectiles; }
+    /** Spawns the projectile into the game's list, as the PROJANIM_SPECIFIC packet does (client thread). */
+    @Override public net.runelite.api.Projectile createProjectile(int spotanimId, net.runelite.api.coords.WorldPoint source, int sourceHeightOffset,
+            net.runelite.api.Actor sourceActor, net.runelite.api.coords.WorldPoint target, int targetHeightOffset, net.runelite.api.Actor targetActor,
+            int startCycle, int endCycle, int slope, int startPos) {
+        return projectiles.create(new int[] {source.getPlane(), source.getX(), source.getY(), sourceHeightOffset, AndroidProjectile.index(sourceActor),
+                target.getPlane(), target.getX(), target.getY(), targetHeightOffset, AndroidProjectile.index(targetActor),
+                startCycle, endCycle, slope, startPos, spotanimId});
+    }
+    /** The pre-WorldPoint form: local start/target coordinates on `plane`; startZ is implied by the tile and start height. */
+    @Override public net.runelite.api.Projectile createProjectile(int id, int plane, int startX, int startY, int startZ, int startCycle, int endCycle,
+            int slope, int startHeight, int endHeight, net.runelite.api.Actor target, int targetX, int targetY) {
+        WorldView wv = getTopLevelWorldView();
+        return createProjectile(id, net.runelite.api.coords.WorldPoint.fromLocal(wv, startX, startY, plane), startHeight, null,
+                net.runelite.api.coords.WorldPoint.fromLocal(wv, targetX, targetY, plane), endHeight, target, startCycle, endCycle, slope, 0);
+    }
     /** The game's ambient (loc) sound list (AmbientSounds). */
     final AmbientSounds ambientSounds = new AmbientSounds();
     @Override public net.runelite.api.Deque<net.runelite.api.AmbientSoundEffect> getAmbientSoundEffects() { return ambientSounds; }

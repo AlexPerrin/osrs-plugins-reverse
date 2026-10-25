@@ -348,6 +348,10 @@ final class Native {
     static native int[] graphicsObjects();
     /** Projectile.setEndCycle on a listed projectile; client thread. */
     static native boolean projectileSetEndCycle(long obj, int cycle);
+    /** Spawns a projectile into the game's list: {source level, x, y (world), start height, source index,
+     *  target level, x, y, end height, target index, start cycle, end cycle, slope, start pos, spotanim id};
+     *  returns its object, 0 if none; client thread. */
+    static native long projectileCreate(int[] s);
     static native boolean graphicsObjectFinish(long obj);
     /** Clears the live ambient sound list (the game stops and frees them next cycle); client thread. */
     static native boolean ambientClear();

@@ -119,6 +119,12 @@ final class Native {
     /** Client varcs (0 / null when unset). */
     /** {x, y, height, orientation, modelHeight, vx, vy, vz...} of a scene object's model this frame, or null. */
     static native int[] objectModel(int plane, int sceneX, int sceneY, int layer, long tag);
+    /**
+     * Game thread: an animated loc's renderable in slot 0/1 of a scene object, {loc id, shape, orientation, plane,
+     * scene x, scene y, seq id, last cycle, frame, frame cycle}, or with mesh its model (actorMesh layout); null if
+     * that renderable is not an animated loc's.
+     */
+    static native int[] dynamicObject(int plane, int sceneX, int sceneY, int layer, long tag, int slot, boolean mesh);
     /** {valid, zoom, centreX, centreY, clip x0, y0, x1, y1, far} of the scene renderer's viewport. */
     static native int[] viewport();
     /** {name, targetVerb, op1..opN} of a widget (or its CC_CREATE child), null entries for empty strings. */
@@ -209,6 +215,14 @@ final class Native {
     static native int[] scriptActiveWidget(boolean dot);
     /** Width of one line of text in game font `font` (CS2 PARAWIDTH's measure), -1 if unavailable. Game thread. */
     static native int textWidth(int font, String text);
+    /** Game thread: a game font's ascent (FontTypeFace.getBaseline), -1 if the font isn't available. */
+    static native int fontAscent(int font);
+    /** Game thread: {int[] opcodes, int[] int operands} of a client script through the game's script cache, or null. */
+    static native Object[] scriptCode(int id);
+    /** Game thread: {id, front sprite, back sprite, width, padding} per health bar type on a live actor's head bar. */
+    static native int[] healthBarTypes();
+    /** Game thread: writes the width padding of in-use health bar type `id`; false if none is shown. */
+    static native boolean healthBarSetPadding(int id, int padding);
     /** CC_CREATE under static layer `id` at `index` (-1 = append); the index, or -1. Game thread. */
     static native int widgetCreateChild(int id, int index, int type);
     /** CC_DELETEALL on static component `id`. Game thread. */
@@ -308,6 +322,10 @@ final class Native {
     static native Object[] friends(boolean ignores);
     /** FriendSystem +0x150: 0 none, 1 FRIENDLIST_LOADED, 2 list received. */
     static native int friendListState();
+    /** Game thread: {String[] names, int[] worlds} of the friend login/logout notices not shown yet (0 = logged out). */
+    static native Object[] pendingLogins();
+    /** Game thread: per equipment slot a {recolour-to, retexture-to} pair or null, of player `index`'s appearance. */
+    static native short[][][] playerOverrides(int index);
     /** Probe: the first `len` bytes of the game's widget target-mode state (game.cpp target_state_bytes); null if unreadable. */
     static native byte[] targetState(int len);
     /** The game's widget target mode: {active 0/1, selected component id, CC_CREATE index}; null if unreadable. Game thread. */

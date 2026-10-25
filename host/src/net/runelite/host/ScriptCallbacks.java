@@ -178,10 +178,10 @@ final class ScriptCallbacks {
         if (script == SKILL_TAB_BUILDER && opcode == STAT_BASE) skillTabBaseLevel(bus, ac, phase);
         else if (script == FAIRY_RINGS_SORT) fairyRings(bus, ac, phase, opcode);
         else if (phase != 3) return;
-        else if (script == SKILL_TAB_TOTAL && opcode == IF_SETTEXT) raiseOnLive(bus, ac, "skillTabTotalLevel", 1, 1);
-        else if (script == ANY && (opcode == IF_SETTEXT || opcode == CC_SETTEXT)) raiseOnLive(bus, ac, "skillTabTotalLevel", 1, 1);
-        else if (script == FRIEND_UPDATE && opcode == CC_SETTEXT) raiseOnLive(bus, ac, "friendsChatSetText", 0, 1);
-        else if (script == FRIEND_UPDATE && opcode == CC_SETPOSITION) raiseOnLive(bus, ac, "friendsChatSetPosition", 4, 0);
+        else if (script == SKILL_TAB_TOTAL && opcode == IF_SETTEXT) raiseOnLive(bus, ac, SKILL_TAB_TOTAL, "skillTabTotalLevel", 1, 1);
+        else if (script == ANY && (opcode == IF_SETTEXT || opcode == CC_SETTEXT)) raiseOnLive(bus, ac, Native.currentScript(), "skillTabTotalLevel", 1, 1);
+        else if (script == FRIEND_UPDATE && opcode == CC_SETTEXT) raiseOnLive(bus, ac, FRIEND_UPDATE, "friendsChatSetText", 0, 1);
+        else if (script == FRIEND_UPDATE && opcode == CC_SETPOSITION) raiseOnLive(bus, ac, FRIEND_UPDATE, "friendsChatSetPosition", 4, 0);
     }
 
     /**
@@ -201,7 +201,7 @@ final class ScriptCallbacks {
     /** From Host.onScript as a root script starts (phase 2), before ScriptPreFired. */
     static void onRootStart(EventBus bus, AndroidClient ac, int id) {
         if (id != BANKMAIN_BUILD || !installed) return;
-        int answer = raise(bus, ac, "getSearchingTagTab", new int[] {1, 0}, new Object[0], 1);
+        int answer = raise(bus, ac, BANKMAIN_BUILD, "getSearchingTagTab", new int[] {1, 0}, new Object[0], 1);
         if (answer != 1) return;
         int tab = ac.getVarbitValue(BANK_TAB_VARBIT);
         if (tab == 0) return;
@@ -222,7 +222,7 @@ final class ScriptCallbacks {
         }
         ac.arrayFrameCaller = true;
         try {
-            int answer = raise(bus, ac, "spellbookSort", new int[] {en, 2, count}, new Object[0], 2);
+            int answer = raise(bus, ac, SPELLBOOK_BUILD, "spellbookSort", new int[] {en, 2, count}, new Object[0], 2);
             ac.flushArrays();
             if (answer != count) Native.scriptIntLocal(true, 22, true, answer);
             if (sortLogs++ < 3) Log.i(TAG, "spellbookSort: enum " + en + " count " + count + " -> " + answer);
@@ -242,7 +242,7 @@ final class ScriptCallbacks {
         if (skill < 0 || n < 1) return;
         int[] live = java.util.Arrays.copyOf(ac.getIntStack(), n);
         int level = live[n - 1];
-        int answer = raise(bus, ac, "skillTabBaseLevel", new int[] {skill, level}, new Object[0], 1);
+        int answer = raise(bus, ac, SKILL_TAB_BUILDER, "skillTabBaseLevel", new int[] {skill, level}, new Object[0], 1);
         if (answer != level) {
             live[n - 1] = answer;
             Native.setScriptIntStack(live, n);
@@ -254,7 +254,7 @@ final class ScriptCallbacks {
      * patched script would see them right before the watched instruction) and writes back what
      * the plugin changed.
      */
-    private static void raiseOnLive(EventBus bus, AndroidClient ac, String name, int ints, int objs) {
+    private static void raiseOnLive(EventBus bus, AndroidClient ac, int script, String name, int ints, int objs) {
         int n = ac.getIntStackSize(), m = ac.getObjectStackSize();
         if (n < ints || m < objs) return;
         int[] live = java.util.Arrays.copyOf(ac.getIntStack(), n);
@@ -262,7 +262,7 @@ final class ScriptCallbacks {
         int[] fi = java.util.Arrays.copyOfRange(live, n - ints, n);
         Object[] fo = java.util.Arrays.copyOfRange(liveObjs, m - objs, m);
         ac.fakeStacks(fi, fo);
-        post(bus, name);
+        post(bus, script, name);
         int[] outInts = java.util.Arrays.copyOf(ac.getIntStack(), ints);
         Object[] outObjs = java.util.Arrays.copyOf(ac.getObjectStack(), objs);
         ac.beginScriptEvent();  // back to the live stacks
@@ -311,7 +311,7 @@ final class ScriptCallbacks {
         int[] live = java.util.Arrays.copyOf(st, n);
         int found = live[n - 1];
         int match = found != -1 ? 1 : 0;
-        int answer = raise(bus, ac, name, new int[] {key, match}, new Object[0], 1);
+        int answer = raise(bus, ac, FAIRY_RINGS_SORT, name, new int[] {key, match}, new Object[0], 1);
         if (answer == match) return;
         live[n - 1] = answer == 1 ? 0 : -1;  // the script keeps the row when the index isn't -1
         Native.setScriptIntStack(live, n);
@@ -333,7 +333,7 @@ final class ScriptCallbacks {
         if (phase != 1 || musicArgs.isEmpty()) return;
         int[] args = musicArgs.pop();
         if (!installed || args[0] < 0 || n < 1) return;
-        int answer = raise(bus, ac, "musicTrackFilter", new int[] {-1, args[0], args[1]}, new Object[0], 0);
+        int answer = raise(bus, ac, MUSIC_TRACK_SHOWN, "musicTrackFilter", new int[] {-1, args[0], args[1]}, new Object[0], 0);
         int[] live = java.util.Arrays.copyOf(ac.getIntStack(), n);
         int result = live[n - 1];
         if ("1".equals(Native.property("debug.osrsrl.musiclog")) || musicLogs++ < 3)
@@ -347,17 +347,23 @@ final class ScriptCallbacks {
     }
 
     /** Raises a callback on host-made stacks; returns int stack slot `slot` afterwards. Live stacks are restored. */
-    private static int raise(EventBus bus, AndroidClient ac, String name, int[] ints, Object[] objs, int slot) {
+    private static int raise(EventBus bus, AndroidClient ac, int script, String name, int[] ints, Object[] objs, int slot) {
         ac.fakeStacks(ints, objs);
-        post(bus, name);
+        post(bus, script, name);
         int answer = ac.getIntStack()[slot];
         ac.beginScriptEvent();  // back to the live stacks; the fake ones are not written back
         return answer;
     }
 
-    private static void post(EventBus bus, String name) {
+    private static final java.util.Map<Integer, AndroidScript> scripts = new java.util.HashMap<>();
+
+    /** As desktop's runelite_callback: the event names the callback and carries the script it runs in. */
+    private static void post(EventBus bus, int script, String name) {
         ScriptCallbackEvent e = new ScriptCallbackEvent();
         e.setEventName(name);
+        AndroidScript sc = scripts.get(script);
+        if (sc == null && (sc = AndroidScript.of(script)) != null) scripts.put(script, sc);
+        e.setScript(sc);
         bus.post(e);
     }
 }

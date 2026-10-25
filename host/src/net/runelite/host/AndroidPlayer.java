@@ -112,7 +112,7 @@ public class AndroidPlayer extends PlayerStub {
         int[] colors = java.util.Arrays.copyOfRange(a, o + 25, o + 30);
         int gender = a[o + 30], npcId = a[o + 31];
         if (composition == null || !composition.same(equipment, kits, colors, gender, npcId))
-            composition = new AndroidPlayerComposition(equipment, kits, colors, gender, npcId);
+            composition = new AndroidPlayerComposition(index, equipment, kits, colors, gender, npcId);
     }
 
     // Actor state from the last snapshot (Native.npcs()/players(): animation, frame, orientation,

@@ -59,6 +59,14 @@ final class AndroidRender {
         @Override public java.awt.Image getImage() { return image(); }
     }
 
+    /** A Graphics2D on BUFFER clipped to the Rasterizer's draw region (FontTypeFace.drawWidgetText); dispose it. */
+    static java.awt.Graphics2D rasterGraphics() {
+        java.awt.Graphics2D g = BUFFER.image().createGraphics();
+        HostRasterizer r = RASTERIZER;
+        g.setClip(r.left, r.top, r.x1() - r.left, r.y1() - r.top);
+        return g;
+    }
+
     /**
      * Client.drawOriginalMenu / draw2010Menu: the open menu (getMenuX/Y/Width/Height, getMenuEntries)
      * drawn into BUFFER in desktop's two styles, `alpha` its opacity (0-255). BUFFER is the copy of the

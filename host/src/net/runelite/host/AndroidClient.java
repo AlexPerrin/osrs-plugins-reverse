@@ -1845,7 +1845,7 @@ public class AndroidClient extends ClientStub {
     @Override public net.runelite.api.NodeCache getItemModelCache() { return CacheConfig.CACHES[CacheConfig.ITEM_MODEL]; }
     @Override public net.runelite.api.NodeCache getItemSpriteCache() { return CacheConfig.CACHES[CacheConfig.ITEM_SPRITE]; }
     /** The game's HealthBarType and health bar sprite caches, cleared by its own clear (0x6604d0). */
-    @Override public void resetHealthBarCaches() { CacheConfig.CACHES[CacheConfig.HEALTH_BAR].reset(); }
+    @Override public void resetHealthBarCaches() { CacheConfig.CACHES[CacheConfig.HEALTH_BAR].reset(); AndroidHealthBarConfig.reset(); }
 
     @Override public net.runelite.api.SpritePixels[] getSprites(net.runelite.api.IndexDataBase source, int archiveId, int fileId) {
         if (!(source instanceof CacheConfig.Index) || ((CacheConfig.Index) source).id != 8 || fileId != 0 || !isClientThread()) return null;

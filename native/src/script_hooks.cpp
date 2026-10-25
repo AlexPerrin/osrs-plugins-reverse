@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <string>
+#include <vector>
 
 #include "client_thread.h"
 #include "game.h"
@@ -165,6 +166,25 @@ void set_enabled(bool enabled) { g_enabled.store(enabled, std::memory_order_rela
 uintptr_t current_event() { return g_event; }
 uintptr_t return_frame() { return g_return_frame; }
 int current_script() { return g_depth > 0 && g_depth <= kMaxDepth ? g_ids[g_depth - 1] : -1; }
+
+// Script (decoder 0x3f5964, static RE client-api-host-gaps-reach): +0x18 u64 id, +0x28 u64 instruction count,
+// +0x30 int32 opcodes, +0x48 int32 int operands (one per instruction; u8 operands widened). The lookup
+// (unhooked original) returns the cached {ctrl, Script*}, loading it on a miss. Game thread only.
+bool script_code(int id, std::vector<int32_t>& ops, std::vector<int32_t>& ints) {
+    ops.clear();
+    ints.clear();
+    if (!osrsrl_script_lookup_orig || id < 0 || id > 0xffff) return false;
+    auto sp = reinterpret_cast<const uintptr_t* (*)(int)>(osrsrl_script_lookup_orig)(id);
+    uintptr_t s = sp ? sp[1] : 0;
+    if (!s || *reinterpret_cast<const uint64_t*>(s + 0x18) != static_cast<uint64_t>(id)) return false;
+    uint64_t n = *reinterpret_cast<const uint64_t*>(s + 0x28);
+    auto op = *reinterpret_cast<const int32_t* const*>(s + 0x30);
+    auto in = *reinterpret_cast<const int32_t* const*>(s + 0x48);
+    if (!op || !in || n == 0 || n > 1000000) return false;
+    ops.assign(op, op + n);
+    ints.assign(in, in + n);
+    return true;
+}
 
 Stats stats() {
     return {g_roots.load(), g_gosubs.load(), g_returns.load(), g_delivered.load()};

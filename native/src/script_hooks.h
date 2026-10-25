@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <vector>
 
 // ScriptPreFired / ScriptPostFired: inline hooks on the game's CS2 VM (build 241.4).
 //  - runScriptEvent(vm, ScriptEvent*, maxOps) 0x4df54c: a root script (RootPre before, Post after).
@@ -41,6 +42,10 @@ void set_op_watches(const int32_t* pairs, const std::string* prefixes, int count
 uintptr_t return_frame();
 // The innermost running script id (in a RETURN Post: the caller), -1 if none.
 int current_script();
+
+// The opcodes and int operands of script `id` (RuneLite Script.getInstructions/getIntOperands), through
+// the game's script cache. Game thread only.
+bool script_code(int id, std::vector<int32_t>& ops, std::vector<int32_t>& ints);
 
 struct Stats { uint64_t roots, gosubs, returns, delivered; };
 Stats stats();

@@ -137,6 +137,93 @@ jobjectArray n_world_entry(JNIEnv* env, jclass, jint id) {
     env->SetObjectArrayElement(out, 2, info);
     return out;
 }
+// Each entry as worldEntry's {host, activity, int[] {id, flags, players, location, listed, index}}.
+jobjectArray n_world_list(JNIEnv* env, jclass) {
+    auto all = client_thread::world_list();
+    jclass obj = env->FindClass("java/lang/Object");
+    jobjectArray out = env->NewObjectArray(static_cast<jsize>(all.size()), obj, nullptr);
+    for (size_t i = 0; i < all.size(); i++) {
+        const auto& w = all[i];
+        jintArray info = env->NewIntArray(6);
+        jint iv[6] = {w.id, w.flags, w.players, w.location, 1, w.index};
+        env->SetIntArrayRegion(info, 0, 6, iv);
+        jobjectArray e = env->NewObjectArray(3, obj, nullptr);
+        env->SetObjectArrayElement(e, 0, env->NewStringUTF(w.host.c_str()));
+        env->SetObjectArrayElement(e, 1, env->NewStringUTF(w.activity.c_str()));
+        env->SetObjectArrayElement(e, 2, info);
+        env->SetObjectArrayElement(out, static_cast<jsize>(i), e);
+        env->DeleteLocalRef(info);
+        env->DeleteLocalRef(e);
+    }
+    return out;
+}
+// {String host, int[] {port, port2}} of the connected world (game thread), or null.
+jobjectArray n_connection(JNIEnv* env, jclass) {
+    std::string host;
+    int ports[2];
+    if (!client_thread::on_client_thread() || !game::connection(host, ports)) return nullptr;
+    jintArray p = env->NewIntArray(2);
+    env->SetIntArrayRegion(p, 0, 2, ports);
+    jobjectArray out = env->NewObjectArray(2, env->FindClass("java/lang/Object"), nullptr);
+    env->SetObjectArrayElement(out, 0, env->NewStringUTF(host.c_str()));
+    env->SetObjectArrayElement(out, 1, p);
+    return out;
+}
+jint n_client_int(JNIEnv*, jclass, jint which) {
+    int v = 0;
+    return game::client_int(which, v) ? v : 0;
+}
+jboolean n_set_client_int(JNIEnv*, jclass, jint which, jint value) {
+    return client_thread::on_client_thread() && game::set_client_int(which, value);
+}
+jint n_music_volume(JNIEnv*, jclass) { return game::music_volume(); }
+jboolean n_set_music_volume(JNIEnv*, jclass, jint v) {
+    return client_thread::on_client_thread() && game::set_music_volume(v);
+}
+// {group id, jingle (0/1)} per playing song; null off the client thread.
+jintArray n_midi_requests(JNIEnv* env, jclass) {
+    std::vector<std::pair<int, bool>> r;
+    if (!client_thread::on_client_thread() || !game::midi_requests(r)) return nullptr;
+    std::vector<jint> v;
+    for (auto& e : r) { v.push_back(e.first); v.push_back(e.second ? 1 : 0); }
+    jintArray out = env->NewIntArray(static_cast<jsize>(v.size()));
+    if (out && !v.empty()) env->SetIntArrayRegion(out, 0, static_cast<jsize>(v.size()), v.data());
+    return out;
+}
+void n_set_camera_shake_disabled(JNIEnv*, jclass, jboolean off) { client_thread::set_camera_shake_disabled(off); }
+jboolean n_camera_shake_disabled(JNIEnv*, jclass) { return client_thread::camera_shake_disabled(); }
+jlongArray n_varps_long(JNIEnv* env, jclass, jboolean server) {
+    std::vector<int64_t> v;
+    if (!game::varps_long(server, v)) return nullptr;
+    jlongArray out = env->NewLongArray(static_cast<jsize>(v.size()));
+    if (out && !v.empty()) env->SetLongArrayRegion(out, 0, static_cast<jsize>(v.size()), reinterpret_cast<const jlong*>(v.data()));
+    return out;
+}
+jboolean n_set_varp_long(JNIEnv*, jclass, jint id, jlong v) {
+    return client_thread::on_client_thread() && game::set_varp_long(id, v);
+}
+// long[101]: the 100 ring entries, then the next index.
+jlongArray n_cross_world_ids(JNIEnv* env, jclass) {
+    int64_t ids[101];
+    int index = 0;
+    if (!game::cross_world_ids(ids, index)) return nullptr;
+    ids[100] = index;
+    jlongArray out = env->NewLongArray(101);
+    if (out) env->SetLongArrayRegion(out, 0, 101, reinterpret_cast<const jlong*>(ids));
+    return out;
+}
+jint n_login_index(JNIEnv*, jclass) { return game::login_index(); }
+jint n_login_field(JNIEnv*, jclass) { return game::login_field(); }
+jint n_minimap_zoom(JNIEnv*, jclass) { return game::minimap_zoom(); }
+jboolean n_set_minimap_zoom(JNIEnv*, jclass, jint z) { return client_thread::on_client_thread() && game::set_minimap_zoom(z); }
+jint n_minimap_zoom_input(JNIEnv*, jclass) { return game::minimap_zoom_input(); }
+jboolean n_set_minimap_zoom_input(JNIEnv*, jclass, jboolean on) { return client_thread::on_client_thread() && game::set_minimap_zoom_input(on); }
+jint n_menu_scroll(JNIEnv*, jclass) { return game::menu_scroll(); }
+jboolean n_set_menu_scroll(JNIEnv*, jclass, jint v) { return client_thread::on_client_thread() && game::set_menu_scroll(v); }
+jboolean n_begin_target_mode(JNIEnv*, jclass) { return client_thread::on_client_thread() && game::begin_target_mode(); }
+jboolean n_set_server_tick(JNIEnv*, jclass, jint tick) {
+    return client_thread::on_client_thread() && game::set_server_tick(tick);
+}
 jlongArray n_ge_offers(JNIEnv* env, jclass) {
     int64_t o[8 * 7];
     if (!game::ge_offers(o)) return nullptr;
@@ -1879,6 +1966,28 @@ const JNINativeMethod kNatives[] = {
     {"weight", "()I", reinterpret_cast<void*>(n_weight)},
     {"world", "()I", reinterpret_cast<void*>(n_world)},
     {"worldEntry", "(I)[Ljava/lang/Object;", reinterpret_cast<void*>(n_world_entry)},
+    {"worldList", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_world_list)},
+    {"connection", "()[Ljava/lang/Object;", reinterpret_cast<void*>(n_connection)},
+    {"setServerTick", "(I)Z", reinterpret_cast<void*>(n_set_server_tick)},
+    {"minimapZoom", "()I", reinterpret_cast<void*>(n_minimap_zoom)},
+    {"setMinimapZoom", "(I)Z", reinterpret_cast<void*>(n_set_minimap_zoom)},
+    {"minimapZoomInput", "()I", reinterpret_cast<void*>(n_minimap_zoom_input)},
+    {"setMinimapZoomInput", "(Z)Z", reinterpret_cast<void*>(n_set_minimap_zoom_input)},
+    {"menuScroll", "()I", reinterpret_cast<void*>(n_menu_scroll)},
+    {"setMenuScroll", "(I)Z", reinterpret_cast<void*>(n_set_menu_scroll)},
+    {"beginTargetMode", "()Z", reinterpret_cast<void*>(n_begin_target_mode)},
+    {"varpsLong", "(Z)[J", reinterpret_cast<void*>(n_varps_long)},
+    {"setVarpLong", "(IJ)Z", reinterpret_cast<void*>(n_set_varp_long)},
+    {"crossWorldIds", "()[J", reinterpret_cast<void*>(n_cross_world_ids)},
+    {"loginIndex", "()I", reinterpret_cast<void*>(n_login_index)},
+    {"loginField", "()I", reinterpret_cast<void*>(n_login_field)},
+    {"clientInt", "(I)I", reinterpret_cast<void*>(n_client_int)},
+    {"setClientInt", "(II)Z", reinterpret_cast<void*>(n_set_client_int)},
+    {"musicVolume", "()I", reinterpret_cast<void*>(n_music_volume)},
+    {"setMusicVolume", "(I)Z", reinterpret_cast<void*>(n_set_music_volume)},
+    {"midiRequests", "()[I", reinterpret_cast<void*>(n_midi_requests)},
+    {"setCameraShakeDisabled", "(Z)V", reinterpret_cast<void*>(n_set_camera_shake_disabled)},
+    {"cameraShakeDisabled", "()Z", reinterpret_cast<void*>(n_camera_shake_disabled)},
     {"instanceTemplates", "()[I", reinterpret_cast<void*>(n_instance_templates)},
     {"geOffers", "()[J", reinterpret_cast<void*>(n_ge_offers)},
     {"geSlotRaw", "(I)[B", reinterpret_cast<void*>(n_ge_slot_raw)},

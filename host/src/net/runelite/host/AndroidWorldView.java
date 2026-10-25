@@ -33,6 +33,12 @@ public class AndroidWorldView extends WorldViewStub {
     @Override public boolean isTopLevel() { return true; }
     /** The main camera; the top level has no entity transform, so its canvas projection is the same. */
     @Override public net.runelite.api.Projection getMainWorldProjection() { return AndroidRender.PROJECTION; }
+    /**
+     * The menu action a plain ground tap (desktop's yellow click) runs in this world view: WALK, or
+     * SET_HEADING on a sailing boat's view. The host has only the top-level view, where a tap walks.
+     * shortcut: no boat world views (the test server has no sailing); read the game's mode once one exists.
+     */
+    @Override public int getYellowClickAction() { return net.runelite.api.MenuAction.WALK.getId(); }
     @Override public net.runelite.api.Projection getCanvasProjection() { return AndroidRender.PROJECTION; }
     // REBUILD_REGION templates (Native.instanceTemplates), read once per cycle.
     private static int instStamp = -1;

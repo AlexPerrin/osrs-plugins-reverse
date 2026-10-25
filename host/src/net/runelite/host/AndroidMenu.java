@@ -27,9 +27,13 @@ final class AndroidMenu implements Menu {
      * (setMenuEntries) persist until it ends, as desktop's menu array does within a frame.
      */
     private MenuEntry[] session;
+    /** setMenuEntries outside a session: the array and the cycle it holds for. */
+    private MenuEntry[] frame;
+    private int frameStamp;
 
     MenuEntry[] beginSession() {
         session = null;
+        frame = null;  // a session starts from the game's menu
         session = getMenuEntries();
         return session.clone();
     }
@@ -201,6 +205,7 @@ final class AndroidMenu implements Menu {
     @Override public MenuEntry[] getMenuEntries() {
         if (session != null)
             return visible >= 0 ? java.util.Arrays.copyOf(session, Math.min(visible, session.length)) : session.clone();
+        if (frame != null && frameStamp == Host.cycleStamp) return frame.clone();
         AndroidMenuEntry[] game = AndroidMenuEntry.fromNative(Native.menuEntries());
         // RuneLite order: the last element is the top (default) entry.
         List<MenuEntry> out = new ArrayList<>(added);
@@ -334,6 +339,12 @@ final class AndroidMenu implements Menu {
             session = grown;
             visible = entries.length;
         } else if (session != null) session = entries.clone();
+        else {
+            // Outside a menu session, as desktop's menu array: what was set is the menu until the
+            // game's next cycle rebuilds it (the game's own menu is only written within a session).
+            frame = entries.clone();
+            frameStamp = Host.cycleStamp;
+        }
         added.clear();
         for (MenuEntry e : entries)
             if (e instanceof AndroidMenuEntry && ((AndroidMenuEntry) e).synthetic) added.add((AndroidMenuEntry) e);

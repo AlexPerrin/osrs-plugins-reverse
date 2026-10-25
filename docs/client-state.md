@@ -3,7 +3,7 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-25, client dev
-client-api-actor-anim-3 (change client-api-actor-anim).
+client-api-client-state-2 (change client-api-client-state).
 
 ## What this is
 
@@ -62,7 +62,7 @@ client-api-actor-anim-3 (change client-api-actor-anim).
   health bar check needs a health bar seen first (attack anything): with an empty cache it reads `0 -> 0`. After client-api-actor-anim, 81.4% (1023/1256, every pass of main's and the branch's reports kept; report and diff in its evidence dir): the Actor
   animation/pose/spot anim setters, Player.setSkullIcon, Renderable/Node on actors and every ActorSpotAnim row pass,
   no pass lost; the probe adds spot anim 199 with a 10000-cycle delay in slot 7 for the ActorSpotAnim rows and removes
-  it at the end. Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs
+  it at the end. After client-api-client-state, 84.7% (1064/1256 on the merge with client-api-actor-anim, every pass of main's and the branch's reports kept; report and diff in its evidence dir): every session, settings and menu row listed in that change passes, no pass lost; the probe checks `getSocketFD` by the fd's peer against `getWorldHost` and the menu draws by the pixels drawn into the frame copy, so a long-press menu must be open when it runs (`input swipe x y x y 900` on the scene, then load the probe); `getWorldList` is null until the login screen's world switcher has loaded the list, and the MidiRequest rows need a song playing (OpenRune plays none by itself here: play an unlocked track, e.g. "Alone", from the music tab, which sets the music mode to single). The probe jar must not reference java.net classes: the host's netscan refuses it. Probe `debug.osrsrl.set 'terrain <scene x> <scene y>'` logs
   that tile's underlay/overlay/shape, paint and model and the scene's draw distance, min level, tint and skybox.
 - `THIRD_PARTY_NOTICES.md` (repo root) covers everything third-party in libosrsrl.so and host.jar (Dear ImGui + stb +
   ProggyClean, the RuneLite client subset/API/http-api, host/build.sh's Maven jars, the client jar's shaders and
@@ -166,6 +166,7 @@ client-api-actor-anim-3 (change client-api-actor-anim).
   the reads answer null/empty. OpenRune sends no NPC body/head customisation, so NpcOverrides stays unreached on the test
   server; only one Android client can hold the tester account at a time (LOCAL_AUTH): a second gets "Either your account
   is still logged in" until the first logs out.
+- **Client state** (plugin-host.md row "Client session, settings and menu state"): world host/socket/list, tick count, music volume and playing songs, oculus orb/camera mode, camera shake suppression, long varps, cross-world message ids, login page/field, minimap zoom and zoom input, menu scroll, target mode flag are the game's own (offsets.md "Client state"); mouseover text, animation interpolation filter and expanded map loading are stored only (desktop injects them too).
 - **BufferedImage drawing**: `CanvasGraphics.forImage` draws into a live Bitmap shared with the image (no `dispose()`
   needed).
 - **Network gates**: at load, `Host.loadJar` runs `NetScan.refusal` before the DexClassLoader and refuses NET-RAW jars
@@ -201,6 +202,7 @@ client-api-actor-anim-3 (change client-api-actor-anim).
   failed to connect at session start, `python3 -I tools/devtools_mcp.py --call tools/call '{"name":...,"arguments":{}}'`
   reaches the same tools. adb.exe from WSL fails now and then (`UtilAcceptVsock accept4 failed 110`): retry in an
   `until` loop, or batch taps and `screencap -p /sdcard/...` in one `adb shell "..."` call.
+- **The AVD image ships the official, unpatched app**: `adb uninstall com.jagex.oldscape.android` first, install the repack, stop on any install error, and launch only after `pm path` shows the repack (signer = `re/debug.keystore`). A train deploy restarts the test server and disconnects every client ("You were disconnected from the server": Try again 1197,645, Play Now).
 - Own Android instance without a second BlueStacks: BlueStacks has only Pie64 (the user's, adb 127.0.0.1:5555, shown as
   emulator-5554); the AVD above with `-read-only -port <free even port>` (adb `emulator-<port>`, 2400x1080 landscape in game) is a
   separate instance with its own app data, gone when it stops. Fresh each boot: `adb install` the single APK, `pm grant`

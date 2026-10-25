@@ -667,6 +667,9 @@ struct ProjectileInfo {
 };
 std::vector<ProjectileInfo> projectiles();  // oldest first; game thread only
 bool projectile_set_end_cycle(uintptr_t obj, int cycle);
+// Spawns a projectile as PROJANIM_SPECIFIC does from its 0x3c-byte struct (ProjectileInfo's fields from
+// source_level to start_pos, then id); returns the new object (0 when logged out). Game thread only.
+uintptr_t projectile_create(const int32_t (&s)[15]);
 // Ends a graphics object's animation as the game does when it runs out (clears its sequence);
 // the game removes it on its next walk of the list. Game thread only.
 bool graphics_object_finish(uintptr_t obj);

@@ -39,6 +39,12 @@ final class AndroidProjectile extends ProjectileStub {
         return null;
     }
 
+    static int index(Actor a) {
+        if (a instanceof net.runelite.api.NPC) return ((net.runelite.api.NPC) a).getIndex() + 1;
+        if (a instanceof net.runelite.api.Player) return -(((net.runelite.api.Player) a).getId() + 1);
+        return 0;
+    }
+
     private static LocalPoint local(int wx, int wy) {
         net.runelite.api.Client c = Host.client();
         return c == null || c.getTopLevelWorldView() == null ? null : LocalPoint.fromWorld(c.getTopLevelWorldView(), wx, wy);
@@ -77,7 +83,9 @@ final class AndroidProjectile extends ProjectileStub {
     @Override public double getZ() { return z; }
     @Override public int getOrientation() { return orientation; }
     @Override public int getAnimationFrame() { return animationFrame; }
-    @Override public net.runelite.api.Animation getAnimation() { return null; }
+    @Override public net.runelite.api.Animation getAnimation() {
+        return animation < 0 || Host.client() == null ? null : Host.client().loadAnimation(animation);
+    }
     @Override public net.runelite.api.Model getModel() { return null; }
 
     @Override public String toString() {

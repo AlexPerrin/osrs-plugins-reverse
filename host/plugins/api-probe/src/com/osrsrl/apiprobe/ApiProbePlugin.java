@@ -556,6 +556,17 @@ public class ApiProbePlugin extends Plugin {
     }
 
     static final int PROBE_SLOT = 7, LEVELUP_SPOTANIM = 199, SPOTANIM_DELAY = 10000;  // 200 s at 50 cycles/s
+    static final int PROJ_SPOTANIM = 100, PROJ_HEIGHT = 40, PROJ_CYCLES = 3000;
+
+    /** The game moves a projectile when it draws a frame: checked each tick until it has moved, or it ended unmoved. */
+    static Check moved(ApiProbePlugin p, Row row, net.runelite.api.Projectile pr, String ev) {
+        return () -> {
+            int cycle = p.client.getGameCycle();
+            if (pr.getX() == 0 && pr.getY() == 0 && cycle < pr.getEndCycle()) { p.later(row, moved(p, row, pr, ev)); return; }
+            p.set(row, pr.getX() != 0 || pr.getY() != 0 ? "pass" : "mismatch",
+                ev + "; cycle " + cycle + " at x/y/z " + pr.getX() + "," + pr.getY() + "," + pr.getZ());
+        };
+    }
     static final Map<String, Special> SPECIAL = new HashMap<>();
     static {
         // Hint arrows: set, observe hasHintArrow and its target, clear, observe it gone.
@@ -714,6 +725,35 @@ public class ApiProbePlugin extends Plugin {
             Object after = a.getSpotAnims().get(PROBE_SLOT + 1);
             p.set(row, before != null && after == null ? "pass" : "mismatch", "slot " + (PROBE_SLOT + 1) + " " + describe(before) + " -> removed: " + describe(after));
         });
+        // Projectiles: spotanim 100 (a fire strike orb, drawn on OpenRune) from the local player's tile to 3
+        // tiles east, from the next cycle for 3000 cycles (60 s). Each must be the game's (listed in
+        // getProjectiles with the given fields) and move by the next tick (the game advances it); the first is
+        // the Projectile rows' live instance. finish ends them.
+        Special proj = (p, row, inst) -> {
+            Client c = p.client;
+            net.runelite.api.Player me = c.getLocalPlayer();
+            WorldPoint src = me.getWorldLocation(), dst = src.dx(3);
+            LocalPoint lp = me.getLocalLocation();
+            int now = c.getGameCycle();
+            Object r = row.m.getParameterCount() == 11
+                ? row.m.invoke(inst, PROJ_SPOTANIM, src, PROJ_HEIGHT, me, dst, PROJ_HEIGHT, null, now + 1, now + PROJ_CYCLES, 16, 0)
+                : row.m.invoke(inst, PROJ_SPOTANIM, src.getPlane(), lp.getX(), lp.getY(), 0, now + 1, now + PROJ_CYCLES, 16, PROJ_HEIGHT, PROJ_HEIGHT,
+                    null, lp.getX() + 3 * 128, lp.getY());
+            net.runelite.api.Projectile pr = (net.runelite.api.Projectile) r;
+            if (pr == null) { p.set(row, "mismatch", "returned null"); return; }
+            p.cleanup.add(() -> pr.setEndCycle(c.getGameCycle()));
+            p.register(pr, 0);
+            boolean listed = false;
+            for (net.runelite.api.Projectile q : c.getProjectiles()) listed |= q == pr;
+            boolean fields = pr.getId() == PROJ_SPOTANIM && src.equals(pr.getSourcePoint()) && dst.equals(pr.getTargetPoint())
+                && pr.getEndCycle() == now + PROJ_CYCLES;
+            String ev = describe(pr) + " listed " + listed + " fields " + fields;
+            if (!listed || !fields) { p.set(row, "mismatch", ev); return; }
+            p.later(row, moved(p, row, pr, ev));
+        };
+        SPECIAL.put("Client.createProjectile11", proj);
+        SPECIAL.put("Client.createProjectile13", proj);
+        SPECIAL.put("WorldView.createProjectile13", proj);
         // Clears every spot anim, then puts back the ones there were (frame progress is not kept).
         SPECIAL.put("Actor.clearSpotAnims0", (p, row, inst) -> {
             net.runelite.api.Actor a = (net.runelite.api.Actor) inst;

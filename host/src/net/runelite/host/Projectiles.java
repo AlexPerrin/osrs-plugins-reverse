@@ -52,7 +52,21 @@ final class Projectiles implements net.runelite.api.Deque<net.runelite.api.Proje
 
     void reset() { live.clear(); }
 
-    /** Plugins can't add projectiles to the game's list (desktop's createProjectile path isn't hosted). */
+    /** Client.createProjectile: the game spawns it into its list; it is listed here at once. */
+    AndroidProjectile create(int[] s) {
+        long obj = Native.projectileCreate(s);
+        int[] r = obj == 0 ? null : Native.projectiles();
+        for (int o = 0; r != null && o + INTS <= r.length; o += INTS) {
+            if (((r[o] & 0xffffffffL) | ((long) r[o + 1] << 32)) != obj) continue;
+            AndroidProjectile p = new AndroidProjectile(obj);
+            p.update(r, o);
+            live.put(obj, p);
+            return p;
+        }
+        return null;
+    }
+
+    /** createProjectile already put it in the game's list (desktop's deprecated addLast step); others can't be added. */
     @Override public void addLast(net.runelite.api.Projectile p) { }
     @Override public void clear() { }
     @Override public java.util.Iterator<net.runelite.api.Projectile> iterator() {

@@ -8,6 +8,11 @@
 # pass / denominator. The denominator is every abstract method of every net.runelite.api interface in
 # re/runelite/runelite-api-1.13.1.jar, less the interfaces the report's header lists as excluded.
 # The probe stays loaded in the app until it restarts; it has unregistered itself by then.
+# State the probe reaches only when set up first: a fight running (Hitsplat; a wielded scythe of vitur adds a
+# map spotanim per swing for GraphicsObject; `::npc 1000 poh_combat_dummy_npc` is a target that lasts; while the
+# player is interacting and no hitsplat has come, the probe waits for one), the world map open while it runs
+# (WorldMapRegion/Icon, setWorldMapPositionTarget), a song playing (MidiRequest) and ambient sounds in range
+# (Lumbridge's goblin field). The menu draw rows pass with a long-press menu open or with none.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=${1:-$HOME/osrs-harness/evidence/client-api}

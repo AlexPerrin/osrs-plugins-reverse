@@ -54,6 +54,7 @@ final class AndroidItemComposition extends ItemCompositionStub {
     @Override public void setValue(int param, int value) { Params.set(Params.OBJ, id, param, value); }
     @Override public void setValue(int param, String value) { Params.set(Params.OBJ, id, param, value); }
     @Override public void setValue(int param, long value) { Params.set(Params.OBJ, id, param, value); }
+    @Override public net.runelite.api.IterableHashTable<net.runelite.api.Node> getParams() { return CacheConfig.params(Params.OBJ, id); }
     @Override public int getId() { return id; }
     @Override public String getName() { return name; }
     @Override public String getMembersName() { return name; }

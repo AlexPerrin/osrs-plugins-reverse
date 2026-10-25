@@ -5,6 +5,7 @@
 
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 #include <sys/mman.h>
 #include <sys/system_properties.h>
 #include <unistd.h>
@@ -536,6 +537,120 @@ bool varc_string(int id, std::string& out) {
     return true;
 }
 
+// The game's definition/model/sprite caches (one LRU-over-hash-map container each: u64 entry count
+// at base +0x20) and the clear functions its full cache reset 0x429f28 calls (build 241.4, static RE
+// client-api-cache-config): which 0 ObjType (base 0x1217a30; clear 0x642cbc also empties item models
+// and item sprites), 1 LocType (0x1159220; clear 0x633ad8 with the loc caches next to it), 2 SeqType
+// (0x1854100; clear 0x648204), 3 item models (0x1218f28; cleared by 0x642cbc), 4 item sprites
+// (0x1219fc0; clear 0x642ebc), 5 HealthBarType + health bar sprites (0x18d8f80 and 0x18da478;
+// clear 0x6604d0).
+namespace {
+struct GameCache { uintptr_t base, base2, clear; };
+constexpr GameCache kCaches[] = {
+    {0x1217a30, 0, 0x642cbc}, {0x1159220, 0, 0x633ad8}, {0x1854100, 0, 0x648204},
+    {0x1218f28, 0, 0x642cbc}, {0x1219fc0, 0, 0x642ebc}, {0x18d8f80, 0x18da478, 0x6604d0},
+};
+}  // namespace
+
+long cache_size(int which) {
+    if (!g_build || which < 0 || which >= static_cast<int>(sizeof kCaches / sizeof kCaches[0])) return -1;
+    const GameCache& k = kCaches[which];
+    long n = static_cast<long>(read_at<uint64_t>(g_base + k.base + 0x20));
+    if (k.base2) n += static_cast<long>(read_at<uint64_t>(g_base + k.base2 + 0x20));
+    return n;
+}
+
+// Between cycles only (the game thread outside game code): a cleared node's {ctrl, type} slot is
+// what getLocType hands out, so nothing may hold one across the call.
+bool cache_reset(int which) {
+    if (cache_size(which) < 0) return false;
+    reinterpret_cast<void (*)()>(g_base + kCaches[which].clear)();
+    return true;
+}
+
+void release_shared_ptr(uintptr_t ctrl);
+
+// js5 archives (static RE client-api-cache-config; created at 0x434b80..0x4350c8 by the js5 manager
+// Client +0x2428, each slot a raw Archive*). Archive: +0x18 index crc (0 = index not loaded), +0x28
+// u64 group count (dense), +0x30 groups (0x70 each: +0x04 version, -1 = absent; +0x28/+0x30 packed
+// bytes {ctrl, Buffer*}; +0x40 u64 file count (dense); +0x48 files, 0x20 each: +0x08 i64 start, -1 =
+// absent; +0x10/+0x18 unpacked {ctrl, Buffer*}). getFile 0x6be3dc(archive, out {ctrl, Buffer*}, group,
+// file, xtea keys, keep) returns a status value (OK = **GOT 0xa828b0); Buffer +0x08 size, +0x10 data,
+// +0x18 pos: the file is data[pos, size).
+namespace {
+uintptr_t archive_at(int id) {
+    static constexpr int16_t kSlot[26] = {0x2330, 0x2340, 0x2348, 0x2358, 0x2360, 0x2368, 0x2370, 0x2378, 0x2388,
+        0x2390, 0x2398, 0x23a0, 0x23a8, 0x23b0, 0x23b8, 0x23c0, 0, 0x23e0, 0x23d0, 0x23c8, 0x23d8, 0x23e8,
+        0x2338, 0x23f0, 0, 0x2380};
+    uintptr_t c = client();
+    if (!g_build || !c || id < 0 || id >= 26 || !kSlot[id] || game_state() < 10) return 0;
+    uintptr_t a = read_at<uintptr_t>(c + kSlot[id]);
+    return a && read_at<uint32_t>(a + 0x18) ? a : 0;
+}
+uintptr_t archive_group(uintptr_t a, int group) {
+    if (!a || group < 0 || static_cast<uint64_t>(group) >= read_at<uint64_t>(a + 0x28)) return 0;
+    uintptr_t g = read_at<uintptr_t>(a + 0x30) + static_cast<uintptr_t>(group) * 0x70;
+    return read_at<int32_t>(g + 4) == -1 ? 0 : g;
+}
+}  // namespace
+
+bool archive_file_ids(int id, int group, std::vector<int32_t>& out) {
+    out.clear();
+    uintptr_t g = archive_group(archive_at(id), group);
+    if (!g) return false;
+    uint64_t n = read_at<uint64_t>(g + 0x40);
+    uintptr_t files = read_at<uintptr_t>(g + 0x48);
+    if (!files || n > 0x100000) return false;
+    for (uint64_t i = 0; i < n; i++)
+        if (read_at<int64_t>(files + i * 0x20 + 8) != -1) out.push_back(static_cast<int32_t>(i));
+    return true;
+}
+
+// keep = whether the file was already unpacked: a file this call unpacks is handed out (not left
+// cached), so the archive is as it was; one the game had unpacked stays shared.
+bool archive_file(int id, int group, int file, std::vector<uint8_t>& out) {
+    out.clear();
+    uintptr_t a = archive_at(id);
+    uintptr_t g = archive_group(a, group);
+    if (!g || file < 0 || static_cast<uint64_t>(file) >= read_at<uint64_t>(g + 0x40)) return false;
+    uintptr_t f = read_at<uintptr_t>(g + 0x48) + static_cast<uintptr_t>(file) * 0x20;
+    if (read_at<int64_t>(f + 8) == -1) return false;
+    unsigned keep = read_at<uintptr_t>(f + 0x18) ? 1 : 0;
+    struct { uintptr_t ctrl, obj; } sp = {0, 0};
+    using Fn = uintptr_t (*)(uintptr_t, void*, int, int, const int*, unsigned);
+    uintptr_t status = reinterpret_cast<Fn>(g_base + 0x6be3dc)(a, &sp, group, file, nullptr, keep);
+    uintptr_t ok = read_at<uintptr_t>(read_at<uintptr_t>(g_base + 0xa828b0));
+    bool good = status == ok && sp.obj;
+    if (good) {
+        uint64_t size = read_at<uint64_t>(sp.obj + 8), pos = read_at<uint64_t>(sp.obj + 0x18);
+        auto data = read_at<const uint8_t*>(sp.obj + 0x10);
+        good = data && pos <= size && size < (64u << 20);
+        if (good) out.assign(data + pos, data + size);
+    }
+    release_shared_ptr(sp.ctrl);
+    return good;
+}
+
+// Every int (type 1) and string (type 2) varc in the store, in id order.
+bool varc_entries(std::vector<VarcEntry>& out) {
+    out.clear();
+    uintptr_t c = client();
+    uintptr_t store = c ? read_at<uintptr_t>(c + 0x417b68) : 0;
+    if (!store) return false;
+    uintptr_t b = read_at<uintptr_t>(store + 0x48), e = read_at<uintptr_t>(store + 0x50);
+    if (!b || e < b || (e - b) / 0x30 > 100000) return false;
+    for (uintptr_t ent = b; ent < e; ent += 0x30) {
+        VarcEntry v;
+        v.id = read_at<int32_t>(ent);
+        v.type = read_at<int32_t>(ent + 0x28);
+        if (v.type == 1) v.int_value = read_at<int32_t>(ent + 8);
+        else if (v.type == 2) v.string_value = read_string(ent + 8);
+        else continue;
+        out.push_back(std::move(v));
+    }
+    return true;
+}
+
 static ActorState read_actor(uintptr_t a) {
     ActorState st;
     if (!a) return st;
@@ -630,6 +745,55 @@ uintptr_t live_npc(int index) {
     for (int i = 0; i < count; i++)
         if (indices[i] == index) return npc_lookup(wv, index);
     return 0;
+}
+
+// NPC_INFO model overrides (static RE client-api-cache-config, reader 0x469778): Npc +0x750 head
+// (mask 0x10000), +0x758 body (masks 0x100000/0x1000/0x2000000), each an owning pointer to a 0x78-byte
+// object (null = none): +0x08/+0x10 vector<int32> model ids, {u64 count +0x28, int16* +0x30}
+// recolours, {+0x40, +0x48} retextures, u8 +0x54 mirror local player.
+bool npc_overrides(int index, bool head, NpcOverrides& out) {
+    uintptr_t npc = live_npc(index);
+    uintptr_t o = npc ? read_at<uintptr_t>(npc + (head ? 0x750 : 0x758)) : 0;
+    if (!o) return false;
+    auto b = read_at<const int32_t*>(o + 0x08), e = read_at<const int32_t*>(o + 0x10);
+    out.models.clear();
+    if (b && e >= b && e - b < 256) out.models.assign(b, e);
+    auto shorts = [](uintptr_t at, std::vector<int16_t>& v) {
+        uint64_t n = read_at<uint64_t>(at);
+        auto p = read_at<const int16_t*>(at + 8);
+        v.clear();
+        if (p && n < 256) v.assign(p, p + n);
+    };
+    shorts(o + 0x28, out.recolours);
+    shorts(o + 0x40, out.retextures);
+    out.use_local_player = read_at<uint8_t>(o + 0x54) != 0;
+    return true;
+}
+
+// Head icons: Npc +0x760 (NPC_INFO mask 0x400000, NPC_HEADICON_SPECIFIC) points to a 0x90-byte object
+// {+0x00/+0x08 int* archive ids begin/end, +0x48/+0x50 int* sprite indices}, 8 slots, -1 = none; its
+// ctor 0x5ec334 starts from the NpcType's defaults (+0x1b8/+0x1c0 archives, +0x200/+0x208 indices),
+// which are the NPC's icons while there is no object.
+bool npc_head_icons(int index, std::vector<int32_t>& archives, std::vector<int32_t>& sprites) {
+    archives.clear();
+    sprites.clear();
+    uintptr_t npc = live_npc(index);
+    if (!npc) return false;
+    uintptr_t o = read_at<uintptr_t>(npc + 0x760);
+    uintptr_t a = o, s = o + 0x48;
+    if (!o) {
+        uintptr_t type = read_at<uintptr_t>(npc + 0x730);
+        if (!type) return false;
+        a = type + 0x1b8;
+        s = type + 0x200;
+    }
+    auto ints = [](uintptr_t at, std::vector<int32_t>& v) {
+        auto b = read_at<const int32_t*>(at), e = read_at<const int32_t*>(at + 8);
+        if (b && e >= b && e - b <= 64) v.assign(b, e);
+    };
+    ints(a, archives);
+    ints(s, sprites);
+    return !archives.empty();
 }
 
 uintptr_t live_player(int index) {
@@ -784,6 +948,14 @@ bool set_camera_target(int which, int value) {
     uintptr_t c = client();
     if (!c || which < 0 || which > 1) return false;
     *reinterpret_cast<int32_t*>(c + g_build->f_camera + 20 + 4 * which) = which ? (value & 0x3fff) : value;
+    return true;
+}
+
+bool set_camera_focal(int axis, int value) {
+    uintptr_t c = client();
+    if (!c || axis < 0 || axis > 2) return false;
+    static constexpr int kOff[3] = {0x78, 0x80, 0x7c};
+    *reinterpret_cast<int32_t*>(c + g_build->f_camera + kOff[axis]) = value;
     return true;
 }
 
@@ -955,6 +1127,27 @@ bool widget_events(uintptr_t w, int out[2]) {
     }
     return false;
 }
+// Every IF_SETEVENTS range in the table at Client +0x413c30: {component, start, end, flags, op mask} per node.
+bool widget_event_ranges(std::vector<int32_t>& out) {
+    out.clear();
+    uintptr_t c = client();
+    if (!c) return false;
+    uint32_t count = read_at<uint32_t>(c + 0x413c38);
+    uintptr_t buckets = read_at<uintptr_t>(c + 0x413c30);
+    if (!count || !buckets) return true;  // none set
+    if (count > (1u << 20)) return false;
+    // Chains may run on into other buckets' nodes (lookups skip to their component): each node once.
+    std::unordered_set<uintptr_t> seen;
+    for (uint32_t b = 0; b < count; b++) {
+        int guard = 0;
+        for (uintptr_t n = read_at<uintptr_t>(buckets + static_cast<uintptr_t>(b) * 8); n && ++guard < 100000; n = read_at<uintptr_t>(n + 0x18)) {
+            if (!seen.insert(n).second) break;
+            for (int k = 0; k < 5; k++) out.push_back(read_at<int32_t>(n + 4 * k));
+        }
+    }
+    return true;
+}
+
 void widget_set_flags(uintptr_t w, int flags) {
     if (w) *reinterpret_cast<volatile int32_t*>(w + 0x2b0) = flags;
 }
@@ -2349,6 +2542,122 @@ bool sprite_info(int id, int out[6]) {
     return out[0] > 0 && out[1] > 0;
 }
 
+bool sprite_array(int which, std::vector<int32_t>& out) {
+    uintptr_t c = client();
+    if (!g_build || !c || which < 0 || which > 1 || game_state() < 10) return false;
+    uintptr_t obj = read_at<uintptr_t>(c + (which == 0 ? 0x2510 : 0x24b8));
+    if (!obj) return false;
+    uint64_t n = read_at<uint64_t>(obj + 8);
+    uintptr_t arr = read_at<uintptr_t>(obj + 0x10);
+    if (!arr || n == 0 || n > 4096) return false;
+    out.assign(1, static_cast<int32_t>(n));
+    for (uint64_t i = 0; i < n; i++) {
+        uintptr_t r = arr + i * (which == 0 ? 0x30 : 0x48);
+        int base = which == 0 ? 0x18 : 0x30;
+        int w = read_at<int32_t>(r + base), h = read_at<int32_t>(r + base + 4);
+        if (w < 0 || h < 0 || w > 2048 || h > 2048) return false;
+        for (int k = 0; k < 6; k++) out.push_back(read_at<int32_t>(r + base + 4 * k));
+        uintptr_t px = read_at<uintptr_t>(r + 0x10);
+        uint64_t pal_n = which == 1 ? read_at<uint64_t>(r + 0x18) : 0;
+        uintptr_t pal = which == 1 ? read_at<uintptr_t>(r + 0x28) : 0;
+        if (pal_n > 256 || (pal_n && !pal)) return false;
+        out.push_back(static_cast<int32_t>(pal_n));
+        size_t count = static_cast<size_t>(w) * h;
+        for (size_t k = 0; k < count; k++)
+            out.push_back(!px ? 0 : which == 0 ? static_cast<int32_t>(reinterpret_cast<const uint32_t*>(px)[k])
+                                               : reinterpret_cast<const uint8_t*>(px)[k]);
+        for (uint64_t k = 0; k < pal_n; k++) out.push_back(static_cast<int32_t>(reinterpret_cast<const uint32_t*>(pal)[k]));
+    }
+    return true;
+}
+
+namespace {
+uintptr_t texture_provider() {
+    uintptr_t c = client();
+    if (!g_build || !c || game_state() < 10) return 0;
+    uintptr_t p = read_at<uintptr_t>(c + 0x4710);
+    return p && read_at<uintptr_t>(p) == g_base + 0xa75748 ? p : 0;  // its vtable, else not built yet
+}
+uintptr_t texture_at(uintptr_t p, int id) {
+    uintptr_t b = read_at<uintptr_t>(p + 8), e = read_at<uintptr_t>(p + 0x10);
+    if (id < 0 || b + static_cast<uintptr_t>(id) * 16 >= e) return 0;
+    return read_at<uintptr_t>(b + static_cast<uintptr_t>(id) * 16 + 8);
+}
+}  // namespace
+
+bool textures(std::vector<int32_t>& out) {
+    uintptr_t p = texture_provider();
+    if (!p) return false;
+    uintptr_t b = read_at<uintptr_t>(p + 8), e = read_at<uintptr_t>(p + 0x10);
+    if (!b || e < b || (e - b) / 16 > 65536) return false;
+    out.clear();
+    for (int id = 0; id < static_cast<int>((e - b) / 16); id++) {
+        uintptr_t t = texture_at(p, id);
+        uintptr_t px = t ? read_at<uintptr_t>(t + 0x58) : 0;
+        int32_t v[8] = {t != 0, t ? read_at<uint16_t>(t + 0x30) : 0, t ? read_at<uint8_t>(t + 0x34) : 0,
+                        t ? read_at<int32_t>(t + 0x38) : -1, t ? read_at<int32_t>(t + 0x3c) : 0,
+                        t ? read_at<int32_t>(t + 0x40) : 0, t ? read_at<uint8_t>(t + 0x60) : 0,
+                        px ? static_cast<int32_t>(read_at<uint64_t>(px + 8)) : 0};
+        out.insert(out.end(), v, v + 8);
+    }
+    return true;
+}
+
+bool texture_pixels(int id, bool load, std::vector<int32_t>& out) {
+    uintptr_t p = texture_provider();
+    uintptr_t t = p ? texture_at(p, id) : 0;
+    if (!t) return false;
+    struct SharedPtr {
+        uintptr_t ctrl, obj;
+        ~SharedPtr() {}
+    };
+    uintptr_t ctrl = 0, obj = read_at<uintptr_t>(t + 0x58);
+    if (load) {
+        SharedPtr r = reinterpret_cast<SharedPtr (*)(uintptr_t, int)>(g_base + 0x6d4930)(p, id);
+        ctrl = r.ctrl;
+        obj = r.obj;
+    }
+    uint64_t n = obj ? read_at<uint64_t>(obj + 8) : 0;
+    auto px = obj ? read_at<const int32_t*>(obj + 0x10) : nullptr;
+    bool ok = px && n > 0 && n <= 128 * 128;
+    if (ok) out.assign(px, px + n);
+    if (ctrl) release_shared(ctrl);
+    return ok;
+}
+
+bool skybox_colour(int& argb) {
+    uintptr_t c = client();
+    uintptr_t sc = c ? read_at<uintptr_t>(c + 0x90) : 0;
+    if (!sc) return false;
+    auto ch = [&](int i) {
+        float f = read_at<float>(sc + 0x90 + 4 * i);
+        return static_cast<uint32_t>(f <= 0 ? 0 : f >= 1 ? 255 : static_cast<int>(f * 255 + 0.5f));
+    };
+    argb = static_cast<int>(ch(3) << 24 | ch(0) << 16 | ch(1) << 8 | ch(2));
+    return true;
+}
+
+bool set_skybox_colour(int argb) {
+    uintptr_t c = client();
+    uintptr_t sc = c ? read_at<uintptr_t>(c + 0x90) : 0;
+    if (!sc) return false;
+    auto f = [&](int shift) { return static_cast<float>((static_cast<uint32_t>(argb) >> shift) & 0xff) / 255.0f; };
+    reinterpret_cast<void (*)(uintptr_t, float, float, float, float)>(g_base + 0x6b083c)(sc, f(16), f(8), f(0), f(24));
+    return true;
+}
+
+double texture_brightness() {
+    uintptr_t p = texture_provider();
+    return p ? read_at<double>(p + 0x38) : __builtin_nan("");
+}
+
+bool set_texture_brightness(double b) {
+    uintptr_t p = texture_provider();
+    if (!p || !(b > 0 && b < 2)) return false;
+    *reinterpret_cast<double*>(p + 0x38) = b;
+    return true;
+}
+
 // Overwrites the cached sprite's pixels in place (sprite overrides); same size only. The cache
 // reloads the original after an LRU eviction, so callers re-apply periodically.
 bool sprite_write(int id, const uint32_t* pixels, int width, int height) {
@@ -2962,12 +3271,14 @@ bool read_param(uintptr_t map, int key, TypeParam& out) {
 
 // Params of an obj (kind 0, ObjType +0x2d8), npc (1, NpcType +0x170), loc (2, LocType +0x160) or
 // struct (3, StructType +0x08; getStructType 0x64a69c loads config group 34, returns via x8).
-bool type_param(int kind, int id, int key, TypeParam& out) {
+// `f(definition)` runs while the definition is held; locs stay referenced by their cache.
+template <typename F>
+static bool with_type(int kind, int id, F f) {
     if (!g_build || id < 0 || id > 0xfffff) return false;
     if (kind == 2) {
         if (!g_build->get_loc_type) return false;
         auto sp = reinterpret_cast<const uintptr_t* (*)(int)>(g_base + g_build->get_loc_type)(id);
-        return sp && sp[1] && read_param(sp[1] + 0x160, key, out);
+        return sp && sp[1] && f(sp[1]);
     }
     constexpr uintptr_t kGetStructType = 0x64a69c;  // build 241.4
     uintptr_t fn = kind == 0 ? g_build->get_obj_type : kind == 1 ? g_build->get_npc_type : kind == 3 ? kGetStructType : 0;
@@ -2978,9 +3289,56 @@ bool type_param(int kind, int id, int key, TypeParam& out) {
     };
     SharedPtr r = reinterpret_cast<SharedPtr (*)(int)>(g_base + fn)(id);
     uintptr_t ctrl = r.ctrl, o = r.obj;
-    bool ok = o && read_param(o + (kind == 0 ? 0x2d8 : kind == 1 ? 0x170 : 0x08), key, out);
+    bool ok = o && f(o);
     release_shared(ctrl);
     return ok;
+}
+
+static uintptr_t param_map(int kind, uintptr_t type) { return type + (kind == 0 ? 0x2d8 : kind == 1 ? 0x170 : kind == 2 ? 0x160 : 0x08); }
+
+// Sub-ops under op `op` (NpcType ops +0x100, LocType +0xe8): op entry +0x38 = the nested op vector
+// (shared_ptr {+0x30 ctrl, +0x38 vector}; decoder 0x65c2b8: NPC opcodes 251/253, loc 100/102,
+// sub-op ids 1-based on the wire, stored at id - 1). Texts through opText like the ops.
+bool sub_ops(int kind, int id, int op, std::vector<std::string>& out, bool& present) {
+    out.clear();
+    present = false;
+    if ((kind != 1 && kind != 2) || op < 0 || op > 31 || !g_build->op_text) return false;
+    return with_type(kind, id, [&](uintptr_t t) {
+        uintptr_t vec = t + (kind == 1 ? 0x100 : 0xe8);
+        uintptr_t b = read_at<uintptr_t>(vec), e = read_at<uintptr_t>(vec + 8);
+        if (!b || e < b || static_cast<uintptr_t>(op) >= (e - b) / 0x40) return true;
+        uintptr_t sub = read_at<uintptr_t>(b + static_cast<uintptr_t>(op) * 0x40 + 0x38);
+        if (!sub) return true;
+        uintptr_t sb = read_at<uintptr_t>(sub), se = read_at<uintptr_t>(sub + 8);
+        if (!sb || se < sb || (se - sb) / 0x40 > 256) return true;
+        present = true;
+        auto op_text = reinterpret_cast<uintptr_t (*)(uintptr_t, int)>(g_base + g_build->op_text);
+        for (int i = 0, n = static_cast<int>((se - sb) / 0x40); i < n; i++) {
+            uintptr_t str = op_text(sub, i);
+            out.push_back(str ? read_string(str) : std::string());
+        }
+        return true;
+    });
+}
+
+bool type_param(int kind, int id, int key, TypeParam& out) {
+    return with_type(kind, id, [&](uintptr_t t) { return read_param(param_map(kind, t), key, out); });
+}
+
+// Every key in the params map (bucket chains as in read_param).
+bool type_param_keys(int kind, int id, std::vector<int32_t>& keys) {
+    keys.clear();
+    return with_type(kind, id, [&](uintptr_t t) {
+        uintptr_t map = param_map(kind, t);
+        auto buckets = read_at<uintptr_t>(map + 0x08);
+        uint64_t count = read_at<uint64_t>(map + 0x10);
+        if (!buckets || !count) return true;  // no params
+        if (count > (1u << 20)) return false;
+        for (uint64_t b = 0; b < count; b++)
+            for (uintptr_t n = read_at<uintptr_t>(buckets + b * 8), i = 0; n && i < 4096; n = read_at<uintptr_t>(n + 0x38), i++)
+                keys.push_back(static_cast<int32_t>(read_at<uint64_t>(n)));
+        return true;
+    });
 }
 
 bool loc_def(int id, LocDef& out) {

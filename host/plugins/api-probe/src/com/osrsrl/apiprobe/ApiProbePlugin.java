@@ -30,6 +30,7 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
+import net.runelite.api.Rasterizer;
 import net.runelite.api.Scene;
 import net.runelite.api.Tile;
 import net.runelite.api.coords.LocalPoint;
@@ -241,6 +242,10 @@ public class ApiProbePlugin extends Plugin {
         register(client.getMenu(), 0);
         register(client.getTopLevelWorldView(), 0);
         for (Object n : client.getTopLevelWorldView().npcs()) { register(n, 0); break; }
+        for (net.runelite.api.NPC n : client.getTopLevelWorldView().npcs()) {  // overrides are rare: any NPC's
+            register(n.getModelOverrides(), 0);
+            register(n.getChatheadOverrides(), 0);
+        }
         Scene scene = client.getTopLevelWorldView().getScene();
         register(scene, 0);
         LocalPoint lp = me.getLocalLocation();
@@ -609,6 +614,128 @@ public class ApiProbePlugin extends Plugin {
         };
         SPECIAL.put("Actor.setGraphicHeight1", slot0);
         SPECIAL.put("Actor.setSpotAnimFrame1", slot0);
+        // The image must match the sprite's size (desktop throws otherwise); the live BufferedImage may be any size.
+        SPECIAL.put("SpritePixels.toBufferedImage1", (p, row, inst) -> {
+            net.runelite.api.SpritePixels s = (net.runelite.api.SpritePixels) inst;
+            java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(s.getWidth(), s.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            s.toBufferedImage(img);
+            p.set(row, "pass", "drawn into a " + s.getWidth() + "x" + s.getHeight() + " image");
+        });
+        // Rasterizer draws: on a 20x20 corner of its pixels, cleared first; read the pixels back; restore them.
+        SPECIAL.put("Rasterizer.fillRectangle5", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.fillRectangle(1, 1, 4, 4, 0x123456);
+            return new int[] {px[w + 1], px[4 * w + 4], px[5 * w + 5]};
+        }, v -> v[0] == 0x123456 && v[1] == 0x123456 && v[2] == 0));
+        SPECIAL.put("Rasterizer.rasterFlat7", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.rasterFlat(0, 0, 16, 0, 16, 0, 0x654321);
+            return new int[] {px[2 * w + 2], px[15 * w + 15]};
+        }, v -> v[0] == 0x654321 && v[1] == 0));
+        SPECIAL.put("Rasterizer.rasterGouraud9", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.rasterGouraud(0, 0, 16, 0, 16, 0, 0x7f, 0x7f, 0x7f);  // white
+            return new int[] {px[2 * w + 2], px[15 * w + 15]};
+        }, v -> v[0] != 0 && v[1] == 0));
+        SPECIAL.put("Rasterizer.setDrawRegion4", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.setDrawRegion(4, 4, 8, 8);
+            r.fillRectangle(0, 0, 20, 20, 0xffffff);
+            r.resetRasterClipping();
+            return new int[] {px[5 * w + 5], px[2 * w + 2], px[10 * w + 10]};
+        }, v -> v[0] == 0xffffff && v[1] == 0 && v[2] == 0));
+        SPECIAL.put("Rasterizer.resetRasterClipping0", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.setDrawRegion(4, 4, 8, 8);
+            r.resetRasterClipping();
+            r.fillRectangle(0, 0, 20, 20, 0xffffff);
+            return new int[] {px[2 * w + 2], px[10 * w + 10]};
+        }, v -> v[0] == 0xffffff && v[1] == 0xffffff));
+        // Low res: one colour per 8-pixel run of a gouraud gradient; full res: the colour changes inside a run.
+        SPECIAL.put("Rasterizer.setRasterGouraudLowRes1", (p, row, inst) -> raster(p, row, (Rasterizer) inst, (r, px, w) -> {
+            r.setRasterGouraudLowRes(true);
+            r.rasterGouraud(0, 0, 19, 0, 19, 0, 0x0000, 0x007f, 0x0000);
+            int lowRunEqual = px[w + 8] == px[w + 15] ? 1 : 0;
+            r.setRasterGouraudLowRes(false);
+            r.rasterGouraud(0, 0, 19, 0, 19, 0, 0x0000, 0x007f, 0x0000);
+            int fullRunDiffers = px[w + 8] != px[w + 15] ? 1 : 0;
+            return new int[] {lowRunEqual, fullRunDiffers};
+        }, v -> v[0] == 1 && v[1] == 1));
+    }
+
+    // Caches: the entry count (the host cache's size()) before and after reset, which runs the game's clear.
+    static String resetCache(Object cache, Runnable reset) throws Exception {
+        Method size = cache.getClass().getMethod("size");
+        size.setAccessible(true);
+        Object before = size.invoke(cache);
+        reset.run();
+        return "entries " + before + " -> " + size.invoke(cache);
+    }
+
+    static {
+        SPECIAL.put("NodeCache.reset0", (p, row, inst) -> {
+            net.runelite.api.NodeCache c = (net.runelite.api.NodeCache) inst;
+            try {
+                c.getClass().getMethod("size");
+            } catch (NoSuchMethodException e) {
+                c.reset();  // a cache with nothing host-side to count
+                p.set(row, "pass", "returned");
+                return;
+            }
+            String ev = describe(c) + ": " + resetCache(c, c::reset);
+            p.set(row, ev.endsWith("-> 0") ? "pass" : "mismatch", ev);
+        });
+        SPECIAL.put("Client.resetHealthBarCaches0", (p, row, inst) -> {
+            Client c = (Client) inst;
+            Object hb = null;
+            try {
+                java.lang.reflect.Field f = Class.forName("net.runelite.host.CacheConfig", false, Client.class.getClassLoader()).getDeclaredField("CACHES");
+                f.setAccessible(true);
+                hb = Array.get(f.get(null), 5);
+            } catch (ReflectiveOperationException e) {
+                c.resetHealthBarCaches();
+                p.set(row, "pass", "returned (no host cache to count)");
+                return;
+            }
+            String ev = "health bar types + sprites " + resetCache(hb, c::resetHealthBarCaches);
+            p.set(row, ev.endsWith("-> 0") ? "pass" : "mismatch", ev);
+        });
+        // Index reads on a group the live index has: the first group with files, its first file's bytes.
+        SPECIAL.put("IndexDataBase.getFileIds1", (p, row, inst) -> {
+            int[] g = firstFile((net.runelite.api.IndexDataBase) inst);
+            int[] ids = ((net.runelite.api.IndexDataBase) inst).getFileIds(g == null ? 0 : g[0]);
+            p.set(row, ids != null && ids.length > 0 ? "pass" : "mismatch", describe(inst) + " group " + (g == null ? 0 : g[0]) + ": " + describe(ids)
+                + (ids != null && ids.length > 0 ? " first " + ids[0] + " last " + ids[ids.length - 1] : ""));
+        });
+        SPECIAL.put("IndexDataBase.loadData2", (p, row, inst) -> {
+            net.runelite.api.IndexDataBase idx = (net.runelite.api.IndexDataBase) inst;
+            int[] g = firstFile(idx);
+            byte[] b = g == null ? null : idx.loadData(g[0], g[1]);
+            StringBuilder hex = new StringBuilder();
+            for (int i = 0; b != null && i < Math.min(8, b.length); i++) hex.append(String.format("%02x", b[i] & 0xff));
+            p.set(row, b != null && b.length > 0 ? "pass" : "mismatch", describe(inst) + (g == null ? " no group with files" : " group " + g[0] + " file " + g[1] + ": " + describe(b) + " " + hex));
+        });
+    }
+
+    /** {group, file} of the first group of `idx` with a file, or null. */
+    static int[] firstFile(net.runelite.api.IndexDataBase idx) {
+        for (int g = 0; g < 4096; g++) {
+            int[] ids = idx.getFileIds(g);
+            if (ids != null && ids.length > 0) return new int[] {g, ids[0]};
+        }
+        return null;
+    }
+
+    interface Draw {
+        int[] run(Rasterizer r, int[] px, int w);
+    }
+
+    private static void raster(ApiProbePlugin p, Row row, Rasterizer r, Draw draw, java.util.function.Predicate<int[]> ok) {
+        int[] px = r.getPixels();
+        int w = r.getWidth();
+        if (w < 20 || r.getHeight() < 20) { p.set(row, "mismatch", "pixels " + w + "x" + r.getHeight() + " (smaller than 20x20)"); return; }
+        int[] saved = px.clone();
+        r.resetRasterClipping();
+        r.fillRectangle(0, 0, 20, 20, 0);
+        int[] v = draw.run(r, px, w);
+        System.arraycopy(saved, 0, px, 0, px.length);
+        String hex = Arrays.stream(v).mapToObj(Integer::toHexString).collect(java.util.stream.Collectors.joining(","));
+        p.set(row, ok.test(v) ? "pass" : "mismatch", "drawn into " + w + "x" + r.getHeight() + " pixels; read back " + hex + " (restored)");
     }
 
     private final List<Runnable> cleanup = new ArrayList<>();
@@ -640,6 +767,12 @@ public class ApiProbePlugin extends Plugin {
                 Object npc = live.get(net.runelite.api.NPC.class);
                 int seq = npc != null ? ((net.runelite.api.NPC) npc).getIdlePoseAnimation() : -1;
                 return new Object[] {arg(net.runelite.api.Model.class), client.loadAnimation(seq), 0, null, 0};
+            }
+            // The config archive (2), so the IndexDataBase rows read config files; a DB row the cache has.
+            case "Client.getIndex(I)Lnet/runelite/api/IndexDataBase;": return new Object[] {2};
+            case "Client.getDBRowConfig(I)Lnet/runelite/api/dbtable/DBRowConfig;": {
+                for (int r = 0; r < 20000; r++) if (client.getDBRowConfig(r) != null) return new Object[] {r};
+                return new Object[] {0};
             }
             // scale 0 would flatten the live model the Model rows read next; 128 = 1:1
             case "Mesh.scale(III)Lnet/runelite/api/Mesh;": return new Object[] {128, 128, 128};
@@ -741,9 +874,18 @@ public class ApiProbePlugin extends Plugin {
         else if (v instanceof Number || v instanceof Boolean || v instanceof Character || v instanceof Enum) s = String.valueOf(v);
         else if (v instanceof String) s = "\"" + v + "\"";
         else if (c.getName().startsWith("java.") || c.getName().startsWith(API)) s = String.valueOf(v);
+        else if (ownToString(c)) s = String.valueOf(v);  // a host object that says what it holds
         else s = c.getSimpleName().isEmpty() ? c.getName() : c.getSimpleName();
         s = s.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
         return s.length() > 120 ? s.substring(0, 117) + "..." : s;
+    }
+
+    private static boolean ownToString(Class<?> c) {
+        try {
+            return c.getMethod("toString").getDeclaringClass() != Object.class;
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
     }
 
     private void finish() throws Exception {

@@ -49,6 +49,8 @@ final class AndroidObjectComposition extends ObjectCompositionStub {
     @Override public int getId() { return v[0]; }
     @Override public String getName() { return name; }
     @Override public String[] getActions() { return actions; }
+    @Override public net.runelite.api.EntityOps getOps() { return CacheConfig.ops(Params.LOC, v[0], actions); }
+    @Override public net.runelite.api.IterableHashTable<net.runelite.api.Node> getParams() { return CacheConfig.params(Params.LOC, v[0]); }
     @Override public int getSizeX() { return v[1]; }
     @Override public int getSizeY() { return v[2]; }
     @Override public int getVarbitId() { return v[3]; }

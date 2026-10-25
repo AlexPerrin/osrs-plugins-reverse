@@ -31,6 +31,9 @@ public class AndroidWorldView extends WorldViewStub {
 
     @Override public int getId() { return net.runelite.api.WorldView.TOPLEVEL; }  // 0 in API 1.13
     @Override public boolean isTopLevel() { return true; }
+    /** The main camera; the top level has no entity transform, so its canvas projection is the same. */
+    @Override public net.runelite.api.Projection getMainWorldProjection() { return AndroidRender.PROJECTION; }
+    @Override public net.runelite.api.Projection getCanvasProjection() { return AndroidRender.PROJECTION; }
     // REBUILD_REGION templates (Native.instanceTemplates), read once per cycle.
     private static int instStamp = -1;
     private static int[] instRaw;

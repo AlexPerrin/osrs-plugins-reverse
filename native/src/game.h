@@ -132,6 +132,9 @@ Camera camera();
 // Writes the camera pitch (which 0) or yaw (which 1) target, as RuneLite's setCameraPitchTarget/
 // setCameraYawTarget; the game eases the camera towards it. Yaw is masked to 14 bits. Game thread only.
 bool set_camera_target(int which, int value);
+// Writes the camera focal point (Client camera block +0x78/+0x7c/+0x80: x, height, y) on axis 0 x, 1 y,
+// 2 height (RuneLite's setCameraFocalPointX/Y/Z). The game moves it towards the player each frame. Game thread only.
+bool set_camera_focal(int axis, int value);
 // The 3D viewport the scene renderer projects with (drawRenderable 0x72db3c): screen offset =
 // r * zoom / depth, centre, clip rect, far plane. Reached as renderer = holder->vtbl[3](holder),
 // holder = *(Client +0x90) + 0x1b0 (scene draw caller 0x457128), viewport = *(renderer +0x630c60).
@@ -187,6 +190,8 @@ int widget_flags(uintptr_t widget);  // +0x2b0: bit i+1 = op i shown (when no IF
 // The IF_SETEVENTS range covering a widget (component +0x04, CC_CREATE index +0x08): out = {flags, op mask};
 // false when none covers it (the game then uses +0x2b0). Game thread.
 bool widget_events(uintptr_t widget, int out[2]);
+// All IF_SETEVENTS ranges, 5 ints each {component, start, end, flags, op mask}.
+bool widget_event_ranges(std::vector<int32_t>& out);
 void widget_set_flags(uintptr_t widget, int flags);  // game thread only
 struct SubInterface { int component, group, type; };  // `group` is open inside `component`; type = IF_OPENSUB modal mode (node +8)
 std::vector<SubInterface> open_sub_interfaces();
@@ -324,6 +329,26 @@ bool sprite(int id, std::vector<uint32_t>& pixels, int& width, int& height);
 // Frame 0's placement: {width, height, x offset, y offset, full width, full height} (Sprite +0x18..+0x2c;
 // the pixels are the trimmed width x height block at the offsets in the full canvas). Game thread only.
 bool sprite_info(int id, int out[6]);
+// The game's own loaded sprite arrays (Client loader 0x412e78): which 0 = crosses (Client +0x2510, Sprite
+// records 0x30 apart), 1 = mapscenes (Client +0x24b8, IndexedSprite records 0x48 apart). Per frame:
+// {w, h, x offset, y offset, canvas w, canvas h, palette length n, w*h pixels (ARGB, or palette indices
+// when n > 0), n palette ARGB}, after a leading frame count. Game thread only.
+bool sprite_array(int which, std::vector<int32_t>& out);
+// The texture provider (Client +0x4710, vtable 0xa75748, built in loader state 10 by 0x6d3bec).
+// Per texture 8 ints {present, average colour (HSL), flag +0x34, sprite group, animation direction,
+// animation speed, loaded, pixel count}. Game thread only.
+bool textures(std::vector<int32_t>& out);
+// A texture's size*size pixels: load = false reads them only if loaded; load = true goes through the
+// provider's getTexturePixels (vtable slot 2, 0x6d4930), which loads and LRU-evicts as the game does.
+bool texture_pixels(int id, bool load, std::vector<int32_t>& out);
+// The provider's brightness (+0x38, double; desktop's Rasterizer3D brightness). NaN if absent.
+// The scene's skybox colour: S = *(Client +0x90) (the scene renderer's settings), float RGBA 0..1 at
+// S +0x90..+0x9c, written by the game's setter 0x6b083c(S, r, g, b, a); alpha 0 (the default) = no colour
+// set. As ARGB with alpha 0 or 0xff. Game thread only.
+bool skybox_colour(int& argb);
+bool set_skybox_colour(int argb);
+double texture_brightness();
+bool set_texture_brightness(double b);
 // Writes a same-size sprite's pixels into the game's cached copy (overrides). Game thread only.
 bool sprite_write(int id, const uint32_t* pixels, int width, int height);
 bool item_sprite(int id, int quantity, int border, int shadow, int text_mode, bool noted,
@@ -405,6 +430,10 @@ bool enum_def(int id, EnumDef& out);
 // Definition params (opcode 249). kind: 0 obj, 1 npc, 2 loc. Game thread only.
 struct TypeParam { bool is_string = false; int int_value = 0; std::string string_value; };
 bool type_param(int kind, int id, int key, TypeParam& out);
+// Every param key of that definition (empty when it has none); false if the definition is missing.
+bool type_param_keys(int kind, int id, std::vector<int32_t>& keys);
+// Sub-op texts under an op of an npc (kind 1) or loc (2); present = the op has a sub-op list.
+bool sub_ops(int kind, int id, int op, std::vector<std::string>& out, bool& present);
 
 // Menus (long-press menu). Entries are what the game shows, top-level first as stored.
 struct MenuEntry {
@@ -528,6 +557,21 @@ bool set_afk_timeout_minutes(int minutes);
 // Client varcs (VarClientInt/VarClientStr); false when unset. Game thread only.
 bool varc_int(int id, int& out);
 bool varc_string(int id, std::string& out);
+// Every int (type 1) and string (type 2) varc; other types are left out. Game thread only.
+// Game caches (0 obj, 1 loc, 2 seq, 3 item model, 4 item sprite, 5 health bar): entry count (-1 bad
+// id) and the game's own clear. Game thread, between cycles.
+// NPC model overrides (head = chathead +0x750, else body +0x758); false when the NPC has none.
+struct NpcOverrides { std::vector<int32_t> models; std::vector<int16_t> recolours, retextures; bool use_local_player = false; };
+bool npc_overrides(int index, bool head, NpcOverrides& out);
+// The NPC's head icon archive ids and sprite indices (override object, else its NpcType's); false if none.
+bool npc_head_icons(int index, std::vector<int32_t>& archives, std::vector<int32_t>& sprites);
+long cache_size(int which);
+// js5 archives by id (0..25): a group's file ids; a file's bytes (getFile 0x6be3dc). Game thread only.
+bool archive_file_ids(int id, int group, std::vector<int32_t>& out);
+bool archive_file(int id, int group, int file, std::vector<uint8_t>& out);
+bool cache_reset(int which);
+struct VarcEntry { int id = 0, type = 0, int_value = 0; std::string string_value; };
+bool varc_entries(std::vector<VarcEntry>& out);
 // Client-side writes through the game's own script-VM setters. Game thread only.
 struct VarbitDef { int varp = -1, lsb = 0, msb = 0; };
 bool varbit_def(int id, VarbitDef& out);

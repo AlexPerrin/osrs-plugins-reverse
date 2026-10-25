@@ -224,6 +224,17 @@ final class Native {
     static native int[] sprite(int id);
     /** Sprite frame 0's {width, height, x offset, y offset, full width, full height}, null while not loaded; client thread only. */
     static native int[] spriteInfo(int id);
+    /** The game's sprite arrays (0 crosses, 1 mapscenes): count, then per frame {w, h, ox, oy, cw, ch, n, pixels or indices, n palette}; game thread. */
+    static native int[] spriteArray(int which);
+    /** Texture provider: 8 ints per texture {present, avg HSL, flag, sprite, anim direction, anim speed, loaded, pixel count}; game thread. */
+    static native int[] textures();
+    /** A texture's pixels (load: through the game's provider, else only if loaded); game thread. */
+    static native int[] texturePixels(int id, boolean load);
+    static native double textureBrightness();
+    /** The scene's skybox colour as ARGB (alpha 0: none set); game thread. */
+    static native int skyboxColour();
+    static native boolean setSkyboxColour(int argb);
+    static native boolean setTextureBrightness(double b);
     /** Writes same-size ARGB pixels into the game's cached sprite; client thread only. */
     static native boolean spriteWrite(int id, int[] pixels, int w, int h);
     /** The game's idle logout timeout (AFKTimeout setting) in minutes, -1 if unknown. */
@@ -315,6 +326,8 @@ final class Native {
     static native int[] camera();
     /** Camera pitch (0) or yaw (1) target, which the game eases the camera towards (client thread only). */
     static native boolean setCameraTarget(int which, int value);
+    /** Camera focal point axis 0 x, 1 y, 2 height (local units); game thread. */
+    static native boolean setCameraFocal(int axis, int value);
     /** {width, height} of the game surface in pixels (0 before the first frame). */
     static native int[] screenSize();
     /** Direct buffer over the native back buffer, sized w*h*4 (RGBA, premultiplied). */
@@ -375,4 +388,26 @@ final class Native {
 
     /** True while a MenuTap event is dispatched (menuEntries() then reads the tapped menu). */
     static native boolean menuTapping();
+
+    // Cache, index and config lookups (CacheConfig). Client thread only: they throw elsewhere.
+    /** Param keys of a definition (Params kinds), or null when the definition is missing. */
+    static native int[] typeParamKeys(int kind, int id);
+    /** File ids of a group of archive `id`, or null when the group is absent. */
+    static native int[] archiveFileIds(int id, int group);
+    /** A file's bytes through the game's getFile, or null (absent, or its group not loaded yet). */
+    static native byte[] archiveFile(int id, int group, int file);
+    /** Entry count of game cache `which` (CacheConfig.Cache order), -1 for a bad id. */
+    static native long cacheSize(int which);
+    /** Runs the game's clear of that cache. */
+    static native boolean cacheReset(int which);
+    /** {int[] models, short[] recolours, short[] retextures, int[] {mirror local player}} of an NPC's head or body override, or null. */
+    static native Object[] npcOverrides(int index, boolean head);
+    /** An NPC's head icon archive ids then sprite indices (equal halves), or null. */
+    static native int[] npcHeadIcons(int index);
+    /** Sub-op texts under op `op` of an npc (Params.NPC) or loc (Params.LOC); null when it has none. */
+    static native String[] subOps(int kind, int id, int op);
+    /** {int[] ids, Object[] values (Integer/String)} of the varc store, or null. */
+    static native Object[] varcEntries();
+    /** IF_SETEVENTS ranges, 5 ints each {component, start, end, flags, op mask}. */
+    static native int[] widgetEventRanges();
 }

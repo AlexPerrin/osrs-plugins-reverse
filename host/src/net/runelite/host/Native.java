@@ -53,6 +53,44 @@ final class Native {
     static native int worldFlags();
     /** The world list (slr.ws) entry for a world: {String host, String activity, int[] {id, flags, players, location, listed}}, or null. */
     static native Object[] worldEntry(int id);
+    /** Every world list entry: worldEntry's layout, info[5] = list index (game thread live, else the cached copy). */
+    static native Object[] worldList();
+    /** {String host, int[] {port, port2}} of the connected world; game thread only, else null. */
+    static native Object[] connection();
+    /** Writes the SERVER_TICK_END count serverTick() reads; game thread only. */
+    static native boolean setServerTick(int tick);
+    /** Client int fields by index (game.cpp kClientInts): ORB_STATE, ORB_X, ORB_Y. Set: game thread only. */
+    static final int ORB_STATE = 0, ORB_X = 1, ORB_Y = 2;
+    static native int clientInt(int which);
+    static native boolean setClientInt(int which, int value);
+    /** Music volume 0-255 (Client +0x2f58); set applies it to the playing songs; game thread only. */
+    static native int musicVolume();
+    static native boolean setMusicVolume(int v);
+    /** {group id, jingle 0/1} per song the music player is playing; game thread only, else null. */
+    static native int[] midiRequests();
+    /** While on, the camera shake flags are cleared after every cycle. */
+    static native void setCameraShakeDisabled(boolean off);
+    static native boolean cameraShakeDisabled();
+    /** Every varp as a long (the long table where the game flags it long, else the int table). */
+    static native long[] varpsLong(boolean server);
+    /** Client.setVarpLongValue; game thread only. */
+    static native boolean setVarpLong(int id, long value);
+    /** The cross-world message id ring: 100 ids, then the next index (element 100). */
+    static native long[] crossWorldIds();
+    /** Login screen page and input field (0 username, 1 password). */
+    static native int loginIndex();
+    static native int loginField();
+    /** Minimap zoom (px per tile, 2..8; -1 before the minimap exists); set through the game's setter, game thread only. */
+    static native int minimapZoom();
+    static native boolean setMinimapZoom(int zoom);
+    /** The minimap's zoom-input flag (CS2 7250/7251). */
+    static native int minimapZoomInput();
+    static native boolean setMinimapZoomInput(boolean on);
+    /** Top-level long-press menu scroll offset in pixels; set: game thread only. */
+    static native int menuScroll();
+    static native boolean setMenuScroll(int v);
+    /** Sets the widget target state's active byte; game thread only. */
+    static native boolean beginTargetMode();
     /** {zoom, x, y, width, height} of the 3D viewport in UI canvas pixels, or null. */
     static native int[] viewportZoom();
     /** GPU ViewTransforms block (camera pos @0, view @4, inverse view @20, projection @36, view-projection @52), or null. */

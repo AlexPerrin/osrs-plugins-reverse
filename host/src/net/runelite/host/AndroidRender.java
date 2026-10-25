@@ -59,6 +59,35 @@ final class AndroidRender {
         @Override public java.awt.Image getImage() { return image(); }
     }
 
+    /**
+     * Client.drawOriginalMenu / draw2010Menu: the open menu (getMenuX/Y/Width/Height, getMenuEntries)
+     * drawn into BUFFER in desktop's two styles, `alpha` its opacity (0-255). BUFFER is the copy of the
+     * captured frame plugins read; the screen shows the game's own native menu.
+     */
+    static int drawMenu(net.runelite.api.Client c, int alpha, boolean style2010) {
+        if (!c.isMenuOpen()) return 0;
+        int x = c.getMenuX(), y = c.getMenuY(), w = c.getMenuWidth(), h = c.getMenuHeight();
+        net.runelite.api.MenuEntry[] e = c.getMenuEntries();
+        if (w <= 0 || h <= 0 || e == null) return 0;
+        int a = Math.max(0, Math.min(255, alpha)) << 24;
+        java.awt.Graphics2D g = BUFFER.image().createGraphics();
+        g.setColor(new java.awt.Color(a | (style2010 ? 0x3e3529 : 0x5d5447), true));
+        g.fillRect(x, y, w, h);
+        g.setColor(new java.awt.Color(a | (style2010 ? 0x2a2620 : 0x000000), true));
+        g.fillRect(x + 1, y + 1, w - 2, 16);
+        g.drawRect(x + 1, y + 18, w - 3, h - 20);
+        g.setColor(new java.awt.Color(a | (style2010 ? 0xc6b895 : 0x5d5447), true));
+        g.drawString("Choose Option", x + 3, y + 14);
+        g.setColor(new java.awt.Color(a | 0xffffff, true));
+        for (int i = 0; i < e.length; i++) {
+            net.runelite.api.MenuEntry m = e[e.length - 1 - i];  // the last entry is the top row
+            String t = net.runelite.client.util.Text.removeTags(m.getOption() + (m.getTarget().isEmpty() ? "" : " " + m.getTarget()));
+            g.drawString(t, x + 3, y + 31 + 15 * i);
+        }
+        g.dispose();
+        return e.length;
+    }
+
     /** Desktop's Rasterizer2D clip region and Rasterizer3D flat/gouraud triangles, into BUFFER. */
     static final class HostRasterizer implements Rasterizer {
         private int left, top, right = Integer.MAX_VALUE, bottom = Integer.MAX_VALUE;

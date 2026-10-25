@@ -1719,6 +1719,211 @@ bool set_afk_timeout_minutes(int minutes) {
     return true;
 }
 
+// Client state (client-api-client-state). Game thread only, like the readers they mirror.
+
+// Every world list entry in list order (world_entry's layout; +0x60 = list index).
+bool world_list(std::vector<WorldEntry>& out) {
+    out.clear();
+    if (!g_build) return false;
+    auto count = read_at<uint64_t>(g_base + 0xace6c8);
+    auto list = read_at<uintptr_t>(g_base + 0xace6d0);
+    if (!list || count > 4096) return false;
+    for (uint64_t i = 0; i < count; i++) {
+        auto w = read_at<uintptr_t>(list + i * 8);
+        if (!w) continue;
+        WorldEntry e;
+        e.id = read_at<int32_t>(w);
+        e.flags = read_at<int32_t>(w + 0x04);
+        e.players = read_at<int16_t>(w + 0x08);
+        e.host = read_string(w + 0x10);
+        e.activity = read_string(w + 0x28);
+        e.location = read_at<int32_t>(w + 0x40);
+        e.index = read_at<int32_t>(w + 0x60);
+        e.listed = true;
+        out.push_back(std::move(e));
+    }
+    return true;
+}
+
+// The connected world's host and game ports, as setWorld (0x432748) / the arg parser (0x43d39c)
+// store them: host string Client +0x3098, ports +0x30b0/+0x30b4.
+bool connection(std::string& host, int ports[2]) {
+    uintptr_t c = client();
+    if (!c) return false;
+    host = read_string(c + 0x3098);
+    ports[0] = read_at<int32_t>(c + 0x30b0);
+    ports[1] = read_at<int32_t>(c + 0x30b4);
+    return true;
+}
+
+// Plain int fields of the Client the API reads and writes as they are (docs/offsets.md "Client state").
+namespace {
+constexpr uint32_t kClientInts[] = {
+    0x894bc,  // 0 oculus orb state / camera mode (CAM_MODE writes it; 0x41d0a4 acts on 1 and 2)
+    0x89500,  // 1 oculus orb focal point X (local units)
+    0x89508,  // 2 oculus orb focal point Y
+};
+}  // namespace
+bool client_int(int which, int& out) {
+    uintptr_t c = client();
+    if (!c || which < 0 || which >= static_cast<int>(sizeof kClientInts / sizeof kClientInts[0])) return false;
+    out = read_at<int32_t>(c + kClientInts[which]);
+    return true;
+}
+bool set_client_int(int which, int value) {
+    uintptr_t c = client();
+    if (!c || which < 0 || which >= static_cast<int>(sizeof kClientInts / sizeof kClientInts[0])) return false;
+    *reinterpret_cast<volatile int32_t*>(c + kClientInts[which]) = value;
+    return true;
+}
+
+// Music volume 0-255 (Client +0x2f58; every song/jingle request copies it, a request is dropped at 0).
+// Setting it as desktop does: the field, then the player's volume on every playing song (0x68ff50,
+// as the settings observer 0x441a80 does once the music system is ready, 0x68e948).
+int music_volume() {
+    uintptr_t c = client();
+    return c ? read_at<int32_t>(c + 0x2f58) : -1;
+}
+bool set_music_volume(int v) {
+    uintptr_t c = client();
+    if (!g_build || !c || v < 0 || v > 255) return false;
+    *reinterpret_cast<volatile int32_t*>(c + 0x2f58) = v;
+    if (reinterpret_cast<bool (*)()>(g_base + 0x68e948)()) reinterpret_cast<void (*)(int)>(g_base + 0x68ff50)(v);
+    return true;
+}
+
+// The music player's playing list (global vector 0x18e1cc8 of {ctrl, MusicSong*}): song +0x08 group id
+// in its archive, +0x00 the archive (Client +0x23a0 = the jingle archive, +0x2370 = music).
+bool midi_requests(std::vector<std::pair<int, bool>>& out) {
+    out.clear();
+    uintptr_t c = client();
+    if (!g_build || !c) return false;
+    auto begin = read_at<uintptr_t>(g_base + 0x18e1cc8), end = read_at<uintptr_t>(g_base + 0x18e1cd0);
+    if (end < begin || end - begin > 16 * 64) return false;
+    uintptr_t jingles = read_at<uintptr_t>(c + 0x23a0);
+    for (uintptr_t e = begin; e < end; e += 16) {
+        auto song = read_at<uintptr_t>(e + 8);
+        if (song) out.emplace_back(read_at<int32_t>(song + 8), read_at<uintptr_t>(song) == jingles);
+    }
+    return true;
+}
+
+// Camera shake (CAM_SHAKE): 5 active flags at Client +0x894cd, applied to the camera each frame by
+// 0x45203c and restored after the render. Cleared as CAM_RESET does.
+void clear_camera_shake() {
+    uintptr_t c = client();
+    if (!c) return;
+    for (int i = 0; i < 5; i++) *reinterpret_cast<volatile uint8_t*>(c + 0x894cd + i) = 0;
+}
+
+// 64-bit varps (VARP_LONG, case 53): beside the int tables, full-length long tables (server 0x1127c78,
+// client 0x1127c38) and a per-id flag table (0x1127c20, 1 = the varp is long: readers take the long
+// table, else the int one), all {?, u64 count, data*}. Values are read as the game's readers do.
+namespace {
+constexpr uintptr_t kVarpLongServer = 0x1127c78, kVarpLongClient = 0x1127c38, kVarpIsLong = 0x1127c20;
+}
+bool varps_long(bool server, std::vector<int64_t>& out) {
+    out.clear();
+    if (!g_build) return false;
+    auto count = read_at<uint64_t>(g_base + (server ? g_build->server_varps : g_build->varps) + 8);
+    auto* ints = read_at<const int32_t*>(g_base + (server ? g_build->server_varps : g_build->varps) + 0x10);
+    auto* longs = read_at<const int64_t*>(g_base + (server ? kVarpLongServer : kVarpLongClient) + 0x10);
+    auto* flags = read_at<const uint8_t*>(g_base + kVarpIsLong + 0x10);
+    if (!ints || !longs || !flags || count > 100000 || read_at<uint64_t>(g_base + kVarpIsLong + 8) < count) return false;
+    out.resize(count);
+    for (uint64_t i = 0; i < count; i++) out[i] = flags[i] ? longs[i] : ints[i];
+    return true;
+}
+// Client.setVarpLongValue: a value an int holds stays an int varp (both tables written, flag kept);
+// a wider one makes it long as the script VM's long set (op 0x41) does: long table, flag 1.
+bool set_varp_long(int id, int64_t v) {
+    if (!g_build || id < 0) return false;
+    auto count = read_at<uint64_t>(g_base + g_build->varps + 8);
+    auto* ints = read_at<int32_t*>(g_base + g_build->varps + 0x10);
+    auto* longs = read_at<int64_t*>(g_base + kVarpLongClient + 0x10);
+    auto* flags = read_at<uint8_t*>(g_base + kVarpIsLong + 0x10);
+    if (!ints || !longs || !flags || static_cast<uint64_t>(id) >= count) return false;
+    longs[id] = v;
+    if (!flags[id] && v == static_cast<int32_t>(v)) ints[id] = static_cast<int32_t>(v);
+    else flags[id] = 1;
+    return true;
+}
+
+// Cross-world message ids: Client +0x33e8 u64[100] and the next index +0x3708, which MESSAGE_PRIVATE,
+// MESSAGE_FRIENDCHANNEL, MESSAGE_CLANCHANNEL(_SYSTEM) check and append to (id = u16 << 32 | u24).
+bool cross_world_ids(int64_t out[100], int& index) {
+    uintptr_t c = client();
+    if (!c) return false;
+    for (int i = 0; i < 100; i++) out[i] = read_at<int64_t>(c + 0x33e8 + 8 * i);
+    index = read_at<int32_t>(c + 0x3708);
+    return true;
+}
+
+// Login screen globals (desktop's static Login fields): page 0xace678 (the draw 0x4233b0 and input
+// handler 0x41615c switch on it at gameState 10), input field 0xaae4f4 (0 username, 1 password).
+int login_index() { return g_build ? read_at<int32_t>(g_base + 0xace678) : -1; }
+int login_field() { return g_build ? read_at<int32_t>(g_base + 0xaae4f4) : -1; }
+
+// Minimap zoom (px per tile, int 2..8 at mm +0x6470, mm = *(Client+0x40e970)) and its zoom-input flag
+// (u8 mm +0x64b4, CS2 7250/7251). The game's setter 0x463528(client, zoom) (CS2 7252) clamps, resizes
+// the minimap image and redraws it with the render world view's scene and plane.
+int minimap_zoom() {
+    uintptr_t c = client();
+    uintptr_t mm = c ? read_at<uintptr_t>(c + 0x40e970) : 0;
+    return mm ? read_at<int32_t>(mm + 0x6470) : -1;
+}
+bool set_minimap_zoom(int zoom) {
+    uintptr_t c = client();
+    if (!g_build || !c || !read_at<uintptr_t>(c + 0x40e970) || !read_at<uintptr_t>(c + 0xc940)) return false;
+    reinterpret_cast<void (*)(uintptr_t, int)>(g_base + 0x463528)(c, zoom);
+    return true;
+}
+int minimap_zoom_input() {
+    uintptr_t c = client();
+    uintptr_t mm = c ? read_at<uintptr_t>(c + 0x40e970) : 0;
+    return mm ? read_at<uint8_t>(mm + 0x64b4) : -1;
+}
+bool set_minimap_zoom_input(bool on) {
+    uintptr_t c = client();
+    uintptr_t mm = c ? read_at<uintptr_t>(c + 0x40e970) : 0;
+    if (!mm) return false;
+    *reinterpret_cast<volatile uint8_t*>(mm + 0x64b4) = on ? 1 : 0;
+    return true;
+}
+
+// Long-press menu scroll: the top-level menu's offset in pixels (MenuManager +0x2b8, view +0x20 of the
+// menu model); drags and flings write it and the next layout clamps it (0x66ee64).
+int menu_scroll() {
+    uintptr_t c = client();
+    uintptr_t mm = c ? read_at<uintptr_t>(c + 0x4132b0) : 0;
+    return mm ? read_at<int32_t>(mm + 0x2b8) : 0;
+}
+bool set_menu_scroll(int v) {
+    uintptr_t c = client();
+    uintptr_t mm = c ? read_at<uintptr_t>(c + 0x4132b0) : 0;
+    if (!mm) return false;
+    *reinterpret_cast<volatile int32_t*>(mm + 0x2b8) = v;
+    return true;
+}
+
+// Client.setWidgetSelected(true): the target state's active byte alone, as desktop's flag (the game's
+// own enter 0x5025c8 also sets the widget, verb and name and runs onTargetEnter).
+bool begin_target_mode() {
+    uintptr_t c = client();
+    uintptr_t holder = c ? read_at<uintptr_t>(c + 0x4132b0) : 0;
+    if (!holder) return false;
+    *reinterpret_cast<volatile uint8_t*>(holder + 2000 + 0x9f) = 1;
+    return true;
+}
+
+// Client +0x3058, the SERVER_TICK_END count getTickCount reads (dispatcher case 55 increments it).
+bool set_server_tick(int tick) {
+    uintptr_t c = client();
+    if (!g_build || !c) return false;
+    *reinterpret_cast<volatile int32_t*>(c + g_build->f_server_tick) = tick;
+    return true;
+}
+
 // Members world. setWorld (0x432748), run when a world is picked from the world list or by a
 // world-switch packet, sets Client+0x2070 = flags & 1 and calls setMembersWorld (0x642f14), which
 // flushes the obj cache and sets the global members byte (0x1221e90: "(Members)" item names and

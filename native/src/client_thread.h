@@ -75,6 +75,11 @@ int inventory_view(int id, game::Inventory& out);
 // world id or the list changes, else every 25 cycles. Safe from any thread; false if `id` isn't
 // the cached world.
 bool world_entry(int id, game::WorldEntry& out);
+// The whole world list, as world_entry: live on the game thread, else the copy made with it.
+std::vector<game::WorldEntry> world_list();
+// Client.setCameraShakeDisabled: while on, the shake flags are cleared after every cycle.
+void set_camera_shake_disabled(bool off);
+bool camera_shake_disabled();
 
 // Players as of the end of the last cycle; safe from any thread.
 std::vector<game::PlayerInfo> players();

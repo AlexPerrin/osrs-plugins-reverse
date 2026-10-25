@@ -375,6 +375,8 @@ public class AndroidClient extends ClientStub {
      */
     @Override public int getIdleTimeout() {
         int m = Native.afkTimeout();
+        // The game holds whole minutes: a set value that rounds to the game's minutes reads back as set.
+        if (m > 0 && idleTimeoutSet && idleMinutes(idleTimeout) == m) return idleTimeout;
         return m > 0 ? m * 3000 : idleTimeout;
     }
     @Override public void setIdleTimeout(int ticks) {
@@ -383,9 +385,10 @@ public class AndroidClient extends ClientStub {
         if (isClientThread()) applyIdleTimeout();
         else Host.invoke(this::applyIdleTimeout);
     }
+    private static int idleMinutes(int ticks) { return (int) Math.max(1, Math.min(35000, ((long) ticks * 20 + 59999) / 60000)); }
     void applyIdleTimeout() {
         if (!idleTimeoutSet) return;
-        int minutes = (int) Math.max(1, Math.min(35000, ((long) idleTimeout * 20 + 59999) / 60000));
+        int minutes = idleMinutes(idleTimeout);
         int before = Native.afkTimeout();
         boolean ok = Native.setAfkTimeout(minutes);
         android.util.Log.i(Host.TAG, "idle timeout: " + before + " -> " + minutes + " min (" + (ok ? "set" : "not set") + ")");
@@ -447,9 +450,14 @@ public class AndroidClient extends ClientStub {
     }
     /** The game's widget target mode (+0x9f of the target state, game.cpp target_mode). */
     @Override public boolean isWidgetSelected() { int[] t = Native.targetMode(); return t != null && t[0] != 0; }
-    /** Kept host-side only; the game's spell/item-use target state is not written. */
-    /** false leaves the game's target mode (Wiki after a lookup); true is a no-op (desktop needs a selected widget too). */
-    @Override public void setWidgetSelected(boolean selected) { if (!selected) Native.endTargetMode(); }
+    /**
+     * The game's target state's active byte, as desktop's flag: false leaves target mode (Wiki after a
+     * lookup), true sets it without a selected widget (desktop's flag alone, too). Client thread only.
+     */
+    @Override public void setWidgetSelected(boolean selected) {
+        if (!selected) Native.endTargetMode();
+        else if (isClientThread()) Native.beginTargetMode();
+    }
     @Override public void setAllWidgetsAreOpTargetable(boolean yes) { }
     /**
      * Non-zero = not the live game. The host runs against a private test server, and Loot Tracker
@@ -464,7 +472,9 @@ public class AndroidClient extends ClientStub {
     final AmbientSounds ambientSounds = new AmbientSounds();
     @Override public net.runelite.api.Deque<net.runelite.api.AmbientSoundEffect> getAmbientSoundEffects() { return ambientSounds; }
     /** Desktop's world-map loading percentage; the mobile world map isn't modelled. */
-    @Override public int getExpandedMapLoading() { return 0; }
+    private int expandedMapLoading;
+    @Override public int getExpandedMapLoading() { return expandedMapLoading; }
+    @Override public void setExpandedMapLoading(int percent) { expandedMapLoading = percent; }
     /** The 8 GE slots read from the game (GeOffers; desktop never returns null here). */
     @Override public net.runelite.api.GrandExchangeOffer[] getGrandExchangeOffers() {
         return GeOffers.read();
@@ -712,9 +722,14 @@ public class AndroidClient extends ClientStub {
         return config;
     }
     /** Minimap zoom isn't read from the game; RuneLite's default. */
-    @Override public double getMinimapZoom() { return 4.0; }
-    @Override public void setMinimapZoom(double zoom) { }  // unverified: the mobile minimap zoom isn't mapped
-    @Override public void setMinimapZoom(boolean enabled) { }
+    /** The game's minimap zoom in pixels per tile (whole numbers 2..8, default 4); set through its setter (CS2 7252). */
+    @Override public double getMinimapZoom() { int z = Native.minimapZoom(); return z > 0 ? z : 4.0; }
+    @Override public void setMinimapZoom(double zoom) {
+        int z = (int) Math.round(zoom);
+        if (isClientThread()) Native.setMinimapZoom(z);
+        else Host.invoke(() -> Native.setMinimapZoom(z));
+    }
+    @Override public void setMinimapZoom(boolean enabled) { if (isClientThread()) Native.setMinimapZoomInput(enabled); }
     /**
      * Desktop's minimap dot sprites (item, NPC, player, friend, team, friends chat, clan). The
      * mobile client styles its dots per category instead (dot colour, outline colour, thickness;
@@ -787,7 +802,9 @@ public class AndroidClient extends ClientStub {
     @Override public int getMenuWidth() { return MENU.getMenuWidth(); }
     @Override public int getMenuHeight() { return MENU.getMenuHeight(); }
     @Override public boolean isMenuScrollable() { return false; }
-    @Override public int getMenuScroll() { return 0; }
+    /** The long-press menu's scroll offset in pixels (the game clamps it at its next layout). */
+    @Override public int getMenuScroll() { return Native.menuScroll(); }
+    @Override public void setMenuScroll(int v) { if (isClientThread()) Native.setMenuScroll(v); }
     @Override public net.runelite.api.Menu getMenu() { return MENU; }
     @Override public net.runelite.api.MenuEntry[] getMenuEntries() { return MENU.getMenuEntries(); }
     @Override public void setMenuEntries(net.runelite.api.MenuEntry[] e) { MENU.setMenuEntries(e); }
@@ -1062,11 +1079,185 @@ public class AndroidClient extends ClientStub {
     @Override public void setDrawCallbacks(net.runelite.api.hooks.DrawCallbacks cb) { drawCallbacks = cb; }
     /** The mobile game picks entities under a tap itself (Native.pickAt); a GPU plugin's clickbox has nothing to feed. */
     @Override public void checkClickbox(net.runelite.api.Projection p, net.runelite.api.Model m, int orientation, int x, int y, int z, long hash) { }
-    @Override public boolean isMinimapZoom() { return false; }
-    @Override public int getCameraMode() { return 0; }
-    @Override public int getOculusOrbState() { return 0; }
-    @Override public boolean isCameraShakeDisabled() { return false; }
+    /** The minimap's zoom-input flag (mm +0x64b4: the game's own input zooms the minimap while it is set). */
+    @Override public boolean isMinimapZoom() { return Native.minimapZoomInput() > 0; }
+    // Oculus orb (Client +0x894bc, CAM_MODE's field; the game's cycle moves the camera focal point
+    // freely while it is 1 or 2) and its focal point (+0x89500/+0x89508, local units). The mobile game
+    // has one field for both camera mode and orb state. Writes on the client thread only.
+    @Override public int getCameraMode() { return Native.clientInt(Native.ORB_STATE); }
+    @Override public void setCameraMode(int mode) { Native.setClientInt(Native.ORB_STATE, mode); }
+    @Override public int getOculusOrbState() { return Native.clientInt(Native.ORB_STATE); }
+    @Override public void setOculusOrbState(int state) { Native.setClientInt(Native.ORB_STATE, state); }
+    @Override public int getOculusOrbFocalPointX() { return Native.clientInt(Native.ORB_X); }
+    @Override public int getOculusOrbFocalPointY() { return Native.clientInt(Native.ORB_Y); }
+    /** Camera shakes (CAM_SHAKE) are dropped after each cycle while disabled, before the frame applies them. */
+    @Override public boolean isCameraShakeDisabled() { return Native.cameraShakeDisabled(); }
+    @Override public void setCameraShakeDisabled(boolean off) { Native.setCameraShakeDisabled(off); }
+    /** The game's music volume (0-255); a set also changes the playing songs' volume, as desktop. */
+    @Override public int getMusicVolume() { return Native.musicVolume(); }
+    @Override public void setMusicVolume(int v) {
+        if (isClientThread()) Native.setMusicVolume(v);
+        else Host.invoke(() -> Native.setMusicVolume(v));
+    }
+    /** The songs the game's music player is playing (client thread; elsewhere empty). */
+    @Override public java.util.List<net.runelite.api.MidiRequest> getActiveMidiRequests() {
+        int[] r = Native.midiRequests();
+        java.util.List<net.runelite.api.MidiRequest> out = new java.util.ArrayList<>();
+        for (int i = 0; r != null && i + 1 < r.length; i += 2) {
+            final int id = r[i];
+            final boolean jingle = r[i + 1] != 0;
+            out.add(new net.runelite.api.MidiRequest() {
+                @Override public int getArchiveId() { return id; }
+                @Override public boolean isJingle() { return jingle; }
+                @Override public String toString() { return (jingle ? "jingle " : "song ") + id; }
+            });
+        }
+        return out;
+    }
     @Override public String getLauncherDisplayName() { return null; }
+
+    // ---- Session and settings state (client-api-client-state) ----
+
+    /** As desktop: the ACCOUNT_TYPE varbit (1777) the server sets at login. */
+    @Override public net.runelite.api.vars.AccountType getAccountType() {
+        switch (getVarbitValue(net.runelite.api.Varbits.ACCOUNT_TYPE)) {
+            case 1: return net.runelite.api.vars.AccountType.IRONMAN;
+            case 2: return net.runelite.api.vars.AccountType.ULTIMATE_IRONMAN;
+            case 3: return net.runelite.api.vars.AccountType.HARDCORE_IRONMAN;
+            case 4: return net.runelite.api.vars.AccountType.GROUP_IRONMAN;
+            case 5: return net.runelite.api.vars.AccountType.HARDCORE_GROUP_IRONMAN;
+            default: return net.runelite.api.vars.AccountType.NORMAL;
+        }
+    }
+
+    private String buildId;
+    /** Desktop logs it as the injected client's build; here the hook and host build (host.jar's osrsrl-build.txt). */
+    @Override public String getBuildID() {
+        if (buildId == null) {
+            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(
+                    AndroidClient.class.getClassLoader().getResourceAsStream("osrsrl-build.txt"), java.nio.charset.StandardCharsets.UTF_8))) {
+                buildId = r.readLine();
+            } catch (Exception e) {
+                buildId = "unknown";
+            }
+        }
+        return buildId;
+    }
+
+    /** RuneLite's Hooks: post/postDeferred reach the host's EventBus. */
+    @Override public net.runelite.api.hooks.Callbacks getCallbacks() { return Host.hooks(); }
+
+    /** The connected world's host and ports as of the last read on the client thread. */
+    private volatile Object[] connection;
+    private Object[] connection() {
+        Object[] c = isClientThread() ? Native.connection() : null;
+        if (c != null) connection = c;
+        return connection;
+    }
+    /** The game's connect address (Client +0x3098): the test server's, as repack.sh points the app there. */
+    @Override public String getWorldHost() {
+        Object[] c = connection();
+        return c != null ? (String) c[0] : null;
+    }
+
+    private int socketFd = -1;
+    /**
+     * The game's socket to its world: the open TCP socket whose peer is the connected world's host
+     * (getWorldHost, compared as a literal address, so no lookup) on one of its game ports. Nothing
+     * else is returned: an fd connected anywhere else is never handed out.
+     */
+    @Override public java.io.FileDescriptor getSocketFD() {
+        Object[] c = connection();
+        if (c == null) return null;
+        String host = (String) c[0];
+        int[] ports = (int[]) c[1];
+        if (socketFd >= 0 && gameSocket(socketFd, host, ports)) return fileDescriptor(socketFd);
+        for (int fd = 0; fd < 4096; fd++)
+            if (gameSocket(fd, host, ports)) { socketFd = fd; return fileDescriptor(fd); }
+        socketFd = -1;
+        return null;
+    }
+    private static boolean gameSocket(int fd, String host, int[] ports) {
+        java.io.FileDescriptor d = fileDescriptor(fd);
+        if (d == null) return false;
+        try {
+            if (!android.system.OsConstants.S_ISSOCK(android.system.Os.fstat(d).st_mode)) return false;
+            java.net.SocketAddress a = android.system.Os.getpeername(d);
+            if (!(a instanceof java.net.InetSocketAddress)) return false;
+            java.net.InetSocketAddress i = (java.net.InetSocketAddress) a;
+            return i.getAddress() != null && i.getAddress().getHostAddress().equals(host) && (i.getPort() == ports[0] || i.getPort() == ports[1]);
+        } catch (android.system.ErrnoException e) {
+            return false;
+        }
+    }
+    /** A FileDescriptor naming fd `n` without owning it (closing or collecting it never closes the game's socket). */
+    private static java.io.FileDescriptor fileDescriptor(int n) {
+        try {
+            java.io.FileDescriptor d = new java.io.FileDescriptor();
+            java.io.FileDescriptor.class.getMethod("setInt$", int.class).invoke(d, n);
+            return d;
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
+
+    /** The game's world list (slr.ws, list order), null before the game has loaded one, as desktop. */
+    @Override public net.runelite.api.World[] getWorldList() {
+        Object[] all = Native.worldList();
+        if (all == null || all.length == 0) return null;
+        net.runelite.api.World[] out = new net.runelite.api.World[all.length];
+        for (int i = 0; i < all.length; i++) {
+            Object[] e = (Object[]) all[i];
+            int[] info = (int[]) e[2];
+            AndroidWorld w = new AndroidWorld();
+            w.setId(info[0]);
+            w.setTypes(net.runelite.api.WorldType.fromMask(info[1]));
+            w.setPlayerCount(info[2]);
+            w.setLocation(info[3]);
+            w.setIndex(info[5]);
+            w.setAddress((String) e[0]);
+            w.setActivity((String) e[1]);
+            out[i] = w;
+        }
+        return out;
+    }
+
+    /** Writes the game's tick counter (Client +0x3058) that getTickCount reads; on the client thread only. */
+    @Override public void setTickCount(int tick) {
+        if (isClientThread()) Native.setServerTick(tick);
+        else Host.invoke(() -> Native.setServerTick(tick));
+    }
+
+    // RuneLite's own client flags (desktop keeps them in injected fields the game never reads):
+    // stored here the same way. The mobile game has no mouseover text, interpolates frames itself
+    // and has no world map loading percentage to report.
+    // 64-bit varps: the game's long tables beside the int ones (VARP_LONG); every varp read as a long.
+    @Override public long[] getVarpsLong() { long[] v = Native.varpsLong(false); return v != null ? v : new long[0]; }
+    @Override public long[] getServerVarpsLong() { long[] v = Native.varpsLong(true); return v != null ? v : new long[0]; }
+    @Override public long getVarpLongValue(int id) { long[] v = getVarpsLong(); return id >= 0 && id < v.length ? v[id] : 0; }
+    @Override public long getServerVarpLongValue(int id) { long[] v = getServerVarpsLong(); return id >= 0 && id < v.length ? v[id] : 0; }
+    /** As desktop, the client's value only (no VarbitChanged until queueChangedVarp); client thread only. */
+    @Override public void setVarpLongValue(int id, long value) {
+        if (isClientThread()) Native.setVarpLong(id, value);
+        else Host.invoke(() -> Native.setVarpLong(id, value));
+    }
+    /** The game's ring of the last 100 private/friends/clan chat message ids (duplicates are dropped). */
+    @Override public long[] getCrossWorldMessageIds() {
+        long[] r = Native.crossWorldIds();
+        return r != null ? java.util.Arrays.copyOf(r, 100) : new long[100];
+    }
+    @Override public int getCrossWorldMessageIdsIndex() { long[] r = Native.crossWorldIds(); return r != null ? (int) r[100] : 0; }
+    /** The login screen's page (desktop's loginIndex numbering for 0-14) and input field (0 username, 1 password). */
+    @Override public int getLoginIndex() { return Native.loginIndex(); }
+    @Override public int getCurrentLoginField() { return Native.loginField(); }
+    @Override public void drawOriginalMenu(int alpha) { AndroidRender.drawMenu(this, alpha, false); }
+    @Override public void draw2010Menu(int alpha) { AndroidRender.drawMenu(this, alpha, true); }
+    private java.util.function.IntPredicate animationInterpolationFilter;
+    @Override public java.util.function.IntPredicate getAnimationInterpolationFilter() { return animationInterpolationFilter; }
+    @Override public void setAnimationInterpolationFilter(java.util.function.IntPredicate f) { animationInterpolationFilter = f; }
+    private boolean mouseoverTextEnabled = true;
+    @Override public boolean isMouseoverTextEnabled() { return mouseoverTextEnabled; }
+    @Override public void setMouseoverTextEnabled(boolean on) { mouseoverTextEnabled = on; }
     /** A varbit's value within a given varp array (as getVarbitValue reads the live one). */
     @Override public int getVarbitValue(int[] varps, int varbit) {
         int[] d = Native.varbitDef(varbit);

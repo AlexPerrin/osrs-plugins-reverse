@@ -56,6 +56,8 @@ std::vector<game::Npc> g_npcs;  // guarded by g_npcs_mutex; written only on the 
 std::mutex g_world_mutex;
 game::WorldEntry g_world;  // guarded by g_world_mutex; id 0 = none
 bool g_world_ok = false;   // guarded by g_world_mutex
+std::vector<game::WorldEntry> g_worlds;  // the whole list, guarded by g_world_mutex
+std::atomic<bool> g_shake_off{false};     // Client.setCameraShakeDisabled
 int g_world_id = -1;       // game thread only: the id and list the cache was read for
 std::pair<uintptr_t, uint64_t> g_world_list{0, 0};
 uint64_t g_world_read_at = 0;
@@ -414,12 +416,15 @@ void cache_world() {
              reinterpret_cast<void*>(list.first));
     game::WorldEntry w;
     bool ok = game::world_entry(id, w);
+    std::vector<game::WorldEntry> all;
+    game::world_list(all);
     g_world_id = id;
     g_world_list = list;
     g_world_read_at = now;
     std::lock_guard lock(g_world_mutex);
     g_world = std::move(w);
     g_world_ok = ok;
+    g_worlds.swap(all);
 }
 
 void after_cycle() {
@@ -447,6 +452,8 @@ void after_cycle() {
     diff_skills();
     game::sync_members_world();
     cache_world();
+    // Shakes the server sends while disabled are dropped before the frame applies them (desktop skips them).
+    if (g_shake_off.load(std::memory_order_relaxed)) game::clear_camera_shake();
     poll_messages(world_up);
     if (world_up) diff_inventories();  // after the messages: changes made after the last one
     diff_interfaces();
@@ -581,6 +588,19 @@ int inventory_view(int id, game::Inventory& out) {
 std::vector<game::Inventory> inventories() {
     std::lock_guard lock(g_inv_mutex);
     return g_inventories;
+}
+
+void set_camera_shake_disabled(bool off) { g_shake_off = off; }
+bool camera_shake_disabled() { return g_shake_off; }
+
+std::vector<game::WorldEntry> world_list() {
+    std::vector<game::WorldEntry> out;
+    if (on_client_thread()) {
+        game::world_list(out);
+        return out;
+    }
+    std::lock_guard lock(g_world_mutex);
+    return g_worlds;
 }
 
 bool world_entry(int id, game::WorldEntry& out) {

@@ -462,7 +462,7 @@ int world();       // Client +0x3174 (CS2 map_world 3318; jav_config param 12)
 int world_flags(); // Client +0x2f64 (CS2 worldflags 3324)
 // A world as the client's world list (slr.ws) has it; listed = false when only the client fields
 // (id +0x3174, flags +0x2f64, host +0x3098) describe it (a world the list lacks).
-struct WorldEntry { int id = 0, flags = 0, players = 0, location = 0; bool listed = false; std::string host, activity; };
+struct WorldEntry { int id = 0, flags = 0, players = 0, location = 0, index = 0; bool listed = false; std::string host, activity; };
 // Reads the game's world list: game thread only (the login screen's switcher reloads and frees
 // it from doCycle). Other threads use client_thread::world_entry, the per-cycle cached copy.
 bool world_entry(int id, WorldEntry& out);
@@ -546,6 +546,40 @@ bool world_map_icons(int& rows, int& cols, std::vector<int>& out);
 bool map_element(int id, int& category, int& sprite);
 int afk_timeout_minutes();
 bool set_afk_timeout_minutes(int minutes);
+// Every world list entry, list order (game thread only; client_thread::world_list elsewhere).
+bool world_list(std::vector<WorldEntry>& out);
+// The connected world's host (Client +0x3098) and game ports (+0x30b0/+0x30b4).
+bool connection(std::string& host, int ports[2]);
+// Writes the SERVER_TICK_END count (Client +0x3058) that server_tick() reads.
+bool set_server_tick(int tick);
+// Client int fields by index (game.cpp kClientInts: 0 oculus orb state, 1/2 orb focal point X/Y).
+bool client_int(int which, int& out);
+bool set_client_int(int which, int value);
+// Music volume 0-255 (Client +0x2f58); set also applies it to the playing songs.
+int music_volume();
+bool set_music_volume(int v);
+// The music player's playing songs: {group id, jingle}.
+bool midi_requests(std::vector<std::pair<int, bool>>& out);
+// Clears the camera shake flags (as CAM_RESET).
+void clear_camera_shake();
+// Every varp as a long (long table where the varp is long, else the int table); client or server copy.
+bool varps_long(bool server, std::vector<int64_t>& out);
+bool set_varp_long(int id, int64_t v);
+// The cross-world message id ring (100) and its next index.
+bool cross_world_ids(int64_t out[100], int& index);
+// Login screen page and input field (globals).
+int login_index();
+int login_field();
+// Minimap zoom (2..8, set through the game's setter) and its zoom-input flag.
+int minimap_zoom();
+bool set_minimap_zoom(int zoom);
+int minimap_zoom_input();
+bool set_minimap_zoom_input(bool on);
+// Long-press menu scroll offset (pixels) of the top-level menu.
+int menu_scroll();
+bool set_menu_scroll(int v);
+// Sets the widget target state's active byte (Client.setWidgetSelected(true)).
+bool begin_target_mode();
 // Client varcs (VarClientInt/VarClientStr); false when unset. Game thread only.
 bool varc_int(int id, int& out);
 bool varc_string(int id, std::string& out);

@@ -481,6 +481,35 @@ public class ApiProbePlugin extends Plugin {
             Object v = row.m.invoke(inst, ChatMessageType.GAMEMESSAGE, "", "api-probe: addChatMessage", null, false);
             p.set(row, v != null ? "pass" : "mismatch", describe(v) + " " + (v != null ? ((net.runelite.api.MessageNode) v).getValue() : ""));
         });
+        // Menu drawing into the frame buffer plugins read: pixels changed inside the open menu's box (none
+        // drawn when no menu is open, as desktop); the buffer is restored.
+        Special menuDraw = (p, row, inst) -> {
+            Client c = (Client) inst;
+            net.runelite.api.BufferProvider b = c.getBufferProvider();
+            boolean open = c.isMenuOpen();
+            int[] before = b.getPixels().clone();
+            row.m.invoke(c, 255);
+            int[] after = b.getPixels();
+            int changed = 0;
+            for (int i = 0; i < Math.min(before.length, after.length); i++) if (before[i] != after[i]) changed++;
+            System.arraycopy(before, 0, after, 0, Math.min(before.length, after.length));
+            String where = open ? "menu open at " + c.getMenuX() + "," + c.getMenuY() + " " + c.getMenuWidth() + "x" + c.getMenuHeight() + " (" + c.getMenuEntries().length + " entries)" : "no menu open";
+            p.set(row, open ? (changed > 0 ? "pass" : "mismatch") : (changed == 0 ? "pass" : "mismatch"), where + ": " + changed + " pixels drawn (restored)");
+        };
+        SPECIAL.put("Client.draw2010Menu1", menuDraw);
+        SPECIAL.put("Client.drawOriginalMenu1", menuDraw);
+        // The game's socket: its fd number and peer, which must be the world host the client reports.
+        SPECIAL.put("Client.getSocketFD0", (p, row, inst) -> {
+            Client c = (Client) inst;
+            java.io.FileDescriptor fd = c.getSocketFD();
+            if (fd == null) { p.set(row, "mismatch", "null (world host " + describe(c.getWorldHost()) + ")"); return; }
+            Object n = java.io.FileDescriptor.class.getMethod("getInt$").invoke(fd);
+            Object peer = Class.forName("android.system.Os").getMethod("getpeername", java.io.FileDescriptor.class).invoke(null, fd);
+            String host = c.getWorldHost();
+            // InetSocketAddress prints "/<address>:<port>" (no java.net refs here: the host's netscan refuses them)
+            boolean ok = host != null && String.valueOf(peer).startsWith("/" + host + ":");
+            p.set(row, ok ? "pass" : "mismatch", "fd " + n + " peer " + peer + ", world host " + describe(host));
+        });
         // Posing: the result's vertices against the input model's, so the evidence shows the sequence moved them.
         SPECIAL.put("Client.applyTransformations5", (p, row, inst) -> {
             Object[] a = p.args(row);

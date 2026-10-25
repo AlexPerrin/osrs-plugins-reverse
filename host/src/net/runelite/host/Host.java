@@ -256,6 +256,7 @@ public final class Host {
         worldView().androidScene().objects.bus = bus;
         Probe.init(plugins.getPlugins());
         eventBus = bus;
+        hooks.attach(bus, clientThread);
         bus.subscribersChanged = Host::updateScriptEvents;
         updateScriptEvents();
         Log.i(TAG, "host ready; " + plugins.getPlugins().size() + " plugin(s) running");
@@ -1169,6 +1170,7 @@ public final class Host {
     }
 
     private static final net.runelite.client.callback.Hooks hooks = new net.runelite.client.callback.Hooks();
+    static net.runelite.client.callback.Hooks hooks() { return hooks; }
     private static boolean hiding;
     /** The host's ConfigManager (test hook `debug.osrsrl.set "config <group> <key=value>"`). */
     static volatile net.runelite.client.config.ConfigManager configManager;

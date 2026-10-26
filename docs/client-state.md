@@ -3,14 +3,15 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-25, client dev
-client-api-projectile-2 (change client-api-projectile).
+client-devtools-menu-actions-1 (change client-devtools-menu-actions).
 
 ## What this is
 
 - The official OSRS Android app (build 241.4) repacked by `tools/repack.sh` to load `libosrsrl.so` (native/), which hooks
   the game thread and embeds the Java plugin host (host/). The host runs unmodified RuneLite plugins on ART: core
   plugins from the bundled client jar, Plugin Hub plugins built from source (`host/plugins/hub/build.sh`).
-- Tested on BlueStacks Pie64 (adb `127.0.0.1:5555`, app uid 10071) against OpenRune (game `10.0.2.2:43594`,
+- Tested on each agent's own Agent_Phone emulator (Android Studio AVD, API 37 with arm64 translation; harness skill
+  `test-instances`) against OpenRune (game `10.0.2.2:43594`,
   sidecar `10.0.2.2:8080` serving jav_config, LOCAL_AUTH sign-in, digest and payments param 2).
 - API coverage and each plugin's status: docs/plugin-host.md. Addresses: docs/offsets.md (ELF; Ghidra = ELF + 0x100000).
 - Privacy patches and Network QA: docs/app-telemetry.md (read it before any build that touches networking).
@@ -140,6 +141,14 @@ client-api-projectile-2 (change client-api-projectile).
   visible in A, despawn in B ticks, ownership O[, private]` and `ground item despawned: ... tick T (despawn tick D, T-D
   late)`; world spawns read -1 timers. After a relog the server re-sends the player's own drops with timeUntilDespawn
   0xFFFF (despawn tick 65535 in the host log): server task ground-item-relogin-timers.
+- **Devtools input** (`DevInput`): the osrs-devtools actions that drive the game (item_action, widget_action,
+  interact_*, select_option, continue_dialogue, invoke_menu_action) dispatch their touches and keys in-process to the
+  game window's `Window.Callback` on the main thread, as a real touch arrives (Sidebar's router, then the game).
+  Instrumentation injection is refused on the Agent_Phone AVD (API 37: INJECT_EVENTS), which left every such action
+  timed out (`menuAction ... timed out`, `devinput: touch failed: SecurityException`). Verified on Agent_Phone
+  2026-10-25 (evidence client-devtools-menu-actions): Wield/Wear/Drop, a dialogue option, a worn-slot widget op and the
+  run orb take effect. widget_action reaches item slots and worn-equipment slots only (hover menus for other widgets:
+  use invoke_menu_action CC_OP with the widget id).
 - **Soft keyboard Enter** (`PromptEnter`): the IME's Done is an editor action on the game's hidden EditText, not a key
   event; with KeyListeners registered the host sends VK_ENTER through KeyManager first, then the game's submit once.
 - **Projectiles** (Projectiles.java, offsets.md "Projectiles"): `Client.createProjectile` (and the deprecated

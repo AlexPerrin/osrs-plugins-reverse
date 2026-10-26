@@ -1,11 +1,16 @@
 package net.runelite.host;
 
-import android.app.Instrumentation;
+import android.app.Activity;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.InputDevice;
+import android.view.InputEvent;
+import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.Window;
 import java.awt.AWTEvent;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,8 +25,10 @@ import java.util.concurrent.Executors;
  *     returns it and getMenuEntries() with no menu open is the menu the game builds there.
  * <li>Keys: Android key events (typed characters through the key character map).
  * </ul>
- * Events go to the game window through Instrumentation on one background thread, in order, so the
- * caller (often the game thread, via SwingUtilities.invokeAndWait) never blocks on the UI thread.
+ * Events are timed on one background thread and dispatched, in order, to the game window's
+ * Window.Callback on the main thread, the path a real touch or key takes (Instrumentation injection
+ * needs INJECT_EVENTS on current Android), so the caller (often the game thread, via
+ * SwingUtilities.invokeAndWait) never blocks on the UI thread.
  */
 final class DevInput {
     private DevInput() {}
@@ -33,7 +40,24 @@ final class DevInput {
         t.setDaemon(true);
         return t;
     });
-    private static final Instrumentation INSTRUMENTATION = new Instrumentation();
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+
+    /** Main thread: the event to the game window's callback (Sidebar's router, then the game). */
+    private static void send(final InputEvent ev) {
+        MAIN.post(() -> {
+            try {
+                Activity a = Sidebar.currentActivity();
+                Window.Callback cb = a != null && a.getWindow() != null ? a.getWindow().getCallback() : null;
+                if (cb == null) Log.w(TAG, "devinput: no game window");
+                else if (ev instanceof MotionEvent) cb.dispatchTouchEvent((MotionEvent) ev);
+                else cb.dispatchKeyEvent((KeyEvent) ev);
+            } catch (Throwable t) {
+                Log.w(TAG, "devinput: dispatch failed: " + t);
+            } finally {
+                if (ev instanceof MotionEvent) ((MotionEvent) ev).recycle();
+            }
+        });
+    }
 
     private static volatile int mouseX = -1, mouseY = -1;
     private static volatile long mouseMillis;
@@ -126,13 +150,7 @@ final class DevInput {
     private static void touch(int action, long down, float[] p) {
         MotionEvent ev = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, p[0], p[1], 0);
         ev.setSource(InputDevice.SOURCE_TOUCHSCREEN);
-        try {
-            INSTRUMENTATION.sendPointerSync(ev);
-        } catch (Throwable t) {
-            Log.w(TAG, "devinput: touch failed: " + t);
-        } finally {
-            ev.recycle();
-        }
+        send(ev);
     }
 
     /** A tap at canvas (x, y), asynchronous. */
@@ -167,12 +185,10 @@ final class DevInput {
         if (id == java.awt.event.KeyEvent.KEY_TYPED) {
             if (c >= 0x20 && c != 0x7f && c != java.awt.event.KeyEvent.CHAR_UNDEFINED) {
                 final String s = String.valueOf(c);
-                INPUT.execute(() -> {
-                    try {
-                        INSTRUMENTATION.sendStringSync(s);
-                    } catch (Throwable t) {
-                        Log.w(TAG, "devinput: text failed: " + t);
-                    }
+                INPUT.execute(() -> {  // the key events that type it, as Instrumentation.sendStringSync
+                    KeyEvent[] evs = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD).getEvents(s.toCharArray());
+                    if (evs == null) Log.w(TAG, "devinput: no keys type '" + s + "'");
+                    else for (KeyEvent k : evs) send(k);
                 });
             }
             return;
@@ -180,13 +196,7 @@ final class DevInput {
         int code = androidKey(e.getKeyCode());
         if (code == KeyEvent.KEYCODE_UNKNOWN) return;  // printable keys arrive as KEY_TYPED
         final int action = id == java.awt.event.KeyEvent.KEY_PRESSED ? KeyEvent.ACTION_DOWN : KeyEvent.ACTION_UP;
-        INPUT.execute(() -> {
-            try {
-                INSTRUMENTATION.sendKeySync(new KeyEvent(action, code));
-            } catch (Throwable t) {
-                Log.w(TAG, "devinput: key failed: " + t);
-            }
-        });
+        INPUT.execute(() -> send(new KeyEvent(action, code)));
     }
 
     private static int androidKey(int vk) {

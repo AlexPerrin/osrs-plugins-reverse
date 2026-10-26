@@ -181,6 +181,9 @@ constexpr int kWidgetProps = 35;
 // index >= 0 addresses a CC_CREATE child. Game thread only.
 bool widget_set_field(int component, int index, uint32_t offset, int value);
 int widget_get_field(int component, int index, uint32_t offset);  // INT32_MIN if not readable
+// Drag parent (Widget +0x318, CC_SETDRAGGABLE): component/index of the container; set: game thread only, parent < 0 clears.
+bool widget_drag_parent(int component, int index, int* parent, int* parent_index);
+bool widget_set_drag_parent(int component, int index, int parent, int parent_index);
 // Re-runs the game's layout for a widget after position/size changes (what CC_SETPOSITION does).
 bool widget_revalidate(int component, int index);
 int widget_create_child(int component, int index, int type);

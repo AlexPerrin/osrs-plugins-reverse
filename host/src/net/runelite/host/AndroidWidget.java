@@ -121,6 +121,19 @@ public class AndroidWidget extends WidgetBag {
     @Override public int getDragDeadTime() { return field(0x324, 0); }
     @Override public void setDragDeadTime(int v) { set(0x324, v); }
     // The game sets +0x348 once any CC_SETON or IF_SETON listener is stored; Java onOp listeners count too.
+    // Type +0x28 (not into or out of 12, refused natively), content type +0x30 (if1 client code),
+    // target verb op index +0x308 (default 4; CC 1312), drag parent +0x318 (CC_SETDRAGGABLE).
+    @Override public void setType(int v) { set(0x28, v); }
+    @Override public int getContentType() { return field(0x30, 0); }
+    @Override public Widget setContentType(int v) { return set(0x30, v); }
+    @Override public int getTargetPriority() { return field(0x308, 4); }
+    @Override public void setTargetPriority(int v) { set(0x308, v); }
+    @Override public Widget getDragParent() { int[] p = Native.widgetDragParent(id, childIndex()); return p == null ? null : of(p[0], p[1]); }
+    @Override public Widget setDragParent(Widget w) {
+        AndroidWidget p = w instanceof AndroidWidget ? (AndroidWidget) w : null;
+        Native.widgetSetDragParent(id, childIndex(), p != null ? p.id : -1, p != null ? p.childIndex() : -1);
+        return this;
+    }
     @Override public boolean hasListener() { return field(0x348, 0) != 0 || WidgetListeners.onOp(id, childIndex()) != null; }
     // Model / animation fields (CC_SETMODEL 1108 type+id, CC_SETMODELANIM 1110; getModelType/Id/
     // getAnimationId read the same). // unverified: whether the game redraws the model from them
@@ -294,7 +307,7 @@ public class AndroidWidget extends WidgetBag {
     @Override public int getHeightMode() { return prop(31, 0); }
     @Override public boolean getNoClickThrough() { return prop(32, 0) != 0; }
     @Override public boolean getNoScrollThrough() { return prop(33, 0) != 0; }
-    @Override public int getItemQuantity() { int[] it = Native.widgetItem(id, childIndex()); return it != null && it[0] != -1 ? it[1] : 0; }
+    @Override public int getItemQuantity() { int[] it = Native.widgetItem(id, childIndex()); return it != null ? it[1] : 0; }  // the raw field, as desktop's
 
     @Override
     public boolean isHidden() {

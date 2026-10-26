@@ -29,6 +29,10 @@ final class Native {
     static native boolean widgetSetField(int id, int index, int offset, int value);
     /** One widget field (+0x320/+0x324/+0x13c int, +0x348 byte); Integer.MIN_VALUE if unreadable. */
     static native int widgetGetField(int id, int index, int offset);
+    /** {component, CC_CREATE index (-1 static)} of the widget's drag parent (Widget +0x318), or null. */
+    static native int[] widgetDragParent(int id, int index);
+    /** CC_SETDRAGGABLE's store; parent < 0 clears it. Client thread only. */
+    static native boolean widgetSetDragParent(int id, int index, int parent, int parentIndex);
     /** Re-runs the game's layout for the widget (CC_SETPOSITION/SETSIZE follow-up). */
     static native boolean widgetRevalidate(int id, int index);
     static native int serverTick();

@@ -1220,10 +1220,15 @@ bool widget_set_field(int component, int index, uint32_t off, int value) {
         {0x320}, {0x324},  // drag dead zone / dead time (ints, read by the drag block of 0x41d0a4)
         {0xfc}, {0x100}, {0x10c},  // model type / id, animation (CC_SETMODEL* 1108, 1110)
         {0x188},  // line height (CC_SETTEXTALIGN 1114; type 12 keeps it in its +0xba8 object instead)
-        {0x5c}, {0x60}, {0x64}, {0x68}};  // laid-out x/y/width/height (what layout writes; desktop's setRelativeX..)
+        {0x5c}, {0x60}, {0x64}, {0x68},  // laid-out x/y/width/height (what layout writes; desktop's setRelativeX..)
+        {0x28}, {0x30},  // type (CC_CREATE writes it), content type (if1 client code; 1337 = viewport, read by the renderer 0x459bf8)
+        {0x308}};  // target verb op index (CC 1312: -1 -> 4, else op - 1 if < 32; the menu builder 0x525c78 inserts the verb there)
     uintptr_t slot = widget_slot(component, index);
     uintptr_t w = slot ? read_at<uintptr_t>(slot + 8) : 0;
     if (!w) return false;
+    // Type 12 keeps a text input object at +0xba8 the game dereferences by type: never switch into or out of it.
+    if (off == 0x28 && (value == 12 || read_at<int32_t>(w + 0x28) == 12)) return false;
+    if (off == 0x308 && static_cast<uint32_t>(value) >= 32) return false;  // the CC setter's range
     for (const auto& f : kFields) {
         if (f.off != off) continue;
         if (f.byte) *reinterpret_cast<volatile uint8_t*>(w + off) = value != 0;
@@ -1246,9 +1251,37 @@ int widget_get_field(int component, int index, uint32_t off) {
     if (!w) return INT32_MIN;
     switch (off) {
         case 0x348: return read_at<uint8_t>(w + off);
-        case 0x320: case 0x324: case 0x13c: return read_at<int32_t>(w + off);
+        case 0x320: case 0x324: case 0x13c: case 0x30: case 0x308: return read_at<int32_t>(w + off);
         default: return INT32_MIN;
     }
+}
+
+// Drag parent (CC_SETDRAGGABLE 1301 in 0x4e06dc): a shared_ptr {ctrl +0x310, Widget* +0x318} to the
+// container slot the widget may be dragged in, read by the drag block of 0x41d0a4.
+bool widget_drag_parent(int component, int index, int* parent, int* parent_index) {
+    uintptr_t slot = widget_slot(component, index);
+    uintptr_t w = slot ? read_at<uintptr_t>(slot + 8) : 0;
+    return w && widget_ref(read_at<uintptr_t>(w + 0x318), parent, parent_index);
+}
+
+// As CC_SETDRAGGABLE: takes a reference on the parent's slot and releases the old one; parent < 0 clears it.
+bool widget_set_drag_parent(int component, int index, int parent, int parent_index) {
+    uintptr_t slot = widget_slot(component, index);
+    uintptr_t w = slot ? read_at<uintptr_t>(slot + 8) : 0;
+    if (!w) return false;
+    uintptr_t ctrl = 0, pw = 0;
+    if (parent >= 0) {
+        uintptr_t ps = widget_slot(parent, parent_index);
+        if (!ps || !read_at<uintptr_t>(ps + 8)) return false;
+        ctrl = read_at<uintptr_t>(ps);
+        pw = read_at<uintptr_t>(ps + 8);
+        if (ctrl) __atomic_fetch_add(reinterpret_cast<int32_t*>(ctrl + 8), 1, __ATOMIC_ACQ_REL);
+    }
+    uintptr_t old = read_at<uintptr_t>(w + 0x310);
+    *reinterpret_cast<volatile uintptr_t*>(w + 0x318) = pw;
+    *reinterpret_cast<volatile uintptr_t*>(w + 0x310) = ctrl;
+    release_shared_ptr(old);
+    return true;
 }
 
 // What CC_SETPOSITION/CC_SETSIZE run after storing (0x4e06dc ops 1000/1001): 0x44a788(client, slot),

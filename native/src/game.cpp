@@ -732,6 +732,39 @@ std::vector<Npc> read_npcs() {
     return out;
 }
 
+// Health bar types in use (RuneLite HealthBarConfig): every HealthBarType on a live actor's head bar list
+// (Actor +0x388, nodes {next, prev, ctrl, HealthBar*}, HealthBar +8 HealthBarType*). The decoder is inlined in
+// getHealthBarType 0x65f6c8 (static RE client-api-host-gaps-reach): +0x00 id, +0x20 front sprite (op 7),
+// +0x24 back sprite (op 8), +0x28 width (op 14), +0x2c width padding (op 15). The draw 0x463f80 reads the
+// padding at draw time (dropped when 2 * padding >= the front sprite's width). Game thread only.
+std::vector<HealthBarType> health_bar_types() {
+    std::vector<HealthBarType> out;
+    std::vector<uintptr_t> actors;
+    for (const Npc& n : read_npcs()) actors.push_back(n.address);
+    for (const PlayerInfo& p : read_players()) actors.push_back(p.address);
+    for (uintptr_t a : actors) {
+        uintptr_t sentinel = a + 0x388;
+        int guard = 0;
+        for (uintptr_t node = read_at<uintptr_t>(sentinel); node && node != sentinel && guard++ < 16; node = read_at<uintptr_t>(node)) {
+            uintptr_t bar = read_at<uintptr_t>(node + 0x18);
+            uintptr_t type = bar ? read_at<uintptr_t>(bar + 8) : 0;
+            if (!type) continue;
+            bool seen = false;
+            for (const HealthBarType& t : out) seen |= t.address == type;
+            if (seen) continue;
+            out.push_back({type, read_at<int32_t>(type), read_at<int32_t>(type + 0x20), read_at<int32_t>(type + 0x24),
+                           read_at<int32_t>(type + 0x28), read_at<int32_t>(type + 0x2c)});
+        }
+    }
+    return out;
+}
+
+bool health_bar_set_padding(int id, int padding) {
+    for (const HealthBarType& t : health_bar_types())
+        if (t.id == id) { *reinterpret_cast<int32_t*>(t.address + 0x2c) = padding; return true; }
+    return false;
+}
+
 // The live Npc*/Player* for an index right now (the per-cycle snapshot's addresses can be freed
 // later in the same cycle, e.g. by a region rebuild). 0 if not active. Game thread only.
 uintptr_t live_npc(int index) {
@@ -2162,6 +2195,51 @@ bool friend_list(bool ignores, std::vector<FriendEntry>& out) {
     return true;
 }
 
+// Friend login/logout notices not shown yet (RuneLite FriendContainer.getPendingLogins; static RE
+// client-api-host-gaps-reach of the UPDATE_FRIENDLIST reader 0x56e448 and the drain 0x3fbd68): FriendSystem
+// +0xa0/+0xa8 std::vector of 0x38-byte entries {+0x00 Username (two 24-byte strings), +0x30 int time (s),
+// +0x34 s16 world (0 = logged out), +0x36 cancelled flag}. The reader queues one when a listed friend's world
+// changes (a matching opposite notice is cancelled instead); the drain prints "<name> has logged in/out." for
+// each uncancelled entry older than 5 s and erases it. Cancelled entries are left out here. Game thread.
+bool pending_logins(std::vector<PendingLogin>& out) {
+    out.clear();
+    uintptr_t c = client();
+    auto fm = c ? read_at<uintptr_t>(c + 0x46c0) : 0;
+    if (!fm) return false;
+    uintptr_t b = read_at<uintptr_t>(fm + 0xa0), e = read_at<uintptr_t>(fm + 0xa8);
+    if (!b || e < b || (e - b) % 0x38 || (e - b) / 0x38 > 400) return false;
+    for (uintptr_t p = b; p < e; p += 0x38) {
+        if (read_at<uint8_t>(p + 0x36) & 1) continue;
+        out.push_back({read_string(p), read_at<int16_t>(p + 0x34), read_at<int32_t>(p + 0x30)});
+    }
+    return true;
+}
+
+// The local or listed player's per-slot obj customisations (RuneLite ColorTextureOverride; static RE
+// client-api-host-gaps-reach of the appearance decoder 0x4762d4 and the setter 0x5e4648): Appearance +0x90 u64
+// count, +0x98 {ctrl, obj} per slot (null obj = none, 12 slots); obj (0x60 bytes, ctor 0x642f9c): recolour-to
+// {+0x10 count, +0x18 int16*}, retexture-to {+0x28 count, +0x30 int16*}, defaults copied from the ObjType's
+// replace arrays; the model hash 0x5e1bd4 and build 0x5e2658 read them. Game thread.
+bool appearance_overrides(uintptr_t player, ObjOverride out[12]) {
+    for (int i = 0; i < 12; i++) out[i] = {};
+    uintptr_t app = player ? read_at<uintptr_t>(player + 0x728) : 0;
+    if (!app) return false;
+    uint64_t n = read_at<uint64_t>(app + 0x90);
+    uintptr_t slots = read_at<uintptr_t>(app + 0x98);
+    if (n > 12 || (n && !slots)) return false;
+    for (uint64_t i = 0; i < n; i++) {
+        uintptr_t o = read_at<uintptr_t>(slots + i * 0x10 + 8);
+        if (!o) continue;
+        out[i].present = true;
+        for (int k = 0; k < 2; k++) {
+            uint64_t m = read_at<uint64_t>(o + (k ? 0x28 : 0x10));
+            auto arr = read_at<const int16_t*>(o + (k ? 0x30 : 0x18));
+            if (m <= 64 && arr) (k ? out[i].retexture : out[i].recolour).assign(arr, arr + m);
+        }
+    }
+    return true;
+}
+
 Point walk_destination() {
     if (!g_build || !client()) return {-1, -1};
     // The map flag (SET_MAP_FLAG_V2 and the client's own walk): Client +0x40e970 -> {scene x, y},
@@ -2410,6 +2488,16 @@ int text_width(int font_id, const std::string& text) {
     if (!font) return -1;
     GameString s(text);
     return reinterpret_cast<int (*)(uintptr_t, const void*, int)>(g_base + 0x685370)(font, s.bytes, 1);
+}
+
+// A game font's ascent (RuneLite FontTypeFace.getBaseline): Font +0x00, written by the metrics decoder
+// 0x6843dc (byte 256 of a 257-byte metrics file, else computed from the glyph metrics); -1 when the font isn't
+// available. Game thread. Static RE client-api-host-gaps-reach.
+int font_ascent(int font_id) {
+    uintptr_t c = client();
+    if (!c || font_id < 0) return -1;
+    uintptr_t font = reinterpret_cast<uintptr_t (*)(uintptr_t, int)>(g_base + 0x43cce0)(c, font_id);
+    return font ? read_at<int32_t>(font) : -1;
 }
 
 // The VM's active components (RuneLite's scriptActiveWidget / scriptDotWidget): {ctrl, Widget*}
@@ -3408,6 +3496,65 @@ bool object_model(int plane, int sx, int sy, int layer, uint64_t tag, ObjectMode
     }
     out.model_height = mh;
     return !out.xyz.empty();
+}
+
+// Animated locs (RuneLite DynamicObject; static RE client-api-host-gaps-reach of the constructor 0x71328c and
+// getModel 0x7136dc): the loc adder 0x710de4 and LOC_ANIM build one for a loc with an animation (LocType +0xd8)
+// or a multiloc, in any renderable slot object_model reads (game object +0x230, wall A/B, wall decoration A/B,
+// ground decoration), else a static Model. Object (block +0x20 of a 0xa8 make_shared), vptr 0xa77620: +0x28 loc
+// id, +0x2c shape, +0x30 orientation, +0x34 plane, +0x38/+0x3c scene x/y, AnimationState +0x40 {+0x48 SeqType*,
+// +0x50 seq id (-1 none), +0x54 u16 frame cycle, +0x56 u16 frame}, a second state +0x60 (the replaced loc's
+// animation), +0x80 last cycle (desktop's cycleStart; getModel advances from it and stores the cycle).
+namespace {
+constexpr uintptr_t kDynamicObjectVtable = 0xa77620;
+
+uintptr_t object_renderable(int plane, int sx, int sy, int layer, uint64_t tag, int slot) {
+    uintptr_t c = client();
+    uintptr_t wv = c && g_build ? read_at<uintptr_t>(c + g_build->f_world_view) : 0;
+    uintptr_t scene = wv ? read_at<uintptr_t>(wv + 0x10) : 0;
+    if (!scene) return 0;
+    int planes = read_at<int32_t>(scene + 0x944), w = read_at<int32_t>(scene + 0x948), h = read_at<int32_t>(scene + 0x94c);
+    uintptr_t slots = read_at<uintptr_t>(scene + 0x968);
+    if (!slots || plane < 0 || plane >= planes || sx < 0 || sx >= w || sy < 0 || sy >= h || planes > 4 || w > 256 || h > 256) return 0;
+    uintptr_t tile = read_at<uintptr_t>(slots + ((static_cast<size_t>(plane) * w + sx) * h + sy) * 0x10 + 8);
+    if (!tile) return 0;
+    auto held = [](uintptr_t o, uint32_t holder) {
+        uintptr_t pair = read_at<uintptr_t>(o + holder);
+        return pair ? read_at<uintptr_t>(pair + 8) : 0;
+    };
+    switch (layer) {
+        case kGameObject: {
+            int n = read_at<int32_t>(tile + 0x34);
+            uintptr_t objs = read_at<uintptr_t>(tile + 0x38);
+            if (slot != 0 || n <= 0 || n > 16 || !objs) return 0;
+            for (int i = 0; i < n; i++) {
+                uintptr_t o = read_at<uintptr_t>(objs + static_cast<size_t>(i) * 0x10 + 8);
+                if (o && read_at<uint64_t>(o + 0x1f0) == tag) return read_at<uintptr_t>(o + 0x230);
+            }
+            return 0;
+        }
+        case kWall: case kWallDecoration: case kGroundDecoration: {
+            uintptr_t o = read_at<uintptr_t>(tile + (layer == kWall ? 0x108 : layer == kWallDecoration ? 0x110 : 0x118));
+            if (!o || read_at<uint64_t>(o + 0x38) != tag) return 0;
+            if (layer == kGroundDecoration) return slot == 0 ? held(o, 0x220) : 0;
+            uint32_t a = layer == kWall ? 0x410 : 0x418;
+            return slot == 0 ? held(o, a) : slot == 1 ? held(o, a + 8) : 0;
+        }
+        default: return 0;
+    }
+}
+}  // namespace
+
+bool dynamic_object(int plane, int sx, int sy, int layer, uint64_t tag, int slot, int32_t f[kDynamicObjectFields],
+                    std::vector<int32_t>* mesh) {
+    uintptr_t r = object_renderable(plane, sx, sy, layer, tag, slot);
+    if (!r || read_at<uintptr_t>(r) != g_base + kDynamicObjectVtable) return false;
+    if (mesh) return read_mesh(r, *mesh);
+    const uint32_t ints[] = {0x28, 0x2c, 0x30, 0x34, 0x38, 0x3c, 0x50, 0x80};
+    for (int i = 0; i < 8; i++) f[i] = read_at<int32_t>(r + ints[i]);
+    f[8] = read_at<uint16_t>(r + 0x56);
+    f[9] = read_at<uint16_t>(r + 0x54);
+    return true;
 }
 
 bool npc_def(int id, NpcDef& out) {

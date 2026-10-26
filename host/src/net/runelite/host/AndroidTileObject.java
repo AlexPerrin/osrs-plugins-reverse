@@ -15,7 +15,8 @@ import net.runelite.api.coords.WorldPoint;
  * A scene object read from the game's scene (game::scene_objects). Positions are kept in world
  * coordinates so an object survives scene base changes; scene/local positions are derived from
  * the current base. Hulls and click boxes come from the object's model (Native.objectModel),
- * else boxes over the footprint.
+ * else boxes over the footprint. Renderables are given only for animated locs (AndroidDynamicObject); a static
+ * model's slot reads null.
  */
 abstract class AndroidTileObject implements net.runelite.api.TileObject {
     final int worldX, worldY, plane, id, sizeX, sizeY;
@@ -88,6 +89,11 @@ abstract class AndroidTileObject implements net.runelite.api.TileObject {
 
     abstract int layer();
 
+    /** Game thread: the animated loc in renderable slot `slot` (Native.dynamicObject), fields or model; else null. */
+    int[] read(int slot, boolean mesh) {
+        return Native.isClientThread() ? Native.dynamicObject(plane, sceneX(), sceneY(), layer(), tag, slot, mesh) : null;
+    }
+
     @Override public String toString() {
         return getClass().getSimpleName() + "[" + id + " at " + worldX + "," + worldY + "," + plane + "]";
     }
@@ -111,7 +117,7 @@ abstract class AndroidTileObject implements net.runelite.api.TileObject {
         @Override public Point getSceneMinLocation() { return new Point(sceneX(), sceneY()); }
         @Override public Point getSceneMaxLocation() { return new Point(sceneX() + sizeX - 1, sceneY() + sizeY - 1); }
         @Override public int getOrientation() { return 0; }
-        @Override public Renderable getRenderable() { return null; }
+        @Override public Renderable getRenderable() { return AndroidDynamicObject.of(this, 0); }
         @Override public int getModelOrientation() { return 0; }
     }
 
@@ -121,16 +127,16 @@ abstract class AndroidTileObject implements net.runelite.api.TileObject {
         @Override int boxHeight() { return 240; }
         @Override public int getOrientationA() { return 0; }
         @Override public int getOrientationB() { return 0; }
-        @Override public Renderable getRenderable1() { return null; }
-        @Override public Renderable getRenderable2() { return null; }
+        @Override public Renderable getRenderable1() { return AndroidDynamicObject.of(this, 0); }
+        @Override public Renderable getRenderable2() { return AndroidDynamicObject.of(this, 1); }
     }
 
     static final class Decorative extends AndroidTileObject implements net.runelite.api.DecorativeObject {
         Decorative(int wx, int wy, int plane, int id, long tag) { super(wx, wy, plane, id, tag, 1, 1); }
         @Override int layer() { return 1; }
         @Override int boxHeight() { return 120; }
-        @Override public Renderable getRenderable() { return null; }
-        @Override public Renderable getRenderable2() { return null; }
+        @Override public Renderable getRenderable() { return AndroidDynamicObject.of(this, 0); }
+        @Override public Renderable getRenderable2() { return AndroidDynamicObject.of(this, 1); }
         @Override public int getXOffset() { return 0; }
         @Override public int getYOffset() { return 0; }
         @Override public int getXOffset2() { return 0; }
@@ -156,6 +162,6 @@ abstract class AndroidTileObject implements net.runelite.api.TileObject {
         Ground(int wx, int wy, int plane, int id, long tag) { super(wx, wy, plane, id, tag, 1, 1); }
         @Override int layer() { return 3; }
         @Override int boxHeight() { return 0; }
-        @Override public Renderable getRenderable() { return null; }
+        @Override public Renderable getRenderable() { return AndroidDynamicObject.of(this, 0); }
     }
 }

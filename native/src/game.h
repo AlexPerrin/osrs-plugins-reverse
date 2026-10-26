@@ -85,6 +85,12 @@ bool actor_set(uintptr_t actor, bool player, int what, int value);
 bool actor_spot_anims(uintptr_t actor, std::vector<int32_t>& out);
 bool actor_spot_anim_set(uintptr_t actor, int slot, int field, int value);
 bool actor_create_spot_anim(uintptr_t actor, int slot, int id, int height, int delay);  // id -1 removes the slot
+// Pending friend login/logout notices (game.cpp pending_logins), uncancelled ones in queue order. Game thread.
+struct PendingLogin { std::string name; int world; int time; };
+bool pending_logins(std::vector<PendingLogin>& out);
+// A player's per-slot obj customisations (game.cpp appearance_overrides). Game thread.
+struct ObjOverride { bool present = false; std::vector<int16_t> recolour, retexture; };
+bool appearance_overrides(uintptr_t player, ObjOverride out[12]);
 bool friend_list(bool ignores, std::vector<FriendEntry>& out);
 Point scene_base();        // world tile of scene tile (0, 0) (top-level WorldView)
 Point player_world();       // world tile (x, y) = scene base + scene tile; {-1, -1} if unavailable
@@ -256,6 +262,11 @@ std::vector<PlayerInfo> read_players();
 // Walks the top-level WorldView's NPC table. Game thread only (the table is rebuilt by
 // NPC_INFO); other threads use client_thread::npcs().
 std::vector<Npc> read_npcs();
+// Health bar types on live actors' head bars (game.cpp health_bar_types). Game thread only.
+struct HealthBarType { uintptr_t address; int id, front_sprite, back_sprite, width, padding; };
+std::vector<HealthBarType> health_bar_types();
+// Writes the width padding of the in-use type `id`; false if no live actor shows one.
+bool health_bar_set_padding(int id, int padding);
 
 // Client scripts (CS2). Runs a script synchronously in the game's VM, the way the client runs
 // widget listeners; args[0] is the script id. Game thread only, and not from inside a script.
@@ -294,6 +305,7 @@ std::vector<ScriptArg> script_event_args(uintptr_t ev);
 bool script_event_source(uintptr_t ev, int* component, int* index);
 bool script_active_widget(bool dot, int* component, int* index);
 int text_width(int font_id, const std::string& text);
+int font_ascent(int font_id);
 bool widget_ref(uintptr_t w, int* component, int* index);
 
 // One tuple of a DB row's column, through the script VM's db_getfield (7502): values in column-type
@@ -397,6 +409,13 @@ struct ObjectModel {
     std::vector<int32_t> xyz;
 };
 bool object_model(int plane, int sx, int sy, int layer, uint64_t tag, ObjectModel& out);
+// An animated loc's renderable (RuneLite DynamicObject) in renderable slot `slot` (0, or 1 for a wall's or wall
+// decoration's second part) of a scene object: f = {loc id, shape, orientation, plane, scene x, scene y, seq id,
+// last cycle, frame, frame cycle}, or with `mesh` its model this cycle (packed as actor_mesh). False when that
+// renderable is not one. Game thread only.
+constexpr int kDynamicObjectFields = 10;
+bool dynamic_object(int plane, int sx, int sy, int layer, uint64_t tag, int slot, int32_t f[kDynamicObjectFields],
+                    std::vector<int32_t>* mesh);
 // The live Npc*/Player* for an index at this moment (0 if not active). Game thread only.
 uintptr_t live_npc(int index);
 uintptr_t live_player(int index);

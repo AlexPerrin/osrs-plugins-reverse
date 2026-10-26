@@ -13,6 +13,10 @@
 # player is interacting and no hitsplat has come, the probe waits for one), the world map open while it runs
 # (WorldMapRegion/Icon, setWorldMapPositionTarget), a song playing (MidiRequest) and ambient sounds in range
 # (Lumbridge's goblin field). The menu draw rows pass with a long-press menu open or with none.
+# Instances that appear only while it runs are waited for when named in `debug.osrsrl.probewait` (comma-separated
+# interface names): PendingLogin (log a listed friend in or out on another client while it runs: the notice lives
+# ~5 s), Script (open a tab whose script raises a RuneLite callback, e.g. the skills tab: skillTabTotalLevel).
+# HealthBarConfig comes from the fight's head bars, DynamicObject from an animated loc in the scene.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=${1:-$HOME/osrs-harness/evidence/client-api}

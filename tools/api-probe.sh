@@ -17,6 +17,9 @@
 # interface names): PendingLogin (log a listed friend in or out on another client while it runs: the notice lives
 # ~5 s), Script (open a tab whose script raises a RuneLite callback, e.g. the skills tab: skillTabTotalLevel).
 # HealthBarConfig comes from the fight's head bars, DynamicObject from an animated loc in the scene.
+# Last, one at a time: closeInterface closes the open modal client-side ("modal" in probewait: it waits for one, e.g.
+# equipment stats), menuAction walks onto the player's own tile (the server closes the modal too; the fight stops),
+# setGameState(LOADING) reloads the scene (a ground object it removed comes back). The session and world stay as they are.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=${1:-$HOME/osrs-harness/evidence/client-api}

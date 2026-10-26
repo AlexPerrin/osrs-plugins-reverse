@@ -3,7 +3,7 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-25, client dev
-client-devtools-menu-actions-1 (change client-devtools-menu-actions).
+client-devtools-menu-actions-2 (change client-devtools-menu-actions).
 
 ## What this is
 
@@ -146,8 +146,9 @@ client-devtools-menu-actions-1 (change client-devtools-menu-actions).
   game window's `Window.Callback` on the main thread, as a real touch arrives (Sidebar's router, then the game).
   Instrumentation injection is refused on the Agent_Phone AVD (API 37: INJECT_EVENTS), which left every such action
   timed out (`menuAction ... timed out`, `devinput: touch failed: SecurityException`). Verified on Agent_Phone
-  2026-10-25 (evidence client-devtools-menu-actions): Wield/Wear/Drop, a dialogue option, a worn-slot widget op and the
-  run orb take effect. widget_action reaches item slots and worn-equipment slots only (hover menus for other widgets:
+  2026-10-25 on build v0.1.1-77-gee1c0ed5fb63 (evidence client-devtools-menu-actions): Wield/Wear/Drop, dialogue options
+  (a tutor's and the valuable-drop prompt), a worn-slot widget op take effect; the api-probe at that build is 1138/1253,
+  no row changed against main's. widget_action reaches item slots and worn-equipment slots only (hover menus for other widgets:
   use invoke_menu_action CC_OP with the widget id).
 - **Soft keyboard Enter** (`PromptEnter`): the IME's Done is an editor action on the game's hidden EditText, not a key
   event; with KeyListeners registered the host sends VK_ENTER through KeyManager first, then the game's submit once.

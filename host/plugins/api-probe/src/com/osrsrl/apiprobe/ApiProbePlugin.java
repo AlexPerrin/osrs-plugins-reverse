@@ -549,6 +549,7 @@ public class ApiProbePlugin extends Plugin {
     private void roundTrip(Row row, Object inst, Method get) throws Exception {
         Object old = get.invoke(inst);
         Object alt = alter(old, row.m.getParameterTypes()[0]);
+        if (alt == old && row.m.getParameterTypes()[0] == Widget.class && inst instanceof Widget) alt = old == inst ? null : inst;  // setDragParent: the widget itself
         row.m.invoke(inst, alt);
         Object read = get.invoke(inst);
         row.m.invoke(inst, old);

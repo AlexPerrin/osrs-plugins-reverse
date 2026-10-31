@@ -443,8 +443,11 @@ in the host so agents can drive device tests. Off by default and never in the de
   transferTo`, and `Package.getImplementationVersion`, where ART's "0.0" for dex-loaded classes
   becomes null as on desktop. Converted jars keep `META-INF/MANIFEST.MF`.
 - Input and actions (host side, `DevInput`/`DevMenu`/`HostDrawManager`):
-  - `getCanvas()` events become Android input through Instrumentation on a background thread
-    (button 1 = tap, button 3 = long-press, keys = Android key events). Refused unless the game is
+  - `getCanvas()` events become Android input, timed on a background thread and dispatched on the
+    main thread to the game window's `Window.Callback`, the path a real touch takes (Instrumentation
+    injection needs INJECT_EVENTS on Android 14+ and is refused). Button 1 = tap, button 3 =
+    long-press, keys = Android key events, typed characters through the virtual keyboard's key
+    character map. Refused unless the game is
     LOGGED_IN, so it never touches login or account screens.
   - Mouse moves set a virtual mouse: `getMouseCanvasPosition()` and the menu under it.
   - `client.menuAction` asks the game to ray-pick a point on the next frame (`0x72b758`, as a touch

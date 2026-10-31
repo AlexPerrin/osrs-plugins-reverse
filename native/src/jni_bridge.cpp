@@ -1668,6 +1668,17 @@ jboolean n_widget_set_field(JNIEnv*, jclass, jint id, jint index, jint offset, j
 jint n_widget_get_field(JNIEnv*, jclass, jint id, jint index, jint offset) {
     return game::widget_get_field(id, index, static_cast<uint32_t>(offset));
 }
+// {component, index} of the drag parent (index -1 for a static component), or null if none.
+jintArray n_widget_drag_parent(JNIEnv* env, jclass, jint id, jint index) {
+    int v[2];
+    if (!game::widget_drag_parent(id, index, &v[0], &v[1])) return nullptr;
+    jintArray arr = env->NewIntArray(2);
+    env->SetIntArrayRegion(arr, 0, 2, v);
+    return arr;
+}
+jboolean n_widget_set_drag_parent(JNIEnv*, jclass, jint id, jint index, jint parent, jint parentIndex) {
+    return client_thread::on_client_thread() && game::widget_set_drag_parent(id, index, parent, parentIndex);
+}
 jint n_widget_create_child(JNIEnv*, jclass, jint id, jint index, jint type) {
     return client_thread::on_client_thread() ? game::widget_create_child(id, index, type) : -1;
 }
@@ -1974,6 +1985,8 @@ const JNINativeMethod kNatives[] = {
     {"widgetProps", "(II)[I", reinterpret_cast<void*>(n_widget_props)},
     {"widgetSetField", "(IIII)Z", reinterpret_cast<void*>(n_widget_set_field)},
     {"widgetGetField", "(III)I", reinterpret_cast<void*>(n_widget_get_field)},
+    {"widgetDragParent", "(II)[I", reinterpret_cast<void*>(n_widget_drag_parent)},
+    {"widgetSetDragParent", "(IIII)Z", reinterpret_cast<void*>(n_widget_set_drag_parent)},
     {"widgetRevalidate", "(II)Z", reinterpret_cast<void*>(n_widget_revalidate)},
     {"widgetCreateChild", "(III)I", reinterpret_cast<void*>(n_widget_create_child)},
     {"widgetDeleteChildren", "(I)Z", reinterpret_cast<void*>(n_widget_delete_children)},

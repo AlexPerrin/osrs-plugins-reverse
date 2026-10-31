@@ -52,8 +52,8 @@ import org.slf4j.LoggerFactory;
  * pass (a value of the declared type, no exception; setters: set, read back, restored),
  * throw (exception), inert (resolves to a generated *Stub/*Bag or an Inert path), mismatch (a setter
  * read back something else), unchecked (a native-hook action whose effect the API cannot read),
- * unreached (no live instance) and skipped (destructive or not restorable; the reason is the evidence).
- * Runs on the game thread, ROWS_PER_TICK rows per GameTick, once per load.
+ * unreached (no live instance) and skipped (the state it needs is missing; the reason is the evidence).
+ * Runs on the game thread, ROWS_PER_TICK rows per GameTick, once per load; the LAST rows after all others.
  */
 @PluginDescriptor(name = "API Probe", description = "Probes every net.runelite.api method (tools/api-probe.sh)", enabledByDefault = true)
 public class ApiProbePlugin extends Plugin {
@@ -71,34 +71,12 @@ public class ApiProbePlugin extends Plugin {
         EXCLUDED.put(API + "ClientConfiguration", "RuneLite's loader implements it (RSAppletStub) and hands it to GameEngine.setConfiguration");
     }
 
-    /** Destructive or session-ending: never called. */
-    static final Map<String, String> SKIP = new HashMap<>();
-    static {
-        String hop = "world hop ends the session";
-        SKIP.put("Client.changeWorld", hop);
-        SKIP.put("Client.hopToWorld", hop);
-        SKIP.put("Client.openWorldHopper", hop);
-        SKIP.put("Client.setGameState", "a game state change logs out or reloads the scene");
-        SKIP.put("Client.stopNow", "stops the client");
-        SKIP.put("Client.menuAction", "sends the game's menu action to the server (walk, take, drop, trade)");
-        SKIP.put("Client.runScript", "a client script can send packets to the server");
-        SKIP.put("ScriptEvent.run", "runs a client script, which can send packets to the server");
-        SKIP.put("Client.openInterface", "opens a game interface the server does not know about");
-        SKIP.put("Client.closeInterface", "closes a game interface the server tracks");
-        SKIP.put("Client.changeMemoryMode", "low-memory mode reloads the scene");
-        String login = "login credential field";
-        SKIP.put("Client.setUsername", login);
-        SKIP.put("Client.setPassword", login);
-        SKIP.put("Client.setOtp", login);
-        String engine = "applet lifecycle: the app runs it once at start";
-        SKIP.put("GameEngine.initialize", engine);
-        SKIP.put("GameEngine.resizeCanvas", engine);
-        SKIP.put("GameEngine.setConfiguration", engine);
-        SKIP.put("GameEngine.unblockStartup", engine);
-        String scene = "removes the game's scene data, not restorable";
-        SKIP.put("Scene.removeTile", scene);
-        SKIP.put("Scene.removeGameObject", scene);
-    }
+    /**
+     * Rows that change what the server or the session sees, run one at a time after every other row, each once
+     * the previous one's check is done: a client-side close of a modal the run set-up opened, then a walk onto the
+     * player's own tile (the server closes its modal too, and the fight stops), then a scene reload.
+     */
+    static final List<String> LAST = Arrays.asList("Client.closeInterface", "Client.menuAction", "Client.setGameState");
 
     @Inject private Client client;
     @Inject private EventBus eventBus;
@@ -112,7 +90,8 @@ public class ApiProbePlugin extends Plugin {
     private String apiJar = "?", build = "?";
     private Iterator<Row> current;
     private Object currentInstance;
-    private boolean seeded, retried, done;
+    private boolean seeded, retried, done, lastPhase;
+    private final List<Object[]> lastRows = new ArrayList<>();  // {Row, instance}
 
     static final class Row {
         String iface, name, desc, result, evidence = "";
@@ -168,7 +147,14 @@ public class ApiProbePlugin extends Plugin {
                 if (current == null || !current.hasNext()) {
                     current = null;
                     if (!next()) {
-                        if (later.isEmpty() && !awaitingHitsplat() && !awaited()) finish();
+                        if (!later.isEmpty() || awaitingHitsplat() || awaited()) return;
+                        if (lastRows.isEmpty()) { finish(); return; }
+                        // one LAST row per tick, in LAST order, each once the previous one's checks are done
+                        lastPhase = true;
+                        lastRows.sort(java.util.Comparator.comparingInt(l -> LAST.indexOf(key((Row) l[0]))));
+                        Object[] l = lastRows.remove(0);
+                        log.info("api-probe: last: {}", key((Row) l[0]));
+                        probe((Row) l[0], l[1]);
                         return;
                     }
                     continue;
@@ -218,15 +204,20 @@ public class ApiProbePlugin extends Plugin {
      * only once each has an instance.
      */
     private boolean awaited() {
-        String w;
-        try {
-            w = (String) host("Native", "property", new Class<?>[] {String.class}, "debug.osrsrl.probewait");
-        } catch (Exception e) {
-            return false;
-        }
-        if (w == null) return false;
-        for (String t : w.split(",")) if (!t.trim().isEmpty() && byIface.containsKey(API + t.trim())) return true;
+        for (String t : probewait()) if (byIface.containsKey(API + t)) return true;
         return false;
+    }
+
+    /** The names in `debug.osrsrl.probewait`; "modal" has closeInterface wait for a modal interface to close. */
+    static List<String> probewait() {
+        List<String> out = new ArrayList<>();
+        try {
+            String w = (String) host("Native", "property", new Class<?>[] {String.class}, "debug.osrsrl.probewait");
+            if (w != null) for (String t : w.split(",")) if (!t.trim().isEmpty()) out.add(t.trim());
+        } catch (Exception e) {
+            // no property: nothing to wait for
+        }
+        return out;
     }
 
     /** In combat (the local player interacting with someone) and no hitsplat seen yet: the next one is on its way. */
@@ -273,6 +264,13 @@ public class ApiProbePlugin extends Plugin {
     @Subscribe
     public void onAreaSoundEffectPlayed(net.runelite.api.events.AreaSoundEffectPlayed e) {
         if (areaSounds.size() < 256) areaSounds.add(e);
+    }
+
+    final List<net.runelite.api.MenuEntry> clicks = new ArrayList<>();  // menu clicks in the LAST phase (menuAction's walk)
+
+    @Subscribe
+    public void onMenuOptionClicked(net.runelite.api.events.MenuOptionClicked e) {
+        if (lastPhase && clicks.size() < 256) clicks.add(e.getMenuEntry());
     }
 
     /** The next interface with a live instance and unprobed rows; then one retry of deferred rows. */
@@ -443,7 +441,7 @@ public class ApiProbePlugin extends Plugin {
     // ---- one row ----
 
     private void probe(Row row, Object inst) {
-        String key = simple(row.iface) + "." + row.name;
+        String key = key(row);
         Method m = row.m;
         Method impl;
         try {
@@ -454,7 +452,7 @@ public class ApiProbePlugin extends Plugin {
         String decl = impl.getDeclaringClass().getName();
         row.nat = nativeImpl.contains(decl + "\t" + impl.getName() + "\t" + desc(impl));
         String inertBy = inert(inst) ? "Inert proxy" : isGenerated(impl.getDeclaringClass()) ? impl.getDeclaringClass().getSimpleName() : null;
-        if (SKIP.containsKey(key)) { set(row, "skipped", SKIP.get(key)); return; }
+        if (LAST.contains(key) && !lastPhase) { row.result = "last"; lastRows.add(new Object[] {row, inst}); return; }
         try {
             Special s = SPECIAL.get(key + m.getParameterCount());
             if (s != null) s.run(this, row, inst);
@@ -551,6 +549,7 @@ public class ApiProbePlugin extends Plugin {
     private void roundTrip(Row row, Object inst, Method get) throws Exception {
         Object old = get.invoke(inst);
         Object alt = alter(old, row.m.getParameterTypes()[0]);
+        if (alt == old && row.m.getParameterTypes()[0] == Widget.class && inst instanceof Widget) alt = old == inst ? null : inst;  // setDragParent: the widget itself
         row.m.invoke(inst, alt);
         Object read = get.invoke(inst);
         row.m.invoke(inst, old);
@@ -1260,6 +1259,123 @@ public class ApiProbePlugin extends Plugin {
             SPECIAL.put("Widget.setOn" + l + "Listener1", listener);
     }
 
+    // Session and server-visible methods. A client script that only reads (quest_status_get), a world that is the
+    // current one, and the LAST rows, which each undo or settle what they do (see LAST).
+    static final int QUEST = net.runelite.api.Quest.COOKS_ASSISTANT.getId();
+
+    static {
+        Special script = (p, row, inst) -> {
+            Client c = p.client;
+            c.setIntStackSize(0);
+            String how;
+            if (row.name.equals("runScript")) {
+                c.runScript(net.runelite.api.ScriptID.QUEST_STATUS_GET, QUEST);
+                how = "runScript";
+            } else {
+                c.createScriptEventBuilder(net.runelite.api.ScriptID.QUEST_STATUS_GET, QUEST).build().run();
+                how = "a ScriptEvent's run";
+            }
+            int n = c.getIntStackSize(), v = n > 0 ? c.getIntStack()[0] : -1;
+            p.set(row, n == 1 && v >= 0 && v <= 2 ? "pass" : "mismatch", how + " of script " + net.runelite.api.ScriptID.QUEST_STATUS_GET
+                + " (quest_status_get, reads varps only) for quest " + QUEST + ": int stack size 0 -> " + n + ", value " + v + " (0 not started, 1 started, 2 done)");
+        };
+        SPECIAL.put("Client.runScript1", script);
+        SPECIAL.put("ScriptEvent.run0", script);
+        // Desktop sets the world the next login uses: no getter, so the client's fields are compared around it.
+        SPECIAL.put("Client.changeWorld1", (p, row, inst) -> {
+            int before = p.client.getWorld();
+            p.noGetter(row, inst);
+            row.evidence += "; world " + before + ", asked for world " + before + ", getWorld after " + p.client.getWorld();
+        });
+        // A modal interface the run set-up opened (probewait "modal"), closed client-side as desktop does; the server
+        // still has it open until the next row's walk closes it there (its move handler closes modals).
+        SPECIAL.put("Client.closeInterface2", (p, row, inst) -> {
+            Client c = (Client) inst;
+            List<net.runelite.api.WidgetNode> modals = new ArrayList<>();  // a modal and its side panel (equipment stats: 84 and 85)
+            for (net.runelite.api.WidgetNode n : c.getComponentTable()) if (n.getModalMode() == 0) modals.add(n);
+            if (modals.isEmpty()) {
+                if (!probewait().contains("modal")) { p.set(row, "skipped", "no modal interface open (name 'modal' in debug.osrsrl.probewait and open one, e.g. equipment stats, while it waits)"); return; }
+                if (row.evidence.isEmpty()) log.info("api-probe: closeInterface waits for a modal interface (open one, e.g. equipment stats)");
+                row.evidence = "waiting";
+                p.later(row, () -> SPECIAL.get("Client.closeInterface2").run(p, row, inst));
+                return;
+            }
+            boolean ok = true;
+            StringBuilder ev = new StringBuilder();
+            for (net.runelite.api.WidgetNode modal : modals) {
+                int group = modal.getId(), comp = (int) modal.getHash();
+                c.closeInterface(modal, true);
+                boolean listed = false;
+                for (net.runelite.api.WidgetNode n : c.getComponentTable()) listed |= n.getHash() == comp && n.getId() == group;
+                Widget root = c.getWidget(group, 0);
+                ok &= !listed && (root == null || root.isHidden());
+                ev.append(ev.length() == 0 ? "" : "; ").append("modal group ").append(group).append(" in ").append(wid(comp)).append(" closed: in the component table ")
+                    .append(listed).append(", widget ").append(group).append(":0 ").append(root == null ? "gone" : "hidden " + root.isHidden());
+            }
+            p.set(row, ok ? "pass" : "mismatch", ev.toString());
+        });
+        // A walk onto the local player's own tile through the game's menu (the server closes its modals and stops the
+        // fight). Done once the game ran the click (MenuOptionClicked) or the host dropped it.
+        SPECIAL.put("Client.menuAction7", (p, row, inst) -> {
+            Client c = (Client) inst;
+            Player me = c.getLocalPlayer();
+            LocalPoint lp = me.getLocalLocation();
+            WorldPoint at = me.getWorldLocation();
+            c.menuAction(lp.getSceneX(), lp.getSceneY(), net.runelite.api.MenuAction.WALK, 0, -1, "Walk here", "");
+            String ev = "WALK at scene " + lp.getSceneX() + "," + lp.getSceneY() + " (the player's tile " + at + ")";
+            p.later(row, walked(p, row, ev, at, lp.getSceneX(), lp.getSceneY()));
+        });
+        // A scene reload (the only state the host honours; desktop's too): a ground object removed first comes back
+        // with the rebuilt scene.
+        SPECIAL.put("Client.setGameState1", (p, row, inst) -> {
+            Client c = (Client) inst;
+            Tile t = groundTile(c);
+            if (t == null) { p.set(row, "mismatch", "no ground object in the scene to remove and see re-added by the reload"); return; }
+            int x = t.getSceneLocation().getX(), y = t.getSceneLocation().getY(), z = t.getPlane();
+            long hash = t.getGroundObject().getHash();
+            int id = t.getGroundObject().getId();
+            t.setGroundObject(null);
+            boolean removed = t.getGroundObject() == null;
+            c.setGameState(GameState.LOADING);
+            String ev = "ground object " + id + " at scene " + x + "," + y + "," + z + " removed " + removed + "; setGameState(LOADING), state " + c.getGameState();
+            p.later(row, () -> {
+                net.runelite.api.GroundObject g = c.getTopLevelWorldView().getScene().getTiles()[z][x][y].getGroundObject();
+                p.set(row, removed && g != null && g.getId() == id ? "pass" : "mismatch", ev + "; next tick: " + (g == null ? "none" : "ground object " + g.getId()
+                    + (g.getHash() == hash ? " (same hash)" : "")) + ", state " + c.getGameState());
+            });
+        });
+    }
+
+    /** The walk's check: the click the game ran, the destination and where the player is; re-checked while the host holds it. */
+    static Check walked(ApiProbePlugin p, Row row, String ev, WorldPoint at, int sx, int sy) {
+        return () -> {
+            net.runelite.api.MenuEntry walk = null;
+            for (net.runelite.api.MenuEntry e : p.clicks) if (e.getType() == net.runelite.api.MenuAction.WALK) walk = e;
+            if (walk == null && hostField("DevMenu", "pending") != null) { p.later(row, walked(p, row, ev, at, sx, sy)); return; }
+            // In a fight the player may be a step away by now: the walk is right when it heads for (or is on) the asked tile.
+            WorldPoint now = p.client.getLocalPlayer().getWorldLocation();
+            LocalPoint dest = p.client.getLocalDestinationLocation();
+            WorldPoint to = dest == null ? now : WorldPoint.fromLocal(p.client, dest);
+            boolean clicked = walk != null && walk.getParam0() == sx && walk.getParam1() == sy;
+            p.set(row, clicked && at.equals(to) ? "pass" : "mismatch", ev + ": " + (walk == null ? "no WALK click (the host dropped it: logcat menuAction)"
+                : "MenuOptionClicked " + walk.getOption() + " " + walk.getType() + " " + walk.getParam0() + "," + walk.getParam1()) + ", destination "
+                + (dest == null ? "none" : to.toString()) + ", player at " + now);
+        };
+    }
+
+    /** A tile with a ground object, not the local player's. */
+    static Tile groundTile(Client c) {
+        LocalPoint lp = c.getLocalPlayer().getLocalLocation();
+        for (Tile[] col : c.getTopLevelWorldView().getScene().getTiles()[c.getTopLevelWorldView().getPlane()])
+            for (Tile t : col)
+                if (t != null && t.getGroundObject() != null && !(t.getSceneLocation().getX() == lp.getSceneX() && t.getSceneLocation().getY() == lp.getSceneY())) return t;
+        return null;
+    }
+
+    static String wid(int id) {
+        return (id >>> 16) + ":" + (id & 0xffff);
+    }
+
     static int[] geSearch() throws Exception {
         return (int[]) host("Native", "geSearch", new Class<?>[0]);
     }
@@ -1338,6 +1454,13 @@ public class ApiProbePlugin extends Plugin {
             case "Client.getDBRowConfig(I)Lnet/runelite/api/dbtable/DBRowConfig;": {
                 for (int r = 0; r < 20000; r++) if (client.getDBRowConfig(r) != null) return new Object[] {r};
                 return new Object[] {0};
+            }
+            // The world the client is on (desktop would hop to it or log in to it next).
+            case "Client.changeWorld(Lnet/runelite/api/World;)V":
+            case "Client.hopToWorld(Lnet/runelite/api/World;)V": {
+                net.runelite.api.World w = client.createWorld();
+                w.setId(client.getWorld());
+                return new Object[] {w};
             }
             // scale 0 would flatten the live model the Model rows read next; 128 = 1:1
             case "Mesh.scale(III)Lnet/runelite/api/Mesh;": return new Object[] {128, 128, 128};
@@ -1488,6 +1611,10 @@ public class ApiProbePlugin extends Plugin {
     private static String clean(String s) {
         s = s.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
         return s.length() > 300 ? s.substring(0, 297) + "..." : s;
+    }
+
+    private static String key(Row r) {
+        return simple(r.iface) + "." + r.name;
     }
 
     private static String simple(String iface) {

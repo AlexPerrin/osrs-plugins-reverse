@@ -18,7 +18,7 @@ global at ELF `0xace6c0`; docs rows in offsets.md, plugin-host.md, client-state.
   host, runescape.com web domain); LOCAL_AUTH network security config and AppAuth smali patched; RSA modulus,
   jav_config, slr.ws and game port patched. Installed base/split sha256 (e81f8b17..., 6b74af55...) match re/out.
 
-## Device regression (BlueStacks, OpenRune, LOCAL_AUTH sign-in "Tester", slot `qa`)
+## Device regression (Android emulator, OpenRune, LOCAL_AUTH sign-in "Tester", slot `qa`)
 Plugins: the default 3 + `hub-current-world` (the pinned gen 40 jar) + `worldhopper` (marker jar, with
 `worldhopper.ping/displayPing/menuOption=false` so nothing pings Jagex worlds) + `devtools`. All 6 started both runs;
 no exception from Current World, WorldService or World Hopper (only the known FlatDarkLaf/Guice and GL emulator lines).

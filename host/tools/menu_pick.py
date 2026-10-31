@@ -2,12 +2,12 @@
 """Device helper (holder of the device lock only): long-press the QH cyan highlight (or x y)
 and pick the long-press menu option whose text contains OPTION_SUBSTRING (MenuOpened log order).
 usage: ~/tools/venv/bin/python host/tools/menu_pick.py OPTION_SUBSTRING [x y]"""
-import subprocess, sys, time, re, io
+import subprocess, sys, time, re, io, os
 import numpy as np
 from PIL import Image
 
 ADB = "/mnt/c/Users/Alex/AppData/Local/Android/Sdk/platform-tools/adb.exe"
-S = ["-s", "127.0.0.1:5555"]
+S = ["-s", os.environ.get("ANDROID_SERIAL") or sys.exit("set ANDROID_SERIAL to your emulator")]
 
 def adb(*a, out=False):
     r = subprocess.run([ADB, *S, *a], capture_output=True)

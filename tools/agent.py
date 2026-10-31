@@ -10,7 +10,7 @@ Setup on the device:  adb shell setprop debug.osrsrl.agent 1  (then restart the 
   agent.py findptr <value> [--all]   addresses holding a u64 (e.g. a vtable lib+a69fe0)
   agent.py watch <addr> [n]          print a u32 (and neighbours) once a second
 
-Env: ADB (default: Windows adb.exe under WSL), ANDROID_SERIAL (default 127.0.0.1:5555).
+Env: ADB (default: Windows adb.exe under WSL), ANDROID_SERIAL (required: your emulator, emulator-<port>).
 """
 import os
 import re
@@ -22,7 +22,7 @@ import time
 import numpy as np
 
 ADB = os.environ.get("ADB", "/mnt/c/Users/Alex/AppData/Local/Android/Sdk/platform-tools/adb.exe")
-SERIAL = os.environ.get("ANDROID_SERIAL", "127.0.0.1:5555")
+SERIAL = os.environ.get("ANDROID_SERIAL") or sys.exit("set ANDROID_SERIAL to your emulator")
 PORT = 27183
 GAME_LIB = "liblibs.hal.system.osclient.so"
 # ELF layout of the 241.4 build (readelf -S): .data + .bss are contiguous.

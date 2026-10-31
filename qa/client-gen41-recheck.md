@@ -14,7 +14,7 @@ Merge gate, client-qa, 2026-10-18 19:57-20:06. Change: `BufferedImage` keeps a l
   runescape.com web domain), LOCAL_AUTH appauth smali patched, RSA modulus / jav_config / slr / game port patched.
 - Installed with `adb install-multiple -r`; the installed base.apk and split sha256 (8903d3e9..., f1d8f3a1...) match re/out.
 
-## Device regression (BlueStacks, OpenRune, LOCAL_AUTH sign-in "Tester", slot `qa`)
+## Device regression (Android emulator, OpenRune, LOCAL_AUTH sign-in "Tester", slot `qa`)
 Extra jars: devtools, poison, instancemap, banktags, hub-quick-prayer-preview, timersandbuffs, statusbars. All 11 plugins
 started; no host exceptions in logcat.
 

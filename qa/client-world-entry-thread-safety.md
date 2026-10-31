@@ -22,7 +22,7 @@ host CurrentWorld.java (comment); docs offsets.md, plugin-host.md, client-state.
   runescape.com web domain); LOCAL_AUTH network security config and AppAuth patched; RSA modulus, jav_config, slr.ws,
   game port patched. Installed base/split sha256 (2cb4b928..., 0d8669e0...) equal re/out's.
 
-## Device regression (BlueStacks, OpenRune, LOCAL_AUTH "Tester", slot `qa`)
+## Device regression (Android emulator, OpenRune, LOCAL_AUTH "Tester", slot `qa`)
 Plugins: default 3 + `hub-current-world`, `hub-quick-prayer-preview`, `worldhopper` (marker jar) and `devtools`, with
 `worldhopper.ping/displayPing/menuOption=false` (nothing pings Jagex worlds) and `currentworld.overlayActivity=true`
 written into settings.properties before the first start. All 7 started, no exception from Current World, WorldService

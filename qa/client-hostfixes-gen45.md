@@ -21,7 +21,7 @@ base.apk, split_config.arm64_v8a.apk); re/host, re/build, re/apk, re/out local t
   runescape.com web domain); LOCAL_AUTH appauth smali, RSA modulus, jav_config, slr and game port patched.
 - base.apk `e8840469...`, split.apk `cf6272d5...`; installed with `adb install-multiple -r`, installed copies match.
 
-## Device (BlueStacks, OpenRune, LOCAL_AUTH "Tester", slot `qa`)
+## Device (Android emulator, OpenRune, LOCAL_AUTH "Tester", slot `qa`)
 Extra jars: devtools, herbiboars, hub-herbi-afk, hub-decimal-prices, npchighlight (config Man,Imp,Rat), groundmarkers,
 objectindicators. All 10 plugins started; `prompt enter: focus listener installed`; no host exceptions in logcat.
 

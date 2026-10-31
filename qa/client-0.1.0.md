@@ -6,8 +6,8 @@
 Release gate for the first client release, `v0.1.0` (first official release candidate), client-qa, 2026-10-18 22:13-22:42, on
 master at 09c05c9 in a clean detached worktree (main tree's ignored inputs symlinked: re/runelite, re/hub, re/hub-build,
 re/hub-deps, re/hub-src, re/devtools-build, re/devtools, re/tools, re/debug.keystore, re/jadx, base.apk,
-split_config.arm64_v8a.apk; build outputs re/host, re/build, re/out are worktree-local). Device slot `qa` (BlueStacks
-Pie64, 127.0.0.1:5555, app uid 10071), OpenRune live server (old tree), LOCAL_AUTH account "Tester".
+split_config.arm64_v8a.apk; build outputs re/host, re/build, re/out are worktree-local). Device slot `qa` (the Android
+emulator, app uid 10071), OpenRune live server (old tree), LOCAL_AUTH account "Tester".
 
 Every check passed. Two plugin rows are corrected (Drop Sounds, Time Tracking; see the table). Before publishing, see
 "For the orchestrator" at the end (licence notices, the Jagex-APK rule in docs/workflow.md).
@@ -52,7 +52,7 @@ tree (smali/res/assets as built). The scanner (`secretscan.py`, session scratchp
 reports only matches that are absent from the official 241.4 APK (base + split, raw and apktool-decoded). Patterns:
 PEM headers, OpenSSH keys, DER RSA private keys (PKCS#1 and PKCS#8), JKS/JCEKS magic, email addresses, `C:\Users\...`,
 `/home/...`, `/mnt/<drive>/...`, the user's name, GitHub/AWS/Slack/OpenAI/Anthropic tokens, Bearer tokens, JWTs, Google
-API keys, adb serial/emulator/BlueStacks ids, the tester account names, hex runs of 128+ characters and decimal runs of
+API keys, adb serial/emulator ids, the tester account names, hex runs of 128+ characters and decimal runs of
 150+ digits.
 
 Files that differ from the official base.apk/split_config.arm64_v8a.apk: AndroidManifest.xml, classes.dex,

@@ -67,7 +67,7 @@ manifest meta-data lines. Each can be verified on the device by the absence of t
 
 The user chose **A + C + D**. `tools/patch_telemetry.py` runs as step 1b of `tools/repack.sh` for every
 build, normal and LOCAL_AUTH; normal builds now decode resources too, so that the manifest is text. A
-normal build rebuilt fine but was not installed. The LOCAL_AUTH build was verified on BlueStacks from a
+normal build rebuilt fine but was not installed. The LOCAL_AUTH build was verified on the emulator from a
 clean app start (force-stop, cleared logcat, `debug.osrsrl.netlog 1`), then sign-in, Play Now, LOGGED_IN
 and a few minutes of play (walking, tabs, `::nproj`), then a second restart:
 
@@ -155,7 +155,7 @@ Recommended: **S1** (same patch step as the telemetry switches, applied to every
 ### Consent sync fix: applied and verified (gen 37, 2026-10-18 15:29-15:34)
 
 The user approved "Patch it out". `tools/patch_telemetry.py` (commit e986782) makes `za.l.a` return at
-once and zeroes both native sync URLs; it runs for every build. Verified on BlueStacks with the
+once and zeroes both native sync URLs; it runs for every build. Verified on the emulator with the
 LOCAL_AUTH build across a clean start, Play Now, LOGGED_IN, a `::drop` reconnect, an app restart,
 a second Play Now, and about a minute of play:
 
@@ -240,7 +240,7 @@ Ghidra finds one reference into those 14 bytes, a `%s` vararg of the std::string
 (Ghidra FUN_00505ef0), so nothing reads the buffer past its NUL. At the same time the sidecar now serves
 `gedigesturl`, `adverturl`, `termsurl` and `privacyurl` from 10.0.2.2:8080.
 
-Verified on BlueStacks (socket sampler every 0.5 s): Sign out -> "Sign in with Email / Username" -> Play Now
+Verified on the emulator (socket sampler every 0.5 s): Sign out -> "Sign in with Email / Username" -> Play Now
 (LOGGED_IN), play, app restart -> "Try again" -> Play Now, play. netd DNS: only `api.runelite.net`, `static.runelite.net`,
 `sdk.fra-01.braze.eu`. There were no `*.runescape.com`, `*.jagex.com`, `secure.x.invalid`, `services.x.invalid` or
 `pp-*.x.invalid` lookups. Sockets: 10.0.2.2 (43594, 8080), runelite, braze, onetrust and a Google 443 address only.
@@ -265,7 +265,7 @@ change the app's network behaviour:
 Always, even without QA: every build goes through `tools/repack.sh` (with `patch_telemetry.py`, which prints its
 `telemetry:` lines), and anyone who happens to see a new outbound host (logcat, netd, sockets) stops and reports it at once.
 
-**Procedure** (LOCAL_AUTH build, BlueStacks, app uid 10071):
+**Procedure** (LOCAL_AUTH build, your own Agent_Phone emulator, app uid 10071):
 
 1. Before starting: `adb logcat -c`, then start a socket sampler that runs every 0.5 s and keeps ESTABLISHED (state `01`) rows of the app uid
    from `adb shell cat /proc/net/tcp /proc/net/tcp6` (remote address = column 3, hex little-endian), timestamped.

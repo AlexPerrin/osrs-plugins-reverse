@@ -3,15 +3,16 @@
 Short current-state doc for the client track (docs/workflow.md "State"). Rewrite it; don't append.
 History: docs/client-handoff.md (per-gen log; the last entry holds gens 41-46 and host-menu-entry-removal, moved here
 from this file). Tasks and blockers: `python3 ~/osrs-harness/hd.py status`. Last rewrite: 2026-10-30, client dev
-client-devtools-menu-actions-4 (change client-devtools-menu-actions, merged with client-api-widget-fields).
+(the change that made the Agent_Phone emulator the only device in docs and scripts; the adb tools require `ANDROID_SERIAL`;
+`tools/plugin-test.sh` signs in through `~/osrs-harness/bench/emulator_login.py`), merged with client-devtools-menu-actions.
 
 ## What this is
 
 - The official OSRS Android app (build 241.4) repacked by `tools/repack.sh` to load `libosrsrl.so` (native/), which hooks
   the game thread and embeds the Java plugin host (host/). The host runs unmodified RuneLite plugins on ART: core
   plugins from the bundled client jar, Plugin Hub plugins built from source (`host/plugins/hub/build.sh`).
-- Tested on each agent's own Agent_Phone emulator (Android Studio AVD, API 37 with arm64 translation; harness skill
-  `test-instances`) against OpenRune (game `10.0.2.2:43594`,
+- Tested on each agent's own Agent_Phone emulator (Android Studio AVD, Medium Phone profile, x86_64 API 37 image with
+  arm64 translation; harness skill `test-instances`; adb `emulator-<port>` in `ANDROID_SERIAL`; app uid 10071) against OpenRune (game `10.0.2.2:43594`,
   sidecar `10.0.2.2:8080` serving jav_config, LOCAL_AUTH sign-in, digest and payments param 2).
 - API coverage and each plugin's status: docs/plugin-host.md. Addresses: docs/offsets.md (ELF; Ghidra = ELF + 0x100000).
 - Privacy patches and Network QA: docs/app-telemetry.md (read it before any build that touches networking).
@@ -20,12 +21,11 @@ client-devtools-menu-actions-4 (change client-devtools-menu-actions, merged with
 
 - **v0.1.0**: release gate PASS at 09c05c9 (qa/client-0.1.0.md; notes draft qa/client-0.1.0-notes.md). Everything since
   (gens 41-46, host-menu-entry-removal) is on master on the dev's check.
-- Android Studio emulator (Windows SDK, AVD `Medium_Phone_API_37.0`, x86_64 image with arm64 translation) runs the single
-  APK: `emulator.exe -avd Medium_Phone_API_37.0 -port 5590 -read-only -no-snapshot -no-window -gpu swiftshader_indirect`
-  with `ANDROID_AVD_HOME=C:\Users\Alex\.android\avd` (the first sign-in opens Chrome: "Stay signed out"; `pm grant com.android.chrome android.permission.ACCESS_LOCAL_NETWORK`
+- Android Studio emulator (Windows SDK, AVD `Agent_Phone`, x86_64 API 37 image with arm64 translation) runs the single
+  APK: `env -u HOME emulator.exe -avd Agent_Phone -read-only -gpu swiftshader_indirect -port <free even port>` (the first sign-in opens Chrome: "Stay signed out"; `pm grant com.android.chrome android.permission.ACCESS_LOCAL_NETWORK`
   or Chrome shows ERR_LOCAL_NETWORK_PERMISSION_MISSING for 10.0.2.2:8080; close the "Your Privacy" dialog with its X; a
-  shell-pushed `files/plugins` dir needs `chmod 777` or the host loads 0 plugins; the stock AVD has the Play build
-  installed, uninstall it first). Verified 2026-10-24: single APK installs, hooks load, sign-in and LOGGED_IN.
+  shell-pushed `files/plugins` dir needs `chmod 777` or the host loads 0 plugins; `adb uninstall com.jagex.oldscape.android`
+  before installing, as a guard). Verified 2026-10-24: single APK installs, hooks load, sign-in and LOGGED_IN.
 - **The release artifact is ONE universal APK**, `re/out/osrs-runelite.apk` (client-single-apk, 2026-10-24): `tools/repack.sh`
   builds the base with the split-required flags removed (`android:requiredSplitTypes`/`splitTypes` on `<manifest>`,
   `isSplitRequired`, the `com.android.vending.splits.required` meta-data; the decoded manifest is text, so a copy of
@@ -236,8 +236,7 @@ client-devtools-menu-actions-4 (change client-devtools-menu-actions, merged with
   reaches the same tools. adb.exe from WSL fails now and then (`UtilAcceptVsock accept4 failed 110`): retry in an
   `until` loop, or batch taps and `screencap -p /sdcard/...` in one `adb shell "..."` call.
 - **The AVD image ships the official, unpatched app**: `adb uninstall com.jagex.oldscape.android` first, install the repack, stop on any install error, and launch only after `pm path` shows the repack (signer = `re/debug.keystore`). A train deploy restarts the test server and disconnects every client ("You were disconnected from the server": Try again 1197,645, Play Now).
-- Own Android instance without a second BlueStacks: BlueStacks has only Pie64 (the user's, adb 127.0.0.1:5555, shown as
-  emulator-5554); the AVD above with `-read-only -port <free even port>` (adb `emulator-<port>`, 2400x1080 landscape in game) is a
+- Own Android instance: the AVD above with `-read-only -port <free even port>` (adb `emulator-<port>`, 2400x1080 landscape in game) is a
   separate instance with its own app data, gone when it stops. Fresh each boot: `adb install` the single APK, `pm grant`
   Chrome, push the default jars, then "Sign in with Email / Username" (1200,640), Accept (1026,668), Chrome "Stay signed
   out" (540,2087, portrait), the privacy X (2310,165), Play Now (1197,540); it signs in as tester.
@@ -246,9 +245,9 @@ client-devtools-menu-actions-4 (change client-devtools-menu-actions, merged with
   go on the device as the dexed `re/host/plugins-extra/hub-<name>.jar`, not `re/hub-build/<name>.jar` ("no
   plugin-classes.txt"). Back up with `adb exec-out cat` (`shell cat` adds CRLF). Don't use `tools/plugin-test.sh` for
   cleanup (it rm's `*.jar`).
-- Login: screenshot first. Signed out: only "Sign in with Email / Username". After a force-stop the server often still
-  holds the session: Play Now shows "Either your account is still logged in" -> wait ~30-60 s, "Try again" (958,668),
-  Play Now (957,563). **Don't tap 958,668 blind**: on the Play Now screen it's "Sign out" (answer "No" at 1130,625).
+- Login: `ANDROID_SERIAL=emulator-<port> python3 -I ~/osrs-harness/bench/emulator_login.py` (text reads, no screenshot;
+  signed out: only "Sign in with Email / Username"). After a force-stop the server often still holds the session ("Either
+  your account is still logged in"): it retries Try again (1197,620) and Play Now (1197,540) until LOGGED_IN.
 - Agent_Phone refuses the host's Instrumentation input (devtools `click`, `type_chat`, tap-based `item_action`/`select_option` log
   `devinput: ... INJECT_EVENTS`): tap with `adb shell input tap` (canvas x,y times the device/canvas ratio) and type chat
   with the keyboard button (90,215 canvas), `input text`, `input keyevent 66`. Never send BACK (4) in game: it leaves the

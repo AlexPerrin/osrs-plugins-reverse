@@ -28,7 +28,7 @@ Windows desktop                                   WSL2 / Docker Desktop (publish
           |                                       |   Android session: toplevel 601, Android encoders |
           +---------------------------------------- osrs-openrune-http-desktop :8082  jav_config.ws, |
                                                   |   slr.ws, /rsa (world host 127.0.0.1)              |
-BlueStacks (Android app, our repack)              | osrs-openrune-http           :8080  same, world   |
+Agent_Phone emulator (Android app, our repack)    | osrs-openrune-http           :8080  same, world   |
   10.0.2.2:8080 / 10.0.2.2:43594 ---------------->|   host 10.0.2.2, plus the LOCAL_AUTH sign-in      |
                                                   +--------------------------------------------------+
 ```
@@ -41,7 +41,7 @@ BlueStacks (Android app, our repack)              | osrs-openrune-http          
     (`PlayerZoneUpdateProcessor`), the mobile toplevel 601 (`GameframeScript`) and the chatmodal
     unclamp (`PlayerInterfaceExtensions`). A desktop session takes the upstream paths unchanged.
 - **Two HTTP sidecars, same image (`osrs-rsps-test:241`).**
-  - The Android app needs world host 10.0.2.2 (BlueStacks' alias for the host).
+  - The Android app needs world host 10.0.2.2 (the Android emulator's alias for the host).
   - A desktop client on Windows needs 127.0.0.1.
   - The sidecar's world host is global, so the desktop one is a separate compose service
     (`http-desktop` in `openrune/docker-compose.yml`, port `OPENRUNE_DESKTOP_HTTP_PORT`, default 8082).
@@ -448,7 +448,7 @@ You need:
    - The Plugin Hub works because this is the real RuneLite 1.13.2, which is still the current
      version. RSProx only redirects the game connection.
 6. **Android at the same time.**
-   - Sign in on the BlueStacks app as usual (it is `tester`).
+   - Sign in on the Android app (your Agent_Phone emulator) as usual (it is `tester`).
    - Teleport both characters next to each other, for example `::tele 3222 3218 0` on both. Each
      client should show the other player.
 

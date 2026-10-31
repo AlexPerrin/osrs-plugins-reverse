@@ -160,7 +160,7 @@ public class ItemManager {
     /**
      * Desktop searches its price list (tradeable items) by name. Here the list is built from the
      * game's item definitions: a pass over all ids after login, 4096 ids per client cycle (~180 ms
-     * in all on BlueStacks, so no single long frame); a search on the client thread before it is
+     * in all on the emulator, so no single long frame); a search on the client thread before it is
      * done finishes the pass at once. Off the client thread before then, the result is empty.
      */
     public List<net.runelite.http.api.item.ItemPrice> search(String query) {

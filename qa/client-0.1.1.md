@@ -49,7 +49,7 @@ Signer (`apksigner verify --print-certs`): `CN=osrsrl`, cert SHA-256
 ## 4. Secrets and personal data in the release APK
 Scanner `secretscan.py` (my scratch dir, same patterns as the v0.1.0 gate: PEM/OpenSSH/DER keys, JKS magic, e-mail
 addresses, `C:\Users\`, `/home/`, `/mnt/<drive>/`, the user's name, GitHub/AWS/Slack/OpenAI/Anthropic/Bearer/JWT/Google
-tokens, adb/emulator/BlueStacks ids, the tester account names, hex runs of 128+ and decimal runs of 150+) over the
+tokens, adb/emulator ids, the tester account names, hex runs of 128+ and decimal runs of 150+) over the
 ASCII and UTF-16 strings of every zip entry of `re/out/base.apk`, `re/out/split.apk` and `re/host/host.jar`, keeping only
 matches absent from the official 241.4 `base.apk` + `split_config.arm64_v8a.apk`. 15 matches, 10 also in the official
 APKs, 5 new:
@@ -61,7 +61,7 @@ APKs, 5 new:
 No key, token, e-mail of the user, user name, local path, device id or account name. **PASS.**
 
 ## 5. LOCAL_AUTH sign-in
-Device slot 21:18-21:31 EDT (BlueStacks Pie64, 127.0.0.1:5555, app uid 10071; the release APKs installed with `adb
+Device slot 21:18-21:31 EDT (the Android emulator, app uid 10071; the release APKs installed with `adb
 install-multiple -r`, `pm path` + `sha256sum` on the device match section 3's hashes). On the "Play Now / Tester" screen
 (screenshot `login-playnow.png`, taken only to locate the sign-in buttons, as docs/client-state.md "Login" requires) I
 tapped Sign out, confirmed Yes, saw only "Sign in with Google" and "Sign in with Email / Username"

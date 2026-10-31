@@ -76,8 +76,8 @@ older plugin checks, in the dated rows of [docs/plugin-host.md](docs/plugin-host
 |---|---|---|
 | **Quest Helper** (real Plugin Hub jar) | Three full quests completed with its sidebar, step overlay, NPC and object highlights, minimap arrows and item requirements: Cook's Assistant (2026-10-15), Sheep Shearer and Romeo & Juliet (2026-10-16) | docs/plugin-host.md row "Quest Helper"; docs/client-handoff.md |
 | **Ground Items** | Item labels with prices; menu recolouring | docs/plugin-host.md row "Ground Items" |
-| **Ground item despawn timers** | A dropped tradeable item reported `visible in 99, despawn in 299` ticks and left the scene exactly on its despawn tick (0 ticks late); a dropped easy clue reported `despawn in 6099 ticks, private`. Known gap: after a relog the server re-sends the player's own drops without a despawn time, so the timer is wrong until that is fixed server side | `re/evidence/hub-ground-items-despawn` (2026-10-21, BlueStacks) |
-| **Clue Steps** (Plugin Hub) | Reads the step count from the server's "Check steps" message and stores it (`You have completed 2 steps on this easy clue scroll.` gave `clueEasy=2`). The text the plugin draws on the clue was not read back | `re/evidence/hub-clue-steps-tier` (2026-10-21, BlueStacks) |
+| **Ground item despawn timers** | A dropped tradeable item reported `visible in 99, despawn in 299` ticks and left the scene exactly on its despawn tick (0 ticks late); a dropped easy clue reported `despawn in 6099 ticks, private`. Known gap: after a relog the server re-sends the player's own drops without a despawn time, so the timer is wrong until that is fixed server side | `re/evidence/hub-ground-items-despawn` (2026-10-21) |
+| **Clue Steps** (Plugin Hub) | Reads the step count from the server's "Check steps" message and stores it (`You have completed 2 steps on this easy clue scroll.` gave `clueEasy=2`). The text the plugin draws on the clue was not read back | `re/evidence/hub-clue-steps-tier` (2026-10-21) |
 | **Clue Juggling Timers** (Plugin Hub) | Its InfoBox counted a dropped clue down minute by minute and kept counting across a relog | `re/evidence/hub-ground-items-despawn` |
 | **Common core plugins** | Opponent Information, Boosts Information, XP Drop, Status Bars, XP Tracker, Loot Tracker, Slayer, Bank, Fishing, Woodcutting, Time Tracking, Ground Markers, NPC Indicators, Inventory Tags, Item Charges, Chat Filter and others each have a `runs` row with what was seen (2026-10-16 and 2026-10-17) | docs/plugin-host.md "Core plugin status" |
 | **Release gate** | On 2026-10-24 a build was installed fresh on an Android Studio emulator (x86_64 with arm64 translation) and signed in; the host started Ground Items, Opponent Information, Quest Helper and the developer tools, and Clue Steps when it was added; the player walked, teleported, spawned and dropped items, and logged back in after a force-stop | `re/evidence/rel-20261024-1/client-record.md` |
@@ -157,9 +157,9 @@ Legal and safety below). The release ships no plugins.
 Requirements:
 
 - **A 64-bit ARM Android environment (arm64-v8a only).** The native library is arm64-v8a only: a 64-bit ARM phone or an
-  emulator with ARM translation. Development devices: BlueStacks (Pie 64, Android 9) and, for the release gate, an
-  Android Studio emulator (x86_64 with arm64 translation). Android 9 (API 28) is the lowest tested; a real phone has
-  not been tested.
+  emulator with ARM translation. Development and release-gate device: the
+  Android Studio emulator (AVD `Agent_Phone`: Medium Phone profile, x86_64 API 37 image with arm64 translation). A real
+  phone has not been tested.
 - **An OpenRune-compatible test server** that speaks the Android (revision 241) protocol and a local sign-in
   provider. The one used in development is OpenRune-Server with this project's Android support (the fork's
   `local/server-tools` branch); upstream OpenRune does not provide the Android protocol on its own. The APK from a

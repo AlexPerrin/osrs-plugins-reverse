@@ -134,7 +134,7 @@ bool install() {
     if (!g_base) return false;
     char value[PROP_VALUE_MAX] = "";
     __system_property_get("debug.osrsrl.scripts", value);
-    // Verified on BlueStacks (libnb) 2026-10-16. setprop debug.osrsrl.scripts 0 = off, 2 = log
+    // Verified under arm64 translation (libnb) 2026-10-16. setprop debug.osrsrl.scripts 0 = off, 2 = log
     // every root/gosub/return (very verbose).
     if (value[0] == '0') {
         LOGI("script hooks off (debug.osrsrl.scripts=0)");

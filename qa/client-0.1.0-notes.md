@@ -77,7 +77,7 @@ grounditems, opponentinfo and quest-helper. Hub plugins are built with `host/plu
   refused at load unless vetted (R1 NetScan; vetted: loot-lookup, devtools).
 - The APK was scanned for secrets and personal data: none found. It contains only the test server's public RSA modulus.
 
-## Plugins (tested at this commit on BlueStacks against OpenRune)
+## Plugins (tested at this commit on the Android emulator against OpenRune)
 - Core RuneLite plugins: 90, all start; 89 run, 1 starts (World Hopper: its panel lists worlds, hopping isn't mapped
   and must never be used).
 - Plugin Hub plugins: 107 (Quest Helper + 106 pinned), loaded together with all core plugins: 77 run, 29 start

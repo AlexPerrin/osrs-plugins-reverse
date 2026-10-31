@@ -7,7 +7,7 @@ through `adb shell -T nc 127.0.0.1 <port>` (a Windows `adb forward` isn't reacha
 the response is written to stdout as one line. Notifications (202, no body) print nothing.
 
 Enable on the device first: push the devtools plugin jar, `adb shell setprop debug.osrsrl.devtools 1`,
-restart the game (docs/plugin-host.md). Env: ADB, ANDROID_SERIAL (as tools/agent.py).
+restart the game (docs/plugin-host.md). Env: ADB, ANDROID_SERIAL (required, as tools/agent.py).
   tools/devtools-mcp.sh                       # MCP stdio server (registered in the harness repo's .mcp.json)
   tools/devtools_mcp.py --call tools/list     # one request, for testing
 """
@@ -18,7 +18,7 @@ import subprocess
 import sys
 
 ADB = os.environ.get("ADB", "/mnt/c/Users/Alex/AppData/Local/Android/Sdk/platform-tools/adb.exe")
-SERIAL = os.environ.get("ANDROID_SERIAL", "127.0.0.1:5555")
+SERIAL = os.environ.get("ANDROID_SERIAL") or sys.exit("devtools-mcp: set ANDROID_SERIAL to your emulator")
 _auth = None
 
 

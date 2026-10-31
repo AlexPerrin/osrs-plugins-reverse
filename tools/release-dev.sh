@@ -88,7 +88,7 @@ present, no secrets in the APKs).
 
 **What it is.** The official Old School RuneScape Android app (build 241.4), repacked to load this repo's
 \`libosrsrl.so\` and RuneLite plugin host. It connects only to an OpenRune test server
-(\`10.0.2.2:43594\`, the host as seen from an emulator such as BlueStacks) and signs in with the server's local
+(\`10.0.2.2:43594\`, the host as seen from an Android emulator) and signs in with the server's local
 sign-in (LOCAL_AUTH); it cannot sign in to Jagex. The app's analytics (Singular, Firebase, Crashlytics) and the
 consent sync are patched out (docs/app-telemetry.md). Signed with the repo's debug key.
 

@@ -9,8 +9,8 @@ session; its notes are in `docs/android-protocol.md`.
 ## Where things stand (2026-10-14)
 
 - The official OSRS Android APK (build 241.4) is repacked to load `libosrsrl.so`, and can be
-  pointed at the test server (`SERVER=…`). Target device: BlueStacks Pie64 (Android 9, arm64
-  translated by libnb, GLES 3.2).
+  pointed at the test server (`SERVER=…`). Target device: the Agent_Phone emulator (x86_64 API 37,
+  arm64 translated).
 - `libosrsrl.so` provides:
   - an ImGui overlay drawn from the `eglSwapBuffers` GOT hook;
   - a game-thread hook on `Client::doCycle` (vtable slot 5);
@@ -790,7 +790,7 @@ session; its notes are in `docs/android-protocol.md`.
     device (no "map dot ... replaced" log after `npcColor` changes, no exception seen); check whether its
     startUp/replaceMapDots runs (add a log in `getMapDots`), then whether `Native.minimapDot` recolours.
   - Friends list loads normally with the server's resend off (OpenRune 424fc37; "desktop" listed).
-  - Gotchas: BlueStacks sometimes crashes the app at startup inside libhoudini (render thread, right after
+  - Gotchas: The emulator then sometimes crashed the app at startup inside libhoudini (render thread, right after
     the overlay initialises); relaunch. `debug.osrsrl.set` values persist across restarts (clear it).
   - Next: the Minimap open item; player hiding with the desktop player in view (`hideOthers`, it is not
     a friend for the host since `Player.isFriend` is false); remaining `starts` rows (Bank Heatmap, Bank Tag
@@ -942,7 +942,7 @@ session; its notes are in `docs/android-protocol.md`.
     1. Bank Tag Layouts: the plan at the top of this entry.
     2. Verify setDraggedOnWidget(null) (Bank Tags preventTagTabDrags on a tag tab) and getSearchingTagTab.
     3. Friends chat / clan data once the server supports it.
-  - Gotchas: `tools/repack.sh` needs `ADB=/mnt/c/.../adb.exe ANDROID_SERIAL=127.0.0.1:5555` (it found no device with
+  - Gotchas: `tools/repack.sh` needs `ADB=/mnt/c/.../adb.exe ANDROID_SERIAL=<serial>` (it found no device with
     WSL's adb). Mobile drags: `input swipe x1 y1 x2 y2 400` drags; 1500 ms opens the long-press menu instead.
     Spellbook test keys are `spellbook.spell_pos_book_*` / `spell_hidden_book_*` in settings.properties (remove with
     the app stopped). The tester has an open 1 gp lobster buy in GE slot 1; leave it.
@@ -1027,7 +1027,7 @@ session; its notes are in `docs/android-protocol.md`.
     remove the plugin's own `cengineercompleted.needToInformAboutDelayedCoxColLogs`); getSearchingTagTab; the quantity mode
     drawn result; Resource packs needs a hub pack installed (GitHub GETs) and mostly targets desktop interfaces. Remaining
     tracked stub hits (gen 25 list): getInventoryModel, QH fake objects, NPC.getModel, getAnimationHeightOffset.
-    BlueStacks was unreachable at the end of gen 26 (adb connect refused), so the last slot did not run.
+    The emulator was unreachable at the end of gen 26 (adb connect refused), so the last slot did not run.
 - **2026-10-17 (client dev gen 27)**, commits c76a6cb..(see git log; progress at start: core 82/84, hub 32/37, API 592/866; end: hub 34/37, API 596/866).
   - **C Engineer runs** (726a3d0's held MediaPlayer): `config cengineercompleted selectAnySoundToTestPlayIt=LEVEL_UP` played
     LevelUpCompleted_r2.wav to MEDIA_PLAYBACK_COMPLETE; `dumpsys media.audio_flinger` during the clip showed a second active track
@@ -1143,7 +1143,7 @@ session; its notes are in `docs/android-protocol.md`.
     getRasterizer stays a known gap (orchestrator OK).
     Roof Removal stubs (Scene.setRoofRemovalMode/getRoofRemovalMode stored, buildRoofs no-op, getRoofs empty,
     Scene.getMapRegions): the plugin should start, but it hides no roofs. Its setGameState(LOADING) reloads the scene.
-  - Gotchas: `tools/repack.sh --install` needs `ADB=... ANDROID_SERIAL=127.0.0.1:5555` (it otherwise starts the WSL adb
+  - Gotchas: `tools/repack.sh --install` needs `ADB=... ANDROID_SERIAL=<serial>` (it otherwise starts the WSL adb
     daemon: `adb kill-server` after). Music buttons: long-press the search icon at (1663,640), menu row 1616,937; the
     list area ~1300..1640 x 700..1000. Config keys live in `files/settings.properties` on the device (edit with the game
     stopped; `set 'config g k=v'` writes it too).
@@ -1491,7 +1491,7 @@ session; its notes are in `docs/android-protocol.md`.
     `g45/herbiboar-tele-logcat.txt`. No network change.
   - **Soft keyboard Enter for KeyListeners (client/host-prompt-enter, gen 45, device 2026-10-19)**: the game submits a chatbox
     input or prompt from its hidden EditText's editor action (IME_ACTION_DONE -> `com.jagex.android.t.a` -> key 66 through JNI
-    `ru.hx`/`ru.wv`), which never passes the Window.Callback; on BlueStacks a hardware Enter's down also becomes that action (only
+    `ru.hx`/`ru.wv`), which never passes the Window.Callback; on the emulator a hardware Enter's down also becomes that action (only
     its up reached KeyRouter). New `host/.../PromptEnter.java` wraps the listener when the EditText takes focus: VK_ENTER for
     KeyListeners first (KeyRouter.editorEnter, client thread, in order with held keys), then the game's submit once. Device:
     Decimal Prices' Withdraw-X "1.5k" withdrew 1500 (deposited back); chat "Gen45 once" with the keyboard shown sent once.
@@ -1607,21 +1607,22 @@ cmake -S native -B re/build -G Ninja -DCMAKE_TOOLCHAIN_FILE=$HOME/Android/Sdk/nd
       -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 -DCMAKE_BUILD_TYPE=Release   # once
 ninja -C re/build                                # libosrsrl.so (embeds host.jar)
 LOCAL_AUTH=1 SERVER=10.0.2.2:8080 ADB=/mnt/c/Users/Alex/AppData/Local/Android/Sdk/platform-tools/adb.exe \
-    ANDROID_SERIAL=127.0.0.1:5555 tools/repack.sh --install
+    ANDROID_SERIAL=emulator-<port> tools/repack.sh --install
 tools/dex-plugin.sh in.jar re/host/plugins/x.jar
 adb push re/host/plugins/x.jar /sdcard/Android/data/com.jagex.oldscape.android/files/plugins/
 adb shell am force-stop com.jagex.oldscape.android; adb shell monkey -p com.jagex.oldscape.android -c android.intent.category.LAUNCHER 1
-adb shell input tap 957 563                      # "Play Now" (1920x1080)
+adb shell input tap 1197 540                     # "Play Now" (Agent_Phone, 2400x1080)
 adb logcat -s osrsrl osrsrl-host 'rl.*'          # plugin logs use tag rl.<Class>
 ```
 
 Gotchas:
-- Under WSL use Windows `adb.exe` (run `adb kill-server` in WSL first). BlueStacks is at `127.0.0.1:5555`.
+- Under WSL use Windows `adb.exe` (run `adb kill-server` in WSL first). Your own Agent_Phone emulator is `emulator-<port>`
+  (`ANDROID_SERIAL`).
 - Run `tools/repack.sh` bare. Don't prefix `cd … &&` or append a pipe, or the permission rule
   won't match.
 - Sign-in: with `LOCAL_AUTH=1` builds the test server is the OAuth provider. If the app is
   signed out: "Sign in with Email / Username", close the privacy screen (X), then Play Now
-  (957,563). Without LOCAL_AUTH the app wants the real Jagex login, which only the user may do.
+  (1197,540). Without LOCAL_AUTH the app wants the real Jagex login, which only the user may do.
   `repack.sh --install` uses `install -r`, so reinstalls keep the login.
 - Shared device: never touch adb without the lock (see "Working with the server session").
   Server container restarts log the client out; after one, run the login steps again.

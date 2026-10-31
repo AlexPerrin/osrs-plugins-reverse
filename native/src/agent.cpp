@@ -3,7 +3,7 @@
 // Off unless `setprop debug.osrsrl.agent 1` (adb shell only); every connection
 // must first send `auth <token>`, where the random token is only written to
 // logcat (unreadable by other apps).
-// Frida can't instrument arm64 code under BlueStacks' translation layer, so
+// Frida can't instrument arm64 code under the emulator's arm64 translation layer, so
 // this is how the host-side tooling (tools/agent.py) reads game memory.
 //
 // Commands (one per line, numbers in hex without 0x unless noted):

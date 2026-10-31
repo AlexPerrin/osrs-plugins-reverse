@@ -10,7 +10,7 @@ import java.lang.reflect.Field;
 /**
  * The soft keyboard's Enter for RuneLite KeyListeners. While the game's keyboard is shown, its input
  * goes through a hidden EditText (com.jagex.android.a$a, made per show by AndroidKeyboard.show). The
- * IME's Enter (the on-screen Done key, and on BlueStacks also a hardware Enter's key down) is an
+ * IME's Enter (the on-screen Done key, and on an emulator also a hardware Enter's key down) is an
  * editor action IME_ACTION_DONE: the EditText's listener (com.jagex.android.a.onEditorAction) hands the
  * game a key 66 through com.jagex.android.t.a -> b.d/b.e (natives ru.hx/ru.wv), and the game submits the
  * chatbox input or prompt then. That key never passes the Window.Callback, so KeyRouter can't run

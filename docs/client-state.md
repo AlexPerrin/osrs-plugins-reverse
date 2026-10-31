@@ -146,10 +146,14 @@ client-devtools-menu-actions-4 (change client-devtools-menu-actions, merged with
   game window's `Window.Callback` on the main thread, as a real touch arrives (Sidebar's router, then the game).
   Instrumentation injection is refused on the Agent_Phone AVD (API 37: INJECT_EVENTS), which left every such action
   timed out (`menuAction ... timed out`, `devinput: touch failed: SecurityException`). Verified on Agent_Phone
-  2026-10-25 on build v0.1.1-77-gee1c0ed5fb63 (evidence client-devtools-menu-actions): Wield/Wear/Drop, dialogue options
-  (a tutor's and the valuable-drop prompt), a worn-slot widget op take effect; the api-probe at that build is 1138/1253,
-  no row changed against main's. widget_action reaches item slots and worn-equipment slots only (hover menus for other widgets:
-  use invoke_menu_action CC_OP with the widget id).
+  on build v0.1.1-89-gff933f7629a1 (evidence client-devtools-menu-actions): Wield/Wear/Drop, dialogue options
+  (a tutor's and the valuable-drop prompt), a worn-slot widget op and click_component (side tabs, music row, world map
+  orb and close) take effect; the api-probe at that build is 1168/1253, no row changed against main's.
+  widget_action reaches item slots and worn-equipment slots only (hover menus for other widgets: use
+  invoke_menu_action CC_OP with the widget id). Every devtools touch also sets the virtual mouse for 3 s
+  (`VIRTUAL_MOUSE_MS`), and `client.menuAction` WALK takes the Walk here under a fresh virtual mouse (the hovered tile,
+  as on desktop): in the api-probe set-up, open equipment stats with `adb shell input tap` (canvas x 2.07 on
+  Agent_Phone), not a devtools click, or the menuAction walk row reads mismatch.
 - **Soft keyboard Enter** (`PromptEnter`): the IME's Done is an editor action on the game's hidden EditText, not a key
   event; with KeyListeners registered the host sends VK_ENTER through KeyManager first, then the game's submit once.
 - **Projectiles** (Projectiles.java, offsets.md "Projectiles"): `Client.createProjectile` (and the deprecated
